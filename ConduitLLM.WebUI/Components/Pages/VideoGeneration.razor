@@ -45,8 +45,8 @@
                                 }
                                 else
                                 {
-                                    <i class="fa fa-circle text-warning me-2" style="font-size: 0.5rem;"></i>
-                                    <span class="small text-warning">Polling mode (2s)</span>
+                                    <i class="fa fa-circle text-danger me-2" style="font-size: 0.5rem;"></i>
+                                    <span class="small text-danger">Real-time updates disconnected</span>
                                 }
                             </div>
                         </div>
@@ -269,9 +269,12 @@
             {
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-light border-0">
-                        <h5 class="mb-0">
-                            <i class="fa fa-tasks me-2"></i>Active Generation Tasks
-                        </h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fa fa-tasks me-2"></i>Active Generation Tasks
+                            </h5>
+                            <span class="badge bg-primary">@activeTasks.Count tasks</span>
+                        </div>
                     </div>
                     <div class="card-body">
                         @foreach (var task in activeTasks)
@@ -462,7 +465,9 @@
                                id="apiKey" 
                                class="form-control" 
                                placeholder="Override default key"
-                               @bind="apiKey" />
+                               @bind="apiKey"
+                               @bind:event="oninput"
+                               @onchange="OnApiKeyChanged" />
                         <div class="form-text">Override the default API key for testing</div>
                     </div>
                     
@@ -494,7 +499,6 @@
     private List<VideoData> generatedVideos = new();
     private RecentPrompts? recentPromptsComponent;
     private List<VideoGenerationTask> activeTasks = new();
-    private System.Threading.Timer? statusCheckTimer;
     private DotNetObjectReference<VideoGeneration>? dotNetRef;
     private bool signalRConnected = false;
     
@@ -519,8 +523,6 @@
         await LoadAvailableModels();
         // Load persisted active tasks
         await LoadPersistedTasks();
-        // Start periodic status check for active tasks
-        statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
         
         // Initialize SignalR connection
         dotNetRef = DotNetObjectReference.Create(this);
@@ -726,57 +728,6 @@
         }
     }
 
-    private async Task CheckTaskStatuses()
-    {
-        if (!activeTasks.Any(t => t.Status == "pending" || t.Status == "running"))
-            return;
-
-        try
-        {
-            foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running").ToList())
-            {
-                var status = await ConduitApiClient.GetVideoGenerationStatusAsync(task.TaskId, apiKey);
-                
-                if (status != null)
-                {
-                    task.Status = status.Status;
-                    task.Progress = status.Progress;
-                    task.UpdatedAt = status.UpdatedAt;
-                    task.CompletedAt = status.CompletedAt;
-                    task.Error = status.Error;
-                    
-                    if (status.Status == "completed" && status.VideoResponse?.Data != null)
-                    {
-                        generatedVideos.AddRange(status.VideoResponse.Data);
-                        ToastService.ShowSuccess($"Video generation completed for task {task.TaskId}");
-                    }
-                    else if (status.Status == "failed")
-                    {
-                        ToastService.ShowError($"Video generation failed: {status.Error ?? "Unknown error"}");
-                    }
-                }
-            }
-            
-            // Remove completed/failed tasks after 30 seconds
-            var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
-            var removedCount = activeTasks.RemoveAll(t => 
-                (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
-                && t.CompletedAt.HasValue 
-                && t.CompletedAt.Value < cutoffTime);
-            
-            // Persist if any tasks were updated or removed
-            if (removedCount > 0 || activeTasks.Any(t => t.Status == "completed" || t.Status == "failed"))
-            {
-                await SavePersistedTasks();
-            }
-            
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking task statuses");
-        }
-    }
 
     private async Task CancelTask(string taskId)
     {
@@ -956,29 +907,42 @@
         }
     }
     
-    // SignalR Methods
+    // Initialize SignalR for real-time updates
     private async Task InitializeSignalR()
     {
         try
         {
-            signalRConnected = await JSRuntime.InvokeAsync<bool>("videoGenerationSignalR.initialize", dotNetRef);
-            if (signalRConnected)
+            // Get the WebUI virtual key for SignalR authentication
+            string? virtualKey = null;
+            try
             {
-                _logger.LogInformation("SignalR connection established for video generation");
-                // Subscribe to existing active tasks
-                foreach (var task in activeTasks.Where(t => t.Status != "completed" && t.Status != "failed"))
+                var globalSettingService = AdminApiClient as IGlobalSettingService;
+                if (globalSettingService != null)
                 {
-                    await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
+                    virtualKey = await globalSettingService.GetSettingAsync("WebUI_VirtualKey");
+                    _logger.LogInformation("Retrieved WebUI virtual key for SignalR authentication");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogWarning("Failed to establish SignalR connection for video generation");
+                _logger.LogWarning(ex, "Failed to retrieve WebUI virtual key for SignalR");
+            }
+            
+            var initialized = await JSRuntime.InvokeAsync<bool>("videoGenerationSignalR.initialize", dotNetRef, virtualKey);
+            signalRConnected = initialized;
+            _logger.LogInformation("Video generation SignalR initialized: {Connected}", signalRConnected);
+            
+            if (!signalRConnected)
+            {
+                _logger.LogError("Failed to initialize SignalR connection for video generation");
+                ToastService.ShowWarning("Real-time updates unavailable. Please refresh the page.");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error initializing SignalR for video generation");
+            _logger.LogError(ex, "Error initializing SignalR");
+            signalRConnected = false;
+            ToastService.ShowError("Failed to establish real-time connection. Please refresh the page.");
         }
     }
 
@@ -993,6 +957,8 @@
     public async Task OnDisconnected()
     {
         signalRConnected = false;
+        _logger.LogWarning("Video generation SignalR disconnected");
+        ToastService.ShowWarning("Real-time connection lost. Please refresh the page.");
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1007,6 +973,14 @@
     public async Task OnReconnected()
     {
         signalRConnected = true;
+        _logger.LogInformation("Video generation SignalR reconnected");
+        
+        // Re-subscribe to all active tasks
+        foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
+        {
+            await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
+        }
+        
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1015,8 +989,8 @@
     {
         try
         {
-            var requestId = data.GetProperty("requestId").GetString();
-            _logger.LogInformation("Video generation started for task {TaskId}", requestId);
+            var taskId = data.GetProperty("taskId").GetString();
+            _logger.LogInformation("Video generation started for task {TaskId}", taskId);
             // Update UI if needed
             await InvokeAsync(StateHasChanged);
         }
@@ -1065,6 +1039,8 @@
         {
             var taskId = data.GetProperty("taskId").GetString();
             var videoUrl = data.TryGetProperty("videoUrl", out var urlElem) ? urlElem.GetString() : null;
+            
+            _logger.LogInformation("Video generation completed for task {TaskId} via SignalR - videoUrl: {VideoUrl}", taskId, videoUrl);
 
             _logger.LogInformation("Video generation completed for task {TaskId}", taskId);
 
@@ -1077,9 +1053,58 @@
                 task.UpdatedAt = DateTimeOffset.UtcNow;
                 task.CompletedAt = DateTimeOffset.UtcNow;
                 
-                // The next polling cycle will fetch the full result
-                // or we can force a check now
-                await CheckTaskStatuses();
+                // Check if video URL is provided in the SignalR event
+                if (!string.IsNullOrEmpty(videoUrl))
+                {
+                    var videoData = new VideoData
+                    {
+                        Url = videoUrl
+                    };
+                    generatedVideos.Add(videoData);
+                    ToastService.ShowSuccess($"Video generation completed for task {task.TaskId}");
+                }
+                else
+                {
+                    // Fallback: fetch the completed video from API if not in event
+                    var status = await ConduitApiClient.GetVideoGenerationStatusAsync(task.TaskId, apiKey);
+                    if (status != null)
+                    {
+                        if (status.VideoResponse?.Data != null && status.VideoResponse.Data.Any())
+                        {
+                            generatedVideos.AddRange(status.VideoResponse.Data);
+                        }
+                        else if (!string.IsNullOrEmpty(status.Result))
+                        {
+                            // Parse the result JSON to get the video URL
+                            try
+                            {
+                                var resultData = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationResult>(status.Result);
+                                if (!string.IsNullOrEmpty(resultData?.VideoUrl))
+                                {
+                                    var videoData = new VideoData
+                                    {
+                                        Url = resultData.VideoUrl
+                                    };
+                                    generatedVideos.Add(videoData);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to parse video result for task {TaskId}", task.TaskId);
+                            }
+                        }
+                        ToastService.ShowSuccess($"Video generation completed for task {task.TaskId}");
+                    }
+                }
+                
+                // Clean up old completed tasks
+                var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
+                activeTasks.RemoveAll(t => 
+                    (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
+                    && t.CompletedAt.HasValue 
+                    && t.CompletedAt.Value < cutoffTime);
+                
+                await SavePersistedTasks();
                 
                 // Unsubscribe from updates
                 await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
@@ -1166,9 +1191,23 @@
         };
     }
 
+    private async Task OnApiKeyChanged(ChangeEventArgs e)
+    {
+        _logger.LogInformation("API key changed, reinitializing SignalR connection");
+        
+        // Stop existing SignalR connection
+        if (signalRConnected)
+        {
+            await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.stop");
+            signalRConnected = false;
+        }
+        
+        // Reinitialize SignalR with new API key
+        await InitializeSignalR();
+    }
+
     public void Dispose()
     {
-        statusCheckTimer?.Dispose();
         dotNetRef?.Dispose();
         // Stop SignalR connection
         _ = JSRuntime.InvokeVoidAsync("videoGenerationSignalR.stop");
@@ -1181,6 +1220,18 @@
         public string Provider { get; set; } = "";
     }
 
+    private class VideoGenerationResult
+    {
+        public string? VideoUrl { get; set; }
+        public string? PreviewUrl { get; set; }
+        public double Duration { get; set; }
+        public string? Resolution { get; set; }
+        public long FileSize { get; set; }
+        public decimal Cost { get; set; }
+        public string? Provider { get; set; }
+        public string? Model { get; set; }
+        public DateTime? CompletedAt { get; set; }
+    }
 
     private class VideoGenerationTask
     {

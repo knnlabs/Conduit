@@ -56,8 +56,6 @@ namespace ConduitLLM.Tests.WebUI
         [InlineData(typeof(Login))]
         [InlineData(typeof(AccessDenied))]
         [InlineData(typeof(Error))]
-        [InlineData(typeof(AdminApiError))]
-        [InlineData(typeof(AdminApiAuthError))]
         [InlineData(typeof(Chat))]
         [InlineData(typeof(ConduitLLM.WebUI.Components.Pages.Configuration))]
         [InlineData(typeof(CostDashboard))]

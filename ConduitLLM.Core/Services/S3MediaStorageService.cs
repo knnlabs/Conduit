@@ -33,7 +33,26 @@ namespace ConduitLLM.Core.Services
         {
             _options = options.Value;
             _logger = logger;
+            
+            // Validate required configuration
+            if (string.IsNullOrEmpty(_options.AccessKey))
+            {
+                throw new InvalidOperationException("S3 AccessKey is required. Set CONDUITLLM__STORAGE__S3__ACCESSKEY environment variable.");
+            }
+            
+            if (string.IsNullOrEmpty(_options.SecretKey))
+            {
+                throw new InvalidOperationException("S3 SecretKey is required. Set CONDUITLLM__STORAGE__S3__SECRETKEY environment variable.");
+            }
+            
+            if (string.IsNullOrEmpty(_options.BucketName))
+            {
+                throw new InvalidOperationException("S3 BucketName is required. Set CONDUITLLM__STORAGE__S3__BUCKETNAME environment variable.");
+            }
+            
             _bucketName = _options.BucketName;
+            _logger.LogInformation("S3MediaStorageService initialized with bucket: {BucketName}, ServiceUrl: {ServiceUrl}, Region: {Region}", 
+                _bucketName, _options.ServiceUrl ?? "default", _options.Region);
 
             var config = new AmazonS3Config
             {

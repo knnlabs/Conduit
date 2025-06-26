@@ -9,14 +9,29 @@ window.imageGenerationSignalR = {
     activeTaskIds: new Set(),
 
     // Initialize SignalR connection
-    async initialize(dotNetReference) {
-        console.log('Initializing image generation SignalR connection...');
+    async initialize(dotNetReference, virtualKey) {
+        // console.log('Initializing image generation SignalR connection...');
         this.dotNetReference = dotNetReference;
+        this.virtualKey = virtualKey;
         
         try {
-            // Create SignalR connection
+            // Use configured API base URL from window.conduitConfig
+            const apiBaseUrl = window.conduitConfig?.apiBaseUrl || 'http://localhost:5000';
+            const hubUrl = `${apiBaseUrl}/hubs/image-generation`;
+            
+            // console.log('Connecting to image generation hub at:', hubUrl);
+            
+            // Create SignalR connection with authentication
+            const connectionOptions = {};
+            if (this.virtualKey) {
+                connectionOptions.accessTokenFactory = () => this.virtualKey;
+                connectionOptions.headers = {
+                    'Authorization': `Bearer ${this.virtualKey}`
+                };
+            }
+            
             this.connection = new signalR.HubConnectionBuilder()
-                .withUrl("/hubs/image-generation")
+                .withUrl(hubUrl, connectionOptions)
                 .withAutomaticReconnect({
                     nextRetryDelayInMilliseconds: retryContext => {
                         if (retryContext.previousRetryCount >= this.maxReconnectAttempts) {
@@ -45,13 +60,13 @@ window.imageGenerationSignalR = {
     setupEventHandlers() {
         // Connection state change handlers
         this.connection.onreconnecting(error => {
-            console.log('Image generation SignalR reconnecting...', error);
+            // console.log('Image generation SignalR reconnecting...', error);
             this.isConnected = false;
             this.invokeMethod('OnReconnecting');
         });
 
         this.connection.onreconnected(connectionId => {
-            console.log('Image generation SignalR reconnected:', connectionId);
+            // console.log('Image generation SignalR reconnected:', connectionId);
             this.isConnected = true;
             this.reconnectAttempts = 0;
             this.invokeMethod('OnReconnected');
@@ -60,7 +75,7 @@ window.imageGenerationSignalR = {
         });
 
         this.connection.onclose(error => {
-            console.log('Image generation SignalR connection closed:', error);
+            // console.log('Image generation SignalR connection closed:', error);
             this.isConnected = false;
             this.invokeMethod('OnDisconnected');
             // Attempt manual reconnect if needed
@@ -71,29 +86,29 @@ window.imageGenerationSignalR = {
 
         // Image generation event handlers
         this.connection.on('ImageGenerationStarted', (data) => {
-            console.log('Image generation started:', data);
+            // console.log('Image generation started:', data);
             this.invokeMethod('OnImageGenerationStarted', data);
         });
 
         this.connection.on('ImageGenerationProgress', (data) => {
-            console.log('Image generation progress:', data);
+            // console.log('Image generation progress:', data);
             this.invokeMethod('OnImageGenerationProgress', data);
         });
 
         this.connection.on('ImageGenerationCompleted', (data) => {
-            console.log('Image generation completed:', data);
+            // console.log('Image generation completed:', data);
             this.activeTaskIds.delete(data.taskId || data.requestId);
             this.invokeMethod('OnImageGenerationCompleted', data);
         });
 
         this.connection.on('ImageGenerationFailed', (data) => {
-            console.log('Image generation failed:', data);
+            // console.log('Image generation failed:', data);
             this.activeTaskIds.delete(data.taskId || data.requestId);
             this.invokeMethod('OnImageGenerationFailed', data);
         });
 
         this.connection.on('ImageGenerationCancelled', (data) => {
-            console.log('Image generation cancelled:', data);
+            // console.log('Image generation cancelled:', data);
             this.activeTaskIds.delete(data.taskId || data.requestId);
             this.invokeMethod('OnImageGenerationCancelled', data);
         });
@@ -104,7 +119,7 @@ window.imageGenerationSignalR = {
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
             try {
                 await this.connection.start();
-                console.log('Image generation SignalR connected');
+                // console.log('Image generation SignalR connected');
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this.invokeMethod('OnConnected');
@@ -114,7 +129,7 @@ window.imageGenerationSignalR = {
                 this.reconnectAttempts++;
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
-                    console.log(`Retrying connection in ${delay}ms...`);
+                    // console.log(`Retrying connection in ${delay}ms...`);
                     setTimeout(() => this.start(), delay);
                 }
                 return false;
@@ -128,7 +143,7 @@ window.imageGenerationSignalR = {
         if (this.connection && this.connection.state !== signalR.HubConnectionState.Disconnected) {
             try {
                 await this.connection.stop();
-                console.log('Image generation SignalR disconnected');
+                // console.log('Image generation SignalR disconnected');
                 this.isConnected = false;
                 this.activeTaskIds.clear();
             } catch (error) {
@@ -140,14 +155,14 @@ window.imageGenerationSignalR = {
     // Subscribe to updates for a specific task
     async subscribeToTask(taskId) {
         if (!this.isConnected) {
-            console.warn('Cannot subscribe to task - SignalR not connected');
+            // console.warn('Cannot subscribe to task - SignalR not connected');
             return false;
         }
 
         try {
             await this.connection.invoke('SubscribeToTask', taskId);
             this.activeTaskIds.add(taskId);
-            console.log(`Subscribed to image generation updates for task: ${taskId}`);
+            // console.log(`Subscribed to image generation updates for task: ${taskId}`);
             return true;
         } catch (error) {
             console.error(`Failed to subscribe to task ${taskId}:`, error);
@@ -164,7 +179,7 @@ window.imageGenerationSignalR = {
         try {
             await this.connection.invoke('UnsubscribeFromTask', taskId);
             this.activeTaskIds.delete(taskId);
-            console.log(`Unsubscribed from image generation updates for task: ${taskId}`);
+            // console.log(`Unsubscribed from image generation updates for task: ${taskId}`);
             return true;
         } catch (error) {
             console.error(`Failed to unsubscribe from task ${taskId}:`, error);
@@ -175,11 +190,11 @@ window.imageGenerationSignalR = {
     // Re-subscribe to all active tasks after reconnection
     async resubscribeToActiveTasks() {
         if (this.activeTaskIds.size > 0) {
-            console.log(`Re-subscribing to ${this.activeTaskIds.size} active tasks...`);
+            // console.log(`Re-subscribing to ${this.activeTaskIds.size} active tasks...`);
             for (const taskId of this.activeTaskIds) {
                 try {
                     await this.connection.invoke('SubscribeToTask', taskId);
-                    console.log(`Re-subscribed to task: ${taskId}`);
+                    // console.log(`Re-subscribed to task: ${taskId}`);
                 } catch (error) {
                     console.error(`Failed to re-subscribe to task ${taskId}:`, error);
                 }

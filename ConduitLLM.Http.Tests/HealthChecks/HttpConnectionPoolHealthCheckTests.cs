@@ -54,7 +54,6 @@ namespace ConduitLLM.Http.Tests.HealthChecks
             var result = await _healthCheck.CheckHealthAsync(context, CancellationToken.None);
 
             // Assert
-            Assert.NotNull(result);
             Assert.NotNull(result.Data);
             Assert.True(result.Data.ContainsKey("activeConnections"));
             Assert.True(result.Data.ContainsKey("maxConnections"));
@@ -91,7 +90,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
         [InlineData(45, 50, HealthStatus.Degraded)]
         [InlineData(46, 50, HealthStatus.Unhealthy)]
         [InlineData(50, 50, HealthStatus.Unhealthy)]
-        public async Task CheckHealthAsync_VariousUtilizationLevels_ReturnsExpectedStatus(
+        public Task CheckHealthAsync_VariousUtilizationLevels_ReturnsExpectedStatus(
             int activeConnections, 
             int maxConnections, 
             HealthStatus expectedStatus)
@@ -108,6 +107,8 @@ namespace ConduitLLM.Http.Tests.HealthChecks
                 Assert.Equal(HealthStatus.Degraded, expectedStatus);
             else
                 Assert.Equal(HealthStatus.Healthy, expectedStatus);
+            
+            return Task.CompletedTask;
         }
     }
 }

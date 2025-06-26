@@ -213,8 +213,30 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 
 // Model Capability Service is registered via ServiceCollectionExtensions
 
-// Register Video Generation Service
-builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
+// Register Video Generation Service with explicit dependencies
+builder.Services.AddScoped<IVideoGenerationService>(sp =>
+{
+    var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
+    var capabilityService = sp.GetRequiredService<IModelCapabilityService>();
+    var costService = sp.GetRequiredService<ICostCalculationService>();
+    var virtualKeyService = sp.GetRequiredService<IVirtualKeyService>();
+    var mediaStorage = sp.GetRequiredService<IMediaStorageService>();
+    var taskService = sp.GetRequiredService<IAsyncTaskService>();
+    var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
+    var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
+    var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
+    
+    return new VideoGenerationService(
+        clientFactory,
+        capabilityService,
+        costService,
+        virtualKeyService,
+        mediaStorage,
+        taskService,
+        logger,
+        publishEndpoint,
+        taskRegistry);
+});
 
 // Configure Image Generation Performance Settings
 builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationPerformanceConfiguration>(
@@ -244,7 +266,7 @@ builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationS
     {
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Refresh connections every 5 minutes
         PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Close idle connections after 2 minutes
-        MaxConnectionsPerServer = 50,                           // Increase from default 2 to support burst traffic
+        MaxConnectionsPerServer = 100,                          // Support 1000+ webhooks/min (17/sec avg, 100 concurrent)
         EnableMultipleHttp2Connections = true,                  // Allow multiple HTTP/2 connections
         MaxResponseHeadersLength = 64 * 1024,                   // 64KB for headers
         ResponseDrainTimeout = TimeSpan.FromSeconds(5),         // Drain response within 5 seconds
@@ -613,10 +635,12 @@ builder.Services.AddMassTransit(x =>
                 e.PrefetchCount = rabbitMqConfig.PrefetchCount;
                 e.ConcurrentMessageLimit = rabbitMqConfig.ConcurrentMessageLimit;
                 
-                // Partitioning for ordered processing per virtual key
-                e.ConfigureConsumeTopology = false;
+                // Enable consume topology to properly bind consumers to the queue
+                // This ensures VideoGenerationRequested events are routed to this endpoint
+                e.ConfigureConsumeTopology = true;
                 e.SetQuorumQueue();
-                e.SetQueueArgument("x-single-active-consumer", true); // Ensure ordering
+                // Note: Removed x-single-active-consumer as it conflicts with partitioned processing
+                // Ordering is maintained through partition keys in the event messages
                 
                 // Retry policy for transient failures
                 e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)));
@@ -744,27 +768,19 @@ builder.Services.AddScoped<ModelListService>();
 // Register cancellable task registry
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICancellableTaskRegistry, ConduitLLM.Core.Services.CancellableTaskRegistry>();
 
-var useRedisForTasks = builder.Configuration.GetValue<bool>("ConduitLLM:Tasks:UseRedis", false);
-if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
+// Always use hybrid database+cache task management
+// This provides consistency across all deployments and proper event publishing
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
 {
-    // Use hybrid database+cache task management for distributed deployments
-    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
-    {
-        var repository = sp.GetRequiredService<ConduitLLM.Configuration.Repositories.IAsyncTaskRepository>();
-        var cache = sp.GetRequiredService<IDistributedCache>();
-        var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
-        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
-        
-        return publishEndpoint != null
-            ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
-            : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
-    });
-}
-else
-{
-    // Use in-memory task service for single instance deployments
-    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService, ConduitLLM.Core.Services.InMemoryAsyncTaskService>();
-}
+    var repository = sp.GetRequiredService<ConduitLLM.Configuration.Repositories.IAsyncTaskRepository>();
+    var cache = sp.GetRequiredService<IDistributedCache>();
+    var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
+    var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
+    
+    return publishEndpoint != null
+        ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
+        : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
+});
 
 // Register Conduit service
 builder.Services.AddScoped<Conduit>();
@@ -801,10 +817,11 @@ builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationRetryCon
 if (builder.Environment.EnvironmentName != "Test")
 {
     // Add database-based background service for image generation
-    builder.Services.AddHostedService<ImageGenerationDatabaseBackgroundService>();
+    // REMOVED: ImageGenerationDatabaseBackgroundService - Events are now processed by ImageGenerationOrchestrator consumer
 
-    // Add background service for video generation monitoring and cleanup
-    builder.Services.AddHostedService<VideoGenerationBackgroundService>();
+    // DISABLED: VideoGenerationBackgroundService causes duplicate event publishing
+    // The VideoGenerationService already publishes VideoGenerationRequested events directly
+    // builder.Services.AddHostedService<VideoGenerationBackgroundService>();
 
     // Add background service for image generation metrics cleanup
     builder.Services.AddHostedService<ImageGenerationMetricsCleanupService>();
@@ -816,14 +833,17 @@ Console.WriteLine("[Conduit] Image generation performance tracking and optimizat
 
 // Register Media Storage Service
 var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
+Console.WriteLine($"[Conduit] Storage Provider: {storageProvider}");
 if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
 {
+    Console.WriteLine("[Conduit] Configuring S3 Media Storage Service");
     builder.Services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
         builder.Configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
     builder.Services.AddSingleton<IMediaStorageService, S3MediaStorageService>();
 }
 else
 {
+    Console.WriteLine("[Conduit] Using In-Memory Media Storage (development mode)");
     // Use in-memory storage for development
     builder.Services.AddSingleton<IMediaStorageService>(provider =>
     {

@@ -7,11 +7,12 @@ using ConduitLLM.Http.Handlers;
 
 namespace ConduitLLM.Http.Tests.Handlers
 {
-    public class WebhookMetricsHandlerTests
+    public class WebhookMetricsHandlerTests : IDisposable
     {
         private readonly Mock<ILogger<WebhookMetricsHandler>> _loggerMock;
         private readonly WebhookMetricsHandler _handler;
         private readonly Mock<HttpMessageHandler> _innerHandlerMock;
+        private readonly HttpClient _httpClient;
 
         public WebhookMetricsHandlerTests()
         {
@@ -19,6 +20,7 @@ namespace ConduitLLM.Http.Tests.Handlers
             _handler = new WebhookMetricsHandler(_loggerMock.Object);
             _innerHandlerMock = new Mock<HttpMessageHandler>();
             _handler.InnerHandler = _innerHandlerMock.Object;
+            _httpClient = new HttpClient(_handler);
         }
 
         [Fact]
@@ -37,7 +39,7 @@ namespace ConduitLLM.Http.Tests.Handlers
                 .ReturnsAsync(response);
 
             // Act
-            var result = await _handler.SendAsync(request, CancellationToken.None);
+            var result = await _httpClient.SendAsync(request, CancellationToken.None);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, result.StatusCode);
@@ -66,7 +68,7 @@ namespace ConduitLLM.Http.Tests.Handlers
                 .ReturnsAsync(response);
 
             // Act
-            var result = await _handler.SendAsync(request, CancellationToken.None);
+            var result = await _httpClient.SendAsync(request, CancellationToken.None);
 
             // Assert
             Assert.Equal(HttpStatusCode.InternalServerError, result.StatusCode);
@@ -95,7 +97,7 @@ namespace ConduitLLM.Http.Tests.Handlers
 
             // Act & Assert
             await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-                await _handler.SendAsync(request, CancellationToken.None));
+                await _httpClient.SendAsync(request, CancellationToken.None));
 
             _loggerMock.Verify(x => x.Log(
                 LogLevel.Warning,
@@ -127,7 +129,7 @@ namespace ConduitLLM.Http.Tests.Handlers
                 });
 
             // Act
-            var result = await _handler.SendAsync(request, CancellationToken.None);
+            var result = await _httpClient.SendAsync(request, CancellationToken.None);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, result.StatusCode);
@@ -156,7 +158,7 @@ namespace ConduitLLM.Http.Tests.Handlers
 
             // Act & Assert
             await Assert.ThrowsAsync<HttpRequestException>(async () =>
-                await _handler.SendAsync(request, CancellationToken.None));
+                await _httpClient.SendAsync(request, CancellationToken.None));
 
             _loggerMock.Verify(x => x.Log(
                 LogLevel.Error,
@@ -165,6 +167,11 @@ namespace ConduitLLM.Http.Tests.Handlers
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
+        }
+
+        public void Dispose()
+        {
+            _httpClient?.Dispose();
         }
     }
 }

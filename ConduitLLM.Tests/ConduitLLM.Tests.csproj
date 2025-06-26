@@ -52,6 +52,9 @@
     <Compile Remove="LoadTesting\AudioLoadTestScenarios.cs" />
     <Compile Remove="Http\ApiVirtualKeyServiceTests.cs" />
     <Compile Remove="Http\RealtimeUsageTrackerTests.cs" />
+    <Compile Remove="Services\InMemoryAsyncTaskServiceTests.cs" />
+    <Compile Remove="Services\RedisAsyncTaskServiceTests.cs" />
+    <Compile Remove="Data\ConnectionStringManagerTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

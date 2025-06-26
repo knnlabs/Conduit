@@ -5,7 +5,6 @@ using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
 
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -45,20 +44,15 @@ namespace ConduitLLM.Tests.Data
         }
 
         [Fact]
-        public void CreateConnection_WithSqliteProvider_ReturnsSqliteConnection()
+        public void CreateConnection_WithNonPostgresProvider_ThrowsInvalidOperationException()
         {
             // Arrange
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
-                .Returns((DatabaseConstants.SQLITE_PROVIDER, "Data Source=test.db"));
+                .Returns(("sqlite", "Data Source=test.db"));
 
-            var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
-
-            // Act
-            var connection = factory.CreateConnection();
-
-            // Assert
-            Assert.IsType<SqliteConnection>(connection);
-            Assert.Equal(DatabaseConstants.SQLITE_PROVIDER, factory.ProviderName);
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => 
+                new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -100,19 +94,17 @@ namespace ConduitLLM.Tests.Data
         }
 
         [Fact]
-        public async Task CreateConnectionAsync_OpensConnectionSuccessfully()
+        public async Task CreateConnectionAsync_WithValidPostgresConnection_OpensSuccessfully()
         {
-            // Arrange - Use SQLite in-memory for a real connection test
+            // Arrange - Mock PostgreSQL connection
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
-                .Returns((DatabaseConstants.SQLITE_PROVIDER, "Data Source=:memory:"));
+                .Returns((DatabaseConstants.POSTGRES_PROVIDER, "Host=localhost;Database=testdb;Username=user;Password=pass"));
 
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
 
-            // Act
-            using var connection = await factory.CreateConnectionAsync();
-
-            // Assert
-            Assert.Equal(System.Data.ConnectionState.Open, connection.State);
+            // Act & Assert - This will throw since we don't have a real PostgreSQL connection
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await factory.CreateConnectionAsync());
         }
     }
 }

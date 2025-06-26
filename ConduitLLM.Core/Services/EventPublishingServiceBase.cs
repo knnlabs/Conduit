@@ -47,6 +47,8 @@ namespace ConduitLLM.Core.Services
             TEvent domainEvent,
             string operationName) where TEvent : class
         {
+            _logger.LogInformation("PublishEventAsync called for {EventType} - {Operation}", typeof(TEvent).Name, operationName);
+            
             if (domainEvent == null)
             {
                 _logger.LogWarning(
@@ -57,7 +59,7 @@ namespace ConduitLLM.Core.Services
 
             if (_publishEndpoint == null)
             {
-                _logger.LogDebug(
+                _logger.LogWarning(
                     "Event publishing not configured - skipping {EventType} for {Operation}",
                     typeof(TEvent).Name, operationName);
                 return;

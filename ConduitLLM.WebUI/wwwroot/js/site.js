@@ -43,45 +43,9 @@ window.hideModal = function (modalId) {
 window.copyToClipboard = function (text) {
     if (navigator && navigator.clipboard) {
         navigator.clipboard.writeText(text)
-            .then(() => console.log('Copied to clipboard successfully'))
+            .then(() => {/* Copied to clipboard successfully */})
             .catch(err => console.error('Failed to copy text: ', err));
         return true;
     }
     return false;
-};
-
-// Helper for downloading images
-window.downloadImage = function (imageUrl, fileName) {
-    fetch(imageUrl)
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = fileName || 'image.png';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        })
-        .catch(err => console.error('Failed to download image: ', err));
-};
-
-// Helper for downloading videos
-window.downloadVideo = function (videoUrl, fileName) {
-    fetch(videoUrl)
-        .then(response => response.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = fileName || 'video.mp4';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        })
-        .catch(err => console.error('Failed to download video: ', err));
 };

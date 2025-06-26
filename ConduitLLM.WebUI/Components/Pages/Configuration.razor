@@ -285,14 +285,28 @@
     
     private async Task LoadHttpRetryOptionsAsync()
     {
-        // TODO: Update to use AdminApiClient once HTTP config API is available
+        // TODO: Implement HTTP retry configuration endpoints in Admin API
+        // Required endpoints:
+        // - GET /api/configuration/http/retry - Get current retry settings
+        // - PUT /api/configuration/http/retry - Update retry settings
+        // The settings should be stored in GlobalSettings table with keys like:
+        // - HttpRetry:MaxRetries
+        // - HttpRetry:InitialDelaySeconds
+        // - HttpRetry:MaxDelaySeconds
+        // - HttpRetry:EnableRetryLogging
         httpRetryOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
         await Task.CompletedTask;
     }
     
     private async Task LoadHttpTimeoutOptionsAsync()
     {
-        // TODO: Update to use AdminApiClient once HTTP config API is available
+        // TODO: Implement HTTP timeout configuration endpoints in Admin API
+        // Required endpoints:
+        // - GET /api/configuration/http/timeout - Get current timeout settings
+        // - PUT /api/configuration/http/timeout - Update timeout settings
+        // The settings should be stored in GlobalSettings table with keys like:
+        // - HttpTimeout:TimeoutSeconds
+        // - HttpTimeout:EnableTimeoutLogging
         httpTimeoutOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
         await Task.CompletedTask;
     }
@@ -314,34 +328,44 @@
         }
     }
     
-    private Task SaveHttpRetryOptions()
+    private async Task SaveHttpRetryOptions()
     {
         try
         {
-            // TODO: Update to use AdminApiClient once HTTP config API is available
-            // await AdminApiClient.UpdateHttpRetryConfigurationAsync(httpRetryOptions);
-            ToastService.ShowSuccess("HTTP retry settings saved successfully (placeholder)");
+            // TODO: Once HTTP retry configuration endpoints are implemented in Admin API:
+            // 1. Create DTOs for HTTP retry configuration
+            // 2. Call AdminApiClient to save settings:
+            //    await AdminApiClient.SetSettingAsync("HttpRetry:MaxRetries", httpRetryOptions.MaxRetries.ToString());
+            //    await AdminApiClient.SetSettingAsync("HttpRetry:InitialDelaySeconds", httpRetryOptions.InitialDelaySeconds.ToString());
+            //    await AdminApiClient.SetSettingAsync("HttpRetry:MaxDelaySeconds", httpRetryOptions.MaxDelaySeconds.ToString());
+            //    await AdminApiClient.SetSettingAsync("HttpRetry:EnableRetryLogging", httpRetryOptions.EnableRetryLogging.ToString());
+            // 3. Consider creating a dedicated endpoint for batch updates
+            ToastService.ShowSuccess("HTTP retry settings saved successfully (placeholder - pending Admin API implementation)");
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
-        return Task.CompletedTask;
     }
 
-    private Task SaveHttpTimeoutOptions()
+    private async Task SaveHttpTimeoutOptions()
     {
         try
         {
-            // TODO: Update to use AdminApiClient once HTTP config API is available
-            // await AdminApiClient.UpdateHttpTimeoutConfigurationAsync(httpTimeoutOptions);
-            ToastService.ShowSuccess("HTTP timeout settings saved successfully (placeholder)");
+            // TODO: Once HTTP timeout configuration endpoints are implemented in Admin API:
+            // 1. Create DTOs for HTTP timeout configuration
+            // 2. Call AdminApiClient to save settings:
+            //    await AdminApiClient.SetSettingAsync("HttpTimeout:TimeoutSeconds", httpTimeoutOptions.TimeoutSeconds.ToString());
+            //    await AdminApiClient.SetSettingAsync("HttpTimeout:EnableTimeoutLogging", httpTimeoutOptions.EnableTimeoutLogging.ToString());
+            // 3. Consider creating a dedicated endpoint for batch updates
+            ToastService.ShowSuccess("HTTP timeout settings saved successfully (placeholder - pending Admin API implementation)");
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
-        return Task.CompletedTask;
     }
 }
 

@@ -16,7 +16,6 @@ using ConduitLLM.Tests.TestHelpers.Builders;
 using MassTransit;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,23 +33,19 @@ namespace ConduitLLM.Tests.Integration
         private IDistributedCache _cache = null!;
         private ITestHarness _testHarness = null!;
         private ConfigurationDbContext _dbContext = null!;
-        private SqliteConnection _connection = null!;
 
         public async Task InitializeAsync()
         {
             var services = new ServiceCollection();
 
-            // Setup SQLite in-memory database (supports FK constraints unlike EF in-memory provider)
-            _connection = new SqliteConnection("Data Source=:memory:");
-            await _connection.OpenAsync();
-            
+            // Setup in-memory database for testing
             var dbOptions = new DbContextOptionsBuilder<ConfigurationDbContext>()
-                .UseSqlite(_connection)
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
 
             services.AddSingleton(dbOptions);
             services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                options.UseSqlite(_connection));
+                options.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()));
 
             // Add repositories
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
@@ -111,7 +106,6 @@ namespace ConduitLLM.Tests.Integration
         {
             await _testHarness.Stop();
             _dbContext?.Dispose();
-            _connection?.Dispose();
             
             if (_serviceProvider != null)
             {

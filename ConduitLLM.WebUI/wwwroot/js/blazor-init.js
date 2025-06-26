@@ -5,12 +5,12 @@ window._blazorStarted = false;
 
 // Monitor Blazor connection state
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, monitoring Blazor connection...');
+    // console.log('DOM loaded, monitoring Blazor connection...');
     
     // Check for Blazor availability periodically
     let checkInterval = setInterval(() => {
         if (window.Blazor && window.Blazor._internal) {
-            console.log('Blazor is ready and connected');
+            // console.log('Blazor is ready and connected');
             window._blazorStarted = true;
             clearInterval(checkInterval);
             
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set up reconnection handlers if available
             if (Blazor.defaultReconnectionHandler) {
                 Blazor.defaultReconnectionHandler._reconnectCallback = function() {
-                    console.log('Blazor reconnecting...');
+                    // console.log('Blazor reconnecting...');
                 };
             }
         }
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Timeout after 10 seconds
     setTimeout(() => {
         if (!window._blazorStarted) {
-            console.warn('Blazor connection check timed out');
+            // console.warn('Blazor connection check timed out');
             clearInterval(checkInterval);
         }
     }, 10000);

@@ -123,6 +123,11 @@ namespace ConduitLLM.Admin.Services
                     LabelNames = new[] { "operation", "entity_type" }
                 });
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdminOperationsMetricsService"/> class.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider for resolving scoped services.</param>
+        /// <param name="logger">The logger instance.</param>
         public AdminOperationsMetricsService(
             IServiceProvider serviceProvider,
             ILogger<AdminOperationsMetricsService> logger)
@@ -131,6 +136,11 @@ namespace ConduitLLM.Admin.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Executes the background service to periodically collect metrics.
+        /// </summary>
+        /// <param name="stoppingToken">The cancellation token to stop the service.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Admin operations metrics service starting...");
@@ -264,6 +274,12 @@ namespace ConduitLLM.Admin.Services
         }
 
         // Static methods to be called by Admin API operations
+        /// <summary>
+        /// Records a virtual key operation metric.
+        /// </summary>
+        /// <param name="operation">The operation type (e.g., create, update, delete).</param>
+        /// <param name="status">The operation status (e.g., success, failure).</param>
+        /// <param name="durationSeconds">The optional operation duration in seconds.</param>
         public static void RecordVirtualKeyOperation(string operation, string status, double? durationSeconds = null)
         {
             VirtualKeyOperations.WithLabels(operation, status).Inc();
@@ -273,6 +289,13 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        /// <summary>
+        /// Records a provider operation metric.
+        /// </summary>
+        /// <param name="operation">The operation type.</param>
+        /// <param name="provider">The provider name.</param>
+        /// <param name="status">The operation status.</param>
+        /// <param name="durationSeconds">The optional operation duration in seconds.</param>
         public static void RecordProviderOperation(string operation, string provider, string status, double? durationSeconds = null)
         {
             ProviderOperations.WithLabels(operation, provider, status).Inc();
@@ -282,26 +305,52 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        /// <summary>
+        /// Records a model mapping operation metric.
+        /// </summary>
+        /// <param name="operation">The operation type.</param>
+        /// <param name="status">The operation status.</param>
         public static void RecordModelMappingOperation(string operation, string status)
         {
             ModelMappingOperations.WithLabels(operation, status).Inc();
         }
 
+        /// <summary>
+        /// Records a configuration change metric.
+        /// </summary>
+        /// <param name="entityType">The entity type that was changed.</param>
+        /// <param name="changeType">The type of change performed.</param>
         public static void RecordConfigurationChange(string entityType, string changeType)
         {
             ConfigurationChanges.WithLabels(entityType, changeType).Inc();
         }
 
+        /// <summary>
+        /// Records an authentication attempt metric.
+        /// </summary>
+        /// <param name="status">The authentication status (e.g., success, failure).</param>
         public static void RecordAuthentication(string status)
         {
             AdminApiAuthentications.WithLabels(status).Inc();
         }
 
+        /// <summary>
+        /// Sets the current count of active admin sessions.
+        /// </summary>
+        /// <param name="count">The number of active sessions.</param>
         public static void SetActiveSessions(int count)
         {
             ActiveAdminSessions.Set(count);
         }
 
+        /// <summary>
+        /// Records a CSV operation metric.
+        /// </summary>
+        /// <param name="operation">The CSV operation type (e.g., import, export).</param>
+        /// <param name="entityType">The entity type being processed.</param>
+        /// <param name="status">The operation status.</param>
+        /// <param name="recordCount">The number of records processed.</param>
+        /// <param name="durationSeconds">The optional operation duration in seconds.</param>
         public static void RecordCsvOperation(string operation, string entityType, string status, int recordCount = 0, double? durationSeconds = null)
         {
             CsvOperations.WithLabels(operation, entityType, status).Inc();

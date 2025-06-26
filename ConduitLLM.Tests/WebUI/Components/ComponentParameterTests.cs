@@ -82,26 +82,12 @@ namespace ConduitLLM.Tests.WebUI.Components
             AssertParameterExists(componentType, "OnError", typeof(EventCallback<Exception>));
         }
 
-        [Fact]
-        public void DevDiagnostics_HasCorrectParameters()
-        {
-            // Arrange
-            var componentType = typeof(DevDiagnostics);
-
-            // Act & Assert
-            AssertParameterExists(componentType, "ComponentType", typeof(Type));
-            AssertParameterExists(componentType, "RenderMode", typeof(string));
-            AssertParameterExists(componentType, "CustomData", typeof(object));
-            AssertParameterExists(componentType, "Parameters", typeof(object));
-            AssertParameterExists(componentType, "ShowParameters", typeof(bool));
-        }
 
         [Theory]
         [InlineData(typeof(StatusBadge))]
         [InlineData(typeof(CollapsibleNavSection))]
         [InlineData(typeof(NavigationLink))]
         [InlineData(typeof(ConduitErrorBoundary))]
-        [InlineData(typeof(DevDiagnostics))]
         public void AllComponents_HaveXmlDocumentationOnParameters(Type componentType)
         {
             // Arrange

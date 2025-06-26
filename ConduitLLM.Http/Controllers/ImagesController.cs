@@ -364,7 +364,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Get virtual key information
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyHash))
                 {
                     return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
@@ -421,8 +421,10 @@ namespace ConduitLLM.Http.Controllers
                 // Update the request with the actual task ID
                 generationRequest = generationRequest with { TaskId = taskId };
 
-                // The background service will pick up the task and publish to MassTransit
-                _logger.LogInformation("Created async image generation task {TaskId} for model {Model}", 
+                // Publish the event directly to MassTransit for immediate processing
+                await _publishEndpoint.Publish(generationRequest);
+                
+                _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event", 
                     taskId, modelName);
 
                 // Return accepted response with task information
@@ -461,7 +463,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Verify user owns this task
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (task.Metadata != null)
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
@@ -515,7 +517,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Verify user owns this task
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (task.Metadata != null)
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);

@@ -252,7 +252,7 @@ window.audioSupport = {
         // Initialize WebRTC connection
         initialize: async function(configuration) {
             // This would be implemented when connecting to real-time audio endpoints
-            console.log('Real-time audio initialization placeholder');
+            // console.log('Real-time audio initialization placeholder');
         },
         
         // Clean up WebRTC resources

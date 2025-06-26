@@ -206,9 +206,7 @@ namespace ConduitLLM.Tests.Controllers
                 .ReturnsAsync(new VideoGenerationResponse());
 
             // Act
-#pragma warning disable CS0618 // Type or member is obsolete
-            var result = await _controller.GenerateVideo(request);
-#pragma warning restore CS0618 // Type or member is obsolete
+            var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
             Assert.IsType<OkObjectResult>(result);

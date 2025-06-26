@@ -9,14 +9,29 @@ window.videoGenerationSignalR = {
     activeTaskIds: new Set(),
 
     // Initialize SignalR connection
-    async initialize(dotNetReference) {
-        console.log('Initializing video generation SignalR connection...');
+    async initialize(dotNetReference, virtualKey) {
+        // console.log('Initializing video generation SignalR connection...');
         this.dotNetReference = dotNetReference;
+        this.virtualKey = virtualKey;
         
         try {
-            // Create SignalR connection
+            // Use configured API base URL from window.conduitConfig
+            const apiBaseUrl = window.conduitConfig?.apiBaseUrl || 'http://localhost:5000';
+            const hubUrl = `${apiBaseUrl}/hubs/video-generation`;
+            
+            // console.log('Connecting to video generation hub at:', hubUrl);
+            
+            // Create SignalR connection with authentication
+            const connectionOptions = {};
+            if (this.virtualKey) {
+                connectionOptions.accessTokenFactory = () => this.virtualKey;
+                connectionOptions.headers = {
+                    'Authorization': `Bearer ${this.virtualKey}`
+                };
+            }
+            
             this.connection = new signalR.HubConnectionBuilder()
-                .withUrl("/hubs/video-generation")
+                .withUrl(hubUrl, connectionOptions)
                 .withAutomaticReconnect({
                     nextRetryDelayInMilliseconds: retryContext => {
                         if (retryContext.previousRetryCount >= this.maxReconnectAttempts) {
@@ -45,13 +60,13 @@ window.videoGenerationSignalR = {
     setupEventHandlers() {
         // Connection state change handlers
         this.connection.onreconnecting(error => {
-            console.log('Video generation SignalR reconnecting...', error);
+            // console.log('Video generation SignalR reconnecting...', error);
             this.isConnected = false;
             this.invokeMethod('OnReconnecting');
         });
 
         this.connection.onreconnected(connectionId => {
-            console.log('Video generation SignalR reconnected:', connectionId);
+            // console.log('Video generation SignalR reconnected:', connectionId);
             this.isConnected = true;
             this.reconnectAttempts = 0;
             this.invokeMethod('OnReconnected');
@@ -60,7 +75,7 @@ window.videoGenerationSignalR = {
         });
 
         this.connection.onclose(error => {
-            console.log('Video generation SignalR connection closed:', error);
+            // console.log('Video generation SignalR connection closed:', error);
             this.isConnected = false;
             this.invokeMethod('OnDisconnected');
             // Attempt manual reconnect if needed
@@ -71,30 +86,30 @@ window.videoGenerationSignalR = {
 
         // Video generation event handlers
         this.connection.on('VideoGenerationStarted', (data) => {
-            console.log('Video generation started:', data);
+            // console.log('Video generation started:', data);
             this.invokeMethod('OnVideoGenerationStarted', data);
         });
 
         this.connection.on('VideoGenerationProgress', (data) => {
-            console.log('Video generation progress:', data);
+            // console.log('Video generation progress:', data);
             this.invokeMethod('OnVideoGenerationProgress', data);
         });
 
         this.connection.on('VideoGenerationCompleted', (data) => {
-            console.log('Video generation completed:', data);
-            this.activeTaskIds.delete(data.requestId);
+            // console.log('Video generation completed:', data);
+            this.activeTaskIds.delete(data.taskId);
             this.invokeMethod('OnVideoGenerationCompleted', data);
         });
 
         this.connection.on('VideoGenerationFailed', (data) => {
-            console.log('Video generation failed:', data);
-            this.activeTaskIds.delete(data.requestId);
+            // console.log('Video generation failed:', data);
+            this.activeTaskIds.delete(data.taskId);
             this.invokeMethod('OnVideoGenerationFailed', data);
         });
 
         this.connection.on('VideoGenerationCancelled', (data) => {
-            console.log('Video generation cancelled:', data);
-            this.activeTaskIds.delete(data.requestId);
+            // console.log('Video generation cancelled:', data);
+            this.activeTaskIds.delete(data.taskId);
             this.invokeMethod('OnVideoGenerationCancelled', data);
         });
     },
@@ -104,7 +119,7 @@ window.videoGenerationSignalR = {
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
             try {
                 await this.connection.start();
-                console.log('Video generation SignalR connected');
+                // console.log('Video generation SignalR connected');
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this.invokeMethod('OnConnected');
@@ -114,7 +129,7 @@ window.videoGenerationSignalR = {
                 this.reconnectAttempts++;
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
-                    console.log(`Retrying connection in ${delay}ms...`);
+                    // console.log(`Retrying connection in ${delay}ms...`);
                     setTimeout(() => this.start(), delay);
                 }
                 return false;
@@ -128,7 +143,7 @@ window.videoGenerationSignalR = {
         if (this.connection && this.connection.state !== signalR.HubConnectionState.Disconnected) {
             try {
                 await this.connection.stop();
-                console.log('Video generation SignalR disconnected');
+                // console.log('Video generation SignalR disconnected');
                 this.isConnected = false;
                 this.activeTaskIds.clear();
             } catch (error) {
@@ -140,14 +155,14 @@ window.videoGenerationSignalR = {
     // Subscribe to updates for a specific task
     async subscribeToTask(taskId) {
         if (!this.isConnected) {
-            console.warn('Cannot subscribe to task - SignalR not connected');
+            // console.warn('Cannot subscribe to task - SignalR not connected');
             return false;
         }
 
         try {
             await this.connection.invoke('SubscribeToRequest', taskId);
             this.activeTaskIds.add(taskId);
-            console.log(`Subscribed to video generation updates for task: ${taskId}`);
+            // console.log(`Subscribed to video generation updates for task: ${taskId}`);
             return true;
         } catch (error) {
             console.error(`Failed to subscribe to task ${taskId}:`, error);
@@ -164,7 +179,7 @@ window.videoGenerationSignalR = {
         try {
             await this.connection.invoke('UnsubscribeFromRequest', taskId);
             this.activeTaskIds.delete(taskId);
-            console.log(`Unsubscribed from video generation updates for task: ${taskId}`);
+            // console.log(`Unsubscribed from video generation updates for task: ${taskId}`);
             return true;
         } catch (error) {
             console.error(`Failed to unsubscribe from task ${taskId}:`, error);
@@ -175,11 +190,11 @@ window.videoGenerationSignalR = {
     // Re-subscribe to all active tasks after reconnection
     async resubscribeToActiveTasks() {
         if (this.activeTaskIds.size > 0) {
-            console.log(`Re-subscribing to ${this.activeTaskIds.size} active tasks...`);
+            // console.log(`Re-subscribing to ${this.activeTaskIds.size} active tasks...`);
             for (const taskId of this.activeTaskIds) {
                 try {
                     await this.connection.invoke('SubscribeToRequest', taskId);
-                    console.log(`Re-subscribed to task: ${taskId}`);
+                    // console.log(`Re-subscribed to task: ${taskId}`);
                 } catch (error) {
                     console.error(`Failed to re-subscribe to task ${taskId}:`, error);
                 }

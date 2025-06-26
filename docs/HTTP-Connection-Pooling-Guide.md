@@ -19,16 +19,16 @@ This guide covers the optimized HTTP client connection pooling configuration imp
 Base calculation:
 - 100 requests/second burst = 100 concurrent connections needed
 - 50% buffer for safety = 150 connections
-- Divided by 3-5 instances = 30-50 connections per instance
+- For single instance or high-volume scenarios = 100 connections per instance
 
-Selected: 50 connections per server per instance
+Selected: 100 connections per server per instance (updated for 1000+ webhooks/min)
 ```
 
 #### Memory Impact
 ```
 Per connection: ~4KB TCP buffer + ~2KB HTTP state = ~6KB
-50 connections × 6KB = 300KB per endpoint
-With 10 webhook endpoints = 3MB total connection memory
+100 connections × 6KB = 600KB per endpoint
+With 10 webhook endpoints = 6MB total connection memory
 ```
 
 ## Implementation Details
@@ -49,7 +49,7 @@ builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationS
         // Connection Pool Settings
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Max connection age
         PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Idle timeout
-        MaxConnectionsPerServer = 50,                           // Connection limit
+        MaxConnectionsPerServer = 100,                          // Connection limit (increased for 1000+ webhooks/min)
         
         // HTTP/2 Support
         EnableMultipleHttp2Connections = true,                  
@@ -120,12 +120,12 @@ builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationS
 ```json
 {
   "status": "Healthy",
-  "description": "Connections: 25/50 (50.0%)",
+  "description": "Connections: 50/100 (50.0%)",
   "data": {
-    "activeConnections": 25,
-    "maxConnections": 50,
+    "activeConnections": 50,
+    "maxConnections": 100,
     "utilization": "50.0%",
-    "idleConnections": 25,
+    "idleConnections": 50,
     "pendingRequests": 0
   }
 }
@@ -197,7 +197,7 @@ builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationS
 ```bash
 # Webhook-specific timeouts (future enhancement)
 CONDUITLLM__WEBHOOKS__DEFAULT_TIMEOUT=10
-CONDUITLLM__WEBHOOKS__MAX_CONNECTIONS_PER_SERVER=50
+CONDUITLLM__WEBHOOKS__MAX_CONNECTIONS_PER_SERVER=100
 CONDUITLLM__WEBHOOKS__CONNECTION_LIFETIME_MINUTES=5
 CONDUITLLM__WEBHOOKS__IDLE_TIMEOUT_MINUTES=2
 ```

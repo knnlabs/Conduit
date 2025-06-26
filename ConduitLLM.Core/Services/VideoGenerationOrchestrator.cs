@@ -72,6 +72,9 @@ namespace ConduitLLM.Core.Services
             var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             
+            _logger.LogInformation("VideoGenerationOrchestrator received event for request {RequestId}, IsAsync: {IsAsync}, Model: {Model}", 
+                request.RequestId, request.IsAsync, request.Model);
+            
             // Only process async requests in the orchestrator
             if (!request.IsAsync)
             {
@@ -132,11 +135,11 @@ namespace ConduitLLM.Core.Services
                     
                     var metadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJson);
                     
-                    // The InMemoryAsyncTaskService wraps the original metadata
+                    // Legacy async task service wrapped the original metadata
                     // Check if we have the wrapped format first
                     if (metadata.TryGetProperty("originalMetadata", out var originalMetadataElement))
                     {
-                        // This is the wrapped format from InMemoryAsyncTaskService
+                        // This is the wrapped format from legacy async task service
                         _logger.LogDebug("Found originalMetadata wrapper, extracting inner metadata");
                         var originalMetadata = originalMetadataElement;
                         
@@ -334,7 +337,7 @@ namespace ConduitLLM.Core.Services
                     var metadataJsonString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Metadata);
                     var metadataJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJsonString);
                     
-                    // Handle wrapped format from InMemoryAsyncTaskService
+                    // Handle wrapped format from legacy async task service
                     System.Text.Json.JsonElement workingMetadata;
                     if (metadataJson.TryGetProperty("originalMetadata", out var originalMetadataElement))
                     {
@@ -657,7 +660,7 @@ namespace ConduitLLM.Core.Services
                     var metadataJsonString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Metadata);
                     var metadataJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJsonString);
                     
-                    // Handle wrapped format from InMemoryAsyncTaskService
+                    // Handle wrapped format from legacy async task service
                     System.Text.Json.JsonElement workingMetadata;
                     if (metadataJson.TryGetProperty("originalMetadata", out var originalMetadataElement))
                     {
@@ -703,12 +706,13 @@ namespace ConduitLLM.Core.Services
                     };
                 }
 
-                // Store video in media storage if base64 data is provided
+                // Store video in media storage
                 var videoUrl = response.Data?.FirstOrDefault()?.Url;
                 if (response.Data != null)
                 {
                     foreach (var video in response.Data)
                     {
+                        // Handle base64 data
                         if (!string.IsNullOrEmpty(video.B64Json))
                         {
                             var videoBytes = Convert.FromBase64String(video.B64Json);
@@ -758,6 +762,75 @@ namespace ConduitLLM.Core.Services
                                 },
                                 CorrelationId = request.CorrelationId
                             });
+                        }
+                        // Handle external URLs (e.g., from MiniMax)
+                        else if (!string.IsNullOrEmpty(video.Url) && (video.Url.Contains("minimax.io") || video.Url.Contains("api.minimax")))
+                        {
+                            _logger.LogInformation("Downloading video from external URL: {Url}", video.Url);
+                            
+                            try
+                            {
+                                // Download the video from the external URL
+                                using var httpClient = new HttpClient();
+                                httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow time for large video downloads
+                                
+                                using var videoResponse = await httpClient.GetAsync(video.Url);
+                                videoResponse.EnsureSuccessStatusCode();
+                                
+                                using var videoStream = await videoResponse.Content.ReadAsStreamAsync();
+                                var contentLength = videoResponse.Content.Headers.ContentLength ?? 0;
+                                
+                                var videoMediaMetadata = new VideoMediaMetadata
+                                {
+                                    MediaType = MediaType.Video,
+                                    ContentType = video.Metadata?.MimeType ?? videoResponse.Content.Headers.ContentType?.MediaType ?? "video/mp4",
+                                    FileSizeBytes = contentLength,
+                                    FileName = $"video_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.mp4",
+                                    Width = video.Metadata?.Width ?? 1280,
+                                    Height = video.Metadata?.Height ?? 720,
+                                    Duration = video.Metadata?.Duration ?? videoRequest.Duration ?? 6,
+                                    FrameRate = video.Metadata?.Fps ?? 30,
+                                    Codec = video.Metadata?.Codec ?? "h264",
+                                    Bitrate = video.Metadata?.Bitrate,
+                                    GeneratedByModel = request.Model,
+                                    GenerationPrompt = request.Prompt,
+                                    Resolution = videoRequest.Size ?? "1280x720"
+                                };
+                                
+                                var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata);
+                                video.Url = storageResult.Url;
+                                videoUrl = storageResult.Url;
+                                
+                                _logger.LogInformation("Successfully stored video in R2: {StorageUrl}", storageResult.Url);
+                                
+                                // Publish MediaGenerationCompleted event for lifecycle tracking
+                                await _publishEndpoint.Publish(new MediaGenerationCompleted
+                                {
+                                    MediaType = MediaType.Video,
+                                    VirtualKeyId = virtualKeyInfo.Id,
+                                    MediaUrl = storageResult.Url,
+                                    StorageKey = storageResult.StorageKey,
+                                    FileSizeBytes = videoMediaMetadata.FileSizeBytes,
+                                    ContentType = videoMediaMetadata.ContentType,
+                                    GeneratedByModel = request.Model,
+                                    GenerationPrompt = request.Prompt,
+                                    GeneratedAt = DateTime.UtcNow,
+                                    Metadata = new Dictionary<string, object>
+                                    {
+                                        ["width"] = videoMediaMetadata.Width,
+                                        ["height"] = videoMediaMetadata.Height,
+                                        ["duration"] = videoMediaMetadata.Duration,
+                                        ["frameRate"] = videoMediaMetadata.FrameRate,
+                                        ["resolution"] = videoMediaMetadata.Resolution
+                                    },
+                                    CorrelationId = request.CorrelationId
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to download and store video from external URL: {Url}", video.Url);
+                                // Keep the original URL if download fails
+                            }
                         }
                     }
                 }

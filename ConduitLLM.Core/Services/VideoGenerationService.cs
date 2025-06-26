@@ -47,6 +47,9 @@ namespace ConduitLLM.Core.Services
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _taskRegistry = taskRegistry;
+            
+            // Log event publishing configuration
+            LogEventPublishingConfiguration(nameof(VideoGenerationService));
         }
 
         /// <inheritdoc/>
@@ -292,12 +295,16 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Invalid video generation request");
             }
 
+            _logger.LogInformation("Request validated successfully");
+
             // Validate virtual key
             var virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, request.Model);
             if (virtualKeyInfo == null || !virtualKeyInfo.IsEnabled)
             {
                 throw new UnauthorizedAccessException("Invalid or disabled virtual key");
             }
+
+            _logger.LogInformation("Virtual key validated: {VirtualKeyId}", virtualKeyInfo.Id);
 
             // Create task metadata
             var taskMetadata = new
@@ -307,8 +314,12 @@ namespace ConduitLLM.Core.Services
                 Model = request.Model
             };
 
+            _logger.LogInformation("About to create async task");
+
             // Create async task using new overload with explicit virtualKeyId
             var taskId = await _taskService.CreateTaskAsync("video_generation", virtualKeyInfo.Id, taskMetadata, cancellationToken);
+
+            _logger.LogInformation("Created task {TaskId}, now publishing VideoGenerationRequested event", taskId);
 
             // Publish VideoGenerationRequested event for async processing
             await PublishEventAsync(

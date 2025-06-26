@@ -6,6 +6,7 @@
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Models
 @using System.Text.Json
+@using System.Text.Json.Serialization
 @using Microsoft.JSInterop
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
@@ -39,21 +40,18 @@
                                 <i class="fa fa-palette me-2"></i>
                                 <span class="small">@availableModels.Count Models Available</span>
                             </div>
-                            @if (activeTasks.Any(t => t.Status == "pending" || t.Status == "running"))
-                            {
-                                <div class="stat-item mt-2">
-                                    @if (signalRConnected)
-                                    {
-                                        <i class="fa fa-wifi me-2 text-success"></i>
-                                        <span class="small text-success">Real-time updates active</span>
-                                    }
-                                    else
-                                    {
-                                        <i class="fa fa-sync-alt fa-spin me-2 text-warning"></i>
-                                        <span class="small text-warning">Using polling (2s interval)</span>
-                                    }
-                                </div>
-                            }
+                            <div class="stat-item mt-2">
+                                @if (signalRConnected)
+                                {
+                                    <i class="fa fa-circle text-success me-2" style="font-size: 0.5rem;"></i>
+                                    <span class="small text-success">Real-time updates active</span>
+                                }
+                                else
+                                {
+                                    <i class="fa fa-circle text-danger me-2" style="font-size: 0.5rem;"></i>
+                                    <span class="small text-danger">Real-time updates disconnected</span>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -449,7 +447,6 @@
     private List<ImageData> generatedImages = new();
     private RecentPrompts? recentPromptsComponent;
     private List<ImageGenerationTask> activeTasks = new();
-    private System.Threading.Timer? statusCheckTimer;
     private DotNetObjectReference<ImageGeneration>? dotNetRef;
     private bool signalRConnected = false;
     
@@ -499,28 +496,9 @@
         // Load persisted active tasks
         await LoadPersistedTasks();
         
-        // Initialize SignalR
-        try
-        {
-            dotNetRef = DotNetObjectReference.Create(this);
-            var initialized = await JSRuntime.InvokeAsync<bool>("imageGenerationSignalR.initialize", dotNetRef);
-            signalRConnected = initialized;
-            _logger.LogInformation("Image generation SignalR initialized: {Connected}", signalRConnected);
-            
-            if (!signalRConnected)
-            {
-                _logger.LogWarning("Failed to initialize SignalR, falling back to polling");
-                // Start periodic status check for active tasks only if SignalR is not connected
-                statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing SignalR");
-            signalRConnected = false;
-            // Start periodic status check as fallback
-            statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
-        }
+        // Initialize SignalR connection
+        dotNetRef = DotNetObjectReference.Create(this);
+        await InitializeSignalR();
     }
     
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -833,6 +811,11 @@
                 if (signalRConnected)
                 {
                     await JSRuntime.InvokeVoidAsync("imageGenerationSignalR.subscribeToTask", taskResponse.TaskId);
+                    _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", taskResponse.TaskId);
+                }
+                else
+                {
+                    _logger.LogError("SignalR not connected - task updates will not be received");
                 }
                 
                 // Add to recent prompts
@@ -855,57 +838,6 @@
         }
     }
 
-    private async Task CheckTaskStatuses()
-    {
-        if (!activeTasks.Any(t => t.Status == "pending" || t.Status == "running"))
-            return;
-
-        try
-        {
-            foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running").ToList())
-            {
-                var status = await ConduitApiClient.GetImageGenerationStatusAsync(task.TaskId, apiKey);
-                
-                if (status != null)
-                {
-                    task.Status = status.Status;
-                    task.Progress = status.Progress;
-                    task.UpdatedAt = status.UpdatedAt;
-                    task.CompletedAt = status.CompletedAt;
-                    task.Error = status.Error;
-                    
-                    if (status.Status == "completed" && status.ImageResponse?.Data != null)
-                    {
-                        generatedImages.AddRange(status.ImageResponse.Data);
-                        ToastService.ShowSuccess($"Image generation completed for task {task.TaskId}");
-                    }
-                    else if (status.Status == "failed")
-                    {
-                        ToastService.ShowError($"Image generation failed: {status.Error ?? "Unknown error"}");
-                    }
-                }
-            }
-            
-            // Remove completed/failed tasks after 30 seconds
-            var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
-            var removedCount = activeTasks.RemoveAll(t => 
-                (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
-                && t.CompletedAt.HasValue 
-                && t.CompletedAt.Value < cutoffTime);
-            
-            // Persist if any tasks were updated or removed
-            if (removedCount > 0 || activeTasks.Any(t => t.Status == "completed" || t.Status == "failed"))
-            {
-                await SavePersistedTasks();
-            }
-            
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking task statuses");
-        }
-    }
 
     // SignalR event handlers
     [JSInvokable]
@@ -930,14 +862,8 @@
     public async Task OnDisconnected()
     {
         signalRConnected = false;
-        _logger.LogInformation("Image generation SignalR disconnected");
-        
-        // Start polling as fallback
-        if (statusCheckTimer == null && activeTasks.Any(t => t.Status == "pending" || t.Status == "running"))
-        {
-            statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
-        }
-        
+        _logger.LogWarning("Image generation SignalR disconnected");
+        ToastService.ShowWarning("Real-time connection lost. Please refresh the page.");
         await InvokeAsync(StateHasChanged);
     }
 
@@ -1018,13 +944,62 @@
                 task.CompletedAt = DateTimeOffset.UtcNow;
                 task.UpdatedAt = DateTimeOffset.UtcNow;
                 
-                // Fetch the completed images
-                var status = await ConduitApiClient.GetImageGenerationStatusAsync(task.TaskId, apiKey);
-                if (status?.ImageResponse?.Data != null)
+                // Check if image URLs are provided in the SignalR event
+                if (data.TryGetProperty("images", out var imagesElement))
                 {
-                    generatedImages.AddRange(status.ImageResponse.Data);
+                    foreach (var imageElement in imagesElement.EnumerateArray())
+                    {
+                        if (imageElement.TryGetProperty("url", out var urlElement))
+                        {
+                            var imageData = new ImageData
+                            {
+                                Url = urlElement.GetString()
+                            };
+                            generatedImages.Add(imageData);
+                        }
+                    }
                     ToastService.ShowSuccess($"Image generation completed for task {task.TaskId}");
                 }
+                else
+                {
+                    // Fallback: fetch the completed images from API if not in event
+                    var status = await ConduitApiClient.GetImageGenerationStatusAsync(task.TaskId, apiKey);
+                    if (status != null)
+                    {
+                        if (status.ImageResponse?.Data != null && status.ImageResponse.Data.Any())
+                        {
+                            generatedImages.AddRange(status.ImageResponse.Data);
+                        }
+                        else if (!string.IsNullOrEmpty(status.Result))
+                        {
+                            // Parse the result JSON to get the image data
+                            try
+                            {
+                                var jsonOptions = new JsonSerializerOptions
+                                {
+                                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                                };
+                                var resultData = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationResult>(status.Result, jsonOptions);
+                                if (resultData?.Data != null && resultData.Data.Any())
+                                {
+                                    generatedImages.AddRange(resultData.Data);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to parse image result for task {TaskId}", task.TaskId);
+                            }
+                        }
+                        ToastService.ShowSuccess($"Image generation completed for task {task.TaskId}");
+                    }
+                }
+                
+                // Clean up old completed tasks
+                var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
+                activeTasks.RemoveAll(t => 
+                    (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
+                    && t.CompletedAt.HasValue 
+                    && t.CompletedAt.Value < cutoffTime);
                 
                 await SavePersistedTasks();
                 await InvokeAsync(StateHasChanged);
@@ -1167,24 +1142,50 @@
         };
     }
 
-    public async void Dispose()
+    // Initialize SignalR for real-time updates
+    private async Task InitializeSignalR()
     {
-        statusCheckTimer?.Dispose();
-        
-        // Clean up SignalR
-        if (dotNetRef != null)
+        try
         {
+            // Get the WebUI virtual key for SignalR authentication
+            string? virtualKey = null;
             try
             {
-                await JSRuntime.InvokeVoidAsync("imageGenerationSignalR.stop");
+                var globalSettingService = AdminApiClient as IGlobalSettingService;
+                if (globalSettingService != null)
+                {
+                    virtualKey = await globalSettingService.GetSettingAsync("WebUI_VirtualKey");
+                    _logger.LogInformation("Retrieved WebUI virtual key for SignalR authentication");
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error stopping SignalR connection");
+                _logger.LogWarning(ex, "Failed to retrieve WebUI virtual key for SignalR");
             }
             
-            dotNetRef.Dispose();
+            var initialized = await JSRuntime.InvokeAsync<bool>("imageGenerationSignalR.initialize", dotNetRef, virtualKey);
+            signalRConnected = initialized;
+            _logger.LogInformation("Image generation SignalR initialized: {Connected}", signalRConnected);
+            
+            if (!signalRConnected)
+            {
+                _logger.LogError("Failed to initialize SignalR connection for image generation");
+                ToastService.ShowWarning("Real-time updates unavailable. Please refresh the page.");
+            }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing SignalR");
+            signalRConnected = false;
+            ToastService.ShowError("Failed to establish real-time connection. Please refresh the page.");
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+        // Stop SignalR connection
+        _ = JSRuntime.InvokeVoidAsync("imageGenerationSignalR.stop");
     }
 
     private class ImageModel
@@ -1192,6 +1193,12 @@
         public string ModelName { get; set; } = "";
         public string DisplayName { get; set; } = "";
         public string Provider { get; set; } = "";
+    }
+
+    private class ImageGenerationResult
+    {
+        public List<ImageData>? Data { get; set; }
+        public long Created { get; set; }
     }
 
 }

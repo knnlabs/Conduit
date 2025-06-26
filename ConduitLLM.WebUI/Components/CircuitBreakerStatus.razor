@@ -1,15 +1,162 @@
-@* Circuit breaker status component temporarily disabled due to missing health endpoint *@
-@* TODO: Implement proper health check endpoint or use AdminApiClient for health checks *@
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.Configuration.DTOs
+@using Microsoft.Extensions.Logging
+@inject IAdminApiClient AdminApiClient
+@inject ILogger<CircuitBreakerStatus> Logger
+@implements IDisposable
 
 <div class="circuit-breaker-status">
-    @* Component disabled - no health endpoint available *@
+    @if (isLoading)
+    {
+        <div class="text-muted">
+            <i class="fas fa-spinner fa-spin"></i> Loading provider health status...
+        </div>
+    }
+    else if (providerHealthStatuses.Any())
+    {
+        <div class="health-status-grid">
+            @foreach (var provider in providerHealthStatuses)
+            {
+                <div class="provider-health-item @GetHealthCssClass(provider.Value)">
+                    <span class="provider-name">@provider.Key</span>
+                    <span class="provider-status">
+                        <i class="fas @GetHealthIcon(provider.Value)"></i>
+                        @GetHealthText(provider.Value)
+                    </span>
+                    @if (provider.Value.ResponseTimeMs > 0)
+                    {
+                        <span class="response-time">@provider.Value.ResponseTimeMs.ToString("F0")ms</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-muted">
+            No provider health data available
+        </div>
+    }
 </div>
 
 @code {
-    // Component temporarily disabled to prevent exceptions
-    // The original implementation was trying to call a non-existent health endpoint
-    // To properly implement this:
-    // 1. Add health checks to the WebUI project
-    // 2. Or use the AdminApiClient to check Admin API health status
-    // 3. Or remove this component if not needed
+    private Dictionary<string, ProviderHealthRecordDto> providerHealthStatuses = new();
+    private bool isLoading = true;
+    private Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProviderHealthStatus();
+        
+        // Refresh every 30 seconds
+        refreshTimer = new Timer(async _ => await RefreshHealthStatus(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadProviderHealthStatus()
+    {
+        try
+        {
+            isLoading = true;
+            
+            // Get latest health status for all providers
+            var statuses = await AdminApiClient.GetProviderHealthRecordsAsync();
+            
+            // Group by provider and get the latest status for each
+            providerHealthStatuses = statuses
+                .GroupBy(s => s.ProviderName)
+                .Select(g => g.OrderByDescending(s => s.TimestampUtc).First())
+                .ToDictionary(s => s.ProviderName);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading provider health status");
+            providerHealthStatuses = new();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshHealthStatus()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadProviderHealthStatus();
+        });
+    }
+
+    private string GetHealthCssClass(ProviderHealthRecordDto health)
+    {
+        if (health.IsOnline)
+            return "health-online";
+        
+        return "health-offline";
+    }
+
+    private string GetHealthIcon(ProviderHealthRecordDto health)
+    {
+        if (health.IsOnline)
+            return "fa-check-circle";
+        
+        return "fa-exclamation-circle";
+    }
+
+    private string GetHealthText(ProviderHealthRecordDto health)
+    {
+        if (health.IsOnline)
+            return "Online";
+        
+        return health.StatusMessage ?? "Offline";
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
 }
+
+<style>
+    .circuit-breaker-status {
+        padding: 10px;
+    }
+
+    .health-status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .provider-health-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+
+    .provider-name {
+        font-weight: 500;
+    }
+
+    .provider-status {
+        margin-left: auto;
+    }
+
+    .response-time {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .health-online {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .health-offline {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+</style>

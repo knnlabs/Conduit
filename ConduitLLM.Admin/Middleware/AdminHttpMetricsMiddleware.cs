@@ -63,12 +63,22 @@ namespace ConduitLLM.Admin.Middleware
         private static readonly Regex GuidPattern = new Regex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", RegexOptions.Compiled);
         private static readonly Regex NumberPattern = new Regex(@"\b\d+\b", RegexOptions.Compiled);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdminHttpMetricsMiddleware"/> class.
+        /// </summary>
+        /// <param name="next">The next middleware in the pipeline.</param>
+        /// <param name="logger">The logger instance.</param>
         public AdminHttpMetricsMiddleware(RequestDelegate next, ILogger<AdminHttpMetricsMiddleware> logger)
         {
             _next = next;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Processes an individual request and records metrics.
+        /// </summary>
+        /// <param name="context">The HTTP context for the current request.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task InvokeAsync(HttpContext context)
         {
             var stopwatch = Stopwatch.StartNew();

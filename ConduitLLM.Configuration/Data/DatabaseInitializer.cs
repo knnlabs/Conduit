@@ -87,7 +87,9 @@ namespace ConduitLLM.Configuration.Data
                         "IpFilters",
                         "AudioProviderConfigs",
                         "AudioCosts",
-                        "AudioUsageLogs"
+                        "AudioUsageLogs",
+                        "AsyncTasks",
+                        "MediaRecords"
                     };
 
                     if (!await AreTablesCreatedAsync(context, tablesToVerify))
@@ -444,6 +446,21 @@ namespace ConduitLLM.Configuration.Data
                     indexesToCreate.Add(("IX_IpFilters_FilterType_IpAddressOrCidr", new[] { "FilterType", "IpAddressOrCidr" }, false));
                     indexesToCreate.Add(("IX_IpFilters_IsEnabled", new[] { "IsEnabled" }, false));
                     break;
+
+                case "AsyncTasks":
+                    indexesToCreate.Add(("IX_AsyncTasks_CreatedAt", new[] { "CreatedAt" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_IsArchived", new[] { "IsArchived" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_State", new[] { "State" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_Type", new[] { "Type" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_VirtualKeyId", new[] { "VirtualKeyId" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_VirtualKeyId_CreatedAt", new[] { "VirtualKeyId", "CreatedAt" }, false));
+                    break;
+
+                case "MediaRecords":
+                    indexesToCreate.Add(("IX_MediaRecords_VirtualKeyId", new[] { "VirtualKeyId" }, false));
+                    indexesToCreate.Add(("IX_MediaRecords_CreatedAt", new[] { "CreatedAt" }, false));
+                    indexesToCreate.Add(("IX_MediaRecords_StorageKey", new[] { "StorageKey" }, true));
+                    break;
             }
 
             var connection = context.Database.GetDbConnection();
@@ -595,6 +612,48 @@ namespace ConduitLLM.Configuration.Data
                     { "EndpointUrl", "VARCHAR(1000) NULL" },
                     { "TimestampUtc", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
+
+                definitions["AsyncTasks"] = new Dictionary<string, string>
+                {
+                    { "Id", "VARCHAR(50) PRIMARY KEY" },
+                    { "Type", "VARCHAR(100) NOT NULL" },
+                    { "State", "INTEGER NOT NULL DEFAULT 0" },
+                    { "Payload", "TEXT NULL" },
+                    { "Progress", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ProgressMessage", "VARCHAR(500) NULL" },
+                    { "Result", "TEXT NULL" },
+                    { "Error", "TEXT NULL" },
+                    { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "CompletedAt", "TIMESTAMP NULL" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "Metadata", "TEXT NULL" },
+                    { "IsArchived", "BOOLEAN NOT NULL DEFAULT FALSE" },
+                    { "ArchivedAt", "TIMESTAMP NULL" },
+                    { "LeasedBy", "VARCHAR(100) NULL" },
+                    { "LeaseExpiryTime", "TIMESTAMP NULL" },
+                    { "Version", "INTEGER NOT NULL DEFAULT 0" },
+                    { "RetryCount", "INTEGER NOT NULL DEFAULT 0" },
+                    { "MaxRetries", "INTEGER NOT NULL DEFAULT 3" },
+                    { "IsRetryable", "BOOLEAN NOT NULL DEFAULT TRUE" },
+                    { "NextRetryAt", "TIMESTAMP NULL" }
+                };
+
+                definitions["MediaRecords"] = new Dictionary<string, string>
+                {
+                    { "Id", "BIGSERIAL PRIMARY KEY" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "StorageKey", "VARCHAR(500) NOT NULL" },
+                    { "MediaType", "VARCHAR(50) NOT NULL" },
+                    { "ContentType", "VARCHAR(100) NULL" },
+                    { "SizeBytes", "BIGINT NOT NULL" },
+                    { "Provider", "VARCHAR(100) NULL" },
+                    { "Model", "VARCHAR(100) NULL" },
+                    { "Prompt", "TEXT NULL" },
+                    { "StorageUrl", "VARCHAR(1000) NULL" },
+                    { "PublicUrl", "VARCHAR(1000) NULL" },
+                    { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                };
             }
             else // sqlite
             {
@@ -633,6 +692,48 @@ namespace ConduitLLM.Configuration.Data
                     { "ResponseTimeMs", "INTEGER NULL" },
                     { "EndpointUrl", "TEXT NULL" },
                     { "TimestampUtc", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                };
+
+                definitions["AsyncTasks"] = new Dictionary<string, string>
+                {
+                    { "Id", "TEXT PRIMARY KEY" },
+                    { "Type", "TEXT NOT NULL" },
+                    { "State", "INTEGER NOT NULL DEFAULT 0" },
+                    { "Payload", "TEXT NULL" },
+                    { "Progress", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ProgressMessage", "TEXT NULL" },
+                    { "Result", "TEXT NULL" },
+                    { "Error", "TEXT NULL" },
+                    { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "CompletedAt", "TEXT NULL" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "Metadata", "TEXT NULL" },
+                    { "IsArchived", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ArchivedAt", "TEXT NULL" },
+                    { "LeasedBy", "TEXT NULL" },
+                    { "LeaseExpiryTime", "TEXT NULL" },
+                    { "Version", "INTEGER NOT NULL DEFAULT 0" },
+                    { "RetryCount", "INTEGER NOT NULL DEFAULT 0" },
+                    { "MaxRetries", "INTEGER NOT NULL DEFAULT 3" },
+                    { "IsRetryable", "INTEGER NOT NULL DEFAULT 1" },
+                    { "NextRetryAt", "TEXT NULL" }
+                };
+
+                definitions["MediaRecords"] = new Dictionary<string, string>
+                {
+                    { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "StorageKey", "TEXT NOT NULL" },
+                    { "MediaType", "TEXT NOT NULL" },
+                    { "ContentType", "TEXT NULL" },
+                    { "SizeBytes", "INTEGER NOT NULL" },
+                    { "Provider", "TEXT NULL" },
+                    { "Model", "TEXT NULL" },
+                    { "Prompt", "TEXT NULL" },
+                    { "StorageUrl", "TEXT NULL" },
+                    { "PublicUrl", "TEXT NULL" },
+                    { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
                 // Add audio table definitions
                 if (_dbProvider == "postgres")

@@ -11,7 +11,6 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +29,6 @@ namespace ConduitLLM.Tests.Performance
         private IAsyncTaskService _asyncTaskService = null!;
         private IAsyncTaskRepository _repository = null!;
         private ConfigurationDbContext _dbContext = null!;
-        private SqliteConnection _connection = null!;
 
         public AsyncTaskPerformanceTests(ITestOutputHelper output)
         {
@@ -41,13 +39,9 @@ namespace ConduitLLM.Tests.Performance
         {
             var services = new ServiceCollection();
 
-            // Use SQLite in-memory for more realistic performance testing
-            // Keep connection open to maintain database throughout test lifecycle
-            _connection = new SqliteConnection("DataSource=:memory:");
-            await _connection.OpenAsync();
-            
+            // Use in-memory database for performance testing
             services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                options.UseSqlite(_connection));
+                options.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()));
 
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
             services.AddDistributedMemoryCache();
@@ -88,7 +82,6 @@ namespace ConduitLLM.Tests.Performance
         public Task DisposeAsync()
         {
             _dbContext?.Dispose();
-            _connection?.Dispose();
             _serviceProvider?.Dispose();
             return Task.CompletedTask;
         }

@@ -22,7 +22,7 @@ function renderLineChart(canvasId, labels, data, data2, label1, label2) {
 
   const canvas = document.getElementById(canvasId);
   if (!canvas) {
-    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    // console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
     return;
   }
   
@@ -118,7 +118,7 @@ function renderPieChart(canvasId, labels, data, title, colors) {
 
   const canvas = document.getElementById(canvasId);
   if (!canvas) {
-    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    // console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
     return;
   }
   
@@ -192,7 +192,7 @@ function renderBarChart(canvasId, labels, data, label, xAxisLabel, yAxisLabel, o
 
   const canvas = document.getElementById(canvasId);
   if (!canvas) {
-    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    // console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
     return;
   }
   
@@ -261,7 +261,7 @@ function renderStackedBarChart(canvasId, chartDataJson, title, xAxisLabel, yAxis
 
   const canvas = document.getElementById(canvasId);
   if (!canvas) {
-    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    // console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
     return;
   }
   

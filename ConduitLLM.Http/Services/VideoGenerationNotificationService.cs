@@ -26,19 +26,21 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.All.SendAsync("VideoGenerationStarted", new
+                // Use taskId for consistency and send to specific group for security
+                var taskId = requestId; // requestId is actually taskId in the video generation flow
+                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationStarted", new
                 {
-                    requestId,
+                    taskId, // Changed from requestId to taskId for consistency
                     provider,
                     startedAt,
                     estimatedSeconds
                 });
                 
-                _logger.LogDebug("Sent VideoGenerationStarted notification for request {RequestId}", requestId);
+                _logger.LogDebug("Sent VideoGenerationStarted notification for task {TaskId}", taskId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send VideoGenerationStarted notification for request {RequestId}", requestId);
+                _logger.LogError(ex, "Failed to send VideoGenerationStarted notification for task {TaskId}", requestId);
             }
         }
 
@@ -46,21 +48,23 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.All.SendAsync("VideoGenerationProgress", new
+                // Use taskId for consistency and send to specific group for security
+                var taskId = requestId; // requestId is actually taskId in the video generation flow
+                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationProgress", new
                 {
-                    requestId,
+                    taskId, // Changed from requestId to taskId for consistency
                     progressPercentage,
                     status,
                     message,
                     timestamp = DateTime.UtcNow
                 });
                 
-                _logger.LogDebug("Sent VideoGenerationProgress notification for request {RequestId}: {Progress}%", 
-                    requestId, progressPercentage);
+                _logger.LogDebug("Sent VideoGenerationProgress notification for task {TaskId}: {Progress}%", 
+                    taskId, progressPercentage);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send VideoGenerationProgress notification for request {RequestId}", requestId);
+                _logger.LogError(ex, "Failed to send VideoGenerationProgress notification for task {TaskId}", requestId);
             }
         }
 
@@ -68,20 +72,22 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.All.SendAsync("VideoGenerationCompleted", new
+                // Use taskId for consistency and send to specific group for security
+                var taskId = requestId; // requestId is actually taskId in the video generation flow
+                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationCompleted", new
                 {
-                    requestId,
+                    taskId, // Changed from requestId to taskId for consistency
                     videoUrl,
                     durationSeconds = duration.TotalSeconds,
                     cost,
                     completedAt = DateTime.UtcNow
                 });
                 
-                _logger.LogDebug("Sent VideoGenerationCompleted notification for request {RequestId}", requestId);
+                _logger.LogDebug("Sent VideoGenerationCompleted notification for task {TaskId}", taskId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send VideoGenerationCompleted notification for request {RequestId}", requestId);
+                _logger.LogError(ex, "Failed to send VideoGenerationCompleted notification for task {TaskId}", requestId);
             }
         }
 
@@ -89,19 +95,21 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.All.SendAsync("VideoGenerationFailed", new
+                // Use taskId for consistency and send to specific group for security
+                var taskId = requestId; // requestId is actually taskId in the video generation flow
+                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationFailed", new
                 {
-                    requestId,
+                    taskId, // Changed from requestId to taskId for consistency
                     error,
                     isRetryable,
                     failedAt = DateTime.UtcNow
                 });
                 
-                _logger.LogDebug("Sent VideoGenerationFailed notification for request {RequestId}", requestId);
+                _logger.LogDebug("Sent VideoGenerationFailed notification for task {TaskId}", taskId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send VideoGenerationFailed notification for request {RequestId}", requestId);
+                _logger.LogError(ex, "Failed to send VideoGenerationFailed notification for task {TaskId}", requestId);
             }
         }
 
@@ -109,18 +117,20 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.All.SendAsync("VideoGenerationCancelled", new
+                // Use taskId for consistency and send to specific group for security
+                var taskId = requestId; // requestId is actually taskId in the video generation flow
+                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationCancelled", new
                 {
-                    requestId,
+                    taskId, // Changed from requestId to taskId for consistency
                     reason,
                     cancelledAt = DateTime.UtcNow
                 });
                 
-                _logger.LogDebug("Sent VideoGenerationCancelled notification for request {RequestId}", requestId);
+                _logger.LogDebug("Sent VideoGenerationCancelled notification for task {TaskId}", taskId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send VideoGenerationCancelled notification for request {RequestId}", requestId);
+                _logger.LogError(ex, "Failed to send VideoGenerationCancelled notification for task {TaskId}", requestId);
             }
         }
     }
