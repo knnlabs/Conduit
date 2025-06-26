@@ -1,0 +1,282 @@
+@using Microsoft.JSInterop
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.Services
+@using System.Text.Json
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<AdminNotificationListener> Logger
+@inject NotificationService NotificationService
+
+@code {
+    /// <summary>
+    /// Virtual key for authentication
+    /// </summary>
+    [Parameter, EditorRequired] public string VirtualKey { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Auto-connect on initialization
+    /// </summary>
+    [Parameter] public bool AutoConnect { get; set; } = true;
+    
+    /// <summary>
+    /// Enable debug mode for detailed logging
+    /// </summary>
+    [Parameter] public bool DebugMode { get; set; } = false;
+
+    private IJSObjectReference? _signalRService;
+    private IJSObjectReference? _navigationHub;
+    private DotNetObjectReference<AdminNotificationListener>? _dotNetRef;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Create reference to this component for JS callbacks
+            _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // Get SignalR service instance
+            _signalRService = await JS.InvokeAsync<IJSObjectReference>("ConduitSignalRService.getInstance");
+            
+            // Set debug mode if enabled
+            if (DebugMode)
+            {
+                await _signalRService.InvokeVoidAsync("setDebugMode", true);
+            }
+            
+            // Set virtual key
+            await _signalRService.InvokeVoidAsync("setVirtualKey", VirtualKey);
+            
+            // Create navigation state hub proxy
+            _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createNavigationStateHub");
+            
+            if (AutoConnect)
+            {
+                await ConnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize AdminNotificationListener");
+        }
+    }
+    
+    /// <summary>
+    /// Connect to the navigation state hub for admin notifications
+    /// </summary>
+    public async Task ConnectAsync()
+    {
+        try
+        {
+            // Connect to hub
+            await _navigationHub!.InvokeVoidAsync("connect", VirtualKey);
+            
+            // Register event handlers
+            await _navigationHub.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onModelDiscovered", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onConfigurationChanged", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onSystemAlert", _dotNetRef);
+            
+            Logger.LogInformation("Connected to admin notification hub");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to admin notification hub");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when provider health changes
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleProviderHealthChanged(JsonElement healthData)
+    {
+        try
+        {
+            var providerName = healthData.GetProperty("providerName").GetString() ?? "Unknown";
+            var status = healthData.GetProperty("status").GetString() ?? "Unknown";
+            var previousStatus = healthData.GetProperty("previousStatus").GetString();
+            var responseTime = healthData.GetProperty("responseTimeMs").GetInt32();
+            
+            var notificationType = status switch
+            {
+                "Healthy" => NotificationType.Success,
+                "Degraded" => NotificationType.BudgetWarning,
+                "Unhealthy" => NotificationType.Error,
+                _ => NotificationType.System
+            };
+            
+            var statusChange = !string.IsNullOrEmpty(previousStatus) && previousStatus != status
+                ? $" (was {previousStatus})"
+                : "";
+            
+            NotificationService.AddNotification(
+                notificationType,
+                $"Provider {providerName} is now {status}{statusChange}",
+                "Provider Health Monitor",
+                $"Response time: {responseTime}ms"
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling provider health change notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when new models are discovered
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleModelDiscovered(JsonElement modelData)
+    {
+        try
+        {
+            var providerName = modelData.GetProperty("providerName").GetString() ?? "Unknown";
+            var modelCount = modelData.GetProperty("modelCount").GetInt32();
+            var models = new List<string>();
+            
+            if (modelData.TryGetProperty("models", out var modelsArray))
+            {
+                foreach (var model in modelsArray.EnumerateArray())
+                {
+                    if (model.TryGetProperty("id", out var modelId))
+                    {
+                        models.Add(modelId.GetString() ?? "");
+                    }
+                }
+            }
+            
+            var modelList = models.Take(3).Any() 
+                ? $"Models: {string.Join(", ", models.Take(3))}{(models.Count > 3 ? $" and {models.Count - 3} more" : "")}"
+                : "No model details available";
+            
+            NotificationService.AddNotification(
+                NotificationType.System,
+                $"Discovered {modelCount} models for provider {providerName}",
+                "Model Discovery",
+                modelList
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling model discovery notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when configuration changes
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleConfigurationChanged(JsonElement configData)
+    {
+        try
+        {
+            var changeType = configData.GetProperty("changeType").GetString() ?? "Unknown";
+            var entityType = configData.GetProperty("entityType").GetString() ?? "Unknown";
+            var entityName = configData.GetProperty("entityName").GetString() ?? "Unknown";
+            
+            var action = changeType switch
+            {
+                "Created" => "created",
+                "Updated" => "updated",
+                "Deleted" => "deleted",
+                _ => "changed"
+            };
+            
+            var details = "";
+            if (configData.TryGetProperty("changes", out var changes))
+            {
+                var changeList = new List<string>();
+                foreach (var change in changes.EnumerateArray())
+                {
+                    changeList.Add(change.GetString() ?? "");
+                }
+                if (changeList.Any())
+                {
+                    details = $"Changes: {string.Join(", ", changeList)}";
+                }
+            }
+            
+            NotificationService.AddNotification(
+                NotificationType.System,
+                $"{entityType} '{entityName}' was {action}",
+                "Configuration Change",
+                details
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling configuration change notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when system alerts are received
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleSystemAlert(JsonElement alertData)
+    {
+        try
+        {
+            var alertType = alertData.GetProperty("alertType").GetString() ?? "Unknown";
+            var message = alertData.GetProperty("message").GetString() ?? "System alert";
+            var severity = alertData.GetProperty("severity").GetString() ?? "info";
+            
+            var notificationType = severity switch
+            {
+                "error" => NotificationType.Error,
+                "warning" => NotificationType.BudgetWarning,
+                "info" => NotificationType.System,
+                _ => NotificationType.System
+            };
+            
+            var details = "";
+            if (alertData.TryGetProperty("details", out var detailsElement))
+            {
+                details = detailsElement.GetString() ?? "";
+            }
+            
+            NotificationService.AddNotification(
+                notificationType,
+                message,
+                $"System Alert: {alertType}",
+                details
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling system alert notification");
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_navigationHub != null)
+            {
+                await _navigationHub.InvokeVoidAsync("disconnect");
+                await _navigationHub.DisposeAsync();
+            }
+            
+            if (_signalRService != null)
+            {
+                await _signalRService.DisposeAsync();
+            }
+            
+            _dotNetRef?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error disposing AdminNotificationListener");
+        }
+    }
+}

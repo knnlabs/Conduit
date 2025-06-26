@@ -21,6 +21,11 @@
                 <div class="notification-header">
                     <h6 class="text-h6 mb-0 flex-grow-1">Notifications</h6>
                     <div class="notification-actions">
+                        <Tooltip Text="Filter Notifications">
+                            <button class="btn btn-sm btn-outlined" @onclick="ToggleFilterMenu">
+                                <i class="fa fa-filter"></i>
+                            </button>
+                        </Tooltip>
                         <Tooltip Text="Mark All Read">
                             <button class="btn btn-sm btn-outlined" @onclick="MarkAllAsRead">
                                 <i class="fa fa-check-double"></i>
@@ -35,6 +40,42 @@
                 </div>
                 
                 <hr class="divider my-0" />
+                
+                @if (ShowFilterMenu)
+                {
+                    <div class="notification-filter-menu">
+                        <div class="filter-header">
+                            <span class="text-caption">Filter by Type</span>
+                        </div>
+                        <div class="filter-options">
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowSystemNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-info-circle"></i> System</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowProviderNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-heartbeat"></i> Provider Health</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowModelNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-search"></i> Model Discovery</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowConfigNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-cog"></i> Configuration</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowBudgetNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-exclamation-triangle"></i> Budget & Keys</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="checkbox" @bind="ShowErrorNotifications" @bind:after="ApplyFilters" />
+                                <span><i class="fa fa-exclamation-circle"></i> Errors & Security</span>
+                            </label>
+                        </div>
+                    </div>
+                    <hr class="divider my-0" />
+                }
                 
                 <div class="notification-list">
                     @if (!Notifications.Any())
@@ -238,12 +279,66 @@
         white-space: pre-wrap;
         display: block;
     }
+    
+    .notification-filter-menu {
+        padding: 12px 16px;
+        background-color: #f8f9fa;
+    }
+    
+    .filter-header {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #6c757d;
+    }
+    
+    .filter-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .filter-option {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        padding: 4px 0;
+        font-size: 0.875rem;
+    }
+    
+    .filter-option:hover {
+        color: #007bff;
+    }
+    
+    .filter-option input[type="checkbox"] {
+        margin-right: 8px;
+    }
+    
+    .filter-option span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .filter-option i {
+        width: 16px;
+        text-align: center;
+    }
 </style>
 
 @code {
+    private List<Notification> AllNotifications = new();
     private List<Notification> Notifications = new();
     private bool IsOpen = false;
     private int UnreadCount = 0;
+    private bool ShowFilterMenu = false;
+    
+    // Filter state
+    private bool ShowSystemNotifications = true;
+    private bool ShowProviderNotifications = true;
+    private bool ShowModelNotifications = true;
+    private bool ShowConfigNotifications = true;
+    private bool ShowBudgetNotifications = true;
+    private bool ShowErrorNotifications = true;
 
     protected override void OnInitialized()
     {
@@ -260,8 +355,38 @@
 
     private void LoadNotifications()
     {
-        Notifications = NotificationService.GetNotifications(true).OrderByDescending(n => n.Timestamp).ToList();
+        AllNotifications = NotificationService.GetNotifications(true).OrderByDescending(n => n.Timestamp).ToList();
+        ApplyFilters();
+    }
+    
+    private void ApplyFilters()
+    {
+        Notifications = AllNotifications.Where(n => ShouldShowNotification(n)).ToList();
         UnreadCount = Notifications.Count(n => !n.IsRead);
+    }
+    
+    private bool ShouldShowNotification(Notification notification)
+    {
+        return notification.Type switch
+        {
+            NotificationType.System => ShowSystemNotifications,
+            NotificationType.ProviderHealth => ShowProviderNotifications,
+            NotificationType.ModelDiscovery => ShowModelNotifications,
+            NotificationType.ConfigurationChange => ShowConfigNotifications,
+            NotificationType.BudgetWarning => ShowBudgetNotifications,
+            NotificationType.KeyExpiration => ShowBudgetNotifications,
+            NotificationType.VirtualKeyValidation => ShowBudgetNotifications,
+            NotificationType.Error => ShowErrorNotifications,
+            NotificationType.Security => ShowErrorNotifications,
+            NotificationType.SystemMaintenance => ShowSystemNotifications,
+            NotificationType.Success => true, // Always show success
+            _ => true
+        };
+    }
+    
+    private void ToggleFilterMenu()
+    {
+        ShowFilterMenu = !ShowFilterMenu;
     }
 
     private void ToggleNotificationPanel()
@@ -322,6 +447,11 @@
             NotificationType.VirtualKeyValidation => $"{baseClass} warning",
             NotificationType.Security => $"{baseClass} error",
             NotificationType.Error => $"{baseClass} error",
+            NotificationType.Success => $"{baseClass} success",
+            NotificationType.ProviderHealth => $"{baseClass} info",
+            NotificationType.ModelDiscovery => $"{baseClass} success",
+            NotificationType.ConfigurationChange => $"{baseClass} info",
+            NotificationType.SystemMaintenance => $"{baseClass} warning",
             _ => baseClass
         };
     }
@@ -336,6 +466,11 @@
             NotificationType.VirtualKeyValidation => "bg-warning",
             NotificationType.Security => "bg-error",
             NotificationType.Error => "bg-error",
+            NotificationType.Success => "bg-success",
+            NotificationType.ProviderHealth => "bg-info",
+            NotificationType.ModelDiscovery => "bg-success",
+            NotificationType.ConfigurationChange => "bg-info",
+            NotificationType.SystemMaintenance => "bg-warning",
             _ => "bg-default"
         };
     }
@@ -350,6 +485,11 @@
             NotificationType.VirtualKeyValidation => "fa fa-exclamation-triangle",
             NotificationType.Security => "fa fa-exclamation-circle",
             NotificationType.Error => "fa fa-exclamation-circle",
+            NotificationType.Success => "fa fa-check-circle",
+            NotificationType.ProviderHealth => "fa fa-heartbeat",
+            NotificationType.ModelDiscovery => "fa fa-search",
+            NotificationType.ConfigurationChange => "fa fa-cog",
+            NotificationType.SystemMaintenance => "fa fa-tools",
             _ => "fa fa-bell"
         };
     }

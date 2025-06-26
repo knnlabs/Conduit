@@ -6,6 +6,8 @@
 @inject IInsecureModeProvider InsecureModeProvider
 @inject IJSRuntime JSRuntime
 @inject IToastService ToastService
+@inject IConfiguration Configuration
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @rendermode InteractiveServer
 
 <CascadingValue Value="this">
@@ -13,6 +15,14 @@
 </CascadingValue>
 
 <ConduitLLM.WebUI.Components.Shared.ToastContainer />
+
+@if (!string.IsNullOrEmpty(masterVirtualKey))
+{
+    <AdminNotificationListener 
+        VirtualKey="@masterVirtualKey"
+        AutoConnect="true"
+        DebugMode="false" />
+}
 
 <div class="page-wrapper @(InsecureModeProvider.IsInsecureMode ? "has-security-banner" : "")">
     @if (InsecureModeProvider.IsInsecureMode)
@@ -568,6 +578,25 @@
 </style>
 
 @code {
+    private string masterVirtualKey = string.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Get master virtual key from configuration or auth context
+        var config = Configuration.GetSection("AdminDashboard");
+        masterVirtualKey = config.GetValue<string>("MasterVirtualKey") ?? string.Empty;
+        
+        if (string.IsNullOrEmpty(masterVirtualKey))
+        {
+            // Try to get from authentication context if available
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                masterVirtualKey = authState.User.FindFirst("VirtualKey")?.Value ?? string.Empty;
+            }
+        }
+    }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)

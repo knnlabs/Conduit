@@ -38,7 +38,27 @@ public enum NotificationType
     /// <summary>
     /// Success notifications
     /// </summary>
-    Success
+    Success,
+
+    /// <summary>
+    /// Provider health status changes
+    /// </summary>
+    ProviderHealth,
+
+    /// <summary>
+    /// Model discovery notifications
+    /// </summary>
+    ModelDiscovery,
+
+    /// <summary>
+    /// Configuration change notifications
+    /// </summary>
+    ConfigurationChange,
+
+    /// <summary>
+    /// System maintenance notifications
+    /// </summary>
+    SystemMaintenance
 }
 
 /// <summary>
@@ -95,6 +115,10 @@ public class Notification
             NotificationType.VirtualKeyValidation => "warning",
             NotificationType.System => "info",
             NotificationType.Success => "success",
+            NotificationType.ProviderHealth => "info",
+            NotificationType.ModelDiscovery => "success",
+            NotificationType.ConfigurationChange => "info",
+            NotificationType.SystemMaintenance => "warning",
             _ => "secondary"
         };
     }
@@ -113,6 +137,10 @@ public class Notification
             NotificationType.VirtualKeyValidation => "bi-key-fill",
             NotificationType.System => "bi-info-circle-fill",
             NotificationType.Success => "bi-check-circle-fill",
+            NotificationType.ProviderHealth => "bi-heart-pulse",
+            NotificationType.ModelDiscovery => "bi-search",
+            NotificationType.ConfigurationChange => "bi-gear-fill",
+            NotificationType.SystemMaintenance => "bi-tools",
             _ => "bi-bell-fill"
         };
     }
