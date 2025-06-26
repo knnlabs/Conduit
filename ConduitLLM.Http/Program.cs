@@ -213,6 +213,9 @@ builder.Services.AddRepositories();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 
+// Register System Notification Service
+builder.Services.AddSingleton<ConduitLLM.Http.Services.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
+
 // Model Capability Service is registered via ServiceCollectionExtensions
 
 // Register Video Generation Service with explicit dependencies
@@ -1187,6 +1190,10 @@ Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/
 app.MapHub<ConduitLLM.Http.Hubs.TaskHub>("/hubs/tasks")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR TaskHub registered at /hubs/tasks (requires authentication)");
+
+app.MapHub<ConduitLLM.Http.Hubs.SystemNotificationHub>("/hubs/notifications")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR SystemNotificationHub registered at /hubs/notifications (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
