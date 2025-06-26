@@ -6,7 +6,7 @@ This project contains unit tests for the ConduitLLM.Admin API project. The tests
 
 **IMPORTANT: These tests currently do not build or run** due to dependency issues between the ConduitLLM.Admin and ConduitLLM.WebUI projects. These issues are documented in:
 
-- `/home/nick/Conduit/README-DEPENDENCY-ISSUES.md` - Overview of dependency issues across projects
+- [Dependency Issues](../../docs/Troubleshooting/Dependency-Issues.md) - Overview of dependency issues across projects
 - `/home/nick/Conduit/ConduitLLM.Admin/DEPENDENCY-ISSUES.md` - Detailed analysis of Admin project issues
 
 ## Test Structure

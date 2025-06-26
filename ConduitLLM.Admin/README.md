@@ -16,7 +16,7 @@ The Admin API is currently in development. Major progress has been made:
 
 ### Dependency Issues
 
-There are currently unresolved dependency issues between this project and ConduitLLM.WebUI. See [DEPENDENCY-ISSUES.md](../README-DEPENDENCY-ISSUES.md) for a detailed analysis.
+There are currently unresolved dependency issues between this project and ConduitLLM.WebUI. See [Dependency Issues](../docs/Troubleshooting/Dependency-Issues.md) for a detailed analysis.
 
 Key challenges:
 
