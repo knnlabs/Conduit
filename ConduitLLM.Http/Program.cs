@@ -465,7 +465,14 @@ builder.Services.AddMassTransit(x =>
             {
                 h.Username(rabbitMqConfig.Username);
                 h.Password(rabbitMqConfig.Password);
-                h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+                h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.RequestedHeartbeat));
+                
+                // High throughput settings
+                h.PublisherConfirmation = rabbitMqConfig.PublisherConfirmation;
+                
+                // Advanced connection settings
+                h.RequestedChannelMax(rabbitMqConfig.ChannelMax);
+                h.RequestedConnectionTimeout(TimeSpan.FromSeconds(30));
             });
             
             // Configure prefetch count for consumer concurrency
@@ -480,32 +487,109 @@ builder.Services.AddMassTransit(x =>
             // Configure webhook delivery endpoint optimized for 1000+ webhooks/minute
             cfg.ReceiveEndpoint("webhook-delivery", e =>
             {
-                // Configure for high throughput with RabbitMQ 4.1.1
-                e.PrefetchCount = 200; // Increased from 100 - fetch more messages at once
-                e.ConcurrentMessageLimit = 100; // Increased from 50 - more concurrent processing
+                // Configure for high throughput - balanced for memory usage
+                e.PrefetchCount = 100; // Reduced from 200 to prevent memory overload
+                e.ConcurrentMessageLimit = 75; // Balanced concurrency
                 
-                // Use quorum queue for better reliability in RabbitMQ 4.1.1
+                // Use quorum queue for better reliability
                 e.SetQuorumQueue();
                 e.SetQueueArgument("x-delivery-limit", 10); // Max redelivery attempts
+                e.SetQueueArgument("x-max-length", 50000); // Queue size limit
+                e.SetQueueArgument("x-overflow", "reject-publish"); // Reject new messages when full
                 
-                // Configure retry with shorter intervals for webhook scenarios
+                // Configure retry with exponential backoff
                 e.UseMessageRetry(r => r.Exponential(3, 
-                    TimeSpan.FromSeconds(1), // Reduced from 2s - faster initial retry
-                    TimeSpan.FromSeconds(30), // Reduced from 60s - max backoff
+                    TimeSpan.FromSeconds(1),
+                    TimeSpan.FromSeconds(30),
                     TimeSpan.FromSeconds(2)));
                 
+                // Circuit breaker to prevent cascading failures
+                e.UseCircuitBreaker(cb =>
+                {
+                    cb.TrackingPeriod = TimeSpan.FromMinutes(1);
+                    cb.TripThreshold = 15; // 15% failure rate
+                    cb.ActiveThreshold = 10; // Minimum attempts before evaluating
+                    cb.ResetInterval = TimeSpan.FromMinutes(5);
+                });
+                
+                // Rate limiting to prevent consumer overload
+                e.UseRateLimit(100, TimeSpan.FromSeconds(1)); // 100 messages per second
+                
                 // Prevents duplicate sends during retries
-                e.UseInMemoryOutbox();
+                // Note: UseInMemoryOutbox is now configured at the bus level
                 
                 e.ConfigureConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>(context, c =>
                 {
-                    // Configure consumer-specific concurrency
-                    c.UseConcurrentMessageLimit(100);
+                    c.UseConcurrentMessageLimit(75);
                 });
             });
             
-            // Configure endpoints with automatic topology
-            // Note: Partitioning is handled at the application level via PartitionKey property
+            // Configure video generation endpoint for high throughput
+            cfg.ReceiveEndpoint("video-generation-events", e =>
+            {
+                e.PrefetchCount = rabbitMqConfig.PrefetchCount;
+                e.ConcurrentMessageLimit = rabbitMqConfig.ConcurrentMessageLimit;
+                
+                // Partitioning for ordered processing per virtual key
+                e.ConfigureConsumeTopology = false;
+                e.SetQuorumQueue();
+                e.SetQueueArgument("x-single-active-consumer", true); // Ensure ordering
+                
+                // Retry policy for transient failures
+                e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)));
+                
+                // Circuit breaker
+                e.UseCircuitBreaker(cb =>
+                {
+                    cb.TrackingPeriod = TimeSpan.FromMinutes(2);
+                    cb.TripThreshold = 20; // 20% failure rate
+                    cb.ActiveThreshold = 5;
+                    cb.ResetInterval = TimeSpan.FromMinutes(10);
+                });
+                
+                e.ConfigureConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>(context);
+                e.ConfigureConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>(context);
+            });
+            
+            // Configure image generation endpoint
+            cfg.ReceiveEndpoint("image-generation-events", e =>
+            {
+                e.PrefetchCount = rabbitMqConfig.PrefetchCount;
+                e.ConcurrentMessageLimit = rabbitMqConfig.ConcurrentMessageLimit;
+                
+                e.SetQuorumQueue();
+                e.SetQueueArgument("x-single-active-consumer", true);
+                
+                e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)));
+                
+                e.UseCircuitBreaker(cb =>
+                {
+                    cb.TrackingPeriod = TimeSpan.FromMinutes(1);
+                    cb.TripThreshold = 15;
+                    cb.ActiveThreshold = 5;
+                    cb.ResetInterval = TimeSpan.FromMinutes(5);
+                });
+                
+                e.ConfigureConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>(context);
+            });
+            
+            // Configure spend update endpoint with strict ordering
+            cfg.ReceiveEndpoint("spend-update-events", e =>
+            {
+                e.PrefetchCount = 10; // Lower prefetch for ordered processing
+                e.ConcurrentMessageLimit = 1; // Sequential processing per partition
+                
+                e.SetQuorumQueue();
+                e.SetQueueArgument("x-single-active-consumer", true);
+                e.SetQueueArgument("x-max-length", 10000);
+                
+                e.UseMessageRetry(r => r.Immediate(3));
+                
+                e.ConfigureConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>(context);
+            });
+            
+            // Configure dead letter exchange at the endpoint level
+            // Dead letter queues are configured per endpoint above
             
             // Configure remaining endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
@@ -548,7 +632,7 @@ builder.Services.AddMassTransit(x =>
                     TimeSpan.FromSeconds(2)));
                 
                 // Prevents duplicate sends during retries
-                e.UseInMemoryOutbox();
+                // Note: UseInMemoryOutbox is now configured at the bus level
                 
                 e.ConfigureConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>(context, c =>
                 {
@@ -817,11 +901,32 @@ builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdate
 builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
     serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
 
+// Register batch webhook publisher for high-throughput webhook delivery
+if (useRabbitMq)
+{
+    builder.Services.AddBatchWebhookPublisher(options =>
+    {
+        options.MaxBatchSize = 100;
+        options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
+        options.ConcurrentPublishers = 3;
+    });
+    Console.WriteLine("[Conduit] Batch webhook publisher configured for high-throughput delivery");
+}
+
 // Add standardized health checks (skip in test environment to avoid conflicts)
 if (builder.Environment.EnvironmentName != "Test")
 {
     // Use the same Redis connection string we configured above for health checks
     var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, true, rabbitMqConfig);
+
+    // Add comprehensive RabbitMQ health check if RabbitMQ is configured
+    if (useRabbitMq)
+    {
+        healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
+            "rabbitmq_comprehensive",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: new[] { "messaging", "rabbitmq", "ready", "performance" });
+    }
 
     // Add audio-specific health checks if audio services are configured
     if (builder.Configuration.GetSection("AudioService:Providers").Exists())

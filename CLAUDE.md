@@ -604,18 +604,51 @@ Conduit provides three SignalR hubs for real-time updates:
 
 ### Multi-Instance Deployment with RabbitMQ
 
-As of the latest update, Conduit now supports RabbitMQ for horizontal scaling:
+As of the latest update, Conduit now supports RabbitMQ for horizontal scaling with production-ready configuration optimized for 1,000+ async tasks per minute:
 
 1. **Automatic Transport Detection**: The system automatically uses RabbitMQ when configured via environment variables
 2. **Partitioned Processing**: Events are routed to partition queues based on entity IDs for ordered processing
 3. **Durable Messaging**: All queues and messages are durable by default
-4. **Health Monitoring**: RabbitMQ connectivity is included in health checks
+4. **Health Monitoring**: Comprehensive RabbitMQ health checks monitor queue depths, memory usage, and performance
+
+#### High-Throughput Configuration (v2.0+)
+
+**Optimized Settings for 1,000 tasks/minute:**
+```bash
+# Core configuration
+CONDUITLLM__RABBITMQ__PREFETCHCOUNT=25        # Balanced for memory safety
+CONDUITLLM__RABBITMQ__PARTITIONCOUNT=30       # 30 parallel processing streams
+CONDUITLLM__RABBITMQ__CONCURRENTMESSAGELIMIT=50  # Prevents thread exhaustion
+
+# Connection pooling
+CONDUITLLM__RABBITMQ__MAXCONNECTIONS=5
+CONDUITLLM__RABBITMQ__MINCONNECTIONS=2
+
+# Advanced settings
+CONDUITLLM__RABBITMQ__REQUESTEDHEARTBEAT=30
+CONDUITLLM__RABBITMQ__PUBLISHERCONFIRMATION=true
+```
+
+**Key Features:**
+- **Connection Pooling**: Reduces overhead and improves throughput
+- **Circuit Breakers**: Prevents cascading failures (15-20% trip threshold)
+- **Rate Limiting**: Protects consumers from overload (100 msg/sec for webhooks)
+- **Batch Publishing**: Optimizes webhook delivery with 100-message batches
+- **Queue Monitoring**: Alerts when queue depth exceeds 1,000 messages
+
+**Queue-Specific Optimizations:**
+- **Webhook Delivery**: PrefetchCount=100, ConcurrentLimit=75, Quorum queue
+- **Video/Image Generation**: Standard prefetch with circuit breakers
+- **Spend Updates**: PrefetchCount=10, ConcurrentLimit=1 for strict ordering
 
 To enable RabbitMQ, simply set the environment variables documented above. The system will:
 - Switch from in-memory to RabbitMQ transport automatically
 - Create necessary exchanges and queues on startup
 - Route events based on partition keys for ordered processing
 - Handle connection failures with automatic recovery
+- Monitor performance and alert on degradation
+
+**For detailed scaling procedures, see:** [RabbitMQ Scaling Guide](docs/RabbitMQ-Scaling-Guide.md)
 
 ### Future Enhancements
 

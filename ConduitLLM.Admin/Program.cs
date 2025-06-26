@@ -124,12 +124,18 @@ public partial class Program
             {
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    // Configure RabbitMQ connection
+                    // Configure RabbitMQ connection with advanced settings
                     cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
                     {
                         h.Username(rabbitMqConfig.Username);
                         h.Password(rabbitMqConfig.Password);
-                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.RequestedHeartbeat));
+                        
+                        // Publisher settings
+                        h.PublisherConfirmation = rabbitMqConfig.PublisherConfirmation;
+                        
+                        // Advanced connection settings for publishers
+                        h.RequestedChannelMax(rabbitMqConfig.ChannelMax);
                     });
                     
                     // Configure retry policy for publishing
