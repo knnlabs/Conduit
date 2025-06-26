@@ -29,6 +29,7 @@ Authorization: Bearer condt_yourvirtualkey
 - [Model Listing](#list-models)
 - [Embeddings](#embeddings)
 - [Image Generation](#image-generation)
+- [Real-Time Features](./Real-Time-Features-Index.md) - Webhooks, SignalR, and async updates
 
 ---
 
