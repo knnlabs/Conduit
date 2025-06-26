@@ -28,6 +28,7 @@ using MassTransit; // Added for event bus infrastructure
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
@@ -118,6 +119,7 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddRuntimeInstrumentation()
             .AddProcessInstrumentation()
+            .AddMeter("ConduitLLM.SignalR") // Add SignalR metrics
             .AddPrometheusExporter();
     });
 
@@ -933,6 +935,12 @@ builder.Services.AddHostedService<ConduitLLM.Http.Services.VirtualKeyRateLimitCa
 // Register SignalR rate limit filter
 builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
 
+// Register SignalR metrics
+builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
+
+// Register SignalR metrics filter
+builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
+
 // Add SignalR for real-time navigation state updates
 var signalRBuilder = builder.Services.AddSignalR(options =>
 {
@@ -1039,6 +1047,12 @@ if (builder.Environment.EnvironmentName != "Test")
     {
         healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
     }
+    
+    // Add SignalR health check
+    healthChecksBuilder.AddCheck<ConduitLLM.Http.HealthChecks.SignalRHealthCheck>(
+        "signalr",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+        tags: new[] { "signalr", "realtime", "ready" });
 
     // Add HTTP connection pool health check for webhook delivery monitoring
     healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(

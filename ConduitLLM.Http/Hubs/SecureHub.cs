@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Metrics;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -29,38 +31,64 @@ namespace ConduitLLM.Http.Hubs
         {
             var virtualKeyId = GetVirtualKeyId();
             var virtualKeyName = GetVirtualKeyName();
+            var correlationId = GetOrCreateCorrelationId();
             
-            if (!virtualKeyId.HasValue)
+            using (Logger.BeginScope(new Dictionary<string, object>
             {
-                Logger.LogWarning("Connection without valid virtual key ID to {HubName}", GetHubName());
-                Context.Abort();
-                return;
+                ["ConnectionId"] = Context.ConnectionId,
+                ["HubName"] = GetHubName(),
+                ["VirtualKeyId"] = virtualKeyId?.ToString() ?? "anonymous",
+                ["VirtualKeyName"] = virtualKeyName,
+                ["CorrelationId"] = correlationId
+            }))
+            {
+                if (!virtualKeyId.HasValue)
+                {
+                    Logger.LogWarning("Connection without valid virtual key ID to {HubName}", GetHubName());
+                    
+                    var metrics = GetMetrics();
+                    metrics?.AuthenticationFailures.Add(1, new TagList { { "hub", GetHubName() } });
+                    
+                    Context.Abort();
+                    return;
+                }
+                
+                // Add to virtual-key-specific group
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"vkey-{virtualKeyId}");
+                
+                Logger.LogInformation("Virtual Key {KeyName} (ID: {KeyId}) connected to {HubName}: {ConnectionId}", 
+                    virtualKeyName, virtualKeyId, GetHubName(), Context.ConnectionId);
+                
+                await OnVirtualKeyConnectedAsync(virtualKeyId.Value, virtualKeyName);
+                await base.OnConnectedAsync();
             }
-            
-            // Add to virtual-key-specific group
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"vkey-{virtualKeyId}");
-            
-            Logger.LogInformation("Virtual Key {KeyName} (ID: {KeyId}) connected to {HubName}: {ConnectionId}", 
-                virtualKeyName, virtualKeyId, GetHubName(), Context.ConnectionId);
-            
-            await OnVirtualKeyConnectedAsync(virtualKeyId.Value, virtualKeyName);
-            await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             var virtualKeyId = GetVirtualKeyId();
             var virtualKeyName = GetVirtualKeyName();
+            var correlationId = GetOrCreateCorrelationId();
             
-            Logger.LogInformation("Virtual Key {KeyName} disconnected from {HubName}: {ConnectionId}", 
-                virtualKeyName, GetHubName(), Context.ConnectionId);
-            
-            if (virtualKeyId.HasValue)
+            using (Logger.BeginScope(new Dictionary<string, object>
             {
-                await OnVirtualKeyDisconnectedAsync(virtualKeyId.Value, virtualKeyName, exception);
+                ["ConnectionId"] = Context.ConnectionId,
+                ["HubName"] = GetHubName(),
+                ["VirtualKeyId"] = virtualKeyId?.ToString() ?? "anonymous",
+                ["VirtualKeyName"] = virtualKeyName,
+                ["CorrelationId"] = correlationId
+            }))
+            {
+                Logger.LogInformation("Virtual Key {KeyName} disconnected from {HubName}: {ConnectionId}", 
+                    virtualKeyName, GetHubName(), Context.ConnectionId);
+                
+                if (virtualKeyId.HasValue)
+                {
+                    await OnVirtualKeyDisconnectedAsync(virtualKeyId.Value, virtualKeyName, exception);
+                }
+                
+                await base.OnDisconnectedAsync(exception);
             }
-            
-            await base.OnDisconnectedAsync(exception);
         }
 
         /// <summary>
@@ -229,5 +257,28 @@ namespace ConduitLLM.Http.Hubs
         /// Gets the virtual key ID from the connection context, using the property syntax requested.
         /// </summary>
         protected string? VirtualKeyId => GetVirtualKeyId()?.ToString();
+
+        /// <summary>
+        /// Gets the SignalR metrics instance from the service provider.
+        /// </summary>
+        private SignalRMetrics? GetMetrics()
+        {
+            return _serviceProvider.GetService<SignalRMetrics>();
+        }
+
+        /// <summary>
+        /// Gets or creates a correlation ID for the current connection.
+        /// </summary>
+        protected string GetOrCreateCorrelationId()
+        {
+            if (Context.Items.TryGetValue("CorrelationId", out var value) && value is string correlationId)
+            {
+                return correlationId;
+            }
+
+            correlationId = Guid.NewGuid().ToString();
+            Context.Items["CorrelationId"] = correlationId;
+            return correlationId;
+        }
     }
 }
