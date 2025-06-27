@@ -591,6 +591,9 @@ builder.Services.AddMassTransit(x =>
     // Add webhook delivery consumer for scalable webhook processing
     x.AddConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>();
     
+    // Add model discovery notification handler for real-time model updates
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelDiscoveryNotificationHandler>();
+    
     if (useRabbitMq)
     {
         x.UsingRabbitMq((context, cfg) =>
@@ -1224,6 +1227,10 @@ Console.WriteLine("[Conduit API] SignalR SpendNotificationHub registered at /hub
 app.MapHub<ConduitLLM.Http.Hubs.WebhookDeliveryHub>("/hubs/webhooks")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR WebhookDeliveryHub registered at /hubs/webhooks (requires authentication)");
+
+app.MapHub<ConduitLLM.Http.Hubs.ModelDiscoveryHub>("/hubs/model-discovery")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR ModelDiscoveryHub registered at /hubs/model-discovery (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

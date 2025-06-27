@@ -1,0 +1,322 @@
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
+@using ConduitLLM.Configuration.DTOs.SignalR
+@inject IJSRuntime JS
+@inject ILogger<ModelDiscoveryListener> Logger
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+@if (ShowNotifications)
+{
+    <div class="model-discovery-notifications">
+        <div class="notification-header">
+            <h4><i class="fas fa-robot"></i> Model Discovery Updates</h4>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleExpanded">
+                <i class="fas @(IsExpanded ? "fa-chevron-up" : "fa-chevron-down")"></i>
+            </button>
+        </div>
+        
+        @if (IsExpanded)
+        {
+            <div class="notification-list">
+                @if (!Notifications.Any())
+                {
+                    <div class="text-muted p-3">
+                        <i class="fas fa-info-circle"></i> No model updates yet. Monitoring for changes...
+                    </div>
+                }
+                else
+                {
+                    @foreach (var notification in Notifications.OrderByDescending(n => n.Timestamp).Take(10))
+                    {
+                        <div class="notification-item @notification.Type.ToLower()">
+                            <div class="notification-icon">
+                                <i class="@GetNotificationIcon(notification.Type)"></i>
+                            </div>
+                            <div class="notification-content">
+                                <div class="notification-title">@notification.Title</div>
+                                <div class="notification-message">@notification.Message</div>
+                                <div class="notification-time">@notification.Timestamp.ToString("HH:mm:ss")</div>
+                            </div>
+                            @if (notification.ActionUrl != null)
+                            {
+                                <button class="btn btn-sm btn-link" @onclick="() => NavigateToAction(notification.ActionUrl)">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+            
+            @if (Notifications.Any())
+            {
+                <div class="notification-footer">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearNotifications">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                    <span class="text-muted">@Notifications.Count total updates</span>
+                </div>
+            }
+        </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Provider { get; set; }
+    [Parameter] public bool ShowNotifications { get; set; } = true;
+    [Parameter] public string VirtualKey { get; set; } = string.Empty;
+    
+    private HubConnection? _hubConnection;
+    private List<ModelDiscoveryNotification> Notifications = new();
+    private bool IsExpanded = true;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl($"{baseUrl}/hubs/model-discovery", options =>
+                {
+                    options.Headers["X-Virtual-Key"] = VirtualKey;
+                })
+                .WithAutomaticReconnect()
+                .Build();
+            
+            // Register event handlers
+            _hubConnection.On<NewModelsDiscoveredNotification>("NewModelsDiscovered", HandleNewModelsDiscovered);
+            _hubConnection.On<ModelCapabilitiesChangedNotification>("ModelCapabilitiesChanged", HandleCapabilitiesChanged);
+            _hubConnection.On<ModelPricingUpdatedNotification>("ModelPricingUpdated", HandlePricingUpdated);
+            _hubConnection.On<ModelDeprecatedNotification>("ModelDeprecated", HandleModelDeprecated);
+            
+            await _hubConnection.StartAsync();
+            
+            // Subscribe to specific provider or all
+            if (!string.IsNullOrEmpty(Provider))
+            {
+                await _hubConnection.SendAsync("SubscribeToProvider", Provider);
+                Logger.LogInformation($"Subscribed to model discovery for provider: {Provider}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to model discovery hub");
+        }
+    }
+    
+    private async Task HandleNewModelsDiscovered(NewModelsDiscoveredNotification notification)
+    {
+        var modelList = string.Join(", ", notification.NewModels.Select(m => m.ModelId).Take(3));
+        if (notification.NewModels.Count > 3)
+        {
+            modelList += $" and {notification.NewModels.Count - 3} more";
+        }
+        
+        AddNotification(new ModelDiscoveryNotification
+        {
+            Type = "NewModels",
+            Title = $"New {notification.Provider} Models",
+            Message = $"Discovered {notification.NewModels.Count} new models: {modelList}",
+            Timestamp = notification.DiscoveredAt,
+            ActionUrl = $"/models?provider={notification.Provider}"
+        });
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task HandleCapabilitiesChanged(ModelCapabilitiesChangedNotification notification)
+    {
+        var changesSummary = notification.Changes.Count > 2 
+            ? $"{notification.Changes.Count} capability changes"
+            : string.Join(", ", notification.Changes);
+            
+        AddNotification(new ModelDiscoveryNotification
+        {
+            Type = "CapabilityChange",
+            Title = $"{notification.Provider} Model Updated",
+            Message = $"{notification.ModelId}: {changesSummary}",
+            Timestamp = notification.ChangedAt
+        });
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task HandlePricingUpdated(ModelPricingUpdatedNotification notification)
+    {
+        var changeDirection = notification.PercentageChange > 0 ? "increased" : "decreased";
+        var changeIcon = notification.PercentageChange > 0 ? "📈" : "📉";
+        
+        AddNotification(new ModelDiscoveryNotification
+        {
+            Type = "PricingChange",
+            Title = $"{notification.Provider} Pricing Update",
+            Message = $"{notification.ModelId} {changeDirection} by {Math.Abs(notification.PercentageChange ?? 0):F1}% {changeIcon}",
+            Timestamp = notification.UpdatedAt
+        });
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task HandleModelDeprecated(ModelDeprecatedNotification notification)
+    {
+        var message = $"{notification.ModelId} will be deprecated on {notification.DeprecationDate:MMM dd, yyyy}";
+        if (!string.IsNullOrEmpty(notification.ReplacementModel))
+        {
+            message += $". Recommended replacement: {notification.ReplacementModel}";
+        }
+        
+        AddNotification(new ModelDiscoveryNotification
+        {
+            Type = "Deprecation",
+            Title = $"{notification.Provider} Model Deprecation",
+            Message = message,
+            Timestamp = notification.AnnouncedAt,
+            ActionUrl = $"/models/migration?from={notification.ModelId}&to={notification.ReplacementModel}"
+        });
+        
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private void AddNotification(ModelDiscoveryNotification notification)
+    {
+        Notifications.Insert(0, notification);
+        
+        // Keep only last 100 notifications
+        if (Notifications.Count > 100)
+        {
+            Notifications = Notifications.Take(100).ToList();
+        }
+    }
+    
+    private void ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+    }
+    
+    private void ClearNotifications()
+    {
+        Notifications.Clear();
+    }
+    
+    private void NavigateToAction(string url)
+    {
+        Navigation.NavigateTo(url);
+    }
+    
+    private string GetNotificationIcon(string type) => type switch
+    {
+        "NewModels" => "fas fa-plus-circle text-success",
+        "CapabilityChange" => "fas fa-sync-alt text-info",
+        "PricingChange" => "fas fa-dollar-sign text-warning",
+        "Deprecation" => "fas fa-exclamation-triangle text-danger",
+        _ => "fas fa-info-circle"
+    };
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+    
+    private class ModelDiscoveryNotification
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string? ActionUrl { get; set; }
+    }
+}
+
+<style>
+    .model-discovery-notifications {
+        background: var(--bs-light);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    
+    .notification-header h4 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    
+    .notification-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .notification-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--bs-gray-200);
+        transition: background-color 0.2s;
+    }
+    
+    .notification-item:hover {
+        background-color: var(--bs-gray-100);
+    }
+    
+    .notification-icon {
+        margin-right: 1rem;
+        font-size: 1.25rem;
+    }
+    
+    .notification-content {
+        flex: 1;
+    }
+    
+    .notification-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notification-message {
+        font-size: 0.9rem;
+        color: var(--bs-secondary);
+    }
+    
+    .notification-time {
+        font-size: 0.8rem;
+        color: var(--bs-gray-600);
+        margin-top: 0.25rem;
+    }
+    
+    .notification-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--bs-border-color);
+        background-color: var(--bs-gray-100);
+    }
+    
+    /* Animation for new notifications */
+    .notification-item {
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>

@@ -25,7 +25,7 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public async Task TaskStarted(string taskId, string taskType, Dictionary<string, object>? metadata = null)
+        public async Task TaskStarted(string taskId, string taskType, object metadata)
         {
             try
             {
@@ -55,7 +55,7 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public async Task TaskCompleted(string taskId, object? result = null)
+        public async Task TaskCompleted(string taskId, object result)
         {
             try
             {
@@ -112,6 +112,21 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending TaskRetrying notification for task {TaskId}", taskId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task TaskTimedOut(string taskId, int timeoutSeconds)
+        {
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("TaskTimedOut", taskId, timeoutSeconds);
+                _logger.LogWarning("Task {TaskId} timed out after {TimeoutSeconds} seconds", taskId, timeoutSeconds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending TaskTimedOut notification for task {TaskId}", taskId);
                 throw;
             }
         }

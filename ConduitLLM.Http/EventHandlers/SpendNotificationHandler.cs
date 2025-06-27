@@ -13,12 +13,12 @@ namespace ConduitLLM.Http.EventHandlers
     /// </summary>
     public class SpendNotificationHandler : IConsumer<SpendUpdated>
     {
-        private readonly ISpendNotificationService _notificationService;
+        private readonly ConduitLLM.Http.Services.ISpendNotificationService _notificationService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<SpendNotificationHandler> _logger;
 
         public SpendNotificationHandler(
-            ISpendNotificationService notificationService,
+            ConduitLLM.Http.Services.ISpendNotificationService notificationService,
             IVirtualKeyService virtualKeyService,
             ILogger<SpendNotificationHandler> logger)
         {

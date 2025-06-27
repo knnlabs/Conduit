@@ -112,8 +112,8 @@ namespace ConduitLLM.Http.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Check if user has admin permissions
-            var virtualKey = await _virtualKeyService.GetByIdAsync(virtualKeyId);
-            if (virtualKey?.IsAdmin != true)
+            var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
+            if (virtualKeyInfo?.IsAdmin != true)
             {
                 return Forbid("Admin permissions required for batch virtual key updates");
             }

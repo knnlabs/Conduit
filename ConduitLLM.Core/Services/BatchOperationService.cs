@@ -188,15 +188,13 @@ namespace ConduitLLM.Core.Services
             
             try
             {
-                // Create partitions for parallel processing
-                var partitioner = Partitioner.Create(items, true);
                 var parallelOptions = new ParallelOptions
                 {
                     MaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
                     CancellationToken = context.CancellationTokenSource.Token
                 };
 
-                await Parallel.ForEachAsync<T>(partitioner, parallelOptions, async (item, ct) =>
+                await Parallel.ForEachAsync(items, parallelOptions, async (item, ct) =>
                 {
                     if (ct.IsCancellationRequested)
                         return;
