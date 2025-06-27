@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.JSInterop;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
@@ -53,11 +54,15 @@ public class ModelCapabilityIntegrationTests
         {
             // Act
             var mockConfiguration = new Mock<IConfiguration>();
+            var mockJSRuntime = new Mock<IJSRuntime>();
+            var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
+            var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
             var navigationService = new SignalRNavigationStateService(
                 mockAdminApiClient.Object, 
                 mockConduitApiClient.Object, 
                 mockConfiguration.Object,
-                mockLogger.Object);
+                mockLogger.Object,
+                signalRConnectionManager);
 
             _output.WriteLine("Testing navigation state service capability detection...");
 
@@ -119,11 +124,15 @@ public class ModelCapabilityIntegrationTests
 
         // Act
         var mockConfiguration = new Mock<IConfiguration>();
+        var mockJSRuntime = new Mock<IJSRuntime>();
+        var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
+        var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
         var navigationService = new SignalRNavigationStateService(
             mockAdminApiClient.Object, 
             mockConduitApiClient.Object, 
             mockConfiguration.Object,
-            mockLogger.Object);
+            mockLogger.Object,
+            signalRConnectionManager);
 
         await navigationService.RefreshStatesAsync();
         var imageGenState = await navigationService.GetNavigationItemStateAsync("/image-generation");
@@ -182,11 +191,15 @@ public class ModelCapabilityIntegrationTests
 
         // Act
         var mockConfiguration = new Mock<IConfiguration>();
+        var mockJSRuntime = new Mock<IJSRuntime>();
+        var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
+        var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
         var navigationService = new SignalRNavigationStateService(
             mockAdminApiClient.Object, 
             mockConduitApiClient.Object, 
             mockConfiguration.Object,
-            mockLogger.Object);
+            mockLogger.Object,
+            signalRConnectionManager);
 
         _output.WriteLine("Testing capability status information...");
         var capabilityStatus = await navigationService.GetCapabilityStatusAsync();

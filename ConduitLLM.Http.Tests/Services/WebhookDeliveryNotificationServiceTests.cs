@@ -173,9 +173,9 @@ namespace ConduitLLM.Http.Tests.Services
                     "RetryScheduled",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is WebhookRetryInfo retry &&
-                        retry.RetryNumber == retryNumber &&
-                        retry.MaxRetries == maxRetries),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(WebhookRetryInfo) &&
+                        ((WebhookRetryInfo)args[0]).NextAttemptNumber == retryNumber),
                     default),
                 Times.Once);
         }
@@ -199,10 +199,10 @@ namespace ConduitLLM.Http.Tests.Services
                     "CircuitBreakerStateChanged",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is WebhookCircuitBreakerState state &&
-                        state.State == newState &&
-                        state.PreviousState == previousState &&
-                        state.FailureCount == failureCount),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(WebhookCircuitBreakerState) &&
+                        ((WebhookCircuitBreakerState)args[0]).CurrentState == newState &&
+                        ((WebhookCircuitBreakerState)args[0]).PreviousState == previousState),
                     default),
                 Times.Exactly(2)); // Once for group, once for all
         }
@@ -219,7 +219,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert - verify through GetStatisticsAsync
             var stats = _service.GetStatisticsAsync().Result;
-            Assert.Equal(2, stats.TotalAttempts);
+            Assert.Equal(2, stats.TotalDeliveries);
         }
 
         [Fact]
@@ -253,7 +253,7 @@ namespace ConduitLLM.Http.Tests.Services
             // Assert
             var stats = _service.GetStatisticsAsync().Result;
             Assert.Equal(2, stats.FailedDeliveries);
-            Assert.Equal(1, stats.PendingRetries); // Only temporary failures count as pending
+            Assert.Equal(1, stats.PendingDeliveries); // Only temporary failures count as pending
         }
 
         [Fact]
@@ -276,7 +276,7 @@ namespace ConduitLLM.Http.Tests.Services
             var stats = await _service.GetStatisticsAsync();
 
             // Assert
-            Assert.Equal(3, stats.TotalAttempts);
+            Assert.Equal(3, stats.TotalDeliveries);
             Assert.Equal(2, stats.SuccessfulDeliveries);
             Assert.Equal(1, stats.FailedDeliveries);
             Assert.Equal(2, stats.UrlStatistics.Count);

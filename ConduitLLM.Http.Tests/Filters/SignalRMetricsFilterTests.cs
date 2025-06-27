@@ -146,8 +146,8 @@ namespace ConduitLLM.Http.Tests.Filters
                 .Returns(Mock.Of<IDisposable>());
 
             // Act & Assert
-            await Assert.ThrowsAsync<HubException>(() =>
-                _filter.InvokeMethodAsync(invocationContext, _ => throw hubException));
+            await Assert.ThrowsAsync<HubException>(async () =>
+                await _filter.InvokeMethodAsync(invocationContext, _ => ValueTask.FromException<object?>(hubException)));
 
             _loggerMock.Verify(x => x.Log(
                 LogLevel.Warning,
@@ -171,8 +171,8 @@ namespace ConduitLLM.Http.Tests.Filters
                 .Returns(Mock.Of<IDisposable>());
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() =>
-                _filter.InvokeMethodAsync(invocationContext, _ => throw exception));
+            await Assert.ThrowsAsync<Exception>(async () =>
+                await _filter.InvokeMethodAsync(invocationContext, _ => ValueTask.FromException<object?>(exception)));
 
             _loggerMock.Verify(x => x.Log(
                 LogLevel.Error,
@@ -195,7 +195,9 @@ namespace ConduitLLM.Http.Tests.Filters
             hubCallerContext.Setup(x => x.ConnectionId).Returns(connectionId);
             hubCallerContext.Setup(x => x.Items).Returns(new Dictionary<object, object?> { ["VirtualKeyId"] = virtualKeyId });
 
-            var invocationContext = new HubInvocationContext(hubCallerContext.Object, "services", hub, methodName, Array.Empty<object>());
+            var serviceProvider = new Mock<IServiceProvider>().Object;
+            var methodInfo = typeof(TestHub).GetMethod(nameof(TestHub.TestMethod))!;
+            var invocationContext = new HubInvocationContext(hubCallerContext.Object, serviceProvider, hub, methodInfo, Array.Empty<object>());
 
             _metricsMock.Setup(x => x.RecordHubMethodInvocation("TestHub", methodName, virtualKeyId))
                 .Returns(Mock.Of<IDisposable>());
@@ -223,7 +225,9 @@ namespace ConduitLLM.Http.Tests.Filters
             hubCallerContext.Setup(x => x.ConnectionId).Returns(connectionId);
             hubCallerContext.Setup(x => x.Items).Returns(new Dictionary<object, object?>());
             
-            return new HubInvocationContext(hubCallerContext.Object, "services", hub, methodName, Array.Empty<object>());
+            var serviceProvider = new Mock<IServiceProvider>().Object;
+            var methodInfo = typeof(TestHub).GetMethod(nameof(TestHub.TestMethod))!;
+            return new HubInvocationContext(hubCallerContext.Object, serviceProvider, hub, methodInfo, Array.Empty<object>());
         }
 
         private class TestHub : Hub

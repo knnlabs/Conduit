@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -161,7 +162,7 @@ namespace ConduitLLM.Tests.Integration
             // Assert
             var snapshot = await snapshotReceived.Task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.NotNull(snapshot);
-            Assert.NotNull(snapshot.OverallStatus);
+            // OverallStatus is a value type, no need to check for null
             Assert.NotNull(snapshot.Components);
             Assert.True(snapshot.Components.Count > 0);
 
@@ -206,20 +207,20 @@ namespace ConduitLLM.Tests.Integration
             using var scope = _factory.Services.CreateScope();
             var alertService = scope.ServiceProvider.GetRequiredService<IAlertManagementService>();
             var suppressionCreated = false;
+            AlertSuppression? createdSuppression = null;
 
             // Create suppression rule
             var suppression = new AlertSuppression
             {
                 AlertPattern = "Test*",
-                Component = "Test",
                 StartTime = DateTime.UtcNow,
                 EndTime = DateTime.UtcNow.AddMinutes(10),
                 Reason = "Testing suppression",
                 CreatedBy = "Test User"
             };
 
-            var suppressionId = await alertService.CreateSuppressionAsync(suppression);
-            if (!string.IsNullOrEmpty(suppressionId))
+            createdSuppression = await alertService.CreateSuppressionAsync(suppression);
+            if (createdSuppression != null && !string.IsNullOrEmpty(createdSuppression.Id))
             {
                 suppressionCreated = true;
             }
@@ -241,13 +242,13 @@ namespace ConduitLLM.Tests.Integration
             var activeAlerts = await alertService.GetActiveAlertsAsync();
             var alert = activeAlerts.FirstOrDefault(a => a.Id == testAlert.Id);
             
-            // Alert should either not exist or be marked as suppressed
-            Assert.True(alert == null || alert.IsSuppressed);
+            // Alert should either not exist or be in suppressed state
+            Assert.True(alert == null || alert.State == AlertState.Suppressed);
 
             // Cleanup
-            if (suppressionCreated)
+            if (suppressionCreated && createdSuppression != null)
             {
-                await alertService.CancelSuppressionAsync(suppressionId);
+                await alertService.CancelSuppressionAsync(createdSuppression.Id);
             }
         }
 
@@ -275,9 +276,10 @@ namespace ConduitLLM.Tests.Integration
             // Verify active scenarios
             var activeResponse = await _client.GetAsync("/api/test/health-monitoring/active");
             activeResponse.EnsureSuccessStatusCode();
-            var activeScenarios = await activeResponse.Content.ReadAsAsync<List<string>>();
+            var activeScenarios = await activeResponse.Content.ReadFromJsonAsync<List<string>>();
             
-            Assert.Equal(3, activeScenarios.Count);
+            Assert.NotNull(activeScenarios);
+            Assert.Equal(3, activeScenarios!.Count);
             foreach (var scenario in scenarios)
             {
                 Assert.Contains(scenario, activeScenarios);

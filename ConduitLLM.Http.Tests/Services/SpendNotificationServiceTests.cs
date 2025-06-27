@@ -77,13 +77,14 @@ namespace ConduitLLM.Http.Tests.Services
                     "SpendUpdate",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is SpendUpdateNotification notification &&
-                        notification.NewSpend == amount &&
-                        notification.TotalSpend == totalSpend &&
-                        notification.Budget == budget &&
-                        notification.BudgetPercentage == 30.15m &&
-                        notification.Model == model &&
-                        notification.Provider == provider),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(SpendUpdateNotification) &&
+                        ((SpendUpdateNotification)args[0]).NewSpend == amount &&
+                        ((SpendUpdateNotification)args[0]).TotalSpend == totalSpend &&
+                        ((SpendUpdateNotification)args[0]).Budget == budget &&
+                        ((SpendUpdateNotification)args[0]).BudgetPercentage == 30.15m &&
+                        ((SpendUpdateNotification)args[0]).Model == model &&
+                        ((SpendUpdateNotification)args[0]).Provider == provider),
                     default),
                 Times.Once);
         }
@@ -106,8 +107,9 @@ namespace ConduitLLM.Http.Tests.Services
                     "SpendUpdate",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is SpendUpdateNotification notification &&
-                        notification.BudgetPercentage == 50m),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(SpendUpdateNotification) &&
+                        ((SpendUpdateNotification)args[0]).BudgetPercentage == 50m),
                     default),
                 Times.Once);
         }
@@ -130,9 +132,10 @@ namespace ConduitLLM.Http.Tests.Services
                     "SpendUpdate",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is SpendUpdateNotification notification &&
-                        notification.Budget == null &&
-                        notification.BudgetPercentage == null),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(SpendUpdateNotification) &&
+                        ((SpendUpdateNotification)args[0]).Budget == null &&
+                        ((SpendUpdateNotification)args[0]).BudgetPercentage == null),
                     default),
                 Times.Once);
         }
@@ -250,8 +253,9 @@ namespace ConduitLLM.Http.Tests.Services
                     "UnusualSpendingDetected",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is UnusualSpendingNotification notification &&
-                        notification.PatternType == "spend_spike"),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(UnusualSpendingNotification) &&
+                        ((UnusualSpendingNotification)args[0]).ActivityType == "spend_spike"),
                     default),
                 Times.AtMostOnce); // May or may not trigger based on timing
         }

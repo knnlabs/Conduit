@@ -152,9 +152,9 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "BudgetAlert",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is BudgetAlertNotification alert &&
-                        alert.Percentage == 50m &&
-                        alert.Severity == "info"),
+                        args[0] != null && args[0].GetType() == typeof(BudgetAlertNotification) &&
+                        ((BudgetAlertNotification)args[0]).PercentageUsed == 50d &&
+                        ((BudgetAlertNotification)args[0]).Severity == "info"),
                     default),
                 Times.Once);
         }
@@ -166,8 +166,9 @@ namespace ConduitLLM.Http.Tests.Hubs
             var virtualKeyId = 123;
             var alert = new BudgetAlertNotification
             {
-                Percentage = 90m,
-                Remaining = 50m,
+                PercentageUsed = 90d,
+                CurrentSpend = 450m,
+                BudgetLimit = 500m,
                 Severity = "warning",
                 Message = "Warning: 90% of budget used"
             };
@@ -202,18 +203,17 @@ namespace ConduitLLM.Http.Tests.Hubs
             var summary = new SpendSummaryNotification
             {
                 PeriodType = "daily",
-                PeriodStart = DateTime.UtcNow.Date,
-                PeriodEnd = DateTime.UtcNow.Date.AddDays(1),
+                Period = DateTime.UtcNow.Date.ToString("yyyy-MM-dd"),
                 TotalSpend = 250m,
                 RequestCount = 150,
-                ProviderBreakdown = new Dictionary<string, ProviderSpendBreakdown>
+                TopProviders = new List<ProviderSpendBreakdown>
                 {
-                    ["OpenAI"] = new ProviderSpendBreakdown 
+                    new ProviderSpendBreakdown 
                     { 
                         Provider = "OpenAI", 
-                        TotalSpend = 200m, 
+                        Spend = 200m, 
                         RequestCount = 100, 
-                        Percentage = 80m 
+                        Percentage = 80d 
                     }
                 }
             };
@@ -247,13 +247,12 @@ namespace ConduitLLM.Http.Tests.Hubs
             var virtualKeyId = 123;
             var notification = new UnusualSpendingNotification
             {
-                PatternType = "spend_spike",
+                ActivityType = "spend_spike",
                 Description = "Spending has increased by 300% in the last hour",
-                Severity = "warning",
-                CurrentSpendRate = 400m,
-                NormalSpendRate = 100m,
-                PercentageIncrease = 300m,
-                RecommendedActions = new List<string> 
+                CurrentRate = 400m,
+                NormalRate = 100m,
+                DeviationPercentage = 300d,
+                Recommendations = new List<string> 
                 { 
                     "Review recent API usage",
                     "Check for runaway processes"
@@ -296,7 +295,7 @@ namespace ConduitLLM.Http.Tests.Hubs
                 NewSpend = 10m,
                 TotalSpend = totalSpend,
                 Budget = 500m,
-                BudgetPercentage = budgetPercentage,
+                BudgetPercentage = (decimal)budgetPercentage,
                 Model = "gpt-4",
                 Provider = "OpenAI"
             };
@@ -318,8 +317,8 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "BudgetAlert",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is BudgetAlertNotification alert &&
-                        alert.Severity == expectedSeverity),
+                        args[0] != null && args[0].GetType() == typeof(BudgetAlertNotification) &&
+                        ((BudgetAlertNotification)args[0]).Severity == expectedSeverity),
                     default),
                 Times.AtLeastOnce);
         }

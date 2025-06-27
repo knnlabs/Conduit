@@ -12,6 +12,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Consumers;
+using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Tests.Consumers
 {
@@ -23,6 +24,7 @@ namespace ConduitLLM.Tests.Consumers
         private readonly Mock<IWebhookNotificationService> _mockWebhookService;
         private readonly Mock<IWebhookDeliveryTracker> _mockDeliveryTracker;
         private readonly Mock<IWebhookCircuitBreaker> _mockCircuitBreaker;
+        private readonly Mock<IWebhookDeliveryNotificationService> _mockDeliveryNotificationService;
         private readonly Mock<ILogger<WebhookDeliveryConsumer>> _mockLogger;
         private readonly WebhookDeliveryConsumer _consumer;
         
@@ -31,12 +33,14 @@ namespace ConduitLLM.Tests.Consumers
             _mockWebhookService = new Mock<IWebhookNotificationService>();
             _mockDeliveryTracker = new Mock<IWebhookDeliveryTracker>();
             _mockCircuitBreaker = new Mock<IWebhookCircuitBreaker>();
+            _mockDeliveryNotificationService = new Mock<IWebhookDeliveryNotificationService>();
             _mockLogger = new Mock<ILogger<WebhookDeliveryConsumer>>();
             
             _consumer = new WebhookDeliveryConsumer(
                 _mockWebhookService.Object,
                 _mockDeliveryTracker.Object,
                 _mockCircuitBreaker.Object,
+                _mockDeliveryNotificationService.Object,
                 _mockLogger.Object);
         }
         

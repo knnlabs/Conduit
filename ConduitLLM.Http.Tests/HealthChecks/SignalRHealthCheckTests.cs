@@ -165,7 +165,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
             var result = await _healthCheck.CheckHealthAsync(context, cts.Token);
             // The health check doesn't pass the cancellation token to hub operations,
             // so it should complete normally
-            Assert.NotNull(result);
+            // HealthCheckResult is a value type, no need to check for null
         }
 
         [Fact]

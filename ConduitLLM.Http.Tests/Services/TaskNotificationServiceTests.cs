@@ -185,19 +185,12 @@ namespace ConduitLLM.Http.Tests.Services
             var taskId = "test-task-123";
             var taskType = "image_generation";
             var virtualKeyId = 456;
-            
-            var imageHubClients = new Mock<IHubClients>();
-            var imageClientProxy = new Mock<IClientProxy>();
-            
-            _imageHubContextMock.Setup(x => x.Clients).Returns(imageHubClients.Object);
-            imageHubClients.Setup(x => x.All).Returns(imageClientProxy.Object);
-            imageHubClients.Setup(x => x.Group(It.IsAny<string>())).Returns(imageClientProxy.Object);
 
             // Act
             await _service.NotifyTaskStartedAsync(taskId, taskType, virtualKeyId);
 
-            // Assert
-            imageClientProxy.Verify(x => x.SendCoreAsync(
+            // Assert - Should send to both All and VirtualKey group
+            _clientProxyMock.Verify(x => x.SendCoreAsync(
                 "TaskStarted",
                 It.IsAny<object[]>(),
                 default), Times.AtLeastOnce);
@@ -261,15 +254,11 @@ namespace ConduitLLM.Http.Tests.Services
             var taskType = "image_generation";
             var virtualKeyId = 456;
 
-            // Make legacy hub throw exception
-            var imageHubClients = new Mock<IHubClients>();
-            var imageClientProxy = new Mock<IClientProxy>();
-            
-            _imageHubContextMock.Setup(x => x.Clients).Returns(imageHubClients.Object);
-            imageHubClients.Setup(x => x.All).Returns(imageClientProxy.Object);
-            imageClientProxy
-                .Setup(x => x.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
-                .ThrowsAsync(new Exception("Legacy hub failed"));
+            // Make the main hub throw exception to test resilience
+            _clientProxyMock
+                .SetupSequence(x => x.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
+                .ThrowsAsync(new Exception("Hub failed"))
+                .Returns(Task.CompletedTask);
 
             // Act & Assert - Should not throw
             await _service.NotifyTaskStartedAsync(taskId, taskType, virtualKeyId);

@@ -61,7 +61,6 @@ namespace ConduitLLM.Http.Tests.Hubs
         {
             // Arrange
             var connectionId = "test-connection-123";
-            var virtualKeyId = "vk_test123";
             var userIdentifier = "user123";
             
             _mockContext.Setup(x => x.ConnectionId).Returns(connectionId);
@@ -113,10 +112,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "Onprovider_health",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is ProviderHealthNotification notification &&
-                        notification.Provider == provider &&
-                        notification.Status == "Degraded" &&
-                        notification.ResponseTimeMs == 500),
+                        args[0] != null && args[0].GetType() == typeof(ConduitLLM.Configuration.DTOs.SignalR.ProviderHealthNotification) &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ProviderHealthNotification)args[0]).Provider == provider &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ProviderHealthNotification)args[0]).Status == "Degraded" &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ProviderHealthNotification)args[0]).ResponseTimeMs == 500),
                     default),
                 Times.Once);
         }
@@ -148,10 +147,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "Onrate_limit",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is RateLimitNotification notification &&
-                        notification.Remaining == remaining &&
-                        notification.Endpoint == endpoint &&
-                        notification.Priority == NotificationPriority.High),
+                        args[0] != null && args[0].GetType() == typeof(ConduitLLM.Configuration.DTOs.SignalR.RateLimitNotification) &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.RateLimitNotification)args[0]).Remaining == remaining &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.RateLimitNotification)args[0]).Endpoint == endpoint &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.RateLimitNotification)args[0]).Priority == NotificationPriority.High),
                     default),
                 Times.Once);
         }
@@ -182,9 +181,9 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "Onsystem_announcement",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is SystemAnnouncementNotification notification &&
-                        notification.Message == message &&
-                        notification.Priority == priority),
+                        args[0] != null && args[0].GetType() == typeof(ConduitLLM.Configuration.DTOs.SignalR.SystemAnnouncementNotification) &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.SystemAnnouncementNotification)args[0]).Message == message &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.SystemAnnouncementNotification)args[0]).Priority == priority),
                     default),
                 Times.Once);
         }
@@ -215,10 +214,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "Onservice_degradation",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is ServiceDegradationNotification notification &&
-                        notification.Service == service &&
-                        notification.Reason == reason &&
-                        notification.Priority == NotificationPriority.High),
+                        args[0] != null && args[0].GetType() == typeof(ConduitLLM.Configuration.DTOs.SignalR.ServiceDegradationNotification) &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ServiceDegradationNotification)args[0]).Service == service &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ServiceDegradationNotification)args[0]).Reason == reason &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ServiceDegradationNotification)args[0]).Priority == NotificationPriority.High),
                     default),
                 Times.Once);
         }
@@ -248,9 +247,9 @@ namespace ConduitLLM.Http.Tests.Hubs
                     "Onservice_restoration",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is ServiceRestorationNotification notification &&
-                        notification.Service == service &&
-                        notification.Priority == NotificationPriority.Medium),
+                        args[0] != null && args[0].GetType() == typeof(ConduitLLM.Configuration.DTOs.SignalR.ServiceRestorationNotification) &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ServiceRestorationNotification)args[0]).Service == service &&
+                        ((ConduitLLM.Configuration.DTOs.SignalR.ServiceRestorationNotification)args[0]).Priority == NotificationPriority.Medium),
                     default),
                 Times.Once);
         }
