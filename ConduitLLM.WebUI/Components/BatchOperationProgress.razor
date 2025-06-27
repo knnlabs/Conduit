@@ -1,0 +1,689 @@
+@using Microsoft.JSInterop
+@using System.Text.Json
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject SignalRConnectionManager SignalR
+@inject ILogger<BatchOperationProgress> Logger
+
+<div class="batch-operation-progress @(IsMinimized ? "minimized" : "")">
+    <div class="progress-header" @onclick="ToggleMinimize">
+        <div class="header-content">
+            <i class="@GetOperationIcon()"></i>
+            <span class="operation-type">@GetOperationTypeDisplay()</span>
+            <span class="operation-id">@OperationId.Substring(0, 8)...</span>
+        </div>
+        <div class="header-actions">
+            @if (CanCancel && !IsCompleted)
+            {
+                <button class="cancel-btn" @onclick="CancelOperation" @onclick:stopPropagation="true">
+                    <i class="fa fa-times"></i>
+                </button>
+            }
+            <button class="minimize-btn" @onclick:stopPropagation="true">
+                <i class="fa @(IsMinimized ? "fa-chevron-up" : "fa-chevron-down")"></i>
+            </button>
+        </div>
+    </div>
+
+    @if (!IsMinimized)
+    {
+        <div class="progress-body">
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+                <div class="progress-bar">
+                    <div class="progress-fill @GetProgressClass()" style="width: @Progress%">
+                        @if (Progress > 10)
+                        {
+                            <span class="progress-text">@Progress%</span>
+                        }
+                    </div>
+                </div>
+                @if (Progress <= 10)
+                {
+                    <span class="progress-text-outside">@Progress%</span>
+                }
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat">
+                    <label>Status</label>
+                    <span class="@GetStatusClass()">@Status</span>
+                </div>
+                <div class="stat">
+                    <label>Processed</label>
+                    <span>@ProcessedCount / @TotalItems</span>
+                </div>
+                <div class="stat">
+                    <label>Success</label>
+                    <span class="success">@SuccessCount</span>
+                </div>
+                <div class="stat">
+                    <label>Failed</label>
+                    <span class="@(FailedCount > 0 ? "error" : "")">@FailedCount</span>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            @if (Status == "Running" && ItemsPerSecond > 0)
+            {
+                <div class="performance-metrics">
+                    <div class="metric">
+                        <i class="fa fa-tachometer-alt"></i>
+                        <span>@ItemsPerSecond.ToString("F1") items/sec</span>
+                    </div>
+                    <div class="metric">
+                        <i class="fa fa-clock"></i>
+                        <span>ETA: @FormatTimeSpan(EstimatedTimeRemaining)</span>
+                    </div>
+                    <div class="metric">
+                        <i class="fa fa-hourglass-half"></i>
+                        <span>Elapsed: @FormatTimeSpan(ElapsedTime)</span>
+                    </div>
+                </div>
+            }
+
+            <!-- Current Item -->
+            @if (!string.IsNullOrEmpty(CurrentItem))
+            {
+                <div class="current-item">
+                    <label>Processing:</label>
+                    <span>@CurrentItem</span>
+                </div>
+            }
+
+            <!-- Error Summary -->
+            @if (FailedCount > 0 && Errors.Any())
+            {
+                <div class="error-summary">
+                    <div class="error-header" @onclick="ToggleErrors">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span>@FailedCount error(s) occurred</span>
+                        <i class="fa @(ShowErrors ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                    </div>
+                    @if (ShowErrors)
+                    {
+                        <div class="error-list">
+                            @foreach (var error in Errors.Take(5))
+                            {
+                                <div class="error-item">
+                                    <span class="error-id">@error.ItemIdentifier:</span>
+                                    <span class="error-message">@error.Error</span>
+                                </div>
+                            }
+                            @if (Errors.Count > 5)
+                            {
+                                <div class="error-more">
+                                    ... and @(Errors.Count - 5) more errors
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Completion Summary -->
+            @if (IsCompleted)
+            {
+                <div class="completion-summary @GetCompletionClass()">
+                    <i class="@GetCompletionIcon()"></i>
+                    <div class="completion-text">
+                        <strong>@GetCompletionTitle()</strong>
+                        <span>Completed in @FormatTimeSpan(ElapsedTime) at @ItemsPerSecond.ToString("F1") items/sec</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .batch-operation-progress {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+
+    .batch-operation-progress.minimized {
+        margin-bottom: 8px;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .progress-header:hover {
+        background: #f5f5f5;
+    }
+
+    .header-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .header-content i {
+        font-size: 1.25rem;
+        color: #666;
+    }
+
+    .operation-type {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .operation-id {
+        font-size: 0.875rem;
+        color: #999;
+        font-family: monospace;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .cancel-btn,
+    .minimize-btn {
+        background: none;
+        border: none;
+        padding: 4px 8px;
+        cursor: pointer;
+        color: #666;
+        transition: color 0.2s;
+    }
+
+    .cancel-btn:hover {
+        color: #dc3545;
+    }
+
+    .minimize-btn:hover {
+        color: #333;
+    }
+
+    .progress-body {
+        padding: 0 16px 16px;
+    }
+
+    .progress-bar-container {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .progress-bar {
+        height: 24px;
+        background: #f0f0f0;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2196f3 0%, #1976d2 100%);
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
+    }
+
+    .progress-fill.success {
+        background: linear-gradient(90deg, #4caf50 0%, #388e3c 100%);
+    }
+
+    .progress-fill.warning {
+        background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
+    }
+
+    .progress-fill.error {
+        background: linear-gradient(90deg, #f44336 0%, #d32f2f 100%);
+    }
+
+    .progress-text {
+        color: white;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .progress-text-outside {
+        position: absolute;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat label {
+        display: block;
+        font-size: 0.75rem;
+        color: #999;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+
+    .stat span {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .stat span.success {
+        color: #4caf50;
+    }
+
+    .stat span.error {
+        color: #f44336;
+    }
+
+    .performance-metrics {
+        display: flex;
+        gap: 24px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .metric {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .metric i {
+        color: #999;
+    }
+
+    .current-item {
+        padding: 8px 12px;
+        background: #e3f2fd;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 0.875rem;
+    }
+
+    .current-item label {
+        font-weight: 600;
+        color: #1976d2;
+        margin-right: 8px;
+    }
+
+    .error-summary {
+        border: 1px solid #ffcdd2;
+        border-radius: 6px;
+        margin-top: 12px;
+        overflow: hidden;
+    }
+
+    .error-header {
+        padding: 12px;
+        background: #ffebee;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        user-select: none;
+    }
+
+    .error-header i:first-child {
+        color: #f44336;
+    }
+
+    .error-header span {
+        flex: 1;
+        font-weight: 500;
+        color: #c62828;
+    }
+
+    .error-list {
+        padding: 12px;
+        background: white;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .error-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.875rem;
+    }
+
+    .error-item:last-child {
+        border-bottom: none;
+    }
+
+    .error-id {
+        font-weight: 600;
+        color: #666;
+        margin-right: 8px;
+    }
+
+    .error-message {
+        color: #999;
+    }
+
+    .error-more {
+        padding-top: 8px;
+        font-size: 0.875rem;
+        color: #999;
+        font-style: italic;
+    }
+
+    .completion-summary {
+        padding: 16px;
+        border-radius: 6px;
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .completion-summary.success {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .completion-summary.warning {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .completion-summary.error {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .completion-summary i {
+        font-size: 1.5rem;
+    }
+
+    .completion-text strong {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .completion-text span {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+
+    /* Animations */
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .batch-operation-progress {
+        animation: slideIn 0.3s ease-out;
+    }
+</style>
+
+@code {
+    [Parameter] public string OperationId { get; set; } = string.Empty;
+    [Parameter] public string OperationType { get; set; } = string.Empty;
+    [Parameter] public int TotalItems { get; set; }
+    [Parameter] public EventCallback<string> OnCompleted { get; set; }
+    [Parameter] public EventCallback<string> OnCancelled { get; set; }
+    [Parameter] public EventCallback<string> OnFailed { get; set; }
+
+    private bool IsMinimized = false;
+    private bool ShowErrors = false;
+    private string Status = "Running";
+    private int Progress = 0;
+    private int ProcessedCount = 0;
+    private int SuccessCount = 0;
+    private int FailedCount = 0;
+    private double ItemsPerSecond = 0;
+    private TimeSpan ElapsedTime = TimeSpan.Zero;
+    private TimeSpan EstimatedTimeRemaining = TimeSpan.Zero;
+    private string? CurrentItem;
+    private bool CanCancel = true;
+    private List<ErrorInfo> Errors = new();
+    private bool IsCompleted => Status == "Completed" || Status == "Failed" || Status == "Cancelled";
+
+    private class ErrorInfo
+    {
+        public string ItemIdentifier { get; set; } = string.Empty;
+        public string Error { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Subscribe to task updates
+            await SignalR.OnAsync("tasks", "TaskProgress", DotNetObjectReference.Create(this));
+            await SignalR.OnAsync("tasks", "TaskCompleted", DotNetObjectReference.Create(this));
+            await SignalR.OnAsync("tasks", "TaskFailed", DotNetObjectReference.Create(this));
+            await SignalR.OnAsync("tasks", "TaskCancelled", DotNetObjectReference.Create(this));
+
+            // Subscribe to this specific task
+            await SignalR.InvokeAsync<object>("tasks", "SubscribeToTask", OperationId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize BatchOperationProgress for {OperationId}", OperationId);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskProgress(string taskId, int progress, string? message)
+    {
+        if (taskId != OperationId) return;
+
+        Progress = progress;
+        
+        // Parse progress message for detailed stats
+        if (!string.IsNullOrEmpty(message))
+        {
+            // Expected format: "Processed X/Y (S succeeded, F failed) - R items/sec - ETA: mm:ss"
+            var parts = message.Split(" - ");
+            if (parts.Length >= 2)
+            {
+                // Parse processed count
+                var processedMatch = System.Text.RegularExpressions.Regex.Match(parts[0], @"Processed (\d+)/(\d+)");
+                if (processedMatch.Success)
+                {
+                    ProcessedCount = int.Parse(processedMatch.Groups[1].Value);
+                }
+
+                // Parse success/failed counts
+                var countsMatch = System.Text.RegularExpressions.Regex.Match(parts[0], @"\((\d+) succeeded, (\d+) failed\)");
+                if (countsMatch.Success)
+                {
+                    SuccessCount = int.Parse(countsMatch.Groups[1].Value);
+                    FailedCount = int.Parse(countsMatch.Groups[2].Value);
+                }
+
+                // Parse items per second
+                var rateMatch = System.Text.RegularExpressions.Regex.Match(message, @"([\d.]+) items/sec");
+                if (rateMatch.Success)
+                {
+                    ItemsPerSecond = double.Parse(rateMatch.Groups[1].Value);
+                }
+
+                // Current item is the full message for now
+                CurrentItem = message;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskCompleted(string taskId, JsonElement result)
+    {
+        if (taskId != OperationId) return;
+
+        Status = "Completed";
+        Progress = 100;
+        ProcessedCount = TotalItems;
+        CurrentItem = null;
+
+        await OnCompleted.InvokeAsync(OperationId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskFailed(string taskId, string error, bool isRetryable)
+    {
+        if (taskId != OperationId) return;
+
+        Status = "Failed";
+        CurrentItem = null;
+
+        await OnFailed.InvokeAsync(OperationId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskCancelled(string taskId, string? reason)
+    {
+        if (taskId != OperationId) return;
+
+        Status = "Cancelled";
+        CurrentItem = null;
+        CanCancel = false;
+
+        await OnCancelled.InvokeAsync(OperationId);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelOperation()
+    {
+        try
+        {
+            // Call API to cancel operation
+            // This would be implemented with HttpClient
+            CanCancel = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to cancel operation {OperationId}", OperationId);
+        }
+    }
+
+    private void ToggleMinimize()
+    {
+        IsMinimized = !IsMinimized;
+    }
+
+    private void ToggleErrors()
+    {
+        ShowErrors = !ShowErrors;
+    }
+
+    private string GetOperationIcon() => OperationType switch
+    {
+        "spend_update" => "fa fa-dollar-sign",
+        "virtual_key_update" => "fa fa-key",
+        "webhook_send" => "fa fa-webhook",
+        _ => "fa fa-cogs"
+    };
+
+    private string GetOperationTypeDisplay() => OperationType switch
+    {
+        "spend_update" => "Spend Update",
+        "virtual_key_update" => "Virtual Key Update",
+        "webhook_send" => "Webhook Send",
+        _ => "Batch Operation"
+    };
+
+    private string GetStatusClass() => Status switch
+    {
+        "Running" => "text-primary",
+        "Completed" => "success",
+        "Failed" => "error",
+        "Cancelled" => "text-warning",
+        _ => ""
+    };
+
+    private string GetProgressClass()
+    {
+        if (Status == "Failed") return "error";
+        if (Status == "Cancelled") return "warning";
+        if (FailedCount > 0 && FailedCount > SuccessCount * 0.1) return "warning";
+        return "success";
+    }
+
+    private string GetCompletionClass() => Status switch
+    {
+        "Completed" when FailedCount == 0 => "success",
+        "Completed" when FailedCount > 0 => "warning",
+        "Failed" => "error",
+        "Cancelled" => "warning",
+        _ => ""
+    };
+
+    private string GetCompletionIcon() => Status switch
+    {
+        "Completed" when FailedCount == 0 => "fa fa-check-circle",
+        "Completed" when FailedCount > 0 => "fa fa-exclamation-circle",
+        "Failed" => "fa fa-times-circle",
+        "Cancelled" => "fa fa-ban",
+        _ => "fa fa-info-circle"
+    };
+
+    private string GetCompletionTitle() => Status switch
+    {
+        "Completed" when FailedCount == 0 => "Operation completed successfully!",
+        "Completed" when FailedCount > 0 => $"Operation completed with {FailedCount} errors",
+        "Failed" => "Operation failed",
+        "Cancelled" => "Operation cancelled",
+        _ => "Operation finished"
+    };
+
+    private string FormatTimeSpan(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        if (ts.TotalMinutes >= 1)
+            return $"{(int)ts.TotalMinutes}m {ts.Seconds}s";
+        return $"{ts.Seconds}s";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            // Unsubscribe from task
+            await SignalR.InvokeAsync<object>("tasks", "UnsubscribeFromTask", OperationId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error disposing BatchOperationProgress");
+        }
+    }
+}

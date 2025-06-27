@@ -3,50 +3,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
 
 namespace ConduitLLM.Http.Services
 {
-    /// <summary>
-    /// Service for sending system-wide operational notifications through SignalR.
-    /// This service handles rate limits, service degradation, and system announcements.
-    /// Note: Provider health notifications are handled by NavigationStateNotificationService.
-    /// </summary>
-    public interface ISystemNotificationService
-    {
-        /// <summary>
-        /// Sends a rate limit warning to all connected clients.
-        /// </summary>
-        /// <param name="remaining">Number of requests remaining.</param>
-        /// <param name="resetTime">When the rate limit resets.</param>
-        /// <param name="endpoint">The affected endpoint.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NotifyRateLimitWarning(int remaining, DateTime resetTime, string endpoint);
-
-        /// <summary>
-        /// Sends a system announcement to all connected clients.
-        /// </summary>
-        /// <param name="message">The announcement message.</param>
-        /// <param name="priority">The notification priority.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NotifySystemAnnouncement(string message, NotificationPriority priority);
-
-        /// <summary>
-        /// Notifies about service degradation.
-        /// </summary>
-        /// <param name="service">The degraded service.</param>
-        /// <param name="reason">The reason for degradation.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NotifyServiceDegraded(string service, string reason);
-
-        /// <summary>
-        /// Notifies about service restoration.
-        /// </summary>
-        /// <param name="service">The restored service.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NotifyServiceRestored(string service);
-    }
-
     /// <summary>
     /// Implementation of ISystemNotificationService that uses SignalR hub context.
     /// </summary>
@@ -89,7 +50,7 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public async Task NotifySystemAnnouncement(string message, NotificationPriority priority)
+        public async Task NotifySystemAnnouncement(string message, object priority)
         {
             try
             {
@@ -140,6 +101,26 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending service restoration notification");
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task NotifyConfigurationChangedAsync(int virtualKeyId, string configurationType, System.Collections.Generic.List<string> changedProperties)
+        {
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("ConfigurationChanged", virtualKeyId, configurationType, changedProperties);
+                
+                _logger.LogInformation(
+                    "Sent configuration change notification for VirtualKey {VirtualKeyId}: {ConfigurationType} - {Changes}",
+                    virtualKeyId,
+                    configurationType,
+                    string.Join(", ", changedProperties));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending configuration change notification");
                 throw;
             }
         }

@@ -214,7 +214,19 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 
 // Register System Notification Service
-builder.Services.AddSingleton<ConduitLLM.Http.Services.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
+
+// Register TaskHub Service for ITaskHub interface
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ITaskHub, ConduitLLM.Http.Services.TaskHubService>();
+
+// Register Batch Operation Services
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
+builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
+builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
+builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
+
+// Register Webhook Delivery Service
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
 
 // Register Spend Notification Service
 builder.Services.AddSingleton<ConduitLLM.Http.Services.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotificationService>();
