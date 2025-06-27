@@ -56,6 +56,9 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
     builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile("appsettings.HealthMonitoring.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile("appsettings.SecurityMonitoring.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile("appsettings.PerformanceMonitoring.json", optional: true, reloadOnChange: true);
 }
 
 builder.Configuration.AddEnvironmentVariables();
@@ -1139,7 +1142,13 @@ if (builder.Environment.EnvironmentName != "Test")
         "http_connection_pool",
         failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
         tags: new[] { "http", "webhooks", "ready" });
+    
+    // Add advanced health monitoring checks
+    healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);
 }
+
+// Add health monitoring services
+builder.Services.AddHealthMonitoring(builder.Configuration);
 
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
@@ -1285,6 +1294,16 @@ Console.WriteLine("[Conduit API] SignalR ModelDiscoveryHub registered at /hubs/m
 app.MapHub<ConduitLLM.Http.Hubs.MetricsHub>("/hubs/metrics")
     .RequireAuthorization("AdminOnly");
 Console.WriteLine("[Conduit API] SignalR MetricsHub registered at /hubs/metrics (requires admin authentication)");
+
+// Admin-only hub for health monitoring
+app.MapHub<ConduitLLM.Http.Hubs.HealthMonitoringHub>("/hubs/health-monitoring")
+    .RequireAuthorization("AdminOnly");
+Console.WriteLine("[Conduit API] SignalR HealthMonitoringHub registered at /hubs/health-monitoring (requires admin authentication)");
+
+// Admin-only hub for security monitoring
+app.MapHub<ConduitLLM.Http.Hubs.SecurityMonitoringHub>("/hubs/security-monitoring")
+    .RequireAuthorization("AdminOnly");
+Console.WriteLine("[Conduit API] SignalR SecurityMonitoringHub registered at /hubs/security-monitoring (requires admin authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

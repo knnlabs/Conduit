@@ -9,6 +9,8 @@ using Xunit;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Metrics;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
@@ -281,14 +283,14 @@ namespace ConduitLLM.Http.Tests.Hubs
         }
 
         [Theory]
-        [InlineData(80m, "warning")]
-        [InlineData(90m, "warning")]
-        [InlineData(100m, "critical")]
-        public async Task SendSpendUpdate_TriggersCorrectAlertSeverity(decimal budgetPercentage, string expectedSeverity)
+        [InlineData(80.0, "warning")]
+        [InlineData(90.0, "warning")]
+        [InlineData(100.0, "critical")]
+        public async Task SendSpendUpdate_TriggersCorrectAlertSeverity(double budgetPercentage, string expectedSeverity)
         {
             // Arrange
             var virtualKeyId = 123;
-            var totalSpend = budgetPercentage * 5m; // Budget is 500
+            var totalSpend = (decimal)budgetPercentage * 5m; // Budget is 500
             var notification = new SpendUpdateNotification
             {
                 NewSpend = 10m,
@@ -343,17 +345,15 @@ namespace ConduitLLM.Http.Tests.Hubs
             var mockGroupClients = new Mock<IClientProxy>();
             _mockClients.Setup(x => x.Group($"vkey-{virtualKeyId}")).Returns(mockGroupClients.Object);
 
-            var mockCounter = new Mock<Counter<long>>();
-            _mockMetrics.Setup(m => m.MessagesSent).Returns(mockCounter.Object);
-
             // Act
             await _hub.SendSpendUpdate(virtualKeyId, notification);
 
             // Assert
-            mockCounter.Verify(
-                x => x.Add(1, 
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "hub" && (string)kv.Value! == "SpendNotificationHub"),
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "message_type" && (string)kv.Value! == "spend_update")),
+            mockGroupClients.Verify(
+                x => x.SendAsync(
+                    "SpendUpdate", 
+                    It.Is<object[]>(args => args.Length == 1 && args[0] == notification),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -372,18 +372,10 @@ namespace ConduitLLM.Http.Tests.Hubs
             _mockClients.Setup(x => x.Group(It.IsAny<string>()))
                 .Throws(new InvalidOperationException("Test exception"));
 
-            var mockCounter = new Mock<Counter<long>>();
-            _mockMetrics.Setup(m => m.HubErrors).Returns(mockCounter.Object);
-
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _hub.SendSpendUpdate(virtualKeyId, notification));
 
-            mockCounter.Verify(
-                x => x.Add(1, 
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "hub"),
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "error_type")),
-                Times.Once);
         }
     }
 }

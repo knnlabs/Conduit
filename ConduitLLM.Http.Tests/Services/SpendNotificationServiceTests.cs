@@ -8,6 +8,7 @@ using Moq;
 using Xunit;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Tests.Services
 {

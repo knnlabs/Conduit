@@ -125,12 +125,12 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// Alert severity level.
         /// </summary>
-        public AlertSeverity Severity { get; set; }
+        public DTOs.AlertSeverity Severity { get; set; }
 
         /// <summary>
         /// Type of alert.
         /// </summary>
-        public AlertType Type { get; set; }
+        public DTOs.AlertType Type { get; set; }
 
         /// <summary>
         /// Alert title.
@@ -163,28 +163,6 @@ namespace ConduitLLM.WebUI.Models
         public string? RecommendedAction { get; set; }
     }
 
-    /// <summary>
-    /// Alert severity levels.
-    /// </summary>
-    public enum AlertSeverity
-    {
-        Info,
-        Warning,
-        Error,
-        Critical
-    }
-
-    /// <summary>
-    /// Types of alerts for embedding services.
-    /// </summary>
-    public enum AlertType
-    {
-        HighLatency,
-        HighErrorRate,
-        ModelUnavailable,
-        HighCost,
-        LowCacheHitRate,
-        RateLimitExceeded,
-        UnusualTrafficPattern
-    }
+    // AlertSeverity and AlertType enums have been moved to ConduitLLM.WebUI.DTOs namespace
+    // to avoid conflicts with the health monitoring DTOs
 }

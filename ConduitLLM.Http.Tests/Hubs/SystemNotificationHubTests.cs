@@ -10,6 +10,8 @@ using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Metrics;
 using ConduitLLM.Http.Models;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
@@ -270,7 +272,7 @@ namespace ConduitLLM.Http.Tests.Hubs
                 ["CorrelationId"] = "test-correlation-123"
             });
 
-            var mockCaller = new Mock<IClientProxy>();
+            var mockCaller = new Mock<ISingleClientProxy>();
             _mockClients.Setup(x => x.Caller).Returns(mockCaller.Object);
 
             // Act
@@ -321,17 +323,15 @@ namespace ConduitLLM.Http.Tests.Hubs
             var mockGroupClients = new Mock<IClientProxy>();
             _mockClients.Setup(x => x.Group($"vkey-{virtualKeyId}")).Returns(mockGroupClients.Object);
 
-            var mockCounter = new Mock<Counter<long>>();
-            _mockMetrics.Setup(m => m.MessagesSent).Returns(mockCounter.Object);
-
             // Act
             await _hub.ProviderHealthChanged("TestProvider", HealthStatus.Healthy, null);
 
             // Assert
-            mockCounter.Verify(
-                x => x.Add(1, 
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "hub" && (string)kv.Value! == "SystemNotificationHub"),
-                    It.Is<KeyValuePair<string, object?>>(kv => kv.Key == "message_type" && (string)kv.Value! == "provider_health")),
+            mockGroupClients.Verify(
+                x => x.SendAsync(
+                    "ProviderHealthUpdate",
+                    It.IsAny<object[]>(),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

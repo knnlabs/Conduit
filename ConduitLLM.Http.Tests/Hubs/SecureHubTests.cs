@@ -27,7 +27,6 @@ namespace ConduitLLM.Http.Tests.Hubs
             public new int? GetVirtualKeyId() => base.GetVirtualKeyId();
             public new string GetVirtualKeyName() => base.GetVirtualKeyName();
             public new int RequireVirtualKeyId() => base.RequireVirtualKeyId();
-            public new static int? ConvertToInt(object value) => SecureHub.ConvertToInt(value);
             public new Task<bool> CanAccessTaskAsync(string taskId) => base.CanAccessTaskAsync(taskId);
         }
 
@@ -172,31 +171,6 @@ namespace ConduitLLM.Http.Tests.Hubs
             Assert.Equal("Unauthorized", exception.Message);
         }
 
-        [Theory]
-        [InlineData(42, 42)]
-        [InlineData(100L, 100)]
-        [InlineData("999", 999)]
-        public void ConvertToInt_ValidValues_ReturnsInt(object input, int expected)
-        {
-            // Act
-            var result = TestHub.ConvertToInt(input);
-
-            // Assert
-            Assert.Equal(expected, result);
-        }
-
-        [Theory]
-        [InlineData("invalid")]
-        [InlineData(3.14)]
-        [InlineData(true)]
-        public void ConvertToInt_InvalidValues_ReturnsNull(object input)
-        {
-            // Act
-            var result = TestHub.ConvertToInt(input);
-
-            // Assert
-            Assert.Null(result);
-        }
 
         [Fact]
         public async Task OnConnectedAsync_CallsOnVirtualKeyConnected()

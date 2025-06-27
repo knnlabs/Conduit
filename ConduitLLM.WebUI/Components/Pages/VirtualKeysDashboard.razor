@@ -892,7 +892,7 @@
         }
     }
     
-    private async Task HandleSpendSummary(ConduitLLM.Configuration.DTOs.SignalR.SpendSummaryNotification summary)
+    private Task HandleSpendSummary(ConduitLLM.Configuration.DTOs.SignalR.SpendSummaryNotification summary)
     {
         try
         {
@@ -907,9 +907,11 @@
         {
             Logger.LogError(ex, "Error handling spend summary");
         }
+        
+        return Task.CompletedTask;
     }
     
-    private async Task HandleUnusualSpending(ConduitLLM.Configuration.DTOs.SignalR.UnusualSpendingNotification notification)
+    private Task HandleUnusualSpending(ConduitLLM.Configuration.DTOs.SignalR.UnusualSpendingNotification notification)
     {
         try
         {
@@ -929,6 +931,8 @@
         {
             Logger.LogError(ex, "Error handling unusual spending notification");
         }
+        
+        return Task.CompletedTask;
     }
     
     private void HandleConnectionStateChanged(SpendNotificationListener.ConnectionState state)

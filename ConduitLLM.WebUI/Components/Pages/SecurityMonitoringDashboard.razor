@@ -1,0 +1,762 @@
+@page "/security-monitoring"
+@using Microsoft.AspNetCore.SignalR.Client
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Models
+@inject NavigationManager Navigation
+@inject ILogger<SecurityMonitoringDashboard> Logger
+@inject IJSRuntime JS
+@inject IToastNotificationService ToastService
+@inject IFileVersionService FileVersionService
+@implements IAsyncDisposable
+
+<PageTitle>Security Monitoring Dashboard - ConduitLLM</PageTitle>
+
+<PageHeader Title="Security Monitoring" 
+            Icon="fas fa-shield-alt"
+            Description="Real-time security event monitoring and threat detection" />
+
+<div class="mb-3">
+    <button class="btn btn-secondary" @onclick="RefreshSecurityData">
+        <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+    <button class="btn btn-primary ms-2" @onclick="ShowSecurityReport">
+        <i class="fas fa-file-alt"></i> Generate Report
+    </button>
+</div>
+
+<div class="security-dashboard">
+    @if (_isConnecting)
+    {
+        <div class="text-center p-5">
+            <LoadingSpinner />
+            <p class="mt-3">Connecting to security monitoring service...</p>
+        </div>
+    }
+    else if (_connectionError != null)
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Connection Error:</strong> @_connectionError
+            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="InitializeSignalR">
+                <i class="fas fa-redo"></i> Retry
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Threat Level Overview -->
+        <div class="threat-level-panel mb-4 @GetThreatLevelClass(_securityMetrics?.ThreatLevel ?? ThreatLevel.None)">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Current Threat Level: <strong>@(_securityMetrics?.ThreatLevel ?? ThreatLevel.None)</strong>
+                    </h3>
+                    <p class="mb-0 mt-2">
+                        System security status based on recent activity and threat indicators
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="threat-score">
+                        <span class="score-label">Security Score</span>
+                        <span class="score-value">@CalculateSecurityScore()%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Metrics Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <StatCard Title="Auth Failures" 
+                          Value="@((_securityMetrics?.AuthenticationFailures ?? 0).ToString())" 
+                          Icon="fas fa-user-times"
+                          ColorClass="@(_securityMetrics?.AuthenticationFailures > 10 ? "text-danger" : "text-warning")"
+                          Footer="Last 60 minutes" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="Rate Limit Violations" 
+                          Value="@((_securityMetrics?.RateLimitViolations ?? 0).ToString())" 
+                          Icon="fas fa-tachometer-alt"
+                          ColorClass="text-warning"
+                          Footer="Active violations" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="Suspicious Activities" 
+                          Value="@((_securityMetrics?.SuspiciousActivities ?? 0).ToString())" 
+                          Icon="fas fa-user-secret"
+                          ColorClass="text-danger"
+                          Footer="Detected patterns" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="Active IP Bans" 
+                          Value="@((_securityMetrics?.ActiveIpBans ?? 0).ToString())" 
+                          Icon="fas fa-ban"
+                          ColorClass="text-danger"
+                          Footer="Currently blocked" />
+            </div>
+        </div>
+
+        <!-- Recent Security Events -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-list"></i> Recent Security Events
+                    @if (_recentEvents.Any())
+                    {
+                        <span class="badge bg-primary ms-2">@_recentEvents.Count</span>
+                    }
+                </h3>
+                <div>
+                    <select class="form-select form-select-sm" @onchange="FilterEventType" style="width: 200px;">
+                        <option value="">All Event Types</option>
+                        <option value="AuthenticationFailure">Auth Failures</option>
+                        <option value="RateLimitViolation">Rate Limit Violations</option>
+                        <option value="SuspiciousActivity">Suspicious Activity</option>
+                        <option value="DataExfiltration">Data Exfiltration</option>
+                        <option value="AnomalousAccess">Anomalous Access</option>
+                        <option value="IpBanned">IP Bans</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (_filteredEvents.Any())
+                {
+                    <div class="event-timeline">
+                        @foreach (var evt in _filteredEvents.Take(50))
+                        {
+                            <div class="event-item @GetEventClass(evt.EventType)">
+                                <div class="event-icon">
+                                    <i class="@GetEventIcon(evt.EventType)"></i>
+                                </div>
+                                <div class="event-content">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="mb-1">@GetEventTitle(evt.EventType)</h6>
+                                        <small class="text-muted">@GetRelativeTime(evt.Timestamp)</small>
+                                    </div>
+                                    <p class="mb-1">
+                                        <strong>IP:</strong> @evt.IpAddress
+                                        @if (!string.IsNullOrEmpty(evt.VirtualKey))
+                                        {
+                                            <span class="ms-2"><strong>Key:</strong> @evt.VirtualKey.Substring(0, Math.Min(10, evt.VirtualKey.Length))...</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(evt.Endpoint))
+                                        {
+                                            <span class="ms-2"><strong>Endpoint:</strong> @evt.Endpoint</span>
+                                        }
+                                    </p>
+                                    @if (evt.Details?.Any() == true)
+                                    {
+                                        <small class="text-muted">
+                                            @foreach (var detail in evt.Details)
+                                            {
+                                                <span>@detail.Key: @detail.Value </span>
+                                            }
+                                        </small>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (_filteredEvents.Count > 50)
+                    {
+                        <div class="text-center mt-3">
+                            <small class="text-muted">Showing 50 of @_filteredEvents.Count events</small>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <EmptyState Icon="fas fa-shield-alt"
+                                Title="No Security Events"
+                                Message="No security events recorded in the selected time period" />
+                }
+            </div>
+        </div>
+
+        <!-- Active Threats Analysis -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-chart-line"></i> Threat Trends
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="threatTrendsChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-globe"></i> Top Threat Sources
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        @if (_topThreatSources.Any())
+                        {
+                            <div class="threat-sources">
+                                @foreach (var source in _topThreatSources.Take(10))
+                                {
+                                    <div class="threat-source-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>
+                                                <i class="fas fa-map-marker-alt"></i> @source.IpAddress
+                                            </span>
+                                            <span class="badge bg-danger">@source.EventCount events</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 5px;">
+                                            <div class="progress-bar bg-danger" 
+                                                 style="width: @(GetThreatPercentage(source.EventCount))%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">No threat sources identified</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Security Information -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-key"></i> Virtual Key Security
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric-row">
+                            <span>Unique Keys Monitored:</span>
+                            <span class="fw-bold">@(_securityMetrics?.UniqueKeysMonitored ?? 0)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Keys with Violations:</span>
+                            <span class="fw-bold text-warning">@_keysWithViolations</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Compromised Keys:</span>
+                            <span class="fw-bold text-danger">@_compromisedKeys</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-network-wired"></i> Network Security
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric-row">
+                            <span>Unique IPs Tracked:</span>
+                            <span class="fw-bold">@(_securityMetrics?.UniqueIpsMonitored ?? 0)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Suspicious IPs:</span>
+                            <span class="fw-bold text-warning">@_suspiciousIps</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Active Bans:</span>
+                            <span class="fw-bold text-danger">@(_securityMetrics?.ActiveIpBans ?? 0)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-database"></i> Data Security
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric-row">
+                            <span>Exfiltration Attempts:</span>
+                            <span class="fw-bold text-danger">@(_securityMetrics?.DataExfiltrationAttempts ?? 0)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Anomalous Access:</span>
+                            <span class="fw-bold text-warning">@(_securityMetrics?.AnomalousAccessPatterns ?? 0)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span>Policy Violations:</span>
+                            <span class="fw-bold">@_policyViolations</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Security Report Modal -->
+<Modal IsVisible="_showReportModal" IsVisibleChanged="@(visible => _showReportModal = visible)" Title="Security Report" Size="Modal.ModalSize.Large">
+    <BodyContent>
+        <p>Security report generation coming soon...</p>
+    </BodyContent>
+    <FooterContent>
+        <button class="btn btn-secondary" @onclick="() => _showReportModal = false">Close</button>
+    </FooterContent>
+</Modal>
+
+@code {
+    private HubConnection? _hubConnection;
+    private bool _isConnecting = true;
+    private string? _connectionError;
+    private bool _showReportModal = false;
+    
+    private SecurityMetrics? _securityMetrics;
+    private List<SecurityEvent> _recentEvents = new();
+    private List<SecurityEvent> _filteredEvents = new();
+    private List<ThreatSource> _topThreatSources = new();
+    
+    private string _eventTypeFilter = "";
+    private int _keysWithViolations = 0;
+    private int _compromisedKeys = 0;
+    private int _suspiciousIps = 0;
+    private int _policyViolations = 0;
+    
+    private System.Threading.Timer? _refreshTimer;
+    private CancellationTokenSource? _streamCancellation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InitializeSignalR();
+        
+        // Set up periodic refresh
+        _refreshTimer = new System.Threading.Timer(
+            async _ => await RefreshSecurityData(),
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromMinutes(1));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeThreatTrendsChart();
+        }
+    }
+
+    private async Task InitializeSignalR()
+    {
+        try
+        {
+            _isConnecting = true;
+            _connectionError = null;
+            StateHasChanged();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/security-monitoring"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Set up event handlers
+            _hubConnection.On<SecurityMetrics>("SecurityMetricsUpdate", metrics =>
+            {
+                _securityMetrics = metrics;
+                InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.On<SecurityEvent>("NewSecurityEvent", evt =>
+            {
+                _recentEvents.Insert(0, evt);
+                if (_recentEvents.Count > 1000) // Keep last 1000 events
+                {
+                    _recentEvents.RemoveAt(_recentEvents.Count - 1);
+                }
+                ApplyEventFilter();
+                InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.On<ThreatLevel>("ThreatLevelChanged", level =>
+            {
+                if (_securityMetrics != null)
+                {
+                    _securityMetrics.ThreatLevel = level;
+                }
+                ToastService.ShowWarning($"Threat level changed to: {level}");
+                InvokeAsync(StateHasChanged);
+            });
+
+            // Handle reconnection
+            _hubConnection.Reconnecting += error =>
+            {
+                Logger.LogWarning(error, "SignalR connection lost, reconnecting...");
+                _connectionError = "Connection lost, reconnecting...";
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Reconnected += connectionId =>
+            {
+                Logger.LogInformation("SignalR reconnected with ID: {ConnectionId}", connectionId);
+                _connectionError = null;
+                InvokeAsync(async () =>
+                {
+                    await RefreshSecurityData();
+                    StateHasChanged();
+                });
+                return Task.CompletedTask;
+            };
+
+            await _hubConnection.StartAsync();
+
+            // Get initial data
+            await RefreshSecurityData();
+
+            // Subscribe to threat level updates
+            await _hubConnection.InvokeAsync("SubscribeToThreatLevel");
+
+            // Start streaming security events
+            await StartSecurityEventStreaming();
+
+            _isConnecting = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize SignalR connection");
+            _connectionError = ex.Message;
+            _isConnecting = false;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task StartSecurityEventStreaming()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            _streamCancellation?.Cancel();
+            _streamCancellation = new CancellationTokenSource();
+
+            await foreach (var evt in _hubConnection.StreamAsync<SecurityEvent>(
+                "StreamSecurityEvents", _streamCancellation.Token))
+            {
+                _recentEvents.Insert(0, evt);
+                if (_recentEvents.Count > 1000)
+                {
+                    _recentEvents.RemoveAt(_recentEvents.Count - 1);
+                }
+                ApplyEventFilter();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in security event streaming");
+        }
+    }
+
+    private async Task RefreshSecurityData()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            _securityMetrics = await _hubConnection.InvokeAsync<SecurityMetrics>("GetSecurityMetrics");
+            _recentEvents = await _hubConnection.InvokeAsync<List<SecurityEvent>>("GetRecentSecurityEvents", 60);
+            
+            ApplyEventFilter();
+            CalculateAdditionalMetrics();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh security data");
+        }
+    }
+
+    private void FilterEventType(ChangeEventArgs e)
+    {
+        _eventTypeFilter = e.Value?.ToString() ?? "";
+        ApplyEventFilter();
+    }
+
+    private void ApplyEventFilter()
+    {
+        if (string.IsNullOrEmpty(_eventTypeFilter))
+        {
+            _filteredEvents = _recentEvents;
+        }
+        else
+        {
+            _filteredEvents = _recentEvents
+                .Where(e => e.EventType.ToString() == _eventTypeFilter)
+                .ToList();
+        }
+        
+        // Calculate top threat sources
+        _topThreatSources = _recentEvents
+            .GroupBy(e => e.IpAddress)
+            .Select(g => new ThreatSource 
+            { 
+                IpAddress = g.Key, 
+                EventCount = g.Count() 
+            })
+            .OrderByDescending(s => s.EventCount)
+            .ToList();
+    }
+
+    private void CalculateAdditionalMetrics()
+    {
+        if (_recentEvents.Any())
+        {
+            _keysWithViolations = _recentEvents
+                .Where(e => !string.IsNullOrEmpty(e.VirtualKey))
+                .Select(e => e.VirtualKey)
+                .Distinct()
+                .Count();
+            
+            _compromisedKeys = _recentEvents
+                .Where(e => e.EventType == SecurityEventType.DataExfiltrationAttempt || 
+                           e.EventType == SecurityEventType.UnauthorizedAccess)
+                .Select(e => e.VirtualKey)
+                .Distinct()
+                .Count(k => !string.IsNullOrEmpty(k));
+            
+            _suspiciousIps = _recentEvents
+                .Where(e => e.EventType == SecurityEventType.SuspiciousActivity ||
+                           e.EventType == SecurityEventType.AuthenticationFailure)
+                .Select(e => e.IpAddress)
+                .Distinct()
+                .Count();
+            
+            _policyViolations = _recentEvents
+                .Count(e => e.EventType == SecurityEventType.RateLimitViolation);
+        }
+    }
+
+    private async Task InitializeThreatTrendsChart()
+    {
+        await JS.InvokeVoidAsync("SecurityDashboard.initializeThreatTrendsChart", "threatTrendsChart");
+    }
+
+    private void ShowSecurityReport()
+    {
+        _showReportModal = true;
+    }
+
+    private int CalculateSecurityScore()
+    {
+        if (_securityMetrics == null) return 100;
+        
+        var score = 100;
+        score -= Math.Min(20, _securityMetrics.AuthenticationFailures);
+        score -= Math.Min(15, _securityMetrics.RateLimitViolations * 3);
+        score -= Math.Min(25, _securityMetrics.SuspiciousActivities * 5);
+        score -= Math.Min(20, _securityMetrics.DataExfiltrationAttempts * 10);
+        score -= Math.Min(20, _securityMetrics.ActiveIpBans * 2);
+        
+        return Math.Max(0, score);
+    }
+
+    private string GetThreatLevelClass(ThreatLevel level) => level switch
+    {
+        ThreatLevel.Critical => "threat-critical",
+        ThreatLevel.High => "threat-high",
+        ThreatLevel.Medium => "threat-medium",
+        ThreatLevel.Low => "threat-low",
+        _ => "threat-none"
+    };
+
+    private string GetEventClass(SecurityEventType type) => type switch
+    {
+        SecurityEventType.AuthenticationFailure => "event-auth-failure",
+        SecurityEventType.RateLimitViolation => "event-rate-limit",
+        SecurityEventType.SuspiciousActivity => "event-suspicious",
+        SecurityEventType.DataExfiltrationAttempt => "event-exfiltration",
+        SecurityEventType.UnauthorizedAccess => "event-banned",
+        _ => "event-default"
+    };
+
+    private string GetEventIcon(SecurityEventType type) => type switch
+    {
+        SecurityEventType.AuthenticationFailure => "fas fa-user-times",
+        SecurityEventType.RateLimitViolation => "fas fa-tachometer-alt",
+        SecurityEventType.SuspiciousActivity => "fas fa-user-secret",
+        SecurityEventType.DataExfiltrationAttempt => "fas fa-database",
+        SecurityEventType.UnauthorizedAccess => "fas fa-exclamation-triangle",
+        _ => "fas fa-shield-alt"
+    };
+
+    private string GetEventTitle(SecurityEventType type) => type switch
+    {
+        SecurityEventType.AuthenticationFailure => "Authentication Failed",
+        SecurityEventType.RateLimitViolation => "Rate Limit Exceeded",
+        SecurityEventType.SuspiciousActivity => "Suspicious Activity",
+        SecurityEventType.DataExfiltrationAttempt => "Data Exfiltration Attempt",
+        SecurityEventType.UnauthorizedAccess => "Unauthorized Access",
+        _ => "Security Event"
+    };
+
+    private string GetRelativeTime(DateTime timestamp)
+    {
+        var diff = DateTime.UtcNow - timestamp;
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+
+    private double GetThreatPercentage(int eventCount)
+    {
+        if (!_topThreatSources.Any()) return 0;
+        var maxEvents = _topThreatSources.Max(s => s.EventCount);
+        return maxEvents > 0 ? (double)eventCount / maxEvents * 100 : 0;
+    }
+
+    private class ThreatSource
+    {
+        public string IpAddress { get; set; } = "";
+        public int EventCount { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _streamCancellation?.Cancel();
+        _refreshTimer?.Dispose();
+        
+        if (_hubConnection != null)
+        {
+            await _hubConnection.InvokeAsync("UnsubscribeFromThreatLevel");
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}
+
+<style>
+    .security-dashboard {
+        padding: 20px;
+    }
+
+    .threat-level-panel {
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px solid;
+    }
+
+    .threat-none {
+        background-color: #d4edda;
+        border-color: #28a745;
+    }
+
+    .threat-low {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    .threat-medium {
+        background-color: #f8d7da;
+        border-color: #fd7e14;
+    }
+
+    .threat-high {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+    }
+
+    .threat-critical {
+        background-color: #721c24;
+        color: white;
+        border-color: #721c24;
+    }
+
+    .threat-score {
+        text-align: center;
+    }
+
+    .score-label {
+        display: block;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        opacity: 0.8;
+    }
+
+    .score-value {
+        display: block;
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+
+    .event-timeline {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .event-item {
+        display: flex;
+        padding: 10px;
+        border-left: 3px solid;
+        margin-bottom: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .event-auth-failure {
+        border-color: #dc3545;
+    }
+
+    .event-rate-limit {
+        border-color: #ffc107;
+    }
+
+    .event-suspicious {
+        border-color: #fd7e14;
+    }
+
+    .event-exfiltration {
+        border-color: #dc3545;
+    }
+
+    .event-banned {
+        border-color: #6c757d;
+    }
+
+    .event-icon {
+        width: 40px;
+        text-align: center;
+        font-size: 1.25rem;
+        padding-top: 5px;
+    }
+
+    .event-content {
+        flex: 1;
+        padding-left: 15px;
+    }
+
+    .threat-source-item {
+        margin-bottom: 15px;
+    }
+
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+</style>

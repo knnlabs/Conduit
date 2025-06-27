@@ -111,10 +111,10 @@
             await _spendHub!.InvokeVoidAsync("connect", VirtualKey);
             
             // Register event handlers
-            await _spendHub.InvokeVoidAsync("onSpendUpdate", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onSpendSummary", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onSpendUpdate", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onSpendSummary", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
             
             // Listen for connection state changes
             await JS.InvokeVoidAsync("window.addEventListener", 

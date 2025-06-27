@@ -1,5 +1,6 @@
 @* Real-time embedding alerts panel *@
 @using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.DTOs
 @inject IToastService ToastService
 @implements IDisposable
 
@@ -205,17 +206,9 @@
 
     private string GetAlertIcon(AlertType type)
     {
-        return type switch
-        {
-            AlertType.HighLatency => "fa fa-clock",
-            AlertType.HighErrorRate => "fa fa-exclamation-triangle",
-            AlertType.ModelUnavailable => "fa fa-times-circle",
-            AlertType.HighCost => "fa fa-dollar-sign",
-            AlertType.LowCacheHitRate => "fa fa-database",
-            AlertType.RateLimitExceeded => "fa fa-ban",
-            AlertType.UnusualTrafficPattern => "fa fa-chart-line",
-            _ => "fa fa-info-circle"
-        };
+        // All embedding alerts are Custom type
+        // Return a default icon for embedding alerts
+        return "fa fa-exclamation-triangle";
     }
 
     private string GetSeverityBadgeClass(AlertSeverity severity)
@@ -232,15 +225,13 @@
 
     private string FormatMetricValue(AlertType type, double value)
     {
-        return type switch
-        {
-            AlertType.HighLatency => $"{value:F0}ms",
-            AlertType.HighErrorRate => $"{value:F1}%",
-            AlertType.HighCost => $"${value:F2}",
-            AlertType.LowCacheHitRate => $"{value:F1}%",
-            AlertType.RateLimitExceeded => $"{value:F0}/min",
-            _ => value.ToString("F2")
-        };
+        // All embedding alerts are Custom type, format based on value
+        if (value > 100)
+            return $"{value:F0}ms"; // Likely latency
+        else if (value < 50)
+            return $"{value:F1}%"; // Likely percentage
+        else
+            return value.ToString("F2");
     }
 
     private async Task ShowAlertDetails(EmbeddingAlert alert)

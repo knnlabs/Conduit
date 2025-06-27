@@ -116,10 +116,10 @@
             await _navigationHub!.InvokeVoidAsync("connect", authKey);
             
             // Register event handlers
-            await _navigationHub.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onModelCapabilitiesDiscovered", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onModelMappingChanged", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onSystemAnnouncement", _dotNetRef);
+            await _navigationHub!.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
+            await _navigationHub!.InvokeVoidAsync("onModelCapabilitiesDiscovered", _dotNetRef);
+            await _navigationHub!.InvokeVoidAsync("onModelMappingChanged", _dotNetRef);
+            await _navigationHub!.InvokeVoidAsync("onSystemAnnouncement", _dotNetRef);
             
             // Additional handlers for master key authenticated hub
             if (isMasterKey == true)

@@ -8,6 +8,7 @@ using Moq;
 using Xunit;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Tests.Services
 {
@@ -100,9 +101,10 @@ namespace ConduitLLM.Http.Tests.Services
                     "DeliverySucceeded",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is WebhookDeliverySuccess success &&
-                        success.StatusCode == statusCode &&
-                        success.ResponseTimeMs == responseTimeMs),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(WebhookDeliverySuccess) &&
+                        ((WebhookDeliverySuccess)args[0]).StatusCode == statusCode &&
+                        ((WebhookDeliverySuccess)args[0]).ResponseTimeMs == responseTimeMs),
                     default),
                 Times.Once);
 
@@ -135,9 +137,10 @@ namespace ConduitLLM.Http.Tests.Services
                     "DeliveryFailed",
                     It.Is<object[]>(args => 
                         args.Length == 1 && 
-                        args[0] is WebhookDeliveryFailure failure &&
-                        failure.ErrorMessage == errorMessage &&
-                        failure.IsPermanentFailure == isPermanent),
+                        args[0] != null &&
+                        args[0].GetType() == typeof(WebhookDeliveryFailure) &&
+                        ((WebhookDeliveryFailure)args[0]).ErrorMessage == errorMessage &&
+                        ((WebhookDeliveryFailure)args[0]).IsPermanentFailure == isPermanent),
                     default),
                 Times.Once);
 

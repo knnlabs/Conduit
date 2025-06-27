@@ -16,8 +16,6 @@ namespace ConduitLLM.Http.Tests.Services
     public class TaskNotificationServiceTests
     {
         private readonly Mock<IHubContext<TaskHub>> _taskHubContextMock;
-        private readonly Mock<IHubContext<ImageGenerationHub>> _imageHubContextMock;
-        private readonly Mock<IHubContext<VideoGenerationHub>> _videoHubContextMock;
         private readonly Mock<ILogger<TaskNotificationService>> _loggerMock;
         private readonly Mock<IHubClients> _hubClientsMock;
         private readonly Mock<IClientProxy> _clientProxyMock;
@@ -26,8 +24,6 @@ namespace ConduitLLM.Http.Tests.Services
         public TaskNotificationServiceTests()
         {
             _taskHubContextMock = new Mock<IHubContext<TaskHub>>();
-            _imageHubContextMock = new Mock<IHubContext<ImageGenerationHub>>();
-            _videoHubContextMock = new Mock<IHubContext<VideoGenerationHub>>();
             _loggerMock = new Mock<ILogger<TaskNotificationService>>();
             _hubClientsMock = new Mock<IHubClients>();
             _clientProxyMock = new Mock<IClientProxy>();
@@ -38,8 +34,6 @@ namespace ConduitLLM.Http.Tests.Services
 
             _service = new TaskNotificationService(
                 _taskHubContextMock.Object,
-                _imageHubContextMock.Object,
-                _videoHubContextMock.Object,
                 _loggerMock.Object);
         }
 

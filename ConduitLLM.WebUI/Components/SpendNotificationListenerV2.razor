@@ -121,9 +121,9 @@
             
             // Register event handlers through hub proxy
             await _spendHub!.InvokeVoidAsync("onSpendUpdate", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onSpendSummary", _dotNetRef);
-            await _spendHub.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onSpendSummary", _dotNetRef);
+            await _spendHub!.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
             
             _isConnected = true;
             Logger.LogInformation("Connected to spend notifications hub via centralized service");

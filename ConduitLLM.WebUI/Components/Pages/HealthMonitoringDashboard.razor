@@ -1,0 +1,665 @@
+@page "/health-monitoring"
+@using Microsoft.AspNetCore.SignalR.Client
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Services
+@inject NavigationManager Navigation
+@inject ILogger<HealthMonitoringDashboard> Logger
+@inject IJSRuntime JS
+@inject IToastNotificationService ToastService
+@implements IAsyncDisposable
+
+<PageTitle>Health Monitoring Dashboard - ConduitLLM</PageTitle>
+
+<PageHeader Title="System Health Monitoring" 
+            Icon="fas fa-heartbeat"
+            Description="Real-time system health, alerts, and performance monitoring" />
+
+<div class="mb-3">
+    <button class="btn btn-secondary" @onclick="RefreshHealthData">
+        <i class="fas fa-sync-alt"></i> Refresh
+    </button>
+</div>
+
+<div class="health-dashboard">
+    @if (_isConnecting)
+    {
+        <div class="text-center p-5">
+            <LoadingSpinner />
+            <p class="mt-3">Connecting to health monitoring service...</p>
+        </div>
+    }
+    else if (_connectionError != null)
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Connection Error:</strong> @_connectionError
+            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="InitializeSignalR">
+                <i class="fas fa-redo"></i> Retry
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- System Health Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <StatCard Title="Overall Health" 
+                          Value="@GetHealthStatusDisplay(_systemHealth?.OverallStatus ?? HealthStatus.Unknown)" 
+                          Icon="fas fa-heart"
+                          ColorClass="@GetHealthStatusColorClass(_systemHealth?.OverallStatus ?? HealthStatus.Unknown)" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="Active Alerts" 
+                          Value="@_activeAlerts.Count.ToString()" 
+                          Icon="fas fa-bell"
+                          ColorClass="@(_activeAlerts.Any(a => a.Severity == AlertSeverity.Critical) ? "text-danger" : "text-warning")" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="CPU Usage" 
+                          Value="@($"{_systemHealth?.Resources?.CpuUsagePercent ?? 0:F1}%")" 
+                          Icon="fas fa-microchip"
+                          ColorClass="@GetResourceColorClass(_systemHealth?.Resources?.CpuUsagePercent ?? 0)" />
+            </div>
+            <div class="col-md-3">
+                <StatCard Title="Memory Usage" 
+                          Value="@($"{_systemHealth?.Resources?.MemoryUsagePercent ?? 0:F1}%")" 
+                          Icon="fas fa-memory"
+                          ColorClass="@GetResourceColorClass(_systemHealth?.Resources?.MemoryUsagePercent ?? 0)" />
+            </div>
+        </div>
+
+        <!-- Active Alerts Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-exclamation-circle"></i> Active Alerts
+                    @if (_activeAlerts.Any())
+                    {
+                        <span class="badge bg-danger ms-2">@_activeAlerts.Count</span>
+                    }
+                </h3>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ShowAlertRules">
+                        <i class="fas fa-cog"></i> Alert Rules
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="ShowSuppressions">
+                        <i class="fas fa-volume-mute"></i> Suppressions
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (_activeAlerts.Any())
+                {
+                    <div class="alert-list">
+                        @foreach (var alert in _activeAlerts.OrderByDescending(a => a.Severity).ThenByDescending(a => a.TriggeredAt))
+                        {
+                            <div class="alert-item @GetAlertClass(alert.Severity) mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1">
+                                            <i class="@GetAlertIcon(alert.Type)"></i>
+                                            @alert.Title
+                                            <span class="badge @GetSeverityBadgeClass(alert.Severity) ms-2">@alert.Severity</span>
+                                        </h5>
+                                        <p class="mb-1">@alert.Message</p>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock"></i> @alert.TriggeredAt.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                                            | <i class="fas fa-server"></i> @alert.Component
+                                            @if (alert.OccurrenceCount > 1)
+                                            {
+                                                <span class="ms-2">
+                                                    <i class="fas fa-sync"></i> Occurred @alert.OccurrenceCount times
+                                                </span>
+                                            }
+                                        </small>
+                                        @if (alert.SuggestedActions?.Any() == true)
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">Suggested Actions:</small>
+                                                <ul class="mb-0 small">
+                                                    @foreach (var action in alert.SuggestedActions)
+                                                    {
+                                                        <li>@action</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="alert-actions">
+                                        @if (alert.State != AlertState.Acknowledged)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => AcknowledgeAlert(alert.Id)">
+                                                <i class="fas fa-check"></i> Acknowledge
+                                            </button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-success ms-1" @onclick="() => ResolveAlert(alert.Id)">
+                                            <i class="fas fa-check-circle"></i> Resolve
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <EmptyState Icon="fas fa-check-circle"
+                                Title="No Active Alerts"
+                                Message="All systems are operating normally" />
+                }
+            </div>
+        </div>
+
+        <!-- Component Health Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-server"></i> Component Health Status
+                </h3>
+            </div>
+            <div class="card-body">
+                @if (_systemHealth?.Components?.Any() == true)
+                {
+                    <div class="row">
+                        @foreach (var component in _systemHealth.Components.OrderBy(c => c.Value.Name))
+                        {
+                            <div class="col-md-4 mb-3">
+                                <div class="component-health-card @GetComponentHealthClass(component.Value.Status)">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">@component.Value.Name</h6>
+                                            @if (component.Value.StatusMessage != null)
+                                            {
+                                                <small class="text-muted">@component.Value.StatusMessage</small>
+                                            }
+                                        </div>
+                                        <div class="status-indicator">
+                                            <i class="@GetHealthStatusIcon(component.Value.Status) @GetHealthStatusColorClass(component.Value.Status)"></i>
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(component.Value.StatusMessage))
+                                    {
+                                        <small class="text-danger mt-1 d-block">@component.Value.StatusMessage</small>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <LoadingSpinner />
+                }
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-tachometer-alt"></i> Performance Metrics
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        @if (_performanceMetrics != null)
+                        {
+                            <div class="metric-row">
+                                <span class="metric-label">Requests/Second:</span>
+                                <span class="metric-value">@_performanceMetrics.RequestsPerSecond.ToString("F2")</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Average Response Time:</span>
+                                <span class="metric-value">@($"{_performanceMetrics.AverageResponseTimeMs:F0}")ms</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">P95 Response Time:</span>
+                                <span class="metric-value">@($"{_performanceMetrics.P95ResponseTimeMs:F0}")ms</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">P99 Response Time:</span>
+                                <span class="metric-value">@($"{_performanceMetrics.P99ResponseTimeMs:F0}")ms</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Error Rate:</span>
+                                <span class="metric-value @(_performanceMetrics.ErrorRatePercent > 1 ? "text-danger" : "")">
+                                    @($"{_performanceMetrics.ErrorRatePercent:F2}")%
+                                </span>
+                            </div>
+                        }
+                        else
+                        {
+                            <LoadingSpinner />
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resource Utilization -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-server"></i> Resource Utilization
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        @if (_systemHealth?.Resources != null)
+                        {
+                            <SystemResourceGauge Label="CPU Usage" 
+                                                Value="@_systemHealth.Resources.CpuUsagePercent" 
+                                                MaxValue="100" 
+                                                Unit="%" />
+                            
+                            <SystemResourceGauge Label="Memory" 
+                                                Value="@_systemHealth.Resources.MemoryUsagePercent" 
+                                                MaxValue="100" 
+                                                Unit="%" 
+                                                AdditionalInfo="@($"{_systemHealth.Resources.MemoryUsageMB:F0} MB")" />
+                            
+                            <SystemResourceGauge Label="Disk Usage" 
+                                                Value="@_systemHealth.Resources.DiskUsagePercent" 
+                                                MaxValue="100" 
+                                                Unit="%" 
+                                                AdditionalInfo="@($"{_systemHealth.Resources.DiskFreeMB:F0} MB free")" />
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Thread Count: @_systemHealth.Resources.ThreadCount |
+                                    Handle Count: @_systemHealth.Resources.HandleCount
+                                </small>
+                            </div>
+                        }
+                        else
+                        {
+                            <LoadingSpinner />
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Alert Rules Modal -->
+<Modal IsVisible="_showAlertRulesModal" IsVisibleChanged="@(visible => _showAlertRulesModal = visible)" Title="Alert Rules" Size="Modal.ModalSize.Large">
+    <BodyContent>
+        <p>Alert rules configuration coming soon...</p>
+    </BodyContent>
+    <FooterContent>
+        <button class="btn btn-secondary" @onclick="() => _showAlertRulesModal = false">Close</button>
+    </FooterContent>
+</Modal>
+
+<!-- Suppressions Modal -->
+<Modal IsVisible="_showSuppressionsModal" IsVisibleChanged="@(visible => _showSuppressionsModal = visible)" Title="Alert Suppressions" Size="Modal.ModalSize.Large">
+    <BodyContent>
+        <p>Alert suppression management coming soon...</p>
+    </BodyContent>
+    <FooterContent>
+        <button class="btn btn-secondary" @onclick="() => _showSuppressionsModal = false">Close</button>
+    </FooterContent>
+</Modal>
+
+@code {
+    private HubConnection? _hubConnection;
+    private bool _isConnecting = true;
+    private string? _connectionError;
+    
+    private SystemHealthSnapshot? _systemHealth;
+    private List<HealthAlert> _activeAlerts = new();
+    private PerformanceMetrics? _performanceMetrics;
+    
+    private bool _showAlertRulesModal = false;
+    private bool _showSuppressionsModal = false;
+    
+    private System.Threading.Timer? _healthUpdateTimer;
+    private CancellationTokenSource? _streamCancellation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InitializeSignalR();
+        
+        // Set up periodic health updates
+        _healthUpdateTimer = new System.Threading.Timer(
+            async _ => await RefreshHealthData(),
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(30));
+    }
+
+    private async Task InitializeSignalR()
+    {
+        try
+        {
+            _isConnecting = true;
+            _connectionError = null;
+            StateHasChanged();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/health-monitoring"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Set up event handlers
+            _hubConnection.On<SystemHealthSnapshot>("SystemHealthSnapshot", snapshot =>
+            {
+                _systemHealth = snapshot;
+                InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.On<List<HealthAlert>>("ActiveAlerts", alerts =>
+            {
+                _activeAlerts = alerts;
+                InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.On<HealthAlert>("NewAlert", alert =>
+            {
+                _activeAlerts.Add(alert);
+                ToastService.ShowError($"New {alert.Severity} Alert: {alert.Title}");
+                InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.On<string>("AlertAcknowledged", alertId =>
+            {
+                var alert = _activeAlerts.FirstOrDefault(a => a.Id == alertId);
+                if (alert != null)
+                {
+                    alert.State = AlertState.Acknowledged;
+                    alert.AcknowledgedAt = DateTime.UtcNow;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            _hubConnection.On<string>("AlertResolved", alertId =>
+            {
+                _activeAlerts.RemoveAll(a => a.Id == alertId);
+                InvokeAsync(StateHasChanged);
+            });
+
+            // Handle reconnection
+            _hubConnection.Reconnecting += error =>
+            {
+                Logger.LogWarning(error, "SignalR connection lost, reconnecting...");
+                _connectionError = "Connection lost, reconnecting...";
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Reconnected += connectionId =>
+            {
+                Logger.LogInformation("SignalR reconnected with ID: {ConnectionId}", connectionId);
+                _connectionError = null;
+                InvokeAsync(async () =>
+                {
+                    await RefreshHealthData();
+                    StateHasChanged();
+                });
+                return Task.CompletedTask;
+            };
+
+            await _hubConnection.StartAsync();
+
+            // Start streaming health updates
+            await StartHealthStreaming();
+
+            _isConnecting = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize SignalR connection");
+            _connectionError = ex.Message;
+            _isConnecting = false;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task StartHealthStreaming()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            _streamCancellation?.Cancel();
+            _streamCancellation = new CancellationTokenSource();
+
+            await foreach (var snapshot in _hubConnection.StreamAsync<SystemHealthSnapshot>(
+                "StreamHealthUpdates", 5, _streamCancellation.Token))
+            {
+                _systemHealth = snapshot;
+                _performanceMetrics = snapshot.Performance;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in health streaming");
+        }
+    }
+
+    private async Task RefreshHealthData()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            _performanceMetrics = await _hubConnection.InvokeAsync<PerformanceMetrics>("GetPerformanceMetrics");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh health data");
+        }
+    }
+
+    private async Task AcknowledgeAlert(string alertId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            var success = await _hubConnection.InvokeAsync<bool>("AcknowledgeAlert", alertId, "Admin User", null);
+            if (success)
+            {
+                ToastService.ShowSuccess("Alert acknowledged");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to acknowledge alert");
+            ToastService.ShowError("Failed to acknowledge alert");
+        }
+    }
+
+    private async Task ResolveAlert(string alertId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+            return;
+
+        try
+        {
+            var success = await _hubConnection.InvokeAsync<bool>("ResolveAlert", alertId, "Admin User", "Resolved via dashboard");
+            if (success)
+            {
+                ToastService.ShowSuccess("Alert resolved");
+                _activeAlerts.RemoveAll(a => a.Id == alertId);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to resolve alert");
+            ToastService.ShowError("Failed to resolve alert");
+        }
+    }
+
+    private void ShowAlertRules()
+    {
+        _showAlertRulesModal = true;
+    }
+
+    private void ShowSuppressions()
+    {
+        _showSuppressionsModal = true;
+    }
+
+    private string GetHealthStatusDisplay(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "Healthy",
+        HealthStatus.Degraded => "Degraded",
+        HealthStatus.Unhealthy => "Unhealthy",
+        _ => "Unknown"
+    };
+
+    private string GetHealthStatusColorClass(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "text-success",
+        HealthStatus.Degraded => "text-warning",
+        HealthStatus.Unhealthy => "text-danger",
+        _ => "text-muted"
+    };
+
+    private string GetHealthStatusIcon(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "fas fa-check-circle",
+        HealthStatus.Degraded => "fas fa-exclamation-triangle",
+        HealthStatus.Unhealthy => "fas fa-times-circle",
+        _ => "fas fa-question-circle"
+    };
+
+    private string GetResourceColorClass(double percentage)
+    {
+        if (percentage >= 90) return "text-danger";
+        if (percentage >= 70) return "text-warning";
+        return "text-success";
+    }
+
+    private string GetAlertClass(DTOs.AlertSeverity severity) => severity switch
+    {
+        AlertSeverity.Critical => "alert alert-danger",
+        AlertSeverity.Error => "alert alert-danger",
+        AlertSeverity.Warning => "alert alert-warning",
+        AlertSeverity.Info => "alert alert-info",
+        _ => "alert alert-secondary"
+    };
+
+    private string GetSeverityBadgeClass(DTOs.AlertSeverity severity) => severity switch
+    {
+        AlertSeverity.Critical => "bg-danger",
+        AlertSeverity.Error => "bg-danger",
+        AlertSeverity.Warning => "bg-warning",
+        AlertSeverity.Info => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private string GetAlertIcon(DTOs.AlertType type) => type switch
+    {
+        AlertType.ServiceDown => "fas fa-server",
+        AlertType.PerformanceDegradation => "fas fa-tachometer-alt",
+        AlertType.ResourceExhaustion => "fas fa-memory",
+        AlertType.SecurityEvent => "fas fa-shield-alt",
+        AlertType.ConfigurationError => "fas fa-cog",
+        AlertType.ConnectivityIssue => "fas fa-network-wired",
+        AlertType.Custom => "fas fa-bell",
+        _ => "fas fa-bell"
+    };
+
+    private string GetComponentHealthClass(HealthStatus status) => status switch
+    {
+        HealthStatus.Healthy => "component-health-ok",
+        HealthStatus.Degraded => "component-health-warning",
+        HealthStatus.Unhealthy => "component-health-error",
+        _ => "component-health-unknown"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _streamCancellation?.Cancel();
+        _healthUpdateTimer?.Dispose();
+        
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}
+
+<style>
+    .health-dashboard {
+        padding: 20px;
+    }
+
+    .alert-list {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .alert-item {
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .alert-actions {
+        min-width: 200px;
+        text-align: right;
+    }
+
+    .component-health-card {
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+
+    .component-health-ok {
+        border-color: #28a745;
+        background: #d4edda;
+    }
+
+    .component-health-warning {
+        border-color: #ffc107;
+        background: #fff3cd;
+    }
+
+    .component-health-error {
+        border-color: #dc3545;
+        background: #f8d7da;
+    }
+
+    .component-health-unknown {
+        border-color: #6c757d;
+        background: #e9ecef;
+    }
+
+    .status-indicator {
+        font-size: 1.5rem;
+    }
+
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+
+    .metric-label {
+        font-weight: 500;
+    }
+
+    .metric-value {
+        font-weight: 600;
+        color: #495057;
+    }
+</style>

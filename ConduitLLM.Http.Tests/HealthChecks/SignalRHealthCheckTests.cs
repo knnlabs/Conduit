@@ -14,7 +14,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
 {
     public class SignalRHealthCheckTests
     {
-        private readonly Mock<IHubContext<NavigationStateHub>> _navigationHubContextMock;
+        private readonly Mock<IHubContext<SystemNotificationHub>> _navigationHubContextMock;
         private readonly Mock<IHubContext<TaskHub>> _taskHubContextMock;
         private readonly Mock<IHubContext<ImageGenerationHub>> _imageHubContextMock;
         private readonly Mock<IHubContext<VideoGenerationHub>> _videoHubContextMock;
@@ -26,7 +26,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
 
         public SignalRHealthCheckTests()
         {
-            _navigationHubContextMock = new Mock<IHubContext<NavigationStateHub>>();
+            _navigationHubContextMock = new Mock<IHubContext<SystemNotificationHub>>();
             _taskHubContextMock = new Mock<IHubContext<TaskHub>>();
             _imageHubContextMock = new Mock<IHubContext<ImageGenerationHub>>();
             _videoHubContextMock = new Mock<IHubContext<VideoGenerationHub>>();
