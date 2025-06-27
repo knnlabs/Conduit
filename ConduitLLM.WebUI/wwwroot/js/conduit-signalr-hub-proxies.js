@@ -332,32 +332,78 @@ window.ConduitHubProxies = (function() {
     }
 
     /**
-     * Navigation State Hub Proxy
+     * System Notification Hub Proxy (replaces NavigationStateHub)
      */
-    class NavigationStateHub extends HubProxy {
+    class SystemNotificationHub extends HubProxy {
         constructor(signalRService) {
-            super('navigation-state', signalRService);
+            super('notifications', signalRService);
         }
 
         /**
-         * Register for navigation state update events
+         * Register for provider health changed events
          */
-        onNavigationStateUpdated(handler) {
-            this.on('NavigationStateUpdated', handler);
+        onProviderHealthChanged(handler) {
+            this.on('OnProviderHealthChanged', handler);
         }
 
         /**
-         * Register for model mapping update events
+         * Register for model mapping changed events
          */
-        onModelMappingUpdated(handler) {
-            this.on('ModelMappingUpdated', handler);
+        onModelMappingChanged(handler) {
+            this.on('OnModelMappingChanged', handler);
         }
 
         /**
-         * Register for provider health update events
+         * Register for model capabilities discovered events
          */
-        onProviderHealthUpdated(handler) {
-            this.on('ProviderHealthUpdated', handler);
+        onModelCapabilitiesDiscovered(handler) {
+            this.on('OnModelCapabilitiesDiscovered', handler);
+        }
+
+        /**
+         * Register for model availability changed events
+         */
+        onModelAvailabilityChanged(handler) {
+            this.on('OnModelAvailabilityChanged', handler);
+        }
+
+        /**
+         * Register for rate limit warning events
+         */
+        onRateLimitWarning(handler) {
+            this.on('OnRateLimitWarning', handler);
+        }
+
+        /**
+         * Register for system announcement events
+         */
+        onSystemAnnouncement(handler) {
+            this.on('OnSystemAnnouncement', handler);
+        }
+
+        /**
+         * Register for service degraded events
+         */
+        onServiceDegraded(handler) {
+            this.on('OnServiceDegraded', handler);
+        }
+
+        /**
+         * Register for service restored events
+         */
+        onServiceRestored(handler) {
+            this.on('OnServiceRestored', handler);
+        }
+    }
+
+    /**
+     * Navigation State Hub Proxy (deprecated - use SystemNotificationHub)
+     * Maintained for backward compatibility
+     */
+    class NavigationStateHub extends SystemNotificationHub {
+        constructor(signalRService) {
+            super(signalRService);
+            console.warn('NavigationStateHub is deprecated. Use SystemNotificationHub instead.');
         }
     }
 
@@ -477,9 +523,17 @@ window.ConduitHubProxies = (function() {
         }
 
         /**
-         * Create navigation state hub proxy
+         * Create system notification hub proxy (replaces navigation state hub)
+         */
+        createSystemNotificationHub() {
+            return new SystemNotificationHub(this.signalRService);
+        }
+
+        /**
+         * Create navigation state hub proxy (deprecated - use createSystemNotificationHub)
          */
         createNavigationStateHub() {
+            console.warn('createNavigationStateHub is deprecated. Use createSystemNotificationHub instead.');
             return new NavigationStateHub(this.signalRService);
         }
 

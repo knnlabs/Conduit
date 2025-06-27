@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Models;
 using System;
 using System.Threading.Tasks;
 
@@ -37,16 +38,16 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class NavigationStateNotificationService : INavigationStateNotificationService
     {
-        private readonly IHubContext<NavigationStateHub> _hubContext;
+        private readonly IHubContext<SystemNotificationHub> _hubContext;
         private readonly ILogger<NavigationStateNotificationService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the NavigationStateNotificationService
         /// </summary>
-        /// <param name="hubContext">SignalR hub context for NavigationStateHub</param>
+        /// <param name="hubContext">SignalR hub context for SystemNotificationHub</param>
         /// <param name="logger">Logger instance</param>
         public NavigationStateNotificationService(
-            IHubContext<NavigationStateHub> hubContext,
+            IHubContext<SystemNotificationHub> hubContext,
             ILogger<NavigationStateNotificationService> logger)
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
@@ -58,22 +59,15 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var notification = new
+                var notification = new ModelMappingNotification
                 {
-                    type = "ModelMappingChanged",
-                    data = new
-                    {
-                        mappingId,
-                        modelAlias,
-                        changeType,
-                        timestamp = DateTime.UtcNow
-                    }
+                    MappingId = mappingId,
+                    ModelAlias = modelAlias,
+                    ChangeType = changeType,
+                    Priority = NotificationPriority.Medium
                 };
-
-                await _hubContext.Clients.Group("navigation-updates").SendAsync("NavigationStateUpdate", notification);
                 
-                // Also notify model-specific subscribers
-                await _hubContext.Clients.Group($"model-{modelAlias}").SendAsync("ModelUpdate", notification);
+                await _hubContext.Clients.All.SendAsync("OnModelMappingChanged", notification);
                 
                 _logger.LogDebug("Sent model mapping change notification for {ModelAlias} ({ChangeType})", modelAlias, changeType);
             }
@@ -88,19 +82,21 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var notification = new
+                // Convert bool isHealthy to HealthStatus enum
+                var healthStatus = isHealthy ? HealthStatus.Healthy : HealthStatus.Unhealthy;
+                if (status.Contains("degraded", StringComparison.OrdinalIgnoreCase))
                 {
-                    type = "ProviderHealthChanged",
-                    data = new
-                    {
-                        providerName,
-                        isHealthy,
-                        status,
-                        timestamp = DateTime.UtcNow
-                    }
+                    healthStatus = HealthStatus.Degraded;
+                }
+                
+                var notification = new ProviderHealthNotification
+                {
+                    Provider = providerName,
+                    Status = healthStatus.ToString(),
+                    Priority = healthStatus == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium
                 };
-
-                await _hubContext.Clients.Group("navigation-updates").SendAsync("NavigationStateUpdate", notification);
+                
+                await _hubContext.Clients.All.SendAsync("OnProviderHealthChanged", notification);
                 
                 _logger.LogDebug("Sent provider health change notification for {ProviderName} (Healthy: {IsHealthy})", providerName, isHealthy);
             }
@@ -115,22 +111,18 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var notification = new
+                var notification = new ModelCapabilitiesNotification
                 {
-                    type = "ModelCapabilitiesDiscovered",
-                    data = new
-                    {
-                        providerName,
-                        modelCount,
-                        embeddingCount,
-                        visionCount,
-                        imageGenCount,
-                        videoGenCount,
-                        timestamp = DateTime.UtcNow
-                    }
+                    ProviderName = providerName,
+                    ModelCount = modelCount,
+                    EmbeddingCount = embeddingCount,
+                    VisionCount = visionCount,
+                    ImageGenCount = imageGenCount,
+                    VideoGenCount = videoGenCount,
+                    Priority = NotificationPriority.Low
                 };
-
-                await _hubContext.Clients.Group("navigation-updates").SendAsync("NavigationStateUpdate", notification);
+                
+                await _hubContext.Clients.All.SendAsync("OnModelCapabilitiesDiscovered", notification);
                 
                 _logger.LogDebug("Sent model capabilities discovered notification for {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)", 
                     providerName, modelCount, embeddingCount, visionCount, imageGenCount, videoGenCount);
@@ -146,19 +138,14 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var notification = new
+                var notification = new ModelAvailabilityNotification
                 {
-                    type = "ModelAvailabilityChanged",
-                    data = new
-                    {
-                        modelId,
-                        isAvailable,
-                        timestamp = DateTime.UtcNow
-                    }
+                    ModelId = modelId,
+                    IsAvailable = isAvailable,
+                    Priority = isAvailable ? NotificationPriority.Low : NotificationPriority.Medium
                 };
-
-                await _hubContext.Clients.Group($"model-{modelId}").SendAsync("ModelUpdate", notification);
-                await _hubContext.Clients.Group("navigation-updates").SendAsync("NavigationStateUpdate", notification);
+                
+                await _hubContext.Clients.All.SendAsync("OnModelAvailabilityChanged", notification);
                 
                 _logger.LogDebug("Sent model availability change notification for {ModelId} (Available: {IsAvailable})", modelId, isAvailable);
             }

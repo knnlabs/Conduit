@@ -1187,9 +1187,6 @@ app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
 // Map SignalR hubs for real-time updates
-// NavigationStateHub is for internal admin use only - no virtual key authentication required
-app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
-Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
 
 // Customer-facing hubs require virtual key authentication
 app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation")

@@ -47,8 +47,8 @@
             // Set virtual key
             await _signalRService.InvokeVoidAsync("setVirtualKey", VirtualKey);
             
-            // Create navigation state hub proxy
-            _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createNavigationStateHub");
+            // Create system notification hub proxy
+            _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createSystemNotificationHub");
             
             if (AutoConnect)
             {
@@ -62,7 +62,7 @@
     }
     
     /// <summary>
-    /// Connect to the navigation state hub for admin notifications
+    /// Connect to the system notification hub for admin notifications
     /// </summary>
     public async Task ConnectAsync()
     {
@@ -73,9 +73,9 @@
             
             // Register event handlers
             await _navigationHub.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onModelDiscovered", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onConfigurationChanged", _dotNetRef);
-            await _navigationHub.InvokeVoidAsync("onSystemAlert", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onModelCapabilitiesDiscovered", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onModelMappingChanged", _dotNetRef);
+            await _navigationHub.InvokeVoidAsync("onSystemAnnouncement", _dotNetRef);
             
             Logger.LogInformation("Connected to admin notification hub");
         }

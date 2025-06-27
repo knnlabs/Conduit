@@ -159,4 +159,92 @@ namespace ConduitLLM.Http.Models
         public TimeSpan? OutageDuration { get; set; }
     }
 
+    /// <summary>
+    /// Notification for model mapping changes.
+    /// </summary>
+    public class ModelMappingNotification : SystemNotification
+    {
+        /// <summary>
+        /// Gets the notification type.
+        /// </summary>
+        public override string Type => "model_mapping_changed";
+
+        /// <summary>
+        /// Gets or sets the mapping ID.
+        /// </summary>
+        public int MappingId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the model alias.
+        /// </summary>
+        public string ModelAlias { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the change type (Created, Updated, Deleted).
+        /// </summary>
+        public string ChangeType { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Notification for model capabilities discovery.
+    /// </summary>
+    public class ModelCapabilitiesNotification : SystemNotification
+    {
+        /// <summary>
+        /// Gets the notification type.
+        /// </summary>
+        public override string Type => "model_capabilities_discovered";
+
+        /// <summary>
+        /// Gets or sets the provider name.
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the total number of models.
+        /// </summary>
+        public int ModelCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of embedding models.
+        /// </summary>
+        public int EmbeddingCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of vision models.
+        /// </summary>
+        public int VisionCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of image generation models.
+        /// </summary>
+        public int ImageGenCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of video generation models.
+        /// </summary>
+        public int VideoGenCount { get; set; }
+    }
+
+    /// <summary>
+    /// Notification for model availability changes.
+    /// </summary>
+    public class ModelAvailabilityNotification : SystemNotification
+    {
+        /// <summary>
+        /// Gets the notification type.
+        /// </summary>
+        public override string Type => "model_availability_changed";
+
+        /// <summary>
+        /// Gets or sets the model identifier.
+        /// </summary>
+        public string ModelId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets whether the model is available.
+        /// </summary>
+        public bool IsAvailable { get; set; }
+    }
+
 }

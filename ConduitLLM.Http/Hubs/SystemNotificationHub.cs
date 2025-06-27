@@ -14,7 +14,7 @@ namespace ConduitLLM.Http.Hubs
     /// SignalR hub for broadcasting system-wide notifications to connected clients.
     /// Extends SecureHub to require virtual key authentication.
     /// </summary>
-    public class SystemNotificationHub : SecureHub
+    public class SystemNotificationHub : SecureHub, ISystemNotificationHub
     {
         private readonly SignalRMetrics _metrics;
         private readonly ILogger<SystemNotificationHub> _logger;
@@ -202,6 +202,72 @@ namespace ConduitLLM.Http.Hubs
             };
 
             await BroadcastNotification(notification);
+        }
+
+        /// <summary>
+        /// Notifies clients of a model mapping change.
+        /// </summary>
+        public async Task ModelMappingChanged(int mappingId, string modelAlias, string changeType)
+        {
+            var notification = new ModelMappingNotification
+            {
+                MappingId = mappingId,
+                ModelAlias = modelAlias,
+                ChangeType = changeType,
+                Priority = NotificationPriority.Medium
+            };
+
+            await BroadcastNotification(notification);
+            
+            // Also notify model-specific subscribers
+            var virtualKeyId = GetVirtualKeyId();
+            if (virtualKeyId.HasValue)
+            {
+                var modelGroupName = $"vkey-{virtualKeyId.Value}-model-{modelAlias}";
+                await Clients.Group(modelGroupName).SendAsync("OnModelUpdate", notification);
+            }
+        }
+
+        /// <summary>
+        /// Notifies clients of model capabilities discovery.
+        /// </summary>
+        public async Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
+        {
+            var notification = new ModelCapabilitiesNotification
+            {
+                ProviderName = providerName,
+                ModelCount = modelCount,
+                EmbeddingCount = embeddingCount,
+                VisionCount = visionCount,
+                ImageGenCount = imageGenCount,
+                VideoGenCount = videoGenCount,
+                Priority = NotificationPriority.Low
+            };
+
+            await BroadcastNotification(notification);
+        }
+
+        /// <summary>
+        /// Notifies clients of model availability change.
+        /// </summary>
+        public async Task ModelAvailabilityChanged(string modelId, bool isAvailable)
+        {
+            var notification = new ModelAvailabilityNotification
+            {
+                ModelId = modelId,
+                IsAvailable = isAvailable,
+                Priority = isAvailable ? NotificationPriority.Low : NotificationPriority.Medium
+            };
+
+            await BroadcastNotification(notification);
+            
+            // Also notify model-specific subscribers
+            var virtualKeyId = GetVirtualKeyId();
+            if (virtualKeyId.HasValue)
+            {
+                var modelGroupName = $"vkey-{virtualKeyId.Value}-model-{modelId}";
+                await Clients.Group(modelGroupName).SendAsync("OnModelUpdate", notification);
+            }
         }
 
         /// <summary>
