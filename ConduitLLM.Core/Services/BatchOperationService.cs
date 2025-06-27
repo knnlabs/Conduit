@@ -19,14 +19,20 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ILogger<BatchOperationService> _logger;
         private readonly ITaskHub _taskHub;
+        private readonly IBatchOperationNotificationService? _notificationService;
+        private readonly IBatchOperationHistoryService? _historyService;
         private readonly ConcurrentDictionary<string, BatchOperationContext> _activeOperations;
 
         public BatchOperationService(
             ILogger<BatchOperationService> logger,
-            ITaskHub taskHub)
+            ITaskHub taskHub,
+            IBatchOperationNotificationService? notificationService = null,
+            IBatchOperationHistoryService? historyService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _taskHub = taskHub ?? throw new ArgumentNullException(nameof(taskHub));
+            _notificationService = notificationService;
+            _historyService = historyService;
             _activeOperations = new ConcurrentDictionary<string, BatchOperationContext>();
         }
 
@@ -75,6 +81,28 @@ namespace ConduitLLM.Core.Services
 
                 await _taskHub.TaskStarted(operationId, $"batch_{operationType}", metadata);
 
+                // Send batch operation started notification if service is available
+                if (_notificationService != null)
+                {
+                    await _notificationService.NotifyBatchOperationStartedAsync(
+                        operationId,
+                        operationType,
+                        itemsList.Count,
+                        virtualKeyId,
+                        options);
+                }
+
+                // Record operation start in history
+                if (_historyService != null)
+                {
+                    await _historyService.RecordOperationStartAsync(
+                        operationId,
+                        operationType,
+                        virtualKeyId,
+                        itemsList.Count,
+                        options);
+                }
+
                 // Process items
                 var result = await ProcessBatchAsync(
                     context,
@@ -86,16 +114,59 @@ namespace ConduitLLM.Core.Services
                 if (result.Status == BatchOperationStatusEnum.Completed)
                 {
                     await _taskHub.TaskCompleted(operationId, result);
+                    
+                    if (_notificationService != null)
+                    {
+                        await _notificationService.NotifyBatchOperationCompletedAsync(
+                            operationId,
+                            operationType,
+                            result.Status,
+                            result.TotalItems,
+                            result.SuccessCount,
+                            result.FailedCount,
+                            result.Duration,
+                            result.ItemsPerSecond,
+                            result);
+                    }
                 }
                 else if (result.Status == BatchOperationStatusEnum.Cancelled)
                 {
                     await _taskHub.TaskCancelled(operationId, "Operation cancelled by user");
+                    
+                    if (_notificationService != null)
+                    {
+                        var remainingCount = result.TotalItems - context.ProcessedCount;
+                        await _notificationService.NotifyBatchOperationCancelledAsync(
+                            operationId,
+                            operationType,
+                            "User requested cancellation",
+                            context.ProcessedCount,
+                            remainingCount,
+                            options.EnableCheckpointing);
+                    }
                 }
                 else if (result.Status == BatchOperationStatusEnum.Failed)
                 {
                     await _taskHub.TaskFailed(operationId, 
                         $"Batch operation failed: {result.FailedCount} items failed", 
                         isRetryable: true);
+                    
+                    if (_notificationService != null)
+                    {
+                        await _notificationService.NotifyBatchOperationFailedAsync(
+                            operationId,
+                            operationType,
+                            $"Batch operation failed: {result.FailedCount} items failed",
+                            true,
+                            context.ProcessedCount,
+                            result.FailedCount);
+                    }
+                }
+
+                // Record operation completion in history
+                if (_historyService != null)
+                {
+                    await _historyService.RecordOperationCompletionAsync(operationId, result);
                 }
 
                 return result;
@@ -246,6 +317,21 @@ namespace ConduitLLM.Core.Services
 
                         await _taskHub.TaskProgress(context.OperationId, progress, progressMessage);
 
+                        // Send detailed progress notification if service is available
+                        if (_notificationService != null)
+                        {
+                            await _notificationService.NotifyBatchOperationProgressAsync(
+                                context.OperationId,
+                                processedCount,
+                                successCount,
+                                failedCount,
+                                itemsPerSecond,
+                                elapsed,
+                                estimatedRemaining,
+                                context.CurrentItem,
+                                progressMessage);
+                        }
+
                         // Save checkpoint if enabled
                         if (options.EnableCheckpointing && processedCount % options.CheckpointInterval == 0)
                         {
@@ -330,13 +416,30 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                // In a real implementation, this would save to persistent storage
-                _logger.LogDebug(
-                    "Saving checkpoint for operation {OperationId} - Processed: {ProcessedCount}",
-                    context.OperationId,
-                    context.ProcessedCount);
-                
-                await Task.CompletedTask;
+                if (_historyService != null)
+                {
+                    var checkpointData = new
+                    {
+                        ProcessedCount = context.ProcessedCount,
+                        SuccessCount = context.SuccessCount,
+                        FailedCount = context.FailedCount,
+                        ProcessedItems = processedItems.Select(p => new { p.ItemIdentifier, p.Success }),
+                        Errors = errors.Select(e => new { e.ItemIndex, e.ItemIdentifier, e.Error })
+                    };
+
+                    await _historyService.UpdateCheckpointAsync(
+                        context.OperationId,
+                        context.ProcessedCount,
+                        checkpointData);
+                }
+                else
+                {
+                    // Fallback to logging if history service not available
+                    _logger.LogDebug(
+                        "Saving checkpoint for operation {OperationId} - Processed: {ProcessedCount}",
+                        context.OperationId,
+                        context.ProcessedCount);
+                }
             }
             catch (Exception ex)
             {

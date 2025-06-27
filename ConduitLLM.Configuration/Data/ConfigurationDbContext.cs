@@ -140,6 +140,11 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<MediaLifecycleRecord> MediaLifecycleRecords { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for batch operation history
+        /// </summary>
+        public virtual DbSet<BatchOperationHistory> BatchOperationHistory { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -365,6 +370,23 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => new { e.VirtualKeyId, e.IsDeleted });
                 entity.HasIndex(e => new { e.ExpiresAt, e.IsDeleted });
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure BatchOperationHistory entity
+            modelBuilder.Entity<BatchOperationHistory>(entity =>
+            {
+                entity.HasKey(e => e.OperationId);
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.OperationType);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.StartedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.StartedAt });
+                entity.HasIndex(e => new { e.OperationType, e.Status, e.StartedAt });
                 
                 entity.HasOne(e => e.VirtualKey)
                       .WithMany()

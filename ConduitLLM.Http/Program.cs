@@ -220,6 +220,9 @@ builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationServ
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ITaskHub, ConduitLLM.Http.Services.TaskHubService>();
 
 // Register Batch Operation Services
+builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IBatchOperationHistoryRepository, ConduitLLM.Configuration.Repositories.BatchOperationHistoryRepository>();
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Http.Services.BatchOperationHistoryService>();
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationNotificationService, ConduitLLM.Http.Services.BatchOperationNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
 builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
 builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();

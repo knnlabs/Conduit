@@ -42,7 +42,7 @@ namespace ConduitLLM.Http.EventHandlers
                     samplingDuration: TimeSpan.FromMinutes(1),
                     minimumThroughput: GetCircuitBreakerThreshold(),
                     durationOfBreak: GetCircuitBreakerDuration(),
-                    onBreak: (result, duration) => OnCircuitBreakerOpen(result, duration),
+                    onBreak: (exception, duration) => OnCircuitBreakerOpen(exception, duration),
                     onReset: OnCircuitBreakerReset,
                     onHalfOpen: OnCircuitBreakerHalfOpen);
 
@@ -201,11 +201,11 @@ namespace ConduitLLM.Http.EventHandlers
         /// <summary>
         /// Called when circuit breaker opens
         /// </summary>
-        protected virtual void OnCircuitBreakerOpen(DelegateResult<object> result, TimeSpan duration)
+        protected virtual void OnCircuitBreakerOpen(Exception? exception, TimeSpan duration)
         {
             Logger.LogWarning(
                 "Circuit breaker opened for {Handler} for {Duration}s due to: {Reason}",
-                _handlerName, duration.TotalSeconds, result.Exception?.Message ?? "Unknown");
+                _handlerName, duration.TotalSeconds, exception?.Message ?? "Unknown");
         }
 
         /// <summary>

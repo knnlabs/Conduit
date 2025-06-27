@@ -94,7 +94,8 @@ namespace ConduitLLM.Http.Controllers
                 OperationType = "spend_update",
                 TotalItems = request.Updates.Count,
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                Message = "Batch operation started. Monitor progress via SignalR TaskHub or status endpoint."
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
         }
 
@@ -175,7 +176,8 @@ namespace ConduitLLM.Http.Controllers
                 OperationType = "virtual_key_update",
                 TotalItems = request.Updates.Count,
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                Message = "Batch operation started. Monitor progress via SignalR TaskHub or status endpoint."
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
         }
 
@@ -231,7 +233,8 @@ namespace ConduitLLM.Http.Controllers
                 OperationType = "webhook_send",
                 TotalItems = request.Webhooks.Count,
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
-                Message = "Batch operation started. Monitor progress via SignalR TaskHub or status endpoint."
+                TaskId = result.OperationId,
+                Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
         }
 
