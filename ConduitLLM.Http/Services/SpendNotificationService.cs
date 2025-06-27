@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Core.Interfaces;
 

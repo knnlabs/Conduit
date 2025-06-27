@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Metrics;
 
 namespace ConduitLLM.Http.Hubs

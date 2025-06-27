@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -77,52 +78,5 @@ namespace ConduitLLM.Http.Hubs
         /// <param name="isAvailable">Whether the model is available.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         Task ModelAvailabilityChanged(string modelId, bool isAvailable);
-    }
-
-    /// <summary>
-    /// Health status enumeration for provider health notifications.
-    /// </summary>
-    public enum HealthStatus
-    {
-        /// <summary>
-        /// Service is healthy and responding normally.
-        /// </summary>
-        Healthy,
-
-        /// <summary>
-        /// Service is experiencing degraded performance.
-        /// </summary>
-        Degraded,
-
-        /// <summary>
-        /// Service is unhealthy or not responding.
-        /// </summary>
-        Unhealthy
-    }
-
-    /// <summary>
-    /// Priority levels for system notifications.
-    /// </summary>
-    public enum NotificationPriority
-    {
-        /// <summary>
-        /// Low priority notification.
-        /// </summary>
-        Low,
-
-        /// <summary>
-        /// Medium priority notification.
-        /// </summary>
-        Medium,
-
-        /// <summary>
-        /// High priority notification.
-        /// </summary>
-        High,
-
-        /// <summary>
-        /// Critical priority notification requiring immediate attention.
-        /// </summary>
-        Critical
     }
 }
