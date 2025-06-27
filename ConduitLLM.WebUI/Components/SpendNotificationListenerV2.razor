@@ -1,0 +1,377 @@
+@using Microsoft.JSInterop
+@using ConduitLLM.WebUI.DTOs
+@using System.Text.Json
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<SpendNotificationListenerV2> Logger
+
+@code {
+    /// <summary>
+    /// Event fired when a spend update is received
+    /// </summary>
+    [Parameter] public EventCallback<SpendUpdateNotification> OnSpendUpdate { get; set; }
+    
+    /// <summary>
+    /// Event fired when a budget alert is received
+    /// </summary>
+    [Parameter] public EventCallback<BudgetAlertNotification> OnBudgetAlert { get; set; }
+    
+    /// <summary>
+    /// Event fired when a spend summary is received
+    /// </summary>
+    [Parameter] public EventCallback<SpendSummaryNotification> OnSpendSummary { get; set; }
+    
+    /// <summary>
+    /// Event fired when unusual spending is detected
+    /// </summary>
+    [Parameter] public EventCallback<UnusualSpendingNotification> OnUnusualSpending { get; set; }
+    
+    /// <summary>
+    /// Event fired when connection state changes (uses centralized state)
+    /// </summary>
+    [Parameter] public EventCallback<string> OnConnectionStateChanged { get; set; }
+    
+    /// <summary>
+    /// Virtual key for authentication
+    /// </summary>
+    [Parameter, EditorRequired] public string VirtualKey { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Auto-connect on initialization
+    /// </summary>
+    [Parameter] public bool AutoConnect { get; set; } = true;
+    
+    /// <summary>
+    /// Enable debug mode for detailed logging
+    /// </summary>
+    [Parameter] public bool DebugMode { get; set; } = false;
+
+    private IJSObjectReference? _signalRService;
+    private IJSObjectReference? _spendHub;
+    private DotNetObjectReference<SpendNotificationListenerV2>? _dotNetRef;
+    private bool _isConnected = false;
+    private string _connectionState = "disconnected";
+    
+    private const string HUB_NAME = "spend-notifications";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Create reference to this component for JS callbacks
+            _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // Get SignalR service instance
+            _signalRService = await JS.InvokeAsync<IJSObjectReference>("ConduitSignalRService.getInstance");
+            
+            // Set debug mode if enabled
+            if (DebugMode)
+            {
+                await _signalRService.InvokeVoidAsync("setDebugMode", true);
+            }
+            
+            // Set virtual key
+            await _signalRService.InvokeVoidAsync("setVirtualKey", VirtualKey);
+            
+            // Create spend hub proxy
+            _spendHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createSpendNotificationsHub");
+            
+            // Listen for connection state changes from centralized service
+            await JS.InvokeVoidAsync("window.addEventListener", 
+                $"conduit:{HUB_NAME}:stateChanged", 
+                _dotNetRef);
+            
+            if (AutoConnect)
+            {
+                await ConnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize SpendNotificationListenerV2");
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        // Handle virtual key changes
+        if (_signalRService != null && !string.IsNullOrEmpty(VirtualKey))
+        {
+            await _signalRService.InvokeVoidAsync("setVirtualKey", VirtualKey);
+            
+            // Reconnect if already connected with different key
+            if (_isConnected)
+            {
+                await DisconnectAsync();
+                await ConnectAsync();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Connect to the spend notifications hub using centralized service
+    /// </summary>
+    public async Task ConnectAsync()
+    {
+        try
+        {
+            // Use centralized service to connect
+            var connection = await _signalRService!.InvokeAsync<IJSObjectReference>(
+                "connectToHub", HUB_NAME, VirtualKey);
+            
+            // Register event handlers through hub proxy
+            await _spendHub!.InvokeVoidAsync("onSpendUpdate", _dotNetRef);
+            await _spendHub.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
+            await _spendHub.InvokeVoidAsync("onSpendSummary", _dotNetRef);
+            await _spendHub.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
+            
+            _isConnected = true;
+            Logger.LogInformation("Connected to spend notifications hub via centralized service");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to spend notifications hub");
+            _isConnected = false;
+        }
+    }
+    
+    /// <summary>
+    /// Disconnect from the spend notifications hub using centralized service
+    /// </summary>
+    public async Task DisconnectAsync()
+    {
+        try
+        {
+            if (_signalRService != null)
+            {
+                await _signalRService.InvokeVoidAsync("disconnectFromHub", HUB_NAME);
+                _isConnected = false;
+                Logger.LogInformation("Disconnected from spend notifications hub");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error disconnecting from spend notifications hub");
+        }
+    }
+    
+    /// <summary>
+    /// Handle connection state changes from centralized service
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleConnectionStateChanged(JsonElement eventData)
+    {
+        try
+        {
+            var detail = eventData.GetProperty("detail");
+            var hubName = detail.GetProperty("hubName").GetString();
+            
+            if (hubName != HUB_NAME)
+                return;
+            
+            var currentState = detail.GetProperty("currentState").GetString() ?? "disconnected";
+            _connectionState = currentState.ToLower();
+            _isConnected = _connectionState == "connected";
+            
+            Logger.LogInformation("Spend notifications connection state changed to: {State}", _connectionState);
+            
+            // Notify parent component
+            await OnConnectionStateChanged.InvokeAsync(_connectionState);
+            
+            // Re-register handlers if reconnected
+            if (_isConnected && _spendHub != null)
+            {
+                try
+                {
+                    // Re-register event handlers after reconnection
+                    await _spendHub.InvokeVoidAsync("onSpendUpdate", _dotNetRef);
+                    await _spendHub.InvokeVoidAsync("onBudgetAlert", _dotNetRef);
+                    await _spendHub.InvokeVoidAsync("onSpendSummary", _dotNetRef);
+                    await _spendHub.InvokeVoidAsync("onUnusualSpending", _dotNetRef);
+                    Logger.LogInformation("Re-registered event handlers after reconnection");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to re-register event handlers");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling connection state change");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when a spend update is received
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleSpendUpdate(JsonElement data)
+    {
+        try
+        {
+            var notification = JsonSerializer.Deserialize<SpendUpdateNotification>(
+                data.GetRawText(), 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            if (notification != null)
+            {
+                Logger.LogInformation("Received spend update: ${Amount} for {Model}", 
+                    notification.Amount, notification.Model);
+                await OnSpendUpdate.InvokeAsync(notification);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling spend update");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when a budget alert is received
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleBudgetAlert(JsonElement data)
+    {
+        try
+        {
+            var notification = JsonSerializer.Deserialize<BudgetAlertNotification>(
+                data.GetRawText(), 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            if (notification != null)
+            {
+                Logger.LogInformation("Received budget alert: {Percentage}% of budget used", 
+                    notification.PercentageUsed);
+                await OnBudgetAlert.InvokeAsync(notification);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling budget alert");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when a spend summary is received
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleSpendSummary(JsonElement data)
+    {
+        try
+        {
+            var notification = JsonSerializer.Deserialize<SpendSummaryNotification>(
+                data.GetRawText(), 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            if (notification != null)
+            {
+                Logger.LogInformation("Received spend summary for period: {Period}", 
+                    notification.Period);
+                await OnSpendSummary.InvokeAsync(notification);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling spend summary");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when unusual spending is detected
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleUnusualSpending(JsonElement data)
+    {
+        try
+        {
+            var notification = JsonSerializer.Deserialize<UnusualSpendingNotification>(
+                data.GetRawText(), 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            if (notification != null)
+            {
+                Logger.LogInformation("Received unusual spending alert: {PatternType}", 
+                    notification.PatternType);
+                await OnUnusualSpending.InvokeAsync(notification);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling unusual spending notification");
+        }
+    }
+    
+    /// <summary>
+    /// Get current connection state from centralized service
+    /// </summary>
+    public async Task<string> GetConnectionStateAsync()
+    {
+        if (_signalRService == null)
+            return "disconnected";
+            
+        try
+        {
+            return await _signalRService.InvokeAsync<string>("getConnectionState", HUB_NAME);
+        }
+        catch
+        {
+            return "disconnected";
+        }
+    }
+    
+    /// <summary>
+    /// Get connection metrics from centralized service
+    /// </summary>
+    public async Task<JsonElement?> GetMetricsAsync()
+    {
+        if (_signalRService == null)
+            return null;
+            
+        try
+        {
+            return await _signalRService.InvokeAsync<JsonElement>("getMetrics", HUB_NAME);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            // Remove event listener
+            if (_dotNetRef != null)
+            {
+                await JS.InvokeVoidAsync("window.removeEventListener", 
+                    $"conduit:{HUB_NAME}:stateChanged", 
+                    _dotNetRef);
+            }
+            
+            // Disconnect if connected
+            if (_isConnected)
+            {
+                await DisconnectAsync();
+            }
+            
+            // Dispose resources
+            _dotNetRef?.Dispose();
+            
+            if (_spendHub != null)
+            {
+                await _spendHub.DisposeAsync();
+            }
+            
+            if (_signalRService != null)
+            {
+                await _signalRService.DisposeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error disposing SpendNotificationListenerV2");
+        }
+    }
+}

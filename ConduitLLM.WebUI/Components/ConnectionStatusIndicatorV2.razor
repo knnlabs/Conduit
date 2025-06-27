@@ -1,0 +1,637 @@
+@using Microsoft.JSInterop
+@using System.Timers
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<ConnectionStatusIndicatorV2> Logger
+
+<div class="connection-status-indicator">
+    <div class="status-badge @GetStatusClass()" @onclick="ToggleDetails">
+        <i class="@GetStatusIcon()"></i>
+        <span class="status-text">@GetStatusText()</span>
+        @if (IsReconnecting && ReconnectCountdown > 0)
+        {
+            <span class="countdown">(@ReconnectCountdown s)</span>
+        }
+    </div>
+    
+    @if (ShowDetails)
+    {
+        <div class="status-details">
+            <div class="details-header">
+                <h6>Connection Status: @HubName</h6>
+                <button class="close-btn" @onclick="() => ShowDetails = false">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="details-content">
+                <div class="status-item">
+                    <i class="fa fa-plug"></i>
+                    <span>State: @ConnectionState</span>
+                </div>
+                
+                @if (IsConnected)
+                {
+                    <div class="status-item">
+                        <i class="fa fa-tachometer-alt"></i>
+                        <span>Latency: @(Latency)ms</span>
+                    </div>
+                    <div class="status-item">
+                        <i class="fa fa-signal"></i>
+                        <span>Quality: @GetQualityText()</span>
+                    </div>
+                }
+                
+                @if (IsDisconnected)
+                {
+                    <div class="status-item error">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span>@DisconnectReason</span>
+                    </div>
+                    
+                    <div class="affected-features">
+                        <h6>Affected Features:</h6>
+                        <ul>
+                            @foreach (var feature in GetAffectedFeatures())
+                            {
+                                <li><i class="fa fa-times-circle"></i> @feature</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                
+                @if (IsReconnecting)
+                {
+                    <div class="status-item warning">
+                        <i class="fa fa-sync fa-spin"></i>
+                        <span>Reconnect attempt @ReconnectAttempt / @MaxReconnectAttempts</span>
+                    </div>
+                }
+                
+                <div class="connection-history">
+                    <h6>Connection History:</h6>
+                    <div class="history-list">
+                        @foreach (var evt in ConnectionEvents.TakeLast(5).Reverse())
+                        {
+                            <div class="history-item">
+                                <span class="time">@evt.Timestamp.ToString("HH:mm:ss")</span>
+                                <span class="event @evt.Type">@evt.Message</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+                
+                @if (IsConnected || IsReconnecting)
+                {
+                    <div class="metrics-section">
+                        <h6>Performance Metrics:</h6>
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <span class="label">Avg Latency:</span>
+                                <span class="value">@AverageLatency ms</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Uptime:</span>
+                                <span class="value">@GetUptime()</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">Messages:</span>
+                                <span class="value">@MessageCount</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .connection-status-indicator {
+        position: relative;
+    }
+    
+    .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        user-select: none;
+    }
+    
+    .status-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .status-badge.connected {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .status-badge.connecting {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .status-badge.reconnecting {
+        background-color: #fff3e0;
+        color: #f57c00;
+    }
+    
+    .status-badge.disconnected {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+    
+    .status-badge.failed {
+        background-color: #fce4ec;
+        color: #880e4f;
+    }
+    
+    .status-text {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .countdown {
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+    
+    .status-details {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+        min-width: 320px;
+        max-width: 400px;
+        z-index: 1000;
+        overflow: hidden;
+    }
+    
+    .details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e0e0e0;
+        background: #f5f5f5;
+    }
+    
+    .details-header h6 {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .close-btn {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: #666;
+        transition: color 0.2s;
+    }
+    
+    .close-btn:hover {
+        color: #333;
+    }
+    
+    .details-content {
+        padding: 16px;
+    }
+    
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 0.875rem;
+        color: #333;
+    }
+    
+    .status-item i {
+        width: 16px;
+        text-align: center;
+        color: #666;
+    }
+    
+    .status-item.error {
+        color: #c62828;
+    }
+    
+    .status-item.error i {
+        color: #c62828;
+    }
+    
+    .status-item.warning {
+        color: #f57c00;
+    }
+    
+    .status-item.warning i {
+        color: #f57c00;
+    }
+    
+    .affected-features {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .affected-features h6 {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #666;
+    }
+    
+    .affected-features ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .affected-features li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+        font-size: 0.8125rem;
+        color: #666;
+    }
+    
+    .affected-features li i {
+        font-size: 0.75rem;
+        color: #c62828;
+    }
+    
+    .connection-history {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .connection-history h6 {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #666;
+    }
+    
+    .history-list {
+        max-height: 100px;
+        overflow-y: auto;
+    }
+    
+    .history-item {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+    }
+    
+    .history-item .time {
+        color: #999;
+        font-family: monospace;
+    }
+    
+    .history-item .event {
+        flex: 1;
+    }
+    
+    .history-item .event.connected {
+        color: #2e7d32;
+    }
+    
+    .history-item .event.disconnected {
+        color: #c62828;
+    }
+    
+    .history-item .event.reconnecting {
+        color: #f57c00;
+    }
+    
+    .metrics-section {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .metrics-section h6 {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #666;
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    
+    .metric {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .metric .label {
+        font-size: 0.75rem;
+        color: #999;
+    }
+    
+    .metric .value {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    /* Animations */
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+    
+    .status-badge.connecting i,
+    .status-badge.reconnecting i {
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+</style>
+
+@code {
+    [Parameter] public string HubName { get; set; } = "navigation-state";
+    [Parameter] public EventCallback<string> OnConnectionStateChanged { get; set; }
+    
+    private IJSObjectReference? _signalRService;
+    private DotNetObjectReference<ConnectionStatusIndicatorV2>? _dotNetRef;
+    private Timer? _statusUpdateTimer;
+    private Timer? _reconnectCountdownTimer;
+    
+    private bool ShowDetails = false;
+    private string ConnectionState = "disconnected";
+    private string DisconnectReason = "Not connected";
+    private int ReconnectAttempt = 0;
+    private int MaxReconnectAttempts = 10;
+    private int ReconnectCountdown = 0;
+    private int Latency = 0;
+    private int AverageLatency = 0;
+    private int MessageCount = 0;
+    private DateTime? ConnectedSince;
+    private List<ConnectionEvent> ConnectionEvents = new();
+    
+    private bool IsConnected => ConnectionState == "connected";
+    private bool IsConnecting => ConnectionState == "connecting";
+    private bool IsReconnecting => ConnectionState == "reconnecting";
+    private bool IsDisconnected => ConnectionState == "disconnected";
+    private bool IsFailed => ConnectionState == "failed";
+    
+    private class ConnectionEvent
+    {
+        public DateTime Timestamp { get; set; }
+        public string Type { get; set; } = "";
+        public string Message { get; set; } = "";
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            _signalRService = await JS.InvokeAsync<IJSObjectReference>("ConduitSignalRService.getInstance");
+            
+            // Register for global connection state events
+            await JS.InvokeVoidAsync("window.addEventListener", 
+                $"conduit:{HubName}:stateChanged", 
+                _dotNetRef);
+            
+            // Start status update timer
+            _statusUpdateTimer = new Timer(1000); // Update every second
+            _statusUpdateTimer.Elapsed += async (sender, e) => await UpdateStatus();
+            _statusUpdateTimer.Start();
+            
+            // Get initial state
+            await UpdateStatus();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize ConnectionStatusIndicatorV2");
+        }
+    }
+    
+    [JSInvokable]
+    public async Task HandleConnectionStateChanged(JsonElement eventData)
+    {
+        try
+        {
+            var detail = eventData.GetProperty("detail");
+            var hubName = detail.GetProperty("hubName").GetString();
+            
+            if (hubName != HubName)
+                return;
+            
+            var currentState = detail.GetProperty("currentState").GetString() ?? "disconnected";
+            var previousState = detail.TryGetProperty("previousState", out var prev) ? prev.GetString() : null;
+            
+            ConnectionState = currentState.ToLower();
+            
+            // Handle state-specific updates
+            switch (ConnectionState)
+            {
+                case "connected":
+                    ConnectedSince = DateTime.Now;
+                    ReconnectAttempt = 0;
+                    DisconnectReason = "";
+                    AddConnectionEvent("connected", "Connected successfully");
+                    break;
+                    
+                case "reconnecting":
+                    if (detail.TryGetProperty("reconnectAttempt", out var attempt))
+                        ReconnectAttempt = attempt.GetInt32();
+                    if (detail.TryGetProperty("nextRetryTime", out var retryTime))
+                        StartReconnectCountdown(retryTime.GetInt32());
+                    AddConnectionEvent("reconnecting", $"Reconnecting (attempt {ReconnectAttempt})");
+                    break;
+                    
+                case "disconnected":
+                    ConnectedSince = null;
+                    if (detail.TryGetProperty("error", out var error))
+                        DisconnectReason = error.GetString() ?? "Connection lost";
+                    AddConnectionEvent("disconnected", DisconnectReason);
+                    break;
+                    
+                case "failed":
+                    ConnectedSince = null;
+                    if (detail.TryGetProperty("reason", out var reason))
+                        DisconnectReason = reason.GetString() ?? "Connection failed";
+                    AddConnectionEvent("failed", DisconnectReason);
+                    break;
+            }
+            
+            await InvokeAsync(StateHasChanged);
+            await OnConnectionStateChanged.InvokeAsync(ConnectionState);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling connection state change");
+        }
+    }
+    
+    private async Task UpdateStatus()
+    {
+        try
+        {
+            if (_signalRService == null || !IsConnected)
+                return;
+            
+            // Get current metrics
+            var metrics = await _signalRService.InvokeAsync<JsonElement>("getMetrics", HubName);
+            
+            // Update latency
+            if (metrics.TryGetProperty("invoke.ping", out var pingMetric) ||
+                metrics.TryGetProperty("connectionTime", out pingMetric))
+            {
+                if (pingMetric.TryGetProperty("last", out var last))
+                    Latency = (int)last.GetDouble();
+                if (pingMetric.TryGetProperty("average", out var avg))
+                    AverageLatency = (int)avg.GetDouble();
+                if (pingMetric.TryGetProperty("count", out var count))
+                    MessageCount = count.GetInt32();
+            }
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            // Silently ignore errors in status updates
+        }
+    }
+    
+    private void StartReconnectCountdown(int seconds)
+    {
+        ReconnectCountdown = seconds;
+        
+        _reconnectCountdownTimer?.Dispose();
+        _reconnectCountdownTimer = new Timer(1000);
+        _reconnectCountdownTimer.Elapsed += (sender, e) =>
+        {
+            ReconnectCountdown--;
+            if (ReconnectCountdown <= 0)
+            {
+                _reconnectCountdownTimer?.Stop();
+            }
+            InvokeAsync(StateHasChanged);
+        };
+        _reconnectCountdownTimer.Start();
+    }
+    
+    private void AddConnectionEvent(string type, string message)
+    {
+        ConnectionEvents.Add(new ConnectionEvent 
+        { 
+            Timestamp = DateTime.Now, 
+            Type = type, 
+            Message = message 
+        });
+        
+        // Keep only last 20 events
+        if (ConnectionEvents.Count > 20)
+        {
+            ConnectionEvents.RemoveAt(0);
+        }
+    }
+    
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+    
+    private string GetStatusClass() => ConnectionState switch
+    {
+        "connected" => "connected",
+        "connecting" => "connecting",
+        "reconnecting" => "reconnecting",
+        "failed" => "failed",
+        _ => "disconnected"
+    };
+    
+    private string GetStatusIcon() => ConnectionState switch
+    {
+        "connected" => "fa fa-check-circle",
+        "connecting" => "fa fa-circle-notch fa-spin",
+        "reconnecting" => "fa fa-sync fa-spin",
+        "failed" => "fa fa-exclamation-circle",
+        _ => "fa fa-times-circle"
+    };
+    
+    private string GetStatusText() => ConnectionState switch
+    {
+        "connected" => "Connected",
+        "connecting" => "Connecting...",
+        "reconnecting" => "Reconnecting...",
+        "failed" => "Failed",
+        _ => "Disconnected"
+    };
+    
+    private string GetQualityText()
+    {
+        if (Latency < 50) return "Excellent";
+        if (Latency < 150) return "Good";
+        if (Latency < 300) return "Fair";
+        return "Poor";
+    }
+    
+    private string GetUptime()
+    {
+        if (ConnectedSince == null) return "N/A";
+        
+        var uptime = DateTime.Now - ConnectedSince.Value;
+        if (uptime.TotalMinutes < 1) return $"{(int)uptime.TotalSeconds}s";
+        if (uptime.TotalHours < 1) return $"{(int)uptime.TotalMinutes}m";
+        if (uptime.TotalDays < 1) return $"{(int)uptime.TotalHours}h {uptime.Minutes}m";
+        return $"{(int)uptime.TotalDays}d {uptime.Hours}h";
+    }
+    
+    private List<string> GetAffectedFeatures() => HubName switch
+    {
+        "spend-notifications" => new() { "Real-time spend tracking", "Budget alerts", "Usage analytics" },
+        "navigation-state" => new() { "Model updates", "Provider health", "Configuration changes" },
+        "webhook-delivery" => new() { "Webhook status updates", "Delivery notifications" },
+        "admin-notifications" => new() { "System alerts", "Admin notifications" },
+        _ => new() { "Real-time updates" }
+    };
+    
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            _statusUpdateTimer?.Dispose();
+            _reconnectCountdownTimer?.Dispose();
+            
+            if (_dotNetRef != null)
+            {
+                await JS.InvokeVoidAsync("window.removeEventListener", 
+                    $"conduit:{HubName}:stateChanged", 
+                    _dotNetRef);
+                _dotNetRef.Dispose();
+            }
+            
+            if (_signalRService != null)
+            {
+                await _signalRService.DisposeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error disposing ConnectionStatusIndicatorV2");
+        }
+    }
+}
