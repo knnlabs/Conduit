@@ -18,8 +18,6 @@ namespace ConduitLLM.Http.Services
     public class TaskNotificationService : ITaskNotificationService
     {
         private readonly IHubContext<TaskHub> _taskHubContext;
-        private readonly IHubContext<ImageGenerationHub>? _imageHubContext;
-        private readonly IHubContext<VideoGenerationHub>? _videoHubContext;
         private readonly ILogger<TaskNotificationService> _logger;
         private readonly IAsyncPolicy _retryPolicy;
         private readonly IAsyncPolicy _circuitBreakerPolicy;
@@ -28,13 +26,9 @@ namespace ConduitLLM.Http.Services
 
         public TaskNotificationService(
             IHubContext<TaskHub> taskHubContext,
-            IHubContext<ImageGenerationHub>? imageHubContext,
-            IHubContext<VideoGenerationHub>? videoHubContext,
             ILogger<TaskNotificationService> logger)
         {
             _taskHubContext = taskHubContext ?? throw new ArgumentNullException(nameof(taskHubContext));
-            _imageHubContext = imageHubContext;
-            _videoHubContext = videoHubContext;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Initialize retry policy - 3 retries with exponential backoff
@@ -88,9 +82,6 @@ namespace ConduitLLM.Http.Services
                 await _taskHubContext.Clients.Group($"vkey-{virtualKeyId}-{taskType}")
                     .SendAsync("TaskStarted", taskId, taskType, enrichedMetadata);
 
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHub(taskType, "TaskStarted", taskId, enrichedMetadata);
-
                 _logger.LogDebug("Notified task started: {TaskId} of type {TaskType} for Virtual Key {VirtualKeyId}",
                     taskId, taskType, virtualKeyId);
             }, $"NotifyTaskStarted:{taskId}");
@@ -103,9 +94,6 @@ namespace ConduitLLM.Http.Services
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskProgress", taskId, progress, message);
-
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHubForTask(taskId, "TaskProgress", taskId, progress, message ?? string.Empty);
 
                 _logger.LogDebug("Notified task progress: {TaskId} at {Progress}% - {Message}",
                     taskId, progress, message);
@@ -120,9 +108,6 @@ namespace ConduitLLM.Http.Services
                 await _taskHubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskCompleted", taskId, result);
 
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHubForTask(taskId, "TaskCompleted", taskId, result ?? new object());
-
                 _logger.LogDebug("Notified task completed: {TaskId}", taskId);
             }, $"NotifyTaskCompleted:{taskId}");
         }
@@ -134,9 +119,6 @@ namespace ConduitLLM.Http.Services
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskFailed", taskId, error, isRetryable);
-
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHubForTask(taskId, "TaskFailed", taskId, error, isRetryable);
 
                 _logger.LogDebug("Notified task failed: {TaskId} with error: {Error} (Retryable: {IsRetryable})",
                     taskId, error, isRetryable);
@@ -151,9 +133,6 @@ namespace ConduitLLM.Http.Services
                 await _taskHubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskCancelled", taskId, reason);
 
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHubForTask(taskId, "TaskCancelled", taskId, reason ?? string.Empty);
-
                 _logger.LogDebug("Notified task cancelled: {TaskId} with reason: {Reason}",
                     taskId, reason);
             }, $"NotifyTaskCancelled:{taskId}");
@@ -166,9 +145,6 @@ namespace ConduitLLM.Http.Services
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskTimedOut", taskId, timeoutSeconds);
-
-                // Send to legacy hubs for backward compatibility
-                await SendToLegacyHubForTask(taskId, "TaskTimedOut", taskId, timeoutSeconds);
 
                 _logger.LogDebug("Notified task timed out: {TaskId} after {TimeoutSeconds} seconds",
                     taskId, timeoutSeconds);
@@ -198,51 +174,6 @@ namespace ConduitLLM.Http.Services
             }
 
             return enriched;
-        }
-
-        private async Task SendToLegacyHub(string taskType, string method, params object[] args)
-        {
-            try
-            {
-                // Route to appropriate legacy hub based on task type
-                switch (taskType?.ToLowerInvariant())
-                {
-                    case "image_generation" when _imageHubContext != null:
-                        await _imageHubContext.Clients.All.SendAsync(method, args);
-                        break;
-                    
-                    case "video_generation" when _videoHubContext != null:
-                        await _videoHubContext.Clients.All.SendAsync(method, args);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send to legacy hub for task type {TaskType}", taskType);
-                // Don't rethrow - legacy hub failures shouldn't break the main notification
-            }
-        }
-
-        private async Task SendToLegacyHubForTask(string taskId, string method, params object[] args)
-        {
-            try
-            {
-                // For progress/completion updates, send to task-specific groups in legacy hubs
-                if (_imageHubContext != null)
-                {
-                    await _imageHubContext.Clients.Group($"image-{taskId}").SendAsync(method, args);
-                }
-                
-                if (_videoHubContext != null)
-                {
-                    await _videoHubContext.Clients.Group($"video-{taskId}").SendAsync(method, args);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send to legacy hub for task {TaskId}", taskId);
-                // Don't rethrow - legacy hub failures shouldn't break the main notification
-            }
         }
 
         /// <summary>
