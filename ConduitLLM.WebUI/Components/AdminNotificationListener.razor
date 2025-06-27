@@ -1,22 +1,24 @@
-@using Microsoft.JSInterop
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Models
 @using ConduitLLM.WebUI.Services
 @using System.Text.Json
-@implements IAsyncDisposable
-@inject IJSRuntime JS
+@inject ServerSideSignalRService SignalRService
 @inject ILogger<AdminNotificationListener> Logger
 @inject NotificationService NotificationService
+@implements IServerSideSignalRListener
+@implements IDisposable
 
 @code {
     /// <summary>
     /// Virtual key for authentication (legacy - for backward compatibility)
     /// </summary>
+    [Obsolete("Virtual key is no longer needed as server-side SignalR uses the WebUI virtual key")]
     [Parameter] public string? VirtualKey { get; set; }
     
     /// <summary>
-    /// Master key for authentication (preferred for admin notifications)
+    /// Master key for authentication (legacy - for backward compatibility)
     /// </summary>
+    [Obsolete("Master key is no longer needed as server-side SignalR uses the WebUI virtual key")]
     [Parameter] public string? MasterKey { get; set; }
     
     /// <summary>
@@ -29,427 +31,209 @@
     /// </summary>
     [Parameter] public bool DebugMode { get; set; } = false;
 
-    private IJSObjectReference? _signalRService;
-    private IJSObjectReference? _navigationHub;
-    private DotNetObjectReference<AdminNotificationListener>? _dotNetRef;
+    private bool _isInitialized = false;
     
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        try
+        if (DebugMode)
         {
-            // Create reference to this component for JS callbacks
-            _dotNetRef = DotNetObjectReference.Create(this);
-            
-            // Get SignalR service instance
-            _signalRService = await JS.InvokeAsync<IJSObjectReference>("ConduitSignalRService.getInstance");
-            
-            // Set debug mode if enabled
+            Logger.LogDebug("AdminNotificationListener initializing");
+        }
+        
+        // Register as a SignalR listener
+        SignalRService.RegisterListener(this);
+        _isInitialized = true;
+        
+        base.OnInitialized();
+    }
+    
+    // IServerSideSignalRListener implementation
+    public async Task OnConnectionStateChanged(string hubName, ConnectionState state)
+    {
+        if (hubName == "notifications")
+        {
             if (DebugMode)
             {
-                await _signalRService.InvokeVoidAsync("setDebugMode", true);
+                Logger.LogDebug("Admin notifications hub connection state changed to {State}", state);
             }
-            
-            // Determine which key to use (prefer MasterKey over VirtualKey)
-            var authKey = !string.IsNullOrEmpty(MasterKey) ? MasterKey : VirtualKey;
-            var isMasterKey = !string.IsNullOrEmpty(MasterKey);
-            
-            if (string.IsNullOrEmpty(authKey))
-            {
-                Logger.LogWarning("No authentication key provided for AdminNotificationListener");
-                return;
-            }
-            
-            // Set authentication key
-            if (isMasterKey)
-            {
-                await _signalRService.InvokeVoidAsync("setMasterKey", authKey);
-                Logger.LogInformation("Using master key authentication for admin notifications");
-            }
-            else
-            {
-                await _signalRService.InvokeVoidAsync("setVirtualKey", authKey);
-                Logger.LogInformation("Using virtual key authentication for admin notifications (legacy)");
-            }
-            
-            // Create appropriate hub proxy based on authentication type
-            if (isMasterKey)
-            {
-                _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createAdminNotificationHub");
-            }
-            else
-            {
-                _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createSystemNotificationHub");
-            }
-            
-            if (AutoConnect)
-            {
-                await ConnectAsync(authKey, isMasterKey);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to initialize AdminNotificationListener");
         }
     }
     
-    /// <summary>
-    /// Connect to the appropriate notification hub for admin notifications
-    /// </summary>
-    public async Task ConnectAsync(string? authKey = null, bool? isMasterKey = null)
+    public async Task OnSystemNotificationReceived(JsonElement notification)
     {
         try
         {
-            // Use provided parameters or determine from component state
-            if (authKey == null)
+            if (DebugMode)
             {
-                authKey = !string.IsNullOrEmpty(MasterKey) ? MasterKey : VirtualKey;
-                isMasterKey = !string.IsNullOrEmpty(MasterKey);
+                Logger.LogDebug("Received system notification: {Json}", notification.GetRawText());
             }
             
-            if (string.IsNullOrEmpty(authKey))
-            {
-                Logger.LogWarning("Cannot connect without authentication key");
-                return;
-            }
-            
-            // Connect to hub with appropriate authentication
-            await _navigationHub!.InvokeVoidAsync("connect", authKey);
-            
-            // Register event handlers
-            await _navigationHub!.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
-            await _navigationHub!.InvokeVoidAsync("onModelCapabilitiesDiscovered", _dotNetRef);
-            await _navigationHub!.InvokeVoidAsync("onModelMappingChanged", _dotNetRef);
-            await _navigationHub!.InvokeVoidAsync("onSystemAnnouncement", _dotNetRef);
-            
-            // Additional handlers for master key authenticated hub
-            if (isMasterKey == true)
-            {
-                await _navigationHub.InvokeVoidAsync("onVirtualKeyUpdate", _dotNetRef);
-                await _navigationHub.InvokeVoidAsync("onHighSpendAlert", _dotNetRef);
-                await _navigationHub.InvokeVoidAsync("onSecurityAlert", _dotNetRef);
-            }
-            
-            Logger.LogInformation("Connected to {HubType} notification hub", 
-                isMasterKey == true ? "admin" : "system");
+            await ProcessNotification(notification);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to connect to notification hub");
+            Logger.LogError(ex, "Error processing system notification");
         }
     }
     
-    /// <summary>
-    /// Called by JavaScript when provider health changes
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleProviderHealthChanged(JsonElement healthData)
+    public async Task OnAdminNotificationReceived(JsonElement notification)
     {
         try
         {
-            var providerName = healthData.GetProperty("providerName").GetString() ?? "Unknown";
-            var status = healthData.GetProperty("status").GetString() ?? "Unknown";
-            var previousStatus = healthData.GetProperty("previousStatus").GetString();
-            var responseTime = healthData.GetProperty("responseTimeMs").GetInt32();
-            
-            var notificationType = status switch
+            if (DebugMode)
             {
-                "Healthy" => NotificationType.Success,
-                "Degraded" => NotificationType.BudgetWarning,
-                "Unhealthy" => NotificationType.Error,
-                _ => NotificationType.System
-            };
-            
-            var statusChange = !string.IsNullOrEmpty(previousStatus) && previousStatus != status
-                ? $" (was {previousStatus})"
-                : "";
-            
-            NotificationService.AddNotification(
-                notificationType,
-                $"Provider {providerName} is now {status}{statusChange}",
-                "Provider Health Monitor",
-                $"Response time: {responseTime}ms"
-            );
-            
-            await Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error handling provider health change notification");
-        }
-    }
-    
-    /// <summary>
-    /// Called by JavaScript when new models are discovered
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleModelDiscovered(JsonElement modelData)
-    {
-        try
-        {
-            var providerName = modelData.GetProperty("providerName").GetString() ?? "Unknown";
-            var modelCount = modelData.GetProperty("modelCount").GetInt32();
-            var models = new List<string>();
-            
-            if (modelData.TryGetProperty("models", out var modelsArray))
-            {
-                foreach (var model in modelsArray.EnumerateArray())
-                {
-                    if (model.TryGetProperty("id", out var modelId))
-                    {
-                        models.Add(modelId.GetString() ?? "");
-                    }
-                }
+                Logger.LogDebug("Received admin notification: {Json}", notification.GetRawText());
             }
             
-            var modelList = models.Take(3).Any() 
-                ? $"Models: {string.Join(", ", models.Take(3))}{(models.Count > 3 ? $" and {models.Count - 3} more" : "")}"
-                : "No model details available";
-            
-            NotificationService.AddNotification(
-                NotificationType.System,
-                $"Discovered {modelCount} models for provider {providerName}",
-                "Model Discovery",
-                modelList
-            );
-            
-            await Task.CompletedTask;
+            await ProcessNotification(notification);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error handling model discovery notification");
+            Logger.LogError(ex, "Error processing admin notification");
         }
     }
     
-    /// <summary>
-    /// Called by JavaScript when configuration changes
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleConfigurationChanged(JsonElement configData)
+    private async Task ProcessNotification(JsonElement notification)
     {
         try
         {
-            var changeType = configData.GetProperty("changeType").GetString() ?? "Unknown";
-            var entityType = configData.GetProperty("entityType").GetString() ?? "Unknown";
-            var entityName = configData.GetProperty("entityName").GetString() ?? "Unknown";
+            // Extract notification details from JSON
+            string type = notification.TryGetProperty("type", out var typeElement) 
+                ? typeElement.GetString() ?? "System" 
+                : "System";
             
-            var action = changeType switch
-            {
-                "Created" => "created",
-                "Updated" => "updated",
-                "Deleted" => "deleted",
-                _ => "changed"
-            };
+            string message = notification.TryGetProperty("message", out var messageElement) 
+                ? messageElement.GetString() ?? "Unknown notification" 
+                : "Unknown notification";
             
-            var details = "";
-            if (configData.TryGetProperty("changes", out var changes))
-            {
-                var changeList = new List<string>();
-                foreach (var change in changes.EnumerateArray())
-                {
-                    changeList.Add(change.GetString() ?? "");
-                }
-                if (changeList.Any())
-                {
-                    details = $"Changes: {string.Join(", ", changeList)}";
-                }
-            }
+            string? source = notification.TryGetProperty("source", out var sourceElement) 
+                ? sourceElement.GetString() 
+                : null;
             
-            NotificationService.AddNotification(
-                NotificationType.System,
-                $"{entityType} '{entityName}' was {action}",
-                "Configuration Change",
-                details
-            );
+            string? details = notification.TryGetProperty("details", out var detailsElement) 
+                ? detailsElement.GetString() 
+                : null;
             
-            await Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error handling configuration change notification");
-        }
-    }
-    
-    /// <summary>
-    /// Called by JavaScript when system alerts are received
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleSystemAlert(JsonElement alertData)
-    {
-        try
-        {
-            var alertType = alertData.GetProperty("alertType").GetString() ?? "Unknown";
-            var message = alertData.GetProperty("message").GetString() ?? "System alert";
-            var severity = alertData.GetProperty("severity").GetString() ?? "info";
-            
-            var notificationType = severity switch
+            // Map string type to NotificationType enum
+            var notificationType = type.ToLower() switch
             {
                 "error" => NotificationType.Error,
                 "warning" => NotificationType.BudgetWarning,
-                "info" => NotificationType.System,
+                "success" => NotificationType.Success,
+                "security" => NotificationType.Security,
+                "providerhealth" => NotificationType.ProviderHealth,
+                "modeldiscovery" => NotificationType.ModelDiscovery,
+                "configuration" => NotificationType.ConfigurationChange,
+                "maintenance" => NotificationType.SystemMaintenance,
                 _ => NotificationType.System
             };
             
-            var details = "";
-            if (alertData.TryGetProperty("details", out var detailsElement))
+            // Add to notification service
+            NotificationService.AddNotification(notificationType, message, source, details);
+            
+            if (DebugMode)
             {
-                details = detailsElement.GetString() ?? "";
+                Logger.LogDebug("Added notification: {Type} - {Message}", type, message);
             }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing notification");
+        }
+    }
+    
+    // Event handlers for specific notification types
+    public async Task OnModelMappingChanged(JsonElement data)
+    {
+        try
+        {
+            if (DebugMode)
+            {
+                Logger.LogDebug("Model mapping changed: {Json}", data.GetRawText());
+            }
+            
+            // Create a notification for model mapping changes
+            NotificationService.AddNotification(
+                NotificationType.ConfigurationChange,
+                "A model mapping configuration has been changed",
+                "Model Mapping",
+                null);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing model mapping change");
+        }
+    }
+    
+    public async Task OnProviderHealthChanged(JsonElement data)
+    {
+        try
+        {
+            if (DebugMode)
+            {
+                Logger.LogDebug("Provider health changed: {Json}", data.GetRawText());
+            }
+            
+            // Extract provider information if available
+            string providerName = "Unknown";
+            string healthStatus = "Unknown";
+            
+            if (data.TryGetProperty("providerName", out var nameElement))
+            {
+                providerName = nameElement.GetString() ?? "Unknown";
+            }
+            
+            if (data.TryGetProperty("healthStatus", out var statusElement))
+            {
+                healthStatus = statusElement.GetString() ?? "Unknown";
+            }
+            
+            var notificationType = healthStatus.ToLower() == "healthy" 
+                ? NotificationType.Success 
+                : NotificationType.ProviderHealth;
             
             NotificationService.AddNotification(
                 notificationType,
-                message,
-                $"System Alert: {alertType}",
-                details
-            );
-            
-            await Task.CompletedTask;
+                $"Provider {providerName} is now {healthStatus}",
+                $"Provider: {providerName}",
+                null);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error handling system alert notification");
+            Logger.LogError(ex, "Error processing provider health change");
         }
     }
     
-    /// <summary>
-    /// Called by JavaScript when virtual key is updated (admin hub only)
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleVirtualKeyUpdate(JsonElement updateData)
-    {
-        try
-        {
-            var virtualKeyId = updateData.GetProperty("virtualKeyId").GetInt32();
-            var updateType = updateData.GetProperty("updateType").GetString() ?? "unknown";
-            var keyName = string.Empty;
-            
-            if (updateData.TryGetProperty("details", out var details) && 
-                details.TryGetProperty("keyName", out var keyNameElement))
-            {
-                keyName = keyNameElement.GetString() ?? $"Key #{virtualKeyId}";
-            }
-            else
-            {
-                keyName = $"Virtual Key #{virtualKeyId}";
-            }
-            
-            var notificationType = updateType switch
-            {
-                "created" => NotificationType.Success,
-                "deleted" => NotificationType.Error,
-                "updated" => NotificationType.System,
-                _ => NotificationType.System
-            };
-            
-            var message = updateType switch
-            {
-                "created" => $"Virtual key '{keyName}' was created",
-                "deleted" => $"Virtual key '{keyName}' was deleted",
-                "updated" => $"Virtual key '{keyName}' was updated",
-                _ => $"Virtual key '{keyName}' changed"
-            };
-            
-            NotificationService.AddNotification(
-                notificationType,
-                message,
-                "Virtual Key Management",
-                $"Key ID: {virtualKeyId}"
-            );
-            
-            await Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error handling virtual key update notification");
-        }
-    }
+    // Default implementations for other SignalR events
+    public Task OnNavigationStateChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnVideoGenerationProgress(string taskId, JsonElement progress) => Task.CompletedTask;
+    public Task OnVideoGenerationCompleted(string taskId, JsonElement result) => Task.CompletedTask;
+    public Task OnVideoGenerationFailed(string taskId, string error) => Task.CompletedTask;
+    public Task OnImageGenerationProgress(string taskId, JsonElement progress) => Task.CompletedTask;
+    public Task OnImageGenerationCompleted(string taskId, JsonElement result) => Task.CompletedTask;
+    public Task OnImageGenerationFailed(string taskId, string error) => Task.CompletedTask;
+    public Task OnSpendUpdate(JsonElement notification) => Task.CompletedTask;
+    public Task OnBudgetAlert(JsonElement notification) => Task.CompletedTask;
+    public Task OnSpendSummary(JsonElement notification) => Task.CompletedTask;
+    public Task OnUnusualSpending(JsonElement notification) => Task.CompletedTask;
+    public Task OnNewModelsDiscovered(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelCapabilitiesChanged(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelPricingUpdated(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelDeprecated(JsonElement notification) => Task.CompletedTask;
+    public Task OnBatchOperationProgress(string operationId, JsonElement progress) => Task.CompletedTask;
+    public Task OnBatchOperationCompleted(string operationId, JsonElement result) => Task.CompletedTask;
+    public Task OnBatchOperationFailed(string operationId, string error) => Task.CompletedTask;
     
-    /// <summary>
-    /// Called by JavaScript when high spend alert is triggered (admin hub only)
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleHighSpendAlert(JsonElement alertData)
+    public void Dispose()
     {
-        try
+        if (_isInitialized)
         {
-            var alertType = alertData.GetProperty("alertType").GetString() ?? "HighSpend";
-            var message = alertData.GetProperty("message").GetString() ?? "High spend detected";
-            var currentSpend = alertData.GetProperty("currentSpend").GetDecimal();
-            var budgetLimit = alertData.GetProperty("budgetLimit").GetDecimal();
-            var percentageUsed = alertData.GetProperty("percentageUsed").GetDouble();
-            
-            var severity = alertData.GetProperty("severity").GetString() ?? "warning";
-            var notificationType = severity == "critical" ? NotificationType.Error : NotificationType.BudgetWarning;
-            
-            var details = $"Current: ${currentSpend:F2} / Budget: ${budgetLimit:F2} ({percentageUsed:F1}% used)";
-            
-            NotificationService.AddNotification(
-                notificationType,
-                message,
-                $"Spend Alert: {alertType}",
-                details
-            );
-            
-            await Task.CompletedTask;
+            SignalRService.UnregisterListener(this);
         }
-        catch (Exception ex)
+        
+        if (DebugMode)
         {
-            Logger.LogError(ex, "Error handling high spend alert notification");
-        }
-    }
-    
-    /// <summary>
-    /// Called by JavaScript when security alert is triggered (admin hub only)
-    /// </summary>
-    [JSInvokable]
-    public async Task HandleSecurityAlert(JsonElement alertData)
-    {
-        try
-        {
-            var alertType = alertData.GetProperty("alertType").GetString() ?? "Security";
-            var description = alertData.GetProperty("description").GetString() ?? "Security event detected";
-            var affectedResource = alertData.TryGetProperty("affectedResource", out var resource) 
-                ? resource.GetString() 
-                : null;
-            
-            var details = !string.IsNullOrEmpty(affectedResource) 
-                ? $"Affected resource: {affectedResource}" 
-                : "";
-            
-            NotificationService.AddNotification(
-                NotificationType.Error,
-                description,
-                $"Security Alert: {alertType}",
-                details
-            );
-            
-            await Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error handling security alert notification");
-        }
-    }
-    
-    public async ValueTask DisposeAsync()
-    {
-        try
-        {
-            if (_navigationHub != null)
-            {
-                await _navigationHub.InvokeVoidAsync("disconnect");
-                await _navigationHub.DisposeAsync();
-            }
-            
-            if (_signalRService != null)
-            {
-                await _signalRService.DisposeAsync();
-            }
-            
-            _dotNetRef?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error disposing AdminNotificationListener");
+            Logger.LogDebug("AdminNotificationListener disposed");
         }
     }
 }

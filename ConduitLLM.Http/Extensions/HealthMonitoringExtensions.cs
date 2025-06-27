@@ -91,7 +91,7 @@ namespace ConduitLLM.Http.Extensions
                 tags: new[] { "system", "resources", "performance" });
 
             // Add HTTP connection pool health check
-            healthChecksBuilder.AddCheck<HttpConnectionPoolHealthCheck>(
+            healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
                 "http_connection_pool",
                 failureStatus: HealthStatus.Degraded,
                 tags: new[] { "http", "pool", "performance" });

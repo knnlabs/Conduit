@@ -178,7 +178,7 @@ namespace ConduitLLM.Http.Middleware
 
         private bool IsPathExcluded(PathString path)
         {
-            // Exclude health checks, metrics, documentation, and public media
+            // Exclude health checks, metrics, documentation, public media, and SignalR hubs
             var excludedPaths = new[]
             {
                 "/health",
@@ -188,7 +188,8 @@ namespace ConduitLLM.Http.Middleware
                 "/swagger",
                 "/_framework",
                 "/favicon.ico",
-                "/v1/media/public"
+                "/v1/media/public",
+                "/hubs"  // SignalR hubs use different authentication mechanism
             };
 
             return excludedPaths.Any(excluded => 

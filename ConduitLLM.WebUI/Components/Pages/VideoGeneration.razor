@@ -10,9 +10,11 @@
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
+@inject ServerSideSignalRService SignalRService
 @inject IToastService ToastService
 @inject ILogger<VideoGeneration> _logger
 @using ConduitLLM.WebUI.Services
+@implements IServerSideSignalRListener
 @implements IDisposable
 
 <PageTitle>Video Generation - ConduitLLM</PageTitle>
@@ -38,16 +40,7 @@
                                 <span class="small">@availableModels.Count Models Available</span>
                             </div>
                             <div class="stat-item mt-2">
-                                @if (signalRConnected)
-                                {
-                                    <i class="fa fa-circle text-success me-2" style="font-size: 0.5rem;"></i>
-                                    <span class="small text-success">Real-time updates active</span>
-                                }
-                                else
-                                {
-                                    <i class="fa fa-circle text-danger me-2" style="font-size: 0.5rem;"></i>
-                                    <span class="small text-danger">Real-time updates disconnected</span>
-                                }
+                                <ConnectionStatusIndicator />
                             </div>
                         </div>
                     </div>
@@ -499,8 +492,7 @@
     private List<VideoData> generatedVideos = new();
     private RecentPrompts? recentPromptsComponent;
     private List<VideoGenerationTask> activeTasks = new();
-    private DotNetObjectReference<VideoGeneration>? dotNetRef;
-    private bool signalRConnected = false;
+    private bool isInitialized = false;
     
     private string videoPrompt = "";
     private string selectedModel = "";
@@ -524,9 +516,9 @@
         // Load persisted active tasks
         await LoadPersistedTasks();
         
-        // Initialize SignalR connection
-        dotNetRef = DotNetObjectReference.Create(this);
-        await InitializeSignalR();
+        // Register as a SignalR listener
+        SignalRService.RegisterListener(this);
+        isInitialized = true;
     }
     
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -699,11 +691,8 @@
                 activeTasks.Add(task);
                 
                 // Subscribe to SignalR updates for this task
-                if (signalRConnected)
-                {
-                    await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
-                    _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", task.TaskId);
-                }
+                await SignalRService.SubscribeToVideoTask(task.TaskId);
+                _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", task.TaskId);
                 
                 // Persist active tasks
                 await SavePersistedTasks();
@@ -907,91 +896,55 @@
         }
     }
     
-    // Initialize SignalR for real-time updates
-    private async Task InitializeSignalR()
+
+    // IServerSideSignalRListener implementation
+    public async Task OnConnectionStateChanged(string hubName, ConnectionState state)
     {
-        try
+        if (hubName == "video-generation")
         {
-            // Get the WebUI virtual key for SignalR authentication
-            string? virtualKey = null;
-            try
+            _logger.LogInformation("Video generation hub connection state changed to {State}", state);
+            
+            if (state == ConnectionState.Connected)
             {
-                var globalSettingService = AdminApiClient as IGlobalSettingService;
-                if (globalSettingService != null)
+                // Re-subscribe to all active tasks
+                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
                 {
-                    virtualKey = await globalSettingService.GetSettingAsync("WebUI_VirtualKey");
-                    _logger.LogInformation("Retrieved WebUI virtual key for SignalR authentication");
+                    await SignalRService.SubscribeToVideoTask(task.TaskId);
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to retrieve WebUI virtual key for SignalR");
-            }
             
-            var initialized = await JSRuntime.InvokeAsync<bool>("videoGenerationSignalR.initialize", dotNetRef, virtualKey);
-            signalRConnected = initialized;
-            _logger.LogInformation("Video generation SignalR initialized: {Connected}", signalRConnected);
-            
-            if (!signalRConnected)
-            {
-                _logger.LogError("Failed to initialize SignalR connection for video generation");
-                ToastService.ShowWarning("Real-time updates unavailable. Please refresh the page.");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing SignalR");
-            signalRConnected = false;
-            ToastService.ShowError("Failed to establish real-time connection. Please refresh the page.");
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    [JSInvokable]
-    public async Task OnConnected()
-    {
-        signalRConnected = true;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnDisconnected()
-    {
-        signalRConnected = false;
-        _logger.LogWarning("Video generation SignalR disconnected");
-        ToastService.ShowWarning("Real-time connection lost. Please refresh the page.");
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnReconnecting()
-    {
-        signalRConnected = false;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnReconnected()
-    {
-        signalRConnected = true;
-        _logger.LogInformation("Video generation SignalR reconnected");
-        
-        // Re-subscribe to all active tasks
-        foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
-        {
-            await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
-        }
-        
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnVideoGenerationStarted(JsonElement data)
+    public async Task OnVideoGenerationProgress(string taskId, JsonElement progress)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
-            _logger.LogInformation("Video generation started for task {TaskId}", taskId);
-            // Update UI if needed
+            _logger.LogInformation("Video generation progress for task {TaskId}", taskId);
+            
+            // Update the task
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                if (progress.TryGetProperty("status", out var statusElement))
+                {
+                    task.Status = MapInternalStatusToUserStatus(statusElement.GetString() ?? "processing");
+                }
+                
+                if (progress.TryGetProperty("progress", out var progressElement))
+                {
+                    task.Progress = progressElement.GetInt32();
+                }
+                
+                if (progress.TryGetProperty("message", out var messageElement))
+                {
+                    task.StatusMessage = messageElement.GetString();
+                }
+                
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+            
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
@@ -1000,48 +953,11 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnVideoGenerationProgress(JsonElement data)
+
+    public async Task OnVideoGenerationCompleted(string taskId, JsonElement result)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
-            var progress = data.GetProperty("progress").GetInt32();
-            var status = data.GetProperty("status").GetString();
-            var message = data.TryGetProperty("message", out var msgElem) ? msgElem.GetString() : null;
-
-            _logger.LogInformation("Video generation progress for task {TaskId}: {Progress}% - {Status}", taskId, progress, status);
-
-            // Find and update the task
-            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
-            if (task != null)
-            {
-                task.Progress = progress;
-                task.Status = MapInternalStatusToUserStatus(status ?? "processing");
-                if (!string.IsNullOrEmpty(message))
-                {
-                    task.StatusMessage = message;
-                }
-                task.UpdatedAt = DateTimeOffset.UtcNow;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling VideoGenerationProgress event");
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnVideoGenerationCompleted(JsonElement data)
-    {
-        try
-        {
-            var taskId = data.GetProperty("taskId").GetString();
-            var videoUrl = data.TryGetProperty("videoUrl", out var urlElem) ? urlElem.GetString() : null;
-            
-            _logger.LogInformation("Video generation completed for task {TaskId} via SignalR - videoUrl: {VideoUrl}", taskId, videoUrl);
-
             _logger.LogInformation("Video generation completed for task {TaskId}", taskId);
 
             // Update the task
@@ -1052,6 +968,17 @@
                 task.Progress = 100;
                 task.UpdatedAt = DateTimeOffset.UtcNow;
                 task.CompletedAt = DateTimeOffset.UtcNow;
+                
+                // Extract video URL from the result
+                string? videoUrl = null;
+                if (result.TryGetProperty("url", out var urlElement))
+                {
+                    videoUrl = urlElement.GetString();
+                }
+                else if (result.TryGetProperty("videoUrl", out var videoUrlElement))
+                {
+                    videoUrl = videoUrlElement.GetString();
+                }
                 
                 // Check if video URL is provided in the SignalR event
                 if (!string.IsNullOrEmpty(videoUrl))
@@ -1107,7 +1034,7 @@
                 await SavePersistedTasks();
                 
                 // Unsubscribe from updates
-                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
+                await SignalRService.UnsubscribeFromVideoTask(taskId);
             }
 
             await InvokeAsync(StateHasChanged);
@@ -1118,13 +1045,10 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnVideoGenerationFailed(JsonElement data)
+    public async Task OnVideoGenerationFailed(string taskId, string error)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
-            var error = data.TryGetProperty("error", out var errorElem) ? errorElem.GetString() : "Unknown error";
 
             _logger.LogError("Video generation failed for task {TaskId}: {Error}", taskId, error);
 
@@ -1137,7 +1061,7 @@
                 task.UpdatedAt = DateTimeOffset.UtcNow;
                 
                 // Unsubscribe from updates
-                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
+                await SignalRService.UnsubscribeFromVideoTask(taskId);
             }
 
             await InvokeAsync(StateHasChanged);
@@ -1148,32 +1072,26 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnVideoGenerationCancelled(JsonElement data)
-    {
-        try
-        {
-            var taskId = data.GetProperty("taskId").GetString();
-            _logger.LogInformation("Video generation cancelled for task {TaskId}", taskId);
-
-            // Update the task
-            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
-            if (task != null)
-            {
-                task.Status = "cancelled";
-                task.UpdatedAt = DateTimeOffset.UtcNow;
-                
-                // Unsubscribe from updates
-                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
-            }
-
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling VideoGenerationCancelled event");
-        }
-    }
+    // Default implementations for other SignalR events
+    public Task OnSystemNotificationReceived(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelMappingChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnProviderHealthChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnNavigationStateChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnImageGenerationProgress(string taskId, JsonElement progress) => Task.CompletedTask;
+    public Task OnImageGenerationCompleted(string taskId, JsonElement result) => Task.CompletedTask;
+    public Task OnImageGenerationFailed(string taskId, string error) => Task.CompletedTask;
+    public Task OnSpendUpdate(JsonElement notification) => Task.CompletedTask;
+    public Task OnBudgetAlert(JsonElement notification) => Task.CompletedTask;
+    public Task OnSpendSummary(JsonElement notification) => Task.CompletedTask;
+    public Task OnUnusualSpending(JsonElement notification) => Task.CompletedTask;
+    public Task OnNewModelsDiscovered(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelCapabilitiesChanged(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelPricingUpdated(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelDeprecated(JsonElement notification) => Task.CompletedTask;
+    public Task OnBatchOperationProgress(string operationId, JsonElement progress) => Task.CompletedTask;
+    public Task OnBatchOperationCompleted(string operationId, JsonElement result) => Task.CompletedTask;
+    public Task OnBatchOperationFailed(string operationId, string error) => Task.CompletedTask;
+    public Task OnAdminNotificationReceived(JsonElement notification) => Task.CompletedTask;
 
     // Helper method to map internal status to user-friendly status
     private string MapInternalStatusToUserStatus(string internalStatus)
@@ -1195,22 +1113,16 @@
     {
         _logger.LogInformation("API key changed, reinitializing SignalR connection");
         
-        // Stop existing SignalR connection
-        if (signalRConnected)
-        {
-            await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.stop");
-            signalRConnected = false;
-        }
-        
-        // Reinitialize SignalR with new API key
-        await InitializeSignalR();
+        // No need to reinitialize SignalR as it uses server-side connection
+        _logger.LogInformation("API key changed");
     }
 
     public void Dispose()
     {
-        dotNetRef?.Dispose();
-        // Stop SignalR connection
-        _ = JSRuntime.InvokeVoidAsync("videoGenerationSignalR.stop");
+        if (isInitialized)
+        {
+            SignalRService.UnregisterListener(this);
+        }
     }
 
     private class VideoModel

@@ -164,6 +164,28 @@ export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
 export CONDUITLLM__STORAGE__S3__REGION=auto
 ```
 
+## Docker SignalR Configuration
+
+When running Conduit in Docker, the WebUI needs different URLs for server-side API calls vs client-side (browser) connections:
+
+### WebUI Environment Variables
+
+```bash
+# Internal URLs for server-to-server communication (within Docker network)
+CONDUIT_API_BASE_URL=http://api:8080
+CONDUIT_ADMIN_API_BASE_URL=http://admin:8080
+
+# External URLs for client-side browser access (SignalR/WebSocket connections)
+CONDUIT_API_EXTERNAL_URL=http://localhost:5000
+CONDUIT_ADMIN_API_EXTERNAL_URL=http://localhost:5002
+```
+
+**Important Notes:**
+- `CONDUIT_API_BASE_URL` and `CONDUIT_ADMIN_API_BASE_URL` are used by the WebUI server for backend API calls
+- `CONDUIT_API_EXTERNAL_URL` and `CONDUIT_ADMIN_API_EXTERNAL_URL` are passed to the browser for SignalR connections
+- If external URLs are not set, the system falls back to internal URLs (which won't work for browser connections in Docker)
+- For production deployments, set these to your actual domain names (e.g., `https://api.yourdomain.com`)
+
 ### Important: Media Lifecycle Management
 
 **WARNING**: Generated media files (images/videos) are currently not cleaned up when virtual keys are deleted. This is a known limitation that will lead to:

@@ -56,10 +56,24 @@ namespace ConduitLLM.Admin.Security
                 return Task.FromResult(AuthenticateResult.Success(ticket));
             }
 
-            // Check for master key in headers
+            // Check for master key in headers and query string
             string? providedKey = null;
             
-            if (Context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyValues))
+            // For SignalR hub requests, prioritize query string authentication
+            if (Context.Request.Path.StartsWithSegments("/hubs") && 
+                Context.Request.Query.TryGetValue("access_token", out var tokenValues))
+            {
+                providedKey = tokenValues.FirstOrDefault();
+                
+                // Log when query string auth is used for SignalR
+                if (!string.IsNullOrEmpty(providedKey))
+                {
+                    Logger.LogDebug("Using query string authentication for SignalR hub: {Path}", 
+                        Context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                }
+            }
+            // If not a hub request or no query string token, check headers
+            else if (Context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyValues))
             {
                 providedKey = apiKeyValues.FirstOrDefault();
             }
@@ -74,18 +88,6 @@ namespace ConduitLLM.Admin.Security
                 if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     providedKey = authHeader.Substring("Bearer ".Length).Trim();
-                }
-            }
-            // Check query string for SignalR WebSocket connections
-            else if (Context.Request.Query.TryGetValue("access_token", out var tokenValues))
-            {
-                providedKey = tokenValues.FirstOrDefault();
-                
-                // Log when query string auth is used for SignalR
-                if (!string.IsNullOrEmpty(providedKey) && Context.Request.Path.StartsWithSegments("/hubs"))
-                {
-                    Logger.LogDebug("Using query string authentication for SignalR hub: {Path}", 
-                        Context.Request.Path.ToString().Replace(Environment.NewLine, ""));
                 }
             }
 

@@ -14,8 +14,8 @@
   },
   "devDependencies": {
     "stylelint": "^16.2.1",
-    "stylelint-config-standard": "^36.0.0",
     "stylelint-config-recess-order": "^4.4.0",
+    "stylelint-config-standard": "^36.0.0",
     "stylelint-order": "^6.0.4"
   },
   "keywords": [
@@ -25,5 +25,8 @@
     "conduitllm"
   ],
   "author": "ConduitLLM Team",
-  "license": "Private"
+  "license": "Private",
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7"
+  }
 }

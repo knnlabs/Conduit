@@ -91,6 +91,16 @@ if (!string.IsNullOrEmpty(redisUrl))
     }
 }
 
+// Configure API URLs from environment variables
+builder.Configuration["CONDUIT_API_BASE_URL"] = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? "";
+builder.Configuration["CONDUIT_ADMIN_API_BASE_URL"] = Environment.GetEnvironmentVariable("CONDUIT_ADMIN_API_BASE_URL") ?? "";
+builder.Configuration["ApiBaseUrl"] = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? "";
+builder.Configuration["AdminApi:BaseUrl"] = Environment.GetEnvironmentVariable("CONDUIT_ADMIN_API_BASE_URL") ?? "";
+
+// Configure external URLs for client-side access
+builder.Configuration["CONDUIT_API_EXTERNAL_URL"] = Environment.GetEnvironmentVariable("CONDUIT_API_EXTERNAL_URL") ?? "";
+builder.Configuration["CONDUIT_ADMIN_API_EXTERNAL_URL"] = Environment.GetEnvironmentVariable("CONDUIT_ADMIN_API_EXTERNAL_URL") ?? "";
+
 // Add memory cache for failed login tracking
 builder.Services.AddMemoryCache();
 
@@ -215,6 +225,12 @@ builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastNotificationService, ConduitLLM.WebUI.Services.ToastNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
+// Register server-side SignalR service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ServerSideSignalRService>();
+builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ServerSideSignalRService>(provider => 
+    provider.GetRequiredService<ConduitLLM.WebUI.Services.ServerSideSignalRService>());
+
+// Register navigation state service using server-side SignalR
 builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.SignalRNavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFileVersionService, ConduitLLM.WebUI.Services.FileVersionService>();

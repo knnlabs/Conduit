@@ -355,18 +355,6 @@ public class SignalRConnectionManager : IAsyncDisposable
 }
 
 /// <summary>
-/// Connection state enum matching the JavaScript implementation
-/// </summary>
-public enum ConnectionState
-{
-    Disconnected,
-    Connecting,
-    Connected,
-    Reconnecting,
-    Failed
-}
-
-/// <summary>
 /// Hub connection information
 /// </summary>
 public class HubConnectionInfo

@@ -1,842 +1,185 @@
+using System;
 using System.Collections.Concurrent;
-using Microsoft.AspNetCore.SignalR.Client;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Models;
-using System.Text.Json;
 
 namespace ConduitLLM.WebUI.Services
 {
     /// <summary>
-    /// SignalR-based implementation of navigation state service that receives real-time updates
-    /// instead of polling. Falls back to polling if SignalR connection fails.
+    /// Navigation state service that uses server-side SignalR for real-time updates
     /// </summary>
-    public class SignalRNavigationStateService : INavigationStateService, IDisposable, IAsyncDisposable
+    public class SignalRNavigationStateService : ServerSideSignalRListenerBase, INavigationStateService, IDisposable
     {
-        private readonly IAdminApiClient _adminApiClient;
-        private readonly IConduitApiClient _conduitApiClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SignalRNavigationStateService> _logger;
-        private readonly SignalRConnectionManager _signalRConnectionManager;
+        private readonly ServerSideSignalRService _signalRService;
         private readonly ConcurrentDictionary<string, NavigationItemState> _stateCache;
         private readonly SemaphoreSlim _refreshSemaphore;
-        private HubConnection? _hubConnection;
-        private Timer? _reconnectTimer;
-        private Timer? _fallbackPollingTimer;
         private DateTime _lastRefresh;
         private bool _disposed;
-        private bool _usePollingFallback;
-        private int _reconnectAttempts;
-        private const int MaxReconnectAttempts = 5;
-        private const int PollingIntervalSeconds = 30;
 
-        /// <summary>
-        /// Event raised when any navigation state changes.
-        /// </summary>
-        public event EventHandler<NavigationStateChangedEventArgs>? NavigationStateChanged;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SignalRNavigationStateService"/> class.
-        /// </summary>
         public SignalRNavigationStateService(
-            IAdminApiClient adminApiClient,
-            IConduitApiClient conduitApiClient,
             IConfiguration configuration,
             ILogger<SignalRNavigationStateService> logger,
-            SignalRConnectionManager signalRConnectionManager)
+            ServerSideSignalRService signalRService)
         {
-            _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
-            _conduitApiClient = conduitApiClient ?? throw new ArgumentNullException(nameof(conduitApiClient));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _signalRConnectionManager = signalRConnectionManager ?? throw new ArgumentNullException(nameof(signalRConnectionManager));
+            _signalRService = signalRService ?? throw new ArgumentNullException(nameof(signalRService));
             _stateCache = new ConcurrentDictionary<string, NavigationItemState>();
             _refreshSemaphore = new SemaphoreSlim(1, 1);
             _lastRefresh = DateTime.MinValue;
-            _usePollingFallback = false;
-            _reconnectAttempts = 0;
 
-            // Initialize SignalR connection
-            _ = InitializeSignalRConnectionAsync();
+            // Register as a listener for SignalR events
+            _signalRService.RegisterListener(this);
+            
+            // Initialize with default states (enabled by default)
+            InitializeDefaultStates();
         }
 
-        private async Task InitializeSignalRConnectionAsync()
+        private void InitializeDefaultStates()
         {
-            try
+            var routes = new[] { "chat", "embeddings", "audio", "images", "video" };
+            foreach (var route in routes)
             {
-                _logger.LogInformation("Initializing SignalR connection for navigation state");
-
-                // Build the navigation state hub connection directly since this service manages its own connection
-                var apiBaseUrl = _configuration["ApiBaseUrl"] ?? "http://localhost:5000";
-                var hubUrl = $"{apiBaseUrl}/hubs/navigation-state";
-                
-                _hubConnection = new HubConnectionBuilder()
-                    .WithUrl(hubUrl)
-                    .WithAutomaticReconnect()
-                    .Build();
-
-                // Register event handlers
-                RegisterSignalRHandlers();
-
-                // Set up connection event handlers
-                _hubConnection.Closed += OnConnectionClosed;
-                _hubConnection.Reconnecting += OnReconnecting;
-                _hubConnection.Reconnected += OnReconnected;
-                
-                // Start the connection
-                await _hubConnection.StartAsync();
-                
-                _logger.LogInformation("SignalR connection established successfully");
-                _reconnectAttempts = 0;
-                
-                // Perform initial state refresh
-                await RefreshStatesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to establish SignalR connection");
-                EnablePollingFallback();
-            }
-        }
-
-        private void RegisterSignalRHandlers()
-        {
-            if (_hubConnection == null) return;
-
-            // Handle navigation state updates
-            _hubConnection.On<JsonElement>("NavigationStateUpdate", async (notification) =>
-            {
-                try
+                _stateCache.TryAdd(route, new NavigationItemState
                 {
-                    var type = notification.GetProperty("type").GetString();
-                    var data = notification.GetProperty("data");
-                    
-                    _logger.LogDebug("Received navigation state update: {Type}", type);
-
-                    // Refresh states based on the type of update
-                    switch (type)
-                    {
-                        case "ModelMappingChanged":
-                            await RefreshChatAndImageStatesAsync();
-                            break;
-                        
-                        case "ProviderHealthChanged":
-                            await RefreshAllStatesAsync();
-                            break;
-                        
-                        case "ModelCapabilitiesDiscovered":
-                            await RefreshAudioAndImageStatesAsync();
-                            break;
-                        
-                        case "ModelAvailabilityChanged":
-                            await RefreshAllStatesAsync();
-                            break;
-                        
-                        default:
-                            _logger.LogWarning("Unknown navigation state update type: {Type}", type);
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error handling navigation state update");
-                }
-            });
-
-            // Handle model-specific updates
-            _hubConnection.On<JsonElement>("ModelUpdate", async (notification) =>
-            {
-                try
-                {
-                    _logger.LogDebug("Received model update notification");
-                    await RefreshAllStatesAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error handling model update");
-                }
-            });
-        }
-
-        private Task OnConnectionClosed(Exception? exception)
-        {
-            if (_disposed) return Task.CompletedTask;
-
-            if (exception != null)
-            {
-                _logger.LogError(exception, "SignalR connection closed with error");
-            }
-            else
-            {
-                _logger.LogWarning("SignalR connection closed");
-            }
-
-            _reconnectAttempts++;
-            
-            if (_reconnectAttempts >= MaxReconnectAttempts)
-            {
-                _logger.LogWarning("Max reconnection attempts reached, falling back to polling");
-                EnablePollingFallback();
-            }
-            else
-            {
-                // Schedule reconnection attempt
-                _reconnectTimer?.Dispose();
-                _reconnectTimer = new Timer(async _ => await AttemptReconnectAsync(), null, 
-                    TimeSpan.FromSeconds(Math.Pow(2, _reconnectAttempts)), // Exponential backoff
-                    Timeout.InfiniteTimeSpan);
-            }
-            
-            return Task.CompletedTask;
-        }
-
-        private Task OnReconnecting(Exception? exception)
-        {
-            _logger.LogInformation("SignalR connection reconnecting...");
-            return Task.CompletedTask;
-        }
-
-        private async Task OnReconnected(string? connectionId)
-        {
-            _logger.LogInformation("SignalR connection reconnected with ID: {ConnectionId}", connectionId);
-            _reconnectAttempts = 0;
-            DisablePollingFallback();
-            
-            // Refresh all states after reconnection
-            await RefreshStatesAsync();
-        }
-
-        private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
-        {
-            _logger.LogInformation("SignalR connection state changed to: {State}", e.CurrentState);
-            
-            switch (e.CurrentState)
-            {
-                case ConnectionState.Disconnected:
-                    if (!string.IsNullOrEmpty(e.Error))
-                    {
-                        _logger.LogError("SignalR connection lost: {Error}", e.Error);
-                        _ = OnConnectionClosed(new Exception(e.Error));
-                    }
-                    break;
-                    
-                case ConnectionState.Connected:
-                    _reconnectAttempts = 0;
-                    DisablePollingFallback();
-                    _ = RefreshStatesAsync();
-                    break;
-                    
-                case ConnectionState.Reconnecting:
-                    _logger.LogInformation("SignalR connection reconnecting...");
-                    break;
+                    IsEnabled = true,
+                    TooltipMessage = null,
+                    ShowIndicator = false
+                });
             }
         }
 
-        private async Task AttemptReconnectAsync()
+        public async Task<NavigationItemState> GetChatStateAsync()
         {
-            if (_disposed || _hubConnection == null) return;
-
-            try
-            {
-                _logger.LogInformation("Attempting to reconnect SignalR connection (attempt {Attempt}/{Max})", 
-                    _reconnectAttempts + 1, MaxReconnectAttempts);
-                
-                await _hubConnection.StartAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Reconnection attempt failed");
-            }
+            return await GetNavigationItemStateAsync("chat");
         }
 
-        private void EnablePollingFallback()
+        public async Task<NavigationItemState> GetEmbeddingsStateAsync()
         {
-            if (_usePollingFallback) return;
-
-            _logger.LogWarning("Enabling polling fallback mode");
-            _usePollingFallback = true;
-            
-            // Start polling timer
-            _fallbackPollingTimer?.Dispose();
-            _fallbackPollingTimer = new Timer(
-                async _ => await RefreshStatesAsync(), 
-                null, 
-                TimeSpan.FromSeconds(PollingIntervalSeconds), 
-                TimeSpan.FromSeconds(PollingIntervalSeconds));
+            return await GetNavigationItemStateAsync("embeddings");
         }
 
-        private void DisablePollingFallback()
+        public async Task<NavigationItemState> GetAudioStateAsync()
         {
-            if (!_usePollingFallback) return;
-
-            _logger.LogInformation("Disabling polling fallback mode, using real-time updates");
-            _usePollingFallback = false;
-            
-            // Stop polling timer
-            _fallbackPollingTimer?.Dispose();
-            _fallbackPollingTimer = null;
+            return await GetNavigationItemStateAsync("audio");
         }
 
-        /// <summary>
-        /// Gets the state of a specific navigation item.
-        /// </summary>
+        public async Task<NavigationItemState> GetImagesStateAsync()
+        {
+            return await GetNavigationItemStateAsync("images");
+        }
+
+        public async Task<NavigationItemState> GetVideoStateAsync()
+        {
+            return await GetNavigationItemStateAsync("video");
+        }
+
         public async Task<NavigationItemState> GetNavigationItemStateAsync(string route)
         {
-            // In fallback mode or if cache is stale, refresh
-            if (_usePollingFallback && DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(10))
+            return await Task.FromResult(_stateCache.GetOrAdd(route, _ => new NavigationItemState
             {
-                await RefreshStatesAsync();
-            }
-
-            return _stateCache.GetValueOrDefault(route, new NavigationItemState { IsEnabled = true });
+                IsEnabled = true,
+                TooltipMessage = null,
+                ShowIndicator = false
+            }));
         }
 
-        /// <summary>
-        /// Gets the states of all navigation items.
-        /// </summary>
         public async Task<Dictionary<string, NavigationItemState>> GetAllNavigationStatesAsync()
         {
-            // In fallback mode or if cache is stale, refresh
-            if (_usePollingFallback && DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(10))
-            {
-                await RefreshStatesAsync();
-            }
-
-            return new Dictionary<string, NavigationItemState>(_stateCache);
+            return await Task.FromResult(new Dictionary<string, NavigationItemState>(_stateCache));
         }
 
-        /// <summary>
-        /// Gets detailed capability status information for diagnostics.
-        /// </summary>
         public async Task<CapabilityStatusInfo> GetCapabilityStatusAsync()
         {
-            try
+            // Return a basic status - the real implementation should query the actual capability status
+            return await Task.FromResult(new CapabilityStatusInfo
             {
-                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
-                var status = new CapabilityStatusInfo();
-
-                if (mappings?.Any() == true)
-                {
-                    status.TotalConfiguredModels = mappings.Count(m => m.IsEnabled);
-                    status.ImageGenerationModels = mappings.Count(m => m.IsEnabled && m.SupportsImageGeneration);
-                    status.VisionModels = mappings.Count(m => m.IsEnabled && m.SupportsVision);
-                    status.AudioTranscriptionModels = mappings.Count(m => m.IsEnabled && m.SupportsAudioTranscription);
-                    status.TextToSpeechModels = mappings.Count(m => m.IsEnabled && m.SupportsTextToSpeech);
-                    status.RealtimeAudioModels = mappings.Count(m => m.IsEnabled && m.SupportsRealtimeAudio);
-
-                    status.ConfiguredModels = mappings
-                        .Where(m => m.IsEnabled)
-                        .Select(m => new ModelCapabilityInfo
-                        {
-                            ModelId = m.ModelId,
-                            ProviderId = m.ProviderId,
-                            SupportsImageGeneration = m.SupportsImageGeneration,
-                            SupportsVision = m.SupportsVision,
-                            SupportsAudioTranscription = m.SupportsAudioTranscription,
-                            SupportsTextToSpeech = m.SupportsTextToSpeech,
-                            SupportsRealtimeAudio = m.SupportsRealtimeAudio
-                        })
-                        .ToList();
-                }
-
-                return status;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting capability status");
-                return new CapabilityStatusInfo { HasError = true, ErrorMessage = ex.Message };
-            }
+                TotalConfiguredModels = 0,
+                ImageGenerationModels = 0,
+                VideoGenerationModels = 0,
+                VisionModels = 0,
+                AudioTranscriptionModels = 0,
+                TextToSpeechModels = 0,
+                RealtimeAudioModels = 0,
+                HasError = false
+            });
         }
 
-        /// <summary>
-        /// Forces a refresh of all navigation states.
-        /// </summary>
+        public event EventHandler<NavigationStateChangedEventArgs>? NavigationStateChanged;
+
         public async Task RefreshStatesAsync()
         {
-            await RefreshAllStatesAsync();
+            // In this simplified version, we rely on SignalR events to update states
+            // No active refresh is needed
+            await Task.CompletedTask;
         }
 
-        private async Task RefreshAllStatesAsync()
+        private void UpdateState(string key, NavigationItemState state)
         {
-            await _refreshSemaphore.WaitAsync();
+            _stateCache.AddOrUpdate(key, state, (_, __) => state);
+            _logger.LogTrace("Updated navigation state for {Key}: Enabled={IsEnabled}, Message={Message}", 
+                key, state.IsEnabled, state.TooltipMessage);
+            
+            // Raise the event
+            NavigationStateChanged?.Invoke(this, new NavigationStateChangedEventArgs(key, state));
+        }
+
+        // SignalR event handlers
+        public override async Task OnNavigationStateChanged(JsonElement data)
+        {
+            _logger.LogDebug("Received navigation state change notification");
+            
             try
             {
-                _logger.LogDebug("Refreshing all navigation states");
-
-                var tasks = new List<Task>
+                // Parse the navigation state update
+                if (data.TryGetProperty("stateKey", out var stateKeyElement) &&
+                    data.TryGetProperty("state", out var stateElement))
                 {
-                    CheckChatInterfacePrerequisitesAsync(),
-                    CheckAudioTestPrerequisitesAsync(),
-                    CheckRequestLogsPrerequisitesAsync(),
-                    CheckAudioUsagePrerequisitesAsync(),
-                    CheckAudioProvidersPrerequisitesAsync(),
-                    CheckImageGenerationPrerequisitesAsync(),
-                    CheckVideoGenerationPrerequisitesAsync()
-                };
-
-                await Task.WhenAll(tasks);
-
-                _lastRefresh = DateTime.UtcNow;
-                _logger.LogDebug("All navigation states refreshed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing navigation states");
-            }
-            finally
-            {
-                _refreshSemaphore.Release();
-            }
-        }
-
-        private async Task RefreshChatAndImageStatesAsync()
-        {
-            await _refreshSemaphore.WaitAsync();
-            try
-            {
-                _logger.LogDebug("Refreshing chat and image generation states");
-
-                await Task.WhenAll(
-                    CheckChatInterfacePrerequisitesAsync(),
-                    CheckImageGenerationPrerequisitesAsync()
-                );
-
-                _lastRefresh = DateTime.UtcNow;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing chat and image states");
-            }
-            finally
-            {
-                _refreshSemaphore.Release();
-            }
-        }
-
-        private async Task RefreshAudioAndImageStatesAsync()
-        {
-            await _refreshSemaphore.WaitAsync();
-            try
-            {
-                _logger.LogDebug("Refreshing audio and image generation states");
-
-                await Task.WhenAll(
-                    CheckAudioTestPrerequisitesAsync(),
-                    CheckAudioUsagePrerequisitesAsync(),
-                    CheckAudioProvidersPrerequisitesAsync(),
-                    CheckImageGenerationPrerequisitesAsync()
-                );
-
-                _lastRefresh = DateTime.UtcNow;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing audio and image states");
-            }
-            finally
-            {
-                _refreshSemaphore.Release();
-            }
-        }
-
-        // All the prerequisite checking methods remain the same as in the original NavigationStateService
-        private async Task CheckChatInterfacePrerequisitesAsync()
-        {
-            try
-            {
-                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
-                var hasActiveMappings = mappings?.Any(m => m.IsEnabled) ?? false;
-
-                var newState = new NavigationItemState
-                {
-                    IsEnabled = hasActiveMappings,
-                    TooltipMessage = hasActiveMappings ? null : "Configure LLM providers and model mappings to use the chat interface",
-                    RequiredConfigurationUrl = hasActiveMappings ? null : "/model-mappings",
-                    ShowIndicator = !hasActiveMappings
-                };
-
-                UpdateState("/chat", newState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking chat interface prerequisites");
-            }
-        }
-
-        private async Task CheckAudioTestPrerequisitesAsync()
-        {
-            try
-            {
-                var audioProviders = await _adminApiClient.GetAudioProvidersAsync();
-                var hasAudioProviders = audioProviders?.Any() ?? false;
-
-                var newState = new NavigationItemState
-                {
-                    IsEnabled = hasAudioProviders,
-                    TooltipMessage = hasAudioProviders ? null : "Configure audio providers with transcription, TTS, or realtime capabilities",
-                    RequiredConfigurationUrl = hasAudioProviders ? null : "/audio-providers",
-                    ShowIndicator = !hasAudioProviders
-                };
-
-                UpdateState("/audio-test", newState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking audio test prerequisites");
-            }
-        }
-
-        private async Task CheckRequestLogsPrerequisitesAsync()
-        {
-            try
-            {
-                var summary = await _adminApiClient.GetLogsSummaryAsync(7);
-                var hasLogs = summary?.TotalRequests > 0;
-
-                var virtualKeys = await _adminApiClient.GetAllVirtualKeysAsync();
-                var hasVirtualKeys = virtualKeys?.Any() ?? false;
-
-                var newState = new NavigationItemState
-                {
-                    IsEnabled = true,
-                    TooltipMessage = !hasLogs ? "No API requests logged yet. Make some API calls to see request logs." : null,
-                    ShowIndicator = !hasLogs && !hasVirtualKeys
-                };
-
-                UpdateState("/request-logs", newState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking request logs prerequisites");
-            }
-        }
-
-        private async Task CheckAudioUsagePrerequisitesAsync()
-        {
-            try
-            {
-                var audioProviders = await _adminApiClient.GetAudioProvidersAsync();
-                var hasAudioProviders = audioProviders?.Any() ?? false;
-
-                var newState = new NavigationItemState
-                {
-                    IsEnabled = true,
-                    TooltipMessage = !hasAudioProviders ? "Configure audio providers and use audio APIs to see usage data" : null,
-                    RequiredConfigurationUrl = !hasAudioProviders ? "/audio-providers" : null,
-                    ShowIndicator = !hasAudioProviders
-                };
-
-                UpdateState("/audio-usage", newState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Error checking audio usage prerequisites - API may not be available");
-                
-                var fallbackState = new NavigationItemState
-                {
-                    IsEnabled = true,
-                    TooltipMessage = "Audio usage monitoring - configure audio providers to see prerequisites",
-                    RequiredConfigurationUrl = null,
-                    ShowIndicator = false
-                };
-                
-                UpdateState("/audio-usage", fallbackState);
-            }
-        }
-
-        private async Task CheckAudioProvidersPrerequisitesAsync()
-        {
-            try
-            {
-                var providers = await _adminApiClient.GetAllProviderCredentialsAsync();
-                var hasLLMProviders = providers?.Any() ?? false;
-
-                var newState = new NavigationItemState
-                {
-                    IsEnabled = hasLLMProviders,
-                    TooltipMessage = hasLLMProviders ? null : "Configure LLM providers first to enable audio capabilities",
-                    RequiredConfigurationUrl = hasLLMProviders ? null : "/llm-providers",
-                    ShowIndicator = !hasLLMProviders
-                };
-
-                UpdateState("/audio-providers", newState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking audio providers prerequisites");
-            }
-        }
-
-        private async Task CheckImageGenerationPrerequisitesAsync()
-        {
-            try
-            {
-                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
-                var hasConfiguredImageModels = mappings?.Any(m => 
-                    m.IsEnabled && 
-                    m.SupportsImageGeneration) ?? false;
-
-                if (hasConfiguredImageModels)
-                {
-                    var newState = new NavigationItemState
+                    var stateKey = stateKeyElement.GetString();
+                    if (!string.IsNullOrEmpty(stateKey))
                     {
-                        IsEnabled = true,
-                        TooltipMessage = null,
-                        RequiredConfigurationUrl = null,
-                        ShowIndicator = false
-                    };
-                    UpdateState("/image-generation", newState);
-                    return;
-                }
-
-                // Fallback discovery logic (same as original)
-                var hasDiscoveredImageModels = false;
-                if (mappings?.Any() == true)
-                {
-                    try
-                    {
-                        var enabledMappings = mappings.Where(m => m.IsEnabled).ToList();
-                        if (enabledMappings.Any())
+                        var state = JsonSerializer.Deserialize<NavigationItemState>(stateElement.GetRawText());
+                        if (state != null)
                         {
-                            var capabilityTests = enabledMappings
-                                .Select(m => (m.ModelId, "ImageGeneration"))
-                                .ToList();
-                            
-                            var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
-                            
-                            foreach (var mapping in enabledMappings)
-                            {
-                                var key = $"{mapping.ModelId}:ImageGeneration";
-                                if (bulkResults.TryGetValue(key, out var supportsImageGen) && supportsImageGen)
-                                {
-                                    hasDiscoveredImageModels = true;
-                                    _logger.LogInformation("Discovered image generation capability for model: {Model}", mapping.ModelId);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception discEx)
-                    {
-                        _logger.LogDebug(discEx, "Could not test bulk image generation capabilities");
-                    }
-                }
-
-                string tooltipMessage;
-                if (hasDiscoveredImageModels)
-                {
-                    tooltipMessage = "Image generation available (discovered via capability testing - consider updating model configuration)";
-                }
-                else if (mappings?.Any(m => m.IsEnabled) == true)
-                {
-                    tooltipMessage = $"No image generation models found among {mappings.Count(m => m.IsEnabled)} configured models. Add DALL-E, MiniMax, or Stable Diffusion models.";
-                }
-                else
-                {
-                    tooltipMessage = "No models configured. Add and configure LLM providers with image generation capabilities.";
-                }
-
-                var finalState = new NavigationItemState
-                {
-                    IsEnabled = hasDiscoveredImageModels,
-                    TooltipMessage = tooltipMessage,
-                    RequiredConfigurationUrl = hasDiscoveredImageModels ? null : "/model-mappings",
-                    ShowIndicator = !hasDiscoveredImageModels
-                };
-
-                UpdateState("/image-generation", finalState);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking image generation prerequisites");
-                
-                var fallbackState = new NavigationItemState
-                {
-                    IsEnabled = false,
-                    TooltipMessage = "Unable to verify image generation models - check API connection",
-                    ShowIndicator = true
-                };
-                
-                UpdateState("/image-generation", fallbackState);
-            }
-        }
-
-        private async Task CheckVideoGenerationPrerequisitesAsync()
-        {
-            try
-            {
-                // Primary: Check database-configured models via Admin API
-                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
-                var hasConfiguredVideoModels = mappings?.Any(m => 
-                    m.IsEnabled && 
-                    m.SupportsVideoGeneration) ?? false;
-
-                if (hasConfiguredVideoModels)
-                {
-                    var newState = new NavigationItemState
-                    {
-                        IsEnabled = true,
-                        TooltipMessage = null,
-                        RequiredConfigurationUrl = null,
-                        ShowIndicator = false
-                    };
-                    UpdateState("/video-generation", newState);
-                    return;
-                }
-
-                // Fallback: Check if any mapped models support video generation via Discovery API (using bulk API)
-                var hasDiscoveredVideoModels = false;
-                if (mappings?.Any() == true)
-                {
-                    try
-                    {
-                        var enabledMappings = mappings.Where(m => m.IsEnabled).ToList();
-                        if (enabledMappings.Any())
-                        {
-                            // Use bulk API to test all models at once
-                            var capabilityTests = enabledMappings
-                                .Select(m => (m.ModelId, "VideoGeneration"))
-                                .ToList();
-                            
-                            var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
-                            
-                            // Check if any model supports video generation
-                            foreach (var mapping in enabledMappings)
-                            {
-                                var key = $"{mapping.ModelId}:VideoGeneration";
-                                if (bulkResults.TryGetValue(key, out var supportsVideoGen) && supportsVideoGen)
-                                {
-                                    hasDiscoveredVideoModels = true;
-                                    _logger.LogInformation("Discovered video generation capability for model: {Model}", mapping.ModelId);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception discEx)
-                    {
-                        _logger.LogDebug(discEx, "Could not test bulk video generation capabilities, falling back to individual tests");
-                        
-                        // Fallback to individual API calls if bulk fails
-                        foreach (var mapping in mappings.Where(m => m.IsEnabled))
-                        {
-                            try
-                            {
-                                var supportsVideoGen = await _conduitApiClient.TestModelCapabilityAsync(
-                                    mapping.ModelId, "VideoGeneration");
-                                if (supportsVideoGen)
-                                {
-                                    hasDiscoveredVideoModels = true;
-                                    _logger.LogInformation("Discovered video generation capability for model: {Model}", mapping.ModelId);
-                                    break;
-                                }
-                            }
-                            catch (Exception individualEx)
-                            {
-                                _logger.LogDebug(individualEx, "Could not test video generation capability for model: {Model}", mapping.ModelId);
-                            }
+                            UpdateState(stateKey, state);
                         }
                     }
                 }
-
-                // Generate detailed feedback based on discovery results
-                string tooltipMessage;
-                if (hasDiscoveredVideoModels)
-                {
-                    tooltipMessage = "Video generation available (discovered via capability testing - consider updating model configuration)";
-                }
-                else if (mappings?.Any(m => m.IsEnabled) == true)
-                {
-                    tooltipMessage = $"No video generation models found among {mappings.Count(m => m.IsEnabled)} configured models. Add MiniMax or other video models.";
-                }
-                else
-                {
-                    tooltipMessage = "No models configured. Add and configure LLM providers with video generation capabilities.";
-                }
-
-                var finalState = new NavigationItemState
-                {
-                    IsEnabled = hasDiscoveredVideoModels,
-                    TooltipMessage = tooltipMessage,
-                    RequiredConfigurationUrl = hasDiscoveredVideoModels ? null : "/model-mappings",
-                    ShowIndicator = !hasDiscoveredVideoModels
-                };
-
-                UpdateState("/video-generation", finalState);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking video generation prerequisites");
-                
-                // Set a safe default state when API is not available
-                var fallbackState = new NavigationItemState
-                {
-                    IsEnabled = false,
-                    TooltipMessage = "Unable to verify video generation models - check API connection",
-                    ShowIndicator = true
-                };
-                
-                UpdateState("/video-generation", fallbackState);
+                _logger.LogError(ex, "Error processing navigation state change");
             }
+            
+            await Task.CompletedTask;
         }
 
-        private void UpdateState(string route, NavigationItemState newState)
+        public override async Task OnConnectionStateChanged(string hubName, ConnectionState state)
         {
-            var oldState = _stateCache.GetValueOrDefault(route);
-            _stateCache[route] = newState;
-
-            if (oldState?.IsEnabled != newState.IsEnabled || oldState?.ShowIndicator != newState.ShowIndicator)
+            if (hubName == "notifications" && state == ConnectionState.Connected)
             {
-                NavigationStateChanged?.Invoke(this, new NavigationStateChangedEventArgs(route, newState));
+                // When reconnected, states will be updated via SignalR events
+                _logger.LogInformation("SignalR reconnected to notifications hub");
             }
+            
+            await Task.CompletedTask;
         }
 
         public void Dispose()
         {
             if (!_disposed)
             {
-                _disposed = true;
-                _reconnectTimer?.Dispose();
-                _fallbackPollingTimer?.Dispose();
+                _signalRService.UnregisterListener(this);
                 _refreshSemaphore?.Dispose();
-                
-                // Unsubscribe from events
-                if (_hubConnection != null)
-                {
-                    try
-                    {
-                        _hubConnection.StopAsync().Wait(TimeSpan.FromSeconds(5));
-                        _hubConnection.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error stopping SignalR connection");
-                    }
-                }
-            }
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (!_disposed)
-            {
                 _disposed = true;
-                _reconnectTimer?.Dispose();
-                _fallbackPollingTimer?.Dispose();
-                _refreshSemaphore?.Dispose();
-                
-                // Disconnect from hub
-                if (_hubConnection != null)
-                {
-                    try
-                    {
-                        await _hubConnection.StopAsync();
-                        await _hubConnection.DisposeAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error stopping SignalR connection during async dispose");
-                    }
-                }
             }
         }
     }

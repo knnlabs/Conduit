@@ -145,15 +145,18 @@ services:
       # WebUI no longer uses DATABASE_URL
       CONDUIT_MASTER_KEY: alpha
       CONDUIT_INSECURE: "false"
+      # Internal URLs for server-side communication
       CONDUIT_API_BASE_URL: http://api:8080
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      # External URLs for client-side (browser) access
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       # Version check configuration
       CONDUIT_VERSION_CHECK_ENABLED: "true"
       CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
-      # Admin API configuration (required)
-      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
       # WebUI authentication password
       CONDUIT_WEBUI_AUTH_KEY: conduit123
       # IP Filtering Configuration (optional)

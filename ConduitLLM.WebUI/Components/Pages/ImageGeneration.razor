@@ -12,10 +12,12 @@
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
+@inject ServerSideSignalRService SignalRService
 @inject IToastService ToastService
 @inject ILogger<ImageGeneration> _logger
 @using ConduitLLM.WebUI.Services
 @rendermode InteractiveServer
+@implements IServerSideSignalRListener
 @implements IDisposable
 
 <PageTitle>Image Generation - ConduitLLM</PageTitle>
@@ -41,16 +43,7 @@
                                 <span class="small">@availableModels.Count Models Available</span>
                             </div>
                             <div class="stat-item mt-2">
-                                @if (signalRConnected)
-                                {
-                                    <i class="fa fa-circle text-success me-2" style="font-size: 0.5rem;"></i>
-                                    <span class="small text-success">Real-time updates active</span>
-                                }
-                                else
-                                {
-                                    <i class="fa fa-circle text-danger me-2" style="font-size: 0.5rem;"></i>
-                                    <span class="small text-danger">Real-time updates disconnected</span>
-                                }
+                                <ConnectionStatusIndicator />
                             </div>
                         </div>
                     </div>
@@ -447,8 +440,7 @@
     private List<ImageData> generatedImages = new();
     private RecentPrompts? recentPromptsComponent;
     private List<ImageGenerationTask> activeTasks = new();
-    private DotNetObjectReference<ImageGeneration>? dotNetRef;
-    private bool signalRConnected = false;
+    private bool isInitialized = false;
     
     private string imagePrompt = "";
     private string selectedModel = "";
@@ -496,9 +488,9 @@
         // Load persisted active tasks
         await LoadPersistedTasks();
         
-        // Initialize SignalR connection
-        dotNetRef = DotNetObjectReference.Create(this);
-        await InitializeSignalR();
+        // Register as a SignalR listener
+        SignalRService.RegisterListener(this);
+        isInitialized = true;
     }
     
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -808,15 +800,8 @@
                 await SavePersistedTasks();
                 
                 // Subscribe to SignalR updates for this task
-                if (signalRConnected)
-                {
-                    await JSRuntime.InvokeVoidAsync("imageGenerationSignalR.subscribeToTask", taskResponse.TaskId);
-                    _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", taskResponse.TaskId);
-                }
-                else
-                {
-                    _logger.LogError("SignalR not connected - task updates will not be received");
-                }
+                await SignalRService.SubscribeToImageTask(taskResponse.TaskId);
+                _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", taskResponse.TaskId);
                 
                 // Add to recent prompts
                 if (!string.IsNullOrWhiteSpace(imagePrompt) && recentPromptsComponent != null)
@@ -839,63 +824,49 @@
     }
 
 
-    // SignalR event handlers
-    [JSInvokable]
-    public async Task OnConnected()
+    // IServerSideSignalRListener implementation
+    public async Task OnConnectionStateChanged(string hubName, ConnectionState state)
     {
-        signalRConnected = true;
-        _logger.LogInformation("Image generation SignalR connected");
-        
-        // Subscribe to all active tasks
-        if (signalRConnected)
+        if (hubName == "image-generation")
         {
-            foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
+            _logger.LogInformation("Image generation hub connection state changed to {State}", state);
+            
+            if (state == ConnectionState.Connected)
             {
-                await JSRuntime.InvokeVoidAsync("imageGenerationSignalR.subscribeToTask", task.TaskId);
+                // Re-subscribe to all active tasks
+                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
+                {
+                    await SignalRService.SubscribeToImageTask(task.TaskId);
+                }
             }
+            
+            await InvokeAsync(StateHasChanged);
         }
-        
-        await InvokeAsync(StateHasChanged);
     }
 
-    [JSInvokable]
-    public async Task OnDisconnected()
-    {
-        signalRConnected = false;
-        _logger.LogWarning("Image generation SignalR disconnected");
-        ToastService.ShowWarning("Real-time connection lost. Please refresh the page.");
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnReconnecting()
-    {
-        signalRConnected = false;
-        _logger.LogInformation("Image generation SignalR reconnecting");
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnReconnected()
-    {
-        signalRConnected = true;
-        _logger.LogInformation("Image generation SignalR reconnected");
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public async Task OnImageGenerationStarted(JsonElement data)
+    public async Task OnImageGenerationProgress(string taskId, JsonElement progress)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
             var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
             
             if (task != null)
             {
-                task.Status = "running";
+                // Update task status from progress data
+                if (progress.TryGetProperty("status", out var statusElement))
+                {
+                    task.Status = statusElement.GetString() ?? "running";
+                }
+                
+                if (progress.TryGetProperty("progress", out var progressElement))
+                {
+                    task.Progress = progressElement.GetInt32();
+                }
+                
                 task.UpdatedAt = DateTimeOffset.UtcNow;
-                _logger.LogInformation("Image generation started for task {TaskId}", taskId);
+                _logger.LogInformation("Image generation progress for task {TaskId}: {Progress}%", taskId, task.Progress);
+                
+                await SavePersistedTasks();
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -905,36 +876,12 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnImageGenerationProgress(JsonElement data)
-    {
-        try
-        {
-            var taskId = data.GetProperty("taskId").GetString();
-            var progress = data.GetProperty("progress").GetInt32();
-            
-            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
-            
-            if (task != null)
-            {
-                task.Progress = progress;
-                task.UpdatedAt = DateTimeOffset.UtcNow;
-                _logger.LogDebug("Image generation progress for task {TaskId}: {Progress}%", taskId, progress);
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling image generation progress event");
-        }
-    }
 
-    [JSInvokable]
-    public async Task OnImageGenerationCompleted(JsonElement data)
+    public async Task OnImageGenerationCompleted(string taskId, JsonElement result)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
+            _logger.LogInformation("Image generation completed for task {TaskId}", taskId);
             var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
             
             if (task != null)
@@ -945,7 +892,7 @@
                 task.UpdatedAt = DateTimeOffset.UtcNow;
                 
                 // Check if image URLs are provided in the SignalR event
-                if (data.TryGetProperty("images", out var imagesElement))
+                if (result.TryGetProperty("images", out var imagesElement))
                 {
                     foreach (var imageElement in imagesElement.EnumerateArray())
                     {
@@ -1011,13 +958,11 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnImageGenerationFailed(JsonElement data)
+    public async Task OnImageGenerationFailed(string taskId, string error)
     {
         try
         {
-            var taskId = data.GetProperty("taskId").GetString();
-            var error = data.TryGetProperty("error", out var errorProp) ? errorProp.GetString() : "Unknown error";
+            _logger.LogError("Image generation failed for task {TaskId}: {Error}", taskId, error);
             
             var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
             
@@ -1039,30 +984,26 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnImageGenerationCancelled(JsonElement data)
-    {
-        try
-        {
-            var taskId = data.GetProperty("taskId").GetString();
-            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
-            
-            if (task != null)
-            {
-                task.Status = "cancelled";
-                task.CompletedAt = DateTimeOffset.UtcNow;
-                task.UpdatedAt = DateTimeOffset.UtcNow;
-                
-                ToastService.ShowInfo($"Image generation cancelled for task {task.TaskId}");
-                await SavePersistedTasks();
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error handling image generation cancelled event");
-        }
-    }
+    // Default implementations for other SignalR events
+    public Task OnSystemNotificationReceived(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelMappingChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnProviderHealthChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnNavigationStateChanged(JsonElement data) => Task.CompletedTask;
+    public Task OnVideoGenerationProgress(string taskId, JsonElement progress) => Task.CompletedTask;
+    public Task OnVideoGenerationCompleted(string taskId, JsonElement result) => Task.CompletedTask;
+    public Task OnVideoGenerationFailed(string taskId, string error) => Task.CompletedTask;
+    public Task OnSpendUpdate(JsonElement notification) => Task.CompletedTask;
+    public Task OnBudgetAlert(JsonElement notification) => Task.CompletedTask;
+    public Task OnSpendSummary(JsonElement notification) => Task.CompletedTask;
+    public Task OnUnusualSpending(JsonElement notification) => Task.CompletedTask;
+    public Task OnNewModelsDiscovered(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelCapabilitiesChanged(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelPricingUpdated(JsonElement notification) => Task.CompletedTask;
+    public Task OnModelDeprecated(JsonElement notification) => Task.CompletedTask;
+    public Task OnBatchOperationProgress(string operationId, JsonElement progress) => Task.CompletedTask;
+    public Task OnBatchOperationCompleted(string operationId, JsonElement result) => Task.CompletedTask;
+    public Task OnBatchOperationFailed(string operationId, string error) => Task.CompletedTask;
+    public Task OnAdminNotificationReceived(JsonElement notification) => Task.CompletedTask;
 
     private async Task CancelTask(string taskId)
     {
@@ -1142,50 +1083,13 @@
         };
     }
 
-    // Initialize SignalR for real-time updates
-    private async Task InitializeSignalR()
-    {
-        try
-        {
-            // Get the WebUI virtual key for SignalR authentication
-            string? virtualKey = null;
-            try
-            {
-                var globalSettingService = AdminApiClient as IGlobalSettingService;
-                if (globalSettingService != null)
-                {
-                    virtualKey = await globalSettingService.GetSettingAsync("WebUI_VirtualKey");
-                    _logger.LogInformation("Retrieved WebUI virtual key for SignalR authentication");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to retrieve WebUI virtual key for SignalR");
-            }
-            
-            var initialized = await JSRuntime.InvokeAsync<bool>("imageGenerationSignalR.initialize", dotNetRef, virtualKey);
-            signalRConnected = initialized;
-            _logger.LogInformation("Image generation SignalR initialized: {Connected}", signalRConnected);
-            
-            if (!signalRConnected)
-            {
-                _logger.LogError("Failed to initialize SignalR connection for image generation");
-                ToastService.ShowWarning("Real-time updates unavailable. Please refresh the page.");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing SignalR");
-            signalRConnected = false;
-            ToastService.ShowError("Failed to establish real-time connection. Please refresh the page.");
-        }
-    }
 
     public void Dispose()
     {
-        dotNetRef?.Dispose();
-        // Stop SignalR connection
-        _ = JSRuntime.InvokeVoidAsync("imageGenerationSignalR.stop");
+        if (isInitialized)
+        {
+            SignalRService.UnregisterListener(this);
+        }
     }
 
     private class ImageModel

@@ -24,11 +24,11 @@
 {
     <SpendNotificationListener 
         VirtualKey="@masterVirtualKey"
-        OnSpendUpdate="HandleSpendUpdate"
-        OnBudgetAlert="HandleBudgetAlert"
-        OnSpendSummary="HandleSpendSummary"
-        OnUnusualSpending="HandleUnusualSpending"
-        OnConnectionStateChanged="HandleConnectionStateChanged"
+        OnSpendUpdateEvent="HandleSpendUpdate"
+        OnBudgetAlertEvent="HandleBudgetAlert"
+        OnSpendSummaryEvent="HandleSpendSummary"
+        OnUnusualSpendingEvent="HandleUnusualSpending"
+        OnConnectionStateChangedEvent="HandleConnectionStateChanged"
         DebugMode="false"
         AutoConnect="true" />
 }
@@ -48,8 +48,7 @@
                 <span class="small">$@totalSpend.ToString("N2") Total Spend</span>
             </div>
             <div class="stat-item mt-2">
-                <ConnectionStatusIndicator HubName="spend-notifications" 
-                                         OnConnectionStateChanged="HandleConnectionStatusChanged" />
+                <ConnectionStatusIndicator />
             </div>
         </Statistics>
     </PageHeader>
@@ -935,28 +934,14 @@
         return Task.CompletedTask;
     }
     
-    private void HandleConnectionStateChanged(SpendNotificationListener.ConnectionState state)
+    private void HandleConnectionStateChanged(ConduitLLM.WebUI.Services.ConnectionState state)
     {
         connectionStatus = state switch
         {
-            SpendNotificationListener.ConnectionState.Connected => "Connected",
-            SpendNotificationListener.ConnectionState.Connecting => "Connecting...",
-            SpendNotificationListener.ConnectionState.Reconnecting => "Reconnecting...",
-            SpendNotificationListener.ConnectionState.Failed => "Connection Failed",
-            _ => "Disconnected"
-        };
-        
-        StateHasChanged();
-    }
-    
-    private void HandleConnectionStatusChanged(ConnectionStatusIndicator.HubConnectionState state)
-    {
-        // Update connection status based on the ConnectionStatusIndicator state
-        connectionStatus = state switch
-        {
-            ConnectionStatusIndicator.HubConnectionState.Connected => "Connected",
-            ConnectionStatusIndicator.HubConnectionState.Connecting => "Connecting...",
-            ConnectionStatusIndicator.HubConnectionState.Reconnecting => "Reconnecting...",
+            ConduitLLM.WebUI.Services.ConnectionState.Connected => "Connected",
+            ConduitLLM.WebUI.Services.ConnectionState.Connecting => "Connecting...",
+            ConduitLLM.WebUI.Services.ConnectionState.Reconnecting => "Reconnecting...",
+            ConduitLLM.WebUI.Services.ConnectionState.Disconnected => "Disconnected",
             _ => "Disconnected"
         };
         

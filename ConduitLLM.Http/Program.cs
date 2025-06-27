@@ -1131,19 +1131,7 @@ if (builder.Environment.EnvironmentName != "Test")
         healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
     }
     
-    // Add SignalR health check
-    healthChecksBuilder.AddCheck<ConduitLLM.Http.HealthChecks.SignalRHealthCheck>(
-        "signalr",
-        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-        tags: new[] { "signalr", "realtime", "ready" });
-
-    // Add HTTP connection pool health check for webhook delivery monitoring
-    healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
-        "http_connection_pool",
-        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-        tags: new[] { "http", "webhooks", "ready" });
-    
-    // Add advanced health monitoring checks
+    // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)
     healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);
 }
 
