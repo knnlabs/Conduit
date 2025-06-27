@@ -231,6 +231,9 @@ public static class ServiceCollectionExtensions
         services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));
         services.AddHostedService<ProviderHealthMonitoringService>();
 
+        // Register SignalR admin notification service
+        services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();
+
         // Configure CORS for the Admin API
         services.AddCors(options =>
         {
@@ -240,7 +243,8 @@ public static class ServiceCollectionExtensions
                         configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>() ??
                         new[] { "http://localhost:5000", "https://localhost:5001" })
                     .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .AllowAnyHeader()
+                    .AllowCredentials(); // Required for SignalR
             });
         });
 

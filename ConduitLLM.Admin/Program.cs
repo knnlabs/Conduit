@@ -112,6 +112,32 @@ public partial class Program
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+        // Add SignalR with configuration
+        var signalRBuilder = builder.Services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+            options.StreamBufferCapacity = 10;
+        });
+
+        // Configure SignalR Redis backplane for horizontal scaling if Redis is configured
+        var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
+        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
+        {
+            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+            {
+                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_admin_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
+                options.Configuration.DefaultDatabase = 3; // Separate database for Admin SignalR
+            });
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with Redis backplane for horizontal scaling");
+        }
+        else
+        {
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured without Redis backplane (single-instance mode)");
+        }
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -280,10 +306,16 @@ public partial class Program
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();
 
+        // Enable CORS for SignalR
+        app.UseCors("AdminCorsPolicy");
+
         app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();
+        
+        // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
+        app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
         // Map health check endpoints with authentication requirement
         app.MapSecureConduitHealthChecks(requireAuthorization: true);

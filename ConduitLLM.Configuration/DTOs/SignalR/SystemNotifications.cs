@@ -223,6 +223,11 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the number of video generation models.
         /// </summary>
         public int VideoGenCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets additional details about the capabilities.
+        /// </summary>
+        public string? Details { get; set; }
     }
 
     /// <summary>

@@ -243,4 +243,56 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// </summary>
         public string? PreviousMapping { get; set; }
     }
+
+    /// <summary>
+    /// Virtual key notification for administrative updates.
+    /// </summary>
+    public class VirtualKeyNotification : SystemNotification
+    {
+        /// <summary>
+        /// Gets the notification type.
+        /// </summary>
+        public override string Type => "VirtualKeyUpdate";
+
+        /// <summary>
+        /// Gets or sets the virtual key ID.
+        /// </summary>
+        public int VirtualKeyId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the update type (created, updated, deleted).
+        /// </summary>
+        public string UpdateType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets additional details about the update.
+        /// </summary>
+        public object? Details { get; set; }
+    }
+
+    /// <summary>
+    /// Security alert notification for administrators.
+    /// </summary>
+    public class SecurityAlertNotification : SystemNotification
+    {
+        /// <summary>
+        /// Gets the notification type.
+        /// </summary>
+        public override string Type => "SecurityAlert";
+
+        /// <summary>
+        /// Gets or sets the alert type.
+        /// </summary>
+        public string AlertType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the alert description.
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the affected resource.
+        /// </summary>
+        public string? AffectedResource { get; set; }
+    }
 }

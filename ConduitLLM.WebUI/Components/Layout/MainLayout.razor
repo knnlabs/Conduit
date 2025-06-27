@@ -16,9 +16,10 @@
 
 <ConduitLLM.WebUI.Components.Shared.ToastContainer />
 
-@if (!string.IsNullOrEmpty(masterVirtualKey))
+@if (!string.IsNullOrEmpty(masterKey) || !string.IsNullOrEmpty(masterVirtualKey))
 {
     <AdminNotificationListener 
+        MasterKey="@masterKey"
         VirtualKey="@masterVirtualKey"
         AutoConnect="true"
         DebugMode="false" />
@@ -584,10 +585,16 @@
 
 @code {
     private string masterVirtualKey = string.Empty;
+    private string masterKey = string.Empty;
     
     protected override async Task OnInitializedAsync()
     {
-        // Get master virtual key from configuration or auth context
+        // Get master key from configuration (for admin notifications)
+        masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+            ?? Configuration["AdminApi:MasterKey"] 
+            ?? string.Empty;
+        
+        // Get master virtual key from configuration or auth context (legacy)
         var config = Configuration.GetSection("AdminDashboard");
         masterVirtualKey = config.GetValue<string>("MasterVirtualKey") ?? string.Empty;
         

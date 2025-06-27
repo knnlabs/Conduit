@@ -10,9 +10,14 @@
 
 @code {
     /// <summary>
-    /// Virtual key for authentication
+    /// Virtual key for authentication (legacy - for backward compatibility)
     /// </summary>
-    [Parameter, EditorRequired] public string VirtualKey { get; set; } = string.Empty;
+    [Parameter] public string? VirtualKey { get; set; }
+    
+    /// <summary>
+    /// Master key for authentication (preferred for admin notifications)
+    /// </summary>
+    [Parameter] public string? MasterKey { get; set; }
     
     /// <summary>
     /// Auto-connect on initialization
@@ -44,15 +49,41 @@
                 await _signalRService.InvokeVoidAsync("setDebugMode", true);
             }
             
-            // Set virtual key
-            await _signalRService.InvokeVoidAsync("setVirtualKey", VirtualKey);
+            // Determine which key to use (prefer MasterKey over VirtualKey)
+            var authKey = !string.IsNullOrEmpty(MasterKey) ? MasterKey : VirtualKey;
+            var isMasterKey = !string.IsNullOrEmpty(MasterKey);
             
-            // Create system notification hub proxy
-            _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createSystemNotificationHub");
+            if (string.IsNullOrEmpty(authKey))
+            {
+                Logger.LogWarning("No authentication key provided for AdminNotificationListener");
+                return;
+            }
+            
+            // Set authentication key
+            if (isMasterKey)
+            {
+                await _signalRService.InvokeVoidAsync("setMasterKey", authKey);
+                Logger.LogInformation("Using master key authentication for admin notifications");
+            }
+            else
+            {
+                await _signalRService.InvokeVoidAsync("setVirtualKey", authKey);
+                Logger.LogInformation("Using virtual key authentication for admin notifications (legacy)");
+            }
+            
+            // Create appropriate hub proxy based on authentication type
+            if (isMasterKey)
+            {
+                _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createAdminNotificationHub");
+            }
+            else
+            {
+                _navigationHub = await JS.InvokeAsync<IJSObjectReference>("conduitHubs.createSystemNotificationHub");
+            }
             
             if (AutoConnect)
             {
-                await ConnectAsync();
+                await ConnectAsync(authKey, isMasterKey);
             }
         }
         catch (Exception ex)
@@ -62,14 +93,27 @@
     }
     
     /// <summary>
-    /// Connect to the system notification hub for admin notifications
+    /// Connect to the appropriate notification hub for admin notifications
     /// </summary>
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(string? authKey = null, bool? isMasterKey = null)
     {
         try
         {
-            // Connect to hub
-            await _navigationHub!.InvokeVoidAsync("connect", VirtualKey);
+            // Use provided parameters or determine from component state
+            if (authKey == null)
+            {
+                authKey = !string.IsNullOrEmpty(MasterKey) ? MasterKey : VirtualKey;
+                isMasterKey = !string.IsNullOrEmpty(MasterKey);
+            }
+            
+            if (string.IsNullOrEmpty(authKey))
+            {
+                Logger.LogWarning("Cannot connect without authentication key");
+                return;
+            }
+            
+            // Connect to hub with appropriate authentication
+            await _navigationHub!.InvokeVoidAsync("connect", authKey);
             
             // Register event handlers
             await _navigationHub.InvokeVoidAsync("onProviderHealthChanged", _dotNetRef);
@@ -77,11 +121,20 @@
             await _navigationHub.InvokeVoidAsync("onModelMappingChanged", _dotNetRef);
             await _navigationHub.InvokeVoidAsync("onSystemAnnouncement", _dotNetRef);
             
-            Logger.LogInformation("Connected to admin notification hub");
+            // Additional handlers for master key authenticated hub
+            if (isMasterKey == true)
+            {
+                await _navigationHub.InvokeVoidAsync("onVirtualKeyUpdate", _dotNetRef);
+                await _navigationHub.InvokeVoidAsync("onHighSpendAlert", _dotNetRef);
+                await _navigationHub.InvokeVoidAsync("onSecurityAlert", _dotNetRef);
+            }
+            
+            Logger.LogInformation("Connected to {HubType} notification hub", 
+                isMasterKey == true ? "admin" : "system");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to connect to admin notification hub");
+            Logger.LogError(ex, "Failed to connect to notification hub");
         }
     }
     
@@ -254,6 +307,126 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error handling system alert notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when virtual key is updated (admin hub only)
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleVirtualKeyUpdate(JsonElement updateData)
+    {
+        try
+        {
+            var virtualKeyId = updateData.GetProperty("virtualKeyId").GetInt32();
+            var updateType = updateData.GetProperty("updateType").GetString() ?? "unknown";
+            var keyName = string.Empty;
+            
+            if (updateData.TryGetProperty("details", out var details) && 
+                details.TryGetProperty("keyName", out var keyNameElement))
+            {
+                keyName = keyNameElement.GetString() ?? $"Key #{virtualKeyId}";
+            }
+            else
+            {
+                keyName = $"Virtual Key #{virtualKeyId}";
+            }
+            
+            var notificationType = updateType switch
+            {
+                "created" => NotificationType.Success,
+                "deleted" => NotificationType.Error,
+                "updated" => NotificationType.System,
+                _ => NotificationType.System
+            };
+            
+            var message = updateType switch
+            {
+                "created" => $"Virtual key '{keyName}' was created",
+                "deleted" => $"Virtual key '{keyName}' was deleted",
+                "updated" => $"Virtual key '{keyName}' was updated",
+                _ => $"Virtual key '{keyName}' changed"
+            };
+            
+            NotificationService.AddNotification(
+                notificationType,
+                message,
+                "Virtual Key Management",
+                $"Key ID: {virtualKeyId}"
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling virtual key update notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when high spend alert is triggered (admin hub only)
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleHighSpendAlert(JsonElement alertData)
+    {
+        try
+        {
+            var alertType = alertData.GetProperty("alertType").GetString() ?? "HighSpend";
+            var message = alertData.GetProperty("message").GetString() ?? "High spend detected";
+            var currentSpend = alertData.GetProperty("currentSpend").GetDecimal();
+            var budgetLimit = alertData.GetProperty("budgetLimit").GetDecimal();
+            var percentageUsed = alertData.GetProperty("percentageUsed").GetDouble();
+            
+            var severity = alertData.GetProperty("severity").GetString() ?? "warning";
+            var notificationType = severity == "critical" ? NotificationType.Error : NotificationType.BudgetWarning;
+            
+            var details = $"Current: ${currentSpend:F2} / Budget: ${budgetLimit:F2} ({percentageUsed:F1}% used)";
+            
+            NotificationService.AddNotification(
+                notificationType,
+                message,
+                $"Spend Alert: {alertType}",
+                details
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling high spend alert notification");
+        }
+    }
+    
+    /// <summary>
+    /// Called by JavaScript when security alert is triggered (admin hub only)
+    /// </summary>
+    [JSInvokable]
+    public async Task HandleSecurityAlert(JsonElement alertData)
+    {
+        try
+        {
+            var alertType = alertData.GetProperty("alertType").GetString() ?? "Security";
+            var description = alertData.GetProperty("description").GetString() ?? "Security event detected";
+            var affectedResource = alertData.TryGetProperty("affectedResource", out var resource) 
+                ? resource.GetString() 
+                : null;
+            
+            var details = !string.IsNullOrEmpty(affectedResource) 
+                ? $"Affected resource: {affectedResource}" 
+                : "";
+            
+            NotificationService.AddNotification(
+                NotificationType.Error,
+                description,
+                $"Security Alert: {alertType}",
+                details
+            );
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling security alert notification");
         }
     }
     

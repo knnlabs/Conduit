@@ -80,7 +80,18 @@ window.ConduitSignalRService = (function() {
          */
         setVirtualKey(key) {
             this.virtualKey = key;
+            this.masterKey = null; // Clear master key when setting virtual key
             this._log('Virtual key updated');
+        }
+
+        /**
+         * Set master key for authentication (admin hubs)
+         * @param {string} key - Master key for admin authentication
+         */
+        setMasterKey(key) {
+            this.masterKey = key;
+            this.virtualKey = null; // Clear virtual key when setting master key
+            this._log('Master key updated');
         }
 
         /**
@@ -103,11 +114,20 @@ window.ConduitSignalRService = (function() {
                 // Merge options with defaults
                 const hubOptions = { ...this.defaultOptions, ...options };
                 
+                // Check if this is an admin hub
+                const isAdminHub = hubName === 'admin-notifications';
+                
                 // Build hub URL
-                const hubUrl = `${this.baseUrl}/hubs/${hubName}`;
+                // Admin hubs use the admin API base URL
+                const baseUrl = isAdminHub && window.conduitConfig?.adminApiBaseUrl 
+                    ? window.conduitConfig.adminApiBaseUrl 
+                    : this.baseUrl;
+                const hubUrl = `${baseUrl}/hubs/${hubName}`;
                 
                 // Configure connection options
-                const connectionOptions = this._buildConnectionOptions(virtualKey || this.virtualKey);
+                // For admin hubs, use master key if available
+                const authKey = isAdminHub && this.masterKey ? this.masterKey : (virtualKey || this.virtualKey);
+                const connectionOptions = this._buildConnectionOptions(authKey, isAdminHub);
                 
                 // Create connection
                 const connection = new signalR.HubConnectionBuilder()
@@ -424,14 +444,23 @@ window.ConduitSignalRService = (function() {
         /**
          * Build connection options
          */
-        _buildConnectionOptions(virtualKey) {
+        _buildConnectionOptions(authKey, isMasterKey = false) {
             const options = {};
             
-            if (virtualKey) {
-                options.accessTokenFactory = () => virtualKey;
-                options.headers = {
-                    'Authorization': `Bearer ${virtualKey}`
-                };
+            if (authKey) {
+                if (isMasterKey) {
+                    // For master key authentication, use X-API-Key header
+                    options.accessTokenFactory = () => authKey;
+                    options.headers = {
+                        'X-API-Key': authKey
+                    };
+                } else {
+                    // For virtual key authentication, use Bearer token
+                    options.accessTokenFactory = () => authKey;
+                    options.headers = {
+                        'Authorization': `Bearer ${authKey}`
+                    };
+                }
             }
             
             return options;

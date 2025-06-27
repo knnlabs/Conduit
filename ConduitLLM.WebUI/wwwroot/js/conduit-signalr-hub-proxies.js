@@ -408,6 +408,122 @@ window.ConduitHubProxies = (function() {
     }
 
     /**
+     * Admin Notification Hub Proxy (requires master key authentication)
+     */
+    class AdminNotificationHub extends HubProxy {
+        constructor(signalRService) {
+            super('admin-notifications', signalRService);
+        }
+
+        /**
+         * Connect with master key authentication
+         */
+        async connect(masterKey, options) {
+            // Override to use master key in appropriate header/query
+            const connectOptions = {
+                ...options,
+                headers: {
+                    'X-API-Key': masterKey,
+                    ...options?.headers
+                }
+            };
+            return await this.signalRService.connectToHub(this.hubName, masterKey, connectOptions);
+        }
+
+        /**
+         * Subscribe to a specific virtual key
+         */
+        async subscribeToVirtualKey(virtualKeyId) {
+            return await this.invoke('SubscribeToVirtualKey', virtualKeyId);
+        }
+
+        /**
+         * Unsubscribe from a virtual key
+         */
+        async unsubscribeFromVirtualKey(virtualKeyId) {
+            return await this.invoke('UnsubscribeFromVirtualKey', virtualKeyId);
+        }
+
+        /**
+         * Subscribe to a specific provider
+         */
+        async subscribeToProvider(providerName) {
+            return await this.invoke('SubscribeToProvider', providerName);
+        }
+
+        /**
+         * Unsubscribe from a provider
+         */
+        async unsubscribeFromProvider(providerName) {
+            return await this.invoke('UnsubscribeFromProvider', providerName);
+        }
+
+        /**
+         * Request provider health refresh
+         */
+        async refreshProviderHealth() {
+            return await this.invoke('RefreshProviderHealth');
+        }
+
+        /**
+         * Register for virtual key update events
+         */
+        onVirtualKeyUpdate(handler) {
+            this.on('VirtualKeyUpdate', handler);
+        }
+
+        /**
+         * Register for provider health update events
+         */
+        onProviderHealthUpdate(handler) {
+            this.on('ProviderHealthUpdate', handler);
+        }
+
+        /**
+         * Register for high spend alert events
+         */
+        onHighSpendAlert(handler) {
+            this.on('HighSpendAlert', handler);
+        }
+
+        /**
+         * Register for security alert events
+         */
+        onSecurityAlert(handler) {
+            this.on('SecurityAlert', handler);
+        }
+
+        /**
+         * Register for system announcement events
+         */
+        onSystemAnnouncement(handler) {
+            this.on('SystemAnnouncement', handler);
+        }
+
+        /**
+         * Register for model capability update events
+         */
+        onModelCapabilityUpdate(handler) {
+            this.on('ModelCapabilityUpdate', handler);
+        }
+
+        /**
+         * Also support standard system notification events
+         */
+        onProviderHealthChanged(handler) {
+            this.on('ProviderHealthUpdate', handler);
+        }
+
+        onModelCapabilitiesDiscovered(handler) {
+            this.on('ModelCapabilityUpdate', handler);
+        }
+
+        onModelMappingChanged(handler) {
+            this.on('OnModelMappingChanged', handler);
+        }
+    }
+
+    /**
      * Task Hub Proxy (unified async operations)
      */
     class TaskHub extends HubProxy {
@@ -530,6 +646,13 @@ window.ConduitHubProxies = (function() {
         }
 
         /**
+         * Create admin notification hub proxy (requires master key)
+         */
+        createAdminNotificationHub() {
+            return new AdminNotificationHub(this.signalRService);
+        }
+
+        /**
          * Create navigation state hub proxy (deprecated - use createSystemNotificationHub)
          */
         createNavigationStateHub() {
@@ -559,6 +682,8 @@ window.ConduitHubProxies = (function() {
         VideoGenerationHub,
         ImageGenerationHub,
         WebhookDeliveryHub,
+        SystemNotificationHub,
+        AdminNotificationHub,
         NavigationStateHub,
         TaskHub,
         HubProxyFactory
