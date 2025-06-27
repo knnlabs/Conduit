@@ -69,11 +69,11 @@ namespace ConduitLLM.Http.Controllers
         /// Start a test scenario
         /// </summary>
         [HttpPost("start/{scenario}")]
-        public async Task<IActionResult> StartScenario(string scenario, [FromQuery] int durationSeconds = 60)
+        public Task<IActionResult> StartScenario(string scenario, [FromQuery] int durationSeconds = 60)
         {
             if (_activeSimulations.ContainsKey(scenario))
             {
-                return BadRequest($"Scenario '{scenario}' is already running");
+                return Task.FromResult<IActionResult>(BadRequest($"Scenario '{scenario}' is already running"));
             }
 
             var cts = new CancellationTokenSource();
@@ -98,7 +98,7 @@ namespace ConduitLLM.Http.Controllers
                 }
             });
 
-            return Ok(new { message = $"Started scenario '{scenario}' for {durationSeconds} seconds" });
+            return Task.FromResult<IActionResult>(Ok(new { message = $"Started scenario '{scenario}' for {durationSeconds} seconds" }));
         }
 
         /// <summary>

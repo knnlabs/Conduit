@@ -167,12 +167,13 @@
     }
     
     // IServerSideSignalRListener implementation
-    public async Task OnConnectionStateChanged(string hubName, ConnectionState state)
+    public Task OnConnectionStateChanged(string hubName, ConnectionState state)
     {
         if (hubName == "notifications")
         {
             Logger.LogDebug("Batch operation connection state changed to {State}", state);
         }
+        return Task.CompletedTask;
     }
     
     public async Task OnBatchOperationProgress(string operationId, JsonElement progress)

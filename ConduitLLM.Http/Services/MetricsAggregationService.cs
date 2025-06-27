@@ -179,7 +179,7 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async void CollectInfrastructureMetrics(MetricsSnapshot snapshot)
+        private void CollectInfrastructureMetrics(MetricsSnapshot snapshot)
         {
             try
             {

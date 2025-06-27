@@ -43,7 +43,7 @@ namespace ConduitLLM.Http.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             _patternAnalysisTimer = new Timer(
                 AnalyzeSpendingPatterns,
@@ -52,6 +52,7 @@ namespace ConduitLLM.Http.Services
                 _analysisInterval);
             
             _logger.LogInformation("SpendNotificationService started");
+            return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

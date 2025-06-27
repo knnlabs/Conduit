@@ -25,13 +25,13 @@ namespace ConduitLLM.WebUI.Models
         /// When the task was created.
         /// </summary>
         [JsonPropertyName("created_at")]
-        public DateTimeOffset CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Estimated time when the images will be ready.
         /// </summary>
         [JsonPropertyName("estimated_completion_time")]
-        public DateTimeOffset? EstimatedCompletionTime { get; set; }
+        public DateTime? EstimatedCompletionTime { get; set; }
 
         /// <summary>
         /// URL to check the status of this task.
@@ -67,19 +67,19 @@ namespace ConduitLLM.WebUI.Models
         /// When the task was created.
         /// </summary>
         [JsonPropertyName("created_at")]
-        public DateTimeOffset CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// When the task was last updated.
         /// </summary>
         [JsonPropertyName("updated_at")]
-        public DateTimeOffset UpdatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
         /// <summary>
         /// When the task completed (if applicable).
         /// </summary>
         [JsonPropertyName("completed_at")]
-        public DateTimeOffset? CompletedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
 
         /// <summary>
         /// Error message if the task failed.

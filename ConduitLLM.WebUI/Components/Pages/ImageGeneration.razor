@@ -473,13 +473,13 @@
     {
         public string TaskId { get; set; } = "";
         public string Status { get; set; } = "";
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset UpdatedAt { get; set; }
-        public DateTimeOffset? CompletedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
         public string Prompt { get; set; } = "";
         public int? Progress { get; set; }
         public string? Error { get; set; }
-        public DateTimeOffset? EstimatedCompletionTime { get; set; }
+        public DateTime? EstimatedCompletionTime { get; set; }
     }
 
     protected override async Task OnInitializedAsync()
@@ -863,7 +863,7 @@
                     task.Progress = progressElement.GetInt32();
                 }
                 
-                task.UpdatedAt = DateTimeOffset.UtcNow;
+                task.UpdatedAt = DateTime.UtcNow;
                 _logger.LogInformation("Image generation progress for task {TaskId}: {Progress}%", taskId, task.Progress);
                 
                 await SavePersistedTasks();
@@ -888,8 +888,8 @@
             {
                 task.Status = "completed";
                 task.Progress = 100;
-                task.CompletedAt = DateTimeOffset.UtcNow;
-                task.UpdatedAt = DateTimeOffset.UtcNow;
+                task.CompletedAt = DateTime.UtcNow;
+                task.UpdatedAt = DateTime.UtcNow;
                 
                 // Check if image URLs are provided in the SignalR event
                 if (result.TryGetProperty("images", out var imagesElement))
@@ -942,7 +942,7 @@
                 }
                 
                 // Clean up old completed tasks
-                var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
+                var cutoffTime = DateTime.UtcNow.AddSeconds(-30);
                 activeTasks.RemoveAll(t => 
                     (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
                     && t.CompletedAt.HasValue 
@@ -970,8 +970,8 @@
             {
                 task.Status = "failed";
                 task.Error = error;
-                task.CompletedAt = DateTimeOffset.UtcNow;
-                task.UpdatedAt = DateTimeOffset.UtcNow;
+                task.CompletedAt = DateTime.UtcNow;
+                task.UpdatedAt = DateTime.UtcNow;
                 
                 ToastService.ShowError($"Image generation failed: {error}");
                 await SavePersistedTasks();
@@ -1016,7 +1016,7 @@
                 if (task != null)
                 {
                     task.Status = "cancelled";
-                    task.CompletedAt = DateTimeOffset.UtcNow;
+                    task.CompletedAt = DateTime.UtcNow;
                 }
                 
                 await SavePersistedTasks();
@@ -1046,7 +1046,7 @@
                 if (tasks != null)
                 {
                     // Only load tasks that are not too old (e.g., created within last hour)
-                    var cutoffTime = DateTimeOffset.UtcNow.AddHours(-1);
+                    var cutoffTime = DateTime.UtcNow.AddHours(-1);
                     activeTasks = tasks.Where(t => t.CreatedAt > cutoffTime).ToList();
                 }
             }

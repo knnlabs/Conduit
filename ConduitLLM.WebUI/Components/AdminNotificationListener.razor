@@ -48,7 +48,7 @@
     }
     
     // IServerSideSignalRListener implementation
-    public async Task OnConnectionStateChanged(string hubName, ConnectionState state)
+    public Task OnConnectionStateChanged(string hubName, ConnectionState state)
     {
         if (hubName == "notifications")
         {
@@ -57,6 +57,7 @@
                 Logger.LogDebug("Admin notifications hub connection state changed to {State}", state);
             }
         }
+        return Task.CompletedTask;
     }
     
     public async Task OnSystemNotificationReceived(JsonElement notification)
@@ -93,7 +94,7 @@
         }
     }
     
-    private async Task ProcessNotification(JsonElement notification)
+    private Task ProcessNotification(JsonElement notification)
     {
         try
         {
@@ -140,10 +141,11 @@
         {
             Logger.LogError(ex, "Error processing notification");
         }
+        return Task.CompletedTask;
     }
     
     // Event handlers for specific notification types
-    public async Task OnModelMappingChanged(JsonElement data)
+    public Task OnModelMappingChanged(JsonElement data)
     {
         try
         {
@@ -163,9 +165,10 @@
         {
             Logger.LogError(ex, "Error processing model mapping change");
         }
+        return Task.CompletedTask;
     }
     
-    public async Task OnProviderHealthChanged(JsonElement data)
+    public Task OnProviderHealthChanged(JsonElement data)
     {
         try
         {
@@ -202,6 +205,7 @@
         {
             Logger.LogError(ex, "Error processing provider health change");
         }
+        return Task.CompletedTask;
     }
     
     // Default implementations for other SignalR events

@@ -23,7 +23,6 @@
 @if (!string.IsNullOrEmpty(masterVirtualKey))
 {
     <SpendNotificationListener 
-        VirtualKey="@masterVirtualKey"
         OnSpendUpdateEvent="HandleSpendUpdate"
         OnBudgetAlertEvent="HandleBudgetAlert"
         OnSpendSummaryEvent="HandleSpendSummary"

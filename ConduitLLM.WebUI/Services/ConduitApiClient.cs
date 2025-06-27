@@ -720,7 +720,22 @@ public class ConduitApiClient : IConduitApiClient
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Async image generation request failed with status {StatusCode}: {Error}", 
                     response.StatusCode, errorContent);
-                return null;
+                
+                // Try to parse error response
+                try
+                {
+                    var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent, _jsonOptions);
+                    if (errorObj.TryGetProperty("error", out var error) && error.TryGetProperty("message", out var message))
+                    {
+                        throw new HttpRequestException($"API Error: {message.GetString()}", null, response.StatusCode);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Ignore JSON parsing errors
+                }
+                
+                throw new HttpRequestException($"Request failed with status {response.StatusCode}: {errorContent}", null, response.StatusCode);
             }
         }
         catch (Exception ex)
