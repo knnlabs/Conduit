@@ -17,7 +17,7 @@ namespace ConduitLLM.Http.HealthChecks
     /// </summary>
     public class SignalRHealthCheck : IHealthCheck
     {
-        private readonly IHubContext<NavigationStateHub> _navigationHubContext;
+        private readonly IHubContext<SystemNotificationHub> _notificationHubContext;
         private readonly IHubContext<TaskHub> _taskHubContext;
         private readonly IHubContext<ImageGenerationHub> _imageHubContext;
         private readonly IHubContext<VideoGenerationHub> _videoHubContext;
@@ -25,14 +25,14 @@ namespace ConduitLLM.Http.HealthChecks
         private readonly ILogger<SignalRHealthCheck> _logger;
 
         public SignalRHealthCheck(
-            IHubContext<NavigationStateHub> navigationHubContext,
+            IHubContext<SystemNotificationHub> notificationHubContext,
             IHubContext<TaskHub> taskHubContext,
             IHubContext<ImageGenerationHub> imageHubContext,
             IHubContext<VideoGenerationHub> videoHubContext,
             SignalRMetrics metrics,
             ILogger<SignalRHealthCheck> logger)
         {
-            _navigationHubContext = navigationHubContext ?? throw new ArgumentNullException(nameof(navigationHubContext));
+            _notificationHubContext = notificationHubContext ?? throw new ArgumentNullException(nameof(notificationHubContext));
             _taskHubContext = taskHubContext ?? throw new ArgumentNullException(nameof(taskHubContext));
             _imageHubContext = imageHubContext ?? throw new ArgumentNullException(nameof(imageHubContext));
             _videoHubContext = videoHubContext ?? throw new ArgumentNullException(nameof(videoHubContext));
@@ -51,7 +51,7 @@ namespace ConduitLLM.Http.HealthChecks
                 var totalHubs = 4;
 
                 // Check each hub context
-                if (await CheckHubContext(_navigationHubContext, "NavigationStateHub", data))
+                if (await CheckHubContext(_notificationHubContext, "SystemNotificationHub", data))
                     healthyHubs++;
                 
                 if (await CheckHubContext(_taskHubContext, "TaskHub", data))
