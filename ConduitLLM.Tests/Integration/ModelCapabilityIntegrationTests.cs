@@ -54,20 +54,18 @@ public class ModelCapabilityIntegrationTests
         {
             // Act
             var mockConfiguration = new Mock<IConfiguration>();
-            var mockJSRuntime = new Mock<IJSRuntime>();
-            var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
-            var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
-            var mockGlobalSettingService = new Mock<IGlobalSettingService>();
-            mockGlobalSettingService.Setup(x => x.GetSettingAsync("WebUI_VirtualKey"))
-                .ReturnsAsync("test-virtual-key");
+            // Create ServerSideSignalRService
+            var mockSignalRLogger = new Mock<ILogger<ServerSideSignalRService>>();
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            var serverSideSignalRService = new ServerSideSignalRService(
+                mockSignalRLogger.Object,
+                mockConfiguration.Object, 
+                mockServiceProvider.Object);
             
             var navigationService = new SignalRNavigationStateService(
-                mockAdminApiClient.Object, 
-                mockConduitApiClient.Object, 
                 mockConfiguration.Object,
                 mockLogger.Object,
-                signalRConnectionManager,
-                mockGlobalSettingService.Object);
+                serverSideSignalRService);
 
             _output.WriteLine("Testing navigation state service capability detection...");
 
@@ -129,20 +127,18 @@ public class ModelCapabilityIntegrationTests
 
         // Act
         var mockConfiguration = new Mock<IConfiguration>();
-        var mockJSRuntime = new Mock<IJSRuntime>();
-        var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
-        var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
-        var mockGlobalSettingService = new Mock<IGlobalSettingService>();
-        mockGlobalSettingService.Setup(x => x.GetSettingAsync("WebUI_VirtualKey"))
-            .ReturnsAsync("test-virtual-key");
+        // Create ServerSideSignalRService
+        var mockSignalRLogger = new Mock<ILogger<ServerSideSignalRService>>();
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        var serverSideSignalRService = new ServerSideSignalRService(
+            mockSignalRLogger.Object,
+            mockConfiguration.Object, 
+            mockServiceProvider.Object);
         
         var navigationService = new SignalRNavigationStateService(
-            mockAdminApiClient.Object, 
-            mockConduitApiClient.Object, 
             mockConfiguration.Object,
             mockLogger.Object,
-            signalRConnectionManager,
-            mockGlobalSettingService.Object);
+            serverSideSignalRService);
 
         await navigationService.RefreshStatesAsync();
         var imageGenState = await navigationService.GetNavigationItemStateAsync("/image-generation");
@@ -201,20 +197,18 @@ public class ModelCapabilityIntegrationTests
 
         // Act
         var mockConfiguration = new Mock<IConfiguration>();
-        var mockJSRuntime = new Mock<IJSRuntime>();
-        var mockConnectionLogger = new Mock<ILogger<SignalRConnectionManager>>();
-        var signalRConnectionManager = new SignalRConnectionManager(mockJSRuntime.Object, mockConnectionLogger.Object);
-        var mockGlobalSettingService = new Mock<IGlobalSettingService>();
-        mockGlobalSettingService.Setup(x => x.GetSettingAsync("WebUI_VirtualKey"))
-            .ReturnsAsync("test-virtual-key");
+        // Create ServerSideSignalRService
+        var mockSignalRLogger = new Mock<ILogger<ServerSideSignalRService>>();
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        var serverSideSignalRService = new ServerSideSignalRService(
+            mockSignalRLogger.Object,
+            mockConfiguration.Object, 
+            mockServiceProvider.Object);
         
         var navigationService = new SignalRNavigationStateService(
-            mockAdminApiClient.Object, 
-            mockConduitApiClient.Object, 
             mockConfiguration.Object,
             mockLogger.Object,
-            signalRConnectionManager,
-            mockGlobalSettingService.Object);
+            serverSideSignalRService);
 
         _output.WriteLine("Testing capability status information...");
         var capabilityStatus = await navigationService.GetCapabilityStatusAsync();

@@ -42,6 +42,11 @@ public class ConduitCoreClient : BaseClient
     public AudioService Audio { get; }
 
     /// <summary>
+    /// Gets the batch operations service for performing batch spend updates, virtual key updates, and webhook sends.
+    /// </summary>
+    public BatchOperationsService BatchOperations { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -64,6 +69,7 @@ public class ConduitCoreClient : BaseClient
         ILogger<ModelsService>? modelsLogger = null;
         ILogger<TasksService>? tasksLogger = null;
         ILogger<AudioService>? audioLogger = null;
+        ILogger<BatchOperationsService>? batchOperationsLogger = null;
         
         if (logger != null)
         {
@@ -74,6 +80,7 @@ public class ConduitCoreClient : BaseClient
             modelsLogger = loggerFactory.CreateLogger<ModelsService>();
             tasksLogger = loggerFactory.CreateLogger<TasksService>();
             audioLogger = loggerFactory.CreateLogger<AudioService>();
+            batchOperationsLogger = loggerFactory.CreateLogger<BatchOperationsService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -82,6 +89,7 @@ public class ConduitCoreClient : BaseClient
         Models = new ModelsService(this, modelsLogger);
         Tasks = new TasksService(this, tasksLogger);
         Audio = new AudioService(this, audioLogger);
+        BatchOperations = new BatchOperationsService(this);
     }
 
     /// <summary>
@@ -387,5 +395,69 @@ public static class ConduitCoreClientExtensions
     {
         var allModels = await client.Models.ListAsync(cancellationToken);
         return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "audio"));
+    }
+
+    /// <summary>
+    /// Creates and executes a batch spend update operation with polling until completion.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="spendUpdates">The list of spend updates (max 10,000)</param>
+    /// <param name="pollingInterval">How often to check status (default: 5 seconds)</param>
+    /// <param name="timeout">Maximum time to wait for completion (default: 10 minutes)</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The final batch operation status response.</returns>
+    public static async Task<ConduitLLM.CoreClient.Models.BatchOperationStatusResponse> BatchSpendUpdateAndWaitAsync(
+        this ConduitCoreClient client,
+        IEnumerable<ConduitLLM.CoreClient.Models.SpendUpdateDto> spendUpdates,
+        TimeSpan? pollingInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = ConduitLLM.CoreClient.Services.BatchOperationsService.CreateSpendUpdateRequest(spendUpdates);
+        var startResponse = await client.BatchOperations.BatchSpendUpdateAsync(request, cancellationToken);
+        return await client.BatchOperations.PollOperationAsync(startResponse.OperationId, pollingInterval, timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates and executes a batch virtual key update operation with polling until completion.
+    /// Requires admin permissions.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="virtualKeyUpdates">The list of virtual key updates (max 1,000)</param>
+    /// <param name="pollingInterval">How often to check status (default: 5 seconds)</param>
+    /// <param name="timeout">Maximum time to wait for completion (default: 10 minutes)</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The final batch operation status response.</returns>
+    public static async Task<ConduitLLM.CoreClient.Models.BatchOperationStatusResponse> BatchVirtualKeyUpdateAndWaitAsync(
+        this ConduitCoreClient client,
+        IEnumerable<ConduitLLM.CoreClient.Models.VirtualKeyUpdateDto> virtualKeyUpdates,
+        TimeSpan? pollingInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = ConduitLLM.CoreClient.Services.BatchOperationsService.CreateVirtualKeyUpdateRequest(virtualKeyUpdates);
+        var startResponse = await client.BatchOperations.BatchVirtualKeyUpdateAsync(request, cancellationToken);
+        return await client.BatchOperations.PollOperationAsync(startResponse.OperationId, pollingInterval, timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates and executes a batch webhook send operation with polling until completion.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="webhookSends">The list of webhook sends (max 5,000)</param>
+    /// <param name="pollingInterval">How often to check status (default: 5 seconds)</param>
+    /// <param name="timeout">Maximum time to wait for completion (default: 10 minutes)</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The final batch operation status response.</returns>
+    public static async Task<ConduitLLM.CoreClient.Models.BatchOperationStatusResponse> BatchWebhookSendAndWaitAsync(
+        this ConduitCoreClient client,
+        IEnumerable<ConduitLLM.CoreClient.Models.WebhookSendDto> webhookSends,
+        TimeSpan? pollingInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = ConduitLLM.CoreClient.Services.BatchOperationsService.CreateWebhookSendRequest(webhookSends);
+        var startResponse = await client.BatchOperations.BatchWebhookSendAsync(request, cancellationToken);
+        return await client.BatchOperations.PollOperationAsync(startResponse.OperationId, pollingInterval, timeout, cancellationToken);
     }
 }

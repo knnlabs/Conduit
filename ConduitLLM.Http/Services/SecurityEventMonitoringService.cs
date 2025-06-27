@@ -412,17 +412,22 @@ namespace ConduitLLM.Http.Services
 
             foreach (var target in keyTargets)
             {
+                if (string.IsNullOrEmpty(target.Key))
+                    continue;
+                    
                 var uniqueIps = target.Select(e => e.IpAddress).Distinct().Count();
+                var keyPreview = target.Key.Length > 10 ? target.Key.Substring(0, 10) + "..." : target.Key;
+                
                 await _alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.SecurityEvent,
                     Component = "Authentication",
                     Title = "Distributed Attack Detected",
-                    Message = $"Virtual key {target.Key.Substring(0, 10)}... targeted from {uniqueIps} different IPs",
+                    Message = $"Virtual key {keyPreview} targeted from {uniqueIps} different IPs",
                     Context = new Dictionary<string, object>
                     {
-                        ["virtualKey"] = target.Key.Substring(0, 10) + "...",
+                        ["virtualKey"] = keyPreview,
                         ["uniqueIps"] = uniqueIps,
                         ["totalAttempts"] = target.Count()
                     },

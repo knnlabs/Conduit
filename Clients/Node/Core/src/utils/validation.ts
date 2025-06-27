@@ -120,7 +120,7 @@ export function validateImageGenerationRequest(request: ImageGenerationRequest):
       );
     }
 
-    if (request.style && capabilities.supportedStyles.length > 0 && !capabilities.supportedStyles.includes(request.style as any)) {
+    if (request.style && capabilities.supportedStyles.length > 0 && !(capabilities.supportedStyles as readonly string[]).includes(request.style)) {
       throw new ValidationError(
         `Style '${request.style}' is not supported for model ${request.model}. Supported styles: ${capabilities.supportedStyles.join(', ')}`,
         'style'

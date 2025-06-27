@@ -428,12 +428,12 @@ namespace ConduitLLM.Http.Controllers
                     taskId, modelName);
 
                 // Return accepted response with task information
-                var response = new
+                var response = new AsyncTaskResponse
                 {
-                    taskId = taskId,
-                    status = "queued", 
-                    checkStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
-                    createdAt = DateTime.UtcNow
+                    TaskId = taskId,
+                    Status = "queued", 
+                    CheckStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 return Accepted(response);
@@ -479,15 +479,15 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Build response
-                var response = new
+                var response = new AsyncTaskStatusResponse
                 {
-                    taskId = task.TaskId,
-                    status = task.State.ToString().ToLowerInvariant(),
-                    createdAt = task.CreatedAt,
-                    updatedAt = task.UpdatedAt,
-                    progress = task.Progress,
-                    result = task.State == TaskState.Completed ? task.Result : null,
-                    error = task.State == TaskState.Failed ? task.Error : null
+                    TaskId = task.TaskId,
+                    Status = task.State.ToString().ToLowerInvariant(),
+                    CreatedAt = task.CreatedAt,
+                    UpdatedAt = task.UpdatedAt,
+                    Progress = task.Progress,
+                    Result = task.State == TaskState.Completed ? task.Result : null,
+                    Error = task.State == TaskState.Failed ? task.Error : null
                 };
 
                 return Ok(response);
@@ -562,7 +562,7 @@ namespace ConduitLLM.Http.Controllers
 
                 _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
 
-                return Ok(new { message = "Task cancellation requested", taskId = taskId });
+                return Ok(new { message = "Task cancellation requested", task_id = taskId });
             }
             catch (Exception ex)
             {

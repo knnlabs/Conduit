@@ -186,7 +186,7 @@ namespace ConduitLLM.Http.Services
             var metrics = new ResourceMetrics();
 
             // CPU usage
-            if (_cpuCounter != null)
+            if (_cpuCounter != null && OperatingSystem.IsWindows())
             {
                 metrics.CpuUsagePercent = _cpuCounter.NextValue();
             }
@@ -210,7 +210,7 @@ namespace ConduitLLM.Http.Services
             var workingSet = _currentProcess.WorkingSet64;
             metrics.MemoryUsageMB = workingSet / (1024.0 * 1024.0);
             
-            if (_memoryCounter != null)
+            if (_memoryCounter != null && OperatingSystem.IsWindows())
             {
                 var totalMemory = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
                 var availableMemory = _memoryCounter.NextValue();

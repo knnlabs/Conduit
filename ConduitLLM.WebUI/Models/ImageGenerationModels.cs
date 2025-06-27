@@ -12,7 +12,7 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// Unique identifier for the image generation task.
         /// </summary>
-        [JsonPropertyName("taskId")]
+        [JsonPropertyName("task_id")]
         public string TaskId { get; set; } = string.Empty;
 
         /// <summary>
@@ -24,19 +24,19 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// When the task was created.
         /// </summary>
-        [JsonPropertyName("createdAt")]
+        [JsonPropertyName("created_at")]
         public DateTimeOffset CreatedAt { get; set; }
 
         /// <summary>
         /// Estimated time when the images will be ready.
         /// </summary>
-        [JsonPropertyName("estimatedCompletionTime")]
+        [JsonPropertyName("estimated_completion_time")]
         public DateTimeOffset? EstimatedCompletionTime { get; set; }
 
         /// <summary>
         /// URL to check the status of this task.
         /// </summary>
-        [JsonPropertyName("checkStatusUrl")]
+        [JsonPropertyName("check_status_url")]
         public string CheckStatusUrl { get; set; } = string.Empty;
     }
 
@@ -48,7 +48,7 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// Unique identifier for the task.
         /// </summary>
-        [JsonPropertyName("taskId")]
+        [JsonPropertyName("task_id")]
         public string TaskId { get; set; } = string.Empty;
 
         /// <summary>
@@ -66,19 +66,19 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// When the task was created.
         /// </summary>
-        [JsonPropertyName("createdAt")]
+        [JsonPropertyName("created_at")]
         public DateTimeOffset CreatedAt { get; set; }
 
         /// <summary>
         /// When the task was last updated.
         /// </summary>
-        [JsonPropertyName("updatedAt")]
+        [JsonPropertyName("updated_at")]
         public DateTimeOffset UpdatedAt { get; set; }
 
         /// <summary>
         /// When the task completed (if applicable).
         /// </summary>
-        [JsonPropertyName("completedAt")]
+        [JsonPropertyName("completed_at")]
         public DateTimeOffset? CompletedAt { get; set; }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace ConduitLLM.WebUI.Models
         /// <summary>
         /// The image generation response if completed.
         /// </summary>
-        [JsonPropertyName("imageResponse")]
+        [JsonPropertyName("image_response")]
         public ConduitLLM.Core.Models.ImageGenerationResponse? ImageResponse { get; set; }
     }
 }

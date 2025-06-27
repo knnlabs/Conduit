@@ -10,6 +10,7 @@ import { SystemService } from '../services/SystemService';
 import { DiscoveryService } from '../services/DiscoveryService';
 import { ProviderModelsService } from '../services/ProviderModelsService';
 import { AudioConfigurationService } from '../services/AudioConfigurationService';
+import { MetricsService } from '../services/MetricsService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -46,6 +47,7 @@ export class ConduitAdminClient {
   public readonly discovery: DiscoveryService;
   public readonly providerModels: ProviderModelsService;
   public readonly audioConfiguration: AudioConfigurationService;
+  public readonly metrics: MetricsService;
 
   private readonly config: ConduitConfig;
 
@@ -79,6 +81,7 @@ export class ConduitAdminClient {
     this.discovery = new DiscoveryService(baseConfig);
     this.providerModels = new ProviderModelsService(baseConfig);
     this.audioConfiguration = new AudioConfigurationService(baseConfig);
+    this.metrics = new MetricsService(baseConfig);
   }
 
   static fromEnvironment(env?: {

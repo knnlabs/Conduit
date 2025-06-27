@@ -104,6 +104,24 @@ export type {
   ErrorResponse,
 } from './models/common';
 
+export type {
+  BatchOperationStatusEnum,
+  SpendUpdateDto,
+  VirtualKeyUpdateDto,
+  WebhookSendDto,
+  BatchSpendUpdateRequest,
+  BatchVirtualKeyUpdateRequest,
+  BatchWebhookSendRequest,
+  BatchOperationStartResponse,
+  BatchOperationMetadata,
+  BatchItemResult,
+  BatchItemError,
+  BatchOperationStatusResponse,
+  BatchOperationPollOptions,
+  BatchValidationOptions,
+  BatchValidationResult,
+} from './models/batchOperations';
+
 export {
   ConduitError,
   AuthenticationError,
@@ -123,6 +141,8 @@ export {
   TaskDefaults,
   TaskHelpers,
 } from './services/TasksService';
+
+export { BatchOperationsService } from './services/BatchOperationsService';
 
 export * from './utils/capabilities';
 

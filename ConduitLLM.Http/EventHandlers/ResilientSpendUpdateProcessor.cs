@@ -55,7 +55,13 @@ namespace ConduitLLM.Http.EventHandlers
 
             // Check budget limits
             var virtualKey = await _virtualKeyRepository.GetByIdAsync(message.KeyId);
-            if (virtualKey?.MaxBudget != null && newSpend > virtualKey.MaxBudget.Value)
+            if (virtualKey == null)
+            {
+                Logger.LogError("Virtual key {KeyId} not found in database", message.KeyId);
+                throw new InvalidOperationException($"Virtual key {message.KeyId} not found");
+            }
+            
+            if (virtualKey.MaxBudget != null && newSpend > virtualKey.MaxBudget.Value)
             {
                 Logger.LogWarning(
                     "Virtual key {KeyId} would exceed budget. Current: ${Current:F2}, New: ${New:F2}, Budget: ${Budget:F2}",

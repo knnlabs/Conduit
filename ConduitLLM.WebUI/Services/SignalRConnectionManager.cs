@@ -20,10 +20,6 @@ public class SignalRConnectionManager : IAsyncDisposable
     /// </summary>
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
     
-    /// <summary>
-    /// Event fired when connection metrics are updated
-    /// </summary>
-    public event EventHandler<ConnectionMetricsEventArgs>? MetricsUpdated;
     
     public SignalRConnectionManager(IJSRuntime jsRuntime, ILogger<SignalRConnectionManager> logger)
     {
@@ -403,13 +399,4 @@ public class ConnectionStateChangedEventArgs : EventArgs
     public ConnectionState CurrentState { get; set; }
     public ConnectionState PreviousState { get; set; }
     public string? Error { get; set; }
-}
-
-/// <summary>
-/// Connection metrics event args
-/// </summary>
-public class ConnectionMetricsEventArgs : EventArgs
-{
-    public string HubName { get; set; } = string.Empty;
-    public HubMetrics Metrics { get; set; } = new();
 }
