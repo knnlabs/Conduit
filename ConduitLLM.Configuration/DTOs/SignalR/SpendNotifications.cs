@@ -104,15 +104,6 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// </summary>
         public List<string> Recommendations { get; set; } = new();
         
-        /// <summary>
-        /// Gets or sets the percentage (alias for PercentageUsed).
-        /// </summary>
-        public double Percentage => PercentageUsed;
-        
-        /// <summary>
-        /// Gets or sets the remaining budget.
-        /// </summary>
-        public decimal Remaining => BudgetLimit - CurrentSpend;
         
         /// <summary>
         /// Gets or sets the budget period end date.
@@ -221,15 +212,6 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// </summary>
         public List<string> Recommendations { get; set; } = new();
         
-        /// <summary>
-        /// Gets or sets the pattern type (alias for ActivityType).
-        /// </summary>
-        public string PatternType => ActivityType;
-        
-        /// <summary>
-        /// Gets or sets the percentage increase (alias for DeviationPercentage).
-        /// </summary>
-        public double PercentageIncrease => DeviationPercentage;
     }
 
     /// <summary>
