@@ -1,0 +1,102 @@
+<Card>
+    <HeaderContent>
+        <div class="d-flex align-items-center gap-2">
+            <i class="@Icon" style="color: var(--bs-primary);"></i>
+            <h3 class="mb-0 h6">@Title</h3>
+        </div>
+    </HeaderContent>
+    <BodyContent>
+        <div class="gauge-container">
+            <div class="gauge-value">
+                <span class="value">@Value.ToString("F1")</span>
+                <span class="unit">@Unit</span>
+            </div>
+            <div class="gauge-bar">
+                <div class="gauge-fill @GetGaugeClass()" style="width: @GetPercentage()%"></div>
+            </div>
+            <div class="gauge-labels">
+                <small class="text-muted">0</small>
+                <small class="text-muted">@Max @Unit</small>
+            </div>
+        </div>
+    </BodyContent>
+</Card>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public double Value { get; set; }
+    [Parameter] public double Max { get; set; }
+    [Parameter] public string Unit { get; set; } = "";
+    [Parameter] public double[] Thresholds { get; set; } = Array.Empty<double>();
+    [Parameter] public string Icon { get; set; } = "fas fa-gauge";
+
+    private double GetPercentage()
+    {
+        return Math.Min(100, (Value / Max) * 100);
+    }
+
+    private string GetGaugeClass()
+    {
+        if (Thresholds.Length >= 2)
+        {
+            if (Value >= Thresholds[1]) return "gauge-danger";
+            if (Value >= Thresholds[0]) return "gauge-warning";
+        }
+        return "gauge-success";
+    }
+}
+
+<style>
+    .gauge-container {
+        padding: 10px 0;
+    }
+
+    .gauge-value {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    .gauge-value .value {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--bs-dark);
+    }
+
+    .gauge-value .unit {
+        font-size: 1rem;
+        color: var(--bs-secondary);
+        margin-left: 4px;
+    }
+
+    .gauge-bar {
+        height: 20px;
+        background-color: var(--bs-gray-200);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .gauge-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+        border-radius: 10px;
+    }
+
+    .gauge-fill.gauge-success {
+        background-color: var(--bs-success);
+    }
+
+    .gauge-fill.gauge-warning {
+        background-color: var(--bs-warning);
+    }
+
+    .gauge-fill.gauge-danger {
+        background-color: var(--bs-danger);
+    }
+
+    .gauge-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+    }
+</style>

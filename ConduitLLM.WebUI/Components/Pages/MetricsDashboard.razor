@@ -1,0 +1,810 @@
+@page "/metrics-dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Text.Json
+@using ConduitLLM.WebUI.DTOs
+@attribute [Authorize(Policy = "RequireMasterKey")]
+@implements IAsyncDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IToastNotificationService ToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageHeader Title="Real-Time Metrics Dashboard" Icon="fas fa-chart-line" />
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0">Monitor system performance, API usage, and operational metrics in real-time</p>
+    <div class="dashboard-controls">
+        <select class="form-select interval-selector" @bind="updateInterval" @bind:after="OnIntervalChange">
+            <option value="1">1 second</option>
+            <option value="5">5 seconds</option>
+            <option value="10">10 seconds</option>
+            <option value="30">30 seconds</option>
+            <option value="60">1 minute</option>
+        </select>
+        <button class="btn @(IsConnected ? "btn-success" : "btn-danger")" @onclick="ToggleConnection">
+            <i class="@(IsConnected ? "fas fa-link" : "fas fa-unlink")"></i>
+            @(IsConnected ? "Connected" : "Disconnected")
+        </button>
+    </div>
+</div>
+
+<div class="metrics-dashboard">
+    @if (!string.IsNullOrEmpty(connectionError))
+    {
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            @connectionError
+        </div>
+    }
+
+    <!-- System Overview -->
+    <div class="metrics-section">
+        <h2>System Overview</h2>
+        <div class="metrics-grid overview-grid">
+            <StatCard Title="Requests/sec" 
+                     Value="@FormatRate(currentMetrics?.Http?.RequestsPerSecond ?? 0)" 
+                     Icon="fas fa-tachometer-alt"
+                     Trend="@GetTrend("requestsPerSecond")"
+                     AlertLevel="@GetRequestRateAlert()" />
+            
+            <StatCard Title="Active Requests" 
+                     Value="@((currentMetrics?.Http?.ActiveRequests ?? 0).ToString())" 
+                     Icon="fas fa-sync"
+                     AlertLevel="@GetActiveRequestsAlert()" />
+            
+            <StatCard Title="Error Rate" 
+                     Value="@FormatPercent(currentMetrics?.Http?.ErrorRate ?? 0)" 
+                     Icon="fas fa-exclamation-circle"
+                     AlertLevel="@GetErrorRateAlert()" />
+            
+            <StatCard Title="P95 Response Time" 
+                     Value="@FormatMilliseconds(currentMetrics?.Http?.ResponseTimes?.P95 ?? 0)" 
+                     Icon="fas fa-clock"
+                     AlertLevel="@GetResponseTimeAlert()" />
+        </div>
+    </div>
+
+    <!-- Request Distribution -->
+    <div class="metrics-section">
+        <h2>Request Distribution</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <Card Title="Endpoint Request Rates">
+                    <BodyContent>
+                        <div id="endpoint-request-chart" style="height: 300px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+            <div class="col-md-6">
+                <Card Title="Status Code Distribution">
+                    <BodyContent>
+                        <div id="status-code-chart" style="height: 300px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+        </div>
+    </div>
+
+    <!-- Infrastructure Health -->
+    <div class="metrics-section">
+        <h2>Infrastructure Health</h2>
+        <div class="metrics-grid">
+            <InfrastructureHealthCard Title="Database" 
+                                    Metrics="@currentMetrics?.Infrastructure?.Database" 
+                                    Icon="fas fa-database" />
+            
+            <InfrastructureHealthCard Title="Redis Cache" 
+                                    Metrics="@currentMetrics?.Infrastructure?.Redis" 
+                                    Icon="fas fa-memory" />
+            
+            <InfrastructureHealthCard Title="RabbitMQ" 
+                                    Metrics="@currentMetrics?.Infrastructure?.RabbitMQ" 
+                                    Icon="fas fa-exchange-alt" />
+            
+            <InfrastructureHealthCard Title="SignalR" 
+                                    Metrics="@currentMetrics?.Infrastructure?.SignalR" 
+                                    Icon="fas fa-broadcast-tower" />
+        </div>
+    </div>
+
+    <!-- Provider Health Matrix -->
+    <div class="metrics-section">
+        <h2>Provider Health</h2>
+        <Card>
+            <BodyContent>
+                @if (currentMetrics?.ProviderHealth?.Any() == true)
+                {
+                    <table class="table table-hover provider-health-table">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Status</th>
+                                <th>Models</th>
+                                <th>Error Rate</th>
+                                <th>Avg Latency</th>
+                                <th>Last Success</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var provider in currentMetrics.ProviderHealth.OrderBy(p => p.Status).ThenBy(p => p.ErrorRate))
+                            {
+                                <tr class="@(!provider.IsEnabled ? "disabled" : "")">
+                                    <td>
+                                        <i class="@GetProviderIcon(provider.ProviderName) provider-icon"></i>
+                                        @provider.ProviderName
+                                    </td>
+                                    <td>
+                                        <StatusBadge Status="@provider.Status" />
+                                    </td>
+                                    <td>@provider.AvailableModels</td>
+                                    <td class="@(provider.ErrorRate > 5 ? "text-danger" : "")">
+                                        @provider.ErrorRate.ToString("F1")%
+                                    </td>
+                                    <td class="@GetLatencyClass(provider.AverageLatency)">
+                                        @FormatLatency(provider.AverageLatency)
+                                    </td>
+                                    <td>@FormatLastSuccess(provider.LastSuccessfulRequest)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <EmptyState Icon="fas fa-server" Message="No provider data available" />
+                }
+            </BodyContent>
+        </Card>
+    </div>
+
+    <!-- Business Metrics -->
+    <div class="metrics-section">
+        <h2>Business Metrics</h2>
+        <div class="metrics-grid">
+            <StatCard Title="Active Virtual Keys" 
+                     Value="@((currentMetrics?.Business?.ActiveVirtualKeys ?? 0).ToString())" 
+                     Icon="fas fa-key" />
+            
+            <StatCard Title="Cost/minute" 
+                     Value="@FormatCurrency(currentMetrics?.Business?.Costs?.TotalCostPerMinute ?? 0)" 
+                     Icon="fas fa-dollar-sign"
+                     Trend="@GetTrend("costPerMinute")" />
+            
+            <StatCard Title="Total Requests/min" 
+                     Value="@((currentMetrics?.Business?.TotalRequestsPerMinute ?? 0).ToString())" 
+                     Icon="fas fa-chart-line" />
+            
+            <StatCard Title="Avg Cost/Request" 
+                     Value="@FormatCurrency(currentMetrics?.Business?.Costs?.AverageCostPerRequest ?? 0)" 
+                     Icon="fas fa-receipt" />
+        </div>
+    </div>
+
+    <!-- Top Virtual Keys -->
+    @if (currentMetrics?.Business?.TopVirtualKeys?.Any() == true)
+    {
+        <div class="metrics-section">
+            <h2>Top Virtual Keys</h2>
+            <Card>
+                <BodyContent>
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Key Name</th>
+                                <th>Requests/min</th>
+                                <th>Total Spend</th>
+                                <th>Budget Utilization</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var key in currentMetrics.Business.TopVirtualKeys)
+                            {
+                                <tr>
+                                    <td>@key.KeyName</td>
+                                    <td>@key.RequestsPerMinute</td>
+                                    <td>@FormatCurrency(key.TotalSpend)</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar @(key.IsOverBudget ? "bg-danger" : key.BudgetUtilization > 80 ? "bg-warning" : "bg-success")" 
+                                                 role="progressbar" 
+                                                 style="width: @(Math.Min(100, key.BudgetUtilization))%">
+                                                @key.BudgetUtilization.ToString("F1")%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </BodyContent>
+            </Card>
+        </div>
+    }
+
+    <!-- System Resources -->
+    <div class="metrics-section">
+        <h2>System Resources</h2>
+        <div class="metrics-grid">
+            <SystemResourceGauge Title="CPU Usage" 
+                               Value="@(currentMetrics?.System?.CpuUsagePercent ?? 0)" 
+                               Max="100" 
+                               Unit="%" 
+                               Thresholds="new[] { 60.0, 80.0 }" 
+                               Icon="fas fa-microchip" />
+            
+            <SystemResourceGauge Title="Memory Usage" 
+                               Value="@(currentMetrics?.System?.MemoryUsageMB ?? 0)" 
+                               Max="@GetMaxMemory()" 
+                               Unit="MB" 
+                               Thresholds="new[] { GetMaxMemory() * 0.7, GetMaxMemory() * 0.85 }" 
+                               Icon="fas fa-memory" />
+            
+            <StatCard Title="Threads" 
+                     Value="@((currentMetrics?.System?.ThreadCount ?? 0).ToString())" 
+                     Icon="fas fa-tasks" />
+            
+            <StatCard Title="Uptime" 
+                     Value="@FormatUptime(currentMetrics?.System?.Uptime)" 
+                     Icon="fas fa-clock" />
+        </div>
+    </div>
+
+    <!-- Active Alerts -->
+    @if (activeAlerts?.Any() == true)
+    {
+        <div class="metrics-section alerts-section">
+            <h2>Active Alerts</h2>
+            <Card>
+                <BodyContent>
+                    @foreach (var alert in activeAlerts)
+                    {
+                        <div class="alert alert-@GetAlertClass(alert.Severity) alert-dismissible" role="alert">
+                            <strong>@alert.MetricName:</strong> @alert.Message
+                            <br />
+                            <small>Current: @alert.CurrentValue.ToString("F2") | Threshold: @alert.Threshold.ToString("F2")</small>
+                            <button type="button" class="btn-close" @onclick="() => DismissAlert(alert.Id)"></button>
+                        </div>
+                    }
+                </BodyContent>
+            </Card>
+        </div>
+    }
+
+    <!-- Historical Trends -->
+    <div class="metrics-section">
+        <h2>Historical Trends</h2>
+        <div class="trend-controls mb-3">
+            @foreach (var range in timeRanges)
+            {
+                <button class="btn btn-sm @(selectedTimeRange == range.Value ? "btn-primary" : "btn-outline-primary")" 
+                        @onclick="() => SelectTimeRange(range.Value)">
+                    @range.Label
+                </button>
+            }
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <Card Title="Request Rate">
+                    <BodyContent>
+                        <div id="request-rate-chart" style="height: 250px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+            <div class="col-md-6 mb-3">
+                <Card Title="Error Rate">
+                    <BodyContent>
+                        <div id="error-rate-chart" style="height: 250px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+            <div class="col-md-6 mb-3">
+                <Card Title="Response Time (P95)">
+                    <BodyContent>
+                        <div id="response-time-chart" style="height: 250px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+            <div class="col-md-6 mb-3">
+                <Card Title="Cost Rate">
+                    <BodyContent>
+                        <div id="cost-rate-chart" style="height: 250px;"></div>
+                    </BodyContent>
+                </Card>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .metrics-dashboard {
+        padding: 20px 0;
+    }
+
+    .dashboard-controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .interval-selector {
+        width: auto;
+    }
+
+    .metrics-section {
+        margin-bottom: 40px;
+    }
+
+    .metrics-section h2 {
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .overview-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .provider-icon {
+        margin-right: 8px;
+        color: var(--bs-primary);
+    }
+
+    .provider-health-table tr.disabled {
+        opacity: 0.6;
+    }
+
+    .alerts-section {
+        background-color: var(--bs-light);
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid var(--bs-warning);
+    }
+
+    .trend-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .text-low-latency {
+        color: var(--bs-success);
+    }
+
+    .text-medium-latency {
+        color: var(--bs-warning);
+    }
+
+    .text-high-latency {
+        color: var(--bs-danger);
+    }
+</style>
+
+@code {
+    private HubConnection? hubConnection;
+    private MetricsSnapshot? currentMetrics;
+    private List<MetricAlert> activeAlerts = new();
+    private string? connectionError;
+    private int updateInterval = 5;
+    private string selectedTimeRange = "1h";
+    private bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
+    private readonly List<(string Label, string Value)> timeRanges = new()
+    {
+        ("15m", "15m"),
+        ("1h", "1h"),
+        ("6h", "6h"),
+        ("24h", "24h")
+    };
+
+    private Dictionary<string, List<MetricsDataPoint>> historicalData = new()
+    {
+        ["requestRate"] = new(),
+        ["errorRate"] = new(),
+        ["responseTime"] = new(),
+        ["costRate"] = new()
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ConnectToHub();
+    }
+
+    private async Task ConnectToHub()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var token = authState.User.FindFirst("token")?.Value;
+
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/api/hubs/metrics"), options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(token);
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            hubConnection.On<MetricsSnapshot>("MetricsSnapshot", (snapshot) =>
+            {
+                currentMetrics = snapshot;
+                UpdateHistoricalData(snapshot);
+                InvokeAsync(StateHasChanged);
+                InvokeAsync(UpdateCharts);
+            });
+
+            hubConnection.On<List<MetricAlert>>("MetricAlerts", (alerts) =>
+            {
+                activeAlerts = alerts;
+                foreach (var alert in alerts.Where(a => a.Severity == "critical"))
+                {
+                    ToastService.ShowError(alert.Message);
+                }
+                InvokeAsync(StateHasChanged);
+            });
+
+            hubConnection.Reconnecting += (error) =>
+            {
+                connectionError = "Reconnecting...";
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            hubConnection.Reconnected += (connectionId) =>
+            {
+                connectionError = null;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            hubConnection.Closed += (error) =>
+            {
+                if (error != null)
+                {
+                    connectionError = $"Connection lost: {error.Message}";
+                    InvokeAsync(StateHasChanged);
+                }
+                return Task.CompletedTask;
+            };
+
+            await hubConnection.StartAsync();
+            connectionError = null;
+
+            // Start streaming metrics
+            await StartMetricsStream();
+
+            // Load historical data
+            await LoadHistoricalData();
+        }
+        catch (Exception ex)
+        {
+            connectionError = $"Failed to connect: {ex.Message}";
+            ToastService.ShowError("Failed to connect to metrics server");
+        }
+    }
+
+    private async Task StartMetricsStream()
+    {
+        if (hubConnection?.State != HubConnectionState.Connected) return;
+
+        try
+        {
+            var stream = hubConnection.StreamAsync<MetricsSnapshot>("StreamMetrics", updateInterval);
+            await foreach (var snapshot in stream)
+            {
+                currentMetrics = snapshot;
+                UpdateHistoricalData(snapshot);
+                await InvokeAsync(StateHasChanged);
+                await InvokeAsync(UpdateCharts);
+            }
+        }
+        catch (Exception ex)
+        {
+            connectionError = $"Streaming error: {ex.Message}";
+        }
+    }
+
+    private void UpdateHistoricalData(MetricsSnapshot snapshot)
+    {
+        var now = DateTime.UtcNow;
+
+        if (snapshot.Http != null)
+        {
+            AddHistoricalPoint("requestRate", new MetricsDataPoint 
+            { 
+                Timestamp = now, 
+                Value = snapshot.Http.RequestsPerSecond 
+            });
+
+            AddHistoricalPoint("errorRate", new MetricsDataPoint 
+            { 
+                Timestamp = now, 
+                Value = snapshot.Http.ErrorRate 
+            });
+
+            if (snapshot.Http.ResponseTimes != null)
+            {
+                AddHistoricalPoint("responseTime", new MetricsDataPoint 
+                { 
+                    Timestamp = now, 
+                    Value = snapshot.Http.ResponseTimes.P95 
+                });
+            }
+        }
+
+        if (snapshot.Business?.Costs != null)
+        {
+            AddHistoricalPoint("costRate", new MetricsDataPoint 
+            { 
+                Timestamp = now, 
+                Value = (double)snapshot.Business.Costs.TotalCostPerMinute 
+            });
+        }
+    }
+
+    private void AddHistoricalPoint(string metric, MetricsDataPoint point)
+    {
+        if (!historicalData.ContainsKey(metric))
+            historicalData[metric] = new List<MetricsDataPoint>();
+
+        historicalData[metric].Add(point);
+
+        // Keep only last 24 hours
+        var cutoff = DateTime.UtcNow.AddHours(-24);
+        historicalData[metric] = historicalData[metric]
+            .Where(p => p.Timestamp > cutoff)
+            .ToList();
+    }
+
+    private async Task LoadHistoricalData()
+    {
+        if (hubConnection?.State != HubConnectionState.Connected) return;
+
+        try
+        {
+            var request = new HistoricalMetricsRequest
+            {
+                StartTime = GetStartTimeForRange(selectedTimeRange),
+                EndTime = DateTime.UtcNow,
+                MetricNames = new List<string> 
+                { 
+                    "http_requests_per_second", 
+                    "http_error_rate", 
+                    "http_response_time_p95", 
+                    "cost_per_minute" 
+                },
+                Interval = GetIntervalForRange(selectedTimeRange)
+            };
+
+            var response = await hubConnection.InvokeAsync<HistoricalMetricsResponse>("GetHistoricalMetrics", request);
+            
+            // Process response and update charts
+            foreach (var series in response.Series)
+            {
+                switch (series.MetricName)
+                {
+                    case "http_requests_per_second":
+                        historicalData["requestRate"] = series.DataPoints;
+                        break;
+                    case "http_error_rate":
+                        historicalData["errorRate"] = series.DataPoints;
+                        break;
+                    case "http_response_time_p95":
+                        historicalData["responseTime"] = series.DataPoints;
+                        break;
+                    case "cost_per_minute":
+                        historicalData["costRate"] = series.DataPoints;
+                        break;
+                }
+            }
+
+            await UpdateCharts();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load historical data: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateCharts()
+    {
+        // Update endpoint request chart
+        if (currentMetrics?.Http?.EndpointRequestRates != null)
+        {
+            var endpointData = currentMetrics.Http.EndpointRequestRates
+                .Select(kvp => new { endpoint = kvp.Key, rate = kvp.Value })
+                .ToList();
+            await JS.InvokeVoidAsync("updateEndpointChart", "endpoint-request-chart", endpointData);
+        }
+
+        // Update status code chart
+        if (currentMetrics?.Http?.StatusCodeCounts != null)
+        {
+            var statusData = currentMetrics.Http.StatusCodeCounts
+                .Select(kvp => new { code = kvp.Key, count = kvp.Value })
+                .ToList();
+            await JS.InvokeVoidAsync("updateStatusCodeChart", "status-code-chart", statusData);
+        }
+
+        // Update historical trend charts
+        await JS.InvokeVoidAsync("updateTrendChart", "request-rate-chart", historicalData["requestRate"], "Requests/sec");
+        await JS.InvokeVoidAsync("updateTrendChart", "error-rate-chart", historicalData["errorRate"], "Error %");
+        await JS.InvokeVoidAsync("updateTrendChart", "response-time-chart", historicalData["responseTime"], "Response Time (ms)");
+        await JS.InvokeVoidAsync("updateTrendChart", "cost-rate-chart", historicalData["costRate"], "Cost/min ($)");
+    }
+
+    private async Task OnIntervalChange()
+    {
+        if (hubConnection?.State == HubConnectionState.Connected)
+        {
+            await StartMetricsStream();
+        }
+    }
+
+    private async Task ToggleConnection()
+    {
+        if (IsConnected)
+        {
+            await hubConnection!.StopAsync();
+            connectionError = "Disconnected";
+        }
+        else
+        {
+            await ConnectToHub();
+        }
+    }
+
+    private async Task SelectTimeRange(string range)
+    {
+        selectedTimeRange = range;
+        await LoadHistoricalData();
+    }
+
+    private void DismissAlert(string alertId)
+    {
+        activeAlerts = activeAlerts.Where(a => a.Id != alertId).ToList();
+    }
+
+    private DateTime GetStartTimeForRange(string range)
+    {
+        return range switch
+        {
+            "15m" => DateTime.UtcNow.AddMinutes(-15),
+            "1h" => DateTime.UtcNow.AddHours(-1),
+            "6h" => DateTime.UtcNow.AddHours(-6),
+            "24h" => DateTime.UtcNow.AddHours(-24),
+            _ => DateTime.UtcNow.AddHours(-1)
+        };
+    }
+
+    private string GetIntervalForRange(string range)
+    {
+        return range switch
+        {
+            "15m" => "1m",
+            "1h" => "5m",
+            "6h" => "15m",
+            "24h" => "1h",
+            _ => "5m"
+        };
+    }
+
+    // Formatting helpers
+    private string FormatRate(double value) => $"{value:F1}/s";
+    private string FormatPercent(double value) => $"{value:F1}%";
+    private string FormatMilliseconds(double value) => $"{value:F0}ms";
+    private string FormatCurrency(decimal value) => $"${value:F2}";
+    private string FormatLatency(double latency)
+    {
+        if (latency < 1000) return $"{latency:F0}ms";
+        return $"{(latency / 1000):F1}s";
+    }
+
+    private string FormatUptime(TimeSpan? uptime)
+    {
+        if (uptime == null) return "Unknown";
+        var ts = uptime.Value;
+        if (ts.TotalDays >= 1) return $"{(int)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m";
+        if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        return $"{ts.Minutes}m {ts.Seconds}s";
+    }
+
+    private string FormatLastSuccess(DateTime? timestamp)
+    {
+        if (timestamp == null) return "Never";
+        var diff = DateTime.UtcNow - timestamp.Value;
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+
+    private double GetMaxMemory()
+    {
+        var current = currentMetrics?.System?.MemoryUsageMB ?? 0;
+        return Math.Max(4096, Math.Ceiling(current * 1.5 / 1024) * 1024);
+    }
+
+    // Alert level helpers
+    private string? GetRequestRateAlert()
+    {
+        // Add custom logic for request rate alerts
+        return null;
+    }
+
+    private string? GetActiveRequestsAlert()
+    {
+        var count = currentMetrics?.Http?.ActiveRequests ?? 0;
+        if (count > 1000) return "warning";
+        return null;
+    }
+
+    private string? GetErrorRateAlert()
+    {
+        var rate = currentMetrics?.Http?.ErrorRate ?? 0;
+        if (rate > 5) return "critical";
+        if (rate > 2) return "warning";
+        return null;
+    }
+
+    private string? GetResponseTimeAlert()
+    {
+        var time = currentMetrics?.Http?.ResponseTimes?.P95 ?? 0;
+        if (time > 5000) return "critical";
+        if (time > 2000) return "warning";
+        return null;
+    }
+
+    private string GetAlertClass(string severity)
+    {
+        return severity.ToLower() switch
+        {
+            "critical" => "danger",
+            "warning" => "warning",
+            _ => "info"
+        };
+    }
+
+    private string GetLatencyClass(double latency)
+    {
+        if (latency > 2000) return "text-high-latency";
+        if (latency > 1000) return "text-medium-latency";
+        return "text-low-latency";
+    }
+
+    private string GetProviderIcon(string providerName)
+    {
+        return providerName.ToLower() switch
+        {
+            "openai" => "fab fa-openai",
+            "anthropic" => "fas fa-robot",
+            "google" => "fab fa-google",
+            "minimax" => "fas fa-cube",
+            "replicate" => "fas fa-copy",
+            "openrouter" => "fas fa-route",
+            "groq" => "fas fa-bolt",
+            "together" => "fas fa-users",
+            _ => "fas fa-server"
+        };
+    }
+
+    private object? GetTrend(string metric)
+    {
+        // TODO: Calculate trend from historical data
+        return null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

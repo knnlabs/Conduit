@@ -914,8 +914,8 @@
         try
         {
             // Show warning toast
-            var message = $"Unusual spending detected: {notification.PatternType}. " +
-                         $"Current spend is {notification.PercentageIncrease:F0}% higher than average.";
+            var message = $"Unusual spending detected: {notification.ActivityType}. " +
+                         $"Current spend is {notification.DeviationPercentage:F0}% higher than average.";
             
             ToastService.ShowWarning(message);
             

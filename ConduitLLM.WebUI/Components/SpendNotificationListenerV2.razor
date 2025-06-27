@@ -217,7 +217,7 @@
             if (notification != null)
             {
                 Logger.LogInformation("Received spend update: ${Amount} for {Model}", 
-                    notification.Amount, notification.Model);
+                    notification.NewSpend, notification.Model);
                 await OnSpendUpdate.InvokeAsync(notification);
             }
         }
@@ -291,8 +291,8 @@
             
             if (notification != null)
             {
-                Logger.LogInformation("Received unusual spending alert: {PatternType}", 
-                    notification.PatternType);
+                Logger.LogInformation("Received unusual spending alert: {ActivityType}", 
+                    notification.ActivityType);
                 await OnUnusualSpending.InvokeAsync(notification);
             }
         }

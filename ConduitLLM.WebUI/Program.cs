@@ -284,6 +284,9 @@ builder.Services.AddSignalR(options =>
     options.MaximumReceiveMessageSize = 512 * 1024; // 512 KB
 });
 
+// Register SignalR connection manager
+builder.Services.AddScoped<ConduitLLM.WebUI.Services.SignalRConnectionManager>();
+
 // Add antiforgery services
 builder.Services.AddAntiforgery();
 

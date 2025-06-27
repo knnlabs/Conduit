@@ -970,6 +970,14 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("VirtualKeyId");
         policy.RequireClaim("IsAdmin", "true");
     });
+    
+    // Add policy for admin-only access (e.g., metrics dashboard)
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.AuthenticationSchemes.Add("VirtualKey");
+        policy.RequireAuthenticatedUser();
+        policy.RequireClaim("IsAdmin", "true");
+    });
 });
 
 // Add Controller support
@@ -997,6 +1005,15 @@ builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRErrorHandlingFilter
 
 // Register SignalR authentication service
 builder.Services.AddScoped<ConduitLLM.Http.Authentication.ISignalRAuthenticationService, ConduitLLM.Http.Authentication.SignalRAuthenticationService>();
+
+// Register Metrics Aggregation Service and Hub
+builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService, ConduitLLM.Http.Services.MetricsAggregationService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(sp => 
+    (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>());
+
+// Register Infrastructure and Business Metrics Background Services
+builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
 // Add SignalR for real-time navigation state updates
 var signalRBuilder = builder.Services.AddSignalR(options =>
@@ -1263,6 +1280,11 @@ Console.WriteLine("[Conduit API] SignalR WebhookDeliveryHub registered at /hubs/
 app.MapHub<ConduitLLM.Http.Hubs.ModelDiscoveryHub>("/hubs/model-discovery")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR ModelDiscoveryHub registered at /hubs/model-discovery (requires authentication)");
+
+// Admin-only hub for metrics dashboard
+app.MapHub<ConduitLLM.Http.Hubs.MetricsHub>("/hubs/metrics")
+    .RequireAuthorization("AdminOnly");
+Console.WriteLine("[Conduit API] SignalR MetricsHub registered at /hubs/metrics (requires admin authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

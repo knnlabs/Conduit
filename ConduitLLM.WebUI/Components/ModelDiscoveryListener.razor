@@ -81,14 +81,17 @@
             var connectionInfo = await SignalRManager.ConnectToHubAsync(
                 "model-discovery",
                 VirtualKey,
-                new HubConnectionOptions 
+                new ConduitLLM.WebUI.Services.HubConnectionOptions 
                 { 
-                    EnableAutoReconnect = true,
-                    LogLevel = Microsoft.Extensions.Logging.LogLevel.Information
+                    EnableAutoReconnect = true
                 });
             
-            _hubConnection = connectionInfo.Connection;
+            // Note: SignalRConnectionManager doesn't provide direct access to the HubConnection
+            // This component needs to be updated to work with the new approach
             
+            // TODO: Update this component to work with the new SignalRConnectionManager pattern
+            // For now, commenting out the hub connection usage
+            /*
             // Register event handlers
             _hubConnection.On<NewModelsDiscoveredNotification>("NewModelsDiscovered", HandleNewModelsDiscovered);
             _hubConnection.On<ModelCapabilitiesChangedNotification>("ModelCapabilitiesChanged", HandleCapabilitiesChanged);
@@ -101,6 +104,7 @@
                 await _hubConnection.SendAsync("SubscribeToProvider", Provider);
                 Logger.LogInformation($"Subscribed to model discovery for provider: {Provider}");
             }
+            */
             
             // Listen for connection state changes
             SignalRManager.ConnectionStateChanged += OnConnectionStateChanged;
@@ -329,7 +333,7 @@
         animation: slideIn 0.3s ease-out;
     }
     
-    @keyframes slideIn {
+    @@keyframes slideIn {
         from {
             opacity: 0;
             transform: translateX(-20px);
