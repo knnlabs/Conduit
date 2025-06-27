@@ -232,7 +232,7 @@ namespace ConduitLLM.Http.Hubs
         {
             // Create a safe group name from the URL
             var uri = new Uri(webhookUrl);
-            return $"webhook_{uri.Host.Replace(".", "_")}_{uri.AbsolutePath.Replace("/", "_")}";
+            return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
         }
 
         /// <summary>

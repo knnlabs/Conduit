@@ -426,7 +426,7 @@ namespace ConduitLLM.Http.Services
         private static string GetWebhookGroupName(string webhookUrl)
         {
             var uri = new Uri(webhookUrl);
-            return $"webhook_{uri.Host.Replace(".", "_")}_{uri.AbsolutePath.Replace("/", "_")}";
+            return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
         }
 
         /// <summary>
