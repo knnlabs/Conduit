@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin SignalR Hub Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script src="/js/signalr-event-mappings.js"></script>
+    <script src="/js/conduit-signalr-service.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .log {
+            background: #f4f4f4;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-entry.error {
+            color: red;
+        }
+        .log-entry.success {
+            color: green;
+        }
+        .log-entry.info {
+            color: blue;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 300px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #28a745;
+            color: white;
+        }
+        .status.disconnected {
+            background: #dc3545;
+            color: white;
+        }
+        .status.connecting {
+            background: #ffc107;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin SignalR Hub Authentication Test</h1>
+        
+        <div class="section">
+            <h2>Configuration</h2>
+            <div>
+                <label>Admin API URL:</label>
+                <input type="text" id="adminApiUrl" value="http://localhost:5010" />
+            </div>
+            <div>
+                <label>Master Key:</label>
+                <input type="password" id="masterKey" placeholder="Enter master key" />
+            </div>
+            <div>
+                <label>Connection Status:</label>
+                <span id="connectionStatus" class="status disconnected">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Connection Controls</h2>
+            <button onclick="connectToHub()">Connect</button>
+            <button onclick="disconnectFromHub()">Disconnect</button>
+            <button onclick="testSubscriptions()">Test Subscriptions</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="section">
+            <h2>Event Log</h2>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configure window.conduitConfig for the SignalR service
+        window.conduitConfig = {
+            adminApiBaseUrl: 'http://localhost:5010'
+        };
+
+        // Enable debug mode
+        window.conduitSignalR.setDebugMode(true);
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toISOString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = status;
+            statusElement.className = `status ${status.toLowerCase().replace(' ', '')}`;
+        }
+
+        async function connectToHub() {
+            try {
+                log('Starting connection...');
+                updateStatus('Connecting');
+
+                const adminApiUrl = document.getElementById('adminApiUrl').value;
+                const masterKey = document.getElementById('masterKey').value;
+
+                if (!masterKey) {
+                    log('Master key is required!', 'error');
+                    updateStatus('Disconnected');
+                    return;
+                }
+
+                // Update config
+                window.conduitConfig.adminApiBaseUrl = adminApiUrl;
+
+                // Set master key
+                window.conduitSignalR.setMasterKey(masterKey);
+
+                // Connect to admin hub
+                const connection = await window.conduitSignalR.connectToHub('admin-notifications');
+
+                // Set up event handlers
+                setupEventHandlers();
+
+                log('Connected successfully!', 'success');
+                updateStatus('Connected');
+
+            } catch (error) {
+                log(`Connection failed: ${error.message}`, 'error');
+                updateStatus('Disconnected');
+            }
+        }
+
+        async function disconnectFromHub() {
+            try {
+                log('Disconnecting...');
+                await window.conduitSignalR.disconnectFromHub('admin-notifications');
+                log('Disconnected successfully', 'success');
+                updateStatus('Disconnected');
+            } catch (error) {
+                log(`Disconnect failed: ${error.message}`, 'error');
+            }
+        }
+
+        function setupEventHandlers() {
+            const hubName = 'admin-notifications';
+
+            // Virtual Key events
+            window.conduitSignalR.on(hubName, 'VirtualKeyCreated', (data) => {
+                log(`Virtual Key Created: ${JSON.stringify(data)}`, 'info');
+            });
+
+            window.conduitSignalR.on(hubName, 'VirtualKeyUpdated', (data) => {
+                log(`Virtual Key Updated: ${JSON.stringify(data)}`, 'info');
+            });
+
+            window.conduitSignalR.on(hubName, 'VirtualKeyDeleted', (data) => {
+                log(`Virtual Key Deleted: ${JSON.stringify(data)}`, 'info');
+            });
+
+            // Provider events
+            window.conduitSignalR.on(hubName, 'ProviderHealthUpdate', (data) => {
+                log(`Provider Health Update: ${JSON.stringify(data)}`, 'info');
+            });
+
+            window.conduitSignalR.on(hubName, 'InitialProviderHealth', (data) => {
+                log(`Initial Provider Health: ${JSON.stringify(data)}`, 'info');
+            });
+
+            // Subscription confirmations
+            window.conduitSignalR.on(hubName, 'SubscribedToVirtualKey', (virtualKeyId) => {
+                log(`Subscribed to Virtual Key: ${virtualKeyId}`, 'success');
+            });
+
+            window.conduitSignalR.on(hubName, 'SubscribedToProvider', (providerName) => {
+                log(`Subscribed to Provider: ${providerName}`, 'success');
+            });
+
+            // Error handling
+            window.conduitSignalR.on(hubName, 'Error', (error) => {
+                log(`Hub Error: ${JSON.stringify(error)}`, 'error');
+            });
+
+            log('Event handlers registered', 'info');
+        }
+
+        async function testSubscriptions() {
+            if (!window.conduitSignalR.isConnected('admin-notifications')) {
+                log('Not connected to hub!', 'error');
+                return;
+            }
+
+            try {
+                // Test subscribing to a virtual key
+                log('Testing virtual key subscription...');
+                await window.conduitSignalR.invoke('admin-notifications', 'SubscribeToVirtualKey', 1);
+
+                // Test subscribing to a provider
+                log('Testing provider subscription...');
+                await window.conduitSignalR.invoke('admin-notifications', 'SubscribeToProvider', 'OpenAI');
+
+                // Request provider health refresh
+                log('Requesting provider health refresh...');
+                await window.conduitSignalR.invoke('admin-notifications', 'RefreshProviderHealth');
+
+            } catch (error) {
+                log(`Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared');
+        }
+
+        // Listen for connection state changes
+        window.addEventListener('conduit:admin-notifications:stateChanged', (event) => {
+            log(`Connection state changed: ${event.detail.previousState} → ${event.detail.currentState}`);
+            updateStatus(event.detail.currentState);
+        });
+
+        window.addEventListener('conduit:admin-notifications:reconnecting', (event) => {
+            log('Attempting to reconnect...', 'info');
+        });
+
+        window.addEventListener('conduit:admin-notifications:reconnected', (event) => {
+            log('Reconnected successfully!', 'success');
+        });
+
+        // Initial log
+        log('Admin SignalR Hub Test Page loaded');
+    </script>
+</body>
+</html>

@@ -67,6 +67,27 @@ namespace ConduitLLM.Admin.Security
             {
                 providedKey = masterKeyValues.FirstOrDefault();
             }
+            // Check Authorization header for Bearer token (SignalR support)
+            else if (Context.Request.Headers.TryGetValue("Authorization", out var authValues))
+            {
+                var authHeader = authValues.FirstOrDefault();
+                if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    providedKey = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
+            // Check query string for SignalR WebSocket connections
+            else if (Context.Request.Query.TryGetValue("access_token", out var tokenValues))
+            {
+                providedKey = tokenValues.FirstOrDefault();
+                
+                // Log when query string auth is used for SignalR
+                if (!string.IsNullOrEmpty(providedKey) && Context.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    Logger.LogDebug("Using query string authentication for SignalR hub: {Path}", 
+                        Context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                }
+            }
 
             if (string.IsNullOrEmpty(providedKey))
             {

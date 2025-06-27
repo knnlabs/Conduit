@@ -448,20 +448,18 @@ window.ConduitSignalRService = (function() {
             const options = {};
             
             if (authKey) {
-                if (isMasterKey) {
-                    // For master key authentication, use X-API-Key header
-                    options.accessTokenFactory = () => authKey;
-                    options.headers = {
-                        'X-API-Key': authKey
-                    };
-                } else {
-                    // For virtual key authentication, use Bearer token
-                    options.accessTokenFactory = () => authKey;
-                    options.headers = {
-                        'Authorization': `Bearer ${authKey}`
-                    };
-                }
+                // For both master key and virtual key, use accessTokenFactory
+                // The server will handle it properly - Bearer token or query string
+                options.accessTokenFactory = () => authKey;
+                
+                // Note: Do NOT add custom headers for SignalR connections
+                // They won't work with WebSocket transport after handshake
+                // The accessTokenFactory will send the token as a query parameter
+                // or in the Authorization header during the initial HTTP request
             }
+            
+            // Add credentials for cross-origin requests
+            options.withCredentials = false;
             
             return options;
         }

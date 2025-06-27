@@ -71,6 +71,38 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                     }
                 }
 
+                // Check Authorization header for Bearer token (SignalR support)
+                if (httpContext.Request.Headers.TryGetValue("Authorization", out var authValues))
+                {
+                    var authHeader = authValues.FirstOrDefault();
+                    if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var bearerToken = authHeader.Substring("Bearer ".Length).Trim();
+                        if (bearerToken == masterKey)
+                        {
+                            context.Succeed(requirement);
+                            return Task.CompletedTask;
+                        }
+                    }
+                }
+
+                // Check query string for SignalR WebSocket connections
+                if (httpContext.Request.Query.TryGetValue("access_token", out var tokenValues))
+                {
+                    var queryToken = tokenValues.FirstOrDefault();
+                    if (queryToken == masterKey)
+                    {
+                        // Log when query string auth is used for SignalR
+                        if (httpContext.Request.Path.StartsWithSegments("/hubs"))
+                        {
+                            _logger.LogDebug("Authorized SignalR hub connection via query string: {Path}", 
+                                httpContext.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                        }
+                        context.Succeed(requirement);
+                        return Task.CompletedTask;
+                    }
+                }
+
 _logger.LogWarning("Invalid master key provided for {Path}", httpContext.Request.Path.ToString().Replace(Environment.NewLine, ""));
             }
             else
