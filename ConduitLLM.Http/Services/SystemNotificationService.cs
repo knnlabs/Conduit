@@ -8,20 +8,12 @@ using ConduitLLM.Http.Hubs;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Service for sending system notifications through SignalR.
-    /// This service is used by other components to broadcast notifications.
+    /// Service for sending system-wide operational notifications through SignalR.
+    /// This service handles rate limits, service degradation, and system announcements.
+    /// Note: Provider health notifications are handled by NavigationStateNotificationService.
     /// </summary>
     public interface ISystemNotificationService
     {
-        /// <summary>
-        /// Sends a provider health notification to all connected clients.
-        /// </summary>
-        /// <param name="provider">The provider name.</param>
-        /// <param name="status">The health status.</param>
-        /// <param name="responseTime">The response time if available.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task NotifyProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime);
-
         /// <summary>
         /// Sends a rate limit warning to all connected clients.
         /// </summary>
@@ -74,26 +66,6 @@ namespace ConduitLLM.Http.Services
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        /// <inheritdoc />
-        public async Task NotifyProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime)
-        {
-            try
-            {
-                await _hubContext.Clients.All.SendAsync("ProviderHealthChanged", provider, status.ToString(), responseTime);
-                
-                _logger.LogInformation(
-                    "Sent provider health notification: {Provider} is {Status} (ResponseTime: {ResponseTime}ms)",
-                    provider,
-                    status,
-                    responseTime?.TotalMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending provider health notification");
-                throw;
-            }
         }
 
         /// <inheritdoc />
