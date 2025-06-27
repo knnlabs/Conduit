@@ -6,52 +6,8 @@
 window.SignalRBlazorAdapter = (function() {
     'use strict';
 
-    /**
-     * Event name to Blazor method name mappings
-     */
-    const eventMethodMappings = {
-        // Admin Notification Hub mappings
-        'ProviderHealthUpdate': 'HandleProviderHealthChanged',
-        'ModelCapabilityUpdate': 'HandleModelDiscovered', 
-        'VirtualKeyUpdate': 'HandleVirtualKeyUpdate',
-        'HighSpendAlert': 'HandleHighSpendAlert',
-        'SecurityAlert': 'HandleSecurityAlert',
-        'SystemAnnouncement': 'HandleSystemAlert',
-        
-        // System Notification Hub mappings
-        'OnProviderHealthChanged': 'HandleProviderHealthChanged',
-        'OnModelCapabilitiesDiscovered': 'HandleModelDiscovered',
-        'OnModelMappingChanged': 'HandleConfigurationChanged',
-        'OnSystemAnnouncement': 'HandleSystemAlert',
-        
-        // Spend Notification Hub mappings
-        'SpendUpdate': 'HandleSpendUpdate',
-        'BudgetAlert': 'HandleBudgetAlert', 
-        'SpendSummary': 'HandleSpendSummary',
-        'UnusualSpendingDetected': 'HandleUnusualSpending',
-        
-        // Task Hub mappings
-        'TaskStarted': 'OnTaskStarted',
-        'TaskProgress': 'OnTaskProgress',
-        'TaskCompleted': 'OnTaskCompleted',
-        'TaskFailed': 'OnTaskFailed',
-        'TaskCancelled': 'OnTaskCancelled',
-        'TaskTimedOut': 'OnTaskTimedOut',
-        
-        // Video Generation Hub mappings
-        'VideoGenerationStarted': 'OnVideoGenerationStarted',
-        'VideoGenerationProgress': 'OnVideoGenerationProgress',
-        'VideoGenerationCompleted': 'OnVideoGenerationCompleted',
-        'VideoGenerationFailed': 'OnVideoGenerationFailed',
-        'VideoGenerationCancelled': 'OnVideoGenerationCancelled',
-        
-        // Image Generation Hub mappings
-        'ImageGenerationStarted': 'OnImageGenerationStarted',
-        'ImageGenerationProgress': 'OnImageGenerationProgress',
-        'ImageGenerationCompleted': 'OnImageGenerationCompleted',
-        'ImageGenerationFailed': 'OnImageGenerationFailed',
-        'ImageGenerationCancelled': 'OnImageGenerationCancelled'
-    };
+    // Use centralized event mappings
+    const getMethodName = window.getSignalRHandlerName || function(eventName) { return eventName; };
 
     /**
      * Create a handler function that invokes the appropriate Blazor method
@@ -60,7 +16,7 @@ window.SignalRBlazorAdapter = (function() {
      * @returns {Function} Handler function
      */
     function createBlazorHandler(dotNetRef, eventName) {
-        const methodName = eventMethodMappings[eventName] || eventName;
+        const methodName = getMethodName(eventName);
         
         return async function(data) {
             try {

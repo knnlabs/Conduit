@@ -51,7 +51,8 @@ window.ConduitHubProxies = (function() {
             // Check if handler is a DotNetObjectReference
             if (handler && typeof handler.invokeMethodAsync === 'function') {
                 // Create a wrapper that calls the appropriate Blazor method
-                const blazorMethodName = this._getBlazorMethodName(eventName);
+                const blazorMethodName = window.getSignalRHandlerName ? 
+                    window.getSignalRHandlerName(eventName) : eventName;
                 const wrappedHandler = async (data) => {
                     try {
                         await handler.invokeMethodAsync(blazorMethodName, data);
@@ -76,27 +77,6 @@ window.ConduitHubProxies = (function() {
                 }
                 this._handlers.get(eventName).push(handler);
             }
-        }
-        
-        /**
-         * Get Blazor method name for a SignalR event
-         */
-        _getBlazorMethodName(eventName) {
-            // Map event names to Blazor method names
-            const mappings = {
-                'SpendUpdate': 'HandleSpendUpdate',
-                'BudgetAlert': 'HandleBudgetAlert',
-                'SpendSummary': 'HandleSpendSummary',
-                'UnusualSpendingDetected': 'HandleUnusualSpending',
-                'ProviderHealthUpdate': 'HandleProviderHealthChanged',
-                'ModelCapabilityUpdate': 'HandleModelDiscovered',
-                'VirtualKeyUpdate': 'HandleVirtualKeyUpdate',
-                'HighSpendAlert': 'HandleHighSpendAlert',
-                'SecurityAlert': 'HandleSecurityAlert',
-                'SystemAnnouncement': 'HandleSystemAlert'
-            };
-            
-            return mappings[eventName] || eventName;
         }
 
         /**
@@ -549,20 +529,7 @@ window.ConduitHubProxies = (function() {
             this.on('ModelCapabilityUpdate', handler);
         }
 
-        /**
-         * Also support standard system notification events
-         */
-        onProviderHealthChanged(handler) {
-            this.on('ProviderHealthUpdate', handler);
-        }
-
-        onModelCapabilitiesDiscovered(handler) {
-            this.on('ModelCapabilityUpdate', handler);
-        }
-
-        onModelMappingChanged(handler) {
-            this.on('OnModelMappingChanged', handler);
-        }
+        // Event mappings are handled by the base class using centralized mappings
     }
 
     /**
