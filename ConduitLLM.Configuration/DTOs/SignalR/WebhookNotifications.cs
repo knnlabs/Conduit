@@ -37,6 +37,16 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the timestamp of the attempt.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Gets or sets the task ID.
+        /// </summary>
+        public string TaskId { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the task type.
+        /// </summary>
+        public string TaskType { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -83,6 +93,16 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the timestamp of successful delivery.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Gets or sets the task ID.
+        /// </summary>
+        public string TaskId { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the total number of attempts.
+        /// </summary>
+        public int TotalAttempts { get; set; }
     }
 
     /// <summary>
@@ -134,6 +154,26 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the timestamp of the failure.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Gets or sets the task ID.
+        /// </summary>
+        public string TaskId { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the error message.
+        /// </summary>
+        public string ErrorMessage { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the attempt number.
+        /// </summary>
+        public int AttemptNumber { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether this is a permanent failure.
+        /// </summary>
+        public bool IsPermanentFailure { get; set; }
     }
 
     /// <summary>

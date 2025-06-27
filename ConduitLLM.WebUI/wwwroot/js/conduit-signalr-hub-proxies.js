@@ -48,13 +48,55 @@ window.ConduitHubProxies = (function() {
          * Register event handler
          */
         on(eventName, handler) {
-            this.signalRService.on(this.hubName, eventName, handler);
-            
-            // Track handlers for cleanup
-            if (!this._handlers.has(eventName)) {
-                this._handlers.set(eventName, []);
+            // Check if handler is a DotNetObjectReference
+            if (handler && typeof handler.invokeMethodAsync === 'function') {
+                // Create a wrapper that calls the appropriate Blazor method
+                const blazorMethodName = this._getBlazorMethodName(eventName);
+                const wrappedHandler = async (data) => {
+                    try {
+                        await handler.invokeMethodAsync(blazorMethodName, data);
+                    } catch (error) {
+                        console.error(`Error invoking Blazor method ${blazorMethodName}:`, error);
+                    }
+                };
+                this.signalRService.on(this.hubName, eventName, wrappedHandler);
+                
+                // Track the wrapped handler for cleanup
+                if (!this._handlers.has(eventName)) {
+                    this._handlers.set(eventName, []);
+                }
+                this._handlers.get(eventName).push(wrappedHandler);
+            } else {
+                // Regular JavaScript handler
+                this.signalRService.on(this.hubName, eventName, handler);
+                
+                // Track handlers for cleanup
+                if (!this._handlers.has(eventName)) {
+                    this._handlers.set(eventName, []);
+                }
+                this._handlers.get(eventName).push(handler);
             }
-            this._handlers.get(eventName).push(handler);
+        }
+        
+        /**
+         * Get Blazor method name for a SignalR event
+         */
+        _getBlazorMethodName(eventName) {
+            // Map event names to Blazor method names
+            const mappings = {
+                'SpendUpdate': 'HandleSpendUpdate',
+                'BudgetAlert': 'HandleBudgetAlert',
+                'SpendSummary': 'HandleSpendSummary',
+                'UnusualSpendingDetected': 'HandleUnusualSpending',
+                'ProviderHealthUpdate': 'HandleProviderHealthChanged',
+                'ModelCapabilityUpdate': 'HandleModelDiscovered',
+                'VirtualKeyUpdate': 'HandleVirtualKeyUpdate',
+                'HighSpendAlert': 'HandleHighSpendAlert',
+                'SecurityAlert': 'HandleSecurityAlert',
+                'SystemAnnouncement': 'HandleSystemAlert'
+            };
+            
+            return mappings[eventName] || eventName;
         }
 
         /**

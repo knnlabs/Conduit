@@ -9,6 +9,11 @@ namespace ConduitLLM.Http.Services
     public interface IImageGenerationNotificationService
     {
         /// <summary>
+        /// Notify clients that image generation has started
+        /// </summary>
+        Task NotifyImageGenerationStartedAsync(string taskId, string prompt, int numberOfImages, string size, string? style = null);
+        
+        /// <summary>
         /// Notify clients of image generation progress
         /// </summary>
         Task NotifyImageGenerationProgressAsync(string taskId, int progressPercentage, string status, int imagesCompleted, int totalImages, string? message = null);

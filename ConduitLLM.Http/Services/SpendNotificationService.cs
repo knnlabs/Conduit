@@ -52,6 +52,9 @@ namespace ConduitLLM.Http.Services
         // Track spending patterns per virtual key
         private readonly ConcurrentDictionary<int, SpendingPattern> _spendingPatterns = new();
         
+        // Track budget alert thresholds already sent to avoid spam
+        private readonly ConcurrentDictionary<int, HashSet<int>> _sentBudgetAlerts = new();
+        
         // Timer for periodic pattern analysis
         private Timer? _patternAnalysisTimer;
         private readonly TimeSpan _analysisInterval = TimeSpan.FromMinutes(5);
@@ -102,6 +105,9 @@ namespace ConduitLLM.Http.Services
                 if (budget.HasValue && budget.Value > 0)
                 {
                     budgetPercentage = (totalSpend / budget.Value) * 100;
+                    
+                    // Check budget thresholds and send alerts
+                    await CheckBudgetThresholdsAsync(virtualKeyId, totalSpend, budget.Value, budgetPercentage.Value);
                 }
 
                 var notification = new SpendUpdateNotification
@@ -173,6 +179,87 @@ namespace ConduitLLM.Http.Services
             pattern.RecordSpend(amount);
         }
 
+        private async Task CheckBudgetThresholdsAsync(int virtualKeyId, decimal totalSpend, decimal budget, decimal percentageUsed)
+        {
+            try
+            {
+                // Get or create the set of sent alerts for this virtual key
+                var sentAlerts = _sentBudgetAlerts.GetOrAdd(virtualKeyId, _ => new HashSet<int>());
+
+                // Define budget thresholds
+                var thresholds = new[]
+                {
+                    (threshold: 50, severity: "info", message: "You have used 50% of your budget"),
+                    (threshold: 75, severity: "warning", message: "You have used 75% of your budget"),
+                    (threshold: 90, severity: "critical", message: "You have used 90% of your budget - approaching limit"),
+                    (threshold: 100, severity: "critical", message: "Budget limit reached - further requests may be blocked")
+                };
+
+                foreach (var (threshold, severity, message) in thresholds)
+                {
+                    if (percentageUsed >= threshold && !sentAlerts.Contains(threshold))
+                    {
+                        // Send budget alert
+                        var alertType = threshold switch
+                        {
+                            50 => "budget_50_percent",
+                            75 => "budget_75_percent",
+                            90 => "budget_90_percent",
+                            100 => "budget_exceeded",
+                            _ => "budget_threshold"
+                        };
+
+                        var recommendations = threshold switch
+                        {
+                            50 => new List<string> { "Monitor your usage patterns", "Consider optimizing model selection" },
+                            75 => new List<string> { "Review recent API usage", "Consider implementing caching", "Switch to more cost-effective models" },
+                            90 => new List<string> { "Urgent: Review and reduce API usage", "Implement rate limiting", "Consider increasing budget if needed" },
+                            100 => new List<string> { "API access may be restricted", "Increase budget immediately", "Review and optimize all API calls" },
+                            _ => new List<string>()
+                        };
+
+                        var notification = new BudgetAlertNotification
+                        {
+                            AlertType = alertType,
+                            Message = message,
+                            CurrentSpend = totalSpend,
+                            BudgetLimit = budget,
+                            PercentageUsed = (double)percentageUsed,
+                            Severity = severity,
+                            Recommendations = recommendations
+                        };
+
+                        var groupName = $"vkey-{virtualKeyId}";
+                        await _hubContext.Clients.Group(groupName).SendAsync("BudgetAlert", notification);
+
+                        // Mark this threshold as sent
+                        sentAlerts.Add(threshold);
+
+                        _logger.LogWarning(
+                            "[SignalR:BudgetAlert] Sent notification - VirtualKey: {VirtualKeyId}, Threshold: {Threshold}%, CurrentSpend: ${CurrentSpend:F2}, Budget: ${Budget:F2}, AlertType: {AlertType}, Severity: {Severity}, Group: {GroupName}",
+                            virtualKeyId,
+                            threshold,
+                            totalSpend,
+                            budget,
+                            alertType,
+                            severity,
+                            groupName);
+                    }
+                }
+
+                // Reset sent alerts if spending goes back down (e.g., new month)
+                if (percentageUsed < 50 && sentAlerts.Count > 0)
+                {
+                    sentAlerts.Clear();
+                    _logger.LogInformation("Budget alerts reset for VirtualKey {VirtualKeyId} as usage dropped below 50%", virtualKeyId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking budget thresholds for VirtualKey {VirtualKeyId}", virtualKeyId);
+            }
+        }
+
         public async Task CheckUnusualSpendingAsync(int virtualKeyId)
         {
             try
@@ -185,13 +272,12 @@ namespace ConduitLLM.Http.Services
                 {
                     var notification = new UnusualSpendingNotification
                     {
-                        PatternType = analysis.PatternType,
+                        ActivityType = analysis.PatternType,
                         Description = analysis.Description,
-                        Severity = analysis.Severity,
-                        CurrentSpendRate = analysis.CurrentRate,
-                        NormalSpendRate = analysis.NormalRate,
-                        PercentageIncrease = analysis.PercentageIncrease,
-                        RecommendedActions = analysis.RecommendedActions
+                        CurrentRate = analysis.CurrentRate,
+                        NormalRate = analysis.NormalRate,
+                        DeviationPercentage = (double)analysis.PercentageIncrease,
+                        Recommendations = analysis.RecommendedActions
                     };
 
                     var groupName = $"vkey-{virtualKeyId}";

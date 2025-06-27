@@ -103,6 +103,21 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets recommendations for the alert.
         /// </summary>
         public List<string> Recommendations { get; set; } = new();
+        
+        /// <summary>
+        /// Gets or sets the percentage (alias for PercentageUsed).
+        /// </summary>
+        public double Percentage => PercentageUsed;
+        
+        /// <summary>
+        /// Gets or sets the remaining budget.
+        /// </summary>
+        public decimal Remaining => BudgetLimit - CurrentSpend;
+        
+        /// <summary>
+        /// Gets or sets the budget period end date.
+        /// </summary>
+        public DateTime? BudgetPeriodEnd { get; set; }
     }
 
     /// <summary>
@@ -119,6 +134,11 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the period for this summary.
         /// </summary>
         public string Period { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the period type (hourly, daily, weekly, monthly).
+        /// </summary>
+        public string PeriodType { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the total spend.
@@ -200,6 +220,16 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets recommendations.
         /// </summary>
         public List<string> Recommendations { get; set; } = new();
+        
+        /// <summary>
+        /// Gets or sets the pattern type (alias for ActivityType).
+        /// </summary>
+        public string PatternType => ActivityType;
+        
+        /// <summary>
+        /// Gets or sets the percentage increase (alias for DeviationPercentage).
+        /// </summary>
+        public double PercentageIncrease => DeviationPercentage;
     }
 
     /// <summary>

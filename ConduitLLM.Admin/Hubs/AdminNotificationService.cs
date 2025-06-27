@@ -52,8 +52,8 @@ namespace ConduitLLM.Admin.Hubs
                     .SendAsync("VirtualKeyUpdate", notification);
 
                 _logger.LogInformation(
-                    "Sent virtual key update notification: VirtualKey {VirtualKeyId} - {UpdateType}",
-                    virtualKeyId, updateType);
+                    "[SignalR:VirtualKeyUpdate] Sent notification - VirtualKey: {VirtualKeyId}, UpdateType: {UpdateType}, Groups: [admin, admin-vkey-{VirtualKeyId}], Details: {@Details}",
+                    virtualKeyId, updateType, virtualKeyId, details);
             }
             catch (Exception ex)
             {
@@ -88,8 +88,8 @@ namespace ConduitLLM.Admin.Hubs
                     .SendAsync("ProviderHealthUpdate", notification);
 
                 _logger.LogInformation(
-                    "Sent provider health update notification: {Provider} is {Status}",
-                    providerName, status);
+                    "[SignalR:ProviderHealthUpdate] Sent notification - Provider: {Provider}, Status: {Status}, ResponseTime: {ResponseTime}ms, Groups: [admin, admin-provider-{Provider}]",
+                    providerName, status, responseTime?.TotalMilliseconds ?? -1, providerName);
             }
             catch (Exception ex)
             {
@@ -131,8 +131,8 @@ namespace ConduitLLM.Admin.Hubs
                     .SendAsync("HighSpendAlert", notification);
 
                 _logger.LogWarning(
-                    "Sent high spend alert: VirtualKey {VirtualKeyId} at {PercentageUsed:F1}% of budget",
-                    virtualKeyId, percentageUsed);
+                    "[SignalR:HighSpendAlert] Sent notification - VirtualKey: {VirtualKeyId}, CurrentSpend: ${CurrentSpend:F2}, Budget: ${Budget:F2}, PercentageUsed: {PercentageUsed:F1}%, AlertType: {AlertType}, Groups: [admin, admin-vkey-{VirtualKeyId}]",
+                    virtualKeyId, currentSpend, budget, percentageUsed, notification.AlertType, virtualKeyId);
             }
             catch (Exception ex)
             {

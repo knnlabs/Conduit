@@ -22,6 +22,30 @@ namespace ConduitLLM.Http.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        public async Task NotifyImageGenerationStartedAsync(string taskId, string prompt, int numberOfImages, string size, string? style = null)
+        {
+            try
+            {
+                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationStarted", new
+                {
+                    taskId,
+                    prompt,
+                    numberOfImages,
+                    size,
+                    style,
+                    startedAt = DateTime.UtcNow
+                });
+                
+                _logger.LogInformation(
+                    "[SignalR:ImageGenerationStarted] Sent notification - TaskId: {TaskId}, Prompt: {Prompt}, NumberOfImages: {NumberOfImages}, Size: {Size}, Style: {Style}, Group: image-{TaskId}",
+                    taskId, prompt.Length > 50 ? prompt.Substring(0, 50) + "..." : prompt, numberOfImages, size, style ?? "default", taskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send ImageGenerationStarted notification for task {TaskId}", taskId);
+            }
+        }
+
         public async Task NotifyImageGenerationProgressAsync(string taskId, int progressPercentage, string status, int imagesCompleted, int totalImages, string? message = null)
         {
             try
