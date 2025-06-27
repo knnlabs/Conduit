@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Metrics;
+using ConduitLLM.Http.Authentication;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -15,17 +17,24 @@ namespace ConduitLLM.Http.Hubs
     /// Base class for all secure SignalR hubs that require virtual key authentication.
     /// Provides common functionality for connection management, authentication, and virtual key extraction.
     /// </summary>
-    [Authorize]
+    [VirtualKeyHubAuthorization]
     public abstract class SecureHub : Hub
     {
         protected readonly ILogger Logger;
         private readonly IServiceProvider _serviceProvider;
+        private ISignalRAuthenticationService? _authService;
 
         protected SecureHub(ILogger logger, IServiceProvider serviceProvider)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
+        
+        /// <summary>
+        /// Gets the authentication service, lazily initialized from DI.
+        /// </summary>
+        protected ISignalRAuthenticationService AuthService => 
+            _authService ??= _serviceProvider.GetRequiredService<ISignalRAuthenticationService>();
 
         public override async Task OnConnectedAsync()
         {
@@ -112,20 +121,7 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         protected int? GetVirtualKeyId()
         {
-            // Try from Items first (set by hub filter)
-            if (Context.Items.TryGetValue("VirtualKeyId", out var itemValue) && itemValue is int itemId)
-            {
-                return itemId;
-            }
-            
-            // Try from User claims (set by authentication handler)
-            var claim = Context.User?.FindFirst("VirtualKeyId");
-            if (claim != null && int.TryParse(claim.Value, out var claimId))
-            {
-                return claimId;
-            }
-            
-            return null;
+            return AuthService.GetVirtualKeyId(Context);
         }
         
         /// <summary>
@@ -133,14 +129,7 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         protected string GetVirtualKeyName()
         {
-            // Try from Items first (set by hub filter)
-            if (Context.Items.TryGetValue("VirtualKeyName", out var itemValue) && itemValue is string itemName)
-            {
-                return itemName;
-            }
-            
-            // Try from User claims (set by authentication handler)
-            return Context.User?.Identity?.Name ?? "Unknown";
+            return AuthService.GetVirtualKeyName(Context);
         }
 
         /// <summary>
@@ -156,22 +145,6 @@ namespace ConduitLLM.Http.Hubs
             return virtualKeyId.Value;
         }
 
-        /// <summary>
-        /// Converts various object types to int, useful for parsing metadata
-        /// </summary>
-        protected static int? ConvertToInt(object value)
-        {
-            if (value is int intValue)
-                return intValue;
-            
-            if (value is long longValue)
-                return (int)longValue;
-            
-            if (value is string stringValue && int.TryParse(stringValue, out var parsedValue))
-                return parsedValue;
-            
-            return null;
-        }
 
         /// <summary>
         /// Gets the name of the hub for logging purposes
@@ -185,58 +158,26 @@ namespace ConduitLLM.Http.Hubs
         /// <returns>True if the virtual key owns the task, false otherwise</returns>
         protected async Task<bool> CanAccessTaskAsync(string taskId)
         {
-            var virtualKeyId = GetVirtualKeyId();
-            if (!virtualKeyId.HasValue)
-            {
-                Logger.LogWarning("Cannot verify task access without virtual key ID");
-                return false;
-            }
-
-            try
-            {
-                var taskService = _serviceProvider.GetService<IAsyncTaskService>();
-                if (taskService == null)
-                {
-                    Logger.LogWarning("IAsyncTaskService not available, cannot verify task ownership");
-                    return false;
-                }
-
-                var taskStatus = await taskService.GetTaskStatusAsync(taskId);
-                if (taskStatus == null)
-                {
-                    Logger.LogWarning("Task {TaskId} not found", taskId);
-                    return false;
-                }
-
-                // Check if the task metadata contains the virtual key ID
-                if (taskStatus.Metadata is IDictionary<string, object> metadata)
-                {
-                    if (metadata.TryGetValue("virtualKeyId", out var taskVirtualKeyIdObj))
-                    {
-                        var taskVirtualKeyId = ConvertToInt(taskVirtualKeyIdObj);
-                        if (taskVirtualKeyId.HasValue && taskVirtualKeyId.Value == virtualKeyId.Value)
-                        {
-                            Logger.LogDebug("Virtual Key {VirtualKeyId} has access to task {TaskId}", 
-                                virtualKeyId.Value, taskId);
-                            return true;
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Virtual Key {VirtualKeyId} does not have access to task {TaskId} owned by Virtual Key {OwnerKeyId}", 
-                                virtualKeyId.Value, taskId, taskVirtualKeyId);
-                            return false;
-                        }
-                    }
-                }
-
-                Logger.LogWarning("Task {TaskId} has no virtual key metadata", taskId);
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error checking task access for {TaskId}", taskId);
-                return false;
-            }
+            return await AuthService.CanAccessResourceAsync(Context, "task", taskId);
+        }
+        
+        /// <summary>
+        /// Gets the authenticated virtual key entity.
+        /// </summary>
+        /// <param name="virtualKeyId">The virtual key ID to retrieve</param>
+        /// <returns>The virtual key entity if found and enabled, null otherwise</returns>
+        protected async Task<VirtualKey?> GetVirtualKeyAsync(int virtualKeyId)
+        {
+            return await AuthService.GetAuthenticatedVirtualKeyAsync(Context);
+        }
+        
+        /// <summary>
+        /// Checks if the current virtual key has admin privileges.
+        /// </summary>
+        /// <returns>True if the virtual key is an admin</returns>
+        protected async Task<bool> IsAdminAsync()
+        {
+            return await AuthService.IsAdminAsync(Context);
         }
 
         /// <summary>

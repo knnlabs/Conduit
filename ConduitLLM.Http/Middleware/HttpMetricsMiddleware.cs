@@ -17,14 +17,14 @@ namespace ConduitLLM.Http.Middleware
         private readonly ILogger<HttpMetricsMiddleware> _logger;
 
         // Prometheus metrics
-        private static readonly Counter RequestsTotal = Metrics
+        private static readonly Counter RequestsTotal = Prometheus.Metrics
             .CreateCounter("conduit_http_requests_total", "Total number of HTTP requests",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "method", "endpoint", "status_code", "virtual_key_id" }
                 });
 
-        private static readonly Histogram RequestDuration = Metrics
+        private static readonly Histogram RequestDuration = Prometheus.Metrics
             .CreateHistogram("conduit_http_request_duration_seconds", "HTTP request duration in seconds",
                 new HistogramConfiguration
                 {
@@ -32,14 +32,14 @@ namespace ConduitLLM.Http.Middleware
                     Buckets = Histogram.ExponentialBuckets(0.001, 2, 16) // 1ms to ~65s
                 });
 
-        private static readonly Gauge ActiveRequests = Metrics
+        private static readonly Gauge ActiveRequests = Prometheus.Metrics
             .CreateGauge("conduit_http_requests_active", "Number of active HTTP requests",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "method", "endpoint" }
                 });
 
-        private static readonly Histogram RequestSize = Metrics
+        private static readonly Histogram RequestSize = Prometheus.Metrics
             .CreateHistogram("conduit_http_request_size_bytes", "HTTP request size in bytes",
                 new HistogramConfiguration
                 {
@@ -47,7 +47,7 @@ namespace ConduitLLM.Http.Middleware
                     Buckets = Histogram.ExponentialBuckets(100, 2, 16) // 100 bytes to ~6.5MB
                 });
 
-        private static readonly Histogram ResponseSize = Metrics
+        private static readonly Histogram ResponseSize = Prometheus.Metrics
             .CreateHistogram("conduit_http_response_size_bytes", "HTTP response size in bytes",
                 new HistogramConfiguration
                 {
@@ -55,14 +55,14 @@ namespace ConduitLLM.Http.Middleware
                     Buckets = Histogram.ExponentialBuckets(100, 2, 16) // 100 bytes to ~6.5MB
                 });
 
-        private static readonly Counter RateLimitHits = Metrics
+        private static readonly Counter RateLimitHits = Prometheus.Metrics
             .CreateCounter("conduit_rate_limit_exceeded_total", "Total number of rate limit exceeded responses",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "endpoint", "virtual_key_id" }
                 });
 
-        private static readonly Summary RequestDurationSummary = Metrics
+        private static readonly Summary RequestDurationSummary = Prometheus.Metrics
             .CreateSummary("conduit_http_request_duration_summary", "Summary of HTTP request durations",
                 new SummaryConfiguration
                 {

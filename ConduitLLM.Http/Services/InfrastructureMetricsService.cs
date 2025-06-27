@@ -28,16 +28,16 @@ namespace ConduitLLM.Http.Services
         private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(15);
 
         // Database metrics
-        private static readonly Gauge DatabaseConnectionsActive = Metrics
+        private static readonly Gauge DatabaseConnectionsActive = Prometheus.Metrics
             .CreateGauge("conduit_database_connections_active", "Number of active database connections");
 
-        private static readonly Gauge DatabaseConnectionsAvailable = Metrics
+        private static readonly Gauge DatabaseConnectionsAvailable = Prometheus.Metrics
             .CreateGauge("conduit_database_connections_available", "Number of available database connections");
 
-        private static readonly Gauge DatabaseConnectionsIdle = Metrics
+        private static readonly Gauge DatabaseConnectionsIdle = Prometheus.Metrics
             .CreateGauge("conduit_database_connections_idle", "Number of idle database connections");
 
-        private static readonly Histogram DatabaseQueryDuration = Metrics
+        private static readonly Histogram DatabaseQueryDuration = Prometheus.Metrics
             .CreateHistogram("conduit_database_query_duration_seconds", "Database query duration in seconds",
                 new HistogramConfiguration
                 {
@@ -45,7 +45,7 @@ namespace ConduitLLM.Http.Services
                     Buckets = Histogram.ExponentialBuckets(0.001, 2, 16) // 1ms to ~65s
                 });
 
-        private static readonly Counter DatabaseErrors = Metrics
+        private static readonly Counter DatabaseErrors = Prometheus.Metrics
             .CreateCounter("conduit_database_errors_total", "Total number of database errors",
                 new CounterConfiguration
                 {
@@ -53,30 +53,30 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Redis metrics
-        private static readonly Gauge RedisMemoryUsed = Metrics
+        private static readonly Gauge RedisMemoryUsed = Prometheus.Metrics
             .CreateGauge("conduit_redis_memory_used_bytes", "Redis memory usage in bytes");
 
-        private static readonly Gauge RedisKeysCount = Metrics
+        private static readonly Gauge RedisKeysCount = Prometheus.Metrics
             .CreateGauge("conduit_redis_keys_count", "Total number of Redis keys");
 
-        private static readonly Gauge RedisConnectedClients = Metrics
+        private static readonly Gauge RedisConnectedClients = Prometheus.Metrics
             .CreateGauge("conduit_redis_connected_clients", "Number of connected Redis clients");
 
-        private static readonly Counter RedisCacheHits = Metrics
+        private static readonly Counter RedisCacheHits = Prometheus.Metrics
             .CreateCounter("conduit_redis_cache_hits_total", "Total number of Redis cache hits",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "cache_type" }
                 });
 
-        private static readonly Counter RedisCacheMisses = Metrics
+        private static readonly Counter RedisCacheMisses = Prometheus.Metrics
             .CreateCounter("conduit_redis_cache_misses_total", "Total number of Redis cache misses",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "cache_type" }
                 });
 
-        private static readonly Histogram RedisOperationDuration = Metrics
+        private static readonly Histogram RedisOperationDuration = Prometheus.Metrics
             .CreateHistogram("conduit_redis_operation_duration_seconds", "Redis operation duration in seconds",
                 new HistogramConfiguration
                 {
@@ -85,48 +85,48 @@ namespace ConduitLLM.Http.Services
                 });
 
         // RabbitMQ metrics
-        private static readonly Gauge RabbitMQQueueDepth = Metrics
+        private static readonly Gauge RabbitMQQueueDepth = Prometheus.Metrics
             .CreateGauge("conduit_rabbitmq_queue_messages", "Number of messages in RabbitMQ queue",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "queue" }
                 });
 
-        private static readonly Gauge RabbitMQQueueConsumers = Metrics
+        private static readonly Gauge RabbitMQQueueConsumers = Prometheus.Metrics
             .CreateGauge("conduit_rabbitmq_queue_consumers", "Number of consumers for RabbitMQ queue",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "queue" }
                 });
 
-        private static readonly Counter RabbitMQPublishedMessages = Metrics
+        private static readonly Counter RabbitMQPublishedMessages = Prometheus.Metrics
             .CreateCounter("conduit_rabbitmq_published_messages_total", "Total number of messages published to RabbitMQ",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "exchange" }
                 });
 
-        private static readonly Counter RabbitMQConsumedMessages = Metrics
+        private static readonly Counter RabbitMQConsumedMessages = Prometheus.Metrics
             .CreateCounter("conduit_rabbitmq_consumed_messages_total", "Total number of messages consumed from RabbitMQ",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "queue" }
                 });
 
-        private static readonly Gauge RabbitMQConnectionState = Metrics
+        private static readonly Gauge RabbitMQConnectionState = Prometheus.Metrics
             .CreateGauge("conduit_rabbitmq_connection_state", "RabbitMQ connection state (1=connected, 0=disconnected)");
 
         // System resource metrics
-        private static readonly Gauge ProcessCpuUsage = Metrics
+        private static readonly Gauge ProcessCpuUsage = Prometheus.Metrics
             .CreateGauge("conduit_process_cpu_usage_percent", "Process CPU usage percentage");
 
-        private static readonly Gauge ProcessMemoryUsage = Metrics
+        private static readonly Gauge ProcessMemoryUsage = Prometheus.Metrics
             .CreateGauge("conduit_process_memory_bytes", "Process memory usage in bytes");
 
-        private static readonly Gauge ProcessThreadCount = Metrics
+        private static readonly Gauge ProcessThreadCount = Prometheus.Metrics
             .CreateGauge("conduit_process_thread_count", "Number of threads in the process");
 
-        private static readonly Gauge ProcessHandleCount = Metrics
+        private static readonly Gauge ProcessHandleCount = Prometheus.Metrics
             .CreateGauge("conduit_process_handle_count", "Number of handles held by the process");
 
         public InfrastructureMetricsService(

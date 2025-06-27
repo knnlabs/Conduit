@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Prometheus;
 
 namespace ConduitLLM.Http.Handlers
@@ -8,21 +9,21 @@ namespace ConduitLLM.Http.Handlers
     /// </summary>
     public class WebhookMetricsHandler : DelegatingHandler
     {
-        private static readonly Counter WebhookRequests = Metrics
+        private static readonly Counter WebhookRequests = Prometheus.Metrics
             .CreateCounter("conduit_webhook_requests_total", "Total webhook requests", 
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "status", "endpoint" }
                 });
 
-        private static readonly Counter WebhookTimeouts = Metrics
+        private static readonly Counter WebhookTimeouts = Prometheus.Metrics
             .CreateCounter("conduit_webhook_timeouts_total", "Total webhook timeouts", 
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "endpoint" }
                 });
 
-        private static readonly Histogram WebhookDuration = Metrics
+        private static readonly Histogram WebhookDuration = Prometheus.Metrics
             .CreateHistogram("conduit_webhook_duration_ms", "Webhook request duration in milliseconds",
                 new HistogramConfiguration
                 {
@@ -30,7 +31,7 @@ namespace ConduitLLM.Http.Handlers
                     Buckets = Histogram.ExponentialBuckets(10, 2, 10) // 10ms to ~10s
                 });
 
-        private static readonly Gauge ActiveWebhookRequests = Metrics
+        private static readonly Gauge ActiveWebhookRequests = Prometheus.Metrics
             .CreateGauge("conduit_webhook_active_requests", "Number of active webhook requests");
 
         private readonly ILogger<WebhookMetricsHandler> _logger;

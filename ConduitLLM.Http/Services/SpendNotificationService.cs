@@ -15,32 +15,6 @@ using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Service for managing spend notifications and detecting unusual spending patterns.
-    /// </summary>
-    public interface ISpendNotificationService
-    {
-        /// <summary>
-        /// Notifies about a spend update.
-        /// </summary>
-        Task NotifySpendUpdateAsync(int virtualKeyId, decimal amount, decimal totalSpend, decimal? budget, string model, string provider);
-
-        /// <summary>
-        /// Sends a spend summary for a period.
-        /// </summary>
-        Task SendSpendSummaryAsync(int virtualKeyId, SpendSummaryNotification summary);
-
-        /// <summary>
-        /// Records spend data for pattern analysis.
-        /// </summary>
-        void RecordSpend(int virtualKeyId, decimal amount);
-
-        /// <summary>
-        /// Checks for unusual spending patterns.
-        /// </summary>
-        Task CheckUnusualSpendingAsync(int virtualKeyId);
-    }
-
-    /// <summary>
     /// Implementation of spend notification service.
     /// </summary>
     public class SpendNotificationService : ISpendNotificationService, IHostedService
@@ -152,6 +126,16 @@ namespace ConduitLLM.Http.Services
                 _logger.LogError(ex, "Error sending spend update notification");
                 // Don't throw - notifications should not break the main flow
             }
+        }
+
+        /// <summary>
+        /// Legacy method for backward compatibility - delegates to NotifySpendUpdateAsync
+        /// </summary>
+        public async Task NotifySpendUpdatedAsync(int virtualKeyId, decimal spendAmount, string model, string provider)
+        {
+            // For the legacy method, we don't have totalSpend or budget information
+            // So we'll call the new method with just the amount
+            await NotifySpendUpdateAsync(virtualKeyId, spendAmount, spendAmount, null, model, provider);
         }
 
         public async Task SendSpendSummaryAsync(int virtualKeyId, SpendSummaryNotification summary)

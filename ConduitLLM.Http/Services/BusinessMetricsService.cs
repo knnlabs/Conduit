@@ -24,28 +24,28 @@ namespace ConduitLLM.Http.Services
         private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
         // Virtual Key metrics
-        private static readonly Counter VirtualKeyRequests = Metrics
+        private static readonly Counter VirtualKeyRequests = Prometheus.Metrics
             .CreateCounter("conduit_virtualkey_requests_total", "Total requests per virtual key",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "virtual_key_id", "model", "status" }
                 });
 
-        private static readonly Gauge VirtualKeySpendTotal = Metrics
+        private static readonly Gauge VirtualKeySpendTotal = Prometheus.Metrics
             .CreateGauge("conduit_virtualkey_spend_total", "Total spend per virtual key",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "virtual_key_id" }
                 });
 
-        private static readonly Gauge VirtualKeyBudgetUtilization = Metrics
+        private static readonly Gauge VirtualKeyBudgetUtilization = Prometheus.Metrics
             .CreateGauge("conduit_virtualkey_budget_utilization_percent", "Budget utilization percentage per virtual key",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "virtual_key_id" }
                 });
 
-        private static readonly Counter VirtualKeyBudgetExceeded = Metrics
+        private static readonly Counter VirtualKeyBudgetExceeded = Prometheus.Metrics
             .CreateCounter("conduit_virtualkey_budget_exceeded_total", "Number of times budget was exceeded",
                 new CounterConfiguration
                 {
@@ -53,14 +53,14 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Model usage metrics
-        private static readonly Counter ModelRequests = Metrics
+        private static readonly Counter ModelRequests = Prometheus.Metrics
             .CreateCounter("conduit_model_requests_total", "Total requests per model",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "model", "provider", "status" }
                 });
 
-        private static readonly Histogram ModelResponseTime = Metrics
+        private static readonly Histogram ModelResponseTime = Prometheus.Metrics
             .CreateHistogram("conduit_model_response_time_seconds", "Model response time",
                 new HistogramConfiguration
                 {
@@ -68,7 +68,7 @@ namespace ConduitLLM.Http.Services
                     Buckets = Histogram.ExponentialBuckets(0.1, 2, 14) // 0.1s to ~820s
                 });
 
-        private static readonly Counter ModelTokensProcessed = Metrics
+        private static readonly Counter ModelTokensProcessed = Prometheus.Metrics
             .CreateCounter("conduit_model_tokens_total", "Total tokens processed",
                 new CounterConfiguration
                 {
@@ -76,21 +76,21 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Cost tracking metrics
-        private static readonly Counter CostTotal = Metrics
+        private static readonly Counter CostTotal = Prometheus.Metrics
             .CreateCounter("conduit_cost_total_dollars", "Total cost in dollars",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "provider", "model", "operation_type" }
                 });
 
-        private static readonly Gauge CostRate = Metrics
+        private static readonly Gauge CostRate = Prometheus.Metrics
             .CreateGauge("conduit_cost_rate_dollars_per_minute", "Cost rate in dollars per minute",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "provider" }
                 });
 
-        private static readonly Histogram CostPerRequest = Metrics
+        private static readonly Histogram CostPerRequest = Prometheus.Metrics
             .CreateHistogram("conduit_cost_per_request_dollars", "Cost per request in dollars",
                 new HistogramConfiguration
                 {
@@ -99,21 +99,21 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Provider metrics
-        private static readonly Gauge ProviderHealth = Metrics
+        private static readonly Gauge ProviderHealth = Prometheus.Metrics
             .CreateGauge("conduit_provider_health", "Provider health status (1=healthy, 0=unhealthy)",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "provider" }
                 });
 
-        private static readonly Counter ProviderErrors = Metrics
+        private static readonly Counter ProviderErrors = Prometheus.Metrics
             .CreateCounter("conduit_provider_errors_total", "Total provider errors",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "provider", "error_type" }
                 });
 
-        private static readonly Summary ProviderLatency = Metrics
+        private static readonly Summary ProviderLatency = Prometheus.Metrics
             .CreateSummary("conduit_provider_latency_seconds", "Provider API latency",
                 new SummaryConfiguration
                 {
@@ -130,10 +130,10 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Active entities metrics
-        private static readonly Gauge ActiveVirtualKeys = Metrics
+        private static readonly Gauge ActiveVirtualKeys = Prometheus.Metrics
             .CreateGauge("conduit_virtualkeys_active_count", "Number of active virtual keys");
 
-        private static readonly Gauge ActiveModels = Metrics
+        private static readonly Gauge ActiveModels = Prometheus.Metrics
             .CreateGauge("conduit_models_active_count", "Number of active model mappings",
                 new GaugeConfiguration
                 {
@@ -141,7 +141,7 @@ namespace ConduitLLM.Http.Services
                 });
 
         // SLA metrics
-        private static readonly Counter SLAViolations = Metrics
+        private static readonly Counter SLAViolations = Prometheus.Metrics
             .CreateCounter("conduit_sla_violations_total", "Total SLA violations",
                 new CounterConfiguration
                 {

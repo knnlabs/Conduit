@@ -23,14 +23,14 @@ namespace ConduitLLM.Http.Services
         private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(30);
 
         // Task queue metrics
-        private static readonly Gauge TaskQueueDepth = Metrics
+        private static readonly Gauge TaskQueueDepth = Prometheus.Metrics
             .CreateGauge("conduit_tasks_queue_depth", "Number of tasks in queue",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "task_type", "status" }
                 });
 
-        private static readonly Histogram TaskProcessingDuration = Metrics
+        private static readonly Histogram TaskProcessingDuration = Prometheus.Metrics
             .CreateHistogram("conduit_task_processing_duration_seconds", "Task processing duration in seconds",
                 new HistogramConfiguration
                 {
@@ -38,28 +38,28 @@ namespace ConduitLLM.Http.Services
                     Buckets = Histogram.ExponentialBuckets(0.1, 2, 16) // 0.1s to ~1 hour
                 });
 
-        private static readonly Counter TasksCompleted = Metrics
+        private static readonly Counter TasksCompleted = Prometheus.Metrics
             .CreateCounter("conduit_tasks_completed_total", "Total number of completed tasks",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "task_type", "provider", "status" }
                 });
 
-        private static readonly Counter TaskRetries = Metrics
+        private static readonly Counter TaskRetries = Prometheus.Metrics
             .CreateCounter("conduit_task_retries_total", "Total number of task retries",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "task_type", "provider" }
                 });
 
-        private static readonly Gauge TasksInProgress = Metrics
+        private static readonly Gauge TasksInProgress = Prometheus.Metrics
             .CreateGauge("conduit_tasks_in_progress", "Number of tasks currently being processed",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "task_type", "provider" }
                 });
 
-        private static readonly Summary TaskWaitTime = Metrics
+        private static readonly Summary TaskWaitTime = Prometheus.Metrics
             .CreateSummary("conduit_task_wait_time_seconds", "Time tasks spend waiting in queue",
                 new SummaryConfiguration
                 {
@@ -75,14 +75,14 @@ namespace ConduitLLM.Http.Services
                     AgeBuckets = 5
                 });
 
-        private static readonly Counter WebhookDeliveries = Metrics
+        private static readonly Counter WebhookDeliveries = Prometheus.Metrics
             .CreateCounter("conduit_webhook_deliveries_total", "Total number of webhook delivery attempts",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "status", "retry_count" }
                 });
 
-        private static readonly Histogram WebhookDeliveryDuration = Metrics
+        private static readonly Histogram WebhookDeliveryDuration = Prometheus.Metrics
             .CreateHistogram("conduit_webhook_delivery_duration_seconds", "Webhook delivery duration",
                 new HistogramConfiguration
                 {
@@ -90,21 +90,21 @@ namespace ConduitLLM.Http.Services
                     Buckets = Histogram.ExponentialBuckets(0.01, 2, 14) // 10ms to ~82s
                 });
 
-        private static readonly Gauge VirtualKeySpendRate = Metrics
+        private static readonly Gauge VirtualKeySpendRate = Prometheus.Metrics
             .CreateGauge("conduit_virtualkey_spend_rate", "Virtual key spend rate per minute",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "virtual_key_id" }
                 });
 
-        private static readonly Counter TaskCancellations = Metrics
+        private static readonly Counter TaskCancellations = Prometheus.Metrics
             .CreateCounter("conduit_task_cancellations_total", "Total number of task cancellations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "task_type", "reason" }
                 });
 
-        private static readonly Histogram BatchProcessingSize = Metrics
+        private static readonly Histogram BatchProcessingSize = Prometheus.Metrics
             .CreateHistogram("conduit_batch_processing_size", "Number of items processed in batch operations",
                 new HistogramConfiguration
                 {

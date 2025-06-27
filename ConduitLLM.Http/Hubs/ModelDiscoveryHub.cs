@@ -63,8 +63,8 @@ namespace ConduitLLM.Http.Hubs
             var virtualKeyId = RequireVirtualKeyId();
             
             // Check if virtual key has permission to see all providers
-            var virtualKey = await GetVirtualKeyAsync(virtualKeyId);
-            if (virtualKey?.IsAdmin != true)
+            var isAdmin = await IsAdminAsync();
+            if (!isAdmin)
             {
                 throw new HubException("Admin permissions required to subscribe to all providers");
             }

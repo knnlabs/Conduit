@@ -51,7 +51,7 @@ namespace ConduitLLM.Core.Services
             _options = options?.Value ?? new PrometheusImageGenerationOptions();
             
             // Initialize counters
-            _totalGenerationsCounter = Metrics.CreateCounter(
+            _totalGenerationsCounter = Prometheus.Metrics.CreateCounter(
                 "conduit_image_generations_total",
                 "Total number of image generation requests",
                 new CounterConfiguration
@@ -59,7 +59,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider", "model", "status" }
                 });
             
-            _successfulGenerationsCounter = Metrics.CreateCounter(
+            _successfulGenerationsCounter = Prometheus.Metrics.CreateCounter(
                 "conduit_image_generations_successful_total",
                 "Total number of successful image generations",
                 new CounterConfiguration
@@ -67,7 +67,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider", "model" }
                 });
             
-            _failedGenerationsCounter = Metrics.CreateCounter(
+            _failedGenerationsCounter = Prometheus.Metrics.CreateCounter(
                 "conduit_image_generations_failed_total",
                 "Total number of failed image generations",
                 new CounterConfiguration
@@ -75,7 +75,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider", "model", "error_type" }
                 });
             
-            _totalImagesCounter = Metrics.CreateCounter(
+            _totalImagesCounter = Prometheus.Metrics.CreateCounter(
                 "conduit_images_generated_total",
                 "Total number of images generated",
                 new CounterConfiguration
@@ -83,7 +83,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider", "model", "size" }
                 });
             
-            _totalCostCounter = Metrics.CreateCounter(
+            _totalCostCounter = Prometheus.Metrics.CreateCounter(
                 "conduit_image_generation_cost_total",
                 "Total cost of image generation in dollars",
                 new CounterConfiguration
@@ -92,11 +92,11 @@ namespace ConduitLLM.Core.Services
                 });
             
             // Initialize gauges
-            _activeGenerationsGauge = Metrics.CreateGauge(
+            _activeGenerationsGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generations_active",
                 "Number of currently active image generation requests");
             
-            _queueDepthGauge = Metrics.CreateGauge(
+            _queueDepthGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_queue_depth",
                 "Current depth of the image generation queue",
                 new GaugeConfiguration
@@ -104,7 +104,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "priority" }
                 });
             
-            _providerHealthGauge = Metrics.CreateGauge(
+            _providerHealthGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_provider_health_score",
                 "Health score of image generation providers (0-1)",
                 new GaugeConfiguration
@@ -112,7 +112,7 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider" }
                 });
             
-            _providerResponseTimeGauge = Metrics.CreateGauge(
+            _providerResponseTimeGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_provider_response_time_ms",
                 "Average response time of image generation providers in milliseconds",
                 new GaugeConfiguration
@@ -120,12 +120,12 @@ namespace ConduitLLM.Core.Services
                     LabelNames = new[] { "provider" }
                 });
             
-            _systemSuccessRateGauge = Metrics.CreateGauge(
+            _systemSuccessRateGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_success_rate",
                 "Overall success rate of image generation (0-100)");
             
             // Initialize histograms
-            _generationDurationHistogram = Metrics.CreateHistogram(
+            _generationDurationHistogram = Prometheus.Metrics.CreateHistogram(
                 "conduit_image_generation_duration_seconds",
                 "Duration of image generation requests in seconds",
                 new HistogramConfiguration
@@ -134,7 +134,7 @@ namespace ConduitLLM.Core.Services
                     Buckets = Histogram.ExponentialBuckets(1, 2, 10) // 1s to ~1024s
                 });
             
-            _imageCostHistogram = Metrics.CreateHistogram(
+            _imageCostHistogram = Prometheus.Metrics.CreateHistogram(
                 "conduit_image_cost_dollars",
                 "Cost distribution of generated images in dollars",
                 new HistogramConfiguration
@@ -143,7 +143,7 @@ namespace ConduitLLM.Core.Services
                     Buckets = new[] { 0.01, 0.02, 0.03, 0.04, 0.05, 0.10, 0.20, 0.50, 1.00 }
                 });
             
-            _queueWaitTimeHistogram = Metrics.CreateHistogram(
+            _queueWaitTimeHistogram = Prometheus.Metrics.CreateHistogram(
                 "conduit_image_generation_queue_wait_seconds",
                 "Time spent waiting in queue in seconds",
                 new HistogramConfiguration
@@ -152,7 +152,7 @@ namespace ConduitLLM.Core.Services
                 });
             
             // Initialize summary
-            _responseTimeSummary = Metrics.CreateSummary(
+            _responseTimeSummary = Prometheus.Metrics.CreateSummary(
                 "conduit_image_generation_response_time_ms",
                 "Response time summary for image generation in milliseconds",
                 new SummaryConfiguration
@@ -353,19 +353,19 @@ namespace ConduitLLM.Core.Services
         private void ExportSlaMetrics(SlaComplianceSummary slaCompliance)
         {
             // Create SLA-specific gauges if needed
-            var slaAvailabilityGauge = Metrics.CreateGauge(
+            var slaAvailabilityGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_sla_availability_percent",
                 "SLA availability percentage");
             
-            var slaResponseTimeGauge = Metrics.CreateGauge(
+            var slaResponseTimeGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_sla_p95_response_time_ms",
                 "SLA P95 response time in milliseconds");
             
-            var slaErrorRateGauge = Metrics.CreateGauge(
+            var slaErrorRateGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_sla_error_rate_percent",
                 "SLA error rate percentage");
             
-            var slaViolationsGauge = Metrics.CreateGauge(
+            var slaViolationsGauge = Prometheus.Metrics.CreateGauge(
                 "conduit_image_generation_sla_violations_total",
                 "Total number of SLA violations",
                 new GaugeConfiguration

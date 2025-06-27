@@ -1,5 +1,10 @@
+@* 
+    DEPRECATED: This component manages its own SignalR connection state.
+    Please use SpendNotificationListenerV2.razor which uses the centralized SignalRConnectionManager.
+    This component will be removed in a future release.
+*@
 @using Microsoft.JSInterop
-@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.Configuration.DTOs.SignalR
 @using System.Text.Json
 @implements IAsyncDisposable
 @inject IJSRuntime JS

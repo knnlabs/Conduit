@@ -155,7 +155,7 @@ namespace ConduitLLM.Http.Hubs
                 ["CorrelationId"] = correlationId,
                 ["VirtualKeyId"] = virtualKeyId,
                 ["AlertSeverity"] = alert.Severity,
-                ["BudgetPercentage"] = alert.Percentage
+                ["BudgetPercentage"] = alert.PercentageUsed
             }))
             {
                 try
@@ -171,7 +171,7 @@ namespace ConduitLLM.Http.Hubs
                     _logger.LogWarning(
                         "Sent budget alert to group {GroupName}: {Percentage:F0}% used, Severity: {Severity}",
                         groupName,
-                        alert.Percentage,
+                        alert.PercentageUsed,
                         alert.Severity);
                 }
                 catch (Exception ex)
@@ -244,8 +244,8 @@ namespace ConduitLLM.Http.Hubs
             {
                 ["CorrelationId"] = correlationId,
                 ["VirtualKeyId"] = virtualKeyId,
-                ["PatternType"] = notification.PatternType,
-                ["PercentageIncrease"] = notification.PercentageIncrease
+                ["ActivityType"] = notification.ActivityType,
+                ["DeviationPercentage"] = notification.DeviationPercentage
             }))
             {
                 try
@@ -261,8 +261,8 @@ namespace ConduitLLM.Http.Hubs
                     _logger.LogWarning(
                         "Sent unusual spending alert to group {GroupName}: {PatternType} - {PercentageIncrease:F0}% increase",
                         groupName,
-                        notification.PatternType,
-                        notification.PercentageIncrease);
+                        notification.ActivityType,
+                        notification.DeviationPercentage);
                 }
                 catch (Exception ex)
                 {
@@ -316,8 +316,9 @@ namespace ConduitLLM.Http.Hubs
 
                     var alert = new BudgetAlertNotification
                     {
-                        Percentage = percentage,
-                        Remaining = remaining,
+                        PercentageUsed = (double)percentage,
+                        CurrentSpend = notification.TotalSpend,
+                        BudgetLimit = notification.Budget ?? 0,
                         Severity = severity,
                         Message = message,
                         BudgetPeriodEnd = DateTime.UtcNow.AddDays(30) // Simplified - should get from config

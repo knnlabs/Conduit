@@ -14,14 +14,14 @@ namespace ConduitLLM.Admin.Middleware
         private readonly ILogger<AdminHttpMetricsMiddleware> _logger;
 
         // Core HTTP metrics
-        private static readonly Counter RequestsTotal = Metrics
+        private static readonly Counter RequestsTotal = Prometheus.Metrics
             .CreateCounter("conduit_admin_http_requests_total", "Total number of HTTP requests to Admin API",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "method", "endpoint", "status_code" }
                 });
 
-        private static readonly Histogram RequestDuration = Metrics
+        private static readonly Histogram RequestDuration = Prometheus.Metrics
             .CreateHistogram("conduit_admin_http_request_duration_seconds", "HTTP request duration in seconds",
                 new HistogramConfiguration
                 {
@@ -29,7 +29,7 @@ namespace ConduitLLM.Admin.Middleware
                     Buckets = Histogram.ExponentialBuckets(0.001, 2, 16) // 1ms to ~65s
                 });
 
-        private static readonly Histogram RequestSize = Metrics
+        private static readonly Histogram RequestSize = Prometheus.Metrics
             .CreateHistogram("conduit_admin_http_request_size_bytes", "HTTP request size in bytes",
                 new HistogramConfiguration
                 {
@@ -37,7 +37,7 @@ namespace ConduitLLM.Admin.Middleware
                     Buckets = Histogram.ExponentialBuckets(100, 10, 8) // 100B to 10GB
                 });
 
-        private static readonly Histogram ResponseSize = Metrics
+        private static readonly Histogram ResponseSize = Prometheus.Metrics
             .CreateHistogram("conduit_admin_http_response_size_bytes", "HTTP response size in bytes",
                 new HistogramConfiguration
                 {
@@ -45,14 +45,14 @@ namespace ConduitLLM.Admin.Middleware
                     Buckets = Histogram.ExponentialBuckets(100, 10, 8) // 100B to 10GB
                 });
 
-        private static readonly Gauge ActiveRequests = Metrics
+        private static readonly Gauge ActiveRequests = Prometheus.Metrics
             .CreateGauge("conduit_admin_http_requests_active", "Number of active HTTP requests",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "method", "endpoint" }
                 });
 
-        private static readonly Counter ErrorsTotal = Metrics
+        private static readonly Counter ErrorsTotal = Prometheus.Metrics
             .CreateCounter("conduit_admin_http_errors_total", "Total number of HTTP errors",
                 new CounterConfiguration
                 {

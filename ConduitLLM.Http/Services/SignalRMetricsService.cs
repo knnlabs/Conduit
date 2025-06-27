@@ -30,21 +30,21 @@ namespace ConduitLLM.Http.Services
         }
 
         // Prometheus metrics
-        private static readonly Gauge ActiveConnections = Metrics
+        private static readonly Gauge ActiveConnections = Prometheus.Metrics
             .CreateGauge("conduit_signalr_connections_active", "Number of active SignalR connections",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "hub", "virtual_key_id" }
                 });
 
-        private static readonly Counter ConnectionsTotal = Metrics
+        private static readonly Counter ConnectionsTotal = Prometheus.Metrics
             .CreateCounter("conduit_signalr_connections_total", "Total number of SignalR connections",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "hub", "status" } // status: connected, disconnected, failed
                 });
 
-        private static readonly Histogram ConnectionDuration = Metrics
+        private static readonly Histogram ConnectionDuration = Prometheus.Metrics
             .CreateHistogram("conduit_signalr_connection_duration_seconds", "SignalR connection duration in seconds",
                 new HistogramConfiguration
                 {
@@ -52,35 +52,35 @@ namespace ConduitLLM.Http.Services
                     Buckets = Histogram.ExponentialBuckets(1, 2, 16) // 1s to ~18 hours
                 });
 
-        private static readonly Counter MessagesTotal = Metrics
+        private static readonly Counter MessagesTotal = Prometheus.Metrics
             .CreateCounter("conduit_signalr_messages_total", "Total number of SignalR messages",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "hub", "method", "direction" } // direction: sent, received
                 });
 
-        private static readonly Counter SubscriptionsTotal = Metrics
+        private static readonly Counter SubscriptionsTotal = Prometheus.Metrics
             .CreateCounter("conduit_signalr_subscriptions_total", "Total number of task subscriptions",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "hub", "task_type" } // task_type: image, video
                 });
 
-        private static readonly Gauge ActiveSubscriptions = Metrics
+        private static readonly Gauge ActiveSubscriptions = Prometheus.Metrics
             .CreateGauge("conduit_signalr_subscriptions_active", "Number of active task subscriptions",
                 new GaugeConfiguration
                 {
                     LabelNames = new[] { "hub", "task_type" }
                 });
 
-        private static readonly Counter ReconnectionsTotal = Metrics
+        private static readonly Counter ReconnectionsTotal = Prometheus.Metrics
             .CreateCounter("conduit_signalr_reconnections_total", "Total number of SignalR reconnections",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "hub" }
                 });
 
-        private static readonly Summary MessageProcessingTime = Metrics
+        private static readonly Summary MessageProcessingTime = Prometheus.Metrics
             .CreateSummary("conduit_signalr_message_processing_seconds", "SignalR message processing time",
                 new SummaryConfiguration
                 {
@@ -96,7 +96,7 @@ namespace ConduitLLM.Http.Services
                     AgeBuckets = 5
                 });
 
-        private static readonly Gauge ConnectionPoolUtilization = Metrics
+        private static readonly Gauge ConnectionPoolUtilization = Prometheus.Metrics
             .CreateGauge("conduit_signalr_connection_pool_utilization", "SignalR connection pool utilization percentage",
                 new GaugeConfiguration
                 {

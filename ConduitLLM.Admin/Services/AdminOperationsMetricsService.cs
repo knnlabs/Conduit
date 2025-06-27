@@ -21,14 +21,14 @@ namespace ConduitLLM.Admin.Services
         private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
         // Virtual Key operation metrics
-        private static readonly Counter VirtualKeyOperations = Metrics
+        private static readonly Counter VirtualKeyOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_virtualkey_operations_total", "Total virtual key operations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "operation", "status" } // operation: create, update, delete, rotate
                 });
 
-        private static readonly Histogram VirtualKeyOperationDuration = Metrics
+        private static readonly Histogram VirtualKeyOperationDuration = Prometheus.Metrics
             .CreateHistogram("conduit_admin_virtualkey_operation_duration_seconds", "Virtual key operation duration",
                 new HistogramConfiguration
                 {
@@ -36,7 +36,7 @@ namespace ConduitLLM.Admin.Services
                     Buckets = Histogram.ExponentialBuckets(0.001, 2, 14) // 1ms to ~16s
                 });
 
-        private static readonly Gauge TotalVirtualKeys = Metrics
+        private static readonly Gauge TotalVirtualKeys = Prometheus.Metrics
             .CreateGauge("conduit_admin_virtualkeys_total", "Total number of virtual keys",
                 new GaugeConfiguration
                 {
@@ -44,14 +44,14 @@ namespace ConduitLLM.Admin.Services
                 });
 
         // Provider management metrics
-        private static readonly Counter ProviderOperations = Metrics
+        private static readonly Counter ProviderOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_provider_operations_total", "Total provider operations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "operation", "provider", "status" } // operation: create, update, delete, test
                 });
 
-        private static readonly Histogram ProviderTestDuration = Metrics
+        private static readonly Histogram ProviderTestDuration = Prometheus.Metrics
             .CreateHistogram("conduit_admin_provider_test_duration_seconds", "Provider connection test duration",
                 new HistogramConfiguration
                 {
@@ -59,7 +59,7 @@ namespace ConduitLLM.Admin.Services
                     Buckets = Histogram.ExponentialBuckets(0.1, 2, 12) // 100ms to ~410s
                 });
 
-        private static readonly Gauge ConfiguredProviders = Metrics
+        private static readonly Gauge ConfiguredProviders = Prometheus.Metrics
             .CreateGauge("conduit_admin_providers_configured", "Number of configured providers",
                 new GaugeConfiguration
                 {
@@ -67,14 +67,14 @@ namespace ConduitLLM.Admin.Services
                 });
 
         // Model mapping metrics
-        private static readonly Counter ModelMappingOperations = Metrics
+        private static readonly Counter ModelMappingOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_modelmapping_operations_total", "Total model mapping operations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "operation", "status" } // operation: create, update, delete
                 });
 
-        private static readonly Gauge ActiveModelMappings = Metrics
+        private static readonly Gauge ActiveModelMappings = Prometheus.Metrics
             .CreateGauge("conduit_admin_modelmappings_active", "Number of active model mappings",
                 new GaugeConfiguration
                 {
@@ -82,7 +82,7 @@ namespace ConduitLLM.Admin.Services
                 });
 
         // Configuration change metrics
-        private static readonly Counter ConfigurationChanges = Metrics
+        private static readonly Counter ConfigurationChanges = Prometheus.Metrics
             .CreateCounter("conduit_admin_configuration_changes_total", "Total configuration changes",
                 new CounterConfiguration
                 {
@@ -90,25 +90,25 @@ namespace ConduitLLM.Admin.Services
                 });
 
         // Admin API usage metrics
-        private static readonly Counter AdminApiAuthentications = Metrics
+        private static readonly Counter AdminApiAuthentications = Prometheus.Metrics
             .CreateCounter("conduit_admin_authentications_total", "Total authentication attempts",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "status" } // status: success, failed
                 });
 
-        private static readonly Gauge ActiveAdminSessions = Metrics
+        private static readonly Gauge ActiveAdminSessions = Prometheus.Metrics
             .CreateGauge("conduit_admin_sessions_active", "Number of active admin sessions");
 
         // CSV import/export metrics
-        private static readonly Counter CsvOperations = Metrics
+        private static readonly Counter CsvOperations = Prometheus.Metrics
             .CreateCounter("conduit_admin_csv_operations_total", "Total CSV operations",
                 new CounterConfiguration
                 {
                     LabelNames = new[] { "operation", "entity_type", "status" } // operation: import, export
                 });
 
-        private static readonly Histogram CsvOperationDuration = Metrics
+        private static readonly Histogram CsvOperationDuration = Prometheus.Metrics
             .CreateHistogram("conduit_admin_csv_operation_duration_seconds", "CSV operation duration",
                 new HistogramConfiguration
                 {
@@ -116,7 +116,7 @@ namespace ConduitLLM.Admin.Services
                     Buckets = Histogram.ExponentialBuckets(0.1, 2, 12) // 100ms to ~410s
                 });
 
-        private static readonly Counter CsvRecordsProcessed = Metrics
+        private static readonly Counter CsvRecordsProcessed = Prometheus.Metrics
             .CreateCounter("conduit_admin_csv_records_processed_total", "Total CSV records processed",
                 new CounterConfiguration
                 {

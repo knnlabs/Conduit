@@ -124,13 +124,29 @@ namespace ConduitLLM.Http.Adapters
                 var modelCost = await _innerService.GetCostForModelAsync(modelId, cancellationToken);
                 if (modelCost == null) return null;
 
+                // Deserialize video resolution multipliers if present
+                Dictionary<string, decimal>? videoResolutionMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers))
+                {
+                    try
+                    {
+                        videoResolutionMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
                 return new ModelCostInfo
                 {
                     ModelIdPattern = modelCost.ModelIdPattern,
                     InputTokenCost = modelCost.InputTokenCost,
                     OutputTokenCost = modelCost.OutputTokenCost,
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = modelCost.ImageCostPerImage
+                    ImageCostPerImage = modelCost.ImageCostPerImage,
+                    VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                    VideoResolutionMultipliers = videoResolutionMultipliers
                 };
             }
         }

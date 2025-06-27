@@ -3,8 +3,17 @@ using ConduitLLM.Configuration.Entities;
 namespace ConduitLLM.Configuration.Services;
 
 /// <summary>
-/// Service for managing model costs across different LLM models
+/// Service for managing model costs across different LLM models.
 /// </summary>
+/// <remarks>
+/// This interface is part of a three-layer architecture where each layer has its own IModelCostService:
+/// 1. Configuration layer (this interface) - Handles database operations and caching
+/// 2. Core layer - Provides a simplified interface for cost calculations
+/// 3. WebUI layer - Provides admin API operations
+/// 
+/// This separation follows Clean Architecture principles and maintains proper layer boundaries.
+/// The layers are connected via adapters (see ConfigurationAdapters.cs).
+/// </remarks>
 public interface IModelCostService
 {
     /// <summary>

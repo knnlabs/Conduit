@@ -5,6 +5,7 @@
 @using VirtualKeyDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto
 @using ConduitLLM.Configuration.Constants
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.Configuration.DTOs.SignalR
 @using ConduitLLM.WebUI.DTOs
 @using System.Globalization
 @using Microsoft.JSInterop
@@ -820,7 +821,7 @@
     }
     
     // Real-time event handlers
-    private async Task HandleSpendUpdate(SpendUpdateNotification notification)
+    private async Task HandleSpendUpdate(ConduitLLM.Configuration.DTOs.SignalR.SpendUpdateNotification notification)
     {
         try
         {
@@ -854,7 +855,7 @@
         }
     }
     
-    private async Task HandleBudgetAlert(BudgetAlertNotification alert)
+    private async Task HandleBudgetAlert(ConduitLLM.Configuration.DTOs.SignalR.BudgetAlertNotification alert)
     {
         try
         {
@@ -891,7 +892,7 @@
         }
     }
     
-    private async Task HandleSpendSummary(SpendSummaryNotification summary)
+    private async Task HandleSpendSummary(ConduitLLM.Configuration.DTOs.SignalR.SpendSummaryNotification summary)
     {
         try
         {
@@ -908,7 +909,7 @@
         }
     }
     
-    private async Task HandleUnusualSpending(UnusualSpendingNotification notification)
+    private async Task HandleUnusualSpending(ConduitLLM.Configuration.DTOs.SignalR.UnusualSpendingNotification notification)
     {
         try
         {

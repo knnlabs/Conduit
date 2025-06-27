@@ -236,12 +236,13 @@ namespace ConduitLLM.Http.Services
                 var retry = new WebhookRetryInfo
                 {
                     WebhookId = GenerateWebhookId(webhookUrl, taskId),
-                    TaskId = taskId,
+                    DeliveryId = $"{taskId}-retry-{retryNumber}",
                     Url = webhookUrl,
-                    ScheduledTime = retryTime,
-                    RetryNumber = retryNumber,
-                    MaxRetries = maxRetries,
-                    DelaySeconds = (retryTime - DateTime.UtcNow).TotalSeconds
+                    EventType = "webhook.delivery",
+                    ScheduledAt = retryTime,
+                    NextAttemptNumber = retryNumber,
+                    DelaySeconds = (retryTime - DateTime.UtcNow).TotalSeconds,
+                    Reason = $"Retry {retryNumber} of {maxRetries}"
                 };
                 
                 // Broadcast to webhook-specific group
@@ -270,11 +271,12 @@ namespace ConduitLLM.Http.Services
                 var stateChange = new WebhookCircuitBreakerState
                 {
                     Url = webhookUrl,
-                    State = newState,
+                    CurrentState = newState,
                     PreviousState = previousState,
                     Reason = reason,
                     FailureCount = failureCount,
-                    StateChangedAt = DateTime.UtcNow
+                    SuccessCount = 0,
+                    Timestamp = DateTime.UtcNow
                 };
                 
                 // Broadcast to webhook-specific group and all clients
@@ -343,7 +345,7 @@ namespace ConduitLLM.Http.Services
             var stats = new WebhookStatistics
             {
                 Period = period,
-                UrlStatistics = new Dictionary<string, WebhookUrlStatistics>()
+                UrlStatistics = new List<WebhookUrlStatistics>()
             };
             
             // Calculate cutoff time based on period
@@ -364,22 +366,25 @@ namespace ConduitLLM.Http.Services
                 var urlStats = new WebhookUrlStatistics
                 {
                     Url = urlMetrics.Key,
-                    TotalAttempts = urlMetrics.Value.TotalAttempts,
-                    Successes = urlMetrics.Value.Successes,
-                    Failures = urlMetrics.Value.Failures,
-                    AverageResponseTimeMs = urlMetrics.Value.GetAverageResponseTime()
+                    TotalDeliveries = urlMetrics.Value.TotalAttempts,
+                    SuccessfulDeliveries = urlMetrics.Value.Successes,
+                    FailedDeliveries = urlMetrics.Value.Failures,
+                    AverageResponseTimeMs = urlMetrics.Value.GetAverageResponseTime(),
+                    SuccessRate = urlMetrics.Value.TotalAttempts > 0 ? 
+                        (double)urlMetrics.Value.Successes / urlMetrics.Value.TotalAttempts * 100 : 0,
+                    IsHealthy = true
                 };
                 
-                stats.UrlStatistics[urlMetrics.Key] = urlStats;
+                stats.UrlStatistics.Add(urlStats);
                 
-                stats.TotalAttempts += urlStats.TotalAttempts;
-                stats.SuccessfulDeliveries += urlStats.Successes;
-                stats.FailedDeliveries += urlStats.Failures;
+                stats.TotalDeliveries += urlStats.TotalDeliveries;
+                stats.SuccessfulDeliveries += urlStats.SuccessfulDeliveries;
+                stats.FailedDeliveries += urlStats.FailedDeliveries;
             }
             
-            stats.PendingRetries = _urlMetrics.Values.Sum(m => m.PendingRetries);
-            stats.SuccessRate = stats.TotalAttempts > 0 
-                ? (double)stats.SuccessfulDeliveries / stats.TotalAttempts * 100 
+            stats.PendingDeliveries = _urlMetrics.Values.Sum(m => m.PendingRetries);
+            stats.SuccessRate = stats.TotalDeliveries > 0 
+                ? (double)stats.SuccessfulDeliveries / stats.TotalDeliveries * 100 
                 : 0;
             
             // Calculate average response time from recent successful events

@@ -1,9 +1,11 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.JSInterop
 @using ConduitLLM.Configuration.DTOs.SignalR
+@using ConduitLLM.WebUI.Services
 @inject IJSRuntime JS
 @inject ILogger<ModelDiscoveryListener> Logger
 @inject NavigationManager Navigation
+@inject SignalRConnectionManager SignalRManager
 @implements IAsyncDisposable
 
 @if (ShowNotifications)
@@ -58,7 +60,6 @@
                     <span class="text-muted">@Notifications.Count total updates</span>
                 </div>
             }
-        </div>
         }
     </div>
 }
@@ -76,14 +77,17 @@
     {
         try
         {
-            var baseUrl = Navigation.BaseUri.TrimEnd('/');
-            _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{baseUrl}/hubs/model-discovery", options =>
-                {
-                    options.Headers["X-Virtual-Key"] = VirtualKey;
-                })
-                .WithAutomaticReconnect()
-                .Build();
+            // Use centralized connection manager with authentication
+            var connectionInfo = await SignalRManager.ConnectToHubAsync(
+                "model-discovery",
+                VirtualKey,
+                new HubConnectionOptions 
+                { 
+                    EnableAutoReconnect = true,
+                    LogLevel = Microsoft.Extensions.Logging.LogLevel.Information
+                });
+            
+            _hubConnection = connectionInfo.Connection;
             
             // Register event handlers
             _hubConnection.On<NewModelsDiscoveredNotification>("NewModelsDiscovered", HandleNewModelsDiscovered);
@@ -91,14 +95,15 @@
             _hubConnection.On<ModelPricingUpdatedNotification>("ModelPricingUpdated", HandlePricingUpdated);
             _hubConnection.On<ModelDeprecatedNotification>("ModelDeprecated", HandleModelDeprecated);
             
-            await _hubConnection.StartAsync();
-            
             // Subscribe to specific provider or all
             if (!string.IsNullOrEmpty(Provider))
             {
                 await _hubConnection.SendAsync("SubscribeToProvider", Provider);
                 Logger.LogInformation($"Subscribed to model discovery for provider: {Provider}");
             }
+            
+            // Listen for connection state changes
+            SignalRManager.ConnectionStateChanged += OnConnectionStateChanged;
         }
         catch (Exception ex)
         {
@@ -214,11 +219,26 @@
         _ => "fas fa-info-circle"
     };
     
+    private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
+    {
+        // Handle connection state changes if needed
+        if (e.CurrentState == ConnectionState.Disconnected && !string.IsNullOrEmpty(e.Error))
+        {
+            Logger.LogWarning("Model discovery hub disconnected unexpectedly: {Error}", e.Error);
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+    
     public async ValueTask DisposeAsync()
     {
+        // Unsubscribe from events
+        SignalRManager.ConnectionStateChanged -= OnConnectionStateChanged;
+        
+        // Disconnect from hub
         if (_hubConnection != null)
         {
-            await _hubConnection.DisposeAsync();
+            await SignalRManager.DisconnectFromHubAsync("model-discovery");
         }
     }
     

@@ -229,9 +229,9 @@ builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchWebhook
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
 
 // Register Spend Notification Service
-builder.Services.AddSingleton<ConduitLLM.Http.Services.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotificationService>();
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotificationService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotificationService>(sp => 
-    (ConduitLLM.Http.Services.SpendNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.ISpendNotificationService>());
+    (ConduitLLM.Http.Services.SpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>());
 
 // Register Webhook Delivery Notification Service
 builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
@@ -547,7 +547,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
     
     // Add spend notification consumer
-    x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendNotificationHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdatedHandler>();
     
     // Add model capabilities consumer
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCapabilitiesDiscoveredHandler>();
@@ -950,6 +950,23 @@ builder.Services.AddAuthorization(options =>
     
     // Allow endpoints to opt out of authentication with [AllowAnonymous]
     options.FallbackPolicy = null;
+    
+    // Add policy for SignalR hubs requiring virtual key authentication
+    options.AddPolicy("RequireVirtualKey", policy =>
+    {
+        policy.AuthenticationSchemes.Add("VirtualKey");
+        policy.RequireAuthenticatedUser();
+        policy.RequireClaim("VirtualKeyId");
+    });
+    
+    // Add policy for SignalR hubs requiring admin privileges
+    options.AddPolicy("RequireAdminVirtualKey", policy =>
+    {
+        policy.AuthenticationSchemes.Add("VirtualKey");
+        policy.RequireAuthenticatedUser();
+        policy.RequireClaim("VirtualKeyId");
+        policy.RequireClaim("IsAdmin", "true");
+    });
 });
 
 // Add Controller support
@@ -972,6 +989,12 @@ builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
 // Register SignalR metrics filter
 builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
 
+// Register SignalR error handling filter
+builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRErrorHandlingFilter>();
+
+// Register SignalR authentication service
+builder.Services.AddScoped<ConduitLLM.Http.Authentication.ISignalRAuthenticationService, ConduitLLM.Http.Authentication.SignalRAuthenticationService>();
+
 // Add SignalR for real-time navigation state updates
 var signalRBuilder = builder.Services.AddSignalR(options =>
 {
@@ -980,6 +1003,12 @@ var signalRBuilder = builder.Services.AddSignalR(options =>
     options.KeepAliveInterval = TimeSpan.FromSeconds(30);
     options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
     options.StreamBufferCapacity = 10;
+    
+    // Add global filters
+    options.AddFilter<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
+    options.AddFilter<ConduitLLM.Http.Filters.SignalRErrorHandlingFilter>();
+    options.AddFilter<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
+    options.AddFilter<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
 });
 
 // Configure SignalR Redis backplane for horizontal scaling

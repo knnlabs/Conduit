@@ -148,4 +148,27 @@ public class ModelCost
     /// </remarks>
     [Column(TypeName = "decimal(18, 4)")]
     public decimal? AudioOutputCostPerMinute { get; set; }
+
+    /// <summary>
+    /// Gets or sets the base cost per second for video generation, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the base cost in USD for generating each second of video.
+    /// The actual cost may be adjusted based on resolution using VideoResolutionMultipliers.
+    /// Nullable because not all models support video generation.
+    /// Stored with moderate precision (decimal 18,4) for video generation costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? VideoCostPerSecond { get; set; }
+
+    /// <summary>
+    /// Gets or sets the resolution-based cost multipliers for video generation.
+    /// </summary>
+    /// <remarks>
+    /// JSON object containing resolution-to-multiplier mappings.
+    /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
+    /// The base VideoCostPerSecond is multiplied by these values based on the requested resolution.
+    /// Stored as JSON text in the database.
+    /// </remarks>
+    public string? VideoResolutionMultipliers { get; set; }
 }

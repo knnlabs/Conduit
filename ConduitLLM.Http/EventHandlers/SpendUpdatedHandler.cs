@@ -11,16 +11,16 @@ namespace ConduitLLM.Http.EventHandlers
     /// <summary>
     /// Handles SpendUpdated events and sends real-time notifications through SignalR.
     /// </summary>
-    public class SpendNotificationHandler : IConsumer<SpendUpdated>
+    public class SpendUpdatedHandler : IConsumer<SpendUpdated>
     {
-        private readonly ConduitLLM.Http.Services.ISpendNotificationService _notificationService;
+        private readonly ISpendNotificationService _notificationService;
         private readonly IVirtualKeyService _virtualKeyService;
-        private readonly ILogger<SpendNotificationHandler> _logger;
+        private readonly ILogger<SpendUpdatedHandler> _logger;
 
-        public SpendNotificationHandler(
-            ConduitLLM.Http.Services.ISpendNotificationService notificationService,
+        public SpendUpdatedHandler(
+            ISpendNotificationService notificationService,
             IVirtualKeyService virtualKeyService,
-            ILogger<SpendNotificationHandler> logger)
+            ILogger<SpendUpdatedHandler> logger)
         {
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
@@ -40,7 +40,7 @@ namespace ConduitLLM.Http.EventHandlers
                     message.NewTotalSpend);
 
                 // Get virtual key details for budget information
-                var virtualKey = await _virtualKeyService.GetByIdAsync(message.KeyId);
+                var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(message.KeyId);
                 if (virtualKey == null)
                 {
                     _logger.LogWarning("Virtual key {KeyId} not found for spend notification", message.KeyId);

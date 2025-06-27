@@ -37,25 +37,45 @@ namespace ConduitLLM.Http.Hubs
         {
             var virtualKeyId = RequireVirtualKeyId();
             
-            // Verify task ownership
-            var taskStatus = await _taskService.GetTaskStatusAsync(taskId);
-            if (taskStatus == null)
+            // Validate task ID format
+            if (string.IsNullOrWhiteSpace(taskId))
             {
-                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to non-existent task {TaskId}", 
-                    virtualKeyId, taskId);
-                throw new HubException("Task not found");
+                throw new HubException("Invalid task ID");
             }
             
-            // Extract virtual key ID from task metadata
-            if (!VerifyTaskOwnership(taskStatus, virtualKeyId))
+            try
             {
-                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to task {TaskId} owned by another key", 
-                    virtualKeyId, taskId);
-                throw new HubException("Unauthorized access to task");
+                // Verify task ownership with error boundary
+                var taskStatus = await _taskService.GetTaskStatusAsync(taskId);
+                if (taskStatus == null)
+                {
+                    Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to non-existent task {TaskId}", 
+                        virtualKeyId, taskId);
+                    throw new HubException("Task not found");
+                }
+                
+                // Extract virtual key ID from task metadata
+                if (!VerifyTaskOwnership(taskStatus, virtualKeyId))
+                {
+                    Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to task {TaskId} owned by another key", 
+                        virtualKeyId, taskId);
+                    throw new HubException("Unauthorized access to task");
+                }
+                
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"task-{taskId}");
+                Logger.LogDebug("Virtual Key {KeyId} subscribed to task {TaskId}", virtualKeyId, taskId);
             }
-            
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"task-{taskId}");
-            Logger.LogDebug("Virtual Key {KeyId} subscribed to task {TaskId}", virtualKeyId, taskId);
+            catch (HubException)
+            {
+                // Re-throw HubExceptions as they're meant for the client
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error subscribing Virtual Key {KeyId} to task {TaskId}", 
+                    virtualKeyId, taskId);
+                throw new HubException("Failed to subscribe to task updates. Please try again.");
+            }
         }
 
         /// <summary>
@@ -97,7 +117,7 @@ namespace ConduitLLM.Http.Hubs
             if (metadata is IDictionary<string, object> metadataDict && 
                 metadataDict.TryGetValue("virtualKeyId", out var virtualKeyIdObj))
             {
-                var virtualKeyId = ConvertToInt(virtualKeyIdObj);
+                var virtualKeyId = TaskHub.ConvertToInt(virtualKeyIdObj);
                 if (virtualKeyId.HasValue)
                 {
                     // Notify specific task subscribers
@@ -155,13 +175,24 @@ namespace ConduitLLM.Http.Hubs
             {
                 if (metadata.TryGetValue("virtualKeyId", out var taskVirtualKeyIdObj))
                 {
-                    var taskVirtualKeyId = ConvertToInt(taskVirtualKeyIdObj);
+                    var taskVirtualKeyId = TaskHub.ConvertToInt(taskVirtualKeyIdObj);
                     return taskVirtualKeyId.HasValue && taskVirtualKeyId.Value == virtualKeyId;
                 }
             }
             
             Logger.LogWarning("Task {TaskId} has invalid metadata format", taskStatus.TaskId);
             return false;
+        }
+        
+        private static int? ConvertToInt(object value)
+        {
+            return value switch
+            {
+                int intValue => intValue,
+                long longValue => (int)longValue,
+                string stringValue when int.TryParse(stringValue, out var parsedValue) => parsedValue,
+                _ => null
+            };
         }
     }
 }

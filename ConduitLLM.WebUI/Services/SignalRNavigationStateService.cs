@@ -16,6 +16,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly IConduitApiClient _conduitApiClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SignalRNavigationStateService> _logger;
+        private readonly SignalRConnectionManager _signalRConnectionManager;
         private readonly ConcurrentDictionary<string, NavigationItemState> _stateCache;
         private readonly SemaphoreSlim _refreshSemaphore;
         private HubConnection? _hubConnection;
@@ -40,12 +41,14 @@ namespace ConduitLLM.WebUI.Services
             IAdminApiClient adminApiClient,
             IConduitApiClient conduitApiClient,
             IConfiguration configuration,
-            ILogger<SignalRNavigationStateService> logger)
+            ILogger<SignalRNavigationStateService> logger,
+            SignalRConnectionManager signalRConnectionManager)
         {
             _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
             _conduitApiClient = conduitApiClient ?? throw new ArgumentNullException(nameof(conduitApiClient));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _signalRConnectionManager = signalRConnectionManager ?? throw new ArgumentNullException(nameof(signalRConnectionManager));
             _stateCache = new ConcurrentDictionary<string, NavigationItemState>();
             _refreshSemaphore = new SemaphoreSlim(1, 1);
             _lastRefresh = DateTime.MinValue;
@@ -60,34 +63,25 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var coreApiUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
-                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? "http://api:8080" : "http://localhost:5000");
-                var hubUrl = $"{coreApiUrl.TrimEnd('/')}/hubs/navigation-state";
-                
-                _logger.LogInformation("Initializing SignalR connection to {HubUrl}", hubUrl);
+                _logger.LogInformation("Initializing SignalR connection for navigation state");
 
-                _hubConnection = new HubConnectionBuilder()
-                    .WithUrl(hubUrl)
-                    .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
-                    .ConfigureLogging(logging =>
-                    {
-                        if (_logger.IsEnabled(LogLevel.Debug))
-                        {
-                            logging.SetMinimumLevel(LogLevel.Debug);
-                        }
-                    })
-                    .Build();
+                // Use centralized connection manager - no authentication needed for navigation state
+                var connectionInfo = await _signalRConnectionManager.ConnectToHubAsync(
+                    "navigation-state",
+                    null, // No authentication required for navigation state
+                    new HubConnectionOptions 
+                    { 
+                        EnableAutoReconnect = true,
+                        LogLevel = _logger.IsEnabled(LogLevel.Debug) ? LogLevel.Debug : LogLevel.Information
+                    });
+
+                _hubConnection = connectionInfo.Connection;
 
                 // Register event handlers
                 RegisterSignalRHandlers();
 
-                // Set up connection event handlers
-                _hubConnection.Closed += OnConnectionClosed;
-                _hubConnection.Reconnecting += OnReconnecting;
-                _hubConnection.Reconnected += OnReconnected;
-
-                // Start the connection
-                await _hubConnection.StartAsync();
+                // Set up connection event handlers through SignalRConnectionManager
+                _signalRConnectionManager.ConnectionStateChanged += OnConnectionStateChanged;
                 
                 _logger.LogInformation("SignalR connection established successfully");
                 _reconnectAttempts = 0;
@@ -207,6 +201,32 @@ namespace ConduitLLM.WebUI.Services
             
             // Refresh all states after reconnection
             await RefreshStatesAsync();
+        }
+
+        private void OnConnectionStateChanged(object? sender, ConnectionStateChangedEventArgs e)
+        {
+            _logger.LogInformation("SignalR connection state changed to: {State}", e.CurrentState);
+            
+            switch (e.CurrentState)
+            {
+                case ConnectionState.Disconnected:
+                    if (!string.IsNullOrEmpty(e.Error))
+                    {
+                        _logger.LogError("SignalR connection lost: {Error}", e.Error);
+                        _ = OnConnectionClosed(new Exception(e.Error));
+                    }
+                    break;
+                    
+                case ConnectionState.Connected:
+                    _reconnectAttempts = 0;
+                    DisablePollingFallback();
+                    _ = RefreshStatesAsync();
+                    break;
+                    
+                case ConnectionState.Reconnecting:
+                    _logger.LogInformation("SignalR connection reconnecting...");
+                    break;
+            }
         }
 
         private async Task AttemptReconnectAsync()
@@ -777,9 +797,12 @@ namespace ConduitLLM.WebUI.Services
                 _fallbackPollingTimer?.Dispose();
                 _refreshSemaphore?.Dispose();
                 
+                // Unsubscribe from events
+                _signalRConnectionManager.ConnectionStateChanged -= OnConnectionStateChanged;
+                
                 if (_hubConnection != null)
                 {
-                    _hubConnection.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+                    _signalRConnectionManager.DisconnectFromHubAsync("navigation-state").AsTask().Wait(TimeSpan.FromSeconds(5));
                 }
             }
         }
@@ -793,9 +816,12 @@ namespace ConduitLLM.WebUI.Services
                 _fallbackPollingTimer?.Dispose();
                 _refreshSemaphore?.Dispose();
                 
+                // Unsubscribe from events
+                _signalRConnectionManager.ConnectionStateChanged -= OnConnectionStateChanged;
+                
                 if (_hubConnection != null)
                 {
-                    await _hubConnection.DisposeAsync();
+                    await _signalRConnectionManager.DisconnectFromHubAsync("navigation-state");
                 }
             }
         }
