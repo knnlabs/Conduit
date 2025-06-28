@@ -112,6 +112,41 @@ export interface ProviderHealthSummaryDto {
   providers: ProviderHealthStatusDto[];
 }
 
+export interface CreateProviderHealthConfigurationDto {
+  providerName: string;
+  monitoringEnabled?: boolean;
+  checkIntervalMinutes?: number;
+  timeoutSeconds?: number;
+  consecutiveFailuresThreshold?: number;
+  notificationsEnabled?: boolean;
+  customEndpointUrl?: string;
+}
+
+export interface ProviderHealthStatisticsDto {
+  totalProviders: number;
+  onlineProviders: number;
+  offlineProviders: number;
+  unknownProviders: number;
+  averageResponseTimeMs: number;
+  totalErrors: number;
+  errorCategoryDistribution: Record<string, number>;
+  timePeriodHours: number;
+}
+
+export enum StatusType {
+  Online = 0,
+  Offline = 1,
+  Unknown = 2
+}
+
+export interface ProviderStatus {
+  status: StatusType;
+  statusMessage?: string;
+  responseTimeMs: number;
+  lastCheckedUtc: Date;
+  errorCategory?: string;
+}
+
 export interface ProviderFilters extends FilterOptions {
   isEnabled?: boolean;
   providerName?: string;

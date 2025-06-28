@@ -14,6 +14,7 @@ export * from './models/analytics';
 export * from './models/system';
 export * from './models/audioConfiguration';
 export * from './models/metrics';
+export * from './models/databaseBackup';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -46,6 +47,9 @@ export { SystemService } from './services/SystemService';
 export { DiscoveryService } from './services/DiscoveryService';
 export { AudioConfigurationService } from './services/AudioConfigurationService';
 export { MetricsService } from './services/MetricsService';
+export { ProviderHealthService } from './services/ProviderHealthService';
+export { NotificationsService } from './services/NotificationsService';
+export { DatabaseBackupService } from './services/DatabaseBackupService';
 
 // Utilities
 export * from './utils/errors';

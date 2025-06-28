@@ -88,23 +88,80 @@ export interface BackupRestoreResult {
 
 export interface NotificationDto {
   id: number;
-  type: 'info' | 'warning' | 'error' | 'success';
-  title: string;
+  virtualKeyId?: number;
+  virtualKeyName?: string;
+  type: NotificationType;
+  severity: NotificationSeverity;
   message: string;
-  timestamp: string;
   isRead: boolean;
-  metadata?: Record<string, any>;
-  actionUrl?: string;
-  expiresAt?: string;
+  createdAt: Date;
+}
+
+export enum NotificationType {
+  BudgetWarning = 0,
+  ExpirationWarning = 1,
+  System = 2
+}
+
+export enum NotificationSeverity {
+  Info = 0,
+  Warning = 1,
+  Error = 2
 }
 
 export interface CreateNotificationDto {
-  type: 'info' | 'warning' | 'error' | 'success';
-  title: string;
+  virtualKeyId?: number;
+  type: NotificationType;
+  severity: NotificationSeverity;
   message: string;
-  metadata?: Record<string, any>;
-  actionUrl?: string;
-  expiresAt?: string;
+}
+
+export interface UpdateNotificationDto {
+  message?: string;
+  isRead?: boolean;
+}
+
+export interface NotificationFilters {
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  type?: NotificationType;
+  severity?: NotificationSeverity;
+  isRead?: boolean;
+  virtualKeyId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface NotificationSummary {
+  totalNotifications: number;
+  unreadNotifications: number;
+  readNotifications: number;
+  notificationsByType: Record<NotificationType, number>;
+  notificationsBySeverity: Record<NotificationSeverity, number>;
+  mostRecentNotification?: NotificationDto;
+  oldestUnreadNotification?: NotificationDto;
+}
+
+export interface NotificationBulkResponse {
+  successCount: number;
+  totalCount: number;
+  failedIds?: number[];
+  errors?: string[];
+}
+
+export interface NotificationStatistics {
+  total: number;
+  unread: number;
+  read: number;
+  byType: Record<string, number>;
+  bySeverity: Record<string, number>;
+  recent: {
+    lastHour: number;
+    last24Hours: number;
+    lastWeek: number;
+  };
 }
 
 export interface MaintenanceTaskDto {

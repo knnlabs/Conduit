@@ -75,6 +75,21 @@ public class ConduitAdminClient : IDisposable
     public AudioConfigurationService AudioConfiguration { get; }
 
     /// <summary>
+    /// Gets the provider health service for monitoring provider status and managing health configurations.
+    /// </summary>
+    public ProviderHealthService ProviderHealth { get; }
+
+    /// <summary>
+    /// Gets the notifications service for managing system notifications, alerts, and messaging.
+    /// </summary>
+    public NotificationsService Notifications { get; }
+
+    /// <summary>
+    /// Gets the database backup service for managing database backups, restoration, and monitoring.
+    /// </summary>
+    public DatabaseBackupService DatabaseBackup { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitAdminClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -167,6 +182,24 @@ public class ConduitAdminClient : IDisposable
             _httpClient, 
             _configuration, 
             loggerFactory?.CreateLogger<AudioConfigurationService>(), 
+            _cache);
+
+        ProviderHealth = new ProviderHealthService(
+            _httpClient, 
+            _configuration, 
+            loggerFactory?.CreateLogger<ProviderHealthService>(), 
+            _cache);
+
+        Notifications = new NotificationsService(
+            _httpClient, 
+            _configuration, 
+            loggerFactory?.CreateLogger<NotificationsService>(), 
+            _cache);
+
+        DatabaseBackup = new DatabaseBackupService(
+            _httpClient, 
+            _configuration, 
+            loggerFactory?.CreateLogger<DatabaseBackupService>(), 
             _cache);
     }
 
@@ -340,6 +373,7 @@ public class ConduitAdminClient : IDisposable
             System?.Dispose();
             ProviderModels?.Dispose();
             AudioConfiguration?.Dispose();
+            // ProviderHealth doesn't need disposal as it uses the shared BaseApiClient
             _httpClient?.Dispose();
             _disposed = true;
         }

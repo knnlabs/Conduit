@@ -11,6 +11,9 @@ import { DiscoveryService } from '../services/DiscoveryService';
 import { ProviderModelsService } from '../services/ProviderModelsService';
 import { AudioConfigurationService } from '../services/AudioConfigurationService';
 import { MetricsService } from '../services/MetricsService';
+import { ProviderHealthService } from '../services/ProviderHealthService';
+import { NotificationsService } from '../services/NotificationsService';
+import { DatabaseBackupService } from '../services/DatabaseBackupService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -48,6 +51,9 @@ export class ConduitAdminClient {
   public readonly providerModels: ProviderModelsService;
   public readonly audioConfiguration: AudioConfigurationService;
   public readonly metrics: MetricsService;
+  public readonly providerHealth: ProviderHealthService;
+  public readonly notifications: NotificationsService;
+  public readonly databaseBackup: DatabaseBackupService;
 
   private readonly config: ConduitConfig;
 
@@ -82,6 +88,9 @@ export class ConduitAdminClient {
     this.providerModels = new ProviderModelsService(baseConfig);
     this.audioConfiguration = new AudioConfigurationService(baseConfig);
     this.metrics = new MetricsService(baseConfig);
+    this.providerHealth = new ProviderHealthService(baseConfig);
+    this.notifications = new NotificationsService(baseConfig);
+    this.databaseBackup = new DatabaseBackupService(baseConfig);
   }
 
   static fromEnvironment(env?: {

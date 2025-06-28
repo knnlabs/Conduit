@@ -47,6 +47,21 @@ public class ConduitCoreClient : BaseClient
     public BatchOperationsService BatchOperations { get; }
 
     /// <summary>
+    /// Gets the SignalR service for real-time notifications and task progress tracking.
+    /// </summary>
+    public SignalRService SignalR { get; }
+
+    /// <summary>
+    /// Gets the metrics service for accessing system performance and monitoring data.
+    /// </summary>
+    public MetricsService Metrics { get; }
+
+    /// <summary>
+    /// Gets the health service for system health checks and monitoring.
+    /// </summary>
+    public HealthService Health { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -70,6 +85,9 @@ public class ConduitCoreClient : BaseClient
         ILogger<TasksService>? tasksLogger = null;
         ILogger<AudioService>? audioLogger = null;
         ILogger<BatchOperationsService>? batchOperationsLogger = null;
+        ILogger<SignalRService>? signalRLogger = null;
+        ILogger<MetricsService>? metricsLogger = null;
+        ILogger<HealthService>? healthLogger = null;
         
         if (logger != null)
         {
@@ -81,6 +99,9 @@ public class ConduitCoreClient : BaseClient
             tasksLogger = loggerFactory.CreateLogger<TasksService>();
             audioLogger = loggerFactory.CreateLogger<AudioService>();
             batchOperationsLogger = loggerFactory.CreateLogger<BatchOperationsService>();
+            signalRLogger = loggerFactory.CreateLogger<SignalRService>();
+            metricsLogger = loggerFactory.CreateLogger<MetricsService>();
+            healthLogger = loggerFactory.CreateLogger<HealthService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -90,6 +111,9 @@ public class ConduitCoreClient : BaseClient
         Tasks = new TasksService(this, tasksLogger);
         Audio = new AudioService(this, audioLogger);
         BatchOperations = new BatchOperationsService(this);
+        SignalR = new SignalRService(_configuration, signalRLogger);
+        Metrics = new MetricsService(this, metricsLogger);
+        Health = new HealthService(this, healthLogger);
     }
 
     /// <summary>

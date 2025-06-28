@@ -589,3 +589,148 @@ public class TimeRange
     /// </summary>
     public DateTime End { get; set; }
 }
+
+/// <summary>
+/// Model for creating a new provider health configuration.
+/// </summary>
+public class CreateProviderHealthConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the name of the provider to monitor.
+    /// </summary>
+    [Required]
+    [MaxLength(100)]
+    public string ProviderName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether monitoring is enabled. Default is true.
+    /// </summary>
+    public bool MonitoringEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the interval between health checks in minutes. Default is 5 minutes.
+    /// </summary>
+    [RangeAttribute(1, 1440)]
+    public int CheckIntervalMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets the timeout for health checks in seconds. Default is 10 seconds.
+    /// </summary>
+    [RangeAttribute(1, 300)]
+    public int TimeoutSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Gets or sets the number of consecutive failures before marking as offline. Default is 3.
+    /// </summary>
+    [RangeAttribute(1, 10)]
+    public int ConsecutiveFailuresThreshold { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets whether notifications are enabled. Default is true.
+    /// </summary>
+    public bool NotificationsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a custom endpoint URL for health checks.
+    /// </summary>
+    [MaxLength(500)]
+    public string? CustomEndpointUrl { get; set; }
+}
+
+/// <summary>
+/// Overall provider health statistics.
+/// </summary>
+public class ProviderHealthStatisticsDto
+{
+    /// <summary>
+    /// Gets or sets the total number of providers being monitored.
+    /// </summary>
+    public int TotalProviders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of providers currently online.
+    /// </summary>
+    public int OnlineProviders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of providers currently offline.
+    /// </summary>
+    public int OfflineProviders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of providers with unknown status.
+    /// </summary>
+    public int UnknownProviders { get; set; }
+
+    /// <summary>
+    /// Gets or sets the average response time across all providers.
+    /// </summary>
+    public double AverageResponseTimeMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total number of errors across all providers.
+    /// </summary>
+    public int TotalErrors { get; set; }
+
+    /// <summary>
+    /// Gets or sets the distribution of error categories across all providers.
+    /// </summary>
+    public Dictionary<string, int> ErrorCategoryDistribution { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the time period in hours that these statistics cover.
+    /// </summary>
+    public int TimePeriodHours { get; set; }
+}
+
+/// <summary>
+/// Simplified provider status information.
+/// </summary>
+public class ProviderStatus
+{
+    /// <summary>
+    /// Gets or sets the health status of the provider.
+    /// </summary>
+    public StatusType Status { get; set; }
+
+    /// <summary>
+    /// Gets or sets the status message.
+    /// </summary>
+    public string? StatusMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the response time in milliseconds.
+    /// </summary>
+    public double ResponseTimeMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the timestamp of the last health check.
+    /// </summary>
+    public DateTime LastCheckedUtc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error category if the provider is unhealthy.
+    /// </summary>
+    public string? ErrorCategory { get; set; }
+}
+
+/// <summary>
+/// Provider health status types.
+/// </summary>
+public enum StatusType
+{
+    /// <summary>
+    /// Provider is online and healthy.
+    /// </summary>
+    Online = 0,
+
+    /// <summary>
+    /// Provider is offline or unhealthy.
+    /// </summary>
+    Offline = 1,
+
+    /// <summary>
+    /// Provider status is unknown.
+    /// </summary>
+    Unknown = 2
+}

@@ -49,6 +49,12 @@ public class ConduitCoreClientConfiguration
     public string? OrganizationId { get; set; }
 
     /// <summary>
+    /// Gets the virtual key for authentication. This is the same as ApiKey.
+    /// Used by SignalR service for hub authentication.
+    /// </summary>
+    public string VirtualKey => ApiKey;
+
+    /// <summary>
     /// Creates a configuration instance from an API key.
     /// </summary>
     /// <param name="apiKey">The API key for authentication.</param>

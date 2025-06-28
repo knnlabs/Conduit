@@ -7,6 +7,8 @@ import { VideosService } from '../services/VideosService';
 import { TasksService } from '../services/TasksService';
 import { AudioService } from '../services/AudioService';
 import { BatchOperationsService } from '../services/BatchOperationsService';
+import { HealthService } from '../services/HealthService';
+import { MetricsService } from '../services/MetricsService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -18,6 +20,8 @@ export class ConduitCoreClient extends BaseClient {
   public readonly models: ModelsService;
   public readonly tasks: TasksService;
   public readonly batchOperations: BatchOperationsService;
+  public readonly health: HealthService;
+  public readonly metrics: MetricsService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -32,6 +36,8 @@ export class ConduitCoreClient extends BaseClient {
     this.models = new ModelsService(this);
     this.tasks = new TasksService(this);
     this.batchOperations = new BatchOperationsService(this);
+    this.health = new HealthService(this);
+    this.metrics = new MetricsService(this);
   }
 
   static fromApiKey(apiKey: string, baseURL?: string): ConduitCoreClient {

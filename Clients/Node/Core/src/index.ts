@@ -144,5 +144,41 @@ export {
 
 export { BatchOperationsService } from './services/BatchOperationsService';
 
+export type {
+  HealthCheckResponse,
+  HealthCheckItem,
+  HealthStatus,
+  HealthCheckOptions,
+  SimpleHealthStatus,
+  HealthSummary,
+  WaitForHealthOptions,
+} from './models/health';
+
+export { HealthService } from './services/HealthService';
+
+export type {
+  MetricsSnapshot,
+  HttpMetrics,
+  ResponseTimeMetrics,
+  BusinessMetrics,
+  CostMetrics,
+  ModelUsageStats,
+  VirtualKeyStats,
+  SystemMetrics,
+  InfrastructureMetrics,
+  DatabaseMetrics,
+  RedisMetrics,
+  SignalRMetrics,
+  RabbitMQMetrics,
+  ProviderHealthStatus,
+  HistoricalMetricsRequest,
+  HistoricalMetricsResponse,
+  MetricSeries,
+  MetricDataPoint,
+  KPISummary,
+} from './models/metrics';
+
+export { MetricsService } from './services/MetricsService';
+
 export * from './utils/capabilities';
 
