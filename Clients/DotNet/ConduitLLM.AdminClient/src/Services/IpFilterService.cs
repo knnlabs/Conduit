@@ -1,4 +1,5 @@
 using ConduitLLM.AdminClient.Client;
+using ConduitLLM.AdminClient.Constants;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Utils;
 using ConduitLLM.AdminClient.Exceptions;
@@ -733,8 +734,8 @@ public class IpFilterService : BaseApiClient
             isEnabled = filters.IsEnabled,
             nameContains = filters.NameContains,
             cidrContains = filters.CidrContains,
-            lastMatchedAfter = filters.LastMatchedAfter?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            lastMatchedBefore = filters.LastMatchedBefore?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            lastMatchedAfter = filters.LastMatchedAfter?.ToString(DateFormats.ApiDateTime),
+            lastMatchedBefore = filters.LastMatchedBefore?.ToString(DateFormats.ApiDateTime),
             minMatchCount = filters.MinMatchCount
         };
     }

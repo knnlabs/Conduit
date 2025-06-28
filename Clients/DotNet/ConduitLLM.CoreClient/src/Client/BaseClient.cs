@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.CoreClient.Constants;
 
 namespace ConduitLLM.CoreClient.Client;
 
@@ -226,7 +227,7 @@ public abstract class BaseClient : IDisposable
         // Add organization header if specified
         if (!string.IsNullOrEmpty(_configuration.OrganizationId))
         {
-            _httpClient.DefaultRequestHeaders.Add("OpenAI-Organization", _configuration.OrganizationId);
+            _httpClient.DefaultRequestHeaders.Add(HttpHeaders.OpenAIOrganization, _configuration.OrganizationId);
         }
         
         // Add default headers
@@ -236,7 +237,7 @@ public abstract class BaseClient : IDisposable
         }
         
         // Add user agent
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM.CoreClient/1.0.0");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgents.CoreClient);
     }
 
     private string BuildUrl(string endpoint, object? parameters)

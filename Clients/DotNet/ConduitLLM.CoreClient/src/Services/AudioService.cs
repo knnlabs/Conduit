@@ -1,4 +1,5 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
 using ConduitLLM.CoreClient.Exceptions;
@@ -15,9 +16,9 @@ public class AudioService
     private readonly BaseClient _client;
     private readonly ILogger<AudioService>? _logger;
     
-    private const string TranscriptionsEndpoint = "/v1/audio/transcriptions";
-    private const string TranslationsEndpoint = "/v1/audio/translations";
-    private const string SpeechEndpoint = "/v1/audio/speech";
+    private const string TranscriptionsEndpoint = ApiEndpoints.V1.Audio.Transcriptions;
+    private const string TranslationsEndpoint = ApiEndpoints.V1.Audio.Translations;
+    private const string SpeechEndpoint = ApiEndpoints.V1.Audio.Speech;
     private const string HybridProcessEndpoint = "/v1/audio/hybrid/process";
 
     // Supported audio file extensions and their MIME types

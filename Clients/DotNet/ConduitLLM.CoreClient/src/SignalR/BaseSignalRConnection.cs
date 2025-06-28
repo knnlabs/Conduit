@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using ConduitLLM.CoreClient.Constants;
 
 namespace ConduitLLM.CoreClient.SignalR;
 
@@ -79,17 +80,16 @@ public abstract class BaseSignalRConnection : IAsyncDisposable
                 .WithUrl(hubUrl, options =>
                 {
                     // Add authentication via query parameter
-                    options.Headers.Add("Authorization", $"Bearer {_virtualKey}");
+                    options.Headers.Add(HttpHeaders.Authorization, $"Bearer {_virtualKey}");
                     
                     // Configure transport options
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets 
-                                       | Microsoft.AspNetCore.Http.Connections.HttpTransportType.ServerSentEvents;
+                    options.Transports = SignalRTransports.DefaultTransports;
                     
                     // Configure timeouts
                     options.CloseTimeout = TimeSpan.FromSeconds(30);
                     
                     // Add user agent
-                    options.Headers.Add("User-Agent", "ConduitLLM.CoreClient/1.0.0");
+                    options.Headers.Add(HttpHeaders.UserAgent, UserAgents.CoreClient);
                 })
                 .WithAutomaticReconnect(new[] { 
                     TimeSpan.Zero, 

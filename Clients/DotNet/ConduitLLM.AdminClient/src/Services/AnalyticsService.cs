@@ -1,4 +1,5 @@
 using ConduitLLM.AdminClient.Client;
+using ConduitLLM.AdminClient.Constants;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Utils;
 using ConduitLLM.AdminClient.Exceptions;
@@ -58,8 +59,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime)
             };
 
             var endpoint = $"{CostEndpoint}/summary";
@@ -100,8 +101,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime),
                 groupBy = groupBy.ToString().ToLower()
             };
 
@@ -189,8 +190,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime)
             };
 
             var endpoint = $"{UsageEndpoint}/metrics";
@@ -229,8 +230,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime)
             };
 
             var endpoint = $"{UsageEndpoint}/by-model";
@@ -269,8 +270,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime)
             };
 
             var endpoint = $"{UsageEndpoint}/by-key";
@@ -394,8 +395,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime),
                 severity = severity?.ToString().ToLower(),
                 resolved
             };
@@ -464,8 +465,8 @@ public class AnalyticsService : BaseApiClient
 
             var parameters = new
             {
-                startDate = filters.StartDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = filters.EndDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                startDate = filters.StartDate.ToString(DateFormats.ApiDateTime),
+                endDate = filters.EndDate.ToString(DateFormats.ApiDateTime),
                 virtualKeyIds = filters.VirtualKeyIds != null ? string.Join(",", filters.VirtualKeyIds) : null,
                 models = filters.Models != null ? string.Join(",", filters.Models) : null,
                 providers = filters.Providers != null ? string.Join(",", filters.Providers) : null,
@@ -519,8 +520,8 @@ public class AnalyticsService : BaseApiClient
             search = filters.Search,
             sortBy = filters.SortBy?.Field,
             sortDirection = filters.SortBy?.Direction.ToString().ToLower(),
-            startDate = filters.StartDate?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            endDate = filters.EndDate?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            startDate = filters.StartDate?.ToString(DateFormats.ApiDateTime),
+            endDate = filters.EndDate?.ToString(DateFormats.ApiDateTime),
             virtualKeyId = filters.VirtualKeyId,
             model = filters.Model,
             provider = filters.Provider,

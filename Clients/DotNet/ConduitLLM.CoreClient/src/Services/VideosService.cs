@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Exceptions;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
@@ -16,8 +17,8 @@ namespace ConduitLLM.CoreClient.Services
     {
         private readonly BaseClient _client;
         private readonly ILogger<VideosService>? _logger;
-        private const string GenerationsEndpoint = "/v1/videos/generations";
-        private const string AsyncGenerationsEndpoint = "/v1/videos/generations/async";
+        private const string GenerationsEndpoint = ApiEndpoints.V1.Videos.Generations;
+        private const string AsyncGenerationsEndpoint = ApiEndpoints.V1.Videos.AsyncGenerations;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="VideosService"/> class.

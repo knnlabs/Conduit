@@ -1,4 +1,6 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
+using ConduitLLM.CoreClient.Extensions;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
 using ConduitLLM.CoreClient.Exceptions;
@@ -14,10 +16,10 @@ public class ImagesService
 {
     private readonly BaseClient _client;
     private readonly ILogger<ImagesService>? _logger;
-    private const string GenerationsEndpoint = "/v1/images/generations";
-    private const string AsyncGenerationsEndpoint = "/v1/images/generations/async";
-    private const string EditsEndpoint = "/v1/images/edits";
-    private const string VariationsEndpoint = "/v1/images/variations";
+    private const string GenerationsEndpoint = ApiEndpoints.V1.Images.Generations;
+    private const string AsyncGenerationsEndpoint = ApiEndpoints.V1.Images.AsyncGenerations;
+    private const string EditsEndpoint = ApiEndpoints.V1.Images.Edits;
+    private const string VariationsEndpoint = ApiEndpoints.V1.Images.Variations;
 
     /// <summary>
     /// Initializes a new instance of the ImagesService class.
@@ -467,27 +469,14 @@ public class ImagesService
             prompt = request.Prompt,
             model = request.Model,
             n = request.N,
-            quality = request.Quality?.ToString().ToLower(),
-            response_format = request.ResponseFormat?.ToString().ToLower(),
-            size = ConvertSizeToString(request.Size),
-            style = request.Style?.ToString().ToLower(),
+            quality = request.Quality?.ToApiString(),
+            response_format = request.ResponseFormat?.ToApiString(),
+            size = request.Size?.ToApiString(),
+            style = request.Style?.ToApiString(),
             user = request.User
         };
     }
 
-    private static string? ConvertSizeToString(ImageSize? size)
-    {
-        return size switch
-        {
-            ImageSize.Size256x256 => "256x256",
-            ImageSize.Size512x512 => "512x512",
-            ImageSize.Size1024x1024 => "1024x1024",
-            ImageSize.Size1792x1024 => "1792x1024",
-            ImageSize.Size1024x1792 => "1024x1792",
-            null => null,
-            _ => throw new ArgumentOutOfRangeException(nameof(size), size, "Unsupported image size")
-        };
-    }
 
     private static void AddOptionalParameters(MultipartFormDataContent content, ImageEditRequest request)
     {
@@ -498,10 +487,10 @@ public class ImagesService
             content.Add(new StringContent(request.N.Value.ToString()), "n");
 
         if (request.ResponseFormat.HasValue)
-            content.Add(new StringContent(request.ResponseFormat.Value.ToString().ToLower()), "response_format");
+            content.Add(new StringContent(request.ResponseFormat.Value.ToApiString()), "response_format");
 
         if (request.Size.HasValue)
-            content.Add(new StringContent(ConvertSizeToString(request.Size)!), "size");
+            content.Add(new StringContent(request.Size.Value.ToApiString()), "size");
 
         if (!string.IsNullOrEmpty(request.User))
             content.Add(new StringContent(request.User), "user");
@@ -516,10 +505,10 @@ public class ImagesService
             content.Add(new StringContent(request.N.Value.ToString()), "n");
 
         if (request.ResponseFormat.HasValue)
-            content.Add(new StringContent(request.ResponseFormat.Value.ToString().ToLower()), "response_format");
+            content.Add(new StringContent(request.ResponseFormat.Value.ToApiString()), "response_format");
 
         if (request.Size.HasValue)
-            content.Add(new StringContent(ConvertSizeToString(request.Size)!), "size");
+            content.Add(new StringContent(request.Size.Value.ToApiString()), "size");
 
         if (!string.IsNullOrEmpty(request.User))
             content.Add(new StringContent(request.User), "user");

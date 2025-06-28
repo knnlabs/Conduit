@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Models;
 
 namespace ConduitLLM.CoreClient.Services;
@@ -11,7 +12,7 @@ public class MetricsService
 {
     private readonly BaseClient _client;
     private readonly ILogger<MetricsService>? _logger;
-    private const string BaseEndpoint = "/metrics";
+    private const string BaseEndpoint = ApiEndpoints.Root.Metrics;
 
     /// <summary>
     /// Initializes a new instance of the MetricsService class.

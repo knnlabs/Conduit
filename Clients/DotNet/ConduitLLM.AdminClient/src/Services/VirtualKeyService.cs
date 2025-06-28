@@ -1,4 +1,5 @@
 using ConduitLLM.AdminClient.Client;
+using ConduitLLM.AdminClient.Constants;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Utils;
 using ConduitLLM.AdminClient.Exceptions;
@@ -12,7 +13,7 @@ namespace ConduitLLM.AdminClient.Services;
 /// </summary>
 public class VirtualKeyService : BaseApiClient
 {
-    private const string BaseEndpoint = "/virtualkeys";
+    private const string BaseEndpoint = ApiEndpoints.VirtualKeys.Base;
     private const int DefaultPageSize = 25;
     private static readonly TimeSpan DefaultCacheTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ShortCacheTimeout = TimeSpan.FromMinutes(1);
@@ -417,10 +418,10 @@ public class VirtualKeyService : BaseApiClient
             minBudget = filters.MinBudget,
             maxBudget = filters.MaxBudget,
             allowedModel = filters.AllowedModel,
-            createdAfter = filters.CreatedAfter?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            createdBefore = filters.CreatedBefore?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            lastUsedAfter = filters.LastUsedAfter?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            lastUsedBefore = filters.LastUsedBefore?.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            createdAfter = filters.CreatedAfter?.ToString(DateFormats.ApiDateTime),
+            createdBefore = filters.CreatedBefore?.ToString(DateFormats.ApiDateTime),
+            lastUsedAfter = filters.LastUsedAfter?.ToString(DateFormats.ApiDateTime),
+            lastUsedBefore = filters.LastUsedBefore?.ToString(DateFormats.ApiDateTime)
         };
     }
 

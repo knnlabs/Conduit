@@ -1,4 +1,5 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
 using ConduitLLM.CoreClient.Exceptions;
@@ -13,7 +14,7 @@ public class ModelsService
 {
     private readonly BaseClient _client;
     private readonly ILogger<ModelsService>? _logger;
-    private const string BaseEndpoint = "/v1/models";
+    private const string BaseEndpoint = ApiEndpoints.V1.Models.Base;
 
     /// <summary>
     /// Initializes a new instance of the ModelsService class.

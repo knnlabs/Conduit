@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Exceptions;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
@@ -16,7 +17,7 @@ namespace ConduitLLM.CoreClient.Services
     {
         private readonly BaseClient _client;
         private readonly ILogger<TasksService>? _logger;
-        private const string TasksEndpoint = "/v1/tasks";
+        private const string TasksEndpoint = ApiEndpoints.V1.Tasks.Base;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TasksService"/> class.

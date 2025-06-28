@@ -1,4 +1,5 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Utils;
 using ConduitLLM.CoreClient.Exceptions;
@@ -13,7 +14,7 @@ public class ChatService
 {
     private readonly BaseClient _client;
     private readonly ILogger<ChatService>? _logger;
-    private const string BaseEndpoint = "/v1/chat/completions";
+    private const string BaseEndpoint = ApiEndpoints.V1.Chat.Completions;
 
     /// <summary>
     /// Initializes a new instance of the ChatService class.
@@ -206,12 +207,10 @@ public class ChatService
             if (string.IsNullOrWhiteSpace(message.Role))
                 throw new ValidationException("Message role is required", "messages");
 
-            var validRoles = new[] { "system", "user", "assistant", "tool" };
-            if (!validRoles.Contains(message.Role.ToLower()))
-                throw new ValidationException($"Invalid message role: {message.Role}", "messages");
+            ChatRoles.ValidateRole(message.Role, "messages");
 
             // Tool messages must have tool_call_id
-            if (message.Role.ToLower() == "tool" && string.IsNullOrWhiteSpace(message.ToolCallId))
+            if (ChatRoles.RequiresToolCallId(message.Role) && string.IsNullOrWhiteSpace(message.ToolCallId))
                 throw new ValidationException("Tool messages must have tool_call_id", "messages");
         }
 

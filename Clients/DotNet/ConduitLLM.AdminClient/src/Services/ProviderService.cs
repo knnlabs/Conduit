@@ -1,4 +1,5 @@
 using ConduitLLM.AdminClient.Client;
+using ConduitLLM.AdminClient.Constants;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Utils;
 using ConduitLLM.AdminClient.Exceptions;
@@ -12,9 +13,9 @@ namespace ConduitLLM.AdminClient.Services;
 /// </summary>
 public class ProviderService : BaseApiClient
 {
-    private const string BaseEndpoint = "/providers";
-    private const string CredentialsEndpoint = "/provider-credentials";
-    private const string HealthEndpoint = "/provider-health";
+    private const string BaseEndpoint = ApiEndpoints.Providers.Base;
+    private const string CredentialsEndpoint = ApiEndpoints.Providers.Credentials;
+    private const string HealthEndpoint = ApiEndpoints.Providers.Health;
     private const int DefaultPageSize = 25;
     private static readonly TimeSpan DefaultCacheTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ShortCacheTimeout = TimeSpan.FromMinutes(1);
@@ -422,8 +423,8 @@ public class ProviderService : BaseApiClient
         {
             var parameters = new
             {
-                startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                startDate = startDate.ToString(DateFormats.ApiDateTime),
+                endDate = endDate.ToString(DateFormats.ApiDateTime)
             };
             
             var endpoint = $"{BaseEndpoint}/usage-statistics";
