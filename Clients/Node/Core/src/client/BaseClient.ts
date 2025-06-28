@@ -8,6 +8,7 @@ import {
   RateLimitError, 
   NetworkError 
 } from '../utils/errors';
+import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 
 export abstract class BaseClient {
   protected readonly client: AxiosInstance;
@@ -35,9 +36,9 @@ export abstract class BaseClient {
       baseURL: this.config.baseURL,
       timeout: this.config.timeout,
       headers: {
-        'Authorization': `Bearer ${this.config.apiKey}`,
-        'Content-Type': 'application/json',
-        'User-Agent': '@conduit/core/0.1.0',
+        [HTTP_HEADERS.AUTHORIZATION]: `Bearer ${this.config.apiKey}`,
+        [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+        [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
         ...this.config.headers,
       },
     });
@@ -126,7 +127,7 @@ export abstract class BaseClient {
       if (status === 429 || status === 503 || status === 504) {
         return true;
       }
-      if (!error.response && error.code === 'ECONNABORTED') {
+      if (!error.response && error.code === ERROR_CODES.CONNECTION_ABORTED) {
         return true;
       }
     }

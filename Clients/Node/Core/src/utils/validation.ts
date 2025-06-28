@@ -2,6 +2,7 @@ import type { ChatCompletionRequest } from '../models/chat';
 import type { ImageGenerationRequest } from '../models/images';
 import { ValidationError } from './errors';
 import { IMAGE_MODEL_CAPABILITIES } from '../models/images';
+import { CHAT_ROLES, ChatRoleHelpers, ImageValidationHelpers } from '../constants';
 
 export function validateChatCompletionRequest(request: ChatCompletionRequest): void {
   if (!request.model) {
@@ -23,10 +24,9 @@ export function validateChatCompletionRequest(request: ChatCompletionRequest): v
       throw new ValidationError(`Message at index ${i} must have a role`, 'messages');
     }
 
-    const validRoles = ['system', 'user', 'assistant', 'tool'];
-    if (!validRoles.includes(message.role)) {
+    if (!ChatRoleHelpers.isValidRole(message.role)) {
       throw new ValidationError(
-        `Invalid role '${message.role}' at index ${i}. Must be one of: ${validRoles.join(', ')}`,
+        `Invalid role '${message.role}' at index ${i}. Must be one of: ${ChatRoleHelpers.getAllRoles().join(', ')}`,
         'messages'
       );
     }
@@ -133,22 +133,21 @@ export function validateImageGenerationRequest(request: ImageGenerationRequest):
     throw new ValidationError('Number of images must be between 1 and 10', 'n');
   }
 
-  if (request.response_format && !['url', 'b64_json'].includes(request.response_format)) {
-    throw new ValidationError('response_format must be either "url" or "b64_json"', 'response_format');
+  if (request.response_format && !ImageValidationHelpers.isValidResponseFormat(request.response_format)) {
+    throw new ValidationError(`response_format must be one of: ${ImageValidationHelpers.getAllResponseFormats().join(', ')}`, 'response_format');
   }
 
-  if (request.quality && !['standard', 'hd'].includes(request.quality)) {
-    throw new ValidationError('quality must be either "standard" or "hd"', 'quality');
+  if (request.quality && !ImageValidationHelpers.isValidQuality(request.quality)) {
+    throw new ValidationError(`quality must be one of: ${ImageValidationHelpers.getAllQualities().join(', ')}`, 'quality');
   }
 
-  if (request.style && !['vivid', 'natural'].includes(request.style)) {
-    throw new ValidationError('style must be either "vivid" or "natural"', 'style');
+  if (request.style && !ImageValidationHelpers.isValidStyle(request.style)) {
+    throw new ValidationError(`style must be one of: ${ImageValidationHelpers.getAllStyles().join(', ')}`, 'style');
   }
 
-  const validSizes = ['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792'];
-  if (request.size && !validSizes.includes(request.size)) {
+  if (request.size && !ImageValidationHelpers.isValidSize(request.size)) {
     throw new ValidationError(
-      `size must be one of: ${validSizes.join(', ')}`,
+      `size must be one of: ${ImageValidationHelpers.getAllSizes().join(', ')}`,
       'size'
     );
   }

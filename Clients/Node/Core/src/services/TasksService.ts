@@ -1,12 +1,12 @@
 import type { BaseClient } from '../client/BaseClient';
 import type { RequestOptions } from '../client/types';
 import { ConduitError } from '../utils/errors';
+import { API_ENDPOINTS, HTTP_METHODS, TASK_STATUS } from '../constants';
 
 /**
  * Service for general task management operations using the Conduit Core API
  */
 export class TasksService {
-  private static readonly TASKS_ENDPOINT = '/v1/tasks';
 
   constructor(private readonly client: BaseClient) {}
 
@@ -22,12 +22,10 @@ export class TasksService {
         throw new Error('Task ID is required');
       }
 
-      const endpoint = `${TasksService.TASKS_ENDPOINT}/${encodeURIComponent(taskId)}`;
-
       const response = await this.client['request']<TaskStatusResponse>(
         {
-          method: 'GET',
-          url: endpoint,
+          method: HTTP_METHODS.GET,
+          url: API_ENDPOINTS.V1.TASKS.BY_ID(taskId),
         },
         options
       );
@@ -55,12 +53,10 @@ export class TasksService {
         throw new Error('Task ID is required');
       }
 
-      const endpoint = `${TasksService.TASKS_ENDPOINT}/${encodeURIComponent(taskId)}/cancel`;
-
       await this.client['request']<void>(
         {
-          method: 'POST',
-          url: endpoint,
+          method: HTTP_METHODS.POST,
+          url: API_ENDPOINTS.V1.TASKS.CANCEL(taskId),
           data: {},
         },
         options
@@ -108,7 +104,7 @@ export class TasksService {
       const status = await this.getTaskStatus(taskId, options);
 
       switch (status.status?.toLowerCase()) {
-        case 'completed':
+        case TASK_STATUS.COMPLETED:
           if (!status.result) {
             throw new ConduitError(
               'Task completed but no result was provided'
@@ -116,19 +112,19 @@ export class TasksService {
           }
           return status.result as T;
 
-        case 'failed':
+        case TASK_STATUS.FAILED:
           throw new ConduitError(
             `Task failed: ${status.error || 'Unknown error'}`
           );
 
-        case 'cancelled':
+        case TASK_STATUS.CANCELLED:
           throw new ConduitError('Task was cancelled');
 
-        case 'timedout':
+        case TASK_STATUS.TIMEDOUT:
           throw new ConduitError('Task timed out');
 
-        case 'pending':
-        case 'running':
+        case TASK_STATUS.PENDING:
+        case TASK_STATUS.RUNNING:
           // Continue polling
           break;
 
@@ -156,13 +152,12 @@ export class TasksService {
     options?: RequestOptions
   ): Promise<number> {
     try {
-      const endpoint = `${TasksService.TASKS_ENDPOINT}/cleanup`;
       const request = { older_than_hours: olderThanHours };
 
       const response = await this.client['request']<CleanupTasksResponse>(
         {
-          method: 'POST',
-          url: endpoint,
+          method: HTTP_METHODS.POST,
+          url: API_ENDPOINTS.V1.TASKS.CLEANUP,
           data: request,
         },
         options

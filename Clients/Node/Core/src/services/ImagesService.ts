@@ -13,6 +13,7 @@ import type {
 } from '../models/images';
 import { DEFAULT_POLLING_OPTIONS } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
+import { API_ENDPOINTS, HTTP_METHODS, CONTENT_TYPES } from '../constants';
 
 export class ImagesService {
   constructor(private readonly client: BaseClient) {}
@@ -31,8 +32,8 @@ export class ImagesService {
 
     return this.client['request']<ImageGenerationResponse>(
       {
-        method: 'POST',
-        url: '/v1/images/generations',
+        method: HTTP_METHODS.POST,
+        url: API_ENDPOINTS.V1.IMAGES.GENERATIONS,
         data: request,
       },
       options
@@ -74,11 +75,11 @@ export class ImagesService {
 
     return this.client['request']<ImageEditResponse>(
       {
-        method: 'POST',
-        url: '/v1/images/edits',
+        method: HTTP_METHODS.POST,
+        url: API_ENDPOINTS.V1.IMAGES.EDITS,
         data: formData,
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': CONTENT_TYPES.FORM_DATA,
         },
       },
       options
@@ -116,11 +117,11 @@ export class ImagesService {
 
     return this.client['request']<ImageVariationResponse>(
       {
-        method: 'POST',
-        url: '/v1/images/variations',
+        method: HTTP_METHODS.POST,
+        url: API_ENDPOINTS.V1.IMAGES.VARIATIONS,
         data: formData,
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': CONTENT_TYPES.FORM_DATA,
         },
       },
       options
@@ -158,8 +159,8 @@ export class ImagesService {
 
     return this.client['request']<AsyncImageGenerationResponse>(
       {
-        method: 'POST',
-        url: '/v1/images/generations/async',
+        method: HTTP_METHODS.POST,
+        url: API_ENDPOINTS.V1.IMAGES.ASYNC_GENERATIONS,
         data: request,
       },
       options
@@ -182,8 +183,8 @@ export class ImagesService {
 
     return this.client['request']<AsyncImageGenerationResponse>(
       {
-        method: 'GET',
-        url: `/v1/images/generations/${encodeURIComponent(taskId)}/status`,
+        method: HTTP_METHODS.GET,
+        url: API_ENDPOINTS.V1.IMAGES.TASK_STATUS(taskId),
       },
       options
     );
@@ -204,8 +205,8 @@ export class ImagesService {
 
     await this.client['request']<void>(
       {
-        method: 'DELETE',
-        url: `/v1/images/generations/${encodeURIComponent(taskId)}`,
+        method: HTTP_METHODS.DELETE,
+        url: API_ENDPOINTS.V1.IMAGES.CANCEL_TASK(taskId),
       },
       options
     );

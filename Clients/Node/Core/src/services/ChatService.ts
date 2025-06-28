@@ -7,6 +7,7 @@ import type {
 } from '../models/chat';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { streamAsyncIterator } from '../utils/streaming';
+import { API_ENDPOINTS, HTTP_METHODS } from '../constants';
 
 export class ChatService {
   constructor(private readonly client: BaseClient) {}
@@ -38,8 +39,8 @@ export class ChatService {
   ): Promise<ChatCompletionResponse> {
     return this.client['request']<ChatCompletionResponse>(
       {
-        method: 'POST',
-        url: '/v1/chat/completions',
+        method: HTTP_METHODS.POST,
+        url: API_ENDPOINTS.V1.CHAT.COMPLETIONS,
         data: request,
       },
       options
@@ -50,7 +51,7 @@ export class ChatService {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<AsyncGenerator<ChatCompletionChunk, void, unknown>> {
-    const response = await this.client['client'].post('/v1/chat/completions', request, {
+    const response = await this.client['client'].post(API_ENDPOINTS.V1.CHAT.COMPLETIONS, request, {
       responseType: 'stream',
       signal: options?.signal,
       timeout: 0,

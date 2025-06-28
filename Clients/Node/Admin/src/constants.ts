@@ -1,6 +1,60 @@
 export const API_VERSION = 'v1';
 export const API_PREFIX = '/api';
 
+/**
+ * HTTP method constants for type-safe method specification.
+ */
+export const HTTP_METHODS = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  DELETE: 'DELETE',
+  PATCH: 'PATCH',
+} as const;
+
+
+/**
+ * HTTP header name constants.
+ */
+export const HTTP_HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  X_API_KEY: 'X-API-Key',
+  USER_AGENT: 'User-Agent',
+  X_CORRELATION_ID: 'X-Correlation-Id',
+  ACCEPT: 'Accept',
+  CACHE_CONTROL: 'Cache-Control',
+} as const;
+
+/**
+ * Content type constants.
+ */
+export const CONTENT_TYPES = {
+  JSON: 'application/json',
+  FORM_DATA: 'multipart/form-data',
+  FORM_URLENCODED: 'application/x-www-form-urlencoded',
+  TEXT_PLAIN: 'text/plain',
+} as const;
+
+/**
+ * Client information constants.
+ */
+export const CLIENT_INFO = {
+  NAME: '@conduit/admin',
+  VERSION: '0.1.0',
+  USER_AGENT: '@conduit/admin/0.1.0',
+} as const;
+
+
+/**
+ * Date format constants.
+ */
+export const DATE_FORMATS = {
+  API_DATETIME: 'YYYY-MM-DDTHH:mm:ss[Z]',
+  API_DATE: 'YYYY-MM-DD',
+  DISPLAY_DATETIME: 'MMM D, YYYY [at] h:mm A',
+  DISPLAY_DATE: 'MMM D, YYYY',
+} as const;
+
 export const ENDPOINTS = {
   // Virtual Keys
   VIRTUAL_KEYS: {

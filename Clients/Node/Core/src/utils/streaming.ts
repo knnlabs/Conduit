@@ -1,9 +1,10 @@
 import type { SSEMessage, StreamEvent } from '../models/streaming';
 import type { ChatCompletionChunk } from '../models/chat';
 import { StreamError } from './errors';
+import { STREAM_CONSTANTS, StreamingHelpers } from '../constants';
 
 export function parseSSEMessage(line: string): SSEMessage | null {
-  if (!line || line.startsWith(':')) {
+  if (!line || StreamingHelpers.isCommentLine(line)) {
     return null;
   }
 
@@ -63,7 +64,7 @@ export function parseSSEStream(text: string): SSEMessage[] {
 }
 
 export function parseStreamEvent(data: string): StreamEvent | null {
-  if (data === '[DONE]') {
+  if (StreamingHelpers.isDoneMarker(data)) {
     return '[DONE]';
   }
 
@@ -87,14 +88,14 @@ export async function* streamAsyncIterator(
 
     for (const line of lines) {
       const trimmedLine = line.trim();
-      if (trimmedLine === '' || trimmedLine.startsWith(':')) {
+      if (trimmedLine === '' || StreamingHelpers.isCommentLine(trimmedLine)) {
         continue;
       }
 
-      if (trimmedLine.startsWith('data: ')) {
-        const data = trimmedLine.slice(6);
+      if (StreamingHelpers.isDataLine(trimmedLine)) {
+        const data = StreamingHelpers.extractData(trimmedLine);
         
-        if (data === '[DONE]') {
+        if (StreamingHelpers.isDoneMarker(data)) {
           return;
         }
 

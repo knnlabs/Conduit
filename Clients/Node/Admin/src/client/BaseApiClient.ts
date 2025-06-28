@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider, AxiosError } from './types';
 import { handleApiError } from '../utils/errors';
+import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
 
 export abstract class BaseApiClient {
   protected readonly axios: AxiosInstance;
@@ -18,8 +19,9 @@ export abstract class BaseApiClient {
       baseURL: config.baseUrl,
       timeout: config.timeout || 30000,
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.masterKey,
+        [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+        [HTTP_HEADERS.X_API_KEY]: config.masterKey,
+        [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
         ...config.defaultHeaders,
       },
     });

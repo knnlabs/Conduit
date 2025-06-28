@@ -1,5 +1,5 @@
 import { BaseApiClient } from '../client/BaseApiClient';
-import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
+import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE, BUDGET_DURATION } from '../constants';
 import {
   VirtualKeyDto,
   CreateVirtualKeyRequest,
@@ -23,7 +23,7 @@ const createVirtualKeySchema = z.object({
   keyName: z.string().min(1).max(100),
   allowedModels: z.string().optional(),
   maxBudget: z.number().min(0).max(1000000).optional(),
-  budgetDuration: z.enum(['Total', 'Daily', 'Weekly', 'Monthly']).optional(),
+  budgetDuration: z.enum([BUDGET_DURATION.TOTAL, BUDGET_DURATION.DAILY, BUDGET_DURATION.WEEKLY, BUDGET_DURATION.MONTHLY]).optional(),
   expiresAt: z.string().datetime().optional(),
   metadata: z.string().optional(),
   rateLimitRpm: z.number().min(0).optional(),
