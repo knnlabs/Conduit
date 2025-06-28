@@ -167,15 +167,15 @@ services:
       # CONDUIT_IP_FILTER_ALLOW_PRIVATE: "true"  # Auto-allow private/intranet IPs
       # CONDUIT_IP_FILTER_WHITELIST: "192.168.1.0/24,10.0.0.0/8"
       # CONDUIT_IP_FILTER_BLACKLIST: "203.0.113.0/24"
-      # Failed Login Protection
-      # CONDUIT_MAX_FAILED_ATTEMPTS: "5"
-      # CONDUIT_IP_BAN_DURATION_MINUTES: "30"
-      # CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "true"  # Use Redis for distributed ban tracking
-      # Rate Limiting
-      # CONDUIT_RATE_LIMITING_ENABLED: "true"
-      # CONDUIT_RATE_LIMIT_MAX_REQUESTS: "100"
-      # CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "60"
-      # CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
+      # Failed Login Protection - DISABLED for development
+      CONDUIT_MAX_FAILED_ATTEMPTS: "99999"  # Effectively disabled
+      CONDUIT_IP_BAN_DURATION_MINUTES: "0"   # No banning
+      CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "false"
+      # Rate Limiting - DISABLED for development
+      CONDUIT_RATE_LIMITING_ENABLED: "false"
+      CONDUIT_RATE_LIMIT_MAX_REQUESTS: "99999"
+      CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "1"
+      CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
       # Security Headers
       # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED: "true"
       # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS: "DENY"

@@ -168,8 +168,7 @@ builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbCon
     }
 });
 
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
+// Authentication and authorization are configured later with policies
 
 // Add Core API Security services
 builder.Services.AddCoreApiSecurity(builder.Configuration);
@@ -1222,8 +1221,8 @@ app.UseCoreApiSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add Virtual Key authentication (kept for compatibility with non-controller endpoints)
-app.UseVirtualKeyAuthentication();
+// Note: VirtualKeyAuthenticationHandler is now used instead of middleware
+// The authentication handler is registered with the "VirtualKey" scheme above
 
 // Add HTTP metrics middleware for comprehensive request tracking
 app.UseMiddleware<ConduitLLM.Http.Middleware.HttpMetricsMiddleware>();
