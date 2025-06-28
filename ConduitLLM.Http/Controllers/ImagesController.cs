@@ -486,7 +486,7 @@ namespace ConduitLLM.Http.Controllers
                         {
                             using (var sha256 = System.Security.Cryptography.SHA256.Create())
                             {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim);
+                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
                                 var hashBytes = sha256.ComputeHash(keyBytes);
                                 userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                                 _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
@@ -579,7 +579,7 @@ namespace ConduitLLM.Http.Controllers
                         {
                             using (var sha256 = System.Security.Cryptography.SHA256.Create())
                             {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim);
+                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
                                 var hashBytes = sha256.ComputeHash(keyBytes);
                                 userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                                 _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
