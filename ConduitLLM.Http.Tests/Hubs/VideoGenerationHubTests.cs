@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Hubs;
 
 namespace ConduitLLM.Http.Tests.Hubs
@@ -57,10 +58,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["virtualKeyId"] = virtualKeyId
-                }
+                Metadata = new TaskMetadata(virtualKeyId)
             };
 
             _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
@@ -90,10 +88,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["virtualKeyId"] = differentVirtualKeyId
-                }
+                Metadata = new TaskMetadata(differentVirtualKeyId)
             };
 
             _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
@@ -175,10 +170,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["virtualKeyId"] = virtualKeyIdValue
-                }
+                Metadata = new TaskMetadata((int)Convert.ChangeType(virtualKeyIdValue, typeof(int)))
             };
 
             _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))

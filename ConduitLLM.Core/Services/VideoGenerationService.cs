@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -307,11 +308,15 @@ namespace ConduitLLM.Core.Services
             _logger.LogInformation("Virtual key validated: {VirtualKeyId}", virtualKeyInfo.Id);
 
             // Create task metadata
-            var taskMetadata = new
+            var taskMetadata = new TaskMetadata(virtualKeyInfo.Id)
             {
-                Request = request,
-                VirtualKey = virtualKey,
-                Model = request.Model
+                Model = request.Model,
+                Prompt = request.Prompt,
+                ExtensionData = new Dictionary<string, object>
+                {
+                    ["VirtualKey"] = virtualKey,
+                    ["Request"] = request
+                }
             };
 
             _logger.LogInformation("About to create async task");
@@ -390,18 +395,16 @@ namespace ConduitLLM.Core.Services
             }
 
             // Check if the task belongs to the provided virtual key
-            if (taskStatus.Metadata is System.Text.Json.JsonElement jsonElement)
+            if (taskStatus.Metadata != null)
             {
-                try
-                {
-                    var metadata = System.Text.Json.JsonSerializer.Deserialize<dynamic>(jsonElement.GetRawText());
-                    // Note: This validation is limited without access to the actual virtual key ID
-                    // In production, you'd want to validate against the actual virtual key ID stored in metadata
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to validate task metadata for task {TaskId}", taskId);
-                }
+                // Direct access to virtual key ID from typed metadata
+                // Note: This validation is limited without access to the actual virtual key ID
+                // In production, you'd want to validate against the actual virtual key ID stored in metadata
+                _logger.LogDebug("Task {TaskId} has VirtualKeyId: {VirtualKeyId}", taskId, taskStatus.Metadata.VirtualKeyId);
+            }
+            else
+            {
+                _logger.LogDebug("Task {TaskId} has no metadata", taskId);
             }
 
             // Handle different task states

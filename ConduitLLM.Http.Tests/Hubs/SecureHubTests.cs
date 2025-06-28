@@ -10,6 +10,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Hubs;
 
 namespace ConduitLLM.Http.Tests.Hubs
@@ -314,10 +315,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["virtualKeyId"] = virtualKeyId
-                }
+                Metadata = new TaskMetadata(virtualKeyId)
             };
             
             var taskServiceMock = new Mock<IAsyncTaskService>();
@@ -349,10 +347,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["virtualKeyId"] = otherVirtualKeyId
-                }
+                Metadata = new TaskMetadata(otherVirtualKeyId)
             };
             
             var taskServiceMock = new Mock<IAsyncTaskService>();
@@ -383,7 +378,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object>() // No virtualKeyId
+                Metadata = new TaskMetadata(0) // No virtualKeyId
             };
             
             var taskServiceMock = new Mock<IAsyncTaskService>();

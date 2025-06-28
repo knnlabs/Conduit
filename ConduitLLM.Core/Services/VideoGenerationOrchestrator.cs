@@ -129,68 +129,59 @@ namespace ConduitLLM.Core.Services
                 string virtualKey;
                 try
                 {
-                    // Serialize the metadata object to JSON string first, then deserialize to JsonElement
-                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
-                    _logger.LogDebug("Task metadata JSON: {MetadataJson}", metadataJson);
-                    
-                    var metadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJson);
-                    
-                    // Legacy async task service wrapped the original metadata
-                    // Check if we have the wrapped format first
-                    if (metadata.TryGetProperty("originalMetadata", out var originalMetadataElement))
+                    if (task.Metadata is TaskMetadata taskMetadata)
                     {
-                        // This is the wrapped format from legacy async task service
-                        _logger.LogDebug("Found originalMetadata wrapper, extracting inner metadata");
-                        var originalMetadata = originalMetadataElement;
+                        // Try to get virtual key from extension data
+                        virtualKey = null;
                         
-                        // Log what's inside originalMetadata
-                        if (originalMetadata.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        if (taskMetadata.ExtensionData != null)
                         {
-                            var innerProps = originalMetadata.EnumerateObject().Select(p => p.Name).ToList();
-                            _logger.LogDebug("Properties in originalMetadata: {Properties}", string.Join(", ", innerProps));
+                            // First try direct VirtualKey property
+                            if (taskMetadata.ExtensionData.TryGetValue("VirtualKey", out var virtualKeyObj) &&
+                                virtualKeyObj is string vk)
+                            {
+                                virtualKey = vk;
+                                _logger.LogDebug("Extracted virtual key from TaskMetadata.ExtensionData['VirtualKey']");
+                            }
+                            // Then try wrapped format with originalMetadata (for backward compatibility)
+                            else if (taskMetadata.ExtensionData.TryGetValue("originalMetadata", out var originalMetadataObj))
+                            {
+                                if (originalMetadataObj is IDictionary<string, object> originalMetadata &&
+                                    originalMetadata.TryGetValue("VirtualKey", out var wrappedVirtualKeyObj) &&
+                                    wrappedVirtualKeyObj is string wrappedVk)
+                                {
+                                    virtualKey = wrappedVk;
+                                    _logger.LogDebug("Extracted virtual key from wrapped originalMetadata");
+                                }
+                                else if (originalMetadataObj is System.Text.Json.JsonElement jsonElement &&
+                                         jsonElement.TryGetProperty("VirtualKey", out var vkElement) &&
+                                         vkElement.GetString() is string jsonVk)
+                                {
+                                    virtualKey = jsonVk;
+                                    _logger.LogDebug("Extracted virtual key from JSON originalMetadata");
+                                }
+                            }
                         }
                         
-                        // Now look for VirtualKey in the original metadata
-                        if (originalMetadata.TryGetProperty("VirtualKey", out var vkElement))
+                        if (string.IsNullOrEmpty(virtualKey))
                         {
-                            virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                        }
-                        else if (originalMetadata.TryGetProperty("virtualKey", out var vkElementLower))
-                        {
-                            virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                        }
-                        else
-                        {
-                            // Log available properties for debugging
-                            var properties = originalMetadata.EnumerateObject().Select(p => p.Name).ToList();
-                            _logger.LogError("Virtual key not found in original metadata. Available properties: {Properties}", string.Join(", ", properties));
-                            throw new InvalidOperationException("Virtual key not found in task metadata");
+                            // Virtual key not stored in metadata - this is actually better for security
+                            // We should retrieve it based on the VirtualKeyId
+                            _logger.LogError("Virtual key not found in TaskMetadata. VirtualKeyId: {VirtualKeyId}", taskMetadata.VirtualKeyId);
+                            throw new InvalidOperationException($"Virtual key not found in task metadata. VirtualKeyId: {taskMetadata.VirtualKeyId}");
                         }
                     }
                     else
                     {
-                        // Try direct property access (for database-stored tasks)
-                        if (metadata.TryGetProperty("VirtualKey", out var vkElement))
-                        {
-                            virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                        }
-                        else if (metadata.TryGetProperty("virtualKey", out var vkElementLower))
-                        {
-                            virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                        }
-                        else
-                        {
-                            // Log available properties for debugging
-                            var properties = metadata.EnumerateObject().Select(p => p.Name).ToList();
-                            _logger.LogError("Virtual key not found in metadata. Available properties: {Properties}", string.Join(", ", properties));
-                            throw new InvalidOperationException("Virtual key not found in task metadata");
-                        }
+                        _logger.LogError("Task metadata is not of type TaskMetadata. Actual type: {MetadataType}", 
+                            task.Metadata?.GetType().FullName ?? "null");
+                        throw new InvalidOperationException($"Invalid task metadata type: {task.Metadata?.GetType().FullName ?? "null"}");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!(ex is InvalidOperationException))
                 {
-                    _logger.LogError(ex, "Failed to extract virtual key from task metadata. Metadata type: {MetadataType}", task.Metadata?.GetType().FullName ?? "null");
-                    throw new InvalidOperationException("Invalid task metadata format", ex);
+                    _logger.LogError(ex, "Failed to extract virtual key from task metadata");
+                    throw new InvalidOperationException("Failed to extract virtual key from task metadata", ex);
                 }
                 
                 // Validate virtual key using the actual key from metadata
@@ -333,56 +324,86 @@ namespace ConduitLLM.Core.Services
                 VideoGenerationRequest videoRequest;
                 try
                 {
-                    // Serialize the metadata object to JSON string first, then deserialize to JsonElement
-                    var metadataJsonString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Metadata);
-                    var metadataJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJsonString);
-                    
-                    // Handle wrapped format from legacy async task service
-                    System.Text.Json.JsonElement workingMetadata;
-                    if (metadataJson.TryGetProperty("originalMetadata", out var originalMetadataElement))
+                    if (taskStatus.Metadata is TaskMetadata taskMetadata)
                     {
-                        workingMetadata = originalMetadataElement;
-                    }
-                    else
-                    {
-                        workingMetadata = metadataJson;
-                    }
-                    
-                    // Extract virtual key
-                    if (workingMetadata.TryGetProperty("VirtualKey", out var vkElement))
-                    {
-                        virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                    }
-                    else if (workingMetadata.TryGetProperty("virtualKey", out var vkElementLower))
-                    {
-                        virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Virtual key not found in task metadata");
-                    }
-                    
-                    // Reconstruct the video generation request from metadata
-                    if (workingMetadata.TryGetProperty("Request", out var requestElement))
-                    {
-                        videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(requestElement.GetRawText()) ??
-                            throw new InvalidOperationException("Failed to deserialize request from metadata");
-                    }
-                    else
-                    {
-                        // Fallback to constructing from event parameters
-                        videoRequest = new VideoGenerationRequest
+                        // Try to get virtual key from extension data
+                        virtualKey = null;
+                        
+                        if (taskMetadata.ExtensionData != null)
                         {
-                            Model = request.Model,
-                            Prompt = request.Prompt,
-                            Duration = request.Parameters?.Duration,
-                            Size = request.Parameters?.Size,
-                            Fps = request.Parameters?.Fps,
-                            N = 1
-                        };
+                            // First try direct VirtualKey property
+                            if (taskMetadata.ExtensionData.TryGetValue("VirtualKey", out var virtualKeyObj) &&
+                                virtualKeyObj is string vk)
+                            {
+                                virtualKey = vk;
+                            }
+                            // Then try wrapped format with originalMetadata (for backward compatibility)
+                            else if (taskMetadata.ExtensionData.TryGetValue("originalMetadata", out var originalMetadataObj) &&
+                                     originalMetadataObj is IDictionary<string, object> originalMetadata &&
+                                     originalMetadata.TryGetValue("VirtualKey", out var wrappedVirtualKeyObj) &&
+                                     wrappedVirtualKeyObj is string wrappedVk)
+                            {
+                                virtualKey = wrappedVk;
+                            }
+                        }
+                        
+                        if (string.IsNullOrEmpty(virtualKey))
+                        {
+                            throw new InvalidOperationException($"Virtual key not found in task metadata. VirtualKeyId: {taskMetadata.VirtualKeyId}");
+                        }
+                        
+                        // Extract request from extension data
+                        videoRequest = null;
+                        if (taskMetadata.ExtensionData != null)
+                        {
+                            // First try direct Request property
+                            if (taskMetadata.ExtensionData.TryGetValue("Request", out var requestObj))
+                            {
+                                if (requestObj is VideoGenerationRequest req)
+                                {
+                                    videoRequest = req;
+                                }
+                                else if (requestObj is System.Text.Json.JsonElement jsonReq)
+                                {
+                                    videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(jsonReq.GetRawText());
+                                }
+                            }
+                            // Then try wrapped format with originalMetadata
+                            else if (taskMetadata.ExtensionData.TryGetValue("originalMetadata", out var originalMetadataObj) &&
+                                     originalMetadataObj is IDictionary<string, object> originalMetadata &&
+                                     originalMetadata.TryGetValue("Request", out var wrappedRequestObj))
+                            {
+                                if (wrappedRequestObj is VideoGenerationRequest wrappedReq)
+                                {
+                                    videoRequest = wrappedReq;
+                                }
+                                else if (wrappedRequestObj is System.Text.Json.JsonElement wrappedJsonReq)
+                                {
+                                    videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(wrappedJsonReq.GetRawText());
+                                }
+                            }
+                        }
+                        
+                        // Fallback to constructing from event parameters
+                        if (videoRequest == null)
+                        {
+                            videoRequest = new VideoGenerationRequest
+                            {
+                                Model = request.Model,
+                                Prompt = request.Prompt,
+                                Duration = request.Parameters?.Duration,
+                                Size = request.Parameters?.Size,
+                                Fps = request.Parameters?.Fps,
+                                N = 1
+                            };
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Invalid task metadata type: {taskStatus.Metadata?.GetType().FullName ?? "null"}");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!(ex is InvalidOperationException))
                 {
                     _logger.LogError(ex, "Failed to extract data from task metadata");
                     throw new InvalidOperationException("Invalid task metadata format", ex);

@@ -183,7 +183,11 @@ namespace ConduitLLM.Tests.Core.Services
                 State = TaskState.Pending,
                 RetryCount = 1,
                 MaxRetries = 3,
-                Metadata = new { VirtualKey = "sk-test", Model = "test-model" }
+                Metadata = new TaskMetadata(0) 
+                { 
+                    Model = "test-model",
+                    ExtensionData = new Dictionary<string, object> { ["VirtualKey"] = "sk-test" }
+                }
             };
 
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(It.Is<string>(s => s == requestId), It.IsAny<CancellationToken>()))
@@ -265,7 +269,11 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 TaskId = requestId,
                 State = TaskState.Pending,
-                Metadata = new { VirtualKey = "sk-test", Model = "test-model" }
+                Metadata = new TaskMetadata(0) 
+                { 
+                    Model = "test-model",
+                    ExtensionData = new Dictionary<string, object> { ["VirtualKey"] = "sk-test" }
+                }
             };
 
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(It.Is<string>(s => s == requestId), It.IsAny<CancellationToken>()))
@@ -316,7 +324,11 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 TaskId = requestId,
                 State = TaskState.Pending,
-                Metadata = new { VirtualKey = virtualKey, Model = model }
+                Metadata = new TaskMetadata(0) 
+                { 
+                    Model = model,
+                    ExtensionData = new Dictionary<string, object> { ["VirtualKey"] = virtualKey }
+                }
             };
 
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(It.Is<string>(s => s == requestId), It.IsAny<CancellationToken>()))
@@ -364,17 +376,21 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 TaskId = requestId,
                 State = TaskState.Pending,
-                Metadata = new
+                Metadata = new TaskMetadata(0)
                 {
-                    originalMetadata = new
+                    Model = model,
+                    ExtensionData = new Dictionary<string, object>
                     {
-                        VirtualKey = virtualKey,
-                        Request = new VideoGenerationRequest
+                        ["originalMetadata"] = new Dictionary<string, object>
                         {
-                            Model = model,
-                            Prompt = "test"
-                        },
-                        Model = model
+                            ["VirtualKey"] = virtualKey,
+                            ["Request"] = new VideoGenerationRequest
+                            {
+                                Model = model,
+                                Prompt = "test"
+                            },
+                            ["Model"] = model
+                        }
                     }
                 }
             };
@@ -439,7 +455,11 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 TaskId = requestId,
                 State = TaskState.Pending,
-                Metadata = new { VirtualKey = "sk-test", Model = "test-model" }
+                Metadata = new TaskMetadata(0) 
+                { 
+                    Model = "test-model",
+                    ExtensionData = new Dictionary<string, object> { ["VirtualKey"] = "sk-test" }
+                }
             };
 
             var virtualKeyInfo = new VirtualKey { Id = 123, IsEnabled = true };
@@ -513,7 +533,11 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 TaskId = requestId,
                 State = TaskState.Pending,
-                Metadata = new { VirtualKey = virtualKey, Model = model }
+                Metadata = new TaskMetadata(0) 
+                { 
+                    Model = model,
+                    ExtensionData = new Dictionary<string, object> { ["VirtualKey"] = virtualKey }
+                }
             };
 
             var virtualKeyInfo = new VirtualKey { Id = 123, IsEnabled = true };

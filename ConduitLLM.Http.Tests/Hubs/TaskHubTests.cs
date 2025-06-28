@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Hubs;
 
 namespace ConduitLLM.Http.Tests.Hubs
@@ -98,7 +99,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object> { ["virtualKeyId"] = virtualKeyId }
+                Metadata = new TaskMetadata(virtualKeyId)
             };
 
             _contextMock.Setup(x => x.Items).Returns(items);
@@ -148,7 +149,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = taskId,
-                Metadata = new Dictionary<string, object> { ["virtualKeyId"] = otherKeyId }
+                Metadata = new TaskMetadata(otherKeyId)
             };
 
             _contextMock.Setup(x => x.Items).Returns(items);
