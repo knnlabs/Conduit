@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ConduitLLM.WebUI.Interfaces;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -21,7 +22,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly ILogger<ServerSideSignalRService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
-        private readonly Dictionary<string, HubConnection> _hubConnections;
+        private readonly ConcurrentDictionary<string, HubConnection> _hubConnections;
         private readonly List<IServerSideSignalRListener> _listeners;
         private readonly SemaphoreSlim _connectionLock;
         private string? _virtualKey;
@@ -36,7 +37,7 @@ namespace ConduitLLM.WebUI.Services
             _logger = logger;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
-            _hubConnections = new Dictionary<string, HubConnection>();
+            _hubConnections = new ConcurrentDictionary<string, HubConnection>();
             _listeners = new List<IServerSideSignalRListener>();
             _connectionLock = new SemaphoreSlim(1, 1);
         }
@@ -96,10 +97,20 @@ namespace ConduitLLM.WebUI.Services
                     }
                 }
 
-                // Initialize hub connections
-                await InitializeHubConnection("notifications", "/hubs/notifications");
-                await InitializeHubConnection("video-generation", "/hubs/video-generation");
-                await InitializeHubConnection("image-generation", "/hubs/image-generation");
+                // Initialize hub connections - don't let one failure stop others
+                var initTasks = new List<Task>();
+                initTasks.Add(InitializeHubConnectionSafely("notifications", "/hubs/notifications"));
+                initTasks.Add(InitializeHubConnectionSafely("video-generation", "/hubs/video-generation"));
+                initTasks.Add(InitializeHubConnectionSafely("image-generation", "/hubs/image-generation"));
+                
+                await Task.WhenAll(initTasks);
+
+                // Log connection status
+                foreach (var hub in _hubConnections)
+                {
+                    _logger.LogInformation("Hub {HubName} connection state: {State}", 
+                        hub.Key, hub.Value.State);
+                }
 
                 _logger.LogInformation("Server-side SignalR service started successfully");
             }
@@ -108,6 +119,18 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Failed to start server-side SignalR service");
                 // Schedule reconnection attempt
                 ScheduleReconnection();
+            }
+        }
+
+        private async Task InitializeHubConnectionSafely(string hubName, string hubPath)
+        {
+            try
+            {
+                await InitializeHubConnection(hubName, hubPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize {HubName} hub connection, but continuing with other hubs", hubName);
             }
         }
 
@@ -166,11 +189,15 @@ namespace ConduitLLM.WebUI.Services
                     await NotifyConnectionStateChanged(hubName, ConnectionState.Connected);
                 };
 
-                // Start the connection
-                await connection.StartAsync();
-                _hubConnections[hubName] = connection;
+                // Start the connection with timeout
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                {
+                    await connection.StartAsync(cts.Token);
+                }
+                _hubConnections.TryAdd(hubName, connection);
                 
-                _logger.LogInformation("Connected to {HubName} hub successfully", hubName);
+                _logger.LogInformation("Connected to {HubName} hub successfully with connection ID: {ConnectionId}", 
+                    hubName, connection.ConnectionId);
                 await NotifyConnectionStateChanged(hubName, ConnectionState.Connected);
             }
             catch (Exception ex)
@@ -400,18 +427,26 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         public async Task SubscribeToImageTask(string taskId)
         {
-            if (_hubConnections.TryGetValue("image-generation", out var connection) && 
-                connection.State == HubConnectionState.Connected)
+            if (!_hubConnections.TryGetValue("image-generation", out var connection))
             {
-                try
-                {
-                    await connection.InvokeAsync("SubscribeToTask", taskId);
-                    _logger.LogInformation("Subscribed to image generation task {TaskId}", taskId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to subscribe to image task {TaskId}", taskId);
-                }
+                _logger.LogWarning("Image generation hub connection not found in connections dictionary");
+                return;
+            }
+
+            if (connection.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("Image generation hub is not connected. Current state: {State}", connection.State);
+                return;
+            }
+
+            try
+            {
+                await connection.InvokeAsync("SubscribeToTask", taskId);
+                _logger.LogInformation("Successfully subscribed to image generation task {TaskId}", taskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to subscribe to image task {TaskId}", taskId);
             }
         }
 

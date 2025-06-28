@@ -260,73 +260,9 @@
             <!-- Active Generation Tasks -->
             @if (activeTasks.Any())
             {
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-light border-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fa fa-tasks me-2"></i>Active Generation Tasks
-                            </h5>
-                            <span class="badge bg-primary">@activeTasks.Count tasks</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        @foreach (var task in activeTasks)
-                        {
-                            <div class="task-item mb-3 p-3 border rounded">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">Task: @task.TaskId</h6>
-                                        <p class="text-muted small mb-1">@task.Prompt</p>
-                                        <span class="badge @GetStatusBadgeClass(task.Status)">@task.Status</span>
-                                    </div>
-                                    <div class="task-actions">
-                                        @if (task.Status == "pending" || task.Status == "running")
-                                        {
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    @onclick="() => CancelTask(task.TaskId)"
-                                                    disabled="@task.IsCancelling">
-                                                @if (task.IsCancelling)
-                                                {
-                                                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                                                }
-                                                else
-                                                {
-                                                    <i class="fa fa-times"></i>
-                                                }
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
-                                @if (task.Progress.HasValue)
-                                {
-                                    <div class="progress mb-2" style="height: 20px;">
-                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                             role="progressbar" 
-                                             style="width: @(task.Progress)%"
-                                             aria-valuenow="@task.Progress" 
-                                             aria-valuemin="0" 
-                                             aria-valuemax="100">
-                                            @task.Progress%
-                                        </div>
-                                    </div>
-                                }
-                                @if (!string.IsNullOrEmpty(task.Error))
-                                {
-                                    <div class="alert alert-danger mb-0 mt-2">
-                                        <small>@task.Error</small>
-                                    </div>
-                                }
-                                <small class="text-muted">
-                                    Started: @task.CreatedAt.ToString("h:mm:ss tt")
-                                    @if (task.CompletedAt.HasValue)
-                                    {
-                                        <span> | Completed: @task.CompletedAt.Value.ToString("h:mm:ss tt")</span>
-                                    }
-                                </small>
-                            </div>
-                        }
-                    </div>
-                </div>
+                <ActiveGenerationTasks ActiveTasks="@mappedActiveTasks"
+                                       TaskType="ActiveGenerationTasks.GenerationTaskType.Video"
+                                       OnCancelTask="CancelTask" />
             }
 
             <!-- Generated Videos Display -->
@@ -493,6 +429,21 @@
     private RecentPrompts? recentPromptsComponent;
     private List<VideoGenerationTask> activeTasks = new();
     private bool isInitialized = false;
+    
+    private List<ActiveGenerationTasks.GenerationTask> mappedActiveTasks => activeTasks.Select(t => new ActiveGenerationTasks.GenerationTask
+    {
+        TaskId = t.TaskId,
+        Status = t.Status,
+        Prompt = t.Prompt,
+        Progress = t.Progress,
+        CreatedAt = t.CreatedAt.DateTime,
+        UpdatedAt = t.UpdatedAt.DateTime,
+        CompletedAt = t.CompletedAt?.DateTime,
+        EstimatedCompletionTime = t.EstimatedCompletionTime?.DateTime,
+        Error = t.Error,
+        IsCancelling = t.IsCancelling,
+        StatusMessage = t.StatusMessage
+    }).ToList();
     
     private string videoPrompt = "";
     private string selectedModel = "";
@@ -829,18 +780,6 @@
         }
     }
 
-    private string GetStatusBadgeClass(string status)
-    {
-        return status switch
-        {
-            "pending" => "bg-warning",
-            "running" => "bg-info",
-            "completed" => "bg-success",
-            "failed" => "bg-danger",
-            "cancelled" => "bg-secondary",
-            _ => "bg-secondary"
-        };
-    }
 
     private string FormatFileSize(long bytes)
     {

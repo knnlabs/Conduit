@@ -68,7 +68,7 @@ namespace ConduitLLM.Http.Controllers
             [FromForm] string[]? timestamp_granularities = null)
         {
             // Get virtual key from context
-            var virtualKey = HttpContext.Items["VirtualKey"] as string;
+            var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
             if (string.IsNullOrEmpty(virtualKey))
             {
                 return Unauthorized(new ProblemDetails
@@ -203,7 +203,7 @@ namespace ConduitLLM.Http.Controllers
         public async Task<IActionResult> GenerateSpeech([FromBody, Required] TextToSpeechRequestDto request)
         {
             // Get virtual key from context
-            var virtualKey = HttpContext.Items["VirtualKey"] as string;
+            var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
             if (string.IsNullOrEmpty(virtualKey))
             {
                 return Unauthorized(new ProblemDetails

@@ -76,7 +76,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.Items["VirtualKey"] as string;
+                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -177,7 +177,7 @@ namespace ConduitLLM.Http.Controllers
             try
             {
                 // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.Items["VirtualKey"] as string;
+                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -264,7 +264,7 @@ namespace ConduitLLM.Http.Controllers
             try
             {
                 // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.Items["VirtualKey"] as string;
+                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -372,7 +372,7 @@ namespace ConduitLLM.Http.Controllers
             try
             {
                 // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.Items["VirtualKey"] as string;
+                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
