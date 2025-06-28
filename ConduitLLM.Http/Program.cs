@@ -452,6 +452,24 @@ if (!string.IsNullOrEmpty(redisUrl))
 
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+// Configure distributed cache for async tasks
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    // Add Redis distributed cache for async task storage
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "conduit-tasks:";
+    });
+    Console.WriteLine("[Conduit] Configured Redis distributed cache for async task storage");
+}
+else
+{
+    // Fall back to in-memory distributed cache
+    builder.Services.AddDistributedMemoryCache();
+    Console.WriteLine("[Conduit] Using in-memory distributed cache for async task storage (development mode)");
+}
+
 // Register Virtual Key service with optional Redis caching
 if (!string.IsNullOrEmpty(redisConnectionString))
 {

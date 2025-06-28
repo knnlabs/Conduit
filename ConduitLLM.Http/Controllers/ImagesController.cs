@@ -455,12 +455,18 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
+                _logger.LogInformation("GetGenerationStatus called for task {TaskId}", taskId);
+                
                 // Get task from service
                 var task = await _taskService.GetTaskStatusAsync(taskId);
                 if (task == null)
                 {
+                    _logger.LogWarning("Task {TaskId} not found by task service", taskId);
                     return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                 }
+                
+                _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
+                    taskId, task.State, task.Metadata != null);
 
                 // Verify user owns this task
                 var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;

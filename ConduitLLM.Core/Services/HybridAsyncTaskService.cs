@@ -209,8 +209,12 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("GetTaskStatusAsync called for task {TaskId}", taskId);
+            
             // Try cache first
             var key = GetTaskKey(taskId);
+            _logger.LogDebug("Looking for task in cache with key: {CacheKey}", key);
+            
             string? json = null;
             bool cacheHit = false;
             
@@ -218,35 +222,40 @@ namespace ConduitLLM.Core.Services
             {
                 json = await _cache.GetStringAsync(key, cancellationToken);
                 cacheHit = !string.IsNullOrEmpty(json);
+                _logger.LogDebug("Cache lookup result - Hit: {CacheHit}, HasValue: {HasValue}", cacheHit, !string.IsNullOrEmpty(json));
             }
             catch (Exception ex)
             {
                 // Cache failure - log and continue with database fallback
-                _logger.LogWarning(ex, "Cache read failed for task {TaskId}, falling back to database", taskId);
+                _logger.LogWarning(ex, "Cache read failed for task {TaskId} with key {CacheKey}, falling back to database", taskId, key);
             }
             
             if (cacheHit && !string.IsNullOrEmpty(json))
             {
-                _logger.LogDebug("Task {TaskId} found in cache", taskId);
+                _logger.LogInformation("Task {TaskId} found in cache with key {CacheKey}", taskId, key);
                 try
                 {
-                    return JsonSerializer.Deserialize<AsyncTaskStatus>(json);
+                    var cachedStatus = JsonSerializer.Deserialize<AsyncTaskStatus>(json);
+                    _logger.LogDebug("Successfully deserialized cached task {TaskId}, State: {State}", taskId, cachedStatus?.State);
+                    return cachedStatus;
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogError(ex, "Failed to deserialize cached task {TaskId}, falling back to database", taskId);
+                    _logger.LogError(ex, "Failed to deserialize cached task {TaskId} from key {CacheKey}, JSON: {Json}", taskId, key, json?.Substring(0, Math.Min(json.Length, 200)));
                     // Continue to database fallback
                 }
             }
 
             // Fallback to database
-            _logger.LogDebug("Cache miss for task {TaskId}, reading from database", taskId);
+            _logger.LogInformation("Cache miss for task {TaskId} with key {CacheKey}, reading from database", taskId, key);
             var dbTask = await _repository.GetByIdAsync(taskId, cancellationToken);
             if (dbTask == null)
             {
-                _logger.LogWarning("Task {TaskId} not found in database", taskId);
+                _logger.LogWarning("Task {TaskId} not found in database either", taskId);
                 return null;
             }
+            
+            _logger.LogInformation("Task {TaskId} found in database, State: {State}", taskId, dbTask.State);
 
             // Log consistency monitoring
             if (cacheHit)
