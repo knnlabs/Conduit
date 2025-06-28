@@ -13,16 +13,16 @@ public class ImageGenerationView : View
     private readonly SignalRService _signalRService;
     private readonly ILogger<ImageGenerationView> _logger;
     
-    private TextView _promptField;
-    private ComboBox _modelSelector;
-    private ComboBox _sizeSelector;
-    private ComboBox _qualitySelector;
-    private ComboBox _styleSelector;
-    private TextField _numImagesField;
-    private Button _generateButton;
-    private ListView _resultsList;
-    private Label _statusLabel;
-    private ProgressBar _progressBar;
+    private TextView _promptField = null!;
+    private ComboBox _modelSelector = null!;
+    private ComboBox _sizeSelector = null!;
+    private ComboBox _qualitySelector = null!;
+    private ComboBox _styleSelector = null!;
+    private TextField _numImagesField = null!;
+    private Button _generateButton = null!;
+    private ListView _resultsList = null!;
+    private Label _statusLabel = null!;
+    private ProgressBar _progressBar = null!;
     
     private List<string> _generatedUrls = new();
     private string? _currentTaskId;
@@ -246,15 +246,15 @@ public class ImageGenerationView : View
             {
                 Prompt = _promptField.Text.ToString()!,
                 Model = _imageModels[_modelSelector.SelectedItem],
-                Size = ParseImageSize(_sizeSelector.Text.ToString()),
+                Size = ParseImageSize(_sizeSelector.Text.ToString() ?? string.Empty),
                 N = numImages
             };
 
             // Add quality and style for DALL-E 3
             if (request.Model == "dall-e-3")
             {
-                request.Quality = ParseImageQuality(_qualitySelector.Text.ToString());
-                request.Style = ParseImageStyle(_styleSelector.Text.ToString());
+                request.Quality = ParseImageQuality(_qualitySelector.Text.ToString() ?? string.Empty);
+                request.Style = ParseImageStyle(_styleSelector.Text.ToString() ?? string.Empty);
             }
 
             var response = await _coreApiService.CreateImageGenerationAsync(request);

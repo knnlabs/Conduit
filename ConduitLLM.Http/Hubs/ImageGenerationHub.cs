@@ -31,6 +31,10 @@ namespace ConduitLLM.Http.Hubs
         public async Task SubscribeToTask(string taskId)
         {
             var virtualKeyId = RequireVirtualKeyId();
+            var groupName = SignalRConstants.Groups.ImageTask(taskId);
+            
+            Logger.LogInformation("SubscribeToTask called - VirtualKeyId: {KeyId}, TaskId: {TaskId}, GroupName: {GroupName}, ConnectionId: {ConnectionId}", 
+                virtualKeyId, taskId, groupName, Context.ConnectionId);
             
             // Verify task ownership using the base class method
             if (!await CanAccessTaskAsync(taskId))
@@ -40,9 +44,9 @@ namespace ConduitLLM.Http.Hubs
                 throw new HubException("Unauthorized access to task");
             }
             
-            await Groups.AddToGroupAsync(Context.ConnectionId, SignalRConstants.Groups.ImageTask(taskId));
-            Logger.LogDebug("Virtual Key {KeyId} subscribed to image task {TaskId}", 
-                virtualKeyId, taskId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            Logger.LogInformation("Virtual Key {KeyId} successfully subscribed to image task {TaskId} in group {GroupName}, ConnectionId: {ConnectionId}", 
+                virtualKeyId, taskId, groupName, Context.ConnectionId);
         }
 
         /// <summary>

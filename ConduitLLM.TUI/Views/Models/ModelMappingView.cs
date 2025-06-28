@@ -13,13 +13,13 @@ public class ModelMappingView : View
     private readonly SignalRService _signalRService;
     private readonly ILogger<ModelMappingView> _logger;
     
-    private ListView _mappingList;
-    private Label _statusLabel;
-    private Label _realTimeLabel;
-    private Button _addButton;
-    private Button _editButton;
-    private Button _deleteButton;
-    private Button _refreshButton;
+    private ListView _mappingList = null!;
+    private Label _statusLabel = null!;
+    private Label _realTimeLabel = null!;
+    private Button _addButton = null!;
+    private Button _editButton = null!;
+    private Button _deleteButton = null!;
+    private Button _refreshButton = null!;
     
     private List<ModelProviderMappingDto> _mappings = new();
 

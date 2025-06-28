@@ -5,12 +5,12 @@ namespace ConduitLLM.TUI.Views.Providers;
 
 public class ProviderEditDialog : Dialog
 {
-    private TextField _providerNameField;
-    private TextView _apiKeyField;
-    private TextField _baseUrlField;
-    private TextField _orgIdField;
-    private CheckBox _isEnabledCheckbox;
-    private ComboBox _providerTypeCombo;
+    private TextField _providerNameField = null!;
+    private TextView _apiKeyField = null!;
+    private TextField _baseUrlField = null!;
+    private TextField _orgIdField = null!;
+    private CheckBox _isEnabledCheckbox = null!;
+    private ComboBox _providerTypeCombo = null!;
     
     public CreateProviderCredentialDto? CreateResult { get; private set; }
     public UpdateProviderCredentialDto? UpdateResult { get; private set; }

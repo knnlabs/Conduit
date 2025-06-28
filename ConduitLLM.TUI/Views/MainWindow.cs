@@ -19,9 +19,9 @@ public class MainWindow : Window
     private readonly SignalRService _signalRService;
     private readonly ILogger<MainWindow> _logger;
     
-    private MenuBar _menuBar;
-    private StatusBar _statusBar;
-    private FrameView _contentFrame;
+    private MenuBar _menuBar = null!;
+    private StatusBar _statusBar = null!;
+    private FrameView _contentFrame = null!;
     private View? _currentView;
 
     public MainWindow(IServiceProvider serviceProvider) : base("Conduit TUI")

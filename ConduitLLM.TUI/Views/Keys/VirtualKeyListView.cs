@@ -12,14 +12,14 @@ public class VirtualKeyListView : View
     private readonly StateManager _stateManager;
     private readonly ILogger<VirtualKeyListView> _logger;
     
-    private ListView _keyList;
-    private Label _statusLabel;
-    private Label _selectedKeyLabel;
-    private Button _addButton;
-    private Button _editButton;
-    private Button _deleteButton;
-    private Button _selectButton;
-    private Button _refreshButton;
+    private ListView _keyList = null!;
+    private Label _statusLabel = null!;
+    private Label _selectedKeyLabel = null!;
+    private Button _addButton = null!;
+    private Button _editButton = null!;
+    private Button _deleteButton = null!;
+    private Button _selectButton = null!;
+    private Button _refreshButton = null!;
     
     private List<VirtualKeyDto> _keys = new();
 

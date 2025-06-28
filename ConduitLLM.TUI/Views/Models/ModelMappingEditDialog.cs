@@ -6,13 +6,13 @@ namespace ConduitLLM.TUI.Views.Models;
 
 public class ModelMappingEditDialog : Dialog
 {
-    private TextField _requestedModelField;
-    private ComboBox _providerCombo;
-    private ComboBox _actualModelCombo;
-    private TextField _contextWindowField;
-    private TextField _maxOutputField;
-    private CheckBox _isEnabledCheckbox;
-    private StateManager _stateManager;
+    private TextField _requestedModelField = null!;
+    private ComboBox _providerCombo = null!;
+    private ComboBox _actualModelCombo = null!;
+    private TextField _contextWindowField = null!;
+    private TextField _maxOutputField = null!;
+    private CheckBox _isEnabledCheckbox = null!;
+    private StateManager _stateManager = null!;
     
     public CreateModelProviderMappingDto? Result { get; private set; }
 

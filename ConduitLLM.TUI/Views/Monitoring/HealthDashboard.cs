@@ -13,9 +13,9 @@ public class HealthDashboard : View
     private readonly AppConfiguration _config;
     private readonly ILogger<HealthDashboard> _logger;
     
-    private ListView _statusList;
-    private Button _refreshButton;
-    private Label _lastUpdateLabel;
+    private ListView _statusList = null!;
+    private Button _refreshButton = null!;
+    private Label _lastUpdateLabel = null!;
     private Timer? _refreshTimer;
 
     public HealthDashboard(IServiceProvider serviceProvider)

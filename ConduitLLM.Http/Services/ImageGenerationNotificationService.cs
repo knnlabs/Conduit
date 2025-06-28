@@ -75,7 +75,10 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationCompleted, new
+                var groupName = SignalRConstants.Groups.ImageTask(taskId);
+                _logger.LogInformation("NotifyImageGenerationCompletedAsync called for task {TaskId}, sending to group {GroupName}", taskId, groupName);
+                
+                await _hubContext.Clients.Group(groupName).SendAsync(SignalRConstants.ClientMethods.ImageGenerationCompleted, new
                 {
                     taskId,
                     imageUrls,
@@ -84,8 +87,8 @@ namespace ConduitLLM.Http.Services
                     completedAt = DateTime.UtcNow
                 });
                 
-                _logger.LogDebug("Sent ImageGenerationCompleted notification for task {TaskId} with {ImageCount} images", 
-                    taskId, imageUrls.Length);
+                _logger.LogInformation("Successfully sent ImageGenerationCompleted notification for task {TaskId} with {ImageCount} images to group {GroupName}", 
+                    taskId, imageUrls.Length, groupName);
             }
             catch (Exception ex)
             {

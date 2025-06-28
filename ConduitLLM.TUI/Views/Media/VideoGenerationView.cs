@@ -13,15 +13,15 @@ public class VideoGenerationView : View
     private readonly SignalRService _signalRService;
     private readonly ILogger<VideoGenerationView> _logger;
     
-    private TextView _promptField;
-    private ComboBox _modelSelector;
-    private ComboBox _resolutionSelector;
-    private TextField _durationField;
-    private Button _generateButton;
-    private Button _checkStatusButton;
-    private ListView _tasksList;
-    private Label _statusLabel;
-    private ProgressBar _progressBar;
+    private TextView _promptField = null!;
+    private ComboBox _modelSelector = null!;
+    private ComboBox _resolutionSelector = null!;
+    private TextField _durationField = null!;
+    private Button _generateButton = null!;
+    private Button _checkStatusButton = null!;
+    private ListView _tasksList = null!;
+    private Label _statusLabel = null!;
+    private ProgressBar _progressBar = null!;
     
     private Dictionary<string, VideoTaskInfo> _activeTasks = new();
     

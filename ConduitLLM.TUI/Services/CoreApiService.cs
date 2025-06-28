@@ -49,7 +49,7 @@ public class CoreApiService : IDisposable
             // Create a new client with the selected virtual key as the API key
             var configuration = new ConduitCoreClientConfiguration
             {
-                ApiKey = _currentApiKey,
+                ApiKey = _currentApiKey ?? string.Empty,
                 BaseUrl = _config.CoreApiUrl
             };
             
@@ -249,7 +249,7 @@ public class CoreApiService : IDisposable
     }
 
     // Navigation State
-    public async Task<NavigationStateDto> GetNavigationStateAsync()
+    public Task<NavigationStateDto> GetNavigationStateAsync()
     {
         try
         {

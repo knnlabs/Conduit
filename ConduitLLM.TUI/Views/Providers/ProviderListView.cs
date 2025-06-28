@@ -12,13 +12,13 @@ public class ProviderListView : View
     private readonly StateManager _stateManager;
     private readonly ILogger<ProviderListView> _logger;
     
-    private ListView _providerList;
-    private Label _statusLabel;
-    private Button _addButton;
-    private Button _editButton;
-    private Button _deleteButton;
-    private Button _discoverButton;
-    private Button _refreshButton;
+    private ListView _providerList = null!;
+    private Label _statusLabel = null!;
+    private Button _addButton = null!;
+    private Button _editButton = null!;
+    private Button _deleteButton = null!;
+    private Button _discoverButton = null!;
+    private Button _refreshButton = null!;
     
     private List<ProviderCredentialDto> _providers = new();
 

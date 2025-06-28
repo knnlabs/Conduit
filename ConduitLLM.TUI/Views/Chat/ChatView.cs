@@ -13,13 +13,13 @@ public class ChatView : View
     private readonly StateManager _stateManager;
     private readonly ILogger<ChatView> _logger;
     
-    private TextView _chatHistory;
-    private TextView _inputField;
-    private ComboBox _modelSelector;
-    private Label _statusLabel;
-    private Button _sendButton;
-    private Button _clearButton;
-    private CheckBox _streamingCheckbox;
+    private TextView _chatHistory = null!;
+    private TextView _inputField = null!;
+    private ComboBox _modelSelector = null!;
+    private Label _statusLabel = null!;
+    private Button _sendButton = null!;
+    private Button _clearButton = null!;
+    private CheckBox _streamingCheckbox = null!;
     
     private List<ChatCompletionMessage> _messages = new();
     private bool _isProcessing = false;
@@ -313,7 +313,7 @@ public class ChatView : View
 
     private void UpdateLastAssistantMessage(string content)
     {
-        var text = _chatHistory.Text.ToString();
+        var text = _chatHistory.Text.ToString() ?? string.Empty;
         var lastAssistantIndex = text.LastIndexOf("] Assistant: ");
         
         if (lastAssistantIndex != -1)

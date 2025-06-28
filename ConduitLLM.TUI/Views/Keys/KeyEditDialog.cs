@@ -5,11 +5,11 @@ namespace ConduitLLM.TUI.Views.Keys;
 
 public class KeyEditDialog : Dialog
 {
-    private TextField _keyNameField;
-    private TextField _maxBudgetField;
-    private TextField _dailyBudgetField;
-    private TextView _allowedModelsField;
-    private CheckBox _isEnabledCheckbox;
+    private TextField _keyNameField = null!;
+    private TextField _maxBudgetField = null!;
+    private TextField _dailyBudgetField = null!;
+    private TextView _allowedModelsField = null!;
+    private CheckBox _isEnabledCheckbox = null!;
     // private CheckBox _logPromptsCheckbox; // Not supported in current API
     
     public CreateVirtualKeyRequest? Result { get; private set; }
