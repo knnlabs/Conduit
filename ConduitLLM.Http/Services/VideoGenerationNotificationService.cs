@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Core.Constants;
 
 namespace ConduitLLM.Http.Services
 {
@@ -28,7 +29,7 @@ namespace ConduitLLM.Http.Services
             {
                 // Use taskId for consistency and send to specific group for security
                 var taskId = requestId; // requestId is actually taskId in the video generation flow
-                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationStarted", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.VideoTask(taskId)).SendAsync(SignalRConstants.ClientMethods.VideoGenerationStarted, new
                 {
                     taskId, // Changed from requestId to taskId for consistency
                     provider,
@@ -50,7 +51,7 @@ namespace ConduitLLM.Http.Services
             {
                 // Use taskId for consistency and send to specific group for security
                 var taskId = requestId; // requestId is actually taskId in the video generation flow
-                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationProgress", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.VideoTask(taskId)).SendAsync(SignalRConstants.ClientMethods.VideoGenerationProgress, new
                 {
                     taskId, // Changed from requestId to taskId for consistency
                     progressPercentage,
@@ -74,7 +75,7 @@ namespace ConduitLLM.Http.Services
             {
                 // Use taskId for consistency and send to specific group for security
                 var taskId = requestId; // requestId is actually taskId in the video generation flow
-                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationCompleted", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.VideoTask(taskId)).SendAsync(SignalRConstants.ClientMethods.VideoGenerationCompleted, new
                 {
                     taskId, // Changed from requestId to taskId for consistency
                     videoUrl,
@@ -97,7 +98,7 @@ namespace ConduitLLM.Http.Services
             {
                 // Use taskId for consistency and send to specific group for security
                 var taskId = requestId; // requestId is actually taskId in the video generation flow
-                await _hubContext.Clients.Group($"video-{taskId}").SendAsync("VideoGenerationFailed", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.VideoTask(taskId)).SendAsync(SignalRConstants.ClientMethods.VideoGenerationFailed, new
                 {
                     taskId, // Changed from requestId to taskId for consistency
                     error,

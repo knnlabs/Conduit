@@ -10,6 +10,7 @@ using ConduitLLM.WebUI.Interfaces;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Collections.Concurrent;
+using ConduitLLM.WebUI.Constants;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -99,9 +100,9 @@ namespace ConduitLLM.WebUI.Services
 
                 // Initialize hub connections - don't let one failure stop others
                 var initTasks = new List<Task>();
-                initTasks.Add(InitializeHubConnectionSafely("notifications", "/hubs/notifications"));
-                initTasks.Add(InitializeHubConnectionSafely("video-generation", "/hubs/video-generation"));
-                initTasks.Add(InitializeHubConnectionSafely("image-generation", "/hubs/image-generation"));
+                initTasks.Add(InitializeHubConnectionSafely("notifications", SignalRConstants.Hubs.SystemNotification));
+                initTasks.Add(InitializeHubConnectionSafely("video-generation", SignalRConstants.Hubs.VideoGeneration));
+                initTasks.Add(InitializeHubConnectionSafely("image-generation", SignalRConstants.Hubs.ImageGeneration));
                 
                 await Task.WhenAll(initTasks);
 
@@ -392,7 +393,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 try
                 {
-                    await connection.InvokeAsync("SubscribeToTask", taskId);
+                    await connection.InvokeAsync(SignalRConstants.HubMethods.SubscribeToTask, taskId);
                     _logger.LogInformation("Subscribed to video generation task {TaskId}", taskId);
                 }
                 catch (Exception ex)
@@ -412,7 +413,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 try
                 {
-                    await connection.InvokeAsync("UnsubscribeFromTask", taskId);
+                    await connection.InvokeAsync(SignalRConstants.HubMethods.UnsubscribeFromTask, taskId);
                     _logger.LogInformation("Unsubscribed from video generation task {TaskId}", taskId);
                 }
                 catch (Exception ex)
@@ -460,7 +461,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 try
                 {
-                    await connection.InvokeAsync("UnsubscribeFromTask", taskId);
+                    await connection.InvokeAsync(SignalRConstants.HubMethods.UnsubscribeFromTask, taskId);
                     _logger.LogInformation("Unsubscribed from image generation task {TaskId}", taskId);
                 }
                 catch (Exception ex)

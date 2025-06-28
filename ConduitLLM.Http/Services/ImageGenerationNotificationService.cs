@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Core.Constants;
 
 namespace ConduitLLM.Http.Services
 {
@@ -26,7 +27,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationStarted", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationStarted, new
                 {
                     taskId,
                     prompt,
@@ -37,8 +38,8 @@ namespace ConduitLLM.Http.Services
                 });
                 
                 _logger.LogInformation(
-                    "[SignalR:ImageGenerationStarted] Sent notification - TaskId: {TaskId}, Prompt: {Prompt}, NumberOfImages: {NumberOfImages}, Size: {Size}, Style: {Style}, Group: image-{TaskId}",
-                    taskId, prompt.Length > 50 ? prompt.Substring(0, 50) + "..." : prompt, numberOfImages, size, style ?? "default", taskId);
+                    "[SignalR:ImageGenerationStarted] Sent notification - TaskId: {TaskId}, Prompt: {Prompt}, NumberOfImages: {NumberOfImages}, Size: {Size}, Style: {Style}, Group: {Group}",
+                    taskId, prompt.Length > 50 ? prompt.Substring(0, 50) + "..." : prompt, numberOfImages, size, style ?? "default", SignalRConstants.Groups.ImageTask(taskId));
             }
             catch (Exception ex)
             {
@@ -50,7 +51,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationProgress", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationProgress, new
                 {
                     taskId,
                     progressPercentage,
@@ -74,7 +75,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationCompleted", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationCompleted, new
                 {
                     taskId,
                     imageUrls,
@@ -96,7 +97,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationFailed", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationFailed, new
                 {
                     taskId,
                     error,
@@ -116,7 +117,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                await _hubContext.Clients.Group($"image-{taskId}").SendAsync("ImageGenerationCancelled", new
+                await _hubContext.Clients.Group(SignalRConstants.Groups.ImageTask(taskId)).SendAsync(SignalRConstants.ClientMethods.ImageGenerationCancelled, new
                 {
                     taskId,
                     reason,

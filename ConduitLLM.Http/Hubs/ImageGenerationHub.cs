@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Constants;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -39,7 +40,7 @@ namespace ConduitLLM.Http.Hubs
                 throw new HubException("Unauthorized access to task");
             }
             
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"image-{taskId}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, SignalRConstants.Groups.ImageTask(taskId));
             Logger.LogDebug("Virtual Key {KeyId} subscribed to image task {TaskId}", 
                 virtualKeyId, taskId);
         }
@@ -49,7 +50,7 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         public async Task UnsubscribeFromTask(string taskId)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"image-{taskId}");
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, SignalRConstants.Groups.ImageTask(taskId));
             Logger.LogDebug("Client {ConnectionId} unsubscribed from image task {TaskId}", 
                 Context.ConnectionId, taskId);
         }
