@@ -126,7 +126,7 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Extract the virtual key from task metadata
-                string virtualKey;
+                string? virtualKey;
                 try
                 {
                     if (task.Metadata is TaskMetadata taskMetadata)
@@ -320,8 +320,8 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Extract the virtual key and request from metadata
-                string virtualKey;
-                VideoGenerationRequest videoRequest;
+                string? virtualKey;
+                VideoGenerationRequest? videoRequest;
                 try
                 {
                     if (taskStatus.Metadata is TaskMetadata taskMetadata)

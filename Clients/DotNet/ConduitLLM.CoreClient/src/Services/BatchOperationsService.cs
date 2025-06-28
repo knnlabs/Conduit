@@ -1,4 +1,5 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Exceptions;
 using ConduitLLM.CoreClient.Models;
 
 namespace ConduitLLM.CoreClient.Services;
