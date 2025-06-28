@@ -337,13 +337,15 @@ namespace ConduitLLM.WebUI.Services
         {
             connection.On<string, JsonElement>("ImageGenerationProgress", async (taskId, progress) =>
             {
-                _logger.LogDebug("Received image generation progress for task {TaskId}", taskId);
+                _logger.LogInformation("Received ImageGenerationProgress event for task {TaskId}. Progress data: {Progress}", 
+                    taskId, progress.GetRawText());
                 await NotifyListeners(listener => listener.OnImageGenerationProgress(taskId, progress));
             });
 
             connection.On<string, JsonElement>("ImageGenerationCompleted", async (taskId, result) =>
             {
-                _logger.LogDebug("Image generation completed for task {TaskId}", taskId);
+                _logger.LogInformation("Received ImageGenerationCompleted event for task {TaskId}. Result data: {Result}", 
+                    taskId, result.GetRawText());
                 await NotifyListeners(listener => listener.OnImageGenerationCompleted(taskId, result));
             });
 
@@ -442,7 +444,8 @@ namespace ConduitLLM.WebUI.Services
 
             try
             {
-                await connection.InvokeAsync("SubscribeToTask", taskId);
+                _logger.LogInformation("Attempting to subscribe to image generation task {TaskId}", taskId);
+                await connection.InvokeAsync(SignalRConstants.HubMethods.SubscribeToTask, taskId);
                 _logger.LogInformation("Successfully subscribed to image generation task {TaskId}", taskId);
             }
             catch (Exception ex)

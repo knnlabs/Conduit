@@ -210,11 +210,19 @@ namespace ConduitLLM.Http.Authentication
                 }
                 
                 // Check if the task metadata contains the virtual key ID
-                if (taskStatus.Metadata is IDictionary<string, object> metadata &&
-                    metadata.TryGetValue("virtualKeyId", out var taskVirtualKeyIdObj))
+                int? taskVirtualKeyId = null;
+                
+                // Now that AsyncTaskStatus uses TaskMetadata?, we just need to check if it exists
+                if (taskStatus.Metadata != null)
                 {
-                    var taskVirtualKeyId = ConvertToInt(taskVirtualKeyIdObj);
-                    if (taskVirtualKeyId.HasValue && taskVirtualKeyId.Value == virtualKeyId)
+                    taskVirtualKeyId = taskStatus.Metadata.VirtualKeyId;
+                    _logger.LogDebug("Task {TaskId} has metadata with VirtualKeyId: {VirtualKeyId}", 
+                        taskId, taskVirtualKeyId);
+                }
+                
+                if (taskVirtualKeyId.HasValue)
+                {
+                    if (taskVirtualKeyId.Value == virtualKeyId)
                     {
                         _logger.LogDebug("Virtual Key {VirtualKeyId} has access to task {TaskId}", 
                             virtualKeyId, taskId);
@@ -228,7 +236,8 @@ namespace ConduitLLM.Http.Authentication
                     }
                 }
                 
-                _logger.LogWarning("Task {TaskId} has no virtual key metadata", taskId);
+                _logger.LogWarning("Task {TaskId} has no virtual key metadata or metadata is in unexpected format. Metadata type: {MetadataType}", 
+                    taskId, taskStatus.Metadata?.GetType().FullName ?? "null");
                 return false;
             }
             catch (Exception ex)

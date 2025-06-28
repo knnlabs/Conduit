@@ -13,7 +13,7 @@ public static class ApiEndpoints
         /// <summary>
         /// Base virtual keys endpoint.
         /// </summary>
-        public const string Base = "/virtualkeys";
+        public const string Base = "/api/virtualkeys";
     }
 
     /// <summary>
@@ -24,22 +24,22 @@ public static class ApiEndpoints
         /// <summary>
         /// Base providers endpoint.
         /// </summary>
-        public const string Base = "/providers";
+        public const string Base = "/api/providers";
 
         /// <summary>
         /// Provider credentials endpoint.
         /// </summary>
-        public const string Credentials = "/provider-credentials";
+        public const string Credentials = "/api/provider-credentials";
 
         /// <summary>
         /// Provider health endpoint.
         /// </summary>
-        public const string Health = "/provider-health";
+        public const string Health = "/api/provider-health";
 
         /// <summary>
         /// Provider models endpoint.
         /// </summary>
-        public const string Models = "/provider-models";
+        public const string Models = "/api/provider-models";
     }
 
     /// <summary>
@@ -50,12 +50,12 @@ public static class ApiEndpoints
         /// <summary>
         /// Model costs endpoint.
         /// </summary>
-        public const string Costs = "/model-costs";
+        public const string Costs = "/api/model-costs";
 
         /// <summary>
         /// Model mappings endpoint.
         /// </summary>
-        public const string Mappings = "/model-mappings";
+        public const string Mappings = "/api/model-mappings";
     }
 
     /// <summary>
@@ -66,22 +66,22 @@ public static class ApiEndpoints
         /// <summary>
         /// System settings endpoint.
         /// </summary>
-        public const string Settings = "/settings";
+        public const string Settings = "/api/settings";
 
         /// <summary>
         /// Database backup endpoint.
         /// </summary>
-        public const string DatabaseBackup = "/database-backup";
+        public const string DatabaseBackup = "/api/database-backup";
 
         /// <summary>
         /// System information endpoint.
         /// </summary>
-        public const string Info = "/system";
+        public const string Info = "/api/system";
 
         /// <summary>
         /// Discovery endpoint.
         /// </summary>
-        public const string Discovery = "/discovery";
+        public const string Discovery = "/api/discovery";
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ public static class ApiEndpoints
         /// <summary>
         /// Base analytics endpoint.
         /// </summary>
-        public const string Base = "/analytics";
+        public const string Base = "/api/analytics";
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public static class ApiEndpoints
         /// <summary>
         /// Audio configuration endpoint.
         /// </summary>
-        public const string Configuration = "/audio-configuration";
+        public const string Configuration = "/api/audio-configuration";
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public static class ApiEndpoints
         /// <summary>
         /// IP filter endpoint.
         /// </summary>
-        public const string Base = "/ip-filter";
+        public const string Base = "/api/ip-filter";
     }
 
     /// <summary>
@@ -125,6 +125,6 @@ public static class ApiEndpoints
         /// <summary>
         /// Base notifications endpoint.
         /// </summary>
-        public const string Base = "/notifications";
+        public const string Base = "/api/notifications";
     }
 }

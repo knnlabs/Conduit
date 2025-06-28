@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using MassTransit;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -92,7 +93,7 @@ namespace ConduitLLM.Core.Services
                 State = TaskState.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,
-                Metadata = metadata,
+                Metadata = metadata as TaskMetadata,
                 Progress = 0
             };
 
@@ -164,7 +165,7 @@ namespace ConduitLLM.Core.Services
                 State = TaskState.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,
-                Metadata = metadata,
+                Metadata = metadata as TaskMetadata,
                 Progress = 0
             };
 
@@ -504,7 +505,7 @@ namespace ConduitLLM.Core.Services
                 CompletedAt = dbTask.CompletedAt,
                 Result = string.IsNullOrEmpty(dbTask.Result) ? null : JsonSerializer.Deserialize<object>(dbTask.Result),
                 Error = dbTask.Error,
-                Metadata = string.IsNullOrEmpty(dbTask.Metadata) ? null : JsonSerializer.Deserialize<object>(dbTask.Metadata),
+                Metadata = string.IsNullOrEmpty(dbTask.Metadata) ? null : JsonSerializer.Deserialize<TaskMetadata>(dbTask.Metadata),
                 Progress = dbTask.Progress,
                 ProgressMessage = dbTask.ProgressMessage,
                 RetryCount = dbTask.RetryCount,
@@ -519,6 +520,12 @@ namespace ConduitLLM.Core.Services
             if (metadata == null)
             {
                 throw new ArgumentNullException(nameof(metadata), "Metadata cannot be null when creating a task");
+            }
+
+            // First check if it's already a TaskMetadata instance
+            if (metadata is TaskMetadata taskMetadata)
+            {
+                return taskMetadata.VirtualKeyId;
             }
 
             try

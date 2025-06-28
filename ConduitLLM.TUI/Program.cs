@@ -232,7 +232,8 @@ class Program
             var services = new ServiceCollection();
             services.AddLogging(builder =>
             {
-                builder.SetMinimumLevel(LogLevel.Warning);
+                builder.SetMinimumLevel(LogLevel.Information);
+                builder.AddConsole();
             });
             
             services.AddSingleton(new AppConfiguration
@@ -261,8 +262,17 @@ class Program
             // Get the WebUI_VirtualKey from configuration
             try
             {
+                AnsiConsole.MarkupLine($"[grey]Admin API URL: {adminApiUrl}[/]");
+                AnsiConsole.MarkupLine($"[grey]Master Key: {masterKey.Substring(0, 5)}...[/]");
+                
                 var webUIKeySetting = await adminApiService.GetSettingByKeyAsync("WebUI_VirtualKey");
                 var webUIKeyIdSetting = await adminApiService.GetSettingByKeyAsync("WebUI_VirtualKeyId");
+                
+                AnsiConsole.MarkupLine($"[grey]WebUI Key Setting: {(webUIKeySetting == null ? "null" : "found")}[/]");
+                if (webUIKeySetting != null)
+                {
+                    AnsiConsole.MarkupLine($"[grey]WebUI Key Value: {(string.IsNullOrEmpty(webUIKeySetting.Value) ? "empty" : "present")}[/]");
+                }
                 
                 if (webUIKeySetting != null && !string.IsNullOrEmpty(webUIKeySetting.Value))
                 {

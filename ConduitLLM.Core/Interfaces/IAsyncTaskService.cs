@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -141,7 +142,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Additional metadata about the task.
         /// </summary>
-        public object? Metadata { get; set; }
+        public TaskMetadata? Metadata { get; set; }
 
         /// <summary>
         /// Progress percentage (0-100) if available.

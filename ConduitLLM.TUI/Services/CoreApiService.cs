@@ -92,9 +92,24 @@ public class CoreApiService : IDisposable
             var client = GetClient();
             return await client.Chat.CreateCompletionAsync(request);
         }
+        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
+        {
+            _logger.LogError("Authorization failed for chat completion: {Message}", coreEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed for chat completion: {Message}", authEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error during chat completion: {Message}", netEx.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create chat completion");
+            _logger.LogError("Failed to create chat completion: {Message}", ex.Message);
             throw;
         }
     }
@@ -107,9 +122,24 @@ public class CoreApiService : IDisposable
             var client = GetClient();
             return await client.Images.GenerateAsync(request);
         }
+        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
+        {
+            _logger.LogError("Authorization failed for image generation: {Message}", coreEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed for image generation: {Message}", authEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error during image generation: {Message}", netEx.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create image generation");
+            _logger.LogError("Failed to create image generation: {Message}", ex.Message);
             throw;
         }
     }
@@ -122,9 +152,24 @@ public class CoreApiService : IDisposable
             var client = GetClient();
             return await client.Videos.GenerateAsync(request);
         }
+        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
+        {
+            _logger.LogError("Authorization failed for video generation: {Message}", coreEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed for video generation: {Message}", authEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error during video generation: {Message}", netEx.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create video generation");
+            _logger.LogError("Failed to create video generation: {Message}", ex.Message);
             throw;
         }
     }
@@ -151,9 +196,24 @@ public class CoreApiService : IDisposable
             var client = GetClient();
             return await client.Videos.GetTaskStatusAsync(taskId);
         }
+        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
+        {
+            _logger.LogError("Authorization failed when getting video status: {Message}", coreEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed when getting video status: {Message}", authEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error when getting video status: {Message}", netEx.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get video generation status");
+            _logger.LogError("Failed to get video generation status: {Message}", ex.Message);
             throw;
         }
     }
@@ -166,9 +226,24 @@ public class CoreApiService : IDisposable
             var client = GetClient();
             return await client.Models.ListAsync();
         }
+        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
+        {
+            _logger.LogError("Authorization failed when getting models: {Message}", coreEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed when getting models: {Message}", authEx.Message);
+            throw;
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error when getting models: {Message}", netEx.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get models");
+            _logger.LogError("Failed to get models: {Message}", ex.Message);
             throw;
         }
     }
@@ -184,7 +259,7 @@ public class CoreApiService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get navigation state");
+            _logger.LogError("Failed to get navigation state: {Message}", ex.Message);
             throw;
         }
     }

@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Admin.Tests", "C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Http.Tests", "ConduitLLM.Http.Tests\ConduitLLM.Http.Tests.csproj", "{09ADCD08-3769-4CB6-B813-3968312BA472}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.TUI", "ConduitLLM.TUI\ConduitLLM.TUI.csproj", "{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{09ADCD08-3769-4CB6-B813-3968312BA472}.Release|x64.Build.0 = Release|Any CPU
 		{09ADCD08-3769-4CB6-B813-3968312BA472}.Release|x86.ActiveCfg = Release|Any CPU
 		{09ADCD08-3769-4CB6-B813-3968312BA472}.Release|x86.Build.0 = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|x64.Build.0 = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Debug|x86.Build.0 = Debug|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|x64.ActiveCfg = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|x64.Build.0 = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|x86.ActiveCfg = Release|Any CPU
+		{F6CE7A27-0C95-4C15-98B3-389CE8FDDCEA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

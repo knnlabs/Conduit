@@ -338,6 +338,58 @@ response = client.chat.completions.create(
 )
 ```
 
+### Using the Terminal UI (TUI)
+
+Conduit includes a Terminal User Interface (TUI) for debugging and testing without a web browser. The TUI provides all the functionality of the WebUI through a text-based interface.
+
+#### Quick Start
+
+```bash
+# Linux/macOS
+./conduit-tui --master-key YOUR_MASTER_KEY
+
+# Windows (PowerShell)
+.\conduit-tui.ps1 --master-key YOUR_MASTER_KEY
+
+# Windows (Command Prompt)
+conduit-tui.bat --master-key YOUR_MASTER_KEY
+```
+
+#### TUI Features
+
+- **Full WebUI Functionality**: Chat, provider management, model mappings, virtual keys, image/video generation
+- **Real-time Updates**: SignalR integration for live status updates
+- **Cross-platform**: Works on Linux, macOS, and Windows
+- **Keyboard Navigation**: Fast access with F1-F9 shortcuts
+
+#### Command Line Options
+
+```bash
+conduit-tui --master-key <KEY> [OPTIONS]
+
+Options:
+  -k, --master-key <KEY>     Master API key for authentication (required)
+  -c, --core-api <URL>       Core API URL (default: http://localhost:5000)
+  -a, --admin-api <URL>      Admin API URL (default: http://localhost:5002)
+  -h, --help                 Show help information
+  --build                    Force rebuild before running
+```
+
+#### Examples
+
+```bash
+# Use with default API URLs
+./conduit-tui --master-key YOUR_MASTER_KEY
+
+# Specify custom API URLs
+./conduit-tui -k YOUR_MASTER_KEY -c https://api.example.com:5000 -a https://api.example.com:5002
+
+# Force rebuild and run
+./conduit-tui --build --master-key YOUR_MASTER_KEY
+```
+
+See [TUI Documentation](ConduitLLM.TUI/README.md) for detailed usage instructions.
+
 ## Documentation
 
 See the `docs/` directory for detailed documentation:

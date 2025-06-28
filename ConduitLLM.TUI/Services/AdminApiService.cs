@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.AdminClient;
 using ConduitLLM.AdminClient.Client;
 using ConduitLLM.AdminClient.Models;
+using ConduitLLM.AdminClient.Exceptions;
 using ConduitLLM.TUI.Models;
 
 namespace ConduitLLM.TUI.Services;
@@ -267,9 +268,24 @@ public class AdminApiService
             var settings = await _adminClient.Settings.GetGlobalSettingsAsync();
             return settings.ToList();
         }
+        catch (ConduitLLM.AdminClient.Exceptions.AuthorizationException authEx)
+        {
+            _logger.LogError("Authorization failed when retrieving settings: {Message}", authEx.Message);
+            return new List<GlobalSettingDto>();
+        }
+        catch (ConduitLLM.AdminClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogError("Authentication failed when retrieving settings: {Message}", authEx.Message);
+            return new List<GlobalSettingDto>();
+        }
+        catch (ConduitLLM.AdminClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError("Network error when retrieving settings: {Message}", netEx.Message);
+            return new List<GlobalSettingDto>();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get settings");
+            _logger.LogError("Failed to get settings: {Message}", ex.Message);
             return new List<GlobalSettingDto>();
         }
     }
@@ -279,28 +295,55 @@ public class AdminApiService
         try
         {
             // First try the SDK method
+            _logger.LogInformation("Trying to get setting by key: {Key}", key);
             var setting = await _adminClient.Settings.GetGlobalSettingAsync(key);
+            _logger.LogInformation("Successfully retrieved setting: {Key} = {Value}", key, setting?.Value ?? "null");
             return setting;
         }
-        catch (ConduitLLM.AdminClient.Exceptions.NotFoundException)
+        catch (ConduitLLM.AdminClient.Exceptions.NotFoundException notFoundEx)
         {
+            _logger.LogWarning("Setting not found: {Key} - {Message}", key, notFoundEx.Message);
             return null;
+        }
+        catch (ConduitLLM.AdminClient.Exceptions.AuthorizationException authEx)
+        {
+            _logger.LogWarning("Authorization failed for setting '{Key}': {Message}", key, authEx.Message);
+            // Don't fall back when it's an authorization issue
+            return null;
+        }
+        catch (ConduitLLM.AdminClient.Exceptions.AuthenticationException authEx)
+        {
+            _logger.LogWarning("Authentication failed for setting '{Key}': {Message}", key, authEx.Message);
+            // Don't fall back when it's an authentication issue
+            return null;
+        }
+        catch (ConduitLLM.AdminClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogWarning("Network error when retrieving setting '{Key}': {Message}", key, netEx.Message);
+            // For network errors, we might want to try the fallback
+            _logger.LogInformation("Attempting fallback method due to network error");
+            // Fall through to the fallback logic below
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "SDK method failed to get setting by key '{Key}', trying fallback", key);
-            
-            // Fallback: Try getting all settings and filter by key
-            try
+            _logger.LogWarning("SDK method failed to get setting by key '{Key}': {Message}, trying fallback", key, ex.Message);
+        }
+        
+        // Fallback: Try getting all settings and filter by key
+        try
+        {
+            var allSettings = await GetSettingsAsync();
+            var foundSetting = allSettings.FirstOrDefault(s => s.Key == key);
+            if (foundSetting != null)
             {
-                var allSettings = await GetSettingsAsync();
-                return allSettings.FirstOrDefault(s => s.Key == key);
+                _logger.LogInformation("Found setting via fallback: {Key} = {Value}", key, foundSetting.Value);
             }
-            catch (Exception fallbackEx)
-            {
-                _logger.LogError(fallbackEx, "Fallback method also failed to get setting by key '{Key}'", key);
-                return null;
-            }
+            return foundSetting;
+        }
+        catch (Exception fallbackEx)
+        {
+            _logger.LogError("Fallback method also failed to get setting by key '{Key}': {Message}", key, fallbackEx.Message);
+            return null;
         }
     }
 }
