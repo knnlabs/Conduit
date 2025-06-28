@@ -14,9 +14,9 @@ namespace ConduitLLM.AdminClient.Services;
 /// </summary>
 public class SettingsService : BaseApiClient
 {
-    private const string GlobalSettingsEndpoint = "/globalsetting";
-    private const string AudioConfigEndpoint = "/audio-configuration";
-    private const string RouterConfigEndpoint = "/router-configuration";
+    private const string GlobalSettingsEndpoint = "/api/GlobalSettings";
+    private const string AudioConfigEndpoint = "/api/audio-configuration";
+    private const string RouterConfigEndpoint = "/api/router-configuration";
     private const int DefaultPageSize = 50;
     private static readonly TimeSpan DefaultCacheTimeout = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ShortCacheTimeout = TimeSpan.FromMinutes(1);
@@ -88,7 +88,7 @@ public class SettingsService : BaseApiClient
             if (string.IsNullOrWhiteSpace(key))
                 throw new ValidationException("Setting key is required");
 
-            var endpoint = $"{GlobalSettingsEndpoint}/{Uri.EscapeDataString(key)}";
+            var endpoint = $"{GlobalSettingsEndpoint}/by-key/{Uri.EscapeDataString(key)}";
             var cacheKey = GetCacheKey("global-setting", key);
 
             return await WithCacheAsync(
@@ -157,7 +157,7 @@ public class SettingsService : BaseApiClient
             if (request == null)
                 throw new ValidationException("Update request cannot be null");
 
-            var endpoint = $"{GlobalSettingsEndpoint}/{Uri.EscapeDataString(key)}";
+            var endpoint = $"{GlobalSettingsEndpoint}/by-key/{Uri.EscapeDataString(key)}";
             await PutAsync(endpoint, request, cancellationToken);
             await InvalidateCacheAsync();
         }
@@ -185,7 +185,7 @@ public class SettingsService : BaseApiClient
             if (string.IsNullOrWhiteSpace(key))
                 throw new ValidationException("Setting key is required");
 
-            var endpoint = $"{GlobalSettingsEndpoint}/{Uri.EscapeDataString(key)}";
+            var endpoint = $"{GlobalSettingsEndpoint}/by-key/{Uri.EscapeDataString(key)}";
             await DeleteAsync(endpoint, cancellationToken);
             await InvalidateCacheAsync();
         }

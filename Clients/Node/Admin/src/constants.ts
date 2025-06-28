@@ -98,11 +98,11 @@ export const ENDPOINTS = {
 
   // Settings
   SETTINGS: {
-    GLOBAL: '/globalsettings',
-    GLOBAL_BY_KEY: (key: string) => `/globalsettings/${key}`,
-    AUDIO: '/audioconfiguration',
-    AUDIO_BY_PROVIDER: (provider: string) => `/audioconfiguration/${provider}`,
-    ROUTER: '/router/configuration',
+    GLOBAL: '/api/GlobalSettings',
+    GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
+    AUDIO: '/api/audio-configuration',
+    AUDIO_BY_PROVIDER: (provider: string) => `/api/audio-configuration/${provider}`,
+    ROUTER: '/api/router-configuration',
   },
 
   // Discovery (note: these endpoints don't use /api prefix)
