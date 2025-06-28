@@ -40,10 +40,10 @@ namespace ConduitLLM.Http.Tests.Hubs
         }
 
         [Fact]
-        public async Task SubscribeToRequest_ValidRequestOwnership_AddsToGroup()
+        public async Task SubscribeToTask_ValidTaskOwnership_AddsToGroup()
         {
             // Arrange
-            var requestId = "test-request-123";
+            var taskId = "test-task-123";
             var virtualKeyId = 456;
             var connectionId = "test-connection-id";
             var items = new Dictionary<object, object?>
@@ -56,28 +56,28 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             var taskStatus = new AsyncTaskStatus
             {
-                TaskId = requestId,
+                TaskId = taskId,
                 Metadata = new Dictionary<string, object>
                 {
                     ["virtualKeyId"] = virtualKeyId
                 }
             };
 
-            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(requestId, It.IsAny<CancellationToken>()))
+            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
             // Act
-            await _hub.SubscribeToRequest(requestId);
+            await _hub.SubscribeToTask(taskId);
 
             // Assert
-            _groupsMock.Verify(x => x.AddToGroupAsync(connectionId, $"video-{requestId}", default), Times.Once);
+            _groupsMock.Verify(x => x.AddToGroupAsync(connectionId, $"video-{taskId}", default), Times.Once);
         }
 
         [Fact]
-        public async Task SubscribeToRequest_UnauthorizedAccess_ThrowsHubException()
+        public async Task SubscribeToTask_UnauthorizedAccess_ThrowsHubException()
         {
             // Arrange
-            var requestId = "test-request-123";
+            var taskId = "test-task-123";
             var virtualKeyId = 456;
             var differentVirtualKeyId = 789;
             var items = new Dictionary<object, object?>
@@ -89,49 +89,49 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             var taskStatus = new AsyncTaskStatus
             {
-                TaskId = requestId,
+                TaskId = taskId,
                 Metadata = new Dictionary<string, object>
                 {
                     ["virtualKeyId"] = differentVirtualKeyId
                 }
             };
 
-            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(requestId, It.IsAny<CancellationToken>()))
+            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<HubException>(() => _hub.SubscribeToRequest(requestId));
-            Assert.Equal("Unauthorized access to request", exception.Message);
+            var exception = await Assert.ThrowsAsync<HubException>(() => _hub.SubscribeToTask(taskId));
+            Assert.Equal("Unauthorized access to task", exception.Message);
         }
 
         [Fact]
-        public async Task SubscribeToRequest_NoVirtualKeyId_ThrowsHubException()
+        public async Task SubscribeToTask_NoVirtualKeyId_ThrowsHubException()
         {
             // Arrange
-            var requestId = "test-request-123";
+            var taskId = "test-task-123";
             var items = new Dictionary<object, object?>();
 
             _contextMock.Setup(x => x.Items).Returns(items);
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<HubException>(() => _hub.SubscribeToRequest(requestId));
+            var exception = await Assert.ThrowsAsync<HubException>(() => _hub.SubscribeToTask(taskId));
             Assert.Equal("Unauthorized", exception.Message);
         }
 
         [Fact]
-        public async Task UnsubscribeFromRequest_RemovesFromGroup()
+        public async Task UnsubscribeFromTask_RemovesFromGroup()
         {
             // Arrange
-            var requestId = "test-request-123";
+            var taskId = "test-task-123";
             var connectionId = "test-connection-id";
 
             _contextMock.Setup(x => x.ConnectionId).Returns(connectionId);
 
             // Act
-            await _hub.UnsubscribeFromRequest(requestId);
+            await _hub.UnsubscribeFromTask(taskId);
 
             // Assert
-            _groupsMock.Verify(x => x.RemoveFromGroupAsync(connectionId, $"video-{requestId}", default), Times.Once);
+            _groupsMock.Verify(x => x.RemoveFromGroupAsync(connectionId, $"video-{taskId}", default), Times.Once);
         }
 
         [Fact]
@@ -147,7 +147,7 @@ namespace ConduitLLM.Http.Tests.Hubs
         }
 
         [Fact]
-        public async Task SubscribeToRequest_SupportsVariousVirtualKeyIdTypes()
+        public async Task SubscribeToTask_SupportsVariousVirtualKeyIdTypes()
         {
             // Test with long value
             await TestSubscribeWithVirtualKeyType(123L, 123);
@@ -162,7 +162,7 @@ namespace ConduitLLM.Http.Tests.Hubs
         private async Task TestSubscribeWithVirtualKeyType(object virtualKeyIdValue, int expectedId)
         {
             // Arrange
-            var requestId = $"test-request-{Guid.NewGuid()}";
+            var taskId = $"test-task-{Guid.NewGuid()}";
             var connectionId = "test-connection-id";
             var items = new Dictionary<object, object?>
             {
@@ -174,21 +174,21 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             var taskStatus = new AsyncTaskStatus
             {
-                TaskId = requestId,
+                TaskId = taskId,
                 Metadata = new Dictionary<string, object>
                 {
                     ["virtualKeyId"] = virtualKeyIdValue
                 }
             };
 
-            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(requestId, It.IsAny<CancellationToken>()))
+            _taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
             // Act
-            await _hub.SubscribeToRequest(requestId);
+            await _hub.SubscribeToTask(taskId);
 
             // Assert
-            _groupsMock.Verify(x => x.AddToGroupAsync(connectionId, $"video-{requestId}", default), Times.Once);
+            _groupsMock.Verify(x => x.AddToGroupAsync(connectionId, $"video-{taskId}", default), Times.Once);
         }
     }
 }

@@ -25,33 +25,33 @@ namespace ConduitLLM.Http.Hubs
         protected override string GetHubName() => "VideoGenerationHub";
 
         /// <summary>
-        /// Subscribe to updates for a specific video generation request
+        /// Subscribe to updates for a specific video generation task
         /// </summary>
-        public async Task SubscribeToRequest(string requestId)
+        public async Task SubscribeToTask(string taskId)
         {
             var virtualKeyId = RequireVirtualKeyId();
             
-            // Verify request ownership using the base class method
-            if (!await CanAccessTaskAsync(requestId))
+            // Verify task ownership using the base class method
+            if (!await CanAccessTaskAsync(taskId))
             {
-                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to unauthorized request {RequestId}", 
-                    virtualKeyId, requestId);
-                throw new HubException("Unauthorized access to request");
+                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to unauthorized task {TaskId}", 
+                    virtualKeyId, taskId);
+                throw new HubException("Unauthorized access to task");
             }
             
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"video-{requestId}");
-            Logger.LogDebug("Virtual Key {KeyId} subscribed to video request {RequestId}", 
-                virtualKeyId, requestId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"video-{taskId}");
+            Logger.LogDebug("Virtual Key {KeyId} subscribed to video task {TaskId}", 
+                virtualKeyId, taskId);
         }
 
         /// <summary>
-        /// Unsubscribe from updates for a specific video generation request
+        /// Unsubscribe from updates for a specific video generation task
         /// </summary>
-        public async Task UnsubscribeFromRequest(string requestId)
+        public async Task UnsubscribeFromTask(string taskId)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"video-{requestId}");
-            Logger.LogDebug("Client {ConnectionId} unsubscribed from video request {RequestId}", 
-                Context.ConnectionId, requestId);
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"video-{taskId}");
+            Logger.LogDebug("Client {ConnectionId} unsubscribed from video task {TaskId}", 
+                Context.ConnectionId, taskId);
         }
     }
 }
