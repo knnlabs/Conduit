@@ -808,7 +808,7 @@
                     var oneHourAgo = DateTimeOffset.UtcNow.AddHours(-1);
                     activeTasks = tasks.Where(t => 
                         t.CreatedAt > oneHourAgo && 
-                        (t.Status == "pending" || t.Status == "running" || 
+                        (t.Status == "pending" || t.Status == "processing" || t.Status == "queued" || 
                          (t.CompletedAt.HasValue && t.CompletedAt.Value > DateTimeOffset.UtcNow.AddSeconds(-30))))
                         .ToList();
                     
@@ -846,7 +846,7 @@
             if (state == ConnectionState.Connected)
             {
                 // Re-subscribe to all active tasks
-                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
+                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued"))
                 {
                     await SignalRService.SubscribeToVideoTask(task.TaskId);
                 }

@@ -77,7 +77,7 @@
                         <small class="text-muted">
                             Task ID: <code>@task.TaskId</code>
                         </small>
-                        @if (task.Status == "pending" || task.Status == "running" || task.Status == "processing")
+                        @if (task.Status == "pending" || task.Status == "processing" || task.Status == "queued")
                         {
                             <button class="btn btn-sm btn-outline-danger" 
                                     @onclick="() => OnCancelTask.InvokeAsync(task.TaskId)"
@@ -130,7 +130,7 @@
     {
         return status?.ToLower() switch
         {
-            "pending" => "secondary",
+            "pending" or "queued" => "secondary",
             "running" or "processing" => "primary",
             "completed" => "success",
             "failed" => "danger",

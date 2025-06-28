@@ -390,6 +390,7 @@
     private RecentPrompts? recentPromptsComponent;
     private List<ImageGenerationTask> activeTasks = new();
     private bool isInitialized = false;
+    private System.Timers.Timer? statusRefreshTimer;
     
     private List<ActiveGenerationTasks.GenerationTask> mappedActiveTasks => activeTasks.Select(t => new ActiveGenerationTasks.GenerationTask
     {
@@ -455,6 +456,15 @@
         // Register as a SignalR listener
         SignalRService.RegisterListener(this);
         isInitialized = true;
+        
+        // Subscribe to all active tasks on initialization
+        await SubscribeToActiveTasks();
+        
+        // Set up periodic refresh timer (fallback for when SignalR is not available)
+        statusRefreshTimer = new System.Timers.Timer(10000); // 10 seconds
+        statusRefreshTimer.Elapsed += async (sender, e) => await OnStatusRefreshTimerElapsed();
+        statusRefreshTimer.AutoReset = true;
+        statusRefreshTimer.Start();
     }
     
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -745,10 +755,14 @@
     {
         try
         {
+            _logger.LogInformation("Starting async image generation with prompt: {Prompt}", request.Prompt);
+            
             var taskResponse = await ConduitApiClient.CreateImageAsyncTask(request, string.IsNullOrWhiteSpace(apiKey) ? null : apiKey);
             
             if (taskResponse != null && !string.IsNullOrEmpty(taskResponse.TaskId))
             {
+                _logger.LogInformation("Created async task {TaskId} with status {Status}", taskResponse.TaskId, taskResponse.Status);
+                
                 var task = new ImageGenerationTask
                 {
                     TaskId = taskResponse.TaskId,
@@ -763,9 +777,21 @@
                 // Persist active tasks
                 await SavePersistedTasks();
                 
+                // Check SignalR connection state before subscribing
+                var connectionState = SignalRService.GetConnectionState("image-generation");
+                _logger.LogInformation("SignalR image-generation hub state: {State}", connectionState);
+                
                 // Subscribe to SignalR updates for this task
-                await SignalRService.SubscribeToImageTask(taskResponse.TaskId);
-                _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", taskResponse.TaskId);
+                try
+                {
+                    await SignalRService.SubscribeToImageTask(taskResponse.TaskId);
+                    _logger.LogInformation("Successfully subscribed to SignalR updates for task {TaskId}", taskResponse.TaskId);
+                }
+                catch (Exception subEx)
+                {
+                    _logger.LogError(subEx, "Failed to subscribe to SignalR updates for task {TaskId}", taskResponse.TaskId);
+                    // Continue anyway - polling will handle updates
+                }
                 
                 // Add to recent prompts
                 if (!string.IsNullOrWhiteSpace(imagePrompt) && recentPromptsComponent != null)
@@ -812,6 +838,9 @@
     {
         try
         {
+            _logger.LogInformation("Received image generation progress event for task {TaskId}. Raw data: {Progress}", 
+                taskId, progress.GetRawText());
+            
             var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
             
             if (task != null)
@@ -828,15 +857,20 @@
                 }
                 
                 task.UpdatedAt = DateTime.UtcNow;
-                _logger.LogInformation("Image generation progress for task {TaskId}: {Progress}%", taskId, task.Progress);
+                _logger.LogInformation("Updated task {TaskId} - Status: {Status}, Progress: {Progress}%", 
+                    taskId, task.Status, task.Progress);
                 
                 await SavePersistedTasks();
                 await InvokeAsync(StateHasChanged);
             }
+            else
+            {
+                _logger.LogWarning("Received progress event for unknown task {TaskId}", taskId);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling image generation started event");
+            _logger.LogError(ex, "Error handling image generation progress event for task {TaskId}", taskId);
         }
     }
 
@@ -845,7 +879,8 @@
     {
         try
         {
-            _logger.LogInformation("Image generation completed for task {TaskId}", taskId);
+            _logger.LogInformation("Received image generation completed event for task {TaskId}. Raw result: {Result}", 
+                taskId, result.GetRawText());
             var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
             
             if (task != null)
@@ -968,6 +1003,94 @@
     public Task OnBatchOperationCompleted(string operationId, JsonElement result) => Task.CompletedTask;
     public Task OnBatchOperationFailed(string operationId, string error) => Task.CompletedTask;
     public Task OnAdminNotificationReceived(JsonElement notification) => Task.CompletedTask;
+    
+    private async Task SubscribeToActiveTasks()
+    {
+        try
+        {
+            // Check if SignalR is connected
+            var connectionState = SignalRService.GetConnectionState("image-generation");
+            if (connectionState != ConnectionState.Connected)
+            {
+                _logger.LogWarning("Cannot subscribe to active tasks - SignalR not connected. State: {State}", connectionState);
+                return;
+            }
+            
+            // Subscribe to all active (pending/running) tasks
+            var tasksToSubscribe = activeTasks.Where(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued").ToList();
+            
+            _logger.LogInformation("Subscribing to {Count} active image generation tasks", tasksToSubscribe.Count);
+            
+            foreach (var task in tasksToSubscribe)
+            {
+                try
+                {
+                    await SignalRService.SubscribeToImageTask(task.TaskId);
+                    _logger.LogInformation("Subscribed to task {TaskId} (Status: {Status})", task.TaskId, task.Status);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to subscribe to task {TaskId}", task.TaskId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error subscribing to active tasks");
+        }
+    }
+    
+    private async Task RefreshTaskStatuses()
+    {
+        try
+        {
+            var tasksToRefresh = activeTasks.Where(t => 
+                t.Status == "pending" || t.Status == "processing" || t.Status == "queued").ToList();
+            
+            _logger.LogInformation("Refreshing status for {Count} active tasks", tasksToRefresh.Count);
+            
+            foreach (var task in tasksToRefresh)
+            {
+                try
+                {
+                    var status = await ConduitApiClient.GetImageGenerationStatusAsync(task.TaskId, apiKey);
+                    if (status != null)
+                    {
+                        task.Status = status.Status ?? "unknown";
+                        task.UpdatedAt = DateTime.UtcNow;
+                        
+                        // If task is completed, handle the result
+                        if (status.Status == "completed" && status.ImageResponse?.Data != null)
+                        {
+                            generatedImages.AddRange(status.ImageResponse.Data);
+                            task.CompletedAt = DateTime.UtcNow;
+                            task.Progress = 100;
+                            
+                            _logger.LogInformation("Task {TaskId} completed with {Count} images", 
+                                task.TaskId, status.ImageResponse.Data.Count);
+                        }
+                        else if (status.Status == "failed")
+                        {
+                            task.CompletedAt = DateTime.UtcNow;
+                            task.Error = status.Error;
+                            _logger.LogWarning("Task {TaskId} failed: {Error}", task.TaskId, status.Error);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to refresh status for task {TaskId}", task.TaskId);
+                }
+            }
+            
+            await SavePersistedTasks();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing task statuses");
+        }
+    }
 
     private async Task CancelTask(string taskId)
     {
@@ -1012,6 +1135,9 @@
                     // Only load tasks that are not too old (e.g., created within last hour)
                     var cutoffTime = DateTime.UtcNow.AddHours(-1);
                     activeTasks = tasks.Where(t => t.CreatedAt > cutoffTime).ToList();
+                    
+                    // Check task statuses from API for active tasks
+                    await RefreshTaskStatuses();
                 }
             }
         }
@@ -1041,6 +1167,42 @@
         if (isInitialized)
         {
             SignalRService.UnregisterListener(this);
+        }
+        
+        statusRefreshTimer?.Stop();
+        statusRefreshTimer?.Dispose();
+    }
+    
+    private async Task OnStatusRefreshTimerElapsed()
+    {
+        try
+        {
+            // Only refresh if we have active tasks and SignalR might not be working
+            if (activeTasks.Any(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued"))
+            {
+                var connectionState = SignalRService.GetConnectionState("image-generation");
+                
+                // If SignalR is not connected, do a full refresh
+                if (connectionState != ConnectionState.Connected)
+                {
+                    _logger.LogDebug("SignalR not connected, refreshing task statuses via API");
+                    await RefreshTaskStatuses();
+                }
+                else
+                {
+                    // Even if connected, do a lighter check every 30 seconds
+                    var lastFullRefresh = activeTasks.Where(t => t.UpdatedAt < DateTime.UtcNow.AddSeconds(-30)).ToList();
+                    if (lastFullRefresh.Any())
+                    {
+                        _logger.LogDebug("Refreshing {Count} tasks that haven't been updated in 30 seconds", lastFullRefresh.Count);
+                        await RefreshTaskStatuses();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in status refresh timer");
         }
     }
 
