@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Constants;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -109,7 +110,7 @@ namespace ConduitLLM.Http.Controllers
                 var taskResponse = new VideoGenerationTaskResponse
                 {
                     TaskId = taskId,
-                    Status = "pending",
+                    Status = TaskStateConstants.Pending,
                     CreatedAt = DateTimeOffset.UtcNow,
                     EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60), // Default estimate
                     CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
@@ -201,7 +202,7 @@ namespace ConduitLLM.Http.Controllers
                 var response = new VideoGenerationTaskStatus
                 {
                     TaskId = taskId,
-                    Status = taskStatus.State.ToString().ToLowerInvariant(),
+                    Status = TaskStateConstants.FromTaskState(taskStatus.State),
                     Progress = taskStatus.Progress,
                     CreatedAt = taskStatus.CreatedAt,
                     UpdatedAt = taskStatus.UpdatedAt,
@@ -328,7 +329,7 @@ namespace ConduitLLM.Http.Controllers
                 var response = new VideoGenerationTaskStatus
                 {
                     TaskId = taskId,
-                    Status = updatedStatus?.State.ToString().ToLowerInvariant() ?? "pending",
+                    Status = updatedStatus != null ? TaskStateConstants.FromTaskState(updatedStatus.State) : TaskStateConstants.Pending,
                     Progress = updatedStatus?.Progress ?? 0,
                     CreatedAt = updatedStatus?.CreatedAt ?? DateTimeOffset.UtcNow,
                     UpdatedAt = updatedStatus?.UpdatedAt ?? DateTimeOffset.UtcNow,

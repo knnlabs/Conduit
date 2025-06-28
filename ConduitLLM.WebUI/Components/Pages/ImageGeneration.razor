@@ -16,6 +16,7 @@
 @inject IToastService ToastService
 @inject ILogger<ImageGeneration> _logger
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Constants
 @rendermode InteractiveServer
 @implements IServerSideSignalRListener
 @implements IDisposable
@@ -824,7 +825,7 @@
             if (state == ConnectionState.Connected)
             {
                 // Re-subscribe to all active tasks
-                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running"))
+                foreach (var task in activeTasks.Where(t => TaskStatusConstants.IsActiveStatus(t.Status)))
                 {
                     await SignalRService.SubscribeToImageTask(task.TaskId);
                 }
@@ -943,7 +944,7 @@
                 // Clean up old completed tasks
                 var cutoffTime = DateTime.UtcNow.AddSeconds(-30);
                 activeTasks.RemoveAll(t => 
-                    (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
+                    TaskStatusConstants.IsTerminalStatus(t.Status) 
                     && t.CompletedAt.HasValue 
                     && t.CompletedAt.Value < cutoffTime);
                 
@@ -1017,7 +1018,7 @@
             }
             
             // Subscribe to all active (pending/running) tasks
-            var tasksToSubscribe = activeTasks.Where(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued").ToList();
+            var tasksToSubscribe = activeTasks.Where(t => TaskStatusConstants.IsActiveStatus(t.Status)).ToList();
             
             _logger.LogInformation("Subscribing to {Count} active image generation tasks", tasksToSubscribe.Count);
             
@@ -1045,7 +1046,7 @@
         try
         {
             var tasksToRefresh = activeTasks.Where(t => 
-                t.Status == "pending" || t.Status == "processing" || t.Status == "queued").ToList();
+                TaskStatusConstants.IsActiveStatus(t.Status)).ToList();
             
             _logger.LogInformation("Refreshing status for {Count} active tasks", tasksToRefresh.Count);
             
@@ -1060,7 +1061,7 @@
                         task.UpdatedAt = DateTime.UtcNow;
                         
                         // If task is completed, handle the result
-                        if (status.Status == "completed" && status.ImageResponse?.Data != null)
+                        if (status.Status == TaskStatusConstants.Completed && status.ImageResponse?.Data != null)
                         {
                             generatedImages.AddRange(status.ImageResponse.Data);
                             task.CompletedAt = DateTime.UtcNow;
@@ -1069,7 +1070,7 @@
                             _logger.LogInformation("Task {TaskId} completed with {Count} images", 
                                 task.TaskId, status.ImageResponse.Data.Count);
                         }
-                        else if (status.Status == "failed")
+                        else if (status.Status == TaskStatusConstants.Failed)
                         {
                             task.CompletedAt = DateTime.UtcNow;
                             task.Error = status.Error;
@@ -1178,7 +1179,7 @@
         try
         {
             // Only refresh if we have active tasks and SignalR might not be working
-            if (activeTasks.Any(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued"))
+            if (activeTasks.Any(t => TaskStatusConstants.IsActiveStatus(t.Status)))
             {
                 var connectionState = SignalRService.GetConnectionState("image-generation");
                 

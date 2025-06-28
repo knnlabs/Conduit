@@ -6,6 +6,7 @@
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Models
 @using System.Text.Json
+@using ConduitLLM.WebUI.Constants
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
@@ -808,7 +809,7 @@
                     var oneHourAgo = DateTimeOffset.UtcNow.AddHours(-1);
                     activeTasks = tasks.Where(t => 
                         t.CreatedAt > oneHourAgo && 
-                        (t.Status == "pending" || t.Status == "processing" || t.Status == "queued" || 
+                        (TaskStatusConstants.IsActiveStatus(t.Status) || 
                          (t.CompletedAt.HasValue && t.CompletedAt.Value > DateTimeOffset.UtcNow.AddSeconds(-30))))
                         .ToList();
                     
@@ -846,7 +847,7 @@
             if (state == ConnectionState.Connected)
             {
                 // Re-subscribe to all active tasks
-                foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "processing" || t.Status == "queued"))
+                foreach (var task in activeTasks.Where(t => TaskStatusConstants.IsActiveStatus(t.Status)))
                 {
                     await SignalRService.SubscribeToVideoTask(task.TaskId);
                 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration;
 using MassTransit;
@@ -403,13 +404,12 @@ namespace ConduitLLM.Http.Controllers
                 };
 
                 // Create metadata for the task including the serialized request
-                var metadata = new
+                var metadata = new TaskMetadata(virtualKey.Id)
                 {
-                    virtualKeyId = virtualKey.Id,
-                    model = modelName,
-                    prompt = request.Prompt,
-                    correlationId = correlationId,
-                    payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
+                    Model = modelName,
+                    Prompt = request.Prompt,
+                    CorrelationId = correlationId,
+                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
                 };
 
                 // Create the task using the correct method signature
@@ -431,7 +431,7 @@ namespace ConduitLLM.Http.Controllers
                 var response = new AsyncTaskResponse
                 {
                     TaskId = taskId,
-                    Status = "queued", 
+                    Status = TaskStateConstants.Queued, 
                     CheckStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
                     CreatedAt = DateTime.UtcNow
                 };
@@ -527,7 +527,7 @@ namespace ConduitLLM.Http.Controllers
                 var response = new AsyncTaskStatusResponse
                 {
                     TaskId = task.TaskId,
-                    Status = task.State.ToString().ToLowerInvariant(),
+                    Status = TaskStateConstants.FromTaskState(task.State),
                     CreatedAt = task.CreatedAt,
                     UpdatedAt = task.UpdatedAt,
                     Progress = task.Progress,

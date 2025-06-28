@@ -1,4 +1,5 @@
 @using System.Text.Json
+@using ConduitLLM.WebUI.Constants
 @implements IDisposable
 
 <div class="card shadow-sm border-0 mb-4">
@@ -77,7 +78,7 @@
                         <small class="text-muted">
                             Task ID: <code>@task.TaskId</code>
                         </small>
-                        @if (task.Status == "pending" || task.Status == "processing" || task.Status == "queued")
+                        @if (TaskStatusConstants.IsActiveStatus(task.Status))
                         {
                             <button class="btn btn-sm btn-outline-danger" 
                                     @onclick="() => OnCancelTask.InvokeAsync(task.TaskId)"
@@ -130,11 +131,12 @@
     {
         return status?.ToLower() switch
         {
-            "pending" or "queued" => "secondary",
-            "running" or "processing" => "primary",
-            "completed" => "success",
-            "failed" => "danger",
-            "cancelled" => "warning",
+            TaskStatusConstants.Pending or TaskStatusConstants.Queued => "secondary",
+            TaskStatusConstants.Processing => "primary",
+            TaskStatusConstants.Completed => "success",
+            TaskStatusConstants.Failed => "danger",
+            TaskStatusConstants.Cancelled => "warning",
+            TaskStatusConstants.TimedOut => "danger",
             _ => "secondary"
         };
     }
