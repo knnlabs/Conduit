@@ -56,7 +56,7 @@ namespace ConduitLLM.Tests.Http
         }
 
         [Fact]
-        public async Task TranscribeAudio_Should_Return_Unauthorized_Without_VirtualKey()
+        public Task TranscribeAudio_Should_Return_Unauthorized_Without_VirtualKey()
         {
             // Arrange
             // Remove authentication to test unauthorized access
@@ -73,6 +73,7 @@ namespace ConduitLLM.Tests.Http
             // For now, we'll skip this test as it requires the full ASP.NET Core pipeline
             // Act & Assert
             Assert.True(true); // Placeholder - authorization is handled by ASP.NET Core pipeline
+            return Task.CompletedTask;
         }
 
         [Fact]
