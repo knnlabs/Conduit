@@ -6,7 +6,6 @@ import {
   UpdateIpFilterDto,
   IpFilterSettingsDto,
   UpdateIpFilterSettingsDto,
-  IpCheckRequest,
   IpCheckResult,
   IpFilterFilters,
   IpFilterStatistics,
@@ -20,11 +19,11 @@ import { z } from 'zod';
 
 const createFilterSchema = z.object({
   name: z.string().min(1).max(100),
-  cidrRange: z.string().regex(
-    /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/,
-    'Invalid CIDR format (e.g., 192.168.1.0/24)'
+  ipAddressOrCidr: z.string().regex(
+    /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/,
+    'Invalid IP address or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)'
   ),
-  filterType: z.enum(['Allow', 'Deny']),
+  filterType: z.enum(['whitelist', 'blacklist']),
   isEnabled: z.boolean().optional(),
   description: z.string().max(500).optional(),
 });
@@ -57,7 +56,7 @@ export class IpFilterService extends BaseApiClient {
           filterType: filters.filterType,
           isEnabled: filters.isEnabled,
           nameContains: filters.nameContains,
-          cidrContains: filters.cidrContains,
+          ipAddressOrCidrContains: filters.ipAddressOrCidrContains,
           lastMatchedAfter: filters.lastMatchedAfter,
           lastMatchedBefore: filters.lastMatchedBefore,
           minMatchCount: filters.minMatchCount,
@@ -93,6 +92,8 @@ export class IpFilterService extends BaseApiClient {
   }
 
   async update(id: number, request: UpdateIpFilterDto): Promise<void> {
+    // Ensure the ID in the request matches the URL parameter
+    request.id = id;
     await this.put(ENDPOINTS.IP_FILTERS.BY_ID(id), request);
     await this.invalidateCache();
   }
@@ -116,15 +117,14 @@ export class IpFilterService extends BaseApiClient {
     await this.invalidateCache();
   }
 
-  async checkIp(ipAddress: string, endpoint?: string): Promise<IpCheckResult> {
+  async checkIp(ipAddress: string): Promise<IpCheckResult> {
     try {
-      ipCheckSchema.parse({ ipAddress, endpoint });
+      ipCheckSchema.parse({ ipAddress });
     } catch (error) {
       throw new ValidationError('Invalid IP check request', error);
     }
 
-    const request: IpCheckRequest = { ipAddress, endpoint };
-    return this.post<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK, request);
+    return this.get<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK(ipAddress));
   }
 
   async search(query: string): Promise<IpFilterDto[]> {
@@ -135,28 +135,28 @@ export class IpFilterService extends BaseApiClient {
   }
 
   async enableFilter(id: number): Promise<void> {
-    await this.update(id, { isEnabled: true });
+    await this.update(id, { id, isEnabled: true });
   }
 
   async disableFilter(id: number): Promise<void> {
-    await this.update(id, { isEnabled: false });
+    await this.update(id, { id, isEnabled: false });
   }
 
-  async createAllowFilter(name: string, cidrRange: string, description?: string): Promise<IpFilterDto> {
+  async createAllowFilter(name: string, ipAddressOrCidr: string, description?: string): Promise<IpFilterDto> {
     return this.create({
       name,
-      cidrRange,
-      filterType: 'Allow',
+      ipAddressOrCidr,
+      filterType: 'whitelist',
       isEnabled: true,
       description,
     });
   }
 
-  async createDenyFilter(name: string, cidrRange: string, description?: string): Promise<IpFilterDto> {
+  async createDenyFilter(name: string, ipAddressOrCidr: string, description?: string): Promise<IpFilterDto> {
     return this.create({
       name,
-      cidrRange,
-      filterType: 'Deny',
+      ipAddressOrCidr,
+      filterType: 'blacklist',
       isEnabled: true,
       description,
     });

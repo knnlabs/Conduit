@@ -128,6 +128,11 @@ public class ProviderListView : View
                 UpdateStatus($"Loaded {_providers.Count} providers");
             });
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        {
+            _logger.LogError(ex, "Connection failed while loading providers");
+            Application.MainLoop.Invoke(() => UpdateStatus("Connection failed - Admin API unavailable"));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load providers");
@@ -191,6 +196,11 @@ public class ProviderListView : View
                 UpdateStatus($"Created provider: {provider.ProviderName}");
             });
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        {
+            _logger.LogError(ex, "Connection failed while creating provider");
+            Application.MainLoop.Invoke(() => UpdateStatus("Failed to create provider - connection error"));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create provider");
@@ -215,6 +225,11 @@ public class ProviderListView : View
                 }
                 UpdateStatus($"Updated provider: {provider.ProviderName}");
             });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        {
+            _logger.LogError(ex, "Connection failed while updating provider");
+            Application.MainLoop.Invoke(() => UpdateStatus("Failed to update provider - connection error"));
         }
         catch (Exception ex)
         {
@@ -248,6 +263,11 @@ public class ProviderListView : View
                     UpdateStatus($"Deleted provider: {provider.ProviderName}");
                 });
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+            {
+                _logger.LogError(ex, "Connection failed while deleting provider");
+                Application.MainLoop.Invoke(() => UpdateStatus("Failed to delete provider - connection error"));
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to delete provider");
@@ -269,6 +289,11 @@ public class ProviderListView : View
                 UpdateStatus($"Discovered {totalModels} models across {capabilities.Count} providers");
                 LoadProviders(); // Refresh to show updated model counts
             });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        {
+            _logger.LogError(ex, "Connection failed while discovering models");
+            Application.MainLoop.Invoke(() => UpdateStatus("Model discovery failed - connection error"));
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.TUI.Configuration;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.TUI.Models;
+using ConduitLLM.TUI.Utils;
 using System.Net.Http;
 using System.Net.Sockets;
 
@@ -22,6 +23,16 @@ public class SignalRService : IAsyncDisposable
     public event EventHandler<NavigationStateUpdateDto>? NavigationStateUpdated;
     public event EventHandler<VideoGenerationStatusDto>? VideoGenerationStatusUpdated;
     public event EventHandler<ImageGenerationStatusDto>? ImageGenerationStatusUpdated;
+    
+    // Configuration-related events
+    public event Action<bool>? ConnectionStateChanged;
+    public event EventHandler<GlobalSettingChangedEventArgs>? GlobalSettingChanged;
+    public event EventHandler<HttpClientConfigChangedEventArgs>? HttpClientConfigChanged;
+    public event EventHandler<CacheConfigChangedEventArgs>? CacheConfigChanged;
+    public event EventHandler<RouterConfigChangedEventArgs>? RouterConfigChanged;
+    public event EventHandler<IpFilterChangedEventArgs>? IpFilterChanged;
+    public event EventHandler<AudioConfigChangedEventArgs>? AudioConfigChanged;
+    public event EventHandler<SystemHealthChangedEventArgs>? SystemHealthChanged;
 
     public SignalRService(AppConfiguration config, StateManager stateManager, AdminApiService adminApiService, ILogger<SignalRService> logger)
     {
@@ -41,43 +52,59 @@ public class SignalRService : IAsyncDisposable
             if (string.IsNullOrEmpty(_virtualKey))
             {
                 _logger.LogWarning("Could not obtain virtual key for SignalR connections");
-                _stateManager.IsConnected = false;
+                UpdateConnectionState(false);
                 return;
             }
 
-            // Navigation State Hub
+            // Navigation State Hub (using SystemNotificationHub at /hubs/notifications)
             _navigationStateHub = new HubConnectionBuilder()
-                .WithUrl($"{_config.CoreApiUrl}/hubs/navigation-state", options =>
+                .WithUrl($"{_config.CoreApiUrl}/hubs/notifications", options =>
                 {
                     options.Headers["X-API-Key"] = _virtualKey;
                 })
                 .WithAutomaticReconnect()
                 .Build();
 
-            _navigationStateHub.On<NavigationStateUpdateDto>("NavigationStateUpdated", update =>
+            // Listen for model mapping changes
+            _navigationStateHub.On<ModelMappingNotification>("OnModelMappingChanged", notification =>
             {
-                _logger.LogInformation("Received navigation state update");
-                NavigationStateUpdated?.Invoke(this, update);
+                _logger.LogInformation("Received model mapping change: {ModelAlias} ({ChangeType})", notification.ModelAlias, notification.ChangeType);
+                // For now, trigger a navigation state update event (we might need to fetch the full state)
+                NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
+            });
+            
+            // Listen for provider health changes
+            _navigationStateHub.On<ProviderHealthNotification>("OnProviderHealthChanged", notification =>
+            {
+                _logger.LogInformation("Received provider health change: {Provider} - {Status}", notification.Provider, notification.Status);
+                NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
+            });
+            
+            // Listen for model capabilities discovery
+            _navigationStateHub.On<ModelCapabilitiesNotification>("OnModelCapabilitiesDiscovered", notification =>
+            {
+                _logger.LogInformation("Received model capabilities discovered: {Provider} ({ModelCount} models)", notification.ProviderName, notification.ModelCount);
+                NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
             });
 
             _navigationStateHub.Reconnecting += error =>
             {
                 _logger.LogWarning("SignalR reconnecting: {Error}", error?.Message);
-                _stateManager.IsConnected = false;
+                UpdateConnectionState(false);
                 return Task.CompletedTask;
             };
 
             _navigationStateHub.Reconnected += connectionId =>
             {
                 _logger.LogInformation("SignalR reconnected: {ConnectionId}", connectionId);
-                _stateManager.IsConnected = true;
+                UpdateConnectionState(true);
                 return Task.CompletedTask;
             };
 
             _navigationStateHub.Closed += error =>
             {
                 _logger.LogWarning("SignalR closed: {Error}", error?.Message);
-                _stateManager.IsConnected = false;
+                UpdateConnectionState(false);
                 return Task.CompletedTask;
             };
 
@@ -145,27 +172,31 @@ public class SignalRService : IAsyncDisposable
             
             await Task.WhenAll(tasks);
 
-            _stateManager.IsConnected = true;
+            UpdateConnectionState(true);
             _logger.LogInformation("All SignalR connections established");
         }
         catch (HttpRequestException ex) when (ex.Message.Contains("401"))
         {
             // This happens when the virtual key is invalid
             _logger.LogWarning("SignalR connection failed: Unauthorized. Virtual key may be invalid or disabled.");
-            _stateManager.IsConnected = false;
+            UpdateConnectionState(false);
             // Don't throw - allow the app to continue without SignalR
         }
         catch (HttpRequestException ex) when (ex.InnerException is SocketException)
         {
             // This is expected when the API is not running
             _logger.LogWarning("SignalR connection failed: API server is not available at {BaseUrl}", _config.CoreApiUrl);
-            _stateManager.IsConnected = false;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, ex);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            UpdateConnectionState(false);
             // Don't throw - allow the app to continue without SignalR
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error connecting to SignalR");
-            _stateManager.IsConnected = false;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, ex);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            UpdateConnectionState(false);
             // Don't throw - allow the app to continue without SignalR
         }
     }
@@ -244,6 +275,21 @@ public class SignalRService : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Update the connection state and fire the ConnectionStateChanged event.
+    /// </summary>
+    private void UpdateConnectionState(bool isConnected)
+    {
+        var previousState = _stateManager.IsConnected;
+        _stateManager.IsConnected = isConnected;
+        
+        if (previousState != isConnected)
+        {
+            ConnectionStateChanged?.Invoke(isConnected);
+            _logger.LogInformation("SignalR connection state changed: {IsConnected}", isConnected);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_navigationStateHub != null)
@@ -269,6 +315,35 @@ public class NavigationStateUpdateDto
     public Dictionary<string, List<ModelCapabilityDto>> ModelCapabilities { get; set; } = new();
 }
 
+// Notification DTOs from SystemNotificationHub
+public class ModelMappingNotification
+{
+    public int MappingId { get; set; }
+    public string ModelAlias { get; set; } = string.Empty;
+    public string ChangeType { get; set; } = string.Empty;
+    public string Priority { get; set; } = "Medium";
+}
+
+public class ProviderHealthNotification
+{
+    public string Provider { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public double? ResponseTimeMs { get; set; }
+    public string Priority { get; set; } = "Medium";
+    public string? Details { get; set; }
+}
+
+public class ModelCapabilitiesNotification
+{
+    public string ProviderName { get; set; } = string.Empty;
+    public int ModelCount { get; set; }
+    public int EmbeddingCount { get; set; }
+    public int VisionCount { get; set; }
+    public int ImageGenCount { get; set; }
+    public int VideoGenCount { get; set; }
+    public string Priority { get; set; } = "Low";
+}
+
 public class VideoGenerationStatusDto
 {
     public string TaskId { get; set; } = string.Empty;
@@ -286,3 +361,66 @@ public class ImageGenerationStatusDto
     public List<string> ImageUrls { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
+
+#region Configuration Event Args
+
+public class GlobalSettingChangedEventArgs : EventArgs
+{
+    public string Key { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public string ChangeType { get; set; } = string.Empty; // Created, Updated, Deleted
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public class HttpClientConfigChangedEventArgs : EventArgs
+{
+    public int ConfigId { get; set; }
+    public string ClientName { get; set; } = string.Empty;
+    public string ChangeType { get; set; } = string.Empty; // Created, Updated, Deleted
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, object>? ChangedProperties { get; set; }
+}
+
+public class CacheConfigChangedEventArgs : EventArgs
+{
+    public int ConfigId { get; set; }
+    public string CacheType { get; set; } = string.Empty;
+    public string ChangeType { get; set; } = string.Empty; // Created, Updated, Deleted
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, object>? ChangedProperties { get; set; }
+}
+
+public class RouterConfigChangedEventArgs : EventArgs
+{
+    public string Strategy { get; set; } = string.Empty;
+    public string ChangeType { get; set; } = string.Empty; // Updated
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, object>? ChangedProperties { get; set; }
+}
+
+public class IpFilterChangedEventArgs : EventArgs
+{
+    public int? RuleId { get; set; } // Null for settings changes
+    public string IpAddress { get; set; } = string.Empty;
+    public string FilterType { get; set; } = string.Empty; // Allow, Deny
+    public string ChangeType { get; set; } = string.Empty; // Created, Updated, Deleted, SettingsUpdated
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public class AudioConfigChangedEventArgs : EventArgs
+{
+    public string Provider { get; set; } = string.Empty;
+    public string ChangeType { get; set; } = string.Empty; // Created, Updated, Deleted
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public Dictionary<string, object>? ChangedProperties { get; set; }
+}
+
+public class SystemHealthChangedEventArgs : EventArgs
+{
+    public string HealthStatus { get; set; } = string.Empty;
+    public Dictionary<string, object>? Metrics { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+#endregion

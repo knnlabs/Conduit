@@ -180,5 +180,54 @@ export type {
 
 export { MetricsService } from './services/MetricsService';
 
+export type {
+  ModelCapabilities,
+  DiscoveredModel,
+  ModelsDiscoveryResponse,
+  ProviderModelsDiscoveryResponse,
+  CapabilityTestResponse,
+  CapabilityTest,
+  BulkCapabilityTestRequest,
+  CapabilityTestResult,
+  BulkCapabilityTestResponse,
+  BulkModelDiscoveryRequest,
+  ModelDiscoveryResult,
+  BulkModelDiscoveryResponse,
+} from './models/discovery';
+
+export { ModelCapability } from './models/discovery';
+
+export { DiscoveryService } from './services/DiscoveryService';
+export { ProviderModelsService } from './services/ProviderModelsService';
+
+export { SignalRService } from './services/SignalRService';
+export { TaskHubClient } from './signalr/TaskHubClient';
+export { VideoGenerationHubClient } from './signalr/VideoGenerationHubClient';
+export { ImageGenerationHubClient } from './signalr/ImageGenerationHubClient';
+
+export type {
+  HubConnectionState,
+  SignalRConnectionOptions,
+  SignalRLogLevel,
+  HttpTransportType,
+  ITaskHubServer,
+  IVideoGenerationHubServer,
+  IImageGenerationHubServer,
+  TaskStartedEvent,
+  TaskProgressEvent,
+  TaskCompletedEvent,
+  TaskFailedEvent,
+  TaskCancelledEvent,
+  TaskTimedOutEvent,
+  VideoGenerationStartedEvent,
+  VideoGenerationProgressEvent,
+  VideoGenerationCompletedEvent,
+  ImageGenerationStartedEvent,
+  ImageGenerationProgressEvent,
+  ImageGenerationCompletedEvent
+} from './models/signalr';
+
+export { SignalREndpoints, DefaultTransports } from './models/signalr';
+
 export * from './utils/capabilities';
 

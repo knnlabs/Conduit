@@ -246,8 +246,8 @@ jobs:
           
       - name: Configure git
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
           
       - name: Create and push tag
         run: |
@@ -277,18 +277,36 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Validate version format
+            const version = '${{ needs.prepare-release.outputs.version }}';
+            const versionRegex = /^\d+\.\d+\.\d+$/;
+            
+            if (!versionRegex.test(version)) {
+              throw new Error(`Invalid version format: ${version}. Expected format: X.Y.Z`);
+            }
+            
+            // Validate ref (SHA)
+            const ref = context.sha;
+            const shaRegex = /^[a-f0-9]{40}$/;
+            
+            if (!shaRegex.test(ref)) {
+              throw new Error(`Invalid commit SHA: ${ref}`);
+            }
+            
             // Trigger a repository dispatch event to build Docker images
             await github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: context.repo.repo,
               event_type: 'docker-release',
               client_payload: {
-                version: '${{ needs.prepare-release.outputs.version }}',
-                ref: context.sha
+                version: version,
+                ref: ref,
+                triggered_by: context.actor,
+                workflow_run_id: context.runId
               }
             });
             
-            console.log('Docker release triggered for version ${{ needs.prepare-release.outputs.version }}');
+            console.log(`Docker release triggered for version ${version} at commit ${ref}`);
 
   # Final summary
   release-summary:

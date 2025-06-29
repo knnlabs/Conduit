@@ -8,7 +8,8 @@ using ConduitLLM.TUI.Views.Models;
 using ConduitLLM.TUI.Views.Media;
 using ConduitLLM.TUI.Views.Keys;
 using ConduitLLM.TUI.Views.Monitoring;
-// using ConduitLLM.TUI.Views.Configuration;
+using ConduitLLM.TUI.Utils;
+using ConduitLLM.TUI.Views.Configuration;
 
 namespace ConduitLLM.TUI.Views;
 
@@ -18,11 +19,15 @@ public class MainWindow : Window
     private readonly StateManager _stateManager;
     private readonly SignalRService _signalRService;
     private readonly ILogger<MainWindow> _logger;
+    private readonly LogBuffer _logBuffer;
     
     private MenuBar _menuBar = null!;
     private StatusBar _statusBar = null!;
     private FrameView _contentFrame = null!;
+    private FrameView _logFrame = null!;
+    private LogView _logView = null!;
     private View? _currentView;
+    private bool _logPanelVisible = true;
 
     public MainWindow(IServiceProvider serviceProvider) : base("Conduit TUI")
     {
@@ -30,6 +35,7 @@ public class MainWindow : Window
         _stateManager = serviceProvider.GetRequiredService<StateManager>();
         _signalRService = serviceProvider.GetRequiredService<SignalRService>();
         _logger = serviceProvider.GetRequiredService<ILogger<MainWindow>>();
+        _logBuffer = serviceProvider.GetRequiredService<LogBuffer>();
 
         InitializeUI();
         SetupEventHandlers();
@@ -58,7 +64,9 @@ public class MainWindow : Window
                 new MenuItem("_Videos", "", () => ShowVideoGenerationView(), null, null, Key.F6),
                 new MenuItem("Virtual _Keys", "", () => ShowVirtualKeysView(), null, null, Key.F7),
                 new MenuItem("_Health", "", () => ShowHealthDashboard(), null, null, Key.F8),
-                new MenuItem("_Configuration", "", () => ShowConfigurationView(), null, null, Key.F9)
+                new MenuItem("_Configuration", "", () => ShowConfigurationView(), null, null, Key.F9),
+                null!, // Separator
+                new MenuItem("Toggle _Log Panel", "", () => ToggleLogPanel(), null, null, Key.L | Key.CtrlMask)
             }),
             new MenuBarItem("_Help", new MenuItem[]
             {
@@ -78,18 +86,42 @@ public class MainWindow : Window
         };
         _statusBar = new StatusBar(statusItems);
 
+        // Calculate heights based on log panel visibility
+        var contentHeight = _logPanelVisible ? Dim.Percent(70) : Dim.Fill(1);
+        
         // Create content frame
         _contentFrame = new FrameView("Welcome")
         {
             X = 0,
             Y = 1,
             Width = Dim.Fill(),
-            Height = Dim.Fill(1)
+            Height = contentHeight
         };
+
+        // Create log frame
+        _logFrame = new FrameView("Logs (Ctrl+L to toggle)")
+        {
+            X = 0,
+            Y = Pos.Bottom(_contentFrame),
+            Width = Dim.Fill(),
+            Height = Dim.Fill(1),
+            Visible = _logPanelVisible
+        };
+
+        // Create log view
+        _logView = new LogView(_logBuffer)
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        _logFrame.Add(_logView);
 
         // Add components
         Add(_menuBar);
         Add(_contentFrame);
+        Add(_logFrame);
         Add(_statusBar);
 
         // Show initial view
@@ -150,13 +182,7 @@ public class MainWindow : Window
 
     private void ShowConfigurationView()
     {
-        // ConfigurationView temporarily disabled
-        var dialog = new Dialog("Configuration", 50, 8);
-        dialog.Add(new Label("Configuration view is temporarily unavailable") { X = Pos.Center(), Y = 2 });
-        var okButton = new Button("OK") { X = Pos.Center(), Y = 4 };
-        okButton.Clicked += () => dialog.Running = false;
-        dialog.Add(okButton);
-        Application.Run(dialog);
+        SetCurrentView(new Configuration.ConfigurationView(_serviceProvider), "Configuration");
     }
 
     private void SetCurrentView(View view, string title)
@@ -226,7 +252,7 @@ public class MainWindow : Window
         about.Add(
             new Label("Conduit TUI v1.0.0") { X = Pos.Center(), Y = 1 },
             new Label("Terminal User Interface for Conduit LLM") { X = Pos.Center(), Y = 3 },
-            new Label("© 2024 KNN Labs") { X = Pos.Center(), Y = 5 }
+            new Label("© 2025 KNN Labs, Inc.") { X = Pos.Center(), Y = 5 }
         );
         
         var okButton = new Button("OK") { X = Pos.Center(), Y = 7 };
@@ -236,9 +262,24 @@ public class MainWindow : Window
         Application.Run(about);
     }
 
+    private void ToggleLogPanel()
+    {
+        _logPanelVisible = !_logPanelVisible;
+        _logFrame.Visible = _logPanelVisible;
+        
+        // Update content frame height
+        _contentFrame.Height = _logPanelVisible ? Dim.Percent(70) : Dim.Fill(1);
+        
+        // Force layout update
+        SetNeedsDisplay();
+        LayoutSubviews();
+        
+        _logger.LogInformation("Log panel toggled: {Visible}", _logPanelVisible ? "visible" : "hidden");
+    }
+
     private void ShowKeyboardShortcuts()
     {
-        var dialog = new Dialog("Keyboard Shortcuts", 60, 20);
+        var dialog = new Dialog("Keyboard Shortcuts", 60, 22);
         
         var shortcuts = @"F1          - Help / Keyboard Shortcuts
 F2          - Chat View
@@ -250,11 +291,18 @@ F7          - Virtual Keys
 F8          - System Health
 F9          - Configuration
 
+Ctrl+L      - Toggle Log Panel
 Ctrl+Q      - Quit Application
 Tab         - Next Field
 Shift+Tab   - Previous Field
 Enter       - Select/Confirm
-Esc         - Cancel/Back";
+Esc         - Cancel/Back
+
+Log Panel:
+Enter       - Copy selected line to clipboard
+Double-click- Copy clicked line to clipboard
+Ctrl+A      - Toggle Auto-scroll
+Ctrl+C      - Clear Logs";
 
         dialog.Add(new TextView
         {

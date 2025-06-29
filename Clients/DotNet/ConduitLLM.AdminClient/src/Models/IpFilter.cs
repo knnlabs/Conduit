@@ -10,13 +10,15 @@ namespace ConduitLLM.AdminClient.Models;
 public enum FilterType
 {
     /// <summary>
-    /// Allow access for IPs matching this filter.
+    /// Allow access for IPs matching this filter (whitelist).
     /// </summary>
+    [JsonStringEnumMemberName("whitelist")]
     Allow,
 
     /// <summary>
-    /// Deny access for IPs matching this filter.
+    /// Deny access for IPs matching this filter (blacklist).
     /// </summary>
+    [JsonStringEnumMemberName("blacklist")]
     Deny
 }
 
@@ -29,11 +31,13 @@ public enum FilterMode
     /// <summary>
     /// Permissive mode - allow by default.
     /// </summary>
+    [JsonStringEnumMemberName("permissive")]
     Permissive,
 
     /// <summary>
     /// Restrictive mode - deny by default.
     /// </summary>
+    [JsonStringEnumMemberName("restrictive")]
     Restrictive
 }
 
@@ -55,6 +59,7 @@ public class IpFilterDto
     /// <summary>
     /// Gets or sets the CIDR range for this filter.
     /// </summary>
+    [JsonPropertyName("ipAddressOrCidr")]
     public string CidrRange { get; set; } = string.Empty;
 
     /// <summary>
@@ -109,6 +114,7 @@ public class CreateIpFilterDto
     /// Gets or sets the CIDR range for this filter.
     /// </summary>
     [Required]
+    [JsonPropertyName("ipAddressOrCidr")]
     public string CidrRange { get; set; } = string.Empty;
 
     /// <summary>
@@ -135,6 +141,12 @@ public class CreateIpFilterDto
 public class UpdateIpFilterDto
 {
     /// <summary>
+    /// Gets or sets the filter ID.
+    /// </summary>
+    [Required]
+    public int Id { get; set; }
+
+    /// <summary>
     /// Gets or sets the filter name.
     /// </summary>
     [StringLength(100, MinimumLength = 1)]
@@ -143,6 +155,7 @@ public class UpdateIpFilterDto
     /// <summary>
     /// Gets or sets the CIDR range for this filter.
     /// </summary>
+    [JsonPropertyName("ipAddressOrCidr")]
     public string? CidrRange { get; set; }
 
     /// <summary>
@@ -277,8 +290,9 @@ public class IpCheckResult
     public bool IsAllowed { get; set; }
 
     /// <summary>
-    /// Gets or sets the reason for the decision.
+    /// Gets or sets the reason for denial if the IP is not allowed.
     /// </summary>
+    [JsonPropertyName("deniedReason")]
     public string? Reason { get; set; }
 
     /// <summary>

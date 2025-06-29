@@ -9,6 +9,9 @@ import { AudioService } from '../services/AudioService';
 import { BatchOperationsService } from '../services/BatchOperationsService';
 import { HealthService } from '../services/HealthService';
 import { MetricsService } from '../services/MetricsService';
+import { DiscoveryService } from '../services/DiscoveryService';
+import { ProviderModelsService } from '../services/ProviderModelsService';
+import { SignalRService } from '../services/SignalRService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -22,6 +25,9 @@ export class ConduitCoreClient extends BaseClient {
   public readonly batchOperations: BatchOperationsService;
   public readonly health: HealthService;
   public readonly metrics: MetricsService;
+  public readonly discovery: DiscoveryService;
+  public readonly providerModels: ProviderModelsService;
+  public readonly signalr: SignalRService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -38,6 +44,9 @@ export class ConduitCoreClient extends BaseClient {
     this.batchOperations = new BatchOperationsService(this);
     this.health = new HealthService(this);
     this.metrics = new MetricsService(this);
+    this.discovery = new DiscoveryService(this);
+    this.providerModels = new ProviderModelsService(this);
+    this.signalr = new SignalRService(config.baseURL || 'http://localhost:5000', config.apiKey);
   }
 
   static fromApiKey(apiKey: string, baseURL?: string): ConduitCoreClient {

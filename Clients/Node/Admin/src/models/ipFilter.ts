@@ -1,12 +1,12 @@
 import { FilterOptions } from './common';
 
-export type FilterType = 'Allow' | 'Deny';
+export type FilterType = 'whitelist' | 'blacklist';
 export type FilterMode = 'permissive' | 'restrictive';
 
 export interface IpFilterDto {
   id: number;
   name: string;
-  cidrRange: string;
+  ipAddressOrCidr: string;
   filterType: FilterType;
   isEnabled: boolean;
   description?: string;
@@ -18,15 +18,16 @@ export interface IpFilterDto {
 
 export interface CreateIpFilterDto {
   name: string;
-  cidrRange: string;
+  ipAddressOrCidr: string;
   filterType: FilterType;
   isEnabled?: boolean;
   description?: string;
 }
 
 export interface UpdateIpFilterDto {
+  id: number;
   name?: string;
-  cidrRange?: string;
+  ipAddressOrCidr?: string;
   filterType?: FilterType;
   isEnabled?: boolean;
   description?: string;
@@ -60,7 +61,7 @@ export interface IpCheckRequest {
 
 export interface IpCheckResult {
   isAllowed: boolean;
-  reason?: string;
+  deniedReason?: string;
   matchedFilter?: string;
   matchedFilterId?: number;
   filterType?: FilterType;
@@ -71,7 +72,7 @@ export interface IpFilterFilters extends FilterOptions {
   filterType?: FilterType;
   isEnabled?: boolean;
   nameContains?: string;
-  cidrContains?: string;
+  ipAddressOrCidrContains?: string;
   lastMatchedAfter?: string;
   lastMatchedBefore?: string;
   minMatchCount?: number;
@@ -120,6 +121,6 @@ export interface IpFilterValidationResult {
   overlappingFilters?: {
     id: number;
     name: string;
-    cidrRange: string;
+    ipAddressOrCidr: string;
   }[];
 }

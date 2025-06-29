@@ -106,8 +106,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "actions@github.com"
 
       - name: Determine version strategy
         id: version
@@ -160,8 +160,18 @@ jobs:
           
           # Commit version bump
           git add package.json
-          # Force add package-lock.json as it might be gitignored
-          git add -f package-lock.json
+          
+          # Check if package-lock.json should be tracked
+          if [ -f package-lock.json ]; then
+            # Check if package-lock.json is already tracked
+            if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+              git add package-lock.json
+            else
+              echo "⚠️ package-lock.json exists but is not tracked (likely in .gitignore)"
+              echo "Skipping package-lock.json from commit"
+            fi
+          fi
+          
           git commit -m "chore: bump @knn_labs/conduit-core-client to v$NEW_VERSION [skip ci]"
           
           # Create git tag
@@ -176,6 +186,16 @@ jobs:
 
       - name: Build final package
         run: npm run build
+
+      - name: Validate NPM Token
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [[ -z "${{ secrets.NPM_TOKEN }}" ]]; then
+            echo "❌ NPM_TOKEN secret not found. Cannot publish to NPM."
+            echo "Please add NPM_TOKEN as a repository secret."
+            exit 1
+          fi
+          echo "✅ NPM_TOKEN is configured"
 
       - name: Publish to NPM
         if: ${{ !inputs.dry_run }}

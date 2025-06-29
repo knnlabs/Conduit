@@ -16,11 +16,11 @@ namespace ConduitLLM.AdminClient.Services;
 /// </summary>
 public class IpFilterService : BaseApiClient
 {
-    private const string BaseEndpoint = "/ipfilter";
-    private const string SettingsEndpoint = "/ipfilter/settings";
-    private const string CheckEndpoint = "/ipfilter/check";
-    private const string EnabledEndpoint = "/ipfilter/enabled";
-    private const string BulkEndpoint = "/ipfilter/bulk";
+    private const string BaseEndpoint = "/api/IpFilter";
+    private const string SettingsEndpoint = "/api/IpFilter/settings";
+    private const string CheckEndpoint = "/api/IpFilter/check";
+    private const string EnabledEndpoint = "/api/IpFilter/enabled";
+    private const string BulkEndpoint = "/api/IpFilter/bulk";
     private const int DefaultPageSize = 25;
     private static readonly TimeSpan DefaultCacheTimeout = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan ShortCacheTimeout = TimeSpan.FromMinutes(1);
@@ -178,6 +178,9 @@ public class IpFilterService : BaseApiClient
         {
             ValidateUpdateRequest(request);
 
+            // Ensure the ID in the request matches the URL parameter
+            request.Id = id;
+
             var endpoint = $"{BaseEndpoint}/{id}";
             await PutAsync(endpoint, request, cancellationToken);
             await InvalidateCacheAsync();
@@ -277,14 +280,12 @@ public class IpFilterService : BaseApiClient
     /// Checks an IP address against the current filter rules.
     /// </summary>
     /// <param name="ipAddress">The IP address to check.</param>
-    /// <param name="endpoint">Optional endpoint being accessed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result of the IP check.</returns>
     /// <exception cref="ValidationException">Thrown when the IP address is invalid.</exception>
     /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
     public async Task<IpCheckResult> CheckIpAsync(
         string ipAddress,
-        string? endpoint = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -295,17 +296,12 @@ public class IpFilterService : BaseApiClient
             if (!IPAddress.TryParse(ipAddress, out _))
                 throw new ValidationException("Invalid IP address format");
 
-            var request = new IpCheckRequest
-            {
-                IpAddress = ipAddress,
-                Endpoint = endpoint
-            };
-
-            return await PostAsync<IpCheckResult>(CheckEndpoint, request, cancellationToken);
+            var endpoint = $"{BaseEndpoint}/check/{Uri.EscapeDataString(ipAddress)}";
+            return await GetAsync<IpCheckResult>(endpoint, cancellationToken: cancellationToken);
         }
         catch (Exception ex) when (!(ex is ConduitAdminException))
         {
-            ErrorHandler.HandleException(ex, CheckEndpoint, "POST");
+            ErrorHandler.HandleException(ex, $"{BaseEndpoint}/check/{ipAddress}", "GET");
             throw;
         }
     }
@@ -367,7 +363,7 @@ public class IpFilterService : BaseApiClient
         int id,
         CancellationToken cancellationToken = default)
     {
-        await UpdateAsync(id, new UpdateIpFilterDto { IsEnabled = true }, cancellationToken);
+        await UpdateAsync(id, new UpdateIpFilterDto { Id = id, IsEnabled = true }, cancellationToken);
     }
 
     /// <summary>
@@ -381,7 +377,7 @@ public class IpFilterService : BaseApiClient
         int id,
         CancellationToken cancellationToken = default)
     {
-        await UpdateAsync(id, new UpdateIpFilterDto { IsEnabled = false }, cancellationToken);
+        await UpdateAsync(id, new UpdateIpFilterDto { Id = id, IsEnabled = false }, cancellationToken);
     }
 
     /// <summary>

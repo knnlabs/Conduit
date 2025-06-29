@@ -105,11 +105,11 @@ export const ENDPOINTS = {
 
   // IP Filters
   IP_FILTERS: {
-    BASE: '/ipfilter',
-    BY_ID: (id: number) => `/ipfilter/${id}`,
-    ENABLED: '/ipfilter/enabled',
-    SETTINGS: '/ipfilter/settings',
-    CHECK: '/ipfilter/check',
+    BASE: '/api/IpFilter',
+    BY_ID: (id: number) => `/api/IpFilter/${id}`,
+    ENABLED: '/api/IpFilter/enabled',
+    SETTINGS: '/api/IpFilter/settings',
+    CHECK: (ipAddress: string) => `/api/IpFilter/check/${encodeURIComponent(ipAddress)}`,
   },
 
   // Model Costs
@@ -204,8 +204,8 @@ export const BUDGET_DURATION = {
 } as const;
 
 export const FILTER_TYPE = {
-  ALLOW: 'Allow',
-  DENY: 'Deny',
+  ALLOW: 'whitelist',
+  DENY: 'blacklist',
 } as const;
 
 export const FILTER_MODE = {

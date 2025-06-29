@@ -4,6 +4,8 @@ using ConduitLLM.AdminClient.Client;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Exceptions;
 using ConduitLLM.TUI.Models;
+using ConduitLLM.TUI.Utils;
+using ConduitLLM.TUI.Configuration;
 
 namespace ConduitLLM.TUI.Services;
 
@@ -11,12 +13,14 @@ public class AdminApiService
 {
     private readonly ConduitAdminClient _adminClient;
     private readonly StateManager _stateManager;
+    private readonly AppConfiguration _config;
     private readonly ILogger<AdminApiService> _logger;
 
-    public AdminApiService(ConduitAdminClient adminClient, StateManager stateManager, ILogger<AdminApiService> logger)
+    public AdminApiService(ConduitAdminClient adminClient, StateManager stateManager, AppConfiguration config, ILogger<AdminApiService> logger)
     {
         _adminClient = adminClient;
         _stateManager = stateManager;
+        _config = config;
         _logger = logger;
     }
 
@@ -29,6 +33,13 @@ public class AdminApiService
             var providerList = providers.ToList();
             _stateManager.Providers = providerList;
             return providerList;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when retrieving providers");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -44,6 +55,13 @@ public class AdminApiService
             var provider = await _adminClient.Providers.CreateCredentialAsync(createDto);
             _stateManager.UpdateProvider(provider);
             return provider;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when creating provider");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -62,6 +80,13 @@ public class AdminApiService
             _stateManager.UpdateProvider(provider);
             return provider;
         }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when updating provider");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update provider");
@@ -75,6 +100,13 @@ public class AdminApiService
         {
             await _adminClient.Providers.DeleteCredentialAsync(id);
             _stateManager.RemoveProvider(id);
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when deleting provider");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -93,6 +125,13 @@ public class AdminApiService
             _stateManager.ModelMappings = mappingList;
             return mappingList;
         }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when retrieving model mappings");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get model mappings");
@@ -107,6 +146,13 @@ public class AdminApiService
             var mapping = await _adminClient.ModelMappings.CreateAsync(createDto);
             _stateManager.UpdateModelMapping(mapping);
             return mapping;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when creating model mapping");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -125,6 +171,13 @@ public class AdminApiService
             _stateManager.UpdateModelMapping(mapping);
             return mapping;
         }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when updating model mapping");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update model mapping");
@@ -138,6 +191,13 @@ public class AdminApiService
         {
             await _adminClient.ModelMappings.DeleteAsync(id);
             _stateManager.RemoveModelMapping(id);
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when deleting model mapping");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -155,6 +215,13 @@ public class AdminApiService
             var keyList = keys.ToList();
             _stateManager.VirtualKeys = keyList;
             return keyList;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when retrieving virtual keys");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -174,6 +241,13 @@ public class AdminApiService
             keys.Add(key);
             _stateManager.VirtualKeys = keys;
             return response;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when creating virtual key");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -198,6 +272,13 @@ public class AdminApiService
             }
             return key;
         }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when updating virtual key");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update virtual key");
@@ -213,6 +294,13 @@ public class AdminApiService
             var keys = _stateManager.VirtualKeys.ToList();
             keys.RemoveAll(k => k.Id == id);
             _stateManager.VirtualKeys = keys;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when deleting virtual key");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {
@@ -252,6 +340,13 @@ public class AdminApiService
             
             _stateManager.ModelCapabilities = capabilities;
             return capabilities;
+        }
+        catch (NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error when discovering models");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.AdminApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Admin API", netEx);
         }
         catch (Exception ex)
         {

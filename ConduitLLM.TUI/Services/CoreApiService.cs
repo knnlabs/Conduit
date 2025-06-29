@@ -5,6 +5,7 @@ using ConduitLLM.CoreClient.Models;
 using ConduitLLM.CoreClient.Client;
 using ConduitLLM.TUI.Configuration;
 using ConduitLLM.TUI.Models;
+using ConduitLLM.TUI.Utils;
 
 namespace ConduitLLM.TUI.Services;
 
@@ -105,7 +106,9 @@ public class CoreApiService : IDisposable
         catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
         {
             _logger.LogError("Network error during chat completion: {Message}", netEx.Message);
-            throw;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {
@@ -135,7 +138,9 @@ public class CoreApiService : IDisposable
         catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
         {
             _logger.LogError("Network error during image generation: {Message}", netEx.Message);
-            throw;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {
@@ -165,7 +170,9 @@ public class CoreApiService : IDisposable
         catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
         {
             _logger.LogError("Network error during video generation: {Message}", netEx.Message);
-            throw;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {
@@ -181,6 +188,13 @@ public class CoreApiService : IDisposable
         {
             var client = GetClient();
             return await client.Videos.GenerateAsync(request);
+        }
+        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
+        {
+            _logger.LogError(netEx, "Network error during async video generation");
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {
@@ -209,7 +223,9 @@ public class CoreApiService : IDisposable
         catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
         {
             _logger.LogError("Network error when getting video status: {Message}", netEx.Message);
-            throw;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {
@@ -239,7 +255,9 @@ public class CoreApiService : IDisposable
         catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
         {
             _logger.LogError("Network error when getting models: {Message}", netEx.Message);
-            throw;
+            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
+            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
+            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
         }
         catch (Exception ex)
         {

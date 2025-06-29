@@ -39,6 +39,19 @@ jobs:
             build-mode: 'none'
 
     steps:
+    - name: Validate branch input
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.branch
+      run: |
+        ALLOWED_BRANCHES="master dev"
+        REQUESTED_BRANCH="${{ github.event.inputs.branch }}"
+        
+        if [[ ! " $ALLOWED_BRANCHES " =~ " $REQUESTED_BRANCH " ]]; then
+          echo "❌ Error: Branch '$REQUESTED_BRANCH' is not allowed for CodeQL scanning."
+          echo "Allowed branches: $ALLOWED_BRANCHES"
+          exit 1
+        fi
+        echo "✅ Branch '$REQUESTED_BRANCH' is valid for scanning"
+
     - name: Checkout repository
       uses: actions/checkout@v4
       with:

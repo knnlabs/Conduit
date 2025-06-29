@@ -62,6 +62,16 @@ public class ConduitCoreClient : BaseClient
     public HealthService Health { get; }
 
     /// <summary>
+    /// Gets the discovery service for model capabilities and provider features.
+    /// </summary>
+    public DiscoveryService Discovery { get; }
+
+    /// <summary>
+    /// Gets the provider models service for retrieving provider model information.
+    /// </summary>
+    public ProviderModelsService ProviderModels { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -88,6 +98,8 @@ public class ConduitCoreClient : BaseClient
         ILogger<SignalRService>? signalRLogger = null;
         ILogger<MetricsService>? metricsLogger = null;
         ILogger<HealthService>? healthLogger = null;
+        ILogger<DiscoveryService>? discoveryLogger = null;
+        ILogger<ProviderModelsService>? providerModelsLogger = null;
         
         if (logger != null)
         {
@@ -102,6 +114,8 @@ public class ConduitCoreClient : BaseClient
             signalRLogger = loggerFactory.CreateLogger<SignalRService>();
             metricsLogger = loggerFactory.CreateLogger<MetricsService>();
             healthLogger = loggerFactory.CreateLogger<HealthService>();
+            discoveryLogger = loggerFactory.CreateLogger<DiscoveryService>();
+            providerModelsLogger = loggerFactory.CreateLogger<ProviderModelsService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -114,6 +128,8 @@ public class ConduitCoreClient : BaseClient
         SignalR = new SignalRService(_configuration, signalRLogger);
         Metrics = new MetricsService(this, metricsLogger);
         Health = new HealthService(this, healthLogger);
+        Discovery = new DiscoveryService(this, discoveryLogger);
+        ProviderModels = new ProviderModelsService(this, providerModelsLogger);
     }
 
     /// <summary>

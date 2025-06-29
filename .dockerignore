@@ -1,35 +1,109 @@
 # .dockerignore
+# Security-focused exclusions to minimize Docker build context
 
-# Ignore .git directory
-.git
+# Git
+.git/
 .gitignore
+.gitattributes
 
-# Ignore user-specific files
-.vs
-.vscode
-*.user
-*.suo
+# Development databases - SECURITY: Prevent data leakage
+*.db
+*.db-shm
+*.db-wal
+conduit-dev.db
 
-# Ignore build outputs
-bin/
-obj/
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/publish/
 TestResults/
-out/
+CoverageReport/
+**/*.trx
+**/*.coverage
 
-# Ignore Docker-related files that shouldn't be copied
-Dockerfile
-docker-compose.yml
-docker-compose.*.yml
+# User-specific files
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Ignore OS generated files
-*.DS_Store
-Thumbs.db
-
-# Ignore logs
-*.log
-
-# Ignore secrets (if any)
-secrets/
+# Environment and secrets - CRITICAL SECURITY
+**/.env
+**/.env.*
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets/
+**/cookies.txt
 *.pfx
 *.key
 *.crt
+*.pem
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node modules (for client projects)
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/package-lock.json
+**/yarn.lock
+
+# Package files
+*.nupkg
+*.snupkg
+nupkgs/
+
+# Documentation
+docs/
+website/
+*.md
+LICENSE
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# CI/CD - Not needed in production images
+.github/
+scripts/
+
+# Testing and monitoring
+monitoring/
+tools/
+**/Examples/
+**/*.Tests/
+**/*.Test/
+
+# Upload directories - SECURITY: User uploaded content
+uploads/
+
+# Docker files (prevent recursive copying)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Miscellaneous
+*.example
+*.sample
+README*

@@ -12,6 +12,7 @@ using ConduitLLM.AdminClient;
 using ConduitLLM.AdminClient.Client;
 using ConduitLLM.CoreClient;
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.TUI.Utils;
 
 namespace ConduitLLM.TUI;
 
@@ -100,6 +101,9 @@ class Program
         var services = new ServiceCollection();
         ConfigureServices(services, configuration, masterKey, coreApiUrl, adminApiUrl);
         var serviceProvider = services.BuildServiceProvider();
+        
+        // Get the log buffer for later use
+        var logBuffer = serviceProvider.GetRequiredService<LogBuffer>();
 
         // Initialize services
         var stateManager = serviceProvider.GetRequiredService<StateManager>();
@@ -144,6 +148,16 @@ class Program
                 await signalRService.ConnectAsync();
                 AnsiConsole.MarkupLine("[green]✓ Connected to SignalR[/]");
             }
+            catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+            {
+                // 404 indicates missing SignalR endpoint - this is a critical error
+                AnsiConsole.MarkupLine($"[red]✗ SignalR connection failed: {ex.Message}[/]");
+                AnsiConsole.MarkupLine("[red]  The SignalR endpoint is missing from the Core API.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[yellow]This appears to be a version mismatch between the TUI and Core API.[/]");
+                AnsiConsole.MarkupLine("[yellow]Please ensure both components are from compatible versions.[/]");
+                return; // Exit early - cannot proceed without proper SignalR endpoints
+            }
             catch (Exception ex)
             {
                 AnsiConsole.MarkupLine($"[yellow]⚠ SignalR connection failed: {ex.Message}[/]");
@@ -165,6 +179,10 @@ class Program
         {
             Application.Shutdown();
             await signalRService.DisposeAsync();
+            
+            // Dump logs to console before exiting
+            DumpLogsToConsole(logBuffer);
+            
             if (serviceProvider is IAsyncDisposable asyncDisposable)
             {
                 await asyncDisposable.DisposeAsync();
@@ -179,17 +197,27 @@ class Program
     static void ConfigureServices(IServiceCollection services, IConfiguration configuration, 
         string masterKey, string coreApiUrl, string adminApiUrl)
     {
+        // Create and register log buffer
+        var logBuffer = new LogBuffer(maxEntries: 1000);
+        services.AddSingleton(logBuffer);
+        
         // Logging
         services.AddLogging(builder =>
         {
             builder.AddConfiguration(configuration.GetSection("Logging"));
-            builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Warning);
+            
+            // Add TUI logger provider instead of console
+            builder.AddProvider(new TuiLoggerProvider(logBuffer, LogLevel.Information));
+            
+            builder.SetMinimumLevel(LogLevel.Information);
             
             // Set specific log levels for noisy components
             builder.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Warning);
             builder.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Warning);
             builder.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+            
+            // Show more detail for our components
+            builder.AddFilter("ConduitLLM.TUI", LogLevel.Debug);
         });
 
         // Configuration
@@ -213,6 +241,7 @@ class Program
 
         // Services
         services.AddSingleton<StateManager>();
+        services.AddSingleton<ConfigurationStateManager>();
         services.AddSingleton<AdminApiService>();
         services.AddSingleton<CoreApiService>();
         services.AddSingleton<SignalRService>();
@@ -267,6 +296,7 @@ class Program
             });
 
             services.AddSingleton<StateManager>();
+            services.AddSingleton<ConfigurationStateManager>();
             services.AddScoped<AdminApiService>();
             
             var serviceProvider = services.BuildServiceProvider();
@@ -394,5 +424,35 @@ class Program
         AnsiConsole.MarkupLine("  • Minimum terminal size: 80x24 characters");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("For more information, visit: [link]https://github.com/knnlabs/Conduit[/]");
+    }
+    
+    static void DumpLogsToConsole(LogBuffer logBuffer)
+    {
+        var logs = logBuffer.GetEntries().ToList();
+        if (logs.Count == 0)
+            return;
+            
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule("[yellow]Session Logs[/]").LeftJustified());
+        AnsiConsole.WriteLine();
+        
+        foreach (var log in logs)
+        {
+            var color = log.Level switch
+            {
+                LogLevel.Trace => "grey",
+                LogLevel.Debug => "grey",
+                LogLevel.Information => "white",
+                LogLevel.Warning => "yellow",
+                LogLevel.Error => "red",
+                LogLevel.Critical => "red bold",
+                _ => "white"
+            };
+            
+            AnsiConsole.MarkupLine($"[{color}]{log.GetFormattedMessage().EscapeMarkup()}[/]");
+        }
+        
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule().LeftJustified());
     }
 }
