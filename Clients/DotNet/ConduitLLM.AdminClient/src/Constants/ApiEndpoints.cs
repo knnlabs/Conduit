@@ -82,6 +82,16 @@ public static class ApiEndpoints
         /// Discovery endpoint.
         /// </summary>
         public const string Discovery = "/api/discovery";
+
+        /// <summary>
+        /// HTTP client configuration endpoint.
+        /// </summary>
+        public const string HttpClientConfiguration = "/api/http-client-configuration";
+
+        /// <summary>
+        /// Cache configuration endpoint.
+        /// </summary>
+        public const string CacheConfiguration = "/api/cache-configuration";
     }
 
     /// <summary>

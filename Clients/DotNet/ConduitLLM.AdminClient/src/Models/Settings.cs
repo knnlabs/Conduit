@@ -751,3 +751,528 @@ public class ConfigurationValidationResult
     /// </summary>
     public IEnumerable<string> Warnings { get; set; } = new List<string>();
 }
+
+#region HTTP Client Configuration
+
+/// <summary>
+/// Represents HTTP client configuration settings.
+/// </summary>
+public class HttpClientConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the unique identifier for this configuration.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the HTTP client configuration.
+    /// </summary>
+    public string ClientName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the request timeout in seconds.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Gets or sets the maximum number of retry attempts.
+    /// </summary>
+    public int MaxRetries { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets the initial delay in milliseconds before first retry.
+    /// </summary>
+    public int InitialDelayMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Gets or sets the maximum delay in milliseconds between retries.
+    /// </summary>
+    public int MaxDelayMs { get; set; } = 30000;
+
+    /// <summary>
+    /// Gets or sets the maximum number of connections per server.
+    /// </summary>
+    public int MaxConnectionsPerServer { get; set; } = 50;
+
+    /// <summary>
+    /// Gets or sets the connection lifetime in minutes.
+    /// </summary>
+    public int ConnectionLifetimeMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets the pooled connection idle timeout in minutes.
+    /// </summary>
+    public int PooledConnectionIdleTimeoutMinutes { get; set; } = 2;
+
+    /// <summary>
+    /// Gets or sets the connection timeout in seconds.
+    /// </summary>
+    public int ConnectTimeoutSeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Gets or sets whether to enable retry logging.
+    /// </summary>
+    public bool EnableRetryLogging { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to enable timeout logging.
+    /// </summary>
+    public bool EnableTimeoutLogging { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether this configuration is enabled.
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the description of this configuration.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets when this configuration was created.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets when this configuration was last updated.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Represents a request to create HTTP client configuration.
+/// </summary>
+public class CreateHttpClientConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the name of the HTTP client configuration.
+    /// </summary>
+    public string ClientName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the request timeout in seconds.
+    /// </summary>
+    public int? TimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of retry attempts.
+    /// </summary>
+    public int? MaxRetries { get; set; }
+
+    /// <summary>
+    /// Gets or sets the initial delay in milliseconds before first retry.
+    /// </summary>
+    public int? InitialDelayMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum delay in milliseconds between retries.
+    /// </summary>
+    public int? MaxDelayMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of connections per server.
+    /// </summary>
+    public int? MaxConnectionsPerServer { get; set; }
+
+    /// <summary>
+    /// Gets or sets the connection lifetime in minutes.
+    /// </summary>
+    public int? ConnectionLifetimeMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pooled connection idle timeout in minutes.
+    /// </summary>
+    public int? PooledConnectionIdleTimeoutMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the connection timeout in seconds.
+    /// </summary>
+    public int? ConnectTimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to enable retry logging.
+    /// </summary>
+    public bool? EnableRetryLogging { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to enable timeout logging.
+    /// </summary>
+    public bool? EnableTimeoutLogging { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this configuration is enabled.
+    /// </summary>
+    public bool? IsEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the description of this configuration.
+    /// </summary>
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Represents a request to update HTTP client configuration.
+/// </summary>
+public class UpdateHttpClientConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the unique identifier for this configuration.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the HTTP client configuration.
+    /// </summary>
+    public string? ClientName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the request timeout in seconds.
+    /// </summary>
+    public int? TimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of retry attempts.
+    /// </summary>
+    public int? MaxRetries { get; set; }
+
+    /// <summary>
+    /// Gets or sets the initial delay in milliseconds before first retry.
+    /// </summary>
+    public int? InitialDelayMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum delay in milliseconds between retries.
+    /// </summary>
+    public int? MaxDelayMs { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of connections per server.
+    /// </summary>
+    public int? MaxConnectionsPerServer { get; set; }
+
+    /// <summary>
+    /// Gets or sets the connection lifetime in minutes.
+    /// </summary>
+    public int? ConnectionLifetimeMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pooled connection idle timeout in minutes.
+    /// </summary>
+    public int? PooledConnectionIdleTimeoutMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the connection timeout in seconds.
+    /// </summary>
+    public int? ConnectTimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to enable retry logging.
+    /// </summary>
+    public bool? EnableRetryLogging { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to enable timeout logging.
+    /// </summary>
+    public bool? EnableTimeoutLogging { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this configuration is enabled.
+    /// </summary>
+    public bool? IsEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the description of this configuration.
+    /// </summary>
+    public string? Description { get; set; }
+}
+
+#endregion
+
+#region Caching Configuration
+
+/// <summary>
+/// Represents caching configuration settings.
+/// </summary>
+public class CacheConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the unique identifier for this configuration.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether caching is enabled.
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the type of cache to use.
+    /// </summary>
+    public CacheType CacheType { get; set; } = CacheType.Memory;
+
+    /// <summary>
+    /// Gets or sets the default absolute expiration time in minutes.
+    /// </summary>
+    public int DefaultAbsoluteExpirationMinutes { get; set; } = 60;
+
+    /// <summary>
+    /// Gets or sets the default sliding expiration time in minutes.
+    /// </summary>
+    public int DefaultSlidingExpirationMinutes { get; set; } = 20;
+
+    /// <summary>
+    /// Gets or sets whether to use default expiration times when not specified.
+    /// </summary>
+    public bool UseDefaultExpirationTimes { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the maximum number of items in the memory cache.
+    /// </summary>
+    public int MaxCacheItems { get; set; } = 10000;
+
+    /// <summary>
+    /// Gets or sets the Redis connection string (when Redis cache is used).
+    /// </summary>
+    public string? RedisConnectionString { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Redis instance name (when Redis cache is used).
+    /// </summary>
+    public string RedisInstanceName { get; set; } = "conduitllm-cache";
+
+    /// <summary>
+    /// Gets or sets whether to include the model name in the cache key.
+    /// </summary>
+    public bool IncludeModelInKey { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to include the provider name in the cache key.
+    /// </summary>
+    public bool IncludeProviderInKey { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to include the API key in the cache key.
+    /// </summary>
+    public bool IncludeApiKeyInKey { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether to include the temperature in the cache key.
+    /// </summary>
+    public bool IncludeTemperatureInKey { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to include the max tokens in the cache key.
+    /// </summary>
+    public bool IncludeMaxTokensInKey { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether to include the Top-P in the cache key.
+    /// </summary>
+    public bool IncludeTopPInKey { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the hash algorithm to use for cache keys.
+    /// </summary>
+    public string HashAlgorithm { get; set; } = "MD5";
+
+    /// <summary>
+    /// Gets or sets when this configuration was created.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets when this configuration was last updated.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Represents the cache type options.
+/// </summary>
+public enum CacheType
+{
+    /// <summary>
+    /// In-memory caching.
+    /// </summary>
+    Memory,
+
+    /// <summary>
+    /// Redis distributed caching.
+    /// </summary>
+    Redis,
+
+    /// <summary>
+    /// Hybrid caching (memory + Redis).
+    /// </summary>
+    Hybrid
+}
+
+/// <summary>
+/// Represents a request to create cache configuration.
+/// </summary>
+public class CreateCacheConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets whether caching is enabled.
+    /// </summary>
+    public bool? IsEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of cache to use.
+    /// </summary>
+    public CacheType? CacheType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the default absolute expiration time in minutes.
+    /// </summary>
+    public int? DefaultAbsoluteExpirationMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the default sliding expiration time in minutes.
+    /// </summary>
+    public int? DefaultSlidingExpirationMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to use default expiration times when not specified.
+    /// </summary>
+    public bool? UseDefaultExpirationTimes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of items in the memory cache.
+    /// </summary>
+    public int? MaxCacheItems { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Redis connection string (when Redis cache is used).
+    /// </summary>
+    public string? RedisConnectionString { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Redis instance name (when Redis cache is used).
+    /// </summary>
+    public string? RedisInstanceName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the model name in the cache key.
+    /// </summary>
+    public bool? IncludeModelInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the provider name in the cache key.
+    /// </summary>
+    public bool? IncludeProviderInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the API key in the cache key.
+    /// </summary>
+    public bool? IncludeApiKeyInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the temperature in the cache key.
+    /// </summary>
+    public bool? IncludeTemperatureInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the max tokens in the cache key.
+    /// </summary>
+    public bool? IncludeMaxTokensInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the Top-P in the cache key.
+    /// </summary>
+    public bool? IncludeTopPInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the hash algorithm to use for cache keys.
+    /// </summary>
+    public string? HashAlgorithm { get; set; }
+}
+
+/// <summary>
+/// Represents a request to update cache configuration.
+/// </summary>
+public class UpdateCacheConfigurationDto
+{
+    /// <summary>
+    /// Gets or sets the unique identifier for this configuration.
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether caching is enabled.
+    /// </summary>
+    public bool? IsEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of cache to use.
+    /// </summary>
+    public CacheType? CacheType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the default absolute expiration time in minutes.
+    /// </summary>
+    public int? DefaultAbsoluteExpirationMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the default sliding expiration time in minutes.
+    /// </summary>
+    public int? DefaultSlidingExpirationMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to use default expiration times when not specified.
+    /// </summary>
+    public bool? UseDefaultExpirationTimes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of items in the memory cache.
+    /// </summary>
+    public int? MaxCacheItems { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Redis connection string (when Redis cache is used).
+    /// </summary>
+    public string? RedisConnectionString { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Redis instance name (when Redis cache is used).
+    /// </summary>
+    public string? RedisInstanceName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the model name in the cache key.
+    /// </summary>
+    public bool? IncludeModelInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the provider name in the cache key.
+    /// </summary>
+    public bool? IncludeProviderInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the API key in the cache key.
+    /// </summary>
+    public bool? IncludeApiKeyInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the temperature in the cache key.
+    /// </summary>
+    public bool? IncludeTemperatureInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the max tokens in the cache key.
+    /// </summary>
+    public bool? IncludeMaxTokensInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to include the Top-P in the cache key.
+    /// </summary>
+    public bool? IncludeTopPInKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the hash algorithm to use for cache keys.
+    /// </summary>
+    public string? HashAlgorithm { get; set; }
+}
+
+#endregion

@@ -1,4 +1,5 @@
 using ConduitLLM.AdminClient.Client;
+using ConduitLLM.AdminClient.Constants;
 using ConduitLLM.AdminClient.Models;
 using ConduitLLM.AdminClient.Utils;
 using ConduitLLM.AdminClient.Exceptions;
@@ -682,6 +683,449 @@ public class SettingsService : BaseApiClient
     {
         // Clear all settings-related cache entries
         await Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region HTTP Client Configuration
+
+    /// <summary>
+    /// Retrieves the current HTTP client configuration.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The HTTP client configuration.</returns>
+    /// <exception cref="NotFoundException">Thrown when no configuration is found.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<HttpClientConfigurationDto> GetHttpClientConfigurationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoint = ApiEndpoints.System.HttpClientConfiguration;
+            var cacheKey = GetCacheKey("http-client-config");
+
+            return await WithCacheAsync(
+                cacheKey,
+                () => GetAsync<HttpClientConfigurationDto>(endpoint, cancellationToken: cancellationToken),
+                MediumCacheTimeout,
+                cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.HttpClientConfiguration, "GET");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates a new HTTP client configuration.
+    /// </summary>
+    /// <param name="request">The HTTP client configuration request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created HTTP client configuration.</returns>
+    /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<HttpClientConfigurationDto> CreateHttpClientConfigurationAsync(
+        CreateHttpClientConfigurationDto request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (request == null)
+                throw new ValidationException("HTTP client configuration request is required");
+
+            ValidateHttpClientConfiguration(request);
+
+            var endpoint = ApiEndpoints.System.HttpClientConfiguration;
+            var result = await PostAsync<HttpClientConfigurationDto>(endpoint, request, cancellationToken);
+
+            // Clear cache after successful creation
+            await InvalidateCacheAsync();
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.HttpClientConfiguration, "POST");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Updates the HTTP client configuration.
+    /// </summary>
+    /// <param name="request">The HTTP client configuration update request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated HTTP client configuration.</returns>
+    /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<HttpClientConfigurationDto> UpdateHttpClientConfigurationAsync(
+        UpdateHttpClientConfigurationDto request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (request == null)
+                throw new ValidationException("HTTP client configuration update request is required");
+
+            ValidateHttpClientConfiguration(request);
+
+            var endpoint = $"{ApiEndpoints.System.HttpClientConfiguration}/{request.Id}";
+            var result = await PutAsync<HttpClientConfigurationDto>(endpoint, request, cancellationToken);
+
+            // Clear cache after successful update
+            await InvalidateCacheAsync();
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.HttpClientConfiguration, "PUT");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes the HTTP client configuration.
+    /// </summary>
+    /// <param name="id">The configuration ID to delete.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="ValidationException">Thrown when the ID is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task DeleteHttpClientConfigurationAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (id <= 0)
+                throw new ValidationException("HTTP client configuration ID must be positive");
+
+            var endpoint = $"{ApiEndpoints.System.HttpClientConfiguration}/{id}";
+            await DeleteAsync(endpoint, cancellationToken);
+
+            // Clear cache after successful deletion
+            await InvalidateCacheAsync();
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.HttpClientConfiguration, "DELETE");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Tests HTTP client configuration settings.
+    /// </summary>
+    /// <param name="config">The configuration to test.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the configuration is valid, false otherwise.</returns>
+    /// <exception cref="ValidationException">Thrown when the configuration is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<bool> TestHttpClientConfigurationAsync(
+        CreateHttpClientConfigurationDto config,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (config == null)
+                throw new ValidationException("HTTP client configuration is required");
+
+            ValidateHttpClientConfiguration(config);
+
+            var endpoint = $"{ApiEndpoints.System.HttpClientConfiguration}/test";
+            var result = await PostAsync<bool>(endpoint, config, cancellationToken);
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{ApiEndpoints.System.HttpClientConfiguration}/test", "POST");
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Cache Configuration
+
+    /// <summary>
+    /// Retrieves the current cache configuration.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The cache configuration.</returns>
+    /// <exception cref="NotFoundException">Thrown when no configuration is found.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<CacheConfigurationDto> GetCacheConfigurationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoint = ApiEndpoints.System.CacheConfiguration;
+            var cacheKey = GetCacheKey("cache-config");
+
+            return await WithCacheAsync(
+                cacheKey,
+                () => GetAsync<CacheConfigurationDto>(endpoint, cancellationToken: cancellationToken),
+                MediumCacheTimeout,
+                cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.CacheConfiguration, "GET");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates a new cache configuration.
+    /// </summary>
+    /// <param name="request">The cache configuration request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created cache configuration.</returns>
+    /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<CacheConfigurationDto> CreateCacheConfigurationAsync(
+        CreateCacheConfigurationDto request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (request == null)
+                throw new ValidationException("Cache configuration request is required");
+
+            ValidateCacheConfiguration(request);
+
+            var endpoint = ApiEndpoints.System.CacheConfiguration;
+            var result = await PostAsync<CacheConfigurationDto>(endpoint, request, cancellationToken);
+
+            // Clear cache after successful creation
+            await InvalidateCacheAsync();
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.CacheConfiguration, "POST");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Updates the cache configuration.
+    /// </summary>
+    /// <param name="request">The cache configuration update request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated cache configuration.</returns>
+    /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<CacheConfigurationDto> UpdateCacheConfigurationAsync(
+        UpdateCacheConfigurationDto request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (request == null)
+                throw new ValidationException("Cache configuration update request is required");
+
+            ValidateCacheConfiguration(request);
+
+            var endpoint = $"{ApiEndpoints.System.CacheConfiguration}/{request.Id}";
+            var result = await PutAsync<CacheConfigurationDto>(endpoint, request, cancellationToken);
+
+            // Clear cache after successful update
+            await InvalidateCacheAsync();
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.CacheConfiguration, "PUT");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes the cache configuration.
+    /// </summary>
+    /// <param name="id">The configuration ID to delete.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="ValidationException">Thrown when the ID is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task DeleteCacheConfigurationAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (id <= 0)
+                throw new ValidationException("Cache configuration ID must be positive");
+
+            var endpoint = $"{ApiEndpoints.System.CacheConfiguration}/{id}";
+            await DeleteAsync(endpoint, cancellationToken);
+
+            // Clear cache after successful deletion
+            await InvalidateCacheAsync();
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, ApiEndpoints.System.CacheConfiguration, "DELETE");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Tests cache configuration settings.
+    /// </summary>
+    /// <param name="config">The configuration to test.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the configuration is valid, false otherwise.</returns>
+    /// <exception cref="ValidationException">Thrown when the configuration is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<bool> TestCacheConfigurationAsync(
+        CreateCacheConfigurationDto config,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (config == null)
+                throw new ValidationException("Cache configuration is required");
+
+            ValidateCacheConfiguration(config);
+
+            var endpoint = $"{ApiEndpoints.System.CacheConfiguration}/test";
+            var result = await PostAsync<bool>(endpoint, config, cancellationToken);
+
+            return result;
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{ApiEndpoints.System.CacheConfiguration}/test", "POST");
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Configuration Validation
+
+    private void ValidateHttpClientConfiguration(CreateHttpClientConfigurationDto config)
+    {
+        if (string.IsNullOrWhiteSpace(config.ClientName))
+            throw new ValidationException("Client name is required");
+
+        if (config.TimeoutSeconds.HasValue && config.TimeoutSeconds <= 0)
+            throw new ValidationException("Timeout seconds must be positive");
+
+        if (config.MaxRetries.HasValue && config.MaxRetries < 0)
+            throw new ValidationException("Max retries must be non-negative");
+
+        if (config.InitialDelayMs.HasValue && config.InitialDelayMs <= 0)
+            throw new ValidationException("Initial delay must be positive");
+
+        if (config.MaxDelayMs.HasValue && config.MaxDelayMs <= 0)
+            throw new ValidationException("Max delay must be positive");
+
+        if (config.MaxConnectionsPerServer.HasValue && config.MaxConnectionsPerServer <= 0)
+            throw new ValidationException("Max connections per server must be positive");
+
+        if (config.ConnectionLifetimeMinutes.HasValue && config.ConnectionLifetimeMinutes <= 0)
+            throw new ValidationException("Connection lifetime must be positive");
+
+        if (config.PooledConnectionIdleTimeoutMinutes.HasValue && config.PooledConnectionIdleTimeoutMinutes <= 0)
+            throw new ValidationException("Pooled connection idle timeout must be positive");
+
+        if (config.ConnectTimeoutSeconds.HasValue && config.ConnectTimeoutSeconds <= 0)
+            throw new ValidationException("Connect timeout must be positive");
+    }
+
+    private void ValidateHttpClientConfiguration(UpdateHttpClientConfigurationDto config)
+    {
+        if (config.Id <= 0)
+            throw new ValidationException("Configuration ID must be positive");
+
+        if (!string.IsNullOrEmpty(config.ClientName) && string.IsNullOrWhiteSpace(config.ClientName))
+            throw new ValidationException("Client name cannot be empty");
+
+        if (config.TimeoutSeconds.HasValue && config.TimeoutSeconds <= 0)
+            throw new ValidationException("Timeout seconds must be positive");
+
+        if (config.MaxRetries.HasValue && config.MaxRetries < 0)
+            throw new ValidationException("Max retries must be non-negative");
+
+        if (config.InitialDelayMs.HasValue && config.InitialDelayMs <= 0)
+            throw new ValidationException("Initial delay must be positive");
+
+        if (config.MaxDelayMs.HasValue && config.MaxDelayMs <= 0)
+            throw new ValidationException("Max delay must be positive");
+
+        if (config.MaxConnectionsPerServer.HasValue && config.MaxConnectionsPerServer <= 0)
+            throw new ValidationException("Max connections per server must be positive");
+
+        if (config.ConnectionLifetimeMinutes.HasValue && config.ConnectionLifetimeMinutes <= 0)
+            throw new ValidationException("Connection lifetime must be positive");
+
+        if (config.PooledConnectionIdleTimeoutMinutes.HasValue && config.PooledConnectionIdleTimeoutMinutes <= 0)
+            throw new ValidationException("Pooled connection idle timeout must be positive");
+
+        if (config.ConnectTimeoutSeconds.HasValue && config.ConnectTimeoutSeconds <= 0)
+            throw new ValidationException("Connect timeout must be positive");
+    }
+
+    private void ValidateCacheConfiguration(CreateCacheConfigurationDto config)
+    {
+        if (config.DefaultAbsoluteExpirationMinutes.HasValue && config.DefaultAbsoluteExpirationMinutes <= 0)
+            throw new ValidationException("Default absolute expiration must be positive");
+
+        if (config.DefaultSlidingExpirationMinutes.HasValue && config.DefaultSlidingExpirationMinutes <= 0)
+            throw new ValidationException("Default sliding expiration must be positive");
+
+        if (config.MaxCacheItems.HasValue && config.MaxCacheItems <= 0)
+            throw new ValidationException("Max cache items must be positive");
+
+        if (!string.IsNullOrEmpty(config.RedisConnectionString) && string.IsNullOrWhiteSpace(config.RedisConnectionString))
+            throw new ValidationException("Redis connection string cannot be empty");
+
+        if (!string.IsNullOrEmpty(config.RedisInstanceName) && string.IsNullOrWhiteSpace(config.RedisInstanceName))
+            throw new ValidationException("Redis instance name cannot be empty");
+
+        if (!string.IsNullOrEmpty(config.HashAlgorithm) && !IsValidHashAlgorithm(config.HashAlgorithm))
+            throw new ValidationException("Hash algorithm must be MD5, SHA1, or SHA256");
+    }
+
+    private void ValidateCacheConfiguration(UpdateCacheConfigurationDto config)
+    {
+        if (config.Id <= 0)
+            throw new ValidationException("Configuration ID must be positive");
+
+        if (config.DefaultAbsoluteExpirationMinutes.HasValue && config.DefaultAbsoluteExpirationMinutes <= 0)
+            throw new ValidationException("Default absolute expiration must be positive");
+
+        if (config.DefaultSlidingExpirationMinutes.HasValue && config.DefaultSlidingExpirationMinutes <= 0)
+            throw new ValidationException("Default sliding expiration must be positive");
+
+        if (config.MaxCacheItems.HasValue && config.MaxCacheItems <= 0)
+            throw new ValidationException("Max cache items must be positive");
+
+        if (!string.IsNullOrEmpty(config.RedisConnectionString) && string.IsNullOrWhiteSpace(config.RedisConnectionString))
+            throw new ValidationException("Redis connection string cannot be empty");
+
+        if (!string.IsNullOrEmpty(config.RedisInstanceName) && string.IsNullOrWhiteSpace(config.RedisInstanceName))
+            throw new ValidationException("Redis instance name cannot be empty");
+
+        if (!string.IsNullOrEmpty(config.HashAlgorithm) && !IsValidHashAlgorithm(config.HashAlgorithm))
+            throw new ValidationException("Hash algorithm must be MD5, SHA1, or SHA256");
+    }
+
+    private static bool IsValidHashAlgorithm(string algorithm)
+    {
+        return algorithm.ToUpperInvariant() switch
+        {
+            "MD5" => true,
+            "SHA1" => true,
+            "SHA256" => true,
+            _ => false
+        };
     }
 
     #endregion
