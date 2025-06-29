@@ -26,6 +26,9 @@ public class SignalRService : IAsyncDisposable
     
     // Configuration-related events
     public event Action<bool>? ConnectionStateChanged;
+    
+    // TODO: Implement these events when configuration change notifications are added
+    #pragma warning disable CS0067 // Event is never used
     public event EventHandler<GlobalSettingChangedEventArgs>? GlobalSettingChanged;
     public event EventHandler<HttpClientConfigChangedEventArgs>? HttpClientConfigChanged;
     public event EventHandler<CacheConfigChangedEventArgs>? CacheConfigChanged;
@@ -33,6 +36,7 @@ public class SignalRService : IAsyncDisposable
     public event EventHandler<IpFilterChangedEventArgs>? IpFilterChanged;
     public event EventHandler<AudioConfigChangedEventArgs>? AudioConfigChanged;
     public event EventHandler<SystemHealthChangedEventArgs>? SystemHealthChanged;
+    #pragma warning restore CS0067
 
     public SignalRService(AppConfiguration config, StateManager stateManager, AdminApiService adminApiService, ILogger<SignalRService> logger)
     {
