@@ -411,7 +411,7 @@ namespace ConduitLLM.Tests.LoadTesting
             _output.WriteLine("Benchmark completed. Check BenchmarkDotNet reports for details.");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task QuickPerformanceCheck()
         {
             var benchmark = new AudioPerformanceBenchmarks();

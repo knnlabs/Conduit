@@ -1,11 +1,14 @@
 using System;
+using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -17,7 +20,8 @@ namespace ConduitLLM.Tests.Services
     {
         private readonly Mock<ILogger<AudioConnectionPool>> _mockLogger;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
-        private readonly Mock<HttpClient> _mockHttpClient;
+        private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
+        private readonly HttpClient _httpClient;
         private readonly IOptions<AudioConnectionPoolOptions> _options;
         private readonly AudioConnectionPool _service;
 
@@ -25,7 +29,25 @@ namespace ConduitLLM.Tests.Services
         {
             _mockLogger = new Mock<ILogger<AudioConnectionPool>>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
-            _mockHttpClient = new Mock<HttpClient>();
+            _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+
+            // Setup the mock message handler to return success for health checks
+            _mockHttpMessageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.RequestUri != null && req.RequestUri.PathAndQuery.Contains("/health")),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent("OK")
+                });
+
+            _httpClient = new HttpClient(_mockHttpMessageHandler.Object)
+            {
+                BaseAddress = new Uri("http://localhost:8080")
+            };
 
             var options = new AudioConnectionPoolOptions
             {
@@ -38,7 +60,10 @@ namespace ConduitLLM.Tests.Services
 
             _mockHttpClientFactory
                 .Setup(x => x.CreateClient(It.IsAny<string>()))
-                .Returns(_mockHttpClient.Object);
+                .Returns(() => new HttpClient(_mockHttpMessageHandler.Object)
+                {
+                    BaseAddress = new Uri("http://localhost:8080")
+                });
 
             _service = new AudioConnectionPool(_mockLogger.Object, _mockHttpClientFactory.Object, _options);
         }
@@ -112,7 +137,7 @@ namespace ConduitLLM.Tests.Services
         public async Task ReturnConnectionAsync_WithNullConnection_DoesNotThrow()
         {
             // Act & Assert - should not throw
-            await _service.ReturnConnectionAsync(null);
+            await _service.ReturnConnectionAsync(null!);
         }
 
         [Fact]
@@ -141,6 +166,7 @@ namespace ConduitLLM.Tests.Services
         public void Dispose()
         {
             _service?.Dispose();
+            _httpClient?.Dispose();
         }
     }
 }

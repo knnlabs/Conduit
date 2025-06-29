@@ -21,7 +21,7 @@ namespace ConduitLLM.Http.HealthChecks
         private readonly IHubContext<TaskHub> _taskHubContext;
         private readonly IHubContext<ImageGenerationHub> _imageHubContext;
         private readonly IHubContext<VideoGenerationHub> _videoHubContext;
-        private readonly SignalRMetrics _metrics;
+        private readonly ISignalRMetrics _metrics;
         private readonly ILogger<SignalRHealthCheck> _logger;
 
         public SignalRHealthCheck(
@@ -29,7 +29,7 @@ namespace ConduitLLM.Http.HealthChecks
             IHubContext<TaskHub> taskHubContext,
             IHubContext<ImageGenerationHub> imageHubContext,
             IHubContext<VideoGenerationHub> videoHubContext,
-            SignalRMetrics metrics,
+            ISignalRMetrics metrics,
             ILogger<SignalRHealthCheck> logger)
         {
             _notificationHubContext = notificationHubContext ?? throw new ArgumentNullException(nameof(notificationHubContext));

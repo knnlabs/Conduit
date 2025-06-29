@@ -51,13 +51,11 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public void Constructor_WithNullLogger_CreatesService()
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            // Act
-            var service = new S3MediaStorageService(_options, null);
-
-            // Assert
-            Assert.NotNull(service);
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new S3MediaStorageService(_options, null));
         }
 
         [Fact]
@@ -105,7 +103,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public void Constructor_WithEmptyBucketName_CreatesServiceButMayFailLater()
+        public void Constructor_WithEmptyBucketName_ThrowsInvalidOperationException()
         {
             // Arrange
             var invalidOptions = new S3StorageOptions
@@ -116,11 +114,11 @@ namespace ConduitLLM.Tests.Services
             };
             var invalidOptionsWrapper = Options.Create(invalidOptions);
 
-            // Act
-            var service = new S3MediaStorageService(invalidOptionsWrapper, _mockLogger.Object);
-
-            // Assert
-            Assert.NotNull(service); // Constructor doesn't validate bucket name
+            // Act & Assert
+            var exception = Assert.Throws<InvalidOperationException>(() => 
+                new S3MediaStorageService(invalidOptionsWrapper, _mockLogger.Object));
+            
+            Assert.Contains("S3 BucketName is required", exception.Message);
         }
 
         public void Dispose()

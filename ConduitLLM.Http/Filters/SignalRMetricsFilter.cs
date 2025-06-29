@@ -14,9 +14,9 @@ namespace ConduitLLM.Http.Filters
     public class SignalRMetricsFilter : IHubFilter
     {
         private readonly ILogger<SignalRMetricsFilter> _logger;
-        private readonly SignalRMetrics _metrics;
+        private readonly ISignalRMetrics _metrics;
 
-        public SignalRMetricsFilter(ILogger<SignalRMetricsFilter> logger, SignalRMetrics metrics)
+        public SignalRMetricsFilter(ILogger<SignalRMetricsFilter> logger, ISignalRMetrics metrics)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));

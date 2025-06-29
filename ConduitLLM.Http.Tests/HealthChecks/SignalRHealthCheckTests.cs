@@ -9,6 +9,7 @@ using Xunit;
 using ConduitLLM.Http.HealthChecks;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Metrics;
+using ConduitLLM.Http.Tests.TestHelpers;
 
 namespace ConduitLLM.Http.Tests.HealthChecks
 {
@@ -18,7 +19,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
         private readonly Mock<IHubContext<TaskHub>> _taskHubContextMock;
         private readonly Mock<IHubContext<ImageGenerationHub>> _imageHubContextMock;
         private readonly Mock<IHubContext<VideoGenerationHub>> _videoHubContextMock;
-        private readonly Mock<SignalRMetrics> _metricsMock;
+        private readonly Mock<ISignalRMetrics> _metricsMock;
         private readonly Mock<ILogger<SignalRHealthCheck>> _loggerMock;
         private readonly SignalRHealthCheck _healthCheck;
         private readonly Mock<IHubClients> _clientsMock;
@@ -30,7 +31,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
             _taskHubContextMock = new Mock<IHubContext<TaskHub>>();
             _imageHubContextMock = new Mock<IHubContext<ImageGenerationHub>>();
             _videoHubContextMock = new Mock<IHubContext<VideoGenerationHub>>();
-            _metricsMock = new Mock<SignalRMetrics>();
+            _metricsMock = MockSignalRMetrics.Create();
             _loggerMock = new Mock<ILogger<SignalRHealthCheck>>();
             _clientsMock = new Mock<IHubClients>();
             _clientProxyMock = new Mock<IClientProxy>();
@@ -67,7 +68,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
             Assert.Equal(HealthStatus.Healthy, result.Status);
             Assert.Equal("All SignalR hubs are healthy", result.Description);
             Assert.NotNull(result.Data);
-            Assert.Contains("NavigationStateHub_status", result.Data.Keys);
+            Assert.Contains("SystemNotificationHub_status", result.Data.Keys);
             Assert.Contains("TaskHub_status", result.Data.Keys);
             Assert.Contains("ImageGenerationHub_status", result.Data.Keys);
             Assert.Contains("VideoGenerationHub_status", result.Data.Keys);
@@ -91,7 +92,7 @@ namespace ConduitLLM.Http.Tests.HealthChecks
             // Assert
             Assert.Equal(HealthStatus.Degraded, result.Status);
             Assert.Contains("3/4 SignalR hubs are healthy", result.Description);
-            Assert.Contains("unhealthy:", (string)result.Data["NavigationStateHub_status"]);
+            Assert.Contains("unhealthy:", (string)result.Data["SystemNotificationHub_status"]);
         }
 
         [Fact]

@@ -16,7 +16,7 @@ namespace ConduitLLM.Http.Hubs
     /// </summary>
     public class SystemNotificationHub : SecureHub, ISystemNotificationHub
     {
-        private readonly SignalRMetrics _metrics;
+        private readonly ISignalRMetrics _metrics;
         private readonly ILogger<SystemNotificationHub> _logger;
         
         // Store notification preferences per connection
@@ -34,7 +34,7 @@ namespace ConduitLLM.Http.Hubs
         /// <param name="logger">Logger instance.</param>
         /// <param name="serviceProvider">Service provider for dependency injection.</param>
         public SystemNotificationHub(
-            SignalRMetrics metrics,
+            ISignalRMetrics metrics,
             ILogger<SystemNotificationHub> logger,
             IServiceProvider serviceProvider) : base(logger, serviceProvider)
         {

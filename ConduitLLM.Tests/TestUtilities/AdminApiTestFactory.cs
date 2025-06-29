@@ -9,11 +9,9 @@ namespace ConduitLLM.Tests.TestUtilities
     {
         public AdminApiTestFactory()
         {
-            AdditionalConfiguration = new Dictionary<string, string?>
-            {
-                { "AdminApi:MasterKey", "test-master-key" },
-                { "ConnectionStrings:ConfigurationDb", "Data Source=:memory:" }
-            };
+            // Use parent's in-memory database configuration
+            AdditionalConfiguration["AdminApi:MasterKey"] = "test-master-key";
+            // Parent class already configures in-memory database
         }
     }
 }

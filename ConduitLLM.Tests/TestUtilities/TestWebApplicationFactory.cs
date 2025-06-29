@@ -18,15 +18,15 @@ using System.Threading.Tasks;
 namespace ConduitLLM.Tests.TestUtilities
 {
     /// <summary>
-    /// Custom WebApplicationFactory that ensures test environment variables are set
-    /// before the application starts.
+    /// Custom WebApplicationFactory that uses in-memory database by default
+    /// to avoid PostgreSQL connection issues in test environments.
     /// </summary>
     /// <typeparam name="TProgram">The entry point of the application to test</typeparam>
     public class TestWebApplicationFactory<TProgram> : WebApplicationFactory<TProgram>
         where TProgram : class
     {
         protected Dictionary<string, string?> AdditionalConfiguration { get; set; }
-        private static readonly string _testDbName = $"conduit_test_{Guid.NewGuid():N}";
+        private readonly string _testDbName = $"conduit_test_{Guid.NewGuid():N}";
         private static bool _databaseSeeded = false;
         private static readonly object _seedLock = new object();
 
@@ -53,16 +53,15 @@ namespace ConduitLLM.Tests.TestUtilities
 
         public TestWebApplicationFactory()
         {
-            // Get test PostgreSQL connection from environment or use local instance
-            var testDbUrl = Environment.GetEnvironmentVariable("TEST_DATABASE_URL") 
-                ?? $"postgresql://conduit:conduitpass@localhost:5432/{_testDbName}";
+            // Set a dummy DATABASE_URL to satisfy the application's requirement
+            // The actual database configuration will be overridden to use in-memory
+            Environment.SetEnvironmentVariable("DATABASE_URL", "postgresql://test:test@localhost:5432/test");
             
-            Environment.SetEnvironmentVariable("DATABASE_URL", testDbUrl);
-            
+            // Use in-memory database by default to avoid connection string issues
             AdditionalConfiguration = new Dictionary<string, string?>
             {
-                // Use PostgreSQL for tests
-                { "DATABASE_URL", testDbUrl }
+                { "ConnectionStrings:Default", "" },
+                { "ConduitLLM:Database:Provider", "InMemory" }
             };
         }
 
@@ -102,6 +101,7 @@ namespace ConduitLLM.Tests.TestUtilities
             var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
             
             await using var context = await dbContextFactory.CreateDbContextAsync();
+            context.IsTestEnvironment = true;
             
             // Ensure database schema is created (since we skipped the main app's database initialization)
             await context.Database.EnsureCreatedAsync();
@@ -139,62 +139,8 @@ namespace ConduitLLM.Tests.TestUtilities
                 }
             }
             
-            // Add test model mapping for video-01 if it doesn't exist
-            var existingMapping = await context.ModelProviderMappings
-                .FirstOrDefaultAsync(mm => mm.ModelAlias == "video-01");
-                
-            if (existingMapping == null)
-            {
-                // First, we need to create or get a provider credential for minimax
-                var existingCredential = await context.ProviderCredentials
-                    .FirstOrDefaultAsync(pc => pc.ProviderName == "minimax");
-                    
-                if (existingCredential == null)
-                {
-                    try
-                    {
-                        existingCredential = new ConduitLLM.Configuration.Entities.ProviderCredential
-                        {
-                            ProviderName = "minimax",
-                            ApiKey = "test-minimax-key",
-                            IsEnabled = true,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        context.ProviderCredentials.Add(existingCredential);
-                        await context.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException)
-                    {
-                        // Reload if another test instance created it
-                        existingCredential = await context.ProviderCredentials
-                            .FirstOrDefaultAsync(pc => pc.ProviderName == "minimax");
-                    }
-                }
-                
-                if (existingCredential != null)
-                {
-                    try
-                    {
-                        var testModelMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
-                        {
-                            ModelAlias = "video-01",
-                            ProviderModelName = "video-01",  // Entity uses ProviderModelName
-                            ProviderCredentialId = existingCredential.Id,
-                            IsEnabled = true,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        
-                        context.ModelProviderMappings.Add(testModelMapping);
-                        await context.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException)
-                    {
-                        // Ignore if mapping already exists
-                    }
-                }
-            }
+            // Skip seeding model mappings and provider credentials in test environment
+            // These entities are ignored in test configuration to simplify testing
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -203,6 +149,14 @@ namespace ConduitLLM.Tests.TestUtilities
             
             // Disable file watching in tests to avoid inotify limits
             builder.UseSetting("hostBuilder:reloadConfigOnChange", "false");
+            
+            // Configure services BEFORE the application's Startup/Program runs
+            // This ensures our test services are registered first
+            builder.ConfigureServices(services =>
+            {
+                // Pre-register the test ConnectionStringManager to avoid PostgreSQL connection attempts
+                services.AddSingleton<ConduitLLM.Core.Data.Interfaces.IConnectionStringManager, TestConnectionStringManager>();
+            });
             
             // Configure app configuration without file watching
             builder.ConfigureAppConfiguration((context, config) =>
@@ -219,19 +173,44 @@ namespace ConduitLLM.Tests.TestUtilities
                 config.AddEnvironmentVariables();
             });
             
-            // Override database configuration to use shared SQLite file
+            // Override database configuration to use in-memory database
             builder.ConfigureServices(services =>
             {
-                // Remove the default database configuration
-                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDbContextFactory<ConfigurationDbContext>));
-                if (descriptor != null)
+                // First, replace the ConnectionStringManager to avoid PostgreSQL requirement
+                var connectionStringManagerDescriptor = services.FirstOrDefault(d => 
+                    d.ServiceType == typeof(ConduitLLM.Core.Data.Interfaces.IConnectionStringManager));
+                if (connectionStringManagerDescriptor != null)
+                {
+                    services.Remove(connectionStringManagerDescriptor);
+                }
+                services.AddSingleton<ConduitLLM.Core.Data.Interfaces.IConnectionStringManager, TestConnectionStringManager>();
+                
+                // Remove all EF Core related services to avoid conflicts
+                var descriptorsToRemove = services.Where(d => 
+                    d.ServiceType == typeof(IDbContextFactory<ConfigurationDbContext>) ||
+                    d.ServiceType == typeof(DbContextOptions<ConfigurationDbContext>) ||
+                    d.ServiceType == typeof(DbContextOptions) ||
+                    d.ServiceType.FullName?.Contains("EntityFrameworkCore") == true).ToList();
+                
+                foreach (var descriptor in descriptorsToRemove)
                 {
                     services.Remove(descriptor);
                 }
                 
-                // Add our test PostgreSQL database configuration
+                // Add our test in-memory database configuration
                 services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                    options.UseNpgsql(AdditionalConfiguration["DATABASE_URL"]));
+                {
+                    options.UseInMemoryDatabase(databaseName: _testDbName);
+                }, ServiceLifetime.Singleton);
+                
+                // Override the DbContext service to set IsTestEnvironment
+                services.AddScoped<ConfigurationDbContext>(provider =>
+                {
+                    var factory = provider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
+                    var context = factory.CreateDbContext();
+                    context.IsTestEnvironment = true;
+                    return context;
+                });
             });
             
             base.ConfigureWebHost(builder);

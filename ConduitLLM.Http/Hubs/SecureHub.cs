@@ -202,9 +202,9 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Gets the SignalR metrics instance from the service provider.
         /// </summary>
-        private SignalRMetrics? GetMetrics()
+        private ISignalRMetrics? GetMetrics()
         {
-            return _serviceProvider.GetService<SignalRMetrics>();
+            return _serviceProvider.GetService<ISignalRMetrics>();
         }
 
         /// <summary>

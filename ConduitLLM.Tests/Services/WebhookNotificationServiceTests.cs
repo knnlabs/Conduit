@@ -163,7 +163,7 @@ namespace ConduitLLM.Tests.Services
                     "SendAsync",
                     Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
                     Moq.Protected.ItExpr.IsAny<CancellationToken>())
-                .ThrowsAsync(new TaskCanceledException());
+                .ThrowsAsync(new TaskCanceledException("The operation was canceled.", new TimeoutException()));
 
             // Act
             var result = await _service.SendTaskCompletionWebhookAsync(webhookUrl, payload);
@@ -277,7 +277,7 @@ namespace ConduitLLM.Tests.Services
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error sending completion webhook")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("HTTP error sending") && v.ToString()!.Contains("webhook")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

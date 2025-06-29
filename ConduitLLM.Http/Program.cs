@@ -1037,6 +1037,7 @@ builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeySignalRRa
 
 // Register SignalR metrics
 builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
+builder.Services.AddSingleton<ConduitLLM.Http.Metrics.ISignalRMetrics>(sp => sp.GetRequiredService<ConduitLLM.Http.Metrics.SignalRMetrics>());
 
 // Register SignalR metrics filter
 builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRMetricsFilter>();

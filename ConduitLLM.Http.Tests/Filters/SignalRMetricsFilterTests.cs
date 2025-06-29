@@ -7,6 +7,7 @@ using Moq;
 using Xunit;
 using ConduitLLM.Http.Filters;
 using ConduitLLM.Http.Metrics;
+using ConduitLLM.Http.Tests.TestHelpers;
 using System.Security.Claims;
 
 namespace ConduitLLM.Http.Tests.Filters
@@ -14,13 +15,13 @@ namespace ConduitLLM.Http.Tests.Filters
     public class SignalRMetricsFilterTests
     {
         private readonly Mock<ILogger<SignalRMetricsFilter>> _loggerMock;
-        private readonly Mock<SignalRMetrics> _metricsMock;
+        private readonly Mock<ISignalRMetrics> _metricsMock;
         private readonly SignalRMetricsFilter _filter;
 
         public SignalRMetricsFilterTests()
         {
             _loggerMock = new Mock<ILogger<SignalRMetricsFilter>>();
-            _metricsMock = new Mock<SignalRMetrics>();
+            _metricsMock = MockSignalRMetrics.Create();
             _filter = new SignalRMetricsFilter(_loggerMock.Object, _metricsMock.Object);
         }
 

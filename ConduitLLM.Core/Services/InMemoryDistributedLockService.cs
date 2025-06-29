@@ -125,6 +125,12 @@ namespace ConduitLLM.Core.Services
                     
                     if (_locks.TryUpdate(@lock.Key, newLockInfo, lockInfo))
                     {
+                        // Update the lock object's expiry time if it's our implementation
+                        if (@lock is InMemoryDistributedLock inMemoryLock)
+                        {
+                            inMemoryLock._expiryTime = newExpiryTime;
+                        }
+                        
                         _logger.LogDebug("Extended in-memory lock for key {Key} by {Extension}ms", 
                             @lock.Key, extension.TotalMilliseconds);
                         return Task.FromResult(true);
@@ -200,11 +206,12 @@ namespace ConduitLLM.Core.Services
             private readonly InMemoryDistributedLockService _service;
             private readonly ILogger _logger;
             private bool _disposed;
+            internal DateTime _expiryTime;
 
             public string Key { get; }
             public string LockValue { get; }
-            public DateTime ExpiryTime { get; }
-            public bool IsValid => !_disposed && DateTime.UtcNow < ExpiryTime;
+            public DateTime ExpiryTime => _expiryTime;
+            public bool IsValid => !_disposed && DateTime.UtcNow < _expiryTime;
 
             public InMemoryDistributedLock(
                 InMemoryDistributedLockService service,
@@ -216,7 +223,7 @@ namespace ConduitLLM.Core.Services
                 _service = service ?? throw new ArgumentNullException(nameof(service));
                 Key = key ?? throw new ArgumentNullException(nameof(key));
                 LockValue = lockValue ?? throw new ArgumentNullException(nameof(lockValue));
-                ExpiryTime = expiryTime;
+                _expiryTime = expiryTime;
                 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             }
 

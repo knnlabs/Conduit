@@ -117,7 +117,7 @@ namespace ConduitLLM.Tests.LoadTesting
             });
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task BasicLoadTest()
         {
             var config = new LoadTestConfig
@@ -149,7 +149,7 @@ namespace ConduitLLM.Tests.LoadTesting
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task HighConcurrencyTest()
         {
             var config = new LoadTestConfig
@@ -173,7 +173,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(result.Throughput > 20, $"Throughput {result.Throughput:F1} ops/sec should be greater than 20");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task SustainedLoadTest()
         {
             var config = new LoadTestConfig
@@ -202,7 +202,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(snapshot.Resources.MemoryUsageMb < 500, "Memory usage should be reasonable");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task CacheEffectivenessTest()
         {
             // Use limited set of inputs to test caching
@@ -235,7 +235,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(ttsMetrics.P50LatencyMs < 50, "Cached TTS should be fast");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task FailoverTest()
         {
             var config = new LoadTestConfig

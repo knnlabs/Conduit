@@ -16,7 +16,7 @@ namespace ConduitLLM.Http.Hubs
     public abstract class BaseHub : Hub
     {
         protected readonly ILogger Logger;
-        private SignalRMetrics? _metrics;
+        private ISignalRMetrics? _metrics;
 
         protected BaseHub(ILogger logger)
         {
@@ -26,13 +26,13 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Gets the SignalR metrics instance, lazily initialized from DI.
         /// </summary>
-        protected SignalRMetrics? Metrics
+        protected ISignalRMetrics? Metrics
         {
             get
             {
                 if (_metrics == null && Context.GetHttpContext() != null)
                 {
-                    _metrics = Context.GetHttpContext()!.RequestServices.GetService<SignalRMetrics>();
+                    _metrics = Context.GetHttpContext()!.RequestServices.GetService<ISignalRMetrics>();
                 }
                 return _metrics;
             }

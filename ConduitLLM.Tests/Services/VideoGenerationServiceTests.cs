@@ -640,11 +640,13 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task GetVideoGenerationStatusAsync_ThrowsNotImplementedException()
+        public async Task GetVideoGenerationStatusAsync_WithNonExistentTask_ThrowsInvalidOperationException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<NotImplementedException>(() =>
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _service.GetVideoGenerationStatusAsync("task-123", "sk-test"));
+            
+            Assert.Contains("Task task-123 not found", exception.Message);
         }
 
         [Fact]

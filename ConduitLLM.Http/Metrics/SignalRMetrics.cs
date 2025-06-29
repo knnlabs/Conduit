@@ -7,7 +7,7 @@ namespace ConduitLLM.Http.Metrics
     /// <summary>
     /// Provides OpenTelemetry metrics for SignalR operations.
     /// </summary>
-    public class SignalRMetrics : IDisposable
+    public class SignalRMetrics : ISignalRMetrics
     {
         private readonly Meter _meter;
         

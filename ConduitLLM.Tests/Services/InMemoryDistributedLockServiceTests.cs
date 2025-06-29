@@ -233,7 +233,7 @@ namespace ConduitLLM.Tests.Services
             cts.CancelAfter(TimeSpan.FromMilliseconds(150));
 
             // Act & Assert - Should be cancelled
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            await Assert.ThrowsAsync<TaskCanceledException>(() =>
                 _service.AcquireLockWithRetryAsync(key, longExpiry, timeout, retryDelay, cts.Token));
 
             // Cleanup

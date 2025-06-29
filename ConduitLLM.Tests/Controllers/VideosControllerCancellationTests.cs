@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
@@ -40,6 +41,15 @@ namespace ConduitLLM.Tests.Controllers
             // Setup HttpContext with virtual key
             var httpContext = new DefaultHttpContext();
             httpContext.Items["VirtualKey"] = "test-virtual-key";
+            
+            // Set up user claims for authentication
+            var user = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(new[]
+                {
+                    new System.Security.Claims.Claim("VirtualKey", "test-virtual-key")
+                }, "Test"));
+            httpContext.User = user;
+            
             _controller.ControllerContext = new ControllerContext
             {
                 HttpContext = httpContext
@@ -198,18 +208,21 @@ namespace ConduitLLM.Tests.Controllers
 
             CancellationToken capturedToken = default;
             _mockVideoService
-                .Setup(s => s.GenerateVideoAsync(
+                .Setup(s => s.GenerateVideoWithTaskAsync(
                     It.IsAny<VideoGenerationRequest>(), 
                     It.IsAny<string>(), 
                     It.IsAny<CancellationToken>()))
                 .Callback<VideoGenerationRequest, string, CancellationToken>((req, key, token) => capturedToken = token)
-                .ReturnsAsync(new VideoGenerationResponse());
+                .ReturnsAsync(new VideoGenerationResponse
+                {
+                    Data = new List<VideoData> { new VideoData { Url = "pending:task-123" } }
+                });
 
             // Act
             var result = await _controller.GenerateVideoAsync(request);
 
             // Assert
-            Assert.IsType<OkObjectResult>(result);
+            Assert.IsType<AcceptedResult>(result);
             Assert.True(capturedToken.CanBeCanceled);
         }
 

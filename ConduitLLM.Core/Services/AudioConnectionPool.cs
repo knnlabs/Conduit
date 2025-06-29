@@ -71,6 +71,11 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc />
         public Task ReturnConnectionAsync(IAudioProviderConnection connection)
         {
+            if (connection == null)
+            {
+                return Task.CompletedTask;
+            }
+
             if (_pools.TryGetValue(connection.Provider, out var pool))
             {
                 pool.ReturnConnection(connection);

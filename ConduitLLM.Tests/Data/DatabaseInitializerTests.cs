@@ -36,7 +36,7 @@ namespace ConduitLLM.Tests.Data
             _dbContextMock.Setup(c => c.Database).Returns(_databaseFacadeMock.Object);
 
             // Set up the provider name
-            _databaseFacadeMock.Setup(d => d.ProviderName).Returns("Microsoft.EntityFrameworkCore.Sqlite");
+            _databaseFacadeMock.Setup(d => d.ProviderName).Returns("Npgsql.EntityFrameworkCore.PostgreSQL");
 
             // Set up the CreateDbContext method
             _dbContextFactoryMock.Setup(f => f.CreateDbContext()).Returns(_dbContextMock.Object);
@@ -51,7 +51,7 @@ namespace ConduitLLM.Tests.Data
             var initializer = new DatabaseInitializer(_dbContextFactoryMock.Object, _loggerMock.Object);
 
             // Assert
-            Assert.Equal("sqlite", initializer.GetDatabaseProviderType());
+            Assert.Equal("postgres", initializer.GetDatabaseProviderType());
         }
 
         [Fact(Skip = "Test requires refactoring due to EF Core migration extension methods that cannot be mocked")]

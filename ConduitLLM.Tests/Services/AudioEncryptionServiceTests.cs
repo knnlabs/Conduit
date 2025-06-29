@@ -198,7 +198,10 @@ namespace ConduitLLM.Tests.Services
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
                 _service.DecryptAudioAsync(encryptedData));
             
-            Assert.Contains("Key not found", exception.Message);
+            Assert.Contains("Audio decryption failed", exception.Message);
+            // The inner exception should contain the actual "Key not found" message
+            Assert.NotNull(exception.InnerException);
+            Assert.Contains("Key not found", exception.InnerException.Message);
         }
 
         [Fact]

@@ -30,7 +30,7 @@ namespace ConduitLLM.Tests.LoadTesting
             _output = output;
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task StepLoadTest()
         {
             // Test system behavior as load increases gradually
@@ -76,7 +76,7 @@ namespace ConduitLLM.Tests.LoadTesting
             AnalyzeStepLoadResults(results);
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task SpikeLoadTest()
         {
             // Test system behavior under sudden load spikes
@@ -120,7 +120,7 @@ namespace ConduitLLM.Tests.LoadTesting
             AnalyzeSpikeLoadResults(baselineResult, spikeResult, recoveryResult);
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task EnduranceTest()
         {
             // Long-running test to identify memory leaks and performance degradation
@@ -168,7 +168,7 @@ namespace ConduitLLM.Tests.LoadTesting
             AnalyzeEnduranceResults(result, initialSnapshot, finalSnapshot, periodicMetrics);
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task MixedWorkloadTest()
         {
             // Test with varying workload patterns
@@ -233,7 +233,7 @@ namespace ConduitLLM.Tests.LoadTesting
             AnalyzeMixedWorkloadResults(phaseResults);
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task ConcurrentProviderTest()
         {
             // Test load distribution across multiple providers
@@ -277,7 +277,7 @@ namespace ConduitLLM.Tests.LoadTesting
             _output.WriteLine("\nProvider distribution analysis would show load balancing effectiveness");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task ResourceExhaustionTest()
         {
             // Test system behavior when resources are exhausted
@@ -316,7 +316,7 @@ namespace ConduitLLM.Tests.LoadTesting
             _output.WriteLine($"Pool Exhaustion Count: 0"); // Property doesn't exist
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task LatencySensitivityTest()
         {
             // Test impact of increased latency on system performance

@@ -16,7 +16,7 @@ namespace ConduitLLM.Http.Hubs
     /// </summary>
     public class SpendNotificationHub : SecureHub
     {
-        private readonly SignalRMetrics _metrics;
+        private readonly ISignalRMetrics _metrics;
         private readonly ILogger<SpendNotificationHub> _logger;
         
         // Track alert cooldowns to prevent spam
@@ -32,7 +32,7 @@ namespace ConduitLLM.Http.Hubs
         /// <param name="logger">Logger instance.</param>
         /// <param name="serviceProvider">Service provider for dependency injection.</param>
         public SpendNotificationHub(
-            SignalRMetrics metrics,
+            ISignalRMetrics metrics,
             ILogger<SpendNotificationHub> logger,
             IServiceProvider serviceProvider) : base(logger, serviceProvider)
         {

@@ -20,7 +20,7 @@ namespace ConduitLLM.Tests.LoadTesting
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task ConnectionPoolExhaustionTest()
         {
             _output.WriteLine("=== Connection Pool Exhaustion Test ===");
@@ -55,7 +55,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(poolStats.ActiveConnections <= 100, "Should not exceed max connections");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task MemoryPressureTest()
         {
             _output.WriteLine("=== Memory Pressure Test ===");
@@ -99,7 +99,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(result.ErrorRate < 0.10, "Should handle memory pressure with < 10% errors");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task RateLimitingTest()
         {
             _output.WriteLine("=== Rate Limiting Test ===");
@@ -130,7 +130,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(result.ErrorRate < 0.30, "Should handle rate limiting with < 30% errors");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task LongRunningSessionTest()
         {
             _output.WriteLine("=== Long Running Session Test ===");
@@ -166,7 +166,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(aggregated.Realtime.AverageSessionDurationSeconds > 10, "Sessions should run long enough");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task CascadingFailureTest()
         {
             _output.WriteLine("=== Cascading Failure Test ===");
@@ -207,7 +207,7 @@ namespace ConduitLLM.Tests.LoadTesting
             _output.WriteLine($"Circuit breakers activated: {providerHealth.Count(p => !p.Value)}");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task ResourceContentionTest()
         {
             _output.WriteLine("=== Resource Contention Test ===");
@@ -251,7 +251,7 @@ namespace ConduitLLM.Tests.LoadTesting
             Assert.True(overallErrorRate < 0.10, "Overall error rate should be < 10%");
         }
 
-        [Fact]
+        [Fact(Skip = "Load test - run manually")]
         public async Task RecoveryTest()
         {
             _output.WriteLine("=== Recovery Test ===");

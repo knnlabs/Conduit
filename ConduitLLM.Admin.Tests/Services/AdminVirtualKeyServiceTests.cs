@@ -528,8 +528,8 @@ namespace ConduitLLM.Admin.Tests.Services
                 It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verify cache was invalidated
-            _mockCache.Verify(c => c.InvalidateVirtualKeyAsync("key-hash-123"), Times.Once);
+            // Note: Cache invalidation happens through event-driven architecture
+            // The VirtualKeyUpdated event is consumed by services that invalidate the cache
         }
 
         [Fact]
@@ -637,55 +637,6 @@ namespace ConduitLLM.Admin.Tests.Services
                 Times.Once);
         }
 
-        [Fact]
-        public async Task UpdateVirtualKeyAsync_CacheInvalidationFails_StillUpdatesKey()
-        {
-            // Arrange
-            int keyId = 4;
-            var updateRequest = new UpdateVirtualKeyRequestDto
-            {
-                MaxBudget = 500
-            };
-
-            var existingKey = new VirtualKey
-            {
-                Id = keyId,
-                KeyName = "Test Key",
-                KeyHash = "key-hash-abc",
-                MaxBudget = 100,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _mockVirtualKeyRepository
-                .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            _mockVirtualKeyRepository
-                .Setup(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            // Setup cache invalidation to throw exception
-            _mockCache
-                .Setup(c => c.InvalidateVirtualKeyAsync(It.IsAny<string>()))
-                .ThrowsAsync(new Exception("Cache error"));
-
-            // Act
-            var result = await _service.UpdateVirtualKeyAsync(keyId, updateRequest);
-
-            // Assert - Update should still succeed
-            Assert.True(result);
-
-            // Verify warning was logged about cache failure
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to invalidate cache")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
-        }
 
         #endregion
 

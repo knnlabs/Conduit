@@ -59,7 +59,7 @@ namespace ConduitLLM.Core.Tests.Services
 
             // Assert
             _mockLogger.Verify(x => x.Log(
-                LogLevel.Debug,
+                LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Event publishing not configured - skipping TestEvent for test operation")),
                 It.IsAny<Exception>(),
