@@ -1,4 +1,5 @@
 using ConduitLLM.CoreClient.Client;
+using ConduitLLM.CoreClient.Constants;
 using ConduitLLM.CoreClient.Exceptions;
 using ConduitLLM.CoreClient.Models;
 
@@ -38,7 +39,7 @@ public class BatchOperationsService
         }
 
         return await _client.PostForServiceAsync<BatchOperationStartResponse>(
-            "/v1/batch/spend-updates", 
+            ApiEndpoints.V1.Batch.SpendUpdates, 
             request, 
             cancellationToken);
     }
@@ -61,7 +62,7 @@ public class BatchOperationsService
         }
 
         return await _client.PostForServiceAsync<BatchOperationStartResponse>(
-            "/v1/batch/virtual-key-updates", 
+            ApiEndpoints.V1.Batch.VirtualKeys, 
             request, 
             cancellationToken);
     }

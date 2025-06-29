@@ -12,7 +12,6 @@ import {
   VideoDefaults,
   VideoModels,
   VideoResponseFormats,
-  validateVideoGenerationRequest,
   validateAsyncVideoGenerationRequest,
   getVideoModelCapabilities
 } from '../models/videos';
@@ -22,43 +21,16 @@ import { ConduitError } from '../utils/errors';
  * Service for video generation operations using the Conduit Core API
  */
 export class VideosService {
-  private static readonly GENERATIONS_ENDPOINT = '/v1/videos/generations';
+  // Note: /v1/videos/generations endpoint does not exist - only async generation is supported
   private static readonly ASYNC_GENERATIONS_ENDPOINT = '/v1/videos/generations/async';
 
   constructor(private readonly client: BaseClient) {}
 
   /**
-   * Generates videos synchronously from a text prompt
+   * @deprecated The synchronous video generation endpoint does not exist. Use generateAsync() instead.
+   * This method has been removed to prevent runtime errors.
    */
-  async generate(
-    request: VideoGenerationRequest,
-    options?: { signal?: AbortSignal }
-  ): Promise<VideoGenerationResponse> {
-    try {
-      validateVideoGenerationRequest(request);
-
-      // Convert to API request format
-      const apiRequest = this.convertToApiRequest(request);
-
-      const response = await this.client['request']<VideoGenerationResponse>(
-        {
-          method: 'POST',
-          url: VideosService.GENERATIONS_ENDPOINT,
-          data: apiRequest,
-        },
-        options
-      );
-
-      return response;
-    } catch (error) {
-      if (error instanceof ConduitError) {
-        throw error;
-      }
-      throw new ConduitError(
-        `Video generation failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
+  // Removed synchronous generate method - endpoint does not exist
 
   /**
    * Generates videos asynchronously from a text prompt

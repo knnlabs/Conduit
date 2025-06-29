@@ -231,3 +231,20 @@ export { SignalREndpoints, DefaultTransports } from './models/signalr';
 
 export * from './utils/capabilities';
 
+export type {
+  EmbeddingRequest,
+  EmbeddingResponse,
+  EmbeddingData,
+  EmbeddingUsage,
+} from './models/embeddings';
+
+export {
+  EmbeddingModels,
+  EmbeddingEncodingFormats,
+  validateEmbeddingRequest,
+  convertEmbeddingToFloatArray,
+  calculateCosineSimilarity,
+} from './models/embeddings';
+
+export { EmbeddingsService, EmbeddingHelpers } from './services/EmbeddingsService';
+

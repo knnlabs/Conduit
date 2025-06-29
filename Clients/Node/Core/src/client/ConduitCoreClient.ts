@@ -12,6 +12,7 @@ import { MetricsService } from '../services/MetricsService';
 import { DiscoveryService } from '../services/DiscoveryService';
 import { ProviderModelsService } from '../services/ProviderModelsService';
 import { SignalRService } from '../services/SignalRService';
+import { EmbeddingsService } from '../services/EmbeddingsService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -28,6 +29,7 @@ export class ConduitCoreClient extends BaseClient {
   public readonly discovery: DiscoveryService;
   public readonly providerModels: ProviderModelsService;
   public readonly signalr: SignalRService;
+  public readonly embeddings: EmbeddingsService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -47,6 +49,7 @@ export class ConduitCoreClient extends BaseClient {
     this.discovery = new DiscoveryService(this);
     this.providerModels = new ProviderModelsService(this);
     this.signalr = new SignalRService(config.baseURL || 'http://localhost:5000', config.apiKey);
+    this.embeddings = new EmbeddingsService(this);
   }
 
   static fromApiKey(apiKey: string, baseURL?: string): ConduitCoreClient {

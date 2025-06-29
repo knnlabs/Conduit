@@ -64,6 +64,11 @@ public abstract class BaseClient : IDisposable
     public JsonSerializerOptions JsonSerializerOptionsForServices => _jsonSerializerOptions;
 
     /// <summary>
+    /// Gets the client configuration.
+    /// </summary>
+    public ConduitCoreClientConfiguration Configuration => _configuration;
+
+    /// <summary>
     /// Performs a GET request to the specified endpoint.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the response to.</typeparam>

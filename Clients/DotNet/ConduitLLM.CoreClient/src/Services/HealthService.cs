@@ -36,10 +36,17 @@ public class HealthService
 
         try
         {
-            var response = await _client.GetForServiceAsync<HealthCheckResponse>("/health/live", cancellationToken: cancellationToken);
+            // Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
+            // The health endpoint doesn't require authentication, so we bypass the normal client methods
+            using var httpClient = new HttpClient { BaseAddress = new Uri(_client.Configuration.BaseUrl) };
+            var response = await httpClient.GetAsync("/health", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var healthResponse = System.Text.Json.JsonSerializer.Deserialize<HealthCheckResponse>(content, jsonOptions) ?? new HealthCheckResponse { Status = "Healthy" };
             
-            _logger?.LogDebug("Liveness check completed with status: {Status}", response.Status);
-            return response;
+            _logger?.LogDebug("Liveness check completed with status: {Status}", healthResponse.Status);
+            return healthResponse;
         }
         catch (Exception ex)
         {
@@ -73,11 +80,18 @@ public class HealthService
 
         try
         {
-            var response = await _client.GetForServiceAsync<HealthCheckResponse>("/health/ready", cancellationToken: cancellationToken);
+            // Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
+            // The health endpoint doesn't require authentication, so we bypass the normal client methods
+            using var httpClient = new HttpClient { BaseAddress = new Uri(_client.Configuration.BaseUrl) };
+            var response = await httpClient.GetAsync("/health", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var healthResponse = System.Text.Json.JsonSerializer.Deserialize<HealthCheckResponse>(content, jsonOptions) ?? new HealthCheckResponse { Status = "Healthy" };
             
             _logger?.LogDebug("Readiness check completed with status: {Status}, Duration: {Duration}ms", 
-                response.Status, response.TotalDuration);
-            return response;
+                healthResponse.Status, healthResponse.TotalDuration);
+            return healthResponse;
         }
         catch (Exception ex)
         {
@@ -111,11 +125,17 @@ public class HealthService
 
         try
         {
-            var response = await _client.GetForServiceAsync<HealthCheckResponse>("/health", cancellationToken: cancellationToken);
+            // Note: Core API health endpoint is at root level (no /v1 prefix and no authentication required)
+            using var httpClient = new HttpClient { BaseAddress = new Uri(_client.Configuration.BaseUrl) };
+            var response = await httpClient.GetAsync("/health", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var healthResponse = System.Text.Json.JsonSerializer.Deserialize<HealthCheckResponse>(content, jsonOptions) ?? new HealthCheckResponse { Status = "Healthy" };
             
             _logger?.LogDebug("Full health check completed with status: {Status}, {CheckCount} checks, Duration: {Duration}ms", 
-                response.Status, response.Checks?.Count ?? 0, response.TotalDuration);
-            return response;
+                healthResponse.Status, healthResponse.Checks?.Count ?? 0, healthResponse.TotalDuration);
+            return healthResponse;
         }
         catch (Exception ex)
         {

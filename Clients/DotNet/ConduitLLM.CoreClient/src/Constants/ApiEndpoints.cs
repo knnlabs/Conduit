@@ -64,12 +64,8 @@ public static class ApiEndpoints
         public static class Videos
         {
             /// <summary>
-            /// Video generations endpoint.
-            /// </summary>
-            public const string Generations = "/v1/videos/generations";
-
-            /// <summary>
             /// Async video generations endpoint.
+            /// Note: Only async video generation is supported.
             /// </summary>
             public const string AsyncGenerations = "/v1/videos/generations/async";
         }
@@ -83,6 +79,17 @@ public static class ApiEndpoints
             /// Base tasks endpoint.
             /// </summary>
             public const string Base = "/v1/tasks";
+        }
+
+        /// <summary>
+        /// Embeddings endpoint.
+        /// </summary>
+        public static class Embeddings
+        {
+            /// <summary>
+            /// Text embeddings endpoint.
+            /// </summary>
+            public const string Base = "/v1/embeddings";
         }
 
         /// <summary>
@@ -119,13 +126,19 @@ public static class ApiEndpoints
 
         /// <summary>
         /// Batch operations endpoints.
+        /// Note: Core API uses specific batch endpoints, not a generic /v1/batch endpoint.
         /// </summary>
         public static class Batch
         {
             /// <summary>
-            /// Batch operations endpoint.
+            /// Batch spend updates endpoint.
             /// </summary>
-            public const string Base = "/v1/batch";
+            public const string SpendUpdates = "/v1/batch/spend-updates";
+            
+            /// <summary>
+            /// Batch virtual keys endpoint.
+            /// </summary>
+            public const string VirtualKeys = "/v1/batch/virtual-keys";
         }
 
         /// <summary>
@@ -139,15 +152,7 @@ public static class ApiEndpoints
             public const string Base = "/v1/metrics";
         }
 
-        /// <summary>
-        /// Health check endpoints.
-        /// </summary>
-        public static class Health
-        {
-            /// <summary>
-            /// Health check endpoint.
-            /// </summary>
-            public const string Base = "/v1/health";
-        }
+        // Note: Health endpoint is at root level (/health), not under /v1
+        // The SDK's HealthService handles this correctly
     }
 }

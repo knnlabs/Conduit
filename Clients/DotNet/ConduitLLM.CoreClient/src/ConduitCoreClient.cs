@@ -42,6 +42,11 @@ public class ConduitCoreClient : BaseClient
     public AudioService Audio { get; }
 
     /// <summary>
+    /// Gets the embeddings service for creating text embeddings.
+    /// </summary>
+    public EmbeddingsService Embeddings { get; }
+
+    /// <summary>
     /// Gets the batch operations service for performing batch spend updates, virtual key updates, and webhook sends.
     /// </summary>
     public BatchOperationsService BatchOperations { get; }
@@ -100,6 +105,7 @@ public class ConduitCoreClient : BaseClient
         ILogger<HealthService>? healthLogger = null;
         ILogger<DiscoveryService>? discoveryLogger = null;
         ILogger<ProviderModelsService>? providerModelsLogger = null;
+        ILogger<EmbeddingsService>? embeddingsLogger = null;
         
         if (logger != null)
         {
@@ -116,6 +122,7 @@ public class ConduitCoreClient : BaseClient
             healthLogger = loggerFactory.CreateLogger<HealthService>();
             discoveryLogger = loggerFactory.CreateLogger<DiscoveryService>();
             providerModelsLogger = loggerFactory.CreateLogger<ProviderModelsService>();
+            embeddingsLogger = loggerFactory.CreateLogger<EmbeddingsService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -130,6 +137,7 @@ public class ConduitCoreClient : BaseClient
         Health = new HealthService(this, healthLogger);
         Discovery = new DiscoveryService(this, discoveryLogger);
         ProviderModels = new ProviderModelsService(this, providerModelsLogger);
+        Embeddings = new EmbeddingsService(this, embeddingsLogger);
     }
 
     /// <summary>
@@ -341,7 +349,8 @@ public static class ConduitCoreClientExtensions
     }
 
     /// <summary>
-    /// Generates a single video from a text prompt.
+    /// Generates a single video from a text prompt using async generation.
+    /// Note: Video generation is always asynchronous. This method starts the generation and polls for completion.
     /// </summary>
     /// <param name="client">The Conduit Core client.</param>
     /// <param name="prompt">The text prompt for video generation.</param>
@@ -358,7 +367,7 @@ public static class ConduitCoreClientExtensions
         string? size = null,
         CancellationToken cancellationToken = default)
     {
-        var request = new ConduitLLM.CoreClient.Models.VideoGenerationRequest
+        var request = new ConduitLLM.CoreClient.Models.AsyncVideoGenerationRequest
         {
             Prompt = prompt,
             Model = model ?? ConduitLLM.CoreClient.Models.VideoModels.Default,
@@ -367,8 +376,19 @@ public static class ConduitCoreClientExtensions
             N = 1
         };
 
-        var response = await client.Videos.GenerateAsync(request, cancellationToken);
-        return response.Data.FirstOrDefault()?.Url;
+        // Start async generation
+        var taskResponse = await client.Videos.GenerateAsync(request, cancellationToken);
+        
+        // Poll for completion
+        var pollOptions = new ConduitLLM.CoreClient.Models.VideoTaskPollingOptions
+        {
+            IntervalMs = 2000,
+            TimeoutMs = 300000, // 5 minutes
+            UseExponentialBackoff = true
+        };
+        
+        var result = await client.Videos.PollTaskUntilCompletionAsync(taskResponse.TaskId, pollOptions, cancellationToken);
+        return result.Data?.FirstOrDefault()?.Url;
     }
 
     /// <summary>
@@ -499,5 +519,57 @@ public static class ConduitCoreClientExtensions
         var request = ConduitLLM.CoreClient.Services.BatchOperationsService.CreateWebhookSendRequest(webhookSends);
         var startResponse = await client.BatchOperations.BatchWebhookSendAsync(request, cancellationToken);
         return await client.BatchOperations.PollOperationAsync(startResponse.OperationId, pollingInterval, timeout, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates an embedding for the given text input.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="text">The input text.</param>
+    /// <param name="model">Optional model to use (defaults to text-embedding-3-small).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The embedding vector.</returns>
+    public static async Task<float[]> CreateEmbeddingAsync(
+        this ConduitCoreClient client,
+        string text,
+        string? model = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await client.Embeddings.CreateEmbeddingAsync(text, model, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Finds the most similar texts from a list of candidates to a query text.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="query">The query text.</param>
+    /// <param name="candidates">The candidate texts to search.</param>
+    /// <param name="topK">Number of results to return.</param>
+    /// <param name="model">Optional model to use.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The most similar texts with their similarity scores.</returns>
+    public static async Task<List<(string Text, double Similarity)>> FindSimilarTextsAsync(
+        this ConduitCoreClient client,
+        string query,
+        IEnumerable<string> candidates,
+        int topK = 5,
+        string? model = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await client.Embeddings.FindMostSimilarAsync(query, candidates, model, topK, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets all models that support embeddings.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of models that support embeddings.</returns>
+    public static async Task<IEnumerable<ConduitLLM.CoreClient.Models.Model>> GetEmbeddingModelsAsync(
+        this ConduitCoreClient client,
+        CancellationToken cancellationToken = default)
+    {
+        var allModels = await client.Models.ListAsync(cancellationToken);
+        return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "embedding"));
     }
 }

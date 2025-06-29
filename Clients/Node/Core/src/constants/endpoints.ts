@@ -9,15 +9,16 @@ export const API_ENDPOINTS = {
     IMAGES: {
       GENERATIONS: '/v1/images/generations',
       ASYNC_GENERATIONS: '/v1/images/generations/async',
-      EDITS: '/v1/images/edits',
-      VARIATIONS: '/v1/images/variations',
+      // Note: The following endpoints are not yet implemented in Core API
+      EDITS: '/v1/images/edits', // Not implemented
+      VARIATIONS: '/v1/images/variations', // Not implemented
       TASK_STATUS: (taskId: string) => `/v1/images/generations/${encodeURIComponent(taskId)}/status`,
       CANCEL_TASK: (taskId: string) => `/v1/images/generations/${encodeURIComponent(taskId)}`,
     },
     VIDEOS: {
-      GENERATIONS: '/v1/videos/generations',
+      // Note: Synchronous video generation endpoint does not exist
       ASYNC_GENERATIONS: '/v1/videos/generations/async',
-      TASK_STATUS: (taskId: string) => `/v1/videos/generations/${encodeURIComponent(taskId)}/status`,
+      TASK_STATUS: (taskId: string) => `/v1/videos/generations/tasks/${encodeURIComponent(taskId)}`,
       CANCEL_TASK: (taskId: string) => `/v1/videos/generations/${encodeURIComponent(taskId)}`,
     },
     AUDIO: {
@@ -29,6 +30,9 @@ export const API_ENDPOINTS = {
       BASE: '/v1/models',
       BY_ID: (modelId: string) => `/v1/models/${encodeURIComponent(modelId)}`,
     },
+    EMBEDDINGS: {
+      BASE: '/v1/embeddings',
+    },
     TASKS: {
       BASE: '/v1/tasks',
       BY_ID: (taskId: string) => `/v1/tasks/${encodeURIComponent(taskId)}`,
@@ -36,9 +40,14 @@ export const API_ENDPOINTS = {
       CLEANUP: '/v1/tasks/cleanup',
     },
     BATCH: {
-      BASE: '/v1/batch',
-      BY_ID: (batchId: string) => `/v1/batch/${encodeURIComponent(batchId)}`,
-      CANCEL: (batchId: string) => `/v1/batch/${encodeURIComponent(batchId)}/cancel`,
+      // Note: No generic /v1/batch endpoint exists. Use specific batch endpoints:
+      SPEND_UPDATES: '/v1/batch/spend-updates',
+      VIRTUAL_KEY_UPDATES: '/v1/batch/virtual-key-updates',
+      WEBHOOK_SENDS: '/v1/batch/webhook-sends',
+      OPERATIONS: {
+        BY_ID: (operationId: string) => `/v1/batch/operations/${encodeURIComponent(operationId)}`,
+        CANCEL: (operationId: string) => `/v1/batch/operations/${encodeURIComponent(operationId)}/cancel`,
+      },
     },
   },
   ROOT: {

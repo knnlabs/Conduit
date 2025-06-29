@@ -149,37 +149,8 @@ public class CoreApiService : IDisposable
         }
     }
 
-    // Video Generation (synchronous)
-    public async Task<VideoGenerationResponse> CreateVideoGenerationAsync(VideoGenerationRequest request)
-    {
-        try
-        {
-            var client = GetClient();
-            return await client.Videos.GenerateAsync(request);
-        }
-        catch (ConduitLLM.CoreClient.Exceptions.ConduitCoreException coreEx) when (coreEx.StatusCode == 403)
-        {
-            _logger.LogError("Authorization failed for video generation: {Message}", coreEx.Message);
-            throw;
-        }
-        catch (ConduitLLM.CoreClient.Exceptions.AuthenticationException authEx)
-        {
-            _logger.LogError("Authentication failed for video generation: {Message}", authEx.Message);
-            throw;
-        }
-        catch (ConduitLLM.CoreClient.Exceptions.NetworkException netEx)
-        {
-            _logger.LogError("Network error during video generation: {Message}", netEx.Message);
-            var troubleshooting = ConnectionHelper.GetConnectionTroubleshootingMessage(_config.CoreApiUrl, netEx);
-            _logger.LogInformation("Connection troubleshooting info:\n{Troubleshooting}", troubleshooting);
-            throw new InvalidOperationException("Connection Failed: Unable to connect to Core API", netEx);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Failed to create video generation: {Message}", ex.Message);
-            throw;
-        }
-    }
+    // Note: Synchronous video generation is not supported - only async
+    // Use CreateAsyncVideoGenerationAsync instead
 
     // Video Generation (asynchronous)
     public async Task<AsyncVideoGenerationResponse> CreateAsyncVideoGenerationAsync(AsyncVideoGenerationRequest request)

@@ -17,7 +17,7 @@ namespace ConduitLLM.CoreClient.Services
     {
         private readonly BaseClient _client;
         private readonly ILogger<VideosService>? _logger;
-        private const string GenerationsEndpoint = ApiEndpoints.V1.Videos.Generations;
+        // Note: Only async video generation is supported
         private const string AsyncGenerationsEndpoint = ApiEndpoints.V1.Videos.AsyncGenerations;
 
         /// <summary>
@@ -31,42 +31,9 @@ namespace ConduitLLM.CoreClient.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Generates videos synchronously from a text prompt.
-        /// </summary>
-        /// <param name="request">The video generation request.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The video generation response.</returns>
-        /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
-        /// <exception cref="ConduitCoreException">Thrown when the API request fails.</exception>
-        public async Task<VideoGenerationResponse> GenerateAsync(
-            VideoGenerationRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                ValidateGenerationRequest(request);
-                
-                _logger?.LogDebug("Starting generation of {Count} video(s) with model {Model} for prompt: {Prompt}", 
-                    request.N, request.Model ?? VideoModels.Default, request.Prompt);
-
-                // Convert to API request format
-                var apiRequest = ConvertToApiRequest(request);
-
-                var response = await _client.PostForServiceAsync<VideoGenerationResponse>(
-                    GenerationsEndpoint,
-                    apiRequest,
-                    cancellationToken);
-
-                _logger?.LogDebug("Video generation completed successfully with {Count} video(s)", response.Data.Count);
-                return response;
-            }
-            catch (Exception ex) when (!(ex is ConduitCoreException))
-            {
-                ErrorHandler.HandleException(ex);
-                throw;
-            }
-        }
+        // Note: Synchronous video generation is not supported by the Core API.
+        // Only asynchronous video generation is available.
+        // Use GenerateAsync(AsyncVideoGenerationRequest) instead.
 
         /// <summary>
         /// Generates videos asynchronously from a text prompt.

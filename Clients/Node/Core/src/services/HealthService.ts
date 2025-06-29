@@ -5,6 +5,7 @@ import {
   HealthSummary,
   WaitForHealthOptions
 } from '../models/health';
+import axios from 'axios';
 
 /**
  * Service for monitoring system health and performing health checks against the Conduit Core API
@@ -14,16 +15,20 @@ export class HealthService {
 
   /**
    * Performs a liveness check to verify the API is responsive
+   * Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
    * 
    * @returns Promise<HealthCheckResponse> Health check response indicating if the API is alive
    */
   async getLiveness(): Promise<HealthCheckResponse> {
     try {
-      const response = await this.client['request']<HealthCheckResponse>({
-        method: 'GET',
-        url: '/health/live'
+      // Create a separate axios instance without authentication for health checks
+      const healthClient = axios.create({
+        baseURL: this.client['config'].baseURL,
+        timeout: 5000
       });
-      return response;
+      
+      const response = await healthClient.get('/health');
+      return response.data as HealthCheckResponse;
     } catch (error) {
       return {
         status: 'Unhealthy',
@@ -42,16 +47,20 @@ export class HealthService {
 
   /**
    * Performs a readiness check to verify the API and its dependencies are ready to serve requests
+   * Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
    * 
    * @returns Promise<HealthCheckResponse> Health check response indicating readiness status
    */
   async getReadiness(): Promise<HealthCheckResponse> {
     try {
-      const response = await this.client['request']<HealthCheckResponse>({
-        method: 'GET',
-        url: '/health/ready'
+      // Create a separate axios instance without authentication for health checks
+      const healthClient = axios.create({
+        baseURL: this.client['config'].baseURL,
+        timeout: 5000
       });
-      return response;
+      
+      const response = await healthClient.get('/health');
+      return response.data as HealthCheckResponse;
     } catch (error) {
       return {
         status: 'Unhealthy',
@@ -70,16 +79,20 @@ export class HealthService {
 
   /**
    * Performs a comprehensive health check of all system components
+   * Note: Core API health endpoint is at root level (no /v1 prefix and no authentication required)
    * 
    * @returns Promise<HealthCheckResponse> Detailed health check response for all system components
    */
   async getFullHealth(): Promise<HealthCheckResponse> {
     try {
-      const response = await this.client['request']<HealthCheckResponse>({
-        method: 'GET',
-        url: '/health'
+      // Create a separate axios instance without authentication for health checks
+      const healthClient = axios.create({
+        baseURL: this.client['config'].baseURL,
+        timeout: 5000
       });
-      return response;
+      
+      const response = await healthClient.get('/health');
+      return response.data as HealthCheckResponse;
     } catch (error) {
       return {
         status: 'Unhealthy',
