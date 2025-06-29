@@ -131,6 +131,27 @@ builder.Services.AddSingleton<ConduitLLM.Http.Services.SignalRMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMetricsService>(provider => 
     provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
 
+// Register new SignalR reliability services
+builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRAcknowledgmentService, ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService>();
+builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService>(provider => 
+    (ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRAcknowledgmentService>());
+
+builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRMessageQueueService, ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService>();
+builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService>(provider => 
+    (ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRMessageQueueService>());
+
+builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRConnectionMonitor, ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor>();
+builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor>(provider => 
+    (ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRConnectionMonitor>());
+
+builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRMessageBatcher, ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher>();
+builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher>(provider => 
+    (ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRMessageBatcher>());
+
+// Register SignalR OpenTelemetry metrics
+builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Metrics.SignalRMetrics>();
+builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalROpenTelemetryService>();
+
 builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.TaskProcessingMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
@@ -1086,6 +1107,12 @@ builder.Services.AddSingleton<IImageGenerationNotificationService, ImageGenerati
 // Register unified task notification service
 builder.Services.AddSingleton<ITaskNotificationService, TaskNotificationService>();
 
+// Register virtual key management notification service
+builder.Services.AddSingleton<IVirtualKeyManagementNotificationService, VirtualKeyManagementNotificationService>();
+
+// Register usage analytics notification service
+builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
+
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
 {
@@ -1309,6 +1336,21 @@ Console.WriteLine("[Conduit API] SignalR HealthMonitoringHub registered at /hubs
 app.MapHub<ConduitLLM.Http.Hubs.SecurityMonitoringHub>("/hubs/security-monitoring")
     .RequireAuthorization("AdminOnly");
 Console.WriteLine("[Conduit API] SignalR SecurityMonitoringHub registered at /hubs/security-monitoring (requires admin authentication)");
+
+// Virtual key management hub for real-time key management updates
+app.MapHub<ConduitLLM.Http.Hubs.VirtualKeyManagementHub>("/hubs/virtual-key-management")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR VirtualKeyManagementHub registered at /hubs/virtual-key-management (requires authentication)");
+
+// Usage analytics hub for real-time analytics and monitoring
+app.MapHub<ConduitLLM.Http.Hubs.UsageAnalyticsHub>("/hubs/usage-analytics")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR UsageAnalyticsHub registered at /hubs/usage-analytics (requires authentication)");
+
+// Enhanced video generation hub with acknowledgment support
+app.MapHub<ConduitLLM.Http.SignalR.Hubs.EnhancedVideoGenerationHub>("/hubs/enhanced-video-generation")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR EnhancedVideoGenerationHub registered at /hubs/enhanced-video-generation (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
