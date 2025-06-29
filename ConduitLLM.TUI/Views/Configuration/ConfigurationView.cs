@@ -16,11 +16,11 @@ public class ConfigurationView : View
     private readonly SignalRService _signalRService;
     private readonly ILogger<ConfigurationView> _logger;
     
-    private TabbedView _tabbedView;
-    private Label _statusLabel;
-    private Button _saveButton;
-    private Button _refreshButton;
-    private Button _helpButton;
+    private TabbedView _tabbedView = null!;
+    private Label _statusLabel = null!;
+    private Button _saveButton = null!;
+    private Button _refreshButton = null!;
+    private Button _helpButton = null!;
     
     private readonly Dictionary<string, ConfigurationTabBase> _tabs = new();
     private bool _hasUnsavedChanges;

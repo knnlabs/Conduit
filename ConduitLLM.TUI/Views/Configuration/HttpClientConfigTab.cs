@@ -15,33 +15,33 @@ public class HttpClientConfigTab : ConfigurationTabBase
     public override string TabName => "HTTP Client Configuration";
     
     // Connection settings
-    private TextField _requestTimeoutField;
-    private TextField _connectionTimeoutField;
-    private TextField _maxConnectionsField;
-    private TextField _connectionLifetimeField;
-    private TextField _idleTimeoutField;
+    private TextField _requestTimeoutField = null!;
+    private TextField _connectionTimeoutField = null!;
+    private TextField _maxConnectionsField = null!;
+    private TextField _connectionLifetimeField = null!;
+    private TextField _idleTimeoutField = null!;
     
     // Retry settings
-    private CheckBox _enableRetriesCheckBox;
-    private TextField _maxRetriesField;
-    private TextField _baseDelayField;
-    private TextField _maxDelayField;
-    private CheckBox _useExponentialBackoffCheckBox;
+    private CheckBox _enableRetriesCheckBox = null!;
+    private TextField _maxRetriesField = null!;
+    private TextField _baseDelayField = null!;
+    private TextField _maxDelayField = null!;
+    private CheckBox _useExponentialBackoffCheckBox = null!;
     
     // HTTP/2 settings
-    private CheckBox _enableHttp2CheckBox;
-    private TextField _http2KeepAliveIntervalField;
-    private TextField _http2KeepAliveTimeoutField;
+    private CheckBox _enableHttp2CheckBox = null!;
+    private TextField _http2KeepAliveIntervalField = null!;
+    private TextField _http2KeepAliveTimeoutField = null!;
     
     // Circuit breaker settings
-    private CheckBox _enableCircuitBreakerCheckBox;
-    private TextField _circuitBreakerThresholdField;
-    private TextField _circuitBreakerDurationField;
+    private CheckBox _enableCircuitBreakerCheckBox = null!;
+    private TextField _circuitBreakerThresholdField = null!;
+    private TextField _circuitBreakerDurationField = null!;
     
     // Buttons
-    private Button _saveButton;
-    private Button _resetButton;
-    private Button _testConnectionButton;
+    private Button _saveButton = null!;
+    private Button _resetButton = null!;
+    private Button _testConnectionButton = null!;
     
     private HttpClientConfigurationDto? _currentConfig;
     private bool _isLoading;
@@ -309,6 +309,9 @@ public class HttpClientConfigTab : ConfigurationTabBase
             // Note: HTTP client configuration not yet implemented in AdminApiService
             HttpClientConfigurationDto? config = null;
             _currentConfig = config;
+            
+            // TODO: Replace with actual async API call when implemented
+            await Task.CompletedTask;
             
             if (config != null)
             {

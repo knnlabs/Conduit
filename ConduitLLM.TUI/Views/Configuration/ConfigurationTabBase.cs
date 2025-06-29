@@ -16,7 +16,7 @@ public abstract class ConfigurationTabBase : View
     protected readonly SignalRService _signalRService;
     protected readonly ILogger _logger;
     
-    private Label _statusLabel;
+    private Label _statusLabel = null!;
     private bool _isLoading;
     private bool _isActive;
 

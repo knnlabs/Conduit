@@ -15,37 +15,37 @@ public class RouterConfigTab : ConfigurationTabBase
     public override string TabName => "Router Configuration";
     
     // Routing strategy settings
-    private ComboBox _routingStrategyComboBox;
-    private CheckBox _enableFailoverCheckBox;
-    private TextField _maxRetriesField;
-    private TextField _retryDelayField;
+    private ComboBox _routingStrategyComboBox = null!;
+    private CheckBox _enableFailoverCheckBox = null!;
+    private TextField _maxRetriesField = null!;
+    private TextField _retryDelayField = null!;
     
     // Load balancing settings
-    private ComboBox _loadBalancingModeComboBox;
-    private TextField _healthCheckIntervalField;
-    private TextField _healthCheckTimeoutField;
-    private CheckBox _enableCircuitBreakerCheckBox;
-    private TextField _circuitBreakerThresholdField;
-    private TextField _circuitBreakerRecoveryTimeField;
+    private ComboBox _loadBalancingModeComboBox = null!;
+    private TextField _healthCheckIntervalField = null!;
+    private TextField _healthCheckTimeoutField = null!;
+    private CheckBox _enableCircuitBreakerCheckBox = null!;
+    private TextField _circuitBreakerThresholdField = null!;
+    private TextField _circuitBreakerRecoveryTimeField = null!;
     
     // Provider priority settings
-    private ListView _providerListView;
-    private Button _moveUpButton;
-    private Button _moveDownButton;
-    private Button _setDefaultButton;
-    private Label _selectedProviderLabel;
+    private ListView _providerListView = null!;
+    private Button _moveUpButton = null!;
+    private Button _moveDownButton = null!;
+    private Button _setDefaultButton = null!;
+    private Label _selectedProviderLabel = null!;
     
     // Advanced settings
-    private TextField _requestTimeoutField;
-    private TextField _maxConcurrentRequestsField;
-    private CheckBox _enableRequestQueuingCheckBox;
-    private TextField _queueSizeField;
-    private CheckBox _enableMetricsCollectionCheckBox;
+    private TextField _requestTimeoutField = null!;
+    private TextField _maxConcurrentRequestsField = null!;
+    private CheckBox _enableRequestQueuingCheckBox = null!;
+    private TextField _queueSizeField = null!;
+    private CheckBox _enableMetricsCollectionCheckBox = null!;
     
     // Buttons
-    private Button _saveButton;
-    private Button _resetButton;
-    private Button _testRoutingButton;
+    private Button _saveButton = null!;
+    private Button _resetButton = null!;
+    private Button _testRoutingButton = null!;
     
     private RouterConfigurationDto? _currentConfig;
     private readonly List<string> _providerPriorities = new();
@@ -476,6 +476,9 @@ public class RouterConfigTab : ConfigurationTabBase
             // Note: Router configuration not yet implemented in AdminApiService
             RouterConfigurationDto? config = null;
             _currentConfig = config;
+            
+            // TODO: Replace with actual async API call when implemented
+            await Task.CompletedTask;
             
             if (config != null)
             {

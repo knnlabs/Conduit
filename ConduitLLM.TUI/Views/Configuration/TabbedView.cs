@@ -9,8 +9,8 @@ public class TabbedView : View
 {
     private readonly List<TabInfo> _tabs = new();
     private int _selectedTabIndex = 0;
-    private View _tabHeaderView;
-    private View _tabContentView;
+    private View _tabHeaderView = null!;
+    private View _tabContentView = null!;
     
     /// <summary>
     /// Event raised when the active tab changes.

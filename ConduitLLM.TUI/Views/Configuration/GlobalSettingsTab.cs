@@ -14,15 +14,15 @@ public class GlobalSettingsTab : ConfigurationTabBase
 {
     public override string TabName => "Global Settings";
     
-    private ListView _settingsListView;
-    private TextField _keyTextField;
-    private TextField _valueTextField;
-    private TextField _categoryTextField;
-    private Button _addButton;
-    private Button _updateButton;
-    private Button _deleteButton;
-    private Button _resetButton;
-    private Label _selectedSettingLabel;
+    private ListView _settingsListView = null!;
+    private TextField _keyTextField = null!;
+    private TextField _valueTextField = null!;
+    private TextField _categoryTextField = null!;
+    private Button _addButton = null!;
+    private Button _updateButton = null!;
+    private Button _deleteButton = null!;
+    private Button _resetButton = null!;
+    private Label _selectedSettingLabel = null!;
     
     private readonly List<GlobalSettingDto> _settings = new();
     private GlobalSettingDto? _selectedSetting;
@@ -247,7 +247,7 @@ public class GlobalSettingsTab : ConfigurationTabBase
         var hasValue = !string.IsNullOrWhiteSpace(_valueTextField.Text.ToString());
         var hasSelection = _selectedSetting != null;
 
-        _addButton.Enabled = hasKey && hasValue && !HasSettingWithKey(_keyTextField.Text.ToString());
+        _addButton.Enabled = hasKey && hasValue && !HasSettingWithKey(_keyTextField.Text?.ToString() ?? string.Empty);
         _updateButton.Enabled = hasSelection && hasKey && hasValue && HasFormChanges();
         _deleteButton.Enabled = hasSelection;
     }
@@ -272,6 +272,7 @@ public class GlobalSettingsTab : ConfigurationTabBase
         {
             // Note: Setting creation not yet implemented in AdminApiService
             UpdateStatus("Setting creation not yet implemented");
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -288,6 +289,7 @@ public class GlobalSettingsTab : ConfigurationTabBase
         {
             // Note: Setting updates not yet implemented in AdminApiService
             UpdateStatus("Setting updates not yet implemented");
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -310,6 +312,7 @@ public class GlobalSettingsTab : ConfigurationTabBase
             {
                 // Note: Setting deletion not yet implemented in AdminApiService
                 UpdateStatus("Setting deletion not yet implemented");
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -334,6 +337,7 @@ public class GlobalSettingsTab : ConfigurationTabBase
         // For global settings, changes are saved immediately via API calls
         // This method is called when Save All is pressed
         HasUnsavedChanges = false;
+        await Task.CompletedTask;
         return true;
     }
 

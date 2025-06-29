@@ -15,35 +15,35 @@ public class CacheConfigTab : ConfigurationTabBase
     public override string TabName => "Cache Configuration";
     
     // Redis connection settings
-    private TextField _redisConnectionStringField;
-    private TextField _redisDatabaseField;
-    private TextField _redisPasswordField;
-    private CheckBox _useRedisCheckBox;
+    private TextField _redisConnectionStringField = null!;
+    private TextField _redisDatabaseField = null!;
+    private TextField _redisPasswordField = null!;
+    private CheckBox _useRedisCheckBox = null!;
     
     // Cache settings
-    private TextField _defaultTtlField;
-    private TextField _maxCacheSizeField;
-    private ComboBox _evictionPolicyComboBox;
-    private CheckBox _enableCompressionCheckBox;
+    private TextField _defaultTtlField = null!;
+    private TextField _maxCacheSizeField = null!;
+    private ComboBox _evictionPolicyComboBox = null!;
+    private CheckBox _enableCompressionCheckBox = null!;
     
     // Cache types
-    private CheckBox _enableModelCacheCheckBox;
-    private TextField _modelCacheTtlField;
-    private CheckBox _enableResponseCacheCheckBox;
-    private TextField _responseCacheTtlField;
-    private CheckBox _enableProviderCacheCheckBox;
-    private TextField _providerCacheTtlField;
+    private CheckBox _enableModelCacheCheckBox = null!;
+    private TextField _modelCacheTtlField = null!;
+    private CheckBox _enableResponseCacheCheckBox = null!;
+    private TextField _responseCacheTtlField = null!;
+    private CheckBox _enableProviderCacheCheckBox = null!;
+    private TextField _providerCacheTtlField = null!;
     
     // Memory cache settings
-    private CheckBox _enableMemoryCacheCheckBox;
-    private TextField _memoryCacheSizeField;
-    private TextField _memoryCacheEntryLimitField;
+    private CheckBox _enableMemoryCacheCheckBox = null!;
+    private TextField _memoryCacheSizeField = null!;
+    private TextField _memoryCacheEntryLimitField = null!;
     
     // Buttons
-    private Button _saveButton;
-    private Button _resetButton;
-    private Button _testConnectionButton;
-    private Button _clearCacheButton;
+    private Button _saveButton = null!;
+    private Button _resetButton = null!;
+    private Button _testConnectionButton = null!;
+    private Button _clearCacheButton = null!;
     
     private CacheConfigurationDto? _currentConfig;
     private bool _isLoading;
@@ -330,6 +330,9 @@ public class CacheConfigTab : ConfigurationTabBase
             // Note: Cache configuration not yet implemented in AdminApiService
             CacheConfigurationDto? config = null;
             _currentConfig = config;
+            
+            // TODO: Replace with actual async API call when implemented
+            await Task.CompletedTask;
             
             if (config != null)
             {
