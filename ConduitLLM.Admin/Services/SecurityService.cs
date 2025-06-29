@@ -145,6 +145,17 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task RecordFailedAuthAsync(string ipAddress)
         {
+#if DEBUG
+            // Skip recording failed auth attempts in development mode
+            _logger.LogDebug("Failed auth recording is disabled in DEBUG mode for IP {IpAddress}", ipAddress);
+            return;
+#endif
+            // Check if IP banning is enabled via configuration
+            if (!_options.FailedAuth.Enabled)
+            {
+                _logger.LogDebug("Failed auth recording is disabled via configuration for IP {IpAddress}", ipAddress);
+                return;
+            }
             var key = $"{FAILED_LOGIN_PREFIX}{ipAddress}";
             var banKey = $"{BAN_PREFIX}{ipAddress}";
 
@@ -255,6 +266,17 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<bool> IsIpBannedAsync(string ipAddress)
         {
+#if DEBUG
+            // IP banning is disabled in development mode
+            _logger.LogDebug("IP banning is disabled in DEBUG mode");
+            return false;
+#else
+            // Check if IP banning is enabled via configuration
+            if (!_options.FailedAuth.Enabled)
+            {
+                _logger.LogDebug("IP banning is disabled via configuration");
+                return false;
+            }
             var banKey = $"{BAN_PREFIX}{ipAddress}";
 
             if (_options.UseDistributedTracking && _distributedCache != null)
@@ -273,6 +295,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             return false;
+#endif
         }
 
         private async Task<SecurityCheckResult> CheckRateLimitAsync(string ipAddress)

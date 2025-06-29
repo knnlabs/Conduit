@@ -255,7 +255,8 @@
             {
                 <ActiveGenerationTasks ActiveTasks="@mappedActiveTasks"
                                        TaskType="ActiveGenerationTasks.GenerationTaskType.Image"
-                                       OnCancelTask="CancelTask" />
+                                       OnCancelTask="CancelTask"
+                                       OnRefreshTask="RefreshTask" />
             }
 
             <!-- Generated Images Display -->
@@ -446,6 +447,9 @@
         public int? Progress { get; set; }
         public string? Error { get; set; }
         public DateTime? EstimatedCompletionTime { get; set; }
+        public bool IsCancelling { get; set; }
+        public bool IsRefreshing { get; set; }
+        public string? StatusMessage { get; set; }
     }
 
     protected override async Task OnInitializedAsync()
@@ -1119,6 +1123,137 @@
         {
             _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
             ToastService.ShowError($"Error cancelling task: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshTask(string taskId)
+    {
+        try
+        {
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task == null)
+            {
+                _logger.LogWarning("Task {TaskId} not found for refresh", taskId);
+                return;
+            }
+
+            // Prevent multiple concurrent refreshes
+            if (task.IsRefreshing)
+            {
+                _logger.LogInformation("Task {TaskId} is already refreshing", taskId);
+                return;
+            }
+
+            task.IsRefreshing = true;
+            StateHasChanged(); // Update UI to show spinner
+
+            _logger.LogInformation("Manually refreshing status for task {TaskId}", taskId);
+            
+            var status = await ConduitApiClient.GetImageGenerationStatusAsync(taskId, apiKey);
+            if (status != null)
+            {
+                task.Status = status.Status ?? "unknown";
+                task.UpdatedAt = DateTime.UtcNow;
+                
+                // If task is completed, handle the result
+                if (status.Status == TaskStatusConstants.Completed)
+                {
+                    task.CompletedAt = DateTime.UtcNow;
+                    task.Progress = 100;
+                    
+                    // Check if we've already processed this task's results
+                    var existingImageUrls = generatedImages.Where(img => img.Url != null).Select(img => img.Url).ToHashSet();
+                    
+                    if (status.ImageResponse?.Data != null && status.ImageResponse.Data.Any())
+                    {
+                        // Only add images that aren't already in the collection
+                        var newImages = status.ImageResponse.Data.Where(img => 
+                            img.Url == null || !existingImageUrls.Contains(img.Url)).ToList();
+                        
+                        if (newImages.Any())
+                        {
+                            generatedImages.AddRange(newImages);
+                            _logger.LogInformation("Task {TaskId} completed with {Count} new images", 
+                                taskId, newImages.Count);
+                            ToastService.ShowSuccess($"Image generation completed for task {taskId}");
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Task {TaskId} already processed, no new images to add", taskId);
+                            ToastService.ShowInfo($"Task {taskId} status: completed");
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(status.Result))
+                    {
+                        // Parse the result JSON to get the image data
+                        try
+                        {
+                            var jsonOptions = new JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+                            };
+                            var resultData = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationResult>(status.Result, jsonOptions);
+                            if (resultData?.Data != null && resultData.Data.Any())
+                            {
+                                // Only add images that aren't already in the collection
+                                var newImages = resultData.Data.Where(img => 
+                                    img.Url == null || !existingImageUrls.Contains(img.Url)).ToList();
+                                
+                                if (newImages.Any())
+                                {
+                                    generatedImages.AddRange(newImages);
+                                    ToastService.ShowSuccess($"Image generation completed for task {taskId}");
+                                }
+                                else
+                                {
+                                    ToastService.ShowInfo($"Task {taskId} status: completed");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to parse image result for task {TaskId}", taskId);
+                        }
+                    }
+                }
+                else if (status.Status == TaskStatusConstants.Failed)
+                {
+                    task.CompletedAt = DateTime.UtcNow;
+                    task.Error = status.Error;
+                    _logger.LogWarning("Task {TaskId} failed: {Error}", taskId, status.Error);
+                    ToastService.ShowError($"Task failed: {status.Error}");
+                }
+                else if (status.Status == TaskStatusConstants.Processing)
+                {
+                    // Update progress if available
+                    if (status.Progress.HasValue)
+                    {
+                        task.Progress = status.Progress.Value;
+                    }
+                    ToastService.ShowInfo($"Task {taskId} is still processing...");
+                }
+                
+                await SavePersistedTasks();
+                StateHasChanged();
+            }
+            else
+            {
+                ToastService.ShowWarning($"Unable to fetch status for task {taskId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing task {TaskId}", taskId);
+            ToastService.ShowError($"Error refreshing task: {ex.Message}");
+        }
+        finally
+        {
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.IsRefreshing = false;
+                StateHasChanged();
+            }
         }
     }
 

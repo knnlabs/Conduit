@@ -34,7 +34,7 @@ public class KeyEditDialog : Dialog
 
         // Max Budget (optional)
         var maxBudgetLabel = new Label("Max Budget ($):") { X = 1, Y = 3 };
-        _maxBudgetField = new TextField(existing?.MaxBudget.ToString("F2") ?? "")
+        _maxBudgetField = new TextField(existing?.MaxBudget?.ToString("F2") ?? "")
         {
             X = 16,
             Y = 3,

@@ -118,7 +118,20 @@ class Program
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]⚠ Admin API not available: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[red]✗ Admin API connection failed: {ex.Message}[/]");
+            
+            // Check if it's an authentication error
+            if (ex.Message.Contains("401") || ex.Message.Contains("Unauthorized"))
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[red]Authentication failed. Please check your master key.[/]");
+                AnsiConsole.MarkupLine("[grey]The provided master key was rejected by the Admin API.[/]");
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[yellow]Tip:[/] Make sure you're using the correct master key.");
+                AnsiConsole.MarkupLine("[grey]You can find it in your Admin API configuration.[/]");
+                return; // Exit early - no point continuing without authentication
+            }
+            
             AnsiConsole.MarkupLine("[yellow]  SignalR will not be available without Admin API[/]");
         }
         

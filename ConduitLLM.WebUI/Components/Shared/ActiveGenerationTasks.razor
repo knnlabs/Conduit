@@ -78,22 +78,37 @@
                         <small class="text-muted">
                             Task ID: <code>@task.TaskId</code>
                         </small>
-                        @if (TaskStatusConstants.IsActiveStatus(task.Status))
-                        {
-                            <button class="btn btn-sm btn-outline-danger" 
-                                    @onclick="() => OnCancelTask.InvokeAsync(task.TaskId)"
-                                    disabled="@task.IsCancelling">
-                                @if (task.IsCancelling)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Cancelling...</span>
-                                }
-                                else
-                                {
-                                    <i class="fa fa-times me-1"></i><span>Cancel</span>
-                                }
-                            </button>
-                        }
+                        <div class="btn-group btn-group-sm">
+                            @if (TaskStatusConstants.IsActiveStatus(task.Status))
+                            {
+                                <button class="btn btn-outline-secondary" 
+                                        @onclick="() => OnRefreshTask.InvokeAsync(task.TaskId)"
+                                        disabled="@task.IsRefreshing"
+                                        title="Refresh task status">
+                                    @if (task.IsRefreshing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa fa-sync-alt"></i>
+                                    }
+                                </button>
+                                <button class="btn btn-outline-danger" 
+                                        @onclick="() => OnCancelTask.InvokeAsync(task.TaskId)"
+                                        disabled="@task.IsCancelling">
+                                    @if (task.IsCancelling)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        <span>Cancelling...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa fa-times me-1"></i><span>Cancel</span>
+                                    }
+                                </button>
+                            }
+                        </div>
                     </div>
                 </div>
             }
@@ -105,6 +120,7 @@
     [Parameter] public List<GenerationTask> ActiveTasks { get; set; } = new();
     [Parameter] public GenerationTaskType TaskType { get; set; } = GenerationTaskType.Image;
     [Parameter] public EventCallback<string> OnCancelTask { get; set; }
+    [Parameter] public EventCallback<string> OnRefreshTask { get; set; }
 
     public enum GenerationTaskType
     {
@@ -124,6 +140,7 @@
         public DateTime? EstimatedCompletionTime { get; set; }
         public string? Error { get; set; }
         public bool IsCancelling { get; set; }
+        public bool IsRefreshing { get; set; }
         public string? StatusMessage { get; set; }
     }
 

@@ -61,7 +61,7 @@ public class VirtualKeyDto
     /// <summary>
     /// Gets or sets the maximum budget allowed.
     /// </summary>
-    public decimal MaxBudget { get; set; }
+    public decimal? MaxBudget { get; set; }
 
     /// <summary>
     /// Gets or sets the current amount spent.
@@ -71,12 +71,12 @@ public class VirtualKeyDto
     /// <summary>
     /// Gets or sets the budget duration type.
     /// </summary>
-    public BudgetDuration BudgetDuration { get; set; }
+    public BudgetDuration? BudgetDuration { get; set; }
 
     /// <summary>
     /// Gets or sets the budget start date.
     /// </summary>
-    public DateTime BudgetStartDate { get; set; }
+    public DateTime? BudgetStartDate { get; set; }
 
     /// <summary>
     /// Gets or sets whether the key is enabled.

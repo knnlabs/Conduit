@@ -263,7 +263,8 @@
             {
                 <ActiveGenerationTasks ActiveTasks="@mappedActiveTasks"
                                        TaskType="ActiveGenerationTasks.GenerationTaskType.Video"
-                                       OnCancelTask="CancelTask" />
+                                       OnCancelTask="CancelTask"
+                                       OnRefreshTask="RefreshTask" />
             }
 
             <!-- Generated Videos Display -->
@@ -703,6 +704,137 @@
         }
     }
 
+    private async Task RefreshTask(string taskId)
+    {
+        try
+        {
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task == null)
+            {
+                _logger.LogWarning("Task {TaskId} not found for refresh", taskId);
+                return;
+            }
+
+            // Prevent multiple concurrent refreshes
+            if (task.IsRefreshing)
+            {
+                _logger.LogInformation("Task {TaskId} is already refreshing", taskId);
+                return;
+            }
+
+            task.IsRefreshing = true;
+            StateHasChanged(); // Update UI to show spinner
+
+            _logger.LogInformation("Manually refreshing status for task {TaskId}", taskId);
+            
+            var status = await ConduitApiClient.GetVideoGenerationStatusAsync(taskId, apiKey);
+            if (status != null)
+            {
+                task.Status = MapInternalStatusToUserStatus(status.Status ?? "processing");
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+                
+                // If task is completed, handle the result
+                if (status.Status == TaskStatusConstants.Completed)
+                {
+                    task.CompletedAt = DateTimeOffset.UtcNow;
+                    task.Progress = 100;
+                    
+                    // Check if we've already processed this task's results
+                    var existingVideoUrls = generatedVideos.Where(vid => vid.Url != null).Select(vid => vid.Url).ToHashSet();
+                    
+                    if (status.VideoResponse?.Data != null && status.VideoResponse.Data.Count > 0)
+                    {
+                        // Only add videos that aren't already in the collection
+                        var newVideos = status.VideoResponse.Data.Where(vid => 
+                            vid.Url == null || !existingVideoUrls.Contains(vid.Url)).ToList();
+                        
+                        if (newVideos.Any())
+                        {
+                            generatedVideos.AddRange(newVideos);
+                            _logger.LogInformation("Task {TaskId} completed with {Count} new videos", 
+                                taskId, newVideos.Count);
+                            ToastService.ShowSuccess($"Video generation completed for task {taskId}");
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Task {TaskId} already processed, no new videos to add", taskId);
+                            ToastService.ShowInfo($"Task {taskId} status: completed");
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(status.Result))
+                    {
+                        // Try to parse the result as VideoGenerationResponse
+                        try
+                        {
+                            var jsonOptions = new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            };
+                            var resultData = System.Text.Json.JsonSerializer.Deserialize<ConduitLLM.Core.Models.VideoGenerationResponse>(status.Result, jsonOptions);
+                            if (resultData?.Data != null && resultData.Data.Count > 0)
+                            {
+                                // Only add videos that aren't already in the collection
+                                var newVideos = resultData.Data.Where(vid => 
+                                    vid.Url == null || !existingVideoUrls.Contains(vid.Url)).ToList();
+                                
+                                if (newVideos.Any())
+                                {
+                                    generatedVideos.AddRange(newVideos);
+                                    ToastService.ShowSuccess($"Video generation completed for task {taskId}");
+                                }
+                                else
+                                {
+                                    ToastService.ShowInfo($"Task {taskId} status: completed");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to parse video result for task {TaskId}", taskId);
+                        }
+                    }
+                }
+                else if (status.Status == TaskStatusConstants.Failed)
+                {
+                    task.CompletedAt = DateTimeOffset.UtcNow;
+                    task.Error = status.Error;
+                    _logger.LogWarning("Task {TaskId} failed: {Error}", taskId, status.Error);
+                    ToastService.ShowError($"Task failed: {status.Error}");
+                }
+                else if (status.Status == TaskStatusConstants.Processing || status.Status == "queueing" || status.Status == "preparing")
+                {
+                    // Update progress if available
+                    if (status.Progress.HasValue)
+                    {
+                        task.Progress = status.Progress.Value;
+                    }
+                    ToastService.ShowInfo($"Task {taskId} is {task.Status}...");
+                }
+                
+                await SavePersistedTasks();
+                StateHasChanged();
+            }
+            else
+            {
+                ToastService.ShowWarning($"Unable to fetch status for task {taskId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing task {TaskId}", taskId);
+            ToastService.ShowError($"Error refreshing task: {ex.Message}");
+        }
+        finally
+        {
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.IsRefreshing = false;
+                StateHasChanged();
+            }
+        }
+    }
+
     private void OnModelChanged()
     {
         // Update model-specific constraints
@@ -1098,6 +1230,7 @@
         public DateTimeOffset? EstimatedCompletionTime { get; set; }
         public string? Error { get; set; }
         public bool IsCancelling { get; set; }
+        public bool IsRefreshing { get; set; }
         public string? StatusMessage { get; set; }
     }
 }

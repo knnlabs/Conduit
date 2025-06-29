@@ -120,6 +120,8 @@ services:
       CONDUITLLM__RABBITMQ__USERNAME: conduit
       CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
       CONDUITLLM__RABBITMQ__VHOST: /
+      # Disable IP banning for development
+      CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
       - "5002:8080"
     restart: on-failure

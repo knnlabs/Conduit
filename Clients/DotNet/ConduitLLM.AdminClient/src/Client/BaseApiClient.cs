@@ -231,20 +231,33 @@ public abstract class BaseApiClient : IDisposable
 
     private void ConfigureHttpClient()
     {
-        _httpClient.BaseAddress = new Uri(ConduitAdminClientConfiguration.NormalizeApiUrl(_configuration.AdminApiUrl));
-        _httpClient.Timeout = TimeSpan.FromSeconds(_configuration.TimeoutSeconds);
-        
-        // Add master key header
-        _httpClient.DefaultRequestHeaders.Add("X-Master-Key", _configuration.MasterKey);
-        
-        // Add default headers
-        foreach (var header in _configuration.DefaultHeaders)
+        // Only configure if not already configured
+        if (_httpClient.BaseAddress == null)
         {
-            _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+            _httpClient.BaseAddress = new Uri(ConduitAdminClientConfiguration.NormalizeApiUrl(_configuration.AdminApiUrl));
+            _httpClient.Timeout = TimeSpan.FromSeconds(_configuration.TimeoutSeconds);
         }
         
-        // Add user agent
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM.AdminClient/1.0.0");
+        // Add master key header if not already present
+        if (!_httpClient.DefaultRequestHeaders.Contains("X-Master-Key"))
+        {
+            _httpClient.DefaultRequestHeaders.Add("X-Master-Key", _configuration.MasterKey);
+        }
+        
+        // Add default headers if not already present
+        foreach (var header in _configuration.DefaultHeaders)
+        {
+            if (!_httpClient.DefaultRequestHeaders.Contains(header.Key))
+            {
+                _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+            }
+        }
+        
+        // Add user agent if not already present
+        if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM.AdminClient/1.0.0");
+        }
     }
 
     private string BuildUrl(string endpoint, object? parameters)
