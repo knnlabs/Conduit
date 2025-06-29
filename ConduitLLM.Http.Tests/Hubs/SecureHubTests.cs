@@ -12,6 +12,7 @@ using Xunit;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Authentication;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
@@ -35,20 +36,44 @@ namespace ConduitLLM.Http.Tests.Hubs
         private readonly TestHub _hub;
         private readonly Mock<HubCallerContext> _contextMock;
         private readonly Mock<IGroupManager> _groupsMock;
-        private readonly Mock<IServiceProvider> _serviceProviderMock;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ServiceCollection _services;
+        private readonly Mock<ISignalRAuthenticationService> _authServiceMock;
 
         public SecureHubTests()
         {
             _loggerMock = new Mock<ILogger<TestHub>>();
             _contextMock = new Mock<HubCallerContext>();
             _groupsMock = new Mock<IGroupManager>();
-            _serviceProviderMock = new Mock<IServiceProvider>();
+            _authServiceMock = new Mock<ISignalRAuthenticationService>();
 
-            _hub = new TestHub(_loggerMock.Object, _serviceProviderMock.Object)
+            // Build a real service provider
+            _services = new ServiceCollection();
+            _services.AddSingleton(_authServiceMock.Object);
+            _serviceProvider = _services.BuildServiceProvider();
+
+            _hub = new TestHub(_loggerMock.Object, _serviceProvider)
             {
                 Context = _contextMock.Object,
                 Groups = _groupsMock.Object
             };
+        }
+
+        private IServiceProvider CreateServiceProvider(Action<ServiceCollection>? configure = null)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(_authServiceMock.Object);
+            configure?.Invoke(services);
+            return services.BuildServiceProvider();
+        }
+
+        [Fact]
+        public void ServiceProvider_Setup_Works()
+        {
+            // Debug test to verify service provider
+            var service = _serviceProvider.GetService(typeof(ISignalRAuthenticationService));
+            Assert.NotNull(service);
+            Assert.Same(_authServiceMock.Object, service);
         }
 
         [Fact]
@@ -61,6 +86,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                 ["VirtualKeyId"] = expectedId
             };
             _contextMock.Setup(x => x.Items).Returns(items);
+            
+            // Setup auth service to return the expected ID
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns(expectedId);
 
             // Act
             var result = _hub.GetVirtualKeyId();
@@ -81,6 +110,10 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             _contextMock.Setup(x => x.Items).Returns(items);
             _contextMock.Setup(x => x.User).Returns(user);
+            
+            // Setup auth service to return the expected ID
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns(expectedId);
 
             // Act
             var result = _hub.GetVirtualKeyId();
@@ -96,6 +129,10 @@ namespace ConduitLLM.Http.Tests.Hubs
             var items = new Dictionary<object, object?>();
             _contextMock.Setup(x => x.Items).Returns(items);
             _contextMock.Setup(x => x.User).Returns((ClaimsPrincipal?)null);
+            
+            // Setup auth service to return null
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns((int?)null);
 
             // Act
             var result = _hub.GetVirtualKeyId();
@@ -114,6 +151,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                 ["VirtualKeyName"] = expectedName
             };
             _contextMock.Setup(x => x.Items).Returns(items);
+            
+            // Setup auth service to return the expected name
+            _authServiceMock.Setup(x => x.GetVirtualKeyName(It.IsAny<HubCallerContext>()))
+                .Returns(expectedName);
 
             // Act
             var result = _hub.GetVirtualKeyName();
@@ -134,6 +175,10 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             _contextMock.Setup(x => x.Items).Returns(items);
             _contextMock.Setup(x => x.User).Returns(user);
+            
+            // Setup auth service to return the expected name
+            _authServiceMock.Setup(x => x.GetVirtualKeyName(It.IsAny<HubCallerContext>()))
+                .Returns(expectedName);
 
             // Act
             var result = _hub.GetVirtualKeyName();
@@ -152,6 +197,10 @@ namespace ConduitLLM.Http.Tests.Hubs
                 ["VirtualKeyId"] = expectedId
             };
             _contextMock.Setup(x => x.Items).Returns(items);
+            
+            // Setup auth service to return the expected ID
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns(expectedId);
 
             // Act
             var result = _hub.RequireVirtualKeyId();
@@ -166,6 +215,10 @@ namespace ConduitLLM.Http.Tests.Hubs
             // Arrange
             var items = new Dictionary<object, object?>();
             _contextMock.Setup(x => x.Items).Returns(items);
+            
+            // Setup auth service to return null
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns((int?)null);
 
             // Act & Assert
             var exception = Assert.Throws<HubException>(() => _hub.RequireVirtualKeyId());
@@ -190,7 +243,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             _contextMock.Setup(x => x.ConnectionId).Returns(connectionId);
 
             var onConnectedCalled = false;
-            var connectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProviderMock.Object) { CallBase = true };
+            var connectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProvider) { CallBase = true };
             connectedHub.Protected()
                 .Setup<Task>("OnVirtualKeyConnectedAsync", virtualKeyId, virtualKeyName)
                 .Returns(Task.CompletedTask)
@@ -223,7 +276,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             _contextMock.Setup(x => x.Items).Returns(items);
 
             var onDisconnectedCalled = false;
-            var disconnectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProviderMock.Object) { CallBase = true };
+            var disconnectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProvider) { CallBase = true };
             disconnectedHub.Protected()
                 .Setup<Task>("OnVirtualKeyDisconnectedAsync", virtualKeyId, virtualKeyName, exception)
                 .Returns(Task.CompletedTask)
@@ -246,6 +299,10 @@ namespace ConduitLLM.Http.Tests.Hubs
             var items = new Dictionary<object, object?>();
             _contextMock.Setup(x => x.Items).Returns(items);
             _contextMock.Setup(x => x.User).Returns((ClaimsPrincipal?)null);
+            
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -266,7 +323,9 @@ namespace ConduitLLM.Http.Tests.Hubs
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(null);
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -287,11 +346,9 @@ namespace ConduitLLM.Http.Tests.Hubs
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            var taskServiceMock = new Mock<IAsyncTaskService>();
-            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((AsyncTaskStatus?)null);
-            
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -312,17 +369,11 @@ namespace ConduitLLM.Http.Tests.Hubs
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            var taskStatus = new AsyncTaskStatus
-            {
-                TaskId = taskId,
-                Metadata = new TaskMetadata(virtualKeyId)
-            };
+            // The auth service determines access based on virtual key ownership
             
-            var taskServiceMock = new Mock<IAsyncTaskService>();
-            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(taskStatus);
-            
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+            // Setup auth service to return true for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(true);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -337,24 +388,17 @@ namespace ConduitLLM.Http.Tests.Hubs
             // Arrange
             var taskId = "test-task-123";
             var virtualKeyId = 123;
-            var otherVirtualKeyId = 456;
             var items = new Dictionary<object, object?>
             {
                 ["VirtualKeyId"] = virtualKeyId
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            var taskStatus = new AsyncTaskStatus
-            {
-                TaskId = taskId,
-                Metadata = new TaskMetadata(otherVirtualKeyId)
-            };
+            // The auth service determines access based on virtual key ownership
             
-            var taskServiceMock = new Mock<IAsyncTaskService>();
-            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(taskStatus);
-            
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -375,17 +419,11 @@ namespace ConduitLLM.Http.Tests.Hubs
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            var taskStatus = new AsyncTaskStatus
-            {
-                TaskId = taskId,
-                Metadata = new TaskMetadata(0) // No virtualKeyId
-            };
+            // The auth service determines access based on virtual key ownership
             
-            var taskServiceMock = new Mock<IAsyncTaskService>();
-            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(taskStatus);
-            
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);
@@ -406,11 +444,11 @@ namespace ConduitLLM.Http.Tests.Hubs
             };
             _contextMock.Setup(x => x.Items).Returns(items);
             
-            var taskServiceMock = new Mock<IAsyncTaskService>();
-            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new Exception("Service error"));
+            // The auth service determines access based on virtual key ownership
             
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+            // Setup auth service to return false for access check
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", taskId))
+                .ReturnsAsync(false);
 
             // Act
             var result = await _hub.CanAccessTaskAsync(taskId);

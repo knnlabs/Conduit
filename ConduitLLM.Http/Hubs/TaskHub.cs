@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -114,20 +115,28 @@ namespace ConduitLLM.Http.Hubs
         
         public async Task TaskStarted(string taskId, string taskType, object metadata)
         {
-            if (metadata is IDictionary<string, object> metadataDict && 
+            int? virtualKeyId = null;
+            
+            // Handle both TaskMetadata and IDictionary formats
+            if (metadata is TaskMetadata taskMetadata)
+            {
+                virtualKeyId = taskMetadata.VirtualKeyId;
+            }
+            else if (metadata is IDictionary<string, object> metadataDict && 
                 metadataDict.TryGetValue("virtualKeyId", out var virtualKeyIdObj))
             {
-                var virtualKeyId = TaskHub.ConvertToInt(virtualKeyIdObj);
-                if (virtualKeyId.HasValue)
-                {
-                    // Notify specific task subscribers
-                    await _hubContext.Clients.Group($"task-{taskId}")
-                        .SendAsync("TaskStarted", taskId, taskType, metadata);
-                    
-                    // Notify task type subscribers for this virtual key
-                    await _hubContext.Clients.Group($"vkey-{virtualKeyId}-{taskType}")
-                        .SendAsync("TaskStarted", taskId, taskType, metadata);
-                }
+                virtualKeyId = TaskHub.ConvertToInt(virtualKeyIdObj);
+            }
+            
+            if (virtualKeyId.HasValue)
+            {
+                // Notify specific task subscribers
+                await _hubContext.Clients.Group($"task-{taskId}")
+                    .SendAsync("TaskStarted", taskId, taskType, metadata);
+                
+                // Notify task type subscribers for this virtual key
+                await _hubContext.Clients.Group($"vkey-{virtualKeyId}-{taskType}")
+                    .SendAsync("TaskStarted", taskId, taskType, metadata);
             }
         }
 
@@ -171,17 +180,8 @@ namespace ConduitLLM.Http.Hubs
                 return false;
             }
 
-            if (taskStatus.Metadata is IDictionary<string, object> metadata)
-            {
-                if (metadata.TryGetValue("virtualKeyId", out var taskVirtualKeyIdObj))
-                {
-                    var taskVirtualKeyId = TaskHub.ConvertToInt(taskVirtualKeyIdObj);
-                    return taskVirtualKeyId.HasValue && taskVirtualKeyId.Value == virtualKeyId;
-                }
-            }
-            
-            Logger.LogWarning("Task {TaskId} has invalid metadata format", taskStatus.TaskId);
-            return false;
+            // TaskMetadata is the expected type in AsyncTaskStatus
+            return taskStatus.Metadata.VirtualKeyId == virtualKeyId;
         }
         
         private static int? ConvertToInt(object value)

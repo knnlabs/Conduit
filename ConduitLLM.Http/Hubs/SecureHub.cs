@@ -93,6 +93,9 @@ namespace ConduitLLM.Http.Hubs
                 
                 if (virtualKeyId.HasValue)
                 {
+                    // Remove from virtual-key-specific group
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"vkey-{virtualKeyId}");
+                    
                     await OnVirtualKeyDisconnectedAsync(virtualKeyId.Value, virtualKeyName, exception);
                 }
                 

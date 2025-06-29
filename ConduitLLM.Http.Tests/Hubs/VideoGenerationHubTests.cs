@@ -10,6 +10,7 @@ using Xunit;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Authentication;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
@@ -17,23 +18,60 @@ namespace ConduitLLM.Http.Tests.Hubs
     {
         private readonly Mock<ILogger<VideoGenerationHub>> _loggerMock;
         private readonly Mock<IAsyncTaskService> _taskServiceMock;
+        private readonly Mock<ISignalRAuthenticationService> _authServiceMock;
         private readonly VideoGenerationHub _hub;
         private readonly Mock<HubCallerContext> _contextMock;
         private readonly Mock<IGroupManager> _groupsMock;
-        private readonly Mock<IServiceProvider> _serviceProviderMock;
+        private readonly IServiceProvider _serviceProvider;
 
         public VideoGenerationHubTests()
         {
             _loggerMock = new Mock<ILogger<VideoGenerationHub>>();
             _taskServiceMock = new Mock<IAsyncTaskService>();
+            _authServiceMock = new Mock<ISignalRAuthenticationService>();
             _contextMock = new Mock<HubCallerContext>();
             _groupsMock = new Mock<IGroupManager>();
-            _serviceProviderMock = new Mock<IServiceProvider>();
 
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService)))
-                .Returns(_taskServiceMock.Object);
+            // Build a real service provider
+            var services = new ServiceCollection();
+            services.AddSingleton(_authServiceMock.Object);
+            services.AddSingleton(_taskServiceMock.Object);
+            _serviceProvider = services.BuildServiceProvider();
 
-            _hub = new VideoGenerationHub(_loggerMock.Object, _taskServiceMock.Object, _serviceProviderMock.Object)
+            // Setup auth service to return virtual key ID from context
+            _authServiceMock.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns<HubCallerContext>(ctx =>
+                {
+                    if (ctx?.Items?.TryGetValue("VirtualKeyId", out var idObj) == true && idObj is int id)
+                        return id;
+                    return null;
+                });
+
+            _authServiceMock.Setup(x => x.GetVirtualKeyName(It.IsAny<HubCallerContext>()))
+                .Returns<HubCallerContext>(ctx =>
+                {
+                    if (ctx?.Items?.TryGetValue("VirtualKeyName", out var nameObj) == true && nameObj is string name)
+                        return name;
+                    return "test-key";
+                });
+
+            _authServiceMock.Setup(x => x.CanAccessResourceAsync(It.IsAny<HubCallerContext>(), "task", It.IsAny<string>()))
+                .Returns<HubCallerContext, string, string>((ctx, resourceType, taskId) =>
+                {
+                    // Get the virtual key ID from context
+                    var virtualKeyId = 0;
+                    if (ctx?.Items?.TryGetValue("VirtualKeyId", out var idObj) == true && idObj is int id)
+                        virtualKeyId = id;
+                    
+                    // Get the task to check ownership
+                    var taskStatus = _taskServiceMock.Object.GetTaskStatusAsync(taskId).GetAwaiter().GetResult();
+                    if (taskStatus?.Metadata?.VirtualKeyId == virtualKeyId)
+                        return Task.FromResult(true);
+                    
+                    return Task.FromResult(false);
+                });
+
+            _hub = new VideoGenerationHub(_loggerMock.Object, _taskServiceMock.Object, _serviceProvider)
             {
                 Context = _contextMock.Object,
                 Groups = _groupsMock.Object

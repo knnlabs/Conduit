@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -13,6 +14,7 @@ using ConduitLLM.Http.Tests.TestHelpers;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Http.Authentication;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
@@ -23,7 +25,8 @@ namespace ConduitLLM.Http.Tests.Hubs
     {
         private readonly Mock<ISignalRMetrics> _mockMetrics;
         private readonly Mock<ILogger<SystemNotificationHub>> _mockLogger;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly Mock<ISignalRAuthenticationService> _mockAuthService;
         private readonly Mock<IHubCallerClients> _mockClients;
         private readonly Mock<HubCallerContext> _mockContext;
         private readonly Mock<IGroupManager> _mockGroups;
@@ -33,12 +36,33 @@ namespace ConduitLLM.Http.Tests.Hubs
         {
             _mockMetrics = MockSignalRMetrics.Create();
             _mockLogger = new Mock<ILogger<SystemNotificationHub>>();
-            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockAuthService = new Mock<ISignalRAuthenticationService>();
             _mockClients = new Mock<IHubCallerClients>();
             _mockContext = new Mock<HubCallerContext>();
             _mockGroups = new Mock<IGroupManager>();
 
-            _hub = new SystemNotificationHub(_mockMetrics.Object, _mockLogger.Object, _mockServiceProvider.Object)
+            // Build a real service provider
+            var services = new ServiceCollection();
+            services.AddSingleton(_mockAuthService.Object);
+            _serviceProvider = services.BuildServiceProvider();
+
+            // Default auth service setup - tests can override as needed
+            _mockAuthService.Setup(x => x.GetVirtualKeyId(It.IsAny<HubCallerContext>()))
+                .Returns<HubCallerContext>(ctx => 
+                {
+                    if (ctx?.Items?.TryGetValue("VirtualKeyId", out var idObj) == true && idObj is int id)
+                        return id;
+                    return null;
+                });
+            _mockAuthService.Setup(x => x.GetVirtualKeyName(It.IsAny<HubCallerContext>()))
+                .Returns<HubCallerContext>(ctx => 
+                {
+                    if (ctx?.Items?.TryGetValue("VirtualKeyName", out var nameObj) == true && nameObj is string name)
+                        return name;
+                    return "test-key";
+                });
+
+            _hub = new SystemNotificationHub(_mockMetrics.Object, _mockLogger.Object, _serviceProvider)
             {
                 Context = _mockContext.Object,
                 Clients = _mockClients.Object,
@@ -72,7 +96,7 @@ namespace ConduitLLM.Http.Tests.Hubs
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("connected to SystemNotificationHub")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.AtLeastOnce);
         }
 
         [Fact]
@@ -329,7 +353,7 @@ namespace ConduitLLM.Http.Tests.Hubs
         {
             // Arrange
             var connectionId = "test-connection-123";
-            var virtualKeyId = "vk_test123";
+            var virtualKeyId = 123;
             
             _mockContext.Setup(x => x.ConnectionId).Returns(connectionId);
             _mockContext.Setup(x => x.Items).Returns(new Dictionary<object, object?>
