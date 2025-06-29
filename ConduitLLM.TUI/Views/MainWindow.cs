@@ -10,6 +10,7 @@ using ConduitLLM.TUI.Views.Keys;
 using ConduitLLM.TUI.Views.Monitoring;
 using ConduitLLM.TUI.Utils;
 using ConduitLLM.TUI.Views.Configuration;
+using ConduitLLM.TUI.Constants;
 
 namespace ConduitLLM.TUI.Views;
 
@@ -29,7 +30,7 @@ public class MainWindow : Window
     private View? _currentView;
     private bool _logPanelVisible = true;
 
-    public MainWindow(IServiceProvider serviceProvider) : base("Conduit TUI")
+    public MainWindow(IServiceProvider serviceProvider) : base(UIConstants.Titles.MainWindow)
     {
         _serviceProvider = serviceProvider;
         _stateManager = serviceProvider.GetRequiredService<StateManager>();
@@ -99,7 +100,7 @@ public class MainWindow : Window
         };
 
         // Create log frame
-        _logFrame = new FrameView("Logs (Ctrl+L to toggle)")
+        _logFrame = new FrameView(UIConstants.Titles.Logs)
         {
             X = 0,
             Y = Pos.Bottom(_contentFrame),
@@ -147,42 +148,42 @@ public class MainWindow : Window
 
     private void ShowChatView()
     {
-        SetCurrentView(new ChatView(_serviceProvider), "Chat");
+        SetCurrentView(new ChatView(_serviceProvider), UIConstants.Titles.ChatHistory);
     }
 
     private void ShowModelsView()
     {
-        SetCurrentView(new ModelMappingView(_serviceProvider), "Model Mappings");
+        SetCurrentView(new ModelMappingView(_serviceProvider), UIConstants.Titles.ModelMappings);
     }
 
     private void ShowProvidersView()
     {
-        SetCurrentView(new ProviderListView(_serviceProvider), "Provider Credentials");
+        SetCurrentView(new ProviderListView(_serviceProvider), UIConstants.Titles.ProviderCredentials);
     }
 
     private void ShowImageGenerationView()
     {
-        SetCurrentView(new ImageGenerationView(_serviceProvider), "Image Generation");
+        SetCurrentView(new ImageGenerationView(_serviceProvider), UIConstants.Titles.ImageGeneration);
     }
 
     private void ShowVideoGenerationView()
     {
-        SetCurrentView(new VideoGenerationView(_serviceProvider), "Video Generation");
+        SetCurrentView(new VideoGenerationView(_serviceProvider), UIConstants.Titles.VideoGeneration);
     }
 
     private void ShowVirtualKeysView()
     {
-        SetCurrentView(new VirtualKeyListView(_serviceProvider), "Virtual Keys");
+        SetCurrentView(new VirtualKeyListView(_serviceProvider), UIConstants.Titles.VirtualKeys);
     }
 
     private void ShowHealthDashboard()
     {
-        SetCurrentView(new HealthDashboard(_serviceProvider), "System Health");
+        SetCurrentView(new HealthDashboard(_serviceProvider), UIConstants.Titles.SystemHealth);
     }
 
     private void ShowConfigurationView()
     {
-        SetCurrentView(new Configuration.ConfigurationView(_serviceProvider), "Configuration");
+        SetCurrentView(new Configuration.ConfigurationView(_serviceProvider), UIConstants.Titles.Configuration);
     }
 
     private void SetCurrentView(View view, string title)
@@ -201,7 +202,7 @@ public class MainWindow : Window
 
     private void UpdateConnectionStatus()
     {
-        var status = _stateManager.IsConnected ? "Connected" : "Disconnected";
+        var status = _stateManager.IsConnected ? UIConstants.ConnectionStatus.Connected : UIConstants.ConnectionStatus.Disconnected;
         var color = _stateManager.IsConnected ? ConsoleColor.Green : ConsoleColor.Red;
         
         // Update status bar with connection info
@@ -248,14 +249,14 @@ public class MainWindow : Window
 
     private void ShowAbout()
     {
-        var about = new Dialog("About Conduit TUI", 60, 10);
+        var about = new Dialog(UIConstants.Titles.About, 60, 10);
         about.Add(
-            new Label("Conduit TUI v1.0.0") { X = Pos.Center(), Y = 1 },
-            new Label("Terminal User Interface for Conduit LLM") { X = Pos.Center(), Y = 3 },
-            new Label("© 2025 KNN Labs, Inc.") { X = Pos.Center(), Y = 5 }
+            new Label(UIConstants.AppInfo.FullTitle) { X = Pos.Center(), Y = 1 },
+            new Label(UIConstants.AppInfo.Description) { X = Pos.Center(), Y = 3 },
+            new Label(UIConstants.AppInfo.Copyright) { X = Pos.Center(), Y = 5 }
         );
         
-        var okButton = new Button("OK") { X = Pos.Center(), Y = 7 };
+        var okButton = new Button(UIConstants.ButtonLabels.OK) { X = Pos.Center(), Y = 7 };
         okButton.Clicked += () => about.Running = false;
         about.Add(okButton);
         
@@ -274,12 +275,12 @@ public class MainWindow : Window
         SetNeedsDisplay();
         LayoutSubviews();
         
-        _logger.LogInformation("Log panel toggled: {Visible}", _logPanelVisible ? "visible" : "hidden");
+        _logger.LogInformation("Log panel toggled: {Visible}", _logPanelVisible ? UIConstants.LogPanelStatus.Visible : UIConstants.LogPanelStatus.Hidden);
     }
 
     private void ShowKeyboardShortcuts()
     {
-        var dialog = new Dialog("Keyboard Shortcuts", 60, 22);
+        var dialog = new Dialog(UIConstants.Titles.KeyboardShortcuts, 60, 22);
         
         var shortcuts = @"F1          - Help / Keyboard Shortcuts
 F2          - Chat View

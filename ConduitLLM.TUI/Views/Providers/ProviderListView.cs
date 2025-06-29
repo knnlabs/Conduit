@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.TUI.Services;
 using ConduitLLM.AdminClient.Models;
+using ConduitLLM.TUI.Constants;
+using ConduitLLM.TUI.Utils;
 
 namespace ConduitLLM.TUI.Views.Providers;
 
@@ -38,7 +40,7 @@ public class ProviderListView : View
         Height = Dim.Fill();
 
         // Provider list
-        var listFrame = new FrameView("Provider Credentials")
+        var listFrame = new FrameView(UIConstants.Titles.ProviderCredentials)
         {
             X = 0,
             Y = 0,
@@ -66,14 +68,14 @@ public class ProviderListView : View
             Height = 3
         };
 
-        _addButton = new Button("Add")
+        _addButton = new Button(UIConstants.ButtonLabels.Add)
         {
             X = 0,
             Y = 0
         };
         _addButton.Clicked += AddProvider;
 
-        _editButton = new Button("Edit")
+        _editButton = new Button(UIConstants.ButtonLabels.Edit)
         {
             X = Pos.Right(_addButton) + 1,
             Y = 0,
@@ -81,7 +83,7 @@ public class ProviderListView : View
         };
         _editButton.Clicked += EditProvider;
 
-        _deleteButton = new Button("Delete")
+        _deleteButton = new Button(UIConstants.ButtonLabels.Delete)
         {
             X = Pos.Right(_editButton) + 1,
             Y = 0,
@@ -89,14 +91,14 @@ public class ProviderListView : View
         };
         _deleteButton.Clicked += DeleteProvider;
 
-        _discoverButton = new Button("Discover Models")
+        _discoverButton = new Button(UIConstants.ButtonLabels.DiscoverModels)
         {
             X = Pos.Right(_deleteButton) + 1,
             Y = 0
         };
         _discoverButton.Clicked += DiscoverModels;
 
-        _refreshButton = new Button("Refresh")
+        _refreshButton = new Button(UIConstants.ButtonLabels.Refresh)
         {
             X = Pos.Right(_discoverButton) + 1,
             Y = 0
@@ -119,7 +121,7 @@ public class ProviderListView : View
     {
         try
         {
-            UpdateStatus("Loading providers...");
+            UpdateStatus(UIConstants.StatusMessages.LoadingProviders);
             _providers = await _adminApiService.GetProvidersAsync();
             
             Application.MainLoop.Invoke(() =>
@@ -128,22 +130,22 @@ public class ProviderListView : View
                 UpdateStatus($"Loaded {_providers.Count} providers");
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(UIConstants.ConnectionStatus.Failed))
         {
             _logger.LogError(ex, "Connection failed while loading providers");
-            Application.MainLoop.Invoke(() => UpdateStatus("Connection failed - Admin API unavailable"));
+            Application.MainLoop.Invoke(() => UpdateStatus($"{UIConstants.ConnectionStatus.Failed} - Admin API unavailable"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load providers");
-            Application.MainLoop.Invoke(() => UpdateStatus($"Error: {ex.Message}"));
+            Application.MainLoop.Invoke(() => UpdateStatus(string.Format(UIConstants.ErrorMessages.ErrorFormat, ex.Message)));
         }
     }
 
     private void UpdateProviderList()
     {
         var items = _providers.Select(p => 
-            $"{p.ProviderName} - {(p.IsEnabled ? "Enabled" : "Disabled")}"
+            $"{p.ProviderName} - {(p.IsEnabled ? UIConstants.ProviderStatus.Enabled : UIConstants.ProviderStatus.Disabled)}"
         ).ToList();
         
         _providerList.SetSource(items);
@@ -196,7 +198,7 @@ public class ProviderListView : View
                 UpdateStatus($"Created provider: {provider.ProviderName}");
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(UIConstants.ConnectionStatus.Failed))
         {
             _logger.LogError(ex, "Connection failed while creating provider");
             Application.MainLoop.Invoke(() => UpdateStatus("Failed to create provider - connection error"));
@@ -204,7 +206,7 @@ public class ProviderListView : View
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create provider");
-            Application.MainLoop.Invoke(() => UpdateStatus($"Error: {ex.Message}"));
+            Application.MainLoop.Invoke(() => UpdateStatus(string.Format(UIConstants.ErrorMessages.ErrorFormat, ex.Message)));
         }
     }
 
@@ -226,7 +228,7 @@ public class ProviderListView : View
                 UpdateStatus($"Updated provider: {provider.ProviderName}");
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(UIConstants.ConnectionStatus.Failed))
         {
             _logger.LogError(ex, "Connection failed while updating provider");
             Application.MainLoop.Invoke(() => UpdateStatus("Failed to update provider - connection error"));
@@ -234,7 +236,7 @@ public class ProviderListView : View
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update provider");
-            Application.MainLoop.Invoke(() => UpdateStatus($"Error: {ex.Message}"));
+            Application.MainLoop.Invoke(() => UpdateStatus(string.Format(UIConstants.ErrorMessages.ErrorFormat, ex.Message)));
         }
     }
 
@@ -263,7 +265,7 @@ public class ProviderListView : View
                     UpdateStatus($"Deleted provider: {provider.ProviderName}");
                 });
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+            catch (InvalidOperationException ex) when (ex.Message.Contains(UIConstants.ConnectionStatus.Failed))
             {
                 _logger.LogError(ex, "Connection failed while deleting provider");
                 Application.MainLoop.Invoke(() => UpdateStatus("Failed to delete provider - connection error"));
@@ -271,7 +273,7 @@ public class ProviderListView : View
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to delete provider");
-                Application.MainLoop.Invoke(() => UpdateStatus($"Error: {ex.Message}"));
+                Application.MainLoop.Invoke(() => UpdateStatus(string.Format(UIConstants.ErrorMessages.ErrorFormat, ex.Message)));
             }
         }
     }
@@ -290,7 +292,7 @@ public class ProviderListView : View
                 LoadProviders(); // Refresh to show updated model counts
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Connection Failed"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains(UIConstants.ConnectionStatus.Failed))
         {
             _logger.LogError(ex, "Connection failed while discovering models");
             Application.MainLoop.Invoke(() => UpdateStatus("Model discovery failed - connection error"));
@@ -298,7 +300,7 @@ public class ProviderListView : View
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to discover models");
-            Application.MainLoop.Invoke(() => UpdateStatus($"Error: {ex.Message}"));
+            Application.MainLoop.Invoke(() => UpdateStatus(string.Format(UIConstants.ErrorMessages.ErrorFormat, ex.Message)));
         }
     }
 

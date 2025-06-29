@@ -6,6 +6,7 @@ using ConduitLLM.TUI.Models;
 using ConduitLLM.TUI.Utils;
 using System.Net.Http;
 using System.Net.Sockets;
+using ConduitLLM.TUI.Constants;
 
 namespace ConduitLLM.TUI.Services;
 
@@ -62,15 +63,15 @@ public class SignalRService : IAsyncDisposable
 
             // Navigation State Hub (using SystemNotificationHub at /hubs/notifications)
             _navigationStateHub = new HubConnectionBuilder()
-                .WithUrl($"{_config.CoreApiUrl}/hubs/notifications", options =>
+                .WithUrl($"{_config.CoreApiUrl}{UIConstants.SignalR.Hubs.Notifications}", options =>
                 {
-                    options.Headers["X-API-Key"] = _virtualKey;
+                    options.Headers[UIConstants.Configuration.ApiKeyHeader] = _virtualKey;
                 })
                 .WithAutomaticReconnect()
                 .Build();
 
             // Listen for model mapping changes
-            _navigationStateHub.On<ModelMappingNotification>("OnModelMappingChanged", notification =>
+            _navigationStateHub.On<ModelMappingNotification>(UIConstants.SignalR.Methods.OnModelMappingChanged, notification =>
             {
                 _logger.LogInformation("Received model mapping change: {ModelAlias} ({ChangeType})", notification.ModelAlias, notification.ChangeType);
                 // For now, trigger a navigation state update event (we might need to fetch the full state)
@@ -78,14 +79,14 @@ public class SignalRService : IAsyncDisposable
             });
             
             // Listen for provider health changes
-            _navigationStateHub.On<ProviderHealthNotification>("OnProviderHealthChanged", notification =>
+            _navigationStateHub.On<ProviderHealthNotification>(UIConstants.SignalR.Methods.OnProviderHealthChanged, notification =>
             {
                 _logger.LogInformation("Received provider health change: {Provider} - {Status}", notification.Provider, notification.Status);
                 NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
             });
             
             // Listen for model capabilities discovery
-            _navigationStateHub.On<ModelCapabilitiesNotification>("OnModelCapabilitiesDiscovered", notification =>
+            _navigationStateHub.On<ModelCapabilitiesNotification>(UIConstants.SignalR.Methods.OnModelCapabilitiesDiscovered, notification =>
             {
                 _logger.LogInformation("Received model capabilities discovered: {Provider} ({ModelCount} models)", notification.ProviderName, notification.ModelCount);
                 NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
@@ -114,26 +115,26 @@ public class SignalRService : IAsyncDisposable
 
             // Video Generation Hub
             _videoGenerationHub = new HubConnectionBuilder()
-                .WithUrl($"{_config.CoreApiUrl}/hubs/video-generation", options =>
+                .WithUrl($"{_config.CoreApiUrl}{UIConstants.SignalR.Hubs.VideoGeneration}", options =>
                 {
-                    options.Headers["X-API-Key"] = _virtualKey;
+                    options.Headers[UIConstants.Configuration.ApiKeyHeader] = _virtualKey;
                 })
                 .WithAutomaticReconnect()
                 .Build();
 
-            _videoGenerationHub.On<VideoGenerationStatusDto>("VideoGenerationProgress", status =>
+            _videoGenerationHub.On<VideoGenerationStatusDto>(UIConstants.SignalR.Methods.VideoGenerationProgress, status =>
             {
                 _logger.LogInformation("Video generation progress: {TaskId} - {Status}", status.TaskId, status.Status);
                 VideoGenerationStatusUpdated?.Invoke(this, status);
             });
 
-            _videoGenerationHub.On<VideoGenerationStatusDto>("VideoGenerationCompleted", status =>
+            _videoGenerationHub.On<VideoGenerationStatusDto>(UIConstants.SignalR.Methods.VideoGenerationCompleted, status =>
             {
                 _logger.LogInformation("Video generation completed: {TaskId}", status.TaskId);
                 VideoGenerationStatusUpdated?.Invoke(this, status);
             });
 
-            _videoGenerationHub.On<VideoGenerationStatusDto>("VideoGenerationFailed", status =>
+            _videoGenerationHub.On<VideoGenerationStatusDto>(UIConstants.SignalR.Methods.VideoGenerationFailed, status =>
             {
                 _logger.LogError("Video generation failed: {TaskId} - {Error}", status.TaskId, status.ErrorMessage);
                 VideoGenerationStatusUpdated?.Invoke(this, status);
@@ -141,26 +142,26 @@ public class SignalRService : IAsyncDisposable
 
             // Image Generation Hub
             _imageGenerationHub = new HubConnectionBuilder()
-                .WithUrl($"{_config.CoreApiUrl}/hubs/image-generation", options =>
+                .WithUrl($"{_config.CoreApiUrl}{UIConstants.SignalR.Hubs.ImageGeneration}", options =>
                 {
-                    options.Headers["X-API-Key"] = _virtualKey;
+                    options.Headers[UIConstants.Configuration.ApiKeyHeader] = _virtualKey;
                 })
                 .WithAutomaticReconnect()
                 .Build();
 
-            _imageGenerationHub.On<ImageGenerationStatusDto>("ImageGenerationProgress", status =>
+            _imageGenerationHub.On<ImageGenerationStatusDto>(UIConstants.SignalR.Methods.ImageGenerationProgress, status =>
             {
                 _logger.LogInformation("Image generation progress: {TaskId} - {Status}", status.TaskId, status.Status);
                 ImageGenerationStatusUpdated?.Invoke(this, status);
             });
 
-            _imageGenerationHub.On<ImageGenerationStatusDto>("ImageGenerationCompleted", status =>
+            _imageGenerationHub.On<ImageGenerationStatusDto>(UIConstants.SignalR.Methods.ImageGenerationCompleted, status =>
             {
                 _logger.LogInformation("Image generation completed: {TaskId}", status.TaskId);
                 ImageGenerationStatusUpdated?.Invoke(this, status);
             });
 
-            _imageGenerationHub.On<ImageGenerationStatusDto>("ImageGenerationFailed", status =>
+            _imageGenerationHub.On<ImageGenerationStatusDto>(UIConstants.SignalR.Methods.ImageGenerationFailed, status =>
             {
                 _logger.LogError("Image generation failed: {TaskId} - {Error}", status.TaskId, status.ErrorMessage);
                 ImageGenerationStatusUpdated?.Invoke(this, status);
@@ -220,7 +221,7 @@ public class SignalRService : IAsyncDisposable
             // Try to get the WebUI virtual key from configuration using the specific key
             try
             {
-                var webUIKeySetting = await _adminApiService.GetSettingByKeyAsync("WebUI_VirtualKey");
+                var webUIKeySetting = await _adminApiService.GetSettingByKeyAsync(UIConstants.Configuration.WebUIVirtualKey);
                 if (webUIKeySetting != null && !string.IsNullOrEmpty(webUIKeySetting.Value))
                 {
                     _virtualKey = webUIKeySetting.Value;
@@ -247,7 +248,7 @@ public class SignalRService : IAsyncDisposable
     {
         if (_videoGenerationHub?.State == HubConnectionState.Connected)
         {
-            await _videoGenerationHub.InvokeAsync("JoinTaskGroup", taskId);
+            await _videoGenerationHub.InvokeAsync(UIConstants.SignalR.Methods.JoinTaskGroup, taskId);
             _logger.LogInformation("Joined video generation group: {TaskId}", taskId);
         }
     }
@@ -256,7 +257,7 @@ public class SignalRService : IAsyncDisposable
     {
         if (_videoGenerationHub?.State == HubConnectionState.Connected)
         {
-            await _videoGenerationHub.InvokeAsync("LeaveTaskGroup", taskId);
+            await _videoGenerationHub.InvokeAsync(UIConstants.SignalR.Methods.LeaveTaskGroup, taskId);
             _logger.LogInformation("Left video generation group: {TaskId}", taskId);
         }
     }
@@ -265,7 +266,7 @@ public class SignalRService : IAsyncDisposable
     {
         if (_imageGenerationHub?.State == HubConnectionState.Connected)
         {
-            await _imageGenerationHub.InvokeAsync("JoinTaskGroup", taskId);
+            await _imageGenerationHub.InvokeAsync(UIConstants.SignalR.Methods.JoinTaskGroup, taskId);
             _logger.LogInformation("Joined image generation group: {TaskId}", taskId);
         }
     }
@@ -274,7 +275,7 @@ public class SignalRService : IAsyncDisposable
     {
         if (_imageGenerationHub?.State == HubConnectionState.Connected)
         {
-            await _imageGenerationHub.InvokeAsync("LeaveTaskGroup", taskId);
+            await _imageGenerationHub.InvokeAsync(UIConstants.SignalR.Methods.LeaveTaskGroup, taskId);
             _logger.LogInformation("Left image generation group: {TaskId}", taskId);
         }
     }
