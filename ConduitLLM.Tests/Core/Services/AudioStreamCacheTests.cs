@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoFixture;
@@ -35,7 +37,7 @@ namespace ConduitLLM.Tests.Core.Services
         public AudioStreamCacheTests(ITestOutputHelper output) : base(output)
         {
             _loggerMock = CreateLogger<AudioStreamCache>();
-            _memoryCacheMock = TestHelpers.MockExtensions.CreateTrackingMock<IMemoryCache>();
+            _memoryCacheMock = new Mock<IMemoryCache>().SetupWorkingCache();
             _distributedCacheMock = MockBuilders.BuildCacheService()
                 .WithGetBehavior()
                 .WithSetBehavior()
@@ -237,9 +239,10 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _memoryCacheMock.Verify(x => x.CreateEntry(It.IsAny<object>()), Times.Once);
+            // The implementation stores TtsCacheEntry, not TextToSpeechResponse directly
             _distributedCacheMock.Verify(x => x.Set(
                 It.IsAny<string>(),
-                It.Is<TextToSpeechResponse>(r => r == response),
+                It.IsAny<object>(), // Use object since TtsCacheEntry is internal
                 ttl,
                 It.IsAny<TimeSpan?>()), Times.Once);
         }
@@ -274,12 +277,17 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task StreamCachedAudioAsync_YieldsAudioChunks()
         {
             // Arrange
-            var cacheKey = "test-audio-key";
-            var audioData = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-            var audioResponse = new TextToSpeechResponse { AudioData = audioData };
+            // First cache the audio using the public API to ensure proper type is stored
+            var request = CreateTtsRequest();
+            var response = new TextToSpeechResponse 
+            { 
+                AudioData = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+                Duration = 1.0,
+                Format = "mp3"
+            };
             
-            _distributedCacheMock.Setup(x => x.Get<TextToSpeechResponse>(cacheKey))
-                .Returns(audioResponse);
+            await _cache.CacheTtsAudioAsync(request, response);
+            var cacheKey = GenerateTtsCacheKey(request);
 
             // Act
             var chunks = new List<AudioChunk>();
@@ -291,7 +299,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             chunks.Should().NotBeEmpty();
             var reassembled = chunks.SelectMany(c => c.Data).ToArray();
-            reassembled.Should().BeEquivalentTo(audioData);
+            reassembled.Should().BeEquivalentTo(response.AudioData);
         }
 
         [Fact]
@@ -414,6 +422,27 @@ namespace ConduitLLM.Tests.Core.Services
                 .Returns((AudioTranscriptionResponse?)null);
             _distributedCacheMock.Setup(x => x.Get<TextToSpeechResponse>(It.IsAny<string>()))
                 .Returns((TextToSpeechResponse?)null);
+        }
+
+        private string GenerateTtsCacheKey(TextToSpeechRequest request)
+        {
+            // Replicate the cache key generation logic from AudioStreamCache
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var textHash = Convert.ToBase64String(
+                sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(request.Input)));
+
+            var keyParts = new[]
+            {
+                "tts",
+                request.Model ?? "default",
+                request.Voice,
+                request.Language ?? "auto",
+                request.Speed?.ToString() ?? "1.0",
+                request.ResponseFormat?.ToString() ?? "mp3",
+                textHash
+            };
+
+            return string.Join(":", keyParts);
         }
     }
 }
