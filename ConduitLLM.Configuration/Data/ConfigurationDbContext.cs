@@ -396,12 +396,8 @@ namespace ConduitLLM.Configuration
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
 
-            // Only configure ModelProviderMapping in non-test environments or ignore it in test environments
-            if (IsTestEnvironment)
-            {
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ProviderCredential>();
-            }
+            // Note: ModelProviderMapping and ProviderCredential are now included in test environments
+            // as they are required by the application code during tests
         }
     }
 }
