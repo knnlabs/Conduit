@@ -148,8 +148,9 @@ namespace ConduitLLM.Admin.Services
 #if DEBUG
             // Skip recording failed auth attempts in development mode
             _logger.LogDebug("Failed auth recording is disabled in DEBUG mode for IP {IpAddress}", ipAddress);
+            await Task.CompletedTask;
             return;
-#endif
+#else
             // Check if IP banning is enabled via configuration
             if (!_options.FailedAuth.Enabled)
             {
@@ -244,6 +245,7 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogInformation("Failed authentication attempt {Attempts}/{MaxAttempts} for IP {IpAddress}", 
                     attempts, _options.FailedAuth.MaxAttempts, ipAddress);
             }
+#endif
         }
 
         /// <inheritdoc/>
@@ -269,7 +271,7 @@ namespace ConduitLLM.Admin.Services
 #if DEBUG
             // IP banning is disabled in development mode
             _logger.LogDebug("IP banning is disabled in DEBUG mode");
-            return false;
+            return await Task.FromResult(false);
 #else
             // Check if IP banning is enabled via configuration
             if (!_options.FailedAuth.Enabled)
