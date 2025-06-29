@@ -183,8 +183,8 @@ namespace ConduitLLM.Http.Services
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get connection pool statistics
-                var npgsqlConnection = context.Database.GetDbConnection() as NpgsqlConnection;
-                if (npgsqlConnection != null)
+                var dbConnection = context.Database.GetDbConnection();
+                if (dbConnection is NpgsqlConnection npgsqlConnection)
                 {
                     // For now, we'll just test the connection
                     // NpgsqlDataSource statistics might not be directly accessible
