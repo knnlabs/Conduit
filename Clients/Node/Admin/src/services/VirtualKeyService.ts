@@ -8,6 +8,7 @@ import {
   VirtualKeyValidationRequest,
   VirtualKeyValidationResult,
   UpdateSpendRequest,
+  RefundSpendRequest,
   CheckBudgetRequest,
   CheckBudgetResponse,
   VirtualKeyValidationInfo,
@@ -116,6 +117,18 @@ export class VirtualKeyService extends BaseApiClient {
 
   async updateSpend(id: number, request: UpdateSpendRequest): Promise<void> {
     await this.post(ENDPOINTS.VIRTUAL_KEYS.SPEND(id), request);
+    await this.cache?.delete(this.getCacheKey('virtual-key', id));
+  }
+
+  async refundSpend(id: number, request: RefundSpendRequest): Promise<void> {
+    if (!request.amount || request.amount <= 0) {
+      throw new ValidationError('Refund amount must be greater than zero');
+    }
+    if (!request.reason) {
+      throw new ValidationError('Refund reason is required');
+    }
+    
+    await this.post(ENDPOINTS.VIRTUAL_KEYS.REFUND(id), request);
     await this.cache?.delete(this.getCacheKey('virtual-key', id));
   }
 

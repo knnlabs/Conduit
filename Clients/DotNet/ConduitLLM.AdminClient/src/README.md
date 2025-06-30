@@ -14,7 +14,7 @@ Official .NET client library for the Conduit Admin API.
 
 ## Services Included
 
-- **VirtualKeyService** - Manage API keys and budget controls
+- **VirtualKeyService** - Manage API keys, budget controls, and refunds
 - **ProviderService** - Manage provider credentials and health monitoring
 - **AnalyticsService** - Cost analysis, usage metrics, and reporting
 - **DiscoveryService** - Model discovery and capability testing
@@ -48,6 +48,15 @@ var costSummary = await client.Analytics.GetCostSummaryAsync(DateTime.Now.AddDay
 
 // Manage model costs
 var modelCosts = await client.ModelCosts.ListAsync();
+
+// Issue refunds
+var refundRequest = new RefundSpendRequest
+{
+    Amount = 10.50m,
+    Reason = "Service interruption",
+    OriginalTransactionId = "txn_12345" // Optional
+};
+await client.VirtualKeys.RefundSpendAsync(virtualKeyId, refundRequest);
 var costOverview = await client.ModelCosts.GetOverviewAsync(DateTime.Now.AddDays(-30), DateTime.Now);
 
 // System monitoring

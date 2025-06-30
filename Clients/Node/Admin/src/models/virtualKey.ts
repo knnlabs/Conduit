@@ -74,6 +74,12 @@ export interface UpdateSpendRequest {
   description?: string;
 }
 
+export interface RefundSpendRequest {
+  amount: number;
+  reason: string;
+  originalTransactionId?: string;
+}
+
 export interface CheckBudgetRequest {
   estimatedCost: number;
 }

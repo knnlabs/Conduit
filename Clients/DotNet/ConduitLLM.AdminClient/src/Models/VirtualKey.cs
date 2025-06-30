@@ -333,6 +333,30 @@ public class UpdateSpendRequest
 }
 
 /// <summary>
+/// Represents a request to refund spending for a virtual key.
+/// </summary>
+public class RefundSpendRequest
+{
+    /// <summary>
+    /// Gets or sets the amount to refund (positive value).
+    /// </summary>
+    [Required]
+    [Range(0.01, double.MaxValue, ErrorMessage = "Refund amount must be greater than zero")]
+    public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason for the refund.
+    /// </summary>
+    [Required]
+    public string Reason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets an optional original transaction ID for audit trail.
+    /// </summary>
+    public string? OriginalTransactionId { get; set; }
+}
+
+/// <summary>
 /// Represents a request to check budget availability.
 /// </summary>
 public class CheckBudgetRequest

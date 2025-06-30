@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -133,5 +135,185 @@ public class CostCalculationService : ICostCalculationService
             modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, calculatedCost);
 
         return calculatedCost;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// This implementation calculates refunds using the following logic:
+    /// </para>
+    /// <list type="number">
+    ///   <item><description>Validates the refund request parameters</description></item>
+    ///   <item><description>Ensures refund amounts don't exceed original amounts</description></item>
+    ///   <item><description>Calculates refund based on the same pricing logic as charges</description></item>
+    ///   <item><description>Returns a detailed refund result with breakdown</description></item>
+    /// </list>
+    /// <para>
+    /// The method enforces validation rules to ensure data integrity:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description>Refund amounts cannot exceed original amounts</description></item>
+    ///   <item><description>All usage values must be non-negative</description></item>
+    ///   <item><description>Partial refunds are allowed and tracked</description></item>
+    /// </list>
+    /// </remarks>
+    public async Task<RefundResult> CalculateRefundAsync(
+        string modelId,
+        Usage originalUsage,
+        Usage refundUsage,
+        string refundReason,
+        string? originalTransactionId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new RefundResult
+        {
+            ModelId = modelId,
+            OriginalUsage = originalUsage,
+            RefundUsage = refundUsage,
+            RefundReason = refundReason,
+            OriginalTransactionId = originalTransactionId,
+            RefundedAt = DateTime.UtcNow
+        };
+
+        // Validate inputs
+        if (string.IsNullOrEmpty(modelId))
+        {
+            result.ValidationMessages.Add("Model ID is required for refund calculation.");
+            return result;
+        }
+
+        if (originalUsage == null || refundUsage == null)
+        {
+            result.ValidationMessages.Add("Both original and refund usage data are required.");
+            return result;
+        }
+
+        if (string.IsNullOrEmpty(refundReason))
+        {
+            result.ValidationMessages.Add("Refund reason is required.");
+            return result;
+        }
+
+        // Validate refund amounts don't exceed original amounts
+        var validationMessages = ValidateRefundAmounts(originalUsage, refundUsage);
+        if (validationMessages.Any())
+        {
+            result.ValidationMessages.AddRange(validationMessages);
+            result.IsPartialRefund = true;
+        }
+
+        // Get model cost information
+        var modelCost = await _modelCostService.GetCostForModelAsync(modelId, cancellationToken);
+        if (modelCost == null)
+        {
+            _logger.LogWarning("Cost information not found for model {ModelId} during refund calculation.", modelId);
+            result.ValidationMessages.Add($"Cost information not found for model {modelId}.");
+            return result;
+        }
+
+        // Calculate refund amount using the same logic as charging
+        var breakdown = new RefundBreakdown();
+        decimal totalRefund = 0m;
+
+        // Calculate token-based refunds
+        if (refundUsage.PromptTokens > 0)
+        {
+            breakdown.InputTokenRefund = refundUsage.PromptTokens * modelCost.InputTokenCost;
+            totalRefund += breakdown.InputTokenRefund;
+        }
+
+        if (refundUsage.CompletionTokens > 0)
+        {
+            breakdown.OutputTokenRefund = refundUsage.CompletionTokens * modelCost.OutputTokenCost;
+            totalRefund += breakdown.OutputTokenRefund;
+        }
+
+        // Handle embedding refunds
+        if (modelCost.EmbeddingTokenCost.HasValue && 
+            refundUsage.CompletionTokens == 0 && 
+            refundUsage.ImageCount == null &&
+            refundUsage.PromptTokens > 0)
+        {
+            breakdown.EmbeddingRefund = refundUsage.PromptTokens * modelCost.EmbeddingTokenCost.Value;
+            totalRefund = breakdown.EmbeddingRefund; // Override total for embeddings
+        }
+
+        // Handle image generation refunds
+        if (modelCost.ImageCostPerImage.HasValue && refundUsage.ImageCount.HasValue && refundUsage.ImageCount.Value > 0)
+        {
+            breakdown.ImageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
+            totalRefund += breakdown.ImageRefund;
+        }
+
+        // Handle video generation refunds
+        if (modelCost.VideoCostPerSecond.HasValue && refundUsage.VideoDurationSeconds.HasValue && refundUsage.VideoDurationSeconds.Value > 0)
+        {
+            var videoRefund = (decimal)refundUsage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
+            
+            // Apply resolution multiplier if available
+            if (modelCost.VideoResolutionMultipliers != null && 
+                !string.IsNullOrEmpty(refundUsage.VideoResolution) &&
+                modelCost.VideoResolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
+            {
+                videoRefund *= multiplier;
+            }
+            
+            breakdown.VideoRefund = videoRefund;
+            totalRefund += breakdown.VideoRefund;
+        }
+
+        result.RefundAmount = totalRefund;
+        result.Breakdown = breakdown;
+
+        _logger.LogInformation(
+            "Calculated refund for model {ModelId}: {RefundAmount}. Reason: {RefundReason}. Original Transaction: {OriginalTransactionId}",
+            modelId, totalRefund, refundReason, originalTransactionId ?? "N/A");
+
+        return result;
+    }
+
+    private List<string> ValidateRefundAmounts(Usage originalUsage, Usage refundUsage)
+    {
+        var messages = new List<string>();
+
+        if (refundUsage.PromptTokens > originalUsage.PromptTokens)
+        {
+            messages.Add($"Refund prompt tokens ({refundUsage.PromptTokens}) cannot exceed original ({originalUsage.PromptTokens}).");
+        }
+
+        if (refundUsage.CompletionTokens > originalUsage.CompletionTokens)
+        {
+            messages.Add($"Refund completion tokens ({refundUsage.CompletionTokens}) cannot exceed original ({originalUsage.CompletionTokens}).");
+        }
+
+        if (refundUsage.ImageCount.HasValue && originalUsage.ImageCount.HasValue &&
+            refundUsage.ImageCount.Value > originalUsage.ImageCount.Value)
+        {
+            messages.Add($"Refund image count ({refundUsage.ImageCount.Value}) cannot exceed original ({originalUsage.ImageCount.Value}).");
+        }
+
+        if (refundUsage.VideoDurationSeconds.HasValue && originalUsage.VideoDurationSeconds.HasValue &&
+            refundUsage.VideoDurationSeconds.Value > originalUsage.VideoDurationSeconds.Value)
+        {
+            messages.Add($"Refund video duration ({refundUsage.VideoDurationSeconds.Value}s) cannot exceed original ({originalUsage.VideoDurationSeconds.Value}s).");
+        }
+
+        // Validate all values are non-negative
+        if (refundUsage.PromptTokens < 0 || refundUsage.CompletionTokens < 0)
+        {
+            messages.Add("Refund token counts must be non-negative.");
+        }
+
+        if (refundUsage.ImageCount.HasValue && refundUsage.ImageCount.Value < 0)
+        {
+            messages.Add("Refund image count must be non-negative.");
+        }
+
+        if (refundUsage.VideoDurationSeconds.HasValue && refundUsage.VideoDurationSeconds.Value < 0)
+        {
+            messages.Add("Refund video duration must be non-negative.");
+        }
+
+        return messages;
     }
 }

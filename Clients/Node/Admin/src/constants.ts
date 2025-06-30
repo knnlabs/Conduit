@@ -63,6 +63,7 @@ export const ENDPOINTS = {
     RESET_SPEND: (id: number) => `/virtualkeys/${id}/reset-spend`,
     VALIDATE: '/virtualkeys/validate',
     SPEND: (id: number) => `/virtualkeys/${id}/spend`,
+    REFUND: (id: number) => `/virtualkeys/${id}/refund`,
     CHECK_BUDGET: (id: number) => `/virtualkeys/${id}/check-budget`,
     VALIDATION_INFO: (id: number) => `/virtualkeys/${id}/validation-info`,
     MAINTENANCE: '/virtualkeys/maintenance',

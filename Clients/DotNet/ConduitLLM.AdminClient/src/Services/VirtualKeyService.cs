@@ -272,6 +272,33 @@ public class VirtualKeyService : BaseApiClient
     }
 
     /// <summary>
+    /// Refunds spend amount for a virtual key.
+    /// </summary>
+    /// <param name="id">The virtual key ID.</param>
+    /// <param name="request">The refund request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="NotFoundException">Thrown when the virtual key is not found.</exception>
+    /// <exception cref="ValidationException">Thrown when the request is invalid or refund amount exceeds current spend.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task RefundSpendAsync(
+        int id,
+        RefundSpendRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoint = $"{BaseEndpoint}/{id}/refund";
+            await PostAsync(endpoint, request, cancellationToken);
+            InvalidateCache(GetCacheKey("virtual-key", id));
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{BaseEndpoint}/{id}/refund", "POST");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Checks if a virtual key has sufficient budget for an estimated cost.
     /// </summary>
     /// <param name="id">The virtual key ID.</param>
