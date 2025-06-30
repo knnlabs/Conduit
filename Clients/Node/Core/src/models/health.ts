@@ -23,7 +23,7 @@ export interface HealthCheckItem {
   /** Duration of this health check in milliseconds */
   duration: number;
   /** Additional data associated with this health check */
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   /** Exception information if the health check failed */
   exception?: string;
   /** Tags associated with this health check */

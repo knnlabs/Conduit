@@ -219,7 +219,7 @@ export class BatchOperationsService {
     const timeout = options.timeout || 600000; // 10 minutes default
 
     const startTime = Date.now();
-    let lastStatus: BatchOperationStatusResponse;
+    let lastStatus: BatchOperationStatusResponse | undefined;
 
     while (Date.now() - startTime < timeout) {
       lastStatus = await this.getOperationStatus(operationId);
@@ -236,7 +236,7 @@ export class BatchOperationsService {
 
     throw new Error(
       `Batch operation ${operationId} did not complete within ${timeout}ms. ` +
-      `Last status: ${lastStatus!.status}`
+      `Last status: ${lastStatus?.status || 'unknown'}`
     );
   }
 

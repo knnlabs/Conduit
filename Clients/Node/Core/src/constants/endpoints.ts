@@ -70,7 +70,7 @@ export const EndpointHelpers = {
       case 'videos':
         return API_ENDPOINTS.V1.VIDEOS.TASK_STATUS(taskId);
       default:
-        throw new Error(`Unsupported task type: ${taskType}`);
+        throw new Error(`Unsupported task type: ${taskType as string}`);
     }
   },
 
@@ -84,7 +84,7 @@ export const EndpointHelpers = {
       case 'videos':
         return API_ENDPOINTS.V1.VIDEOS.CANCEL_TASK(taskId);
       default:
-        throw new Error(`Unsupported task type: ${taskType}`);
+        throw new Error(`Unsupported task type: ${taskType as string}`);
     }
   },
 } as const;

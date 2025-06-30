@@ -101,21 +101,18 @@ export abstract class BaseSignalRConnection {
 
     // Set up event handlers
     this.connection.onclose(async (error) => {
-      console.log(`SignalR connection closed for ${this.hubPath}:`, error?.message);
       if (this.onDisconnected) {
         await this.onDisconnected(error);
       }
     });
 
     this.connection.onreconnecting(async (error) => {
-      console.log(`SignalR reconnecting for ${this.hubPath}:`, error?.message);
       if (this.onReconnecting) {
         await this.onReconnecting(error);
       }
     });
 
     this.connection.onreconnected(async (connectionId) => {
-      console.log(`SignalR reconnected for ${this.hubPath} with connection ID:`, connectionId);
       if (this.onReconnected) {
         await this.onReconnected(connectionId);
       }
@@ -126,7 +123,6 @@ export abstract class BaseSignalRConnection {
 
     try {
       await this.connection.start();
-      console.log(`SignalR connection established to ${this.hubPath}`);
       
       if (this.connectionReadyResolve) {
         this.connectionReadyResolve();
@@ -136,7 +132,6 @@ export abstract class BaseSignalRConnection {
         await this.onConnected();
       }
     } catch (error) {
-      console.error(`Failed to establish SignalR connection to ${this.hubPath}:`, error);
       if (this.connectionReadyReject) {
         this.connectionReadyReject(error as Error);
       }
@@ -201,9 +196,8 @@ export abstract class BaseSignalRConnection {
     if (this.connection) {
       try {
         await this.connection.stop();
-        console.log(`SignalR connection stopped for ${this.hubPath}`);
       } catch (error) {
-        console.warn(`Error stopping SignalR connection for ${this.hubPath}:`, error);
+        // Silently handle stop errors
       }
     }
   }

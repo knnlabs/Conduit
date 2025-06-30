@@ -218,7 +218,7 @@ export interface AsyncImageGenerationRequest extends ImageGenerationRequest {
   /**
    * Additional metadata to include with the webhook callback
    */
-  webhook_metadata?: Record<string, any>;
+  webhook_metadata?: Record<string, unknown>;
 
   /**
    * The timeout for the generation task in seconds (1-3600)

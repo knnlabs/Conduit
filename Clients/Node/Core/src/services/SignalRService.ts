@@ -56,7 +56,6 @@ export class SignalRService {
 
     const newConnection = factory();
     this.connections.set(key, newConnection);
-    console.debug(`Created new SignalR connection: ${key}`);
     
     return newConnection;
   }
@@ -69,7 +68,6 @@ export class SignalRService {
       connection => connection.start()
     );
     await Promise.all(startPromises);
-    console.log(`Started ${this.connections.size} SignalR connections`);
   }
 
   /**
@@ -80,7 +78,6 @@ export class SignalRService {
       connection => connection.stop()
     );
     await Promise.all(stopPromises);
-    console.log(`Stopped ${this.connections.size} SignalR connections`);
   }
 
   /**

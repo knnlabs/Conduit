@@ -112,7 +112,7 @@ export interface IImageGenerationHubServer {
 export interface TaskStartedEvent {
   taskId: string;
   taskType: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -129,7 +129,7 @@ export interface TaskProgressEvent {
  */
 export interface TaskCompletedEvent {
   taskId: string;
-  result: any;
+  result: Record<string, unknown>;
 }
 
 /**
@@ -184,7 +184,7 @@ export interface VideoGenerationCompletedEvent {
   taskId: string;
   videoUrl: string;
   duration: number;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -211,5 +211,5 @@ export interface ImageGenerationProgressEvent {
 export interface ImageGenerationCompletedEvent {
   taskId: string;
   imageUrl: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }

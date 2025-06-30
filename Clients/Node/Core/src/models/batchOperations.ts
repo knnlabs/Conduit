@@ -23,7 +23,7 @@ export interface SpendUpdateDto {
   /** Provider name associated with the spend */
   provider: string;
   /** Optional metadata for the spend update */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface VirtualKeyUpdateDto {
   /** New list of allowed models */
   allowedModels?: string[];
   /** New rate limits configuration */
-  rateLimits?: Record<string, any>;
+  rateLimits?: Record<string, unknown>;
   /** Whether the virtual key is enabled */
   isEnabled?: boolean;
   /** New expiration date for the virtual key */
@@ -71,7 +71,7 @@ export interface WebhookSendDto {
   /** Event type for the webhook */
   eventType: string;
   /** Payload to send in the webhook */
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   /** Optional headers to include in the webhook request */
   headers?: Record<string, string>;
   /** Optional secret for webhook signature verification */
@@ -171,7 +171,7 @@ export interface BatchOperationStatusResponse {
   /** Whether the operation can be cancelled */
   canCancel: boolean;
   /** Additional operation details */
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 /**

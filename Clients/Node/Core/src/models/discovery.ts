@@ -27,7 +27,7 @@ export interface DiscoveredModel {
   provider: string;
   display_name?: string;
   capabilities: ModelCapabilities;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   last_verified: string;
 }
 
