@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Services;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 
@@ -23,6 +24,9 @@ namespace ConduitLLM.Http.EventHandlers
         private readonly ILogger<ModelDiscoveryNotificationHandler> _logger;
         private readonly IMemoryCache _cache;
         private readonly IModelCostService _modelCostService;
+        private readonly IModelDiscoveryNotificationBatcher _batcher;
+        private readonly INotificationSeverityClassifier _severityClassifier;
+        private readonly IModelDiscoverySubscriptionManager _subscriptionManager;
         private const string CacheKeyPrefix = "previous_model_capabilities_";
         private const string PricingCacheKeyPrefix = "previous_model_pricing_";
 
@@ -30,12 +34,18 @@ namespace ConduitLLM.Http.EventHandlers
             IHubContext<ModelDiscoveryHub> hubContext,
             ILogger<ModelDiscoveryNotificationHandler> logger,
             IMemoryCache cache,
-            IModelCostService modelCostService)
+            IModelCostService modelCostService,
+            IModelDiscoveryNotificationBatcher batcher,
+            INotificationSeverityClassifier severityClassifier,
+            IModelDiscoverySubscriptionManager subscriptionManager)
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
+            _batcher = batcher ?? throw new ArgumentNullException(nameof(batcher));
+            _severityClassifier = severityClassifier ?? throw new ArgumentNullException(nameof(severityClassifier));
+            _subscriptionManager = subscriptionManager ?? throw new ArgumentNullException(nameof(subscriptionManager));
         }
 
         public async Task Consume(ConsumeContext<ModelCapabilitiesDiscovered> context)
@@ -190,17 +200,21 @@ namespace ConduitLLM.Http.EventHandlers
                 DiscoveredAt = message.DiscoveredAt
             };
 
-            // Notify provider-specific subscribers
-            await _hubContext.Clients.Group($"provider-{provider.ToLowerInvariant()}")
-                .SendAsync("NewModelsDiscovered", notification);
+            // Determine severity based on provider and model capabilities
+            var severity = newModels.Any() 
+                ? newModels.Max(m => _severityClassifier.ClassifyNewModel(provider, m))
+                : NotificationSeverity.Low;
 
-            // Notify global subscribers
-            await _hubContext.Clients.Group("model-discovery-all")
-                .SendAsync("NewModelsDiscovered", notification);
+            // Queue for provider-specific subscribers
+            var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+            await _batcher.QueueNotificationAsync(providerGroup, notification, severity);
+
+            // Queue for global subscribers 
+            await _batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
             _logger.LogInformation(
-                "Sent new models notification for provider {Provider}: {Count} new models",
-                provider, newModels.Count);
+                "Queued new models notification for provider {Provider}: {Count} new models with severity {Severity}",
+                provider, newModels.Count, severity);
         }
 
         private async Task NotifyCapabilityChangedAsync(string provider, ModelCapabilityChange change)
@@ -215,17 +229,19 @@ namespace ConduitLLM.Http.EventHandlers
                 ChangedAt = DateTime.UtcNow
             };
 
-            // Notify provider-specific subscribers
-            await _hubContext.Clients.Group($"provider-{provider.ToLowerInvariant()}")
-                .SendAsync("ModelCapabilitiesChanged", notification);
+            // Determine severity based on the type of changes
+            var severity = _severityClassifier.ClassifyCapabilityChange(provider, change.ModelId, change.Changes);
 
-            // Notify global subscribers
-            await _hubContext.Clients.Group("model-discovery-all")
-                .SendAsync("ModelCapabilitiesChanged", notification);
+            // Queue for provider-specific subscribers
+            var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+            await _batcher.QueueNotificationAsync(providerGroup, notification, severity);
+
+            // Queue for global subscribers
+            await _batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
             _logger.LogInformation(
-                "Sent capability change notification for model {Model} from provider {Provider}",
-                change.ModelId, provider);
+                "Queued capability change notification for model {Model} from provider {Provider} with severity {Severity}",
+                change.ModelId, provider, severity);
         }
 
         private async Task NotifyPricingUpdatedAsync(string provider, ModelPricingUpdate update)
@@ -252,17 +268,19 @@ namespace ConduitLLM.Http.EventHandlers
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // Notify provider-specific subscribers
-            await _hubContext.Clients.Group($"provider-{provider.ToLowerInvariant()}")
-                .SendAsync("ModelPricingUpdated", notification);
+            // Determine severity based on price change magnitude
+            var severity = _severityClassifier.ClassifyPriceChange(provider, update.ModelId, percentageChange);
 
-            // Notify global subscribers
-            await _hubContext.Clients.Group("model-discovery-all")
-                .SendAsync("ModelPricingUpdated", notification);
+            // Queue for provider-specific subscribers
+            var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+            await _batcher.QueueNotificationAsync(providerGroup, notification, severity);
+
+            // Queue for global subscribers
+            await _batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
             _logger.LogInformation(
-                "Sent pricing update notification for model {Model} from provider {Provider}: {Change:F2}% change",
-                update.ModelId, provider, percentageChange);
+                "Queued pricing update notification for model {Model} from provider {Provider}: {Change:F2}% change with severity {Severity}",
+                update.ModelId, provider, percentageChange, severity);
         }
 
         private Task UpdateCacheAsync(ModelCapabilitiesDiscovered message)

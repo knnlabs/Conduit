@@ -23,6 +23,7 @@ using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualK
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 using ConduitLLM.Admin.Services; // Added for DatabaseAwareLLMClientFactory
+using ConduitLLM.Configuration.DTOs.SignalR; // Added for NotificationBatchingOptions
 
 using MassTransit; // Added for event bus infrastructure
 
@@ -1113,6 +1114,14 @@ builder.Services.AddSingleton<IVirtualKeyManagementNotificationService, VirtualK
 
 // Register usage analytics notification service
 builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
+
+// Register model discovery notification services
+builder.Services.Configure<NotificationBatchingOptions>(builder.Configuration.GetSection("ConduitLLM:NotificationBatching"));
+builder.Services.AddSingleton<IModelDiscoverySubscriptionManager, ModelDiscoverySubscriptionManager>();
+builder.Services.AddSingleton<INotificationSeverityClassifier, NotificationSeverityClassifier>();
+builder.Services.AddSingleton<IModelDiscoveryNotificationBatcher, ModelDiscoveryNotificationBatcher>();
+builder.Services.AddHostedService<ModelDiscoveryNotificationBatcher>(sp => 
+    (ModelDiscoveryNotificationBatcher)sp.GetRequiredService<IModelDiscoveryNotificationBatcher>());
 
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>

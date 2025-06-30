@@ -677,8 +677,12 @@ namespace ConduitLLM.Tests.Core.Services
             decimal expectedCost;
             if (shouldUseEmbeddingCost)
             {
-                // Pure embedding case: promptTokens * embeddingCost
+                // Embedding case: promptTokens * embeddingCost + images if present
                 expectedCost = promptTokens * modelCost.EmbeddingTokenCost.Value;
+                if (imageCount.HasValue)
+                {
+                    expectedCost += imageCount.Value * modelCost.ImageCostPerImage.Value;
+                }
             }
             else
             {
