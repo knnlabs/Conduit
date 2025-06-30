@@ -81,6 +81,37 @@ codeql database analyze conduit-codeql-db --format=csv --output=results.csv \
 
 A successful fix will show 0 results in the CSV file.
 
+### Unicode Line/Paragraph Separator Sanitization
+
+The `LoggingSanitizer` class includes protection against Unicode line separator (U+2028) and paragraph separator (U+2029) characters. These characters can be interpreted as line breaks by some systems, potentially allowing log injection attacks.
+
+#### The Security Fix
+
+The sanitizer removes these Unicode separators along with standard CRLF characters:
+
+```csharp
+// Unicode separators that could be interpreted as newlines
+private static readonly Regex UnicodeSeparatorPattern = new(@"[\u2028\u2029]", RegexOptions.Compiled);
+
+// In the sanitization method
+str = UnicodeSeparatorPattern.Replace(str, " ");
+```
+
+#### Why This Matters
+
+- **U+2028 (LINE SEPARATOR)** and **U+2029 (PARAGRAPH SEPARATOR)** are not included in standard ASCII control character ranges
+- Some log parsers and analysis tools interpret these as line breaks
+- Attackers could use these to inject fake log entries or corrupt structured log formats
+- This fix prevents log injection attacks that bypass traditional CRLF sanitization
+
+#### Using the Sanitizer
+
+Always use `LoggingSanitizer.S()` for user-controlled data:
+
+```csharp
+_logger.LogInformation("User input: {Input}", LoggingSanitizer.S(userInput));
+```
+
 ## Other Security Considerations
 
 ### Insecure Mode Protection

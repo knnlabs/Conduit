@@ -12,6 +12,7 @@ namespace ConduitLLM.Core.Extensions
     {
         private static readonly Regex CrlfPattern = new(@"[\r\n]", RegexOptions.Compiled);
         private static readonly Regex ControlCharPattern = new(@"[\x00-\x1F\x7F]", RegexOptions.Compiled);
+        private static readonly Regex UnicodeSeparatorPattern = new(@"[\u2028\u2029]", RegexOptions.Compiled);
         private const int MaxLength = 1000;
 
         /// <summary>
@@ -32,6 +33,9 @@ namespace ConduitLLM.Core.Extensions
             
             // Remove control characters
             str = ControlCharPattern.Replace(str, string.Empty);
+            
+            // Remove Unicode line/paragraph separators
+            str = UnicodeSeparatorPattern.Replace(str, " ");
             
             // Truncate if too long
             if (str.Length > MaxLength)
@@ -57,6 +61,9 @@ namespace ConduitLLM.Core.Extensions
             
             // Remove control characters
             value = ControlCharPattern.Replace(value, string.Empty);
+            
+            // Remove Unicode line/paragraph separators
+            value = UnicodeSeparatorPattern.Replace(value, " ");
             
             // Truncate if too long
             if (value.Length > MaxLength)

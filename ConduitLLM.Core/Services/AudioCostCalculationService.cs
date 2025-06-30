@@ -274,9 +274,13 @@ _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate"
             if (_pricingModels.TryGetValue(provider.ToLowerInvariant(), out var pricingModel) &&
                 pricingModel.RealtimeRates.TryGetValue(model, out var realtimeRate))
             {
+                // For negative values (refunds), don't apply minimum duration
+                var effectiveInputMinutes = inputMinutes < 0 ? inputMinutes : Math.Max(inputMinutes, realtimeRate.MinimumDuration);
+                var effectiveOutputMinutes = outputMinutes < 0 ? outputMinutes : Math.Max(outputMinutes, realtimeRate.MinimumDuration);
+                
                 var audioCost = (double)(
-                    realtimeRate.InputAudioPerMinute * (decimal)Math.Max(inputMinutes, realtimeRate.MinimumDuration) +
-                    realtimeRate.OutputAudioPerMinute * (decimal)Math.Max(outputMinutes, realtimeRate.MinimumDuration));
+                    realtimeRate.InputAudioPerMinute * (decimal)effectiveInputMinutes +
+                    realtimeRate.OutputAudioPerMinute * (decimal)effectiveOutputMinutes);
 
                 var tokenCost = 0.0;
                 if (inputTokens.HasValue && realtimeRate.InputTokenRate.HasValue)

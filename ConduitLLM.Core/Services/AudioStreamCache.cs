@@ -324,15 +324,6 @@ namespace ConduitLLM.Core.Services
         }
     }
 
-    /// <summary>
-    /// Cache entry for TTS responses.
-    /// </summary>
-    internal class TtsCacheEntry
-    {
-        public TextToSpeechResponse Response { get; set; } = new();
-        public DateTime CachedAt { get; set; }
-        public long SizeBytes { get; set; }
-    }
 
     /// <summary>
     /// Internal metrics tracking.

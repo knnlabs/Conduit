@@ -113,3 +113,35 @@ The default costs are based on the official pricing pages from each provider:
 - [OpenAI Pricing](https://openai.com/pricing)
 
 Always check the official pricing pages for the most up-to-date information, as these values may change.
+
+## Cost Calculation Behavior for Embeddings
+
+### Important Note on Multimodal Embedding Models
+
+The `CostCalculationService` has specific rules for when embedding costs are applied vs regular token costs. This behavior might be unexpected in certain scenarios.
+
+#### When Embedding Cost is Used
+
+Embedding cost (`EmbeddingTokenCost`) is ONLY used when ALL of the following conditions are met:
+1. The model has an `EmbeddingTokenCost` defined
+2. `CompletionTokens` equals 0
+3. `ImageCount` is null (not present)
+
+#### When Regular Token Cost is Used
+
+Regular token costs (`InputTokenCost`/`OutputTokenCost`) are used in all other cases, including:
+- When the model generates completion tokens (even if it has embedding cost defined)
+- When the model generates images (even if it's primarily an embedding model)
+- When both conditions above are true
+
+#### Known Issue with Multimodal Models
+
+This logic can lead to unexpected billing in multimodal scenarios. For example, consider a model that:
+- Primarily generates embeddings (with specialized, cheaper embedding pricing)
+- Can also generate visualization images
+
+When this model processes tokens and generates images, it will use the more expensive `InputTokenCost` instead of the `EmbeddingTokenCost`, potentially resulting in significantly higher costs than expected.
+
+**Example**: A model with `InputTokenCost` of $0.10/1M tokens and `EmbeddingTokenCost` of $0.01/1M tokens (10x cheaper) that generates 2 images would charge based on the input token cost, not the embedding cost, resulting in 10x higher token charges.
+
+This behavior is documented in the test suite and may be addressed in future versions to provide more flexible cost calculation options for multimodal models.

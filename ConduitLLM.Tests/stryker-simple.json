@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/Options/stryker-schema.json",
+  "stryker-config": {
+    "project": "ConduitLLM.Core.csproj",
+    "mutation-level": "Standard",
+    "thresholds": {
+      "high": 85,
+      "low": 70,
+      "break": 60
+    },
+    "mutate": [
+      "**/CostCalculationService.cs"
+    ],
+    "reporters": [
+      "Progress",
+      "Html",
+      "ClearText"
+    ],
+    "coverage-analysis": "perTest",
+    "concurrency": 4
+  }
+}

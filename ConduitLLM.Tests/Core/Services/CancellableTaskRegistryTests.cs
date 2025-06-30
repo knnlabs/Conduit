@@ -172,22 +172,19 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Cancel directly through CancellationTokenSource
             cts.Cancel();
-            
-            // Give time for the automatic unregistration to occur
-            Thread.Sleep(100);
 
-            // Act
+            // Act - Try to cancel again (task is still in registry due to grace period)
             var result = _registry.TryCancel(taskId);
 
             // Assert
-            result.Should().BeFalse();
+            result.Should().BeFalse("cannot cancel an already cancelled task");
             
-            // Since the task was automatically unregistered, it won't be found
+            // The task is still in registry (grace period), but already cancelled
             _loggerMock.Verify(
                 x => x.Log(
                     LogLevel.Debug,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Task {taskId} not found in registry")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Task {taskId} was already cancelled")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -335,7 +332,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public void AutomaticUnregistration_WhenTokenCancelled_RemovesFromRegistry()
+        public void AutomaticUnregistration_WhenTokenCancelled_KeepsTaskInRegistryDuringGracePeriod()
         {
             // Arrange
             var taskId = "auto-unregister";
@@ -348,8 +345,11 @@ namespace ConduitLLM.Tests.Core.Services
             // Give time for the callback to execute
             Thread.Sleep(100);
 
-            // Assert
-            _registry.TryGetCancellationToken(taskId, out _).Should().BeFalse();
+            // Assert - Task should still be in registry due to grace period
+            _registry.TryGetCancellationToken(taskId, out _).Should().BeTrue("task should remain in registry during grace period");
+            
+            // Note: The actual removal happens after grace period expires (5 seconds by default)
+            // This is tested in GracePeriod_WhenTokenCancelled_TaskRemainsAccessibleDuringGracePeriod
         }
 
         [Fact]
@@ -502,6 +502,184 @@ namespace ConduitLLM.Tests.Core.Services
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public void CancelledTask_RemainsInRegistryDuringGracePeriod()
+        {
+            // This test verifies that cancelled tasks remain accessible during the grace period.
+            // The actual removal happens asynchronously via the cleanup timer.
+            
+            // Arrange
+            var taskId = "grace-test";
+            using var cts = new CancellationTokenSource();
+            _registry.RegisterTask(taskId, cts);
+            
+            // Act - Cancel the task
+            cts.Cancel();
+            
+            // Assert - Task should still be in registry immediately after cancellation
+            _registry.TryGetCancellationToken(taskId, out var token).Should().BeTrue("task should remain during grace period");
+            token.Should().NotBeNull();
+            token!.Value.IsCancellationRequested.Should().BeTrue();
+            
+            // Verify that the task was marked as cancelled in the logs
+            _loggerMock.Verify(
+                x => x.Log(
+                    LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Marked task {taskId} as cancelled, will be removed after grace period")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task CleanupTimer_RemovesMultipleCancelledTasksAfterGracePeriod()
+        {
+            // Arrange
+            var shortGracePeriod = TimeSpan.FromMilliseconds(300);
+            var registry = new CancellableTaskRegistry(_loggerMock.Object, shortGracePeriod);
+            var taskIds = new[] { "task1", "task2", "task3" };
+            var ctsList = new List<CancellationTokenSource>();
+            
+            try
+            {
+                foreach (var taskId in taskIds)
+                {
+                    var cts = new CancellationTokenSource();
+                    ctsList.Add(cts);
+                    registry.RegisterTask(taskId, cts);
+                }
+                
+                // Act - Cancel all tasks
+                foreach (var cts in ctsList)
+                {
+                    cts.Cancel();
+                }
+                
+                // Assert - All tasks should still be accessible immediately
+                foreach (var taskId in taskIds)
+                {
+                    registry.TryGetCancellationToken(taskId, out _).Should().BeTrue();
+                }
+                
+                // Wait for grace period to expire plus cleanup timer interval
+                await Task.Delay(1500); // > 300ms grace period + 1000ms cleanup timer interval
+                
+                // All tasks should be removed
+                foreach (var taskId in taskIds)
+                {
+                    registry.TryGetCancellationToken(taskId, out _).Should().BeFalse();
+                }
+            }
+            finally
+            {
+                // Cleanup
+                foreach (var cts in ctsList)
+                {
+                    cts.Dispose();
+                }
+                registry.Dispose();
+            }
+        }
+
+        [Fact]
+        public async Task Dispose_WithRunningTimer_StopsCleanupOperations()
+        {
+            // Arrange
+            var shortGracePeriod = TimeSpan.FromMilliseconds(200);
+            var registry = new CancellableTaskRegistry(_loggerMock.Object, shortGracePeriod);
+            var taskId = "timer-test";
+            using var cts = new CancellationTokenSource();
+            
+            registry.RegisterTask(taskId, cts);
+            cts.Cancel();
+            
+            // Act - Dispose the registry while timer is running
+            registry.Dispose();
+            
+            // Wait longer than grace period
+            await Task.Delay(400);
+            
+            // Assert - No exceptions should occur and dispose should log
+            _loggerMock.Verify(
+                x => x.Log(
+                    LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Disposing CancellableTaskRegistry")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.AtLeastOnce);
+            
+            // Verify timer doesn't continue after disposal by checking that
+            // no cleanup logs occur after disposal
+            var cleanupLogCount = _loggerMock.Invocations
+                .Count(inv => inv.Arguments.Any(arg => 
+                    arg != null && arg.ToString()!.Contains("Removed cancelled task")));
+            
+            // Wait a bit more to ensure timer is really stopped
+            await Task.Delay(200);
+            
+            var newCleanupLogCount = _loggerMock.Invocations
+                .Count(inv => inv.Arguments.Any(arg => 
+                    arg != null && arg.ToString()!.Contains("Removed cancelled task")));
+            
+            newCleanupLogCount.Should().Be(cleanupLogCount, "timer should not run after disposal");
+        }
+
+        [Fact]
+        public void Constructor_WithCustomGracePeriod_UsesProvidedValue()
+        {
+            // Arrange & Act
+            var customGracePeriod = TimeSpan.FromSeconds(10);
+            using var registry = new CancellableTaskRegistry(_loggerMock.Object, customGracePeriod);
+            var taskId = "custom-grace";
+            using var cts = new CancellationTokenSource();
+            
+            registry.RegisterTask(taskId, cts);
+            cts.Cancel();
+            
+            // Assert - Task should still be in registry after default grace period
+            Thread.Sleep(TimeSpan.FromSeconds(6)); // > default 5 seconds
+            registry.TryGetCancellationToken(taskId, out _).Should().BeTrue("custom grace period should be respected");
+        }
+
+        [Fact]
+        public async Task NonCancelledTasks_AreNotRemovedByCleanupTimer()
+        {
+            // Arrange
+            var shortGracePeriod = TimeSpan.FromMilliseconds(300);
+            var registry = new CancellableTaskRegistry(_loggerMock.Object, shortGracePeriod);
+            var activeTaskId = "active-task";
+            var cancelledTaskId = "cancelled-task";
+            
+            using var activeCts = new CancellationTokenSource();
+            using var cancelledCts = new CancellationTokenSource();
+            
+            try
+            {
+                registry.RegisterTask(activeTaskId, activeCts);
+                registry.RegisterTask(cancelledTaskId, cancelledCts);
+                
+                // Wait to stabilize before cancellation
+                await Task.Delay(100);
+                
+                // Act - Cancel only one task
+                cancelledCts.Cancel();
+                
+                // Wait for grace period to expire plus extra time for cleanup timer
+                // Grace period (300ms) + cleanup timer worst case (1000ms) + buffer
+                await Task.Delay(1500);
+                
+                // Assert
+                registry.TryGetCancellationToken(activeTaskId, out _).Should().BeTrue("active task should not be removed");
+                registry.TryGetCancellationToken(cancelledTaskId, out _).Should().BeFalse("cancelled task should be removed after grace period");
+            }
+            finally
+            {
+                registry.Dispose();
+            }
         }
 
         public new void Dispose()
