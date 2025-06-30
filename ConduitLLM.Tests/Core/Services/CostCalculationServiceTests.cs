@@ -563,11 +563,10 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCostAsync_WithEmbeddingAndImageCount_UsesInputTokenCostNotEmbeddingCost()
+        public async Task CalculateCostAsync_WithEmbeddingAndImageCount_UsesEmbeddingCost()
         {
-            // This tests the current behavior where embedding cost is IGNORED when ImageCount is present
-            // This might be unexpected - if a model supports both embeddings and images,
-            // developers might expect embedding cost to be used for the text portion
+            // This tests that embedding cost is correctly used even when ImageCount is present
+            // When a model supports both embeddings and images, embedding cost should be used for the text portion
             // Arrange
             var modelId = "multimodal/embedding";
             var usage = new Usage
@@ -580,9 +579,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,        // This is used
+                InputTokenCost = 0.00001m,
                 OutputTokenCost = 0.00001m,
-                EmbeddingTokenCost = 0.0000001m,  // This is IGNORED because ImageCount != null
+                EmbeddingTokenCost = 0.0000001m,  // This is now USED for embeddings
                 ImageCostPerImage = 0.05m
             };
 
@@ -594,19 +593,15 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // CURRENT BEHAVIOR (potentially confusing):
-            // Text: 1000 * 0.00001 (input cost, NOT embedding cost) = 0.01
+            // NEW BEHAVIOR (correct):
+            // Text: 1000 * 0.0000001 (embedding cost) = 0.0001
             // Image: 1 * 0.05 = 0.05
-            // Total: 0.01 + 0.05 = 0.06
-            result.Should().Be(0.06m);
-            
-            // NOTE: If this behavior is intentional, it should be documented.
-            // If not, consider changing the logic to use embedding cost when available,
-            // regardless of ImageCount presence.
+            // Total: 0.0001 + 0.05 = 0.0501
+            result.Should().Be(0.0501m);
         }
         
         [Fact]
-        public async Task CalculateCostAsync_WithEmbeddingModelGeneratingImages_DocumentsBehavior()
+        public async Task CalculateCostAsync_WithEmbeddingModelGeneratingImages_UsesEmbeddingCost()
         {
             // Real-world scenario: An embedding model that can also generate images
             // Example: A multimodal model that embeds text but can also create visualizations
@@ -635,21 +630,20 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             var result = await _service.CalculateCostAsync(modelId, usage);
 
-            // Assert - Current behavior uses InputTokenCost, not EmbeddingTokenCost
-            // Text: 5000 * 0.0001 = 0.5 (using input cost, not embedding cost!)
+            // Assert - New behavior correctly uses EmbeddingTokenCost
+            // Text: 5000 * 0.00001 = 0.05 (using embedding cost)
             // Images: 2 * 0.02 = 0.04
-            // Total: 0.54
-            result.Should().Be(0.54m);
+            // Total: 0.09
+            result.Should().Be(0.09m);
             
-            // If we used embedding cost instead: 5000 * 0.00001 + 0.04 = 0.09
-            // This would be significantly cheaper!
+            // This is significantly cheaper than using input cost (0.54)!
         }
 
         [Theory]
         [InlineData(1000, 0, null, true)]    // Pure embedding: uses embedding cost
         [InlineData(1000, 500, null, false)] // Has completions: uses regular cost
-        [InlineData(1000, 0, 1, false)]      // Has images: uses regular cost
-        [InlineData(1000, 500, 1, false)]    // Has both: uses regular cost
+        [InlineData(1000, 0, 1, true)]       // Has images: STILL uses embedding cost (fixed!)
+        [InlineData(1000, 500, 1, false)]    // Has completions and images: uses regular cost
         public async Task CalculateCostAsync_EmbeddingCostUsageRules_FollowsCurrentLogic(
             int promptTokens, int completionTokens, int? imageCount, bool shouldUseEmbeddingCost)
         {
@@ -1260,6 +1254,41 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateRefundAsync_WithEmbeddingAndImages_UsesEmbeddingCost()
+        {
+            // Arrange
+            var modelId = "openai/multimodal-embed";
+            var originalUsage = new Usage { PromptTokens = 5000, CompletionTokens = 0, TotalTokens = 5000, ImageCount = 3 };
+            var refundUsage = new Usage { PromptTokens = 2000, CompletionTokens = 0, TotalTokens = 2000, ImageCount = 1 };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.0001m,       // Regular cost (expensive)
+                OutputTokenCost = 0m,
+                EmbeddingTokenCost = 0.00001m,  // Embedding cost (10x cheaper)
+                ImageCostPerImage = 0.02m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Partial refund for embedding with images");
+
+            // Assert
+            result.Should().NotBeNull();
+            // Embedding refund: 2000 * 0.00001 = 0.02
+            // Image refund: 1 * 0.02 = 0.02
+            // Total: 0.04
+            result.RefundAmount.Should().Be(0.04m);
+            result.Breakdown!.EmbeddingRefund.Should().Be(0.02m);
+            result.Breakdown.ImageRefund.Should().Be(0.02m);
+            result.Breakdown.InputTokenRefund.Should().Be(0m); // Should not use input token cost
+        }
+
+        [Fact]
         public async Task CalculateRefundAsync_WithNegativeValues_ReturnsValidationError()
         {
             // Arrange
@@ -1359,6 +1388,45 @@ namespace ConduitLLM.Tests.Core.Services
             result.Breakdown.OutputTokenRefund.Should().Be(0.0075m);
             result.Breakdown.ImageRefund.Should().Be(0.04m);
             result.Breakdown.VideoRefund.Should().Be(0.5m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithEmbeddingCostButHasCompletionTokens_UsesRegularCost()
+        {
+            // This tests that when a model has embedding cost defined but the request has completion tokens,
+            // it uses regular input/output costs (not embedding cost) since it's not an embedding request
+            // Arrange
+            var modelId = "multimodal/model-with-embedding-support";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,  // Has completions, so NOT an embedding request
+                TotalTokens = 1500,
+                ImageCount = 1
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00002m,       // Regular input cost
+                OutputTokenCost = 0.00004m,      // Regular output cost
+                EmbeddingTokenCost = 0.0000001m, // Embedding cost (not used in this case)
+                ImageCostPerImage = 0.03m
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Should use regular costs because CompletionTokens > 0:
+            // Input: 1000 * 0.00002 = 0.02
+            // Output: 500 * 0.00004 = 0.02
+            // Image: 1 * 0.03 = 0.03
+            // Total: 0.07
+            result.Should().Be(0.07m);
         }
 
         #endregion
