@@ -112,7 +112,7 @@ services:
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-      AdminApi__AllowedOrigins__0: http://webui:8080
+      AdminApi__AllowedOrigins__0: http://localhost:3001
       AdminApi__AllowedOrigins__1: http://localhost:5001
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
@@ -132,68 +132,43 @@ services:
       retries: 3
       start_period: 60s
 
-  webui:
-    build:
-      context: .
-      dockerfile: ConduitLLM.WebUI/Dockerfile
-    depends_on:
-      admin:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-      # WebUI no longer needs direct database access
-      # Only depends on the Admin API and LLM API
-    environment:
-      # WebUI no longer uses DATABASE_URL
-      CONDUIT_MASTER_KEY: alpha
-      CONDUIT_INSECURE: "false"
-      # Internal URLs for server-side communication
-      CONDUIT_API_BASE_URL: http://api:8080
-      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      # External URLs for client-side (browser) access
-      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
-      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Redis cache configuration - using new REDIS_URL format
-      REDIS_URL: "redis://redis:6379"
-      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-      # Version check configuration
-      CONDUIT_VERSION_CHECK_ENABLED: "true"
-      CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
-      # WebUI authentication password
-      CONDUIT_WEBUI_AUTH_KEY: conduit123
-      # IP Filtering Configuration (optional)
-      # CONDUIT_IP_FILTERING_ENABLED: "true"
-      # CONDUIT_IP_FILTER_MODE: "permissive"  # or "restrictive"
-      # CONDUIT_IP_FILTER_DEFAULT_ALLOW: "true"
-      # CONDUIT_IP_FILTER_BYPASS_ADMIN_UI: "true"
-      # CONDUIT_IP_FILTER_ALLOW_PRIVATE: "true"  # Auto-allow private/intranet IPs
-      # CONDUIT_IP_FILTER_WHITELIST: "192.168.1.0/24,10.0.0.0/8"
-      # CONDUIT_IP_FILTER_BLACKLIST: "203.0.113.0/24"
-      # Failed Login Protection - DISABLED for development
-      CONDUIT_MAX_FAILED_ATTEMPTS: "99999"  # Effectively disabled
-      CONDUIT_IP_BAN_DURATION_MINUTES: "0"   # No banning
-      CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "false"
-      # Rate Limiting - DISABLED for development
-      CONDUIT_RATE_LIMITING_ENABLED: "false"
-      CONDUIT_RATE_LIMIT_MAX_REQUESTS: "99999"
-      CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "1"
-      CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
-      # Security Headers
-      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS: "DENY"
-      # CONDUIT_SECURITY_HEADERS_CSP_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_CSP: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
-      # CONDUIT_SECURITY_HEADERS_HSTS_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE: "31536000"
-    ports:
-      - "5001:8080"
-    restart: on-failure
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+# webui:
+  #   build:
+  #     context: .
+  #     dockerfile: ConduitLLM.WebUI/Dockerfile
+  #   depends_on:
+  #     admin:
+  #       condition: service_healthy
+  #     api:
+  #       condition: service_healthy
+  #   environment:
+  #     CONDUIT_MASTER_KEY: alpha
+  #     CONDUIT_INSECURE: "false"
+  #     CONDUIT_API_BASE_URL: http://api:8080
+  #     CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+  #     CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+  #     CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+  #     REDIS_URL: "redis://redis:6379"
+  #     CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+  #     CONDUIT_VERSION_CHECK_ENABLED: "true"
+  #     CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
+  #     CONDUIT_WEBUI_AUTH_KEY: conduit123
+  #     CONDUIT_MAX_FAILED_ATTEMPTS: "99999"
+  #     CONDUIT_IP_BAN_DURATION_MINUTES: "0"
+  #     CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "false"
+  #     CONDUIT_RATE_LIMITING_ENABLED: "false"
+  #     CONDUIT_RATE_LIMIT_MAX_REQUESTS: "99999"
+  #     CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "1"
+  #     CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
+  #   ports:
+  #     - "5001:8080"
+  #   restart: on-failure
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+  #     interval: 60s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
 
 volumes:
   pgdata:

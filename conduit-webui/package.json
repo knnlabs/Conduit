@@ -1,0 +1,51 @@
+{
+  "name": "conduit-webui",
+  "version": "1.0.0",
+  "description": "Next.js WebUI for Conduit LLM Platform",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@knn_labs/conduit-admin-client": "^1.0.1",
+    "@knn_labs/conduit-core-client": "^0.2.1",
+    "@mantine/carousel": "^8.1.2",
+    "@mantine/charts": "^8.1.2",
+    "@mantine/code-highlight": "^8.1.2",
+    "@mantine/core": "^8.1.2",
+    "@mantine/dates": "^8.1.2",
+    "@mantine/form": "^8.1.2",
+    "@mantine/hooks": "^8.1.2",
+    "@mantine/modals": "^8.1.2",
+    "@mantine/notifications": "^8.1.2",
+    "@mantine/spotlight": "^8.1.2",
+    "@microsoft/signalr": "^8.0.7",
+    "@tabler/icons-react": "^3.34.0",
+    "@tanstack/react-query": "^5.81.5",
+    "@types/node": "^24.0.7",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "eslint": "^9.30.0",
+    "next": "^15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "typescript": "^5.8.3",
+    "zustand": "^5.0.6"
+  },
+  "keywords": [
+    "conduit",
+    "llm",
+    "nextjs",
+    "react",
+    "typescript",
+    "mantine"
+  ],
+  "author": "KNN Labs",
+  "license": "ISC"
+}
