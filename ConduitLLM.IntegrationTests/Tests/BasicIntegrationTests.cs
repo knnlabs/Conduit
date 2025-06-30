@@ -51,7 +51,7 @@ public class BasicIntegrationTests : IntegrationTestBase
     }
 
     [IntegrationFact]
-    public async Task TestInfrastructure_TestDataBuilder_CreatesValidData()
+    public void TestInfrastructure_TestDataBuilder_CreatesValidData()
     {
         // Act
         var (apiKey, keyHash, keyData) = _dataBuilder.CreateVirtualKeyData("Test Key", 100m);
