@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Security.Interfaces;
+using ConduitLLM.Configuration.DTOs.Security;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -57,7 +59,7 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Get current security metrics
         /// </summary>
-        public async Task<SecurityMetrics> GetSecurityMetrics()
+        public async Task<SecurityMetricsDto> GetSecurityMetrics()
         {
             try
             {
@@ -73,7 +75,7 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Get recent security events
         /// </summary>
-        public async Task<List<SecurityEvent>> GetRecentSecurityEvents(int minutes = 60)
+        public async Task<List<SecurityEventDto>> GetRecentSecurityEvents(int minutes = 60)
         {
             try
             {
@@ -94,7 +96,7 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Stream real-time security events
         /// </summary>
-        public async IAsyncEnumerable<SecurityEvent> StreamSecurityEvents(
+        public async IAsyncEnumerable<SecurityEventDto> StreamSecurityEvents(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Starting security event stream for {ConnectionId}", Context.ConnectionId);

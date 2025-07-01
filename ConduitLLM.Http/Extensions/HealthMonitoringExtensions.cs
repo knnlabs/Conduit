@@ -5,6 +5,8 @@ using ConduitLLM.Http.Services;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.HealthChecks;
 using ConduitLLM.Core.HealthChecks;
+using ConduitLLM.Security.Interfaces;
+using ConduitLLM.Security.Models;
 
 namespace ConduitLLM.Http.Extensions
 {
@@ -23,7 +25,7 @@ namespace ConduitLLM.Http.Extensions
             services.AddSingleton<Services.IAlertManagementService, Services.AlertManagementService>();
             
             // Register security event monitoring services
-            services.AddSingleton<ISecurityEventMonitoringService, SecurityEventMonitoringService>();
+            services.AddSingleton<ISecurityEventMonitoringService, ConduitLLM.Security.Services.SecurityEventMonitoringService>();
             services.Configure<SecurityMonitoringOptions>(configuration.GetSection("SecurityMonitoring"));
             
             // Register health monitoring background service
@@ -38,8 +40,8 @@ namespace ConduitLLM.Http.Extensions
                 ?? throw new InvalidOperationException("PerformanceMonitoringService not registered correctly"));
             
             // Register security event monitoring as hosted service
-            services.AddHostedService<SecurityEventMonitoringService>(provider => 
-                provider.GetRequiredService<ISecurityEventMonitoringService>() as SecurityEventMonitoringService
+            services.AddHostedService<ConduitLLM.Security.Services.SecurityEventMonitoringService>(provider => 
+                provider.GetRequiredService<ISecurityEventMonitoringService>() as ConduitLLM.Security.Services.SecurityEventMonitoringService
                 ?? throw new InvalidOperationException("SecurityEventMonitoringService not registered correctly"));
 
             // Configure system resources health check options

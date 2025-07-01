@@ -30,6 +30,7 @@
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Security\ConduitLLM.Security.csproj" />
     <!-- WebUI reference removed, now using API client -->
   </ItemGroup>
 

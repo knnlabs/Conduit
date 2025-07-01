@@ -51,9 +51,11 @@ namespace ConduitLLM.Tests
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()))
                 .Callback<LogLevel, EventId, object, Exception, object>((level, eventId, state, exception, formatter) =>
                 {
-                    try
+                    // Guard against using Output after test completion
+                    if (!Disposed)
                     {
-                        if (!Disposed)
+                        try
+
                         {
                             var message = state?.ToString() ?? string.Empty;
                             if (exception != null)
@@ -62,10 +64,11 @@ namespace ConduitLLM.Tests
                             }
                             Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] [{level}] {message}");
                         }
-                    }
-                    catch
-                    {
-                        // Ignore logging errors when test is already disposed
+
+                        catch (InvalidOperationException)
+                        {
+                            // Test output is no longer available - ignore
+                        }
                     }
                 });
         }

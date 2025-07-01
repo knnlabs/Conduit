@@ -275,12 +275,15 @@ namespace ConduitLLM.Tests.Http.Services
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
-        protected new void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            // Stop the timer before disposing to prevent timer callbacks after disposal
-            _batcher?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-            _batcher?.Dispose();
-            base.Dispose();
+            if (disposing)
+            {
+                // Stop the timer before disposing to prevent timer callbacks after disposal
+                _batcher?.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+                _batcher?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }
