@@ -112,8 +112,9 @@ services:
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-      AdminApi__AllowedOrigins__0: http://localhost:3001
-      AdminApi__AllowedOrigins__1: http://localhost:5001
+      AdminApi__AllowedOrigins__0: http://localhost:3000
+      AdminApi__AllowedOrigins__1: http://localhost:3001
+      AdminApi__AllowedOrigins__2: http://localhost:5001
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
@@ -132,43 +133,43 @@ services:
       retries: 3
       start_period: 60s
 
-# webui:
-  #   build:
-  #     context: .
-  #     dockerfile: ConduitLLM.WebUI/Dockerfile
-  #   depends_on:
-  #     admin:
-  #       condition: service_healthy
-  #     api:
-  #       condition: service_healthy
-  #   environment:
-  #     CONDUIT_MASTER_KEY: alpha
-  #     CONDUIT_INSECURE: "false"
-  #     CONDUIT_API_BASE_URL: http://api:8080
-  #     CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-  #     CONDUIT_API_EXTERNAL_URL: http://localhost:5000
-  #     CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-  #     REDIS_URL: "redis://redis:6379"
-  #     CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-  #     CONDUIT_VERSION_CHECK_ENABLED: "true"
-  #     CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
-  #     CONDUIT_WEBUI_AUTH_KEY: conduit123
-  #     CONDUIT_MAX_FAILED_ATTEMPTS: "99999"
-  #     CONDUIT_IP_BAN_DURATION_MINUTES: "0"
-  #     CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "false"
-  #     CONDUIT_RATE_LIMITING_ENABLED: "false"
-  #     CONDUIT_RATE_LIMIT_MAX_REQUESTS: "99999"
-  #     CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "1"
-  #     CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
-  #   ports:
-  #     - "5001:8080"
-  #   restart: on-failure
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-  #     interval: 60s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 60s
+  webui:
+    build:
+      context: ./ConduitLLM.WebUI
+      dockerfile: Dockerfile
+    depends_on:
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      # Next.js specific environment variables
+      NODE_ENV: production
+      PORT: 3000
+      # Public environment variables (accessible in browser)
+      NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
+      NEXT_PUBLIC_CONDUIT_ADMIN_API_URL: http://localhost:5002
+      # Server-side environment variables
+      CONDUIT_MASTER_KEY: alpha
+      CONDUIT_API_BASE_URL: http://api:8080
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      # External URLs for SignalR connections from browser
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+      # Session encryption key
+      SESSION_SECRET: your-session-secret-key-change-in-production
+      # Redis configuration for session storage
+      REDIS_URL: "redis://redis:6379"
+      REDIS_SESSION_PREFIX: "conduit:session:"
+    ports:
+      - "3000:3000"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/core/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
 
 volumes:
   pgdata:
