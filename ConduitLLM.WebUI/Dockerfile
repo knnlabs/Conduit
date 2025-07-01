@@ -1,46 +1,58 @@
-# --- ConduitLLM WebUI Docker Image ---
-# WebUI communicates with Admin API and HTTP API - no direct database access
+# Build stage
+FROM node:20-alpine AS builder
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-
-# Only copy directories that are essential for the WebUI build
-COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
-COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
-COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
-COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
-# Copy solution file if it exists
-COPY ["*.sln", "/src/"]
-
-# List directories for debugging
-RUN echo "==== Directory structure ====" && \
-    ls -la /src && \
-    echo "==== WebUI directory ====" && \
-    ls -la /src/ConduitLLM.WebUI
-
-# Create dummy Common directory if needed
-RUN if [ ! -d "/src/ConduitLLM.Common" ]; then \
-    echo "Creating missing ConduitLLM.Common directory" && \
-    mkdir -p /src/ConduitLLM.Common && \
-    echo "namespace ConduitLLM.Common { public class Dummy {} }" > /src/ConduitLLM.Common/Dummy.cs && \
-    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>' > /src/ConduitLLM.Common/ConduitLLM.Common.csproj; \
-    fi
-
-# Restore and build WebUI project
-RUN dotnet restore "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" || \
-    (echo "Restore failed - check directory structure" && exit 1)
-
-RUN dotnet publish "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" -c Release -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
-COPY --from=build /app/publish ./
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package*.json ./
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+# Install dependencies
+RUN npm ci
 
-EXPOSE 8080
-ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
+# Copy source code
+COPY . .
+
+# Build the Next.js application
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Copy built application from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/next.config.js ./
+# Copy src directory for API routes
+COPY --from=builder /app/src ./src
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Set ownership
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/core/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+
+# Start the application
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "start"]
