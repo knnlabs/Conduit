@@ -51,12 +51,23 @@ namespace ConduitLLM.Tests
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()))
                 .Callback<LogLevel, EventId, object, Exception, object>((level, eventId, state, exception, formatter) =>
                 {
-                    var message = state?.ToString() ?? string.Empty;
-                    if (exception != null)
+                    // Guard against using Output after test completion
+                    if (!Disposed)
                     {
-                        message += $" Exception: {exception}";
+                        try
+                        {
+                            var message = state?.ToString() ?? string.Empty;
+                            if (exception != null)
+                            {
+                                message += $" Exception: {exception}";
+                            }
+                            Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] [{level}] {message}");
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Test output is no longer available - ignore
+                        }
                     }
-                    Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] [{level}] {message}");
                 });
         }
 

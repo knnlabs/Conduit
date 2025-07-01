@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Http.Options;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Security.Interfaces;
 
 namespace ConduitLLM.Http.Services
 {

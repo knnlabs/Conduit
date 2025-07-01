@@ -19,6 +19,7 @@
     <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
     <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Security\ConduitLLM.Security.csproj" />
   </ItemGroup>
 
   <ItemGroup>
