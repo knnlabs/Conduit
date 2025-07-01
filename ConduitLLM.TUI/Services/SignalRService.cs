@@ -74,7 +74,11 @@ public class SignalRService : IAsyncDisposable
             _navigationStateHub.On<ModelMappingNotification>(UIConstants.SignalR.Methods.OnModelMappingChanged, notification =>
             {
                 _logger.LogInformation("Received model mapping change: {ModelAlias} ({ChangeType})", notification.ModelAlias, notification.ChangeType);
-                // For now, trigger a navigation state update event (we might need to fetch the full state)
+                
+                // Invalidate navigation state cache
+                _stateManager.OnNavigationDataChanged();
+                
+                // For backward compatibility, still trigger the legacy event
                 NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
             });
             
@@ -82,6 +86,11 @@ public class SignalRService : IAsyncDisposable
             _navigationStateHub.On<ProviderHealthNotification>(UIConstants.SignalR.Methods.OnProviderHealthChanged, notification =>
             {
                 _logger.LogInformation("Received provider health change: {Provider} - {Status}", notification.Provider, notification.Status);
+                
+                // Invalidate navigation state cache
+                _stateManager.OnNavigationDataChanged();
+                
+                // For backward compatibility, still trigger the legacy event
                 NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
             });
             
@@ -89,6 +98,11 @@ public class SignalRService : IAsyncDisposable
             _navigationStateHub.On<ModelCapabilitiesNotification>(UIConstants.SignalR.Methods.OnModelCapabilitiesDiscovered, notification =>
             {
                 _logger.LogInformation("Received model capabilities discovered: {Provider} ({ModelCount} models)", notification.ProviderName, notification.ModelCount);
+                
+                // Invalidate navigation state cache
+                _stateManager.OnNavigationDataChanged();
+                
+                // For backward compatibility, still trigger the legacy event
                 NavigationStateUpdated?.Invoke(this, new NavigationStateUpdateDto());
             });
 

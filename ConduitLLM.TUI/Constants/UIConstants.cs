@@ -34,6 +34,7 @@ public static class UIConstants
         public const string Configuration = "Configuration";
         public const string ImageGeneration = "Image Generation";
         public const string VideoGeneration = "Video Generation";
+        public const string NavigationState = "Navigation State";
         public const string Logs = "Logs (Ctrl+L to toggle)";
     }
 

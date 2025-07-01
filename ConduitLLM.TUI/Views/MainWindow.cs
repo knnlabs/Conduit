@@ -8,6 +8,7 @@ using ConduitLLM.TUI.Views.Models;
 using ConduitLLM.TUI.Views.Media;
 using ConduitLLM.TUI.Views.Keys;
 using ConduitLLM.TUI.Views.Monitoring;
+using ConduitLLM.TUI.Views.Navigation;
 using ConduitLLM.TUI.Utils;
 using ConduitLLM.TUI.Views.Configuration;
 using ConduitLLM.TUI.Constants;
@@ -67,6 +68,7 @@ public class MainWindow : Window
                 new MenuItem("_Health", "", () => ShowHealthDashboard(), null, null, Key.F8),
                 new MenuItem("_Configuration", "", () => ShowConfigurationView(), null, null, Key.F9),
                 null!, // Separator
+                new MenuItem("_Navigation State", "", () => ShowNavigationStateView(), null, null, Key.N | Key.CtrlMask),
                 new MenuItem("Toggle _Log Panel", "", () => ToggleLogPanel(), null, null, Key.L | Key.CtrlMask)
             }),
             new MenuBarItem("_Help", new MenuItem[]
@@ -186,6 +188,11 @@ public class MainWindow : Window
         SetCurrentView(new Configuration.ConfigurationView(_serviceProvider), UIConstants.Titles.Configuration);
     }
 
+    private void ShowNavigationStateView()
+    {
+        SetCurrentView(new NavigationStateView(_serviceProvider), UIConstants.Titles.NavigationState);
+    }
+
     private void SetCurrentView(View view, string title)
     {
         if (_currentView != null)
@@ -292,6 +299,7 @@ F7          - Virtual Keys
 F8          - System Health
 F9          - Configuration
 
+Ctrl+N      - Navigation State
 Ctrl+L      - Toggle Log Panel
 Ctrl+Q      - Quit Application
 Tab         - Next Field

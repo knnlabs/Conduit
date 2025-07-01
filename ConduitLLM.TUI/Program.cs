@@ -240,6 +240,7 @@ class Program
         });
 
         // Services
+        services.AddSingleton<NavigationStateService>();
         services.AddSingleton<StateManager>();
         services.AddSingleton<ConfigurationStateManager>();
         services.AddSingleton<AdminApiService>();
@@ -295,6 +296,8 @@ class Program
                 return new ConduitAdminClient(config);
             });
 
+            services.AddSingleton<NavigationStateService>();
+            services.AddSingleton<CoreApiService>();
             services.AddSingleton<StateManager>();
             services.AddSingleton<ConfigurationStateManager>();
             services.AddScoped<AdminApiService>();
