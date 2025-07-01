@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const client = getServerCoreClient(virtualKey);
     
     const result = await withSDKErrorHandling(
-      async () => client.videos.generateAsync({
+      async () => (client as any).videos.generateAsync({
         prompt: videoRequest.prompt,
         model: videoRequest.model,
         duration: videoRequest.duration,
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     if (taskId) {
       // Get specific video generation task status
       const result = await withSDKErrorHandling(
-        async () => client.videos.getTaskStatus(taskId),
+        async () => (client as any).videos.getTaskStatus(taskId),
         `get video generation task ${taskId}`
       );
 
@@ -183,7 +183,7 @@ export async function DELETE(request: NextRequest) {
     
     const result = await withSDKErrorHandling(
       async () => {
-        await client.videos.cancelTask(taskId);
+        await (client as any).videos.cancelTask(taskId);
         return {
           success: true,
           message: `Task ${taskId} cancelled successfully.`,

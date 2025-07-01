@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { ConnectionStatus } from '@/types/navigation';
+import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 
 interface ConnectionState {
   status: ConnectionStatus;
@@ -51,30 +53,44 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
 
   checkConnections: async () => {
     const checkApi = async (
-      url: string,
       apiType: 'coreApi' | 'adminApi'
     ): Promise<void> => {
       try {
         get().setApiStatus(apiType, 'connecting');
         
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        let isConnected = false;
         
-        const response = await fetch(`${url}/health/ready`, {
-          signal: controller.signal,
-          mode: 'cors',
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          get().setApiStatus(apiType, 'connected');
+        if (apiType === 'coreApi') {
+          const coreApiUrl = process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL;
+          if (coreApiUrl) {
+            // Create a temporary Core client for connection check
+            const coreClient = new ConduitCoreClient({
+              baseURL: coreApiUrl,
+              apiKey: 'ping-check', // Dummy key for ping
+              timeout: 5000,
+            });
+            
+            // Use the new connection.ping method from local SDK
+            isConnected = await coreClient.connection.pingWithTimeout(5000);
+          }
         } else {
-          get().setApiStatus(apiType, 'error');
+          const adminApiUrl = process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL;
+          if (adminApiUrl) {
+            // Create a temporary Admin client for connection check
+            const adminClient = new ConduitAdminClient({
+              adminApiUrl: adminApiUrl,
+              masterKey: 'ping-check', // Dummy key for ping
+              options: {
+                timeout: 5000,
+              }
+            });
+            
+            // Use the new connection.ping method from local SDK
+            isConnected = await adminClient.connection.pingWithTimeout(5000);
+          }
         }
+        
+        get().setApiStatus(apiType, isConnected ? 'connected' : 'error');
       } catch (error: any) {
         console.warn(`${apiType} connection check failed:`, error.message);
         get().setApiStatus(apiType, 'error');
@@ -82,12 +98,9 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     };
 
     // Check both APIs in parallel
-    const coreApiUrl = process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL;
-    const adminApiUrl = process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL;
-
     await Promise.allSettled([
-      coreApiUrl ? checkApi(coreApiUrl, 'coreApi') : Promise.resolve(),
-      adminApiUrl ? checkApi(adminApiUrl, 'adminApi') : Promise.resolve(),
+      checkApi('coreApi'),
+      checkApi('adminApi'),
     ]);
   },
 }));

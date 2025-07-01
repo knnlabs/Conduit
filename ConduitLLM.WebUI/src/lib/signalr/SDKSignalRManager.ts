@@ -129,13 +129,14 @@ export class SDKSignalRManager {
     this.coreClient = new ConduitCoreClient({
       baseURL: this.config.coreApiUrl,
       apiKey: virtualKey,
-      signalR: {
-        enabled: true,
-        autoConnect: this.config.autoConnect !== false,
-        transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
-        reconnectInterval: this.config.reconnectInterval,
-      },
-    });
+      // TODO: SignalR configuration not yet supported in SDK v0.2.1
+      // signalR: {
+      //   enabled: true,
+      //   autoConnect: this.config.autoConnect !== false,
+      //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
+      //   reconnectInterval: this.config.reconnectInterval,
+      // },
+    } as any);
 
     // Set up Core event listeners
     await this.setupCoreEventListeners();
@@ -152,13 +153,14 @@ export class SDKSignalRManager {
     this.adminClient = new ConduitAdminClient({
       adminApiUrl: this.config.adminApiUrl,
       masterKey: masterKey,
-      signalR: {
-        enabled: true,
-        autoConnect: this.config.autoConnect !== false,
-        transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
-        reconnectInterval: this.config.reconnectInterval,
-      },
-    });
+      // TODO: SignalR configuration not yet supported in SDK v1.0.1
+      // signalR: {
+      //   enabled: true,
+      //   autoConnect: this.config.autoConnect !== false,
+      //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
+      //   reconnectInterval: this.config.reconnectInterval,
+      // },
+    } as any);
 
     // Set up Admin event listeners
     await this.setupAdminEventListeners();
@@ -173,14 +175,14 @@ export class SDKSignalRManager {
     logger.info('Setting up Core event listeners');
 
     // Video generation progress
-    const videoSub = await this.coreClient.notifications.onVideoProgress((event) => {
+    const videoSub = await this.coreClient.notifications.onVideoProgress((event: any) => {
       if (this.eventHandlers.onVideoGenerationProgress) {
         this.eventHandlers.onVideoGenerationProgress({
           taskId: event.taskId,
           status: event.status as 'queued' | 'processing' | 'completed' | 'failed',
           progress: event.progress || 0,
           estimatedTimeRemaining: undefined, // Not provided by SDK
-          resultUrl: event.status === 'completed' && event.metadata?.url ? event.metadata.url : undefined,
+          resultUrl: event.status === 'completed' && event.metadata && 'url' in event.metadata ? event.metadata.url : undefined,
           error: event.message,
         });
       }
@@ -188,7 +190,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => videoSub.unsubscribe());
 
     // Image generation progress
-    const imageSub = await this.coreClient.notifications.onImageProgress((event) => {
+    const imageSub = await this.coreClient.notifications.onImageProgress((event: any) => {
       if (this.eventHandlers.onImageGenerationProgress) {
         this.eventHandlers.onImageGenerationProgress({
           taskId: event.taskId,
@@ -202,10 +204,10 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => imageSub.unsubscribe());
 
     // Spend updates
-    const spendSub = await this.coreClient.notifications.onSpendUpdate((event) => {
+    const spendSub = await this.coreClient.notifications.onSpendUpdate((event: any) => {
       if (this.eventHandlers.onSpendUpdate) {
         this.eventHandlers.onSpendUpdate({
-          virtualKeyId: event.virtualKeyId,
+          virtualKeyId: String(event.virtualKeyId),
           amount: event.amount,
           totalSpend: event.totalSpend,
           model: event.model,
@@ -216,14 +218,14 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => spendSub.unsubscribe());
 
     // Spend limit alerts
-    const limitSub = await this.coreClient.notifications.onSpendLimitAlert((event) => {
+    const limitSub = await this.coreClient.notifications.onSpendLimitAlert((event: any) => {
       if (this.eventHandlers.onSpendLimitAlert) {
         this.eventHandlers.onSpendLimitAlert({
-          virtualKeyId: event.virtualKeyId,
+          virtualKeyId: String(event.virtualKeyId),
           currentSpend: event.currentSpend,
-          limit: event.limit,
-          percentage: event.percentage,
-          alertLevel: event.alertLevel as 'warning' | 'critical',
+          limit: event.spendLimit || event.limit,
+          percentage: event.spendPercentage || event.percentage || 0,
+          alertLevel: (event.severity || event.alertLevel || 'warning') as 'warning' | 'critical',
         });
       }
     });
@@ -251,7 +253,7 @@ export class SDKSignalRManager {
     const navHub = await signalRService.getOrCreateNavigationStateHub();
     
     // Navigation state updates
-    navHub.onNavigationStateUpdate((event) => {
+    navHub.onNavigationStateUpdate((event: any) => {
       if (this.eventHandlers.onNavigationStateUpdate) {
         this.eventHandlers.onNavigationStateUpdate({
           type: event.entityType as 'model_mapping' | 'provider' | 'virtual_key',
@@ -263,7 +265,7 @@ export class SDKSignalRManager {
     });
 
     // Model discovery events
-    navHub.onModelDiscovered((event) => {
+    navHub.onModelDiscovered((event: any) => {
       if (this.eventHandlers.onModelDiscovered) {
         this.eventHandlers.onModelDiscovered({
           providerId: event.providerId,
@@ -275,7 +277,7 @@ export class SDKSignalRManager {
     });
 
     // Provider health changes
-    navHub.onProviderHealthChange((event) => {
+    navHub.onProviderHealthChange((event: any) => {
       if (this.eventHandlers.onProviderHealthChange) {
         this.eventHandlers.onProviderHealthChange({
           providerId: event.providerId,
@@ -300,7 +302,7 @@ export class SDKSignalRManager {
     if (adminHub) {
       // Virtual key events
       if (adminHub.onVirtualKeyUpdate) {
-        adminHub.onVirtualKeyUpdate((event) => {
+        adminHub.onVirtualKeyUpdate((event: any) => {
           if (this.eventHandlers.onVirtualKeyUpdate) {
             this.eventHandlers.onVirtualKeyUpdate({
               keyId: event.keyId,
@@ -313,7 +315,7 @@ export class SDKSignalRManager {
 
       // Configuration changes
       if (adminHub.onConfigurationChange) {
-        adminHub.onConfigurationChange((event) => {
+        adminHub.onConfigurationChange((event: any) => {
           if (this.eventHandlers.onConfigurationChange) {
             this.eventHandlers.onConfigurationChange({
               category: event.category,

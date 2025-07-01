@@ -55,6 +55,7 @@ namespace ConduitLLM.Tests
                     if (!Disposed)
                     {
                         try
+
                         {
                             var message = state?.ToString() ?? string.Empty;
                             if (exception != null)
@@ -63,6 +64,7 @@ namespace ConduitLLM.Tests
                             }
                             Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] [{level}] {message}");
                         }
+
                         catch (InvalidOperationException)
                         {
                             // Test output is no longer available - ignore

@@ -265,7 +265,9 @@ namespace ConduitLLM.Http.Services
         {
             _logger.LogInformation("Model discovery notification batcher stopping");
             
-            _flushTimer?.Change(Timeout.Infinite, 0);
+            // Dispose the timer first to prevent any further executions
+            _flushTimer?.Dispose();
+            _flushTimer = null;
             
             // Flush all pending batches
             await FlushAllBatchesAsync();

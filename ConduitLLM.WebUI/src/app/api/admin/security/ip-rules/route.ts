@@ -15,7 +15,7 @@ export const GET = withSDKAuth(
         async () => auth.adminClient!.ipFilters.list({
           pageNumber: params.page,
           pageSize: params.pageSize,
-          filterType: params.get('type') as 'Allow' | 'Deny' | undefined,
+          filterType: params.get('type') === 'Allow' ? 'whitelist' : params.get('type') === 'Deny' ? 'blacklist' : undefined,
           isEnabled: params.get('status') === 'active' ? true : params.get('status') === 'inactive' ? false : undefined,
           nameContains: params.search,
           sortBy: params.sortBy && params.sortOrder ? {
@@ -73,8 +73,8 @@ export const POST = withSDKAuth(
       const result = await withSDKErrorHandling(
         async () => auth.adminClient!.ipFilters.create({
           name: body.name || `IP Rule for ${body.ipAddress}`,
-          cidrRange: body.ipAddress,
-          filterType: (body.action === 'allow' ? 'Allow' : 'Deny') as FilterType,
+          ipAddressOrCidr: body.ipAddress,
+          filterType: body.action === 'allow' ? 'whitelist' : 'blacklist',
           description: body.description,
           isEnabled: body.isEnabled ?? true,
         }),

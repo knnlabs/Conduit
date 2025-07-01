@@ -11,8 +11,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@knn_labs/conduit-admin-client": "^1.0.1",
-    "@knn_labs/conduit-core-client": "^0.2.1",
+    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
+    "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
     "@mantine/carousel": "^8.1.2",
     "@mantine/charts": "^8.1.2",
     "@mantine/code-highlight": "^8.1.2",
