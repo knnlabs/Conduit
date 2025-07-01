@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { validateCoreSession } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
-// Health API not yet supported in SDK, using direct API call
+import { getServerCoreClient } from '@/lib/clients/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,41 +15,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: SDK does not yet support health checks
-    // Stub implementation until SDK adds health.check() method
-    const healthResult = {
-      status: 'healthy',
-      checks: [
-        { name: 'api', status: 'healthy', message: 'API is responsive' },
-        { name: 'database', status: 'healthy', message: 'Database connection OK' },
-      ],
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      uptime: process.uptime(),
-      dependencies: {},
-    };
+    // Use SDK health service
+    const client = getServerCoreClient(validation.virtualKey || '');
+    const healthResult = await withSDKErrorHandling(
+      async () => client.health.getFullHealth(),
+      'get health status'
+    );
 
     // Determine overall health status
-    const isHealthy = healthResult.status === 'healthy' || healthResult.status === 'Healthy';
+    const isHealthy = healthResult.status === 'Healthy';
     const statusCode = isHealthy ? 200 : 503;
 
-    // Transform health data
+    // Transform health data to match expected format
     const healthData = {
       status: healthResult.status || 'Unknown',
       checks: healthResult.checks || [],
       timestamp: new Date().toISOString(),
-      version: healthResult.version,
-      environment: healthResult.environment,
-      uptime: healthResult.uptime,
-      dependencies: healthResult.dependencies || {},
+      version: '1.0.0', // Could be obtained from a version endpoint
+      environment: process.env.NODE_ENV || 'development',
+      uptime: process.uptime(),
+      dependencies: healthResult.checks?.reduce((deps, check) => {
+        if (check.data) {
+          deps[check.name] = check.data;
+        }
+        return deps;
+      }, {} as Record<string, unknown>) || {},
+      totalDuration: healthResult.totalDuration,
     };
 
     return transformSDKResponse(healthData, {
       status: statusCode,
       meta: {
         checkedAt: new Date().toISOString(),
-        responseTime: 100, // Stub response time
+        responseTime: healthResult.totalDuration || 0,
       }
     });
 
@@ -99,9 +97,11 @@ export async function HEAD(request: NextRequest) {
       return new Response(null, { status: 401 });
     }
 
-    // TODO: SDK does not yet support health.ping()
-    // Stub implementation - always return healthy
-    const isHealthy = true;
+    // Use SDK for lightweight liveness check
+    const validation = await validateCoreSession(request, { requireVirtualKey: false });
+    const client = getServerCoreClient(validation.virtualKey || '');
+    
+    const isHealthy = await client.health.isSystemHealthy();
 
     return new Response(null, { 
       status: isHealthy ? 200 : 503,

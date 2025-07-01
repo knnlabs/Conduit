@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
-// Audio API not yet supported in SDK, using direct API call
+import { getServerCoreClient } from '@/lib/clients/server';
 import { createValidationError } from '@/lib/utils/route-helpers';
 
 export async function POST(request: NextRequest) {
@@ -47,42 +47,46 @@ export async function POST(request: NextRequest) {
     const responseFormat = formData.get('response_format') as string || 'json';
     const temperature = formData.get('temperature') ? parseFloat(formData.get('temperature') as string) : undefined;
     
-    // TODO: SDK does not yet support audio.transcribe()
-    // Stub implementation until SDK adds audio transcription support
+    // Convert timestamp_granularities if provided
+    const timestampGranularitiesStr = formData.get('timestamp_granularities') as string;
+    let timestampGranularities: ('word' | 'segment')[] | undefined;
+    if (timestampGranularitiesStr) {
+      try {
+        timestampGranularities = JSON.parse(timestampGranularitiesStr);
+      } catch {
+        timestampGranularities = [timestampGranularitiesStr as 'word' | 'segment'];
+      }
+    }
+    
+    // Use SDK audio transcription
+    const client = getServerCoreClient(virtualKey);
+    
+    // Convert File to Buffer for SDK
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
     const result = await withSDKErrorHandling(
-      async () => {
-        // Stub response based on format
-        if (responseFormat === 'text') {
-          return 'This is a stub transcription. SDK does not yet support audio transcription.';
-        } else if (responseFormat === 'srt' || responseFormat === 'vtt') {
-          return `1\n00:00:00,000 --> 00:00:05,000\nThis is a stub transcription. SDK does not yet support audio transcription.`;
-        } else {
-          // JSON response
-          return {
-            text: 'This is a stub transcription. SDK does not yet support audio transcription.',
-            language: language || 'en',
-            duration: 5.0,
-            segments: [{
-              id: 0,
-              seek: 0,
-              start: 0,
-              end: 5,
-              text: 'This is a stub transcription. SDK does not yet support audio transcription.',
-              tokens: [],
-              temperature: temperature || 0,
-              avg_logprob: 0,
-              compression_ratio: 1,
-              no_speech_prob: 0
-            }]
-          };
-        }
-      },
+      async () => client.audio.transcribe({
+        file: {
+          data: buffer,
+          filename: audioFile.name,
+          contentType: audioFile.type,
+        },
+        model: model as any, // Cast to TranscriptionModel
+        language,
+        prompt,
+        response_format: responseFormat as any,
+        temperature,
+        timestamp_granularities: timestampGranularities,
+      }),
       'transcribe audio'
     );
 
     // Handle different response formats
     if (responseFormat === 'text' || responseFormat === 'srt' || responseFormat === 'vtt') {
-      return new Response(result as string, {
+      // For text-based formats, the result should be the text property
+      const textResult = typeof result === 'string' ? result : (result as any).text || '';
+      return new Response(textResult, {
         headers: {
           'Content-Type': responseFormat === 'text' ? 'text/plain' : 
                           responseFormat === 'srt' ? 'text/srt' : 

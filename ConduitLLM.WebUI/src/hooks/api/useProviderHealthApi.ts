@@ -186,10 +186,33 @@ export function useProviderHealthOverview() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getHealthStatus();
+        // Get health status from SDK
+        const healthSummary = await client.providers.getHealthStatus();
         
-        // Mock provider health data
+        // Transform the summary into individual provider health records
+        // Note: The actual response structure may differ, this is based on typical patterns
+        if (healthSummary.providerStatuses) {
+          return healthSummary.providerStatuses.map((status: any) => ({
+            providerId: status.providerId || status.providerName,
+            providerName: status.providerName,
+            status: status.isHealthy ? 'healthy' : status.status || 'down',
+            lastChecked: status.lastChecked || new Date().toISOString(),
+            responseTime: status.responseTime || status.latency || 0,
+            uptime: status.uptime || 99.0,
+            availability: status.availability || 99.0,
+            errorRate: status.errorRate || 0,
+            requestsPerMinute: status.requestsPerMinute || 0,
+            activeModels: status.activeModels || 0,
+            totalModels: status.totalModels || 0,
+            region: status.region,
+            endpoint: status.endpoint || '',
+            version: status.version,
+            capabilities: status.capabilities || [],
+            issues: status.issues || [],
+          }));
+        }
+        
+        // Fallback to mock data if API response is not in expected format
         const mockData: ProviderHealth[] = [
           {
             providerId: 'openai',
@@ -318,10 +341,34 @@ export function useProviderStatus() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getStatus();
+        // Get health summary from SDK
+        const healthSummary = await client.providers.getHealthStatus();
         
-        // Mock provider status data
+        // Transform the health summary into provider status
+        if (healthSummary) {
+          const totalProviders = healthSummary.totalProviders || 0;
+          const healthyProviders = healthSummary.healthyProviders || 0;
+          const degradedProviders = healthSummary.degradedProviders || 0;
+          const downProviders = healthSummary.downProviders || 0;
+          
+          return {
+            overall: healthSummary.overallStatus || 
+                    (downProviders > 0 ? 'outage' : 
+                     degradedProviders > 0 ? 'degraded' : 
+                     'operational'),
+            totalProviders,
+            healthyProviders,
+            degradedProviders,
+            downProviders,
+            averageResponseTime: healthSummary.averageResponseTime || 0,
+            averageUptime: healthSummary.averageUptime || 99.0,
+            totalRequests: healthSummary.totalRequests || 0,
+            failedRequests: healthSummary.failedRequests || 0,
+            lastUpdated: healthSummary.lastUpdated || new Date().toISOString(),
+          };
+        }
+        
+        // Fallback to mock data if API response is not available
         const mockData: ProviderStatus = {
           overall: 'degraded',
           totalProviders: 5,

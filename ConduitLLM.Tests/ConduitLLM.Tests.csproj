@@ -67,7 +67,6 @@
     <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
-    <ProjectReference Include="..\ConduitLLM.WebUI\ConduitLLM.WebUI.csproj" />
   </ItemGroup>
 
 </Project>

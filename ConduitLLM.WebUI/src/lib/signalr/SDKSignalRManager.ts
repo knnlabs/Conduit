@@ -129,8 +129,12 @@ export class SDKSignalRManager {
     this.coreClient = new ConduitCoreClient({
       baseURL: this.config.coreApiUrl,
       apiKey: virtualKey,
-      // TODO: SDK does not yet support signalR configuration
-      // Need to handle SignalR connection separately
+      signalR: {
+        enabled: true,
+        autoConnect: this.config.autoConnect !== false,
+        transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
+        reconnectInterval: this.config.reconnectInterval,
+      },
     });
 
     // Set up Core event listeners
@@ -148,8 +152,12 @@ export class SDKSignalRManager {
     this.adminClient = new ConduitAdminClient({
       adminApiUrl: this.config.adminApiUrl,
       masterKey: masterKey,
-      // TODO: SDK does not yet support signalR configuration
-      // Need to handle SignalR connection separately
+      signalR: {
+        enabled: true,
+        autoConnect: this.config.autoConnect !== false,
+        transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
+        reconnectInterval: this.config.reconnectInterval,
+      },
     });
 
     // Set up Admin event listeners
@@ -158,29 +166,176 @@ export class SDKSignalRManager {
 
   // Set up Core API event listeners
   private async setupCoreEventListeners(): Promise<void> {
-    // TODO: SDK does not yet support notifications API
-    // The SDK needs to add:
-    // - coreClient.notifications.onVideoProgress()
-    // - coreClient.notifications.onImageProgress()
-    // - coreClient.notifications.onSpendUpdate()
-    // - coreClient.notifications.onSpendLimitAlert()
-    
-    // Stub implementation - no-op for now
-    logger.info('Core event listeners setup skipped - SDK does not support notifications yet');
+    if (!this.coreClient) {
+      throw new Error('Core client not initialized');
+    }
+
+    logger.info('Setting up Core event listeners');
+
+    // Video generation progress
+    const videoSub = await this.coreClient.notifications.onVideoProgress((event) => {
+      if (this.eventHandlers.onVideoGenerationProgress) {
+        this.eventHandlers.onVideoGenerationProgress({
+          taskId: event.taskId,
+          status: event.status as 'queued' | 'processing' | 'completed' | 'failed',
+          progress: event.progress || 0,
+          estimatedTimeRemaining: undefined, // Not provided by SDK
+          resultUrl: event.status === 'completed' && event.metadata?.url ? event.metadata.url : undefined,
+          error: event.message,
+        });
+      }
+    });
+    this.cleanupFunctions.push(() => videoSub.unsubscribe());
+
+    // Image generation progress
+    const imageSub = await this.coreClient.notifications.onImageProgress((event) => {
+      if (this.eventHandlers.onImageGenerationProgress) {
+        this.eventHandlers.onImageGenerationProgress({
+          taskId: event.taskId,
+          status: event.status as 'queued' | 'processing' | 'completed' | 'failed',
+          progress: event.progress || 0,
+          resultUrl: event.images?.[0]?.url,
+          error: event.message,
+        });
+      }
+    });
+    this.cleanupFunctions.push(() => imageSub.unsubscribe());
+
+    // Spend updates
+    const spendSub = await this.coreClient.notifications.onSpendUpdate((event) => {
+      if (this.eventHandlers.onSpendUpdate) {
+        this.eventHandlers.onSpendUpdate({
+          virtualKeyId: event.virtualKeyId,
+          amount: event.amount,
+          totalSpend: event.totalSpend,
+          model: event.model,
+          timestamp: event.timestamp,
+        });
+      }
+    });
+    this.cleanupFunctions.push(() => spendSub.unsubscribe());
+
+    // Spend limit alerts
+    const limitSub = await this.coreClient.notifications.onSpendLimitAlert((event) => {
+      if (this.eventHandlers.onSpendLimitAlert) {
+        this.eventHandlers.onSpendLimitAlert({
+          virtualKeyId: event.virtualKeyId,
+          currentSpend: event.currentSpend,
+          limit: event.limit,
+          percentage: event.percentage,
+          alertLevel: event.alertLevel as 'warning' | 'critical',
+        });
+      }
+    });
+    this.cleanupFunctions.push(() => limitSub.unsubscribe());
+
+    logger.info('Core event listeners setup complete');
   }
 
   // Set up Admin API event listeners
   private async setupAdminEventListeners(): Promise<void> {
-    // TODO: SDK does not yet support notifications API
-    // The SDK needs to add:
-    // - adminClient.notifications.onNavigationStateUpdate()
-    // - adminClient.notifications.onModelDiscovered()
-    // - adminClient.notifications.onProviderHealthChange()
-    // - adminClient.notifications.onVirtualKeyEvent()
-    // - adminClient.notifications.onConfigurationChange()
+    if (!this.adminClient) {
+      throw new Error('Admin client not initialized');
+    }
+
+    logger.info('Setting up Admin event listeners');
+
+    // Get SignalR service from admin client
+    const signalRService = (this.adminClient as any).signalRService;
+    if (!signalRService) {
+      logger.warn('Admin client does not have SignalR service - notifications will not work');
+      return;
+    }
+
+    // Get or create navigation state hub
+    const navHub = await signalRService.getOrCreateNavigationStateHub();
     
-    // Stub implementation - no-op for now
-    logger.info('Admin event listeners setup skipped - SDK does not support notifications yet');
+    // Navigation state updates
+    navHub.onNavigationStateUpdate((event) => {
+      if (this.eventHandlers.onNavigationStateUpdate) {
+        this.eventHandlers.onNavigationStateUpdate({
+          type: event.entityType as 'model_mapping' | 'provider' | 'virtual_key',
+          action: event.action as 'created' | 'updated' | 'deleted',
+          data: event.entityData,
+          timestamp: event.timestamp,
+        });
+      }
+    });
+
+    // Model discovery events
+    navHub.onModelDiscovered((event) => {
+      if (this.eventHandlers.onModelDiscovered) {
+        this.eventHandlers.onModelDiscovered({
+          providerId: event.providerId,
+          providerName: event.providerName,
+          modelsDiscovered: event.models || [],
+          timestamp: event.timestamp,
+        });
+      }
+    });
+
+    // Provider health changes
+    navHub.onProviderHealthChange((event) => {
+      if (this.eventHandlers.onProviderHealthChange) {
+        this.eventHandlers.onProviderHealthChange({
+          providerId: event.providerId,
+          providerName: event.providerName,
+          status: event.healthStatus as 'healthy' | 'degraded' | 'unhealthy',
+          latency: event.latency,
+          error: event.error,
+        });
+      }
+    });
+
+    // Subscribe to all updates
+    await navHub.subscribeToUpdates();
+    
+    // Add cleanup function
+    this.cleanupFunctions.push(async () => {
+      await navHub.unsubscribeFromUpdates();
+    });
+
+    // Get or create admin notification hub if available
+    const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
+    if (adminHub) {
+      // Virtual key events
+      if (adminHub.onVirtualKeyUpdate) {
+        adminHub.onVirtualKeyUpdate((event) => {
+          if (this.eventHandlers.onVirtualKeyUpdate) {
+            this.eventHandlers.onVirtualKeyUpdate({
+              keyId: event.keyId,
+              action: event.action as 'created' | 'updated' | 'deleted' | 'disabled' | 'enabled',
+              changes: event.changes,
+            });
+          }
+        });
+      }
+
+      // Configuration changes
+      if (adminHub.onConfigurationChange) {
+        adminHub.onConfigurationChange((event) => {
+          if (this.eventHandlers.onConfigurationChange) {
+            this.eventHandlers.onConfigurationChange({
+              category: event.category,
+              setting: event.setting,
+              oldValue: event.oldValue,
+              newValue: event.newValue,
+              timestamp: event.timestamp,
+            });
+          }
+        });
+      }
+
+      // Subscribe to all admin updates
+      if (adminHub.subscribeToUpdates) {
+        await adminHub.subscribeToUpdates();
+        this.cleanupFunctions.push(async () => {
+          await adminHub.unsubscribeFromUpdates?.();
+        });
+      }
+    }
+
+    logger.info('Admin event listeners setup complete');
   }
 
   // Register event handlers
@@ -198,34 +353,98 @@ export class SDKSignalRManager {
 
   // Manual connection management
   async connect(): Promise<void> {
-    // TODO: SDK does not yet support signalR property
-    // The SDK needs to add:
-    // - coreClient.signalR.connect()
-    // - adminClient.signalR.connect()
-    
-    // Stub implementation
-    logger.info('SignalR connect called - SDK does not support SignalR yet');
+    const promises: Promise<void>[] = [];
+
+    // Connect Core SignalR
+    if (this.coreClient) {
+      const signalR = (this.coreClient as any).signalr;
+      if (signalR) {
+        promises.push(signalR.startAllConnections());
+      }
+    }
+
+    // Connect Admin SignalR
+    if (this.adminClient) {
+      const signalRService = (this.adminClient as any).signalRService;
+      if (signalRService) {
+        // Start navigation state hub
+        const navHub = await signalRService.getOrCreateNavigationStateHub();
+        if (navHub) {
+          promises.push(navHub.start());
+        }
+        
+        // Start admin notification hub if available
+        const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
+        if (adminHub) {
+          promises.push(adminHub.start());
+        }
+      }
+    }
+
+    await Promise.all(promises);
+    logger.info('SignalR connections started');
   }
 
   async disconnect(): Promise<void> {
-    // TODO: SDK does not yet support signalR property
-    // The SDK needs to add:
-    // - coreClient.signalR.disconnect()
-    // - adminClient.signalR.disconnect()
-    
-    // Stub implementation
-    logger.info('SignalR disconnect called - SDK does not support SignalR yet');
+    const promises: Promise<void>[] = [];
+
+    // Disconnect Core SignalR
+    if (this.coreClient) {
+      const signalR = (this.coreClient as any).signalr;
+      if (signalR) {
+        promises.push(signalR.stopAllConnections());
+      }
+    }
+
+    // Disconnect Admin SignalR
+    if (this.adminClient) {
+      const signalRService = (this.adminClient as any).signalRService;
+      if (signalRService) {
+        // Stop navigation state hub
+        const navHub = await signalRService.getOrCreateNavigationStateHub();
+        if (navHub) {
+          promises.push(navHub.stop());
+        }
+        
+        // Stop admin notification hub if available
+        const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
+        if (adminHub) {
+          promises.push(adminHub.stop());
+        }
+      }
+    }
+
+    await Promise.all(promises);
+    logger.info('SignalR connections stopped');
   }
 
   // Check connection status
   isConnected(): boolean {
-    // TODO: SDK does not yet support signalR property
-    // The SDK needs to add:
-    // - coreClient.signalR.isConnected()
-    // - adminClient.signalR.isConnected()
-    
-    // Stub implementation - always return false for now
-    return false;
+    let connected = false;
+
+    // Check Core SignalR status
+    if (this.coreClient) {
+      const signalR = (this.coreClient as any).signalr;
+      if (signalR) {
+        const statuses = signalR.getConnectionStatus?.();
+        if (statuses) {
+          connected = Object.values(statuses).some((status: any) => status === 'Connected');
+        }
+      }
+    }
+
+    // Check Admin SignalR status
+    if (!connected && this.adminClient) {
+      const signalRService = (this.adminClient as any).signalRService;
+      if (signalRService) {
+        const connectionStates = signalRService.getConnectionStates?.();
+        if (connectionStates) {
+          connected = Object.values(connectionStates).some((state: any) => state === 'Connected');
+        }
+      }
+    }
+
+    return connected;
   }
 
   // Clean up all resources

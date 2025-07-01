@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
-// Video API not yet supported in SDK, using stub implementation
+import { getServerCoreClient } from '@/lib/clients/server';
 import { createValidationError, parseQueryParams } from '@/lib/utils/route-helpers';
 
 export async function POST(request: NextRequest) {
@@ -42,21 +42,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: SDK does not yet support video generation
-    // Stub implementation until SDK adds videos.generate() method
+    // Use SDK video generation (async only)
+    const client = getServerCoreClient(virtualKey);
+    
     const result = await withSDKErrorHandling(
-      async () => {
-        // Generate a fake task ID
-        const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        return {
-          task_id: taskId,
-          status: 'queued',
-          created_at: new Date().toISOString(),
-          estimated_time: 120, // 2 minutes
-          message: 'Video generation queued. Note: This is a stub - SDK does not yet support video generation.',
-        };
-      },
+      async () => client.videos.generateAsync({
+        prompt: videoRequest.prompt,
+        model: videoRequest.model,
+        duration: videoRequest.duration,
+        size: videoRequest.size,
+        fps: videoRequest.fps,
+        style: videoRequest.style,
+        response_format: videoRequest.response_format,
+        user: videoRequest.user,
+        seed: videoRequest.seed,
+        n: videoRequest.n,
+        webhook_url: videoRequest.webhook_url,
+        webhook_metadata: videoRequest.webhook_metadata,
+        webhook_headers: videoRequest.webhook_headers,
+        timeout_seconds: videoRequest.timeout_seconds,
+      }),
       'generate video'
     );
 
@@ -104,39 +109,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: SDK does not yet support video task status checking
-    // Stub implementation until SDK adds videos.getTask() and videos.list() methods
+    // Use SDK for video task operations
+    const client = getServerCoreClient(virtualKey);
     
     if (taskId) {
       // Get specific video generation task status
       const result = await withSDKErrorHandling(
-        async () => {
-          // Stub response for task status
-          return {
-            task_id: taskId,
-            status: 'processing',
-            progress: 50,
-            created_at: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
-            updated_at: new Date().toISOString(),
-            estimated_time_remaining: 60,
-            message: 'Processing video... Note: This is a stub - SDK does not yet support video status checking.',
-          };
-        },
+        async () => client.videos.getTaskStatus(taskId),
         `get video generation task ${taskId}`
       );
 
       return transformSDKResponse(result);
     } else {
-      // Get video generation history or list
+      // Video listing is not supported by the API - return empty list
       const result = await withSDKErrorHandling(
         async () => {
-          // Stub response for video list
+          // The API doesn't support listing video generations
           return {
             items: [],
             total: 0,
             page: params.page,
             pageSize: params.pageSize,
-            message: 'No videos found. Note: This is a stub - SDK does not yet support video listing.',
+            message: 'Video generation history is not available. Check specific task IDs for status.',
           };
         },
         'list video generations'
@@ -184,14 +178,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // TODO: SDK does not yet support video task cancellation
-    // Stub implementation until SDK adds videos.cancelTask() method
+    // Use SDK for video task cancellation
+    const client = getServerCoreClient(virtualKey);
+    
     const result = await withSDKErrorHandling(
       async () => {
-        // Stub response for task cancellation
+        await client.videos.cancelTask(taskId);
         return {
           success: true,
-          message: `Task ${taskId} cancelled successfully. Note: This is a stub - SDK does not yet support video cancellation.`,
+          message: `Task ${taskId} cancelled successfully.`,
         };
       },
       `cancel video generation task ${taskId}`
