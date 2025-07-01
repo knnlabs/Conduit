@@ -14,6 +14,7 @@ import { ProviderModelsService } from '../services/ProviderModelsService';
 import { SignalRService } from '../services/SignalRService';
 import { EmbeddingsService } from '../services/EmbeddingsService';
 import { NotificationsService } from '../services/NotificationsService';
+import { ConnectionService } from '../services/ConnectionService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -32,6 +33,7 @@ export class ConduitCoreClient extends BaseClient {
   public readonly signalr: SignalRService;
   public readonly embeddings: EmbeddingsService;
   public readonly notifications: NotificationsService;
+  public readonly connection: ConnectionService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -60,6 +62,10 @@ export class ConduitCoreClient extends BaseClient {
     
     this.embeddings = new EmbeddingsService(this);
     this.notifications = new NotificationsService(this.signalr);
+    
+    // Initialize connection service
+    this.connection = new ConnectionService(this);
+    this.connection.initializeSignalR(this.signalr);
     
     // Auto-connect SignalR if enabled
     if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {

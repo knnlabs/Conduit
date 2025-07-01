@@ -191,8 +191,8 @@ export function useProviderHealthOverview() {
         
         // Transform the summary into individual provider health records
         // Note: The actual response structure may differ, this is based on typical patterns
-        if (healthSummary.providerStatuses) {
-          return healthSummary.providerStatuses.map((status: any) => ({
+        if ((healthSummary as any).providerStatuses) {
+          return (healthSummary as any).providerStatuses.map((status: any) => ({
             providerId: status.providerId || status.providerName,
             providerName: status.providerName,
             status: status.isHealthy ? 'healthy' : status.status || 'down',
@@ -348,11 +348,11 @@ export function useProviderStatus() {
         if (healthSummary) {
           const totalProviders = healthSummary.totalProviders || 0;
           const healthyProviders = healthSummary.healthyProviders || 0;
-          const degradedProviders = healthSummary.degradedProviders || 0;
-          const downProviders = healthSummary.downProviders || 0;
+          const degradedProviders = (healthSummary as any).degradedProviders || 0;
+          const downProviders = (healthSummary as any).downProviders || (healthSummary as any).providers || 0;
           
           return {
-            overall: healthSummary.overallStatus || 
+            overall: (healthSummary as any).overallStatus || 
                     (downProviders > 0 ? 'outage' : 
                      degradedProviders > 0 ? 'degraded' : 
                      'operational'),
@@ -360,11 +360,11 @@ export function useProviderStatus() {
             healthyProviders,
             degradedProviders,
             downProviders,
-            averageResponseTime: healthSummary.averageResponseTime || 0,
-            averageUptime: healthSummary.averageUptime || 99.0,
-            totalRequests: healthSummary.totalRequests || 0,
-            failedRequests: healthSummary.failedRequests || 0,
-            lastUpdated: healthSummary.lastUpdated || new Date().toISOString(),
+            averageResponseTime: (healthSummary as any).averageResponseTime || 0,
+            averageUptime: (healthSummary as any).averageUptime || 99.0,
+            totalRequests: (healthSummary as any).totalRequests || 0,
+            failedRequests: (healthSummary as any).failedRequests || 0,
+            lastUpdated: (healthSummary as any).lastUpdated || new Date().toISOString(),
           };
         }
         

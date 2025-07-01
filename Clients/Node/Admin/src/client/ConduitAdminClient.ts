@@ -16,6 +16,7 @@ import { NotificationsService } from '../services/NotificationsService';
 import { DatabaseBackupService } from '../services/DatabaseBackupService';
 import { SignalRService } from '../services/SignalRService';
 import { RealtimeNotificationsService } from '../services/RealtimeNotificationsService';
+import { ConnectionService } from '../services/ConnectionService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -58,6 +59,7 @@ export class ConduitAdminClient {
   public readonly databaseBackup: DatabaseBackupService;
   public readonly signalr: SignalRService;
   public readonly realtimeNotifications: RealtimeNotificationsService;
+  public readonly connection: ConnectionService;
 
   private readonly config: ConduitConfig;
 
@@ -114,6 +116,11 @@ export class ConduitAdminClient {
     );
     
     this.realtimeNotifications = new RealtimeNotificationsService(this.signalr);
+    
+    // Initialize connection service
+    this.connection = new ConnectionService();
+    this.connection.initializeSignalR(this.signalr, signalRConfig);
+    this.connection.setBaseUrl(this.normalizeUrl(config.adminApiUrl));
     
     // Auto-connect SignalR if enabled
     if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {

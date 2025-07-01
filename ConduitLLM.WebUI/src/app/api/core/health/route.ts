@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Use SDK health service
-    const client = getServerCoreClient(validation.virtualKey || '');
+    const client = getServerCoreClient(validation.session?.virtualKey || '');
     const healthResult = await withSDKErrorHandling(
-      async () => client.health.getFullHealth(),
+      async () => (client as any).health.getFullHealth(),
       'get health status'
     );
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       version: '1.0.0', // Could be obtained from a version endpoint
       environment: process.env.NODE_ENV || 'development',
       uptime: process.uptime(),
-      dependencies: healthResult.checks?.reduce((deps, check) => {
+      dependencies: healthResult.checks?.reduce((deps: Record<string, unknown>, check: any) => {
         if (check.data) {
           deps[check.name] = check.data;
         }
@@ -99,9 +99,9 @@ export async function HEAD(request: NextRequest) {
 
     // Use SDK for lightweight liveness check
     const validation = await validateCoreSession(request, { requireVirtualKey: false });
-    const client = getServerCoreClient(validation.virtualKey || '');
+    const client = getServerCoreClient(validation.session?.virtualKey || '');
     
-    const isHealthy = await client.health.isSystemHealthy();
+    const isHealthy = await (client as any).health.isSystemHealthy();
 
     return new Response(null, { 
       status: isHealthy ? 200 : 503,

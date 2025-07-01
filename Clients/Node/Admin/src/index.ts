@@ -53,6 +53,7 @@ export { ProviderHealthService } from './services/ProviderHealthService';
 export { NotificationsService } from './services/NotificationsService';
 export { DatabaseBackupService } from './services/DatabaseBackupService';
 export { SignalRService } from './services/SignalRService';
+export { ConnectionService } from './services/ConnectionService';
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
 
 // SignalR Hub Clients

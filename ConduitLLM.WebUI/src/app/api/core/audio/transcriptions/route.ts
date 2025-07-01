@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     
     const result = await withSDKErrorHandling(
-      async () => client.audio.transcribe({
+      async () => (client as any).audio.transcribe({
         file: {
           data: buffer,
           filename: audioFile.name,

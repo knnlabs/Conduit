@@ -237,4 +237,12 @@ export abstract class BaseClient {
   private isErrorResponse(data: unknown): data is ErrorResponse {
     return !!data && typeof data === 'object' && 'error' in data;
   }
+
+  /**
+   * Gets the current client configuration.
+   * @returns The client configuration
+   */
+  public getConfig(): ClientConfig {
+    return { ...this.config };
+  }
 }
