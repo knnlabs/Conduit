@@ -27,6 +27,18 @@ export interface ChatCompletionRequest {
   tools?: Tool[];
   tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
   user?: string;
+  /**
+   * @deprecated Use 'tools' instead. Functions are converted to tools internally.
+   */
+  functions?: Array<{
+    name: string;
+    description?: string;
+    parameters?: Record<string, any>;
+  }>;
+  /**
+   * @deprecated Use 'tool_choice' instead.
+   */
+  function_call?: 'none' | 'auto' | { name: string };
 }
 
 export interface ChatCompletionChoice {

@@ -132,7 +132,7 @@ export interface VirtualKeyFilters extends FilterOptions {
   budgetDuration?: BudgetDuration;
   minBudget?: number;
   maxBudget?: number;
-  allowedModel?: string;
+  allowedModels?: string[];
   createdAfter?: string;
   createdBefore?: string;
   lastUsedAfter?: string;

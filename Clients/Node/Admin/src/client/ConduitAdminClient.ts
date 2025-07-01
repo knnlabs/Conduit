@@ -14,6 +14,8 @@ import { MetricsService } from '../services/MetricsService';
 import { ProviderHealthService } from '../services/ProviderHealthService';
 import { NotificationsService } from '../services/NotificationsService';
 import { DatabaseBackupService } from '../services/DatabaseBackupService';
+import { SignalRService } from '../services/SignalRService';
+import { RealtimeNotificationsService } from '../services/RealtimeNotificationsService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -54,6 +56,8 @@ export class ConduitAdminClient {
   public readonly providerHealth: ProviderHealthService;
   public readonly notifications: NotificationsService;
   public readonly databaseBackup: DatabaseBackupService;
+  public readonly signalr: SignalRService;
+  public readonly realtimeNotifications: RealtimeNotificationsService;
 
   private readonly config: ConduitConfig;
 
@@ -74,6 +78,10 @@ export class ConduitAdminClient {
       logger: config.options?.logger,
       cache: config.options?.cache,
       defaultHeaders: config.options?.headers,
+      retryDelay: config.options?.retryDelay,
+      onError: config.options?.onError,
+      onRequest: config.options?.onRequest,
+      onResponse: config.options?.onResponse,
     };
 
     this.virtualKeys = new VirtualKeyService(baseConfig);
@@ -91,6 +99,30 @@ export class ConduitAdminClient {
     this.providerHealth = new ProviderHealthService(baseConfig);
     this.notifications = new NotificationsService(baseConfig);
     this.databaseBackup = new DatabaseBackupService(baseConfig);
+    
+    // Initialize SignalR services
+    const signalRConfig = config.options?.signalR ?? {};
+    this.signalr = new SignalRService(
+      config.adminApiUrl.replace(/\/api$/, ''), // Remove /api suffix for SignalR
+      config.masterKey,
+      {
+        logLevel: signalRConfig.logLevel,
+        transport: signalRConfig.transport,
+        headers: signalRConfig.headers,
+        reconnectionDelay: signalRConfig.reconnectDelay,
+      }
+    );
+    
+    this.realtimeNotifications = new RealtimeNotificationsService(this.signalr);
+    
+    // Auto-connect SignalR if enabled
+    if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {
+      this.signalr.connectAll().catch(error => {
+        if (config.options?.logger) {
+          config.options.logger.error('Failed to connect to SignalR:', error);
+        }
+      });
+    }
   }
 
   static fromEnvironment(env?: {

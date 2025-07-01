@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider, AxiosError } from './types';
+import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider, AxiosError, RequestConfigInfo, ResponseInfo } from './types';
 import { handleApiError } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
 
@@ -8,10 +8,18 @@ export abstract class BaseApiClient {
   protected readonly logger?: Logger;
   protected readonly cache?: CacheProvider;
   protected readonly retryConfig: RetryConfig;
+  protected readonly retryDelays?: number[];
+  protected readonly onError?: (error: Error) => void;
+  protected readonly onRequest?: (config: RequestConfigInfo) => void | Promise<void>;
+  protected readonly onResponse?: (response: ResponseInfo) => void | Promise<void>;
 
   constructor(config: ApiClientConfig) {
     this.logger = config.logger;
     this.cache = config.cache;
+    this.retryDelays = config.retryDelay;
+    this.onError = config.onError;
+    this.onRequest = config.onRequest;
+    this.onResponse = config.onResponse;
     
     this.retryConfig = this.normalizeRetryConfig(config.retries);
 
@@ -48,11 +56,23 @@ export abstract class BaseApiClient {
 
   private setupInterceptors(): void {
     this.axios.interceptors.request.use(
-      (config) => {
+      async (config) => {
         this.logger?.debug(`[${config.method?.toUpperCase()}] ${config.url}`, {
           params: config.params,
           data: config.data,
         });
+        
+        // Call onRequest callback if provided
+        if (this.onRequest) {
+          const requestConfig: RequestConfigInfo = {
+            method: config.method || 'GET',
+            url: config.url || '',
+            headers: config.headers as Record<string, string> || {},
+            data: config.data,
+          };
+          await this.onRequest(requestConfig);
+        }
+        
         return config;
       },
       (error) => {
@@ -62,10 +82,28 @@ export abstract class BaseApiClient {
     );
 
     this.axios.interceptors.response.use(
-      (response) => {
+      async (response) => {
         this.logger?.debug(`[${response.status}] ${response.config.url}`, {
           data: response.data,
         });
+        
+        // Call onResponse callback if provided
+        if (this.onResponse) {
+          const responseInfo: ResponseInfo = {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers as Record<string, string>,
+            data: response.data,
+            config: {
+              method: response.config.method || 'GET',
+              url: response.config.url || '',
+              headers: response.config.headers as Record<string, string> || {},
+              data: response.config.data,
+            },
+          };
+          await this.onResponse(responseInfo);
+        }
+        
         return response;
       },
       async (error: AxiosError) => {
@@ -83,7 +121,15 @@ export abstract class BaseApiClient {
           this.retryConfig.retryCondition?.(error)
         ) {
           config._retry = (config._retry || 0) + 1;
-          const delay = this.retryConfig.retryDelay * Math.pow(2, (config._retry || 1) - 1);
+          
+          // Use custom retry delays if provided
+          let delay: number;
+          if (this.retryDelays && this.retryDelays.length > 0) {
+            const index = Math.min((config._retry || 1) - 1, this.retryDelays.length - 1);
+            delay = this.retryDelays[index];
+          } else {
+            delay = this.retryConfig.retryDelay * Math.pow(2, (config._retry || 1) - 1);
+          }
           
           this.logger?.warn(
             `Retrying request (attempt ${config._retry || 1}/${this.retryConfig.maxRetries})`,
@@ -120,6 +166,10 @@ export abstract class BaseApiClient {
       const response: AxiosResponse<T> = await this.axios.request(axiosConfig);
       return response.data;
     } catch (error) {
+      // Call onError callback if provided
+      if (this.onError && error instanceof Error) {
+        this.onError(error);
+      }
       handleApiError(error, config.url, config.method);
     }
   }

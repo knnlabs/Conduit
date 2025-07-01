@@ -15,6 +15,8 @@ export * from './models/system';
 export * from './models/audioConfiguration';
 export * from './models/metrics';
 export * from './models/databaseBackup';
+export * from './models/signalr';
+export * from './models/notifications';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -50,6 +52,12 @@ export { MetricsService } from './services/MetricsService';
 export { ProviderHealthService } from './services/ProviderHealthService';
 export { NotificationsService } from './services/NotificationsService';
 export { DatabaseBackupService } from './services/DatabaseBackupService';
+export { SignalRService } from './services/SignalRService';
+export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
+
+// SignalR Hub Clients
+export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
+export { AdminNotificationHubClient } from './signalr/AdminNotificationHubClient';
 
 // Utilities
 export * from './utils/errors';

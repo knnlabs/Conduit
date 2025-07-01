@@ -1,5 +1,5 @@
 export { ConduitCoreClient } from './client/ConduitCoreClient';
-export type { ClientConfig, RequestOptions } from './client/types';
+export type { ClientConfig, RequestOptions, SignalRConfig } from './client/types';
 
 export type {
   ChatCompletionMessage,
@@ -247,4 +247,21 @@ export {
 } from './models/embeddings';
 
 export { EmbeddingsService, EmbeddingHelpers } from './services/EmbeddingsService';
+
+export { NotificationsService } from './services/NotificationsService';
+
+export type {
+  VideoProgressEvent,
+  ImageProgressEvent,
+  SpendUpdateEvent,
+  SpendLimitAlertEvent,
+  TaskUpdateEvent,
+  VideoProgressCallback,
+  ImageProgressCallback,
+  SpendUpdateCallback,
+  SpendLimitAlertCallback,
+  TaskUpdateCallback,
+  NotificationSubscription,
+  NotificationOptions,
+} from './models/notifications';
 

@@ -217,3 +217,14 @@ export function calculateCosineSimilarity(embedding1: number[], embedding2: numb
 
   return dotProduct / (magnitude1 * magnitude2);
 }
+
+/**
+ * Embedding streaming chunk
+ */
+export interface EmbeddingChunk {
+  id: string;
+  object: 'embedding.chunk';
+  created: number;
+  data: Partial<EmbeddingData>[];
+  index?: number;
+}

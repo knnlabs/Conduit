@@ -187,6 +187,31 @@ export class SettingsService extends BaseApiClient {
     return settings;
   }
 
+  async updateCategory(category: string, updates: Record<string, string>): Promise<void> {
+    // Get all settings in the category
+    const settings = await this.getSettingsByCategory(category);
+    
+    // Update each setting that has a new value
+    const updatePromises = settings
+      .filter(setting => updates.hasOwnProperty(setting.key))
+      .map(setting => this.updateGlobalSetting(setting.key, { value: updates[setting.key] }));
+    
+    await Promise.all(updatePromises);
+  }
+
+  async update(key: string, value: string): Promise<void> {
+    await this.updateGlobalSetting(key, { value });
+  }
+
+  async set(key: string, value: string, options?: {
+    description?: string;
+    dataType?: 'string' | 'number' | 'boolean' | 'json';
+    category?: string;
+    isSecret?: boolean;
+  }): Promise<void> {
+    await this.setSetting(key, value, options);
+  }
+
   // Stub methods
   async getSystemConfiguration(): Promise<SystemConfiguration> {
     // STUB: This endpoint needs to be implemented in the Admin API

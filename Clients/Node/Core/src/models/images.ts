@@ -321,3 +321,15 @@ export const DEFAULT_POLLING_OPTIONS: Required<TaskPollingOptions> = {
   useExponentialBackoff: true,
   maxIntervalMs: 10000, // 10 seconds
 } as const;
+
+/**
+ * Image generation streaming chunk
+ */
+export interface ImageGenerationChunk {
+  id: string;
+  object: 'image.generation.chunk';
+  created: number;
+  data: Partial<ImageData>[];
+  progress?: number;
+  message?: string;
+}

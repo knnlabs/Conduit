@@ -221,15 +221,34 @@ export class AnalyticsService extends BaseApiClient {
     );
   }
 
-  async exportAnalytics(
-    _filters: AnalyticsFilters,
-    _format: 'csv' | 'excel' | 'json'
+  async export(
+    filters: AnalyticsFilters,
+    format: 'csv' | 'excel' | 'json' = 'csv'
   ): Promise<Blob> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'exportAnalytics requires Admin API endpoint implementation. ' +
-        'Consider implementing GET /api/analytics/export'
-    );
+    const params = {
+      format,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      virtualKeyIds: filters.virtualKeyIds,
+      models: filters.models,
+      providers: filters.providers,
+      includeMetadata: filters.includeMetadata,
+    };
+
+    const response = await this.axios.get('/api/analytics/export', {
+      params,
+      responseType: 'blob',
+    });
+
+    return response.data as Blob;
+  }
+
+  async exportAnalytics(
+    filters: AnalyticsFilters,
+    format: 'csv' | 'excel' | 'json'
+  ): Promise<Blob> {
+    // Deprecated: Use export() instead
+    return this.export(filters, format);
   }
 
   async detectAnomalies(_dateRange: DateRange): Promise<AnomalyDto[]> {

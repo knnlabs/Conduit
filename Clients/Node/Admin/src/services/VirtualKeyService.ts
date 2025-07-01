@@ -60,7 +60,7 @@ export class VirtualKeyService extends BaseApiClient {
       budgetDuration: filters?.budgetDuration,
       minBudget: filters?.minBudget,
       maxBudget: filters?.maxBudget,
-      allowedModel: filters?.allowedModel,
+      allowedModels: filters?.allowedModels,
       createdAfter: filters?.createdAfter,
       createdBefore: filters?.createdBefore,
       lastUsedAfter: filters?.lastUsedAfter,

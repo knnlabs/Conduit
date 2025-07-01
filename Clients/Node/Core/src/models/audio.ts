@@ -420,3 +420,27 @@ export interface AudioValidation {
 }
 
 // Types are exported automatically by TypeScript
+
+/**
+ * Audio transcription streaming chunk
+ */
+export interface AudioTranscriptionChunk {
+  id: string;
+  object: 'audio.transcription.chunk';
+  created: number;
+  text: string;
+  is_final: boolean;
+  segment?: Partial<TranscriptionSegment>;
+}
+
+/**
+ * Audio translation streaming chunk
+ */
+export interface AudioTranslationChunk {
+  id: string;
+  object: 'audio.translation.chunk';
+  created: number;
+  text: string;
+  is_final: boolean;
+  segment?: Partial<TranscriptionSegment>;
+}

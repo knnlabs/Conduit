@@ -13,6 +13,7 @@ import { DiscoveryService } from '../services/DiscoveryService';
 import { ProviderModelsService } from '../services/ProviderModelsService';
 import { SignalRService } from '../services/SignalRService';
 import { EmbeddingsService } from '../services/EmbeddingsService';
+import { NotificationsService } from '../services/NotificationsService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -30,6 +31,7 @@ export class ConduitCoreClient extends BaseClient {
   public readonly providerModels: ProviderModelsService;
   public readonly signalr: SignalRService;
   public readonly embeddings: EmbeddingsService;
+  public readonly notifications: NotificationsService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -48,8 +50,25 @@ export class ConduitCoreClient extends BaseClient {
     this.metrics = new MetricsService(this);
     this.discovery = new DiscoveryService(this);
     this.providerModels = new ProviderModelsService(this);
-    this.signalr = new SignalRService(config.baseURL || 'http://localhost:5000', config.apiKey);
+    
+    // Initialize SignalR with configuration
+    const signalRConfig = config.signalR ?? {};
+    this.signalr = new SignalRService(
+      config.baseURL || 'http://localhost:5000', 
+      config.apiKey
+    );
+    
     this.embeddings = new EmbeddingsService(this);
+    this.notifications = new NotificationsService(this.signalr);
+    
+    // Auto-connect SignalR if enabled
+    if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {
+      this.signalr.startAllConnections().catch((error: Error) => {
+        if (config.debug) {
+          console.error('Failed to connect to SignalR:', error);
+        }
+      });
+    }
   }
 
   static fromApiKey(apiKey: string, baseURL?: string): ConduitCoreClient {
