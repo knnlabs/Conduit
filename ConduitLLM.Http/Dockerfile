@@ -1,55 +1,121 @@
-# --- Database Configuration ---
-# For Postgres, set DATABASE_URL in the format:
-#   DATABASE_URL=postgresql://user:password@host:port/database
-# For SQLite, set CONDUIT_SQLITE_PATH to the desired file path (default: ConduitConfig.db)
-# Example (Postgres):
-#   ENV DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb
-# Example (SQLite):
-#   ENV CONDUIT_SQLITE_PATH=/data/ConduitConfig.db
+# =============================================================================
+# ConduitLLM HTTP API Service Dockerfile
+# =============================================================================
+# High-performance, secure, multi-stage Docker build for the Conduit HTTP API
+# Optimized for production deployments with minimal attack surface
+# =============================================================================
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# -----------------------------------------------------------------------------
+# Stage 1: Dependencies Cache
+# -----------------------------------------------------------------------------
+# Separate stage for NuGet restore to maximize Docker layer caching
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS dependencies
+
 WORKDIR /src
 
-# Copy directories that are essential for the HTTP build
-COPY ["ConduitLLM.Http", "/src/ConduitLLM.Http"]
-COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
-COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
-COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
-COPY ["ConduitLLM.Admin", "/src/ConduitLLM.Admin"]
-COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
-COPY ["ConduitLLM.Security", "/src/ConduitLLM.Security"]
-# Copy solution file if it exists
-COPY ["*.sln", "/src/"]
+# Copy only project files first for optimal caching
+COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
+COPY ConduitLLM.Core/*.csproj ./ConduitLLM.Core/
+COPY ConduitLLM.Configuration/*.csproj ./ConduitLLM.Configuration/
+COPY ConduitLLM.Providers/*.csproj ./ConduitLLM.Providers/
+COPY ConduitLLM.Admin/*.csproj ./ConduitLLM.Admin/
+COPY ConduitLLM.Security/*.csproj ./ConduitLLM.Security/
+COPY ConduitLLM.WebUI/*.csproj ./ConduitLLM.WebUI/
 
-# List directories for debugging
-RUN echo "==== Directory structure ====" && \
-    ls -la /src && \
-    echo "==== HTTP directory ====" && \
-    ls -la /src/ConduitLLM.Http
+# Handle optional projects gracefully
+COPY ConduitLLM.Common/*.csproj ./ConduitLLM.Common/ 2>/dev/null || true
 
-# Create dummy Common directory if needed
-RUN if [ ! -d "/src/ConduitLLM.Common" ]; then \
-    echo "Creating missing ConduitLLM.Common directory" && \
-    mkdir -p /src/ConduitLLM.Common && \
-    echo "namespace ConduitLLM.Common { public class Dummy {} }" > /src/ConduitLLM.Common/Dummy.cs && \
-    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>' > /src/ConduitLLM.Common/ConduitLLM.Common.csproj; \
-    fi
+# Restore dependencies with retry logic for network resilience
+RUN dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj" \
+    --runtime linux-musl-x64 \
+    --locked-mode \
+    || dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj" \
+    --runtime linux-musl-x64
 
-# Restore and build HTTP project
-RUN dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj" || \
-    (echo "Restore failed - check directory structure" && exit 1)
+# -----------------------------------------------------------------------------
+# Stage 2: Build
+# -----------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 
-RUN dotnet publish "ConduitLLM.Http/ConduitLLM.Http.csproj" -c Release -o /app/publish
+WORKDIR /src
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# Copy restored packages from dependencies stage
+COPY --from=dependencies /src ./
+COPY --from=dependencies /root/.nuget /root/.nuget
+
+# Copy source code
+COPY . .
+
+# Build with optimizations
+RUN dotnet publish "ConduitLLM.Http/ConduitLLM.Http.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore \
+    --runtime linux-musl-x64 \
+    --self-contained false \
+    -p:PublishSingleFile=false \
+    -p:PublishTrimmed=false \
+    -p:PublishReadyToRun=true
+
+# -----------------------------------------------------------------------------
+# Stage 3: Runtime
+# -----------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
+
+# Install required packages and create non-root user in a single layer
+RUN apk add --no-cache \
+        curl \
+        ca-certificates \
+        tzdata \
+    && addgroup -g 1000 -S conduit \
+    && adduser -u 1000 -S conduit -G conduit \
+    && mkdir -p /app /data \
+    && chown -R conduit:conduit /app /data
+
+# Set timezone to UTC
+ENV TZ=UTC
+
 WORKDIR /app
-COPY --from=build /app/publish ./
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Copy published application
+COPY --from=build --chown=conduit:conduit /app/publish .
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+# Configure ASP.NET Core
+ENV ASPNETCORE_URLS="http://+:8080" \
+    ASPNETCORE_ENVIRONMENT="Production" \
+    DOTNET_RUNNING_IN_CONTAINER="true" \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT="false" \
+    # Performance optimizations
+    DOTNET_TieredPGO="1" \
+    DOTNET_TC_QuickJitForLoops="1" \
+    DOTNET_ReadyToRun="0"
 
+# Switch to non-root user
+USER conduit
+
+# Expose port
 EXPOSE 8080
+
+# Health check with proper timeouts and intervals
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health/ready || exit 1
+
+# Use exec form to ensure proper signal handling
 ENTRYPOINT ["dotnet", "ConduitLLM.Http.dll"]
+
+# =============================================================================
+# Build Arguments & Labels
+# =============================================================================
+ARG BUILD_DATE
+ARG VERSION
+ARG VCS_REF
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="Conduit HTTP API" \
+      org.opencontainers.image.description="High-performance LLM gateway HTTP API service" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="KNN Labs" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/knnlabs/Conduit" \
+      maintainer="KNN Labs <support@knnlabs.com>"

@@ -29,7 +29,11 @@ export default function RootLayout({
       <body>
         <QueryProvider>
           <MantineProvider>
-            {children}
+            <AuthProvider>
+              <AppWrapper>
+                {children}
+              </AppWrapper>
+            </AuthProvider>
           </MantineProvider>
         </QueryProvider>
       </body>

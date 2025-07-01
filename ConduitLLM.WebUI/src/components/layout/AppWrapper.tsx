@@ -12,14 +12,13 @@ interface AppWrapperProps {
   children: React.ReactNode;
 }
 
+interface AuthenticatedLayoutProps {
+  children: React.ReactNode;
+}
+
 const PUBLIC_ROUTES = ['/login'];
 
-export function AppWrapper({ children }: AppWrapperProps) {
-  const pathname = usePathname();
-  
-  // Initialize SignalR connections for authenticated pages
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  
+function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   // Connect to real-time hubs for live updates
   useNavigationStateHub();
   useSpendTracking();
@@ -27,15 +26,28 @@ export function AppWrapper({ children }: AppWrapperProps) {
   useProviderHub();
   useModelMappingHub();
 
+  return (
+    <MainLayout>
+      {children}
+    </MainLayout>
+  );
+}
+
+export function AppWrapper({ children }: AppWrapperProps) {
+  const pathname = usePathname();
+  
+  // Check if this is a public route
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  
   // For public routes (like login), render children without layout
   if (isPublicRoute) {
     return <>{children}</>;
   }
 
-  // For protected routes, wrap with main layout
+  // For protected routes, wrap with authenticated layout
   return (
-    <MainLayout>
+    <AuthenticatedLayout>
       {children}
-    </MainLayout>
+    </AuthenticatedLayout>
   );
 }

@@ -4,6 +4,7 @@ import { AppShell } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Footer } from './Footer';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 
 interface MainLayoutProps {
@@ -39,7 +40,12 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       <AppShell.Main>
         <ErrorBoundary>
-          {children}
+          <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
+              {children}
+            </div>
+            <Footer />
+          </div>
         </ErrorBoundary>
       </AppShell.Main>
     </AppShell>

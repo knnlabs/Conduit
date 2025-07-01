@@ -1,109 +1,107 @@
-# .dockerignore
-# Security-focused exclusions to minimize Docker build context
-
 # Git
-.git/
+.git
 .gitignore
 .gitattributes
 
-# Development databases - SECURITY: Prevent data leakage
-*.db
-*.db-shm
-*.db-wal
-conduit-dev.db
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
 
-# Build outputs
-**/bin/
-**/obj/
-**/out/
-**/publish/
-TestResults/
-CoverageReport/
-**/*.trx
-**/*.coverage
-
-# User-specific files
-**/*.user
-**/*.suo
-**/*.userosscache
-**/*.sln.docstates
-.vs/
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Environment and secrets - CRITICAL SECURITY
-**/.env
-**/.env.*
-**/appsettings.Development.json
-**/appsettings.Local.json
-**/secrets/
-**/cookies.txt
-*.pfx
-*.key
-*.crt
-*.pem
-
-# OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 
-# Node modules (for client projects)
+# Documentation
+*.md
+docs/
+LICENSE
+CHANGELOG
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/.next/
+**/dist/
+**/build/
+
+# Node
 **/node_modules/
+**/.npm/
+**/.yarn/
 **/npm-debug.log*
 **/yarn-debug.log*
 **/yarn-error.log*
-**/package-lock.json
-**/yarn.lock
+**/.pnp
+**/.pnp.js
 
-# Package files
-*.nupkg
-*.snupkg
-nupkgs/
+# Testing
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/*.test.js
+**/*.spec.js
+**/tests/
+**/test/
+**/__tests__/
+**/__mocks__/
 
-# Documentation
-docs/
-website/
-*.md
-LICENSE
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
 
 # Logs
-*.log
-logs/
+**/logs/
+**/*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Docker
+**/Dockerfile*
+**/.dockerignore
+docker-compose*.yml
 
 # Temporary files
-*.tmp
-*.temp
-tmp/
-temp/
+**/tmp/
+**/temp/
+**/*.tmp
+**/*.temp
+**/*.cache
 
-# CI/CD - Not needed in production images
-.github/
-scripts/
+# Database files
+**/*.db
+**/*.sqlite
+**/*.sqlite3
 
-# Testing and monitoring
-monitoring/
-tools/
-**/Examples/
-**/*.Tests/
-**/*.Test/
+# Backup files
+**/*.bak
+**/*.backup
+**/*.old
 
-# Upload directories - SECURITY: User uploaded content
-uploads/
+# Package manager locks (keep for reproducible builds)
+!**/package-lock.json
+!**/yarn.lock
+!**/pnpm-lock.yaml
 
-# Docker files (prevent recursive copying)
-Dockerfile*
-docker-compose*.yml
-.dockerignore
+# Development files
+**/*.development.*
+**/*.dev.*
+**/playground/
+**/examples/
+**/samples/
 
-# Miscellaneous
-*.example
-*.sample
-README*
+# Archives
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.rar
+**/*.7z
