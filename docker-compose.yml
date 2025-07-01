@@ -135,8 +135,8 @@ services:
 
   webui:
     build:
-      context: ./ConduitLLM.WebUI
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ConduitLLM.WebUI/Dockerfile
     depends_on:
       admin:
         condition: service_healthy

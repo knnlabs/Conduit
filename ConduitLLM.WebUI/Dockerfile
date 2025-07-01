@@ -4,13 +4,20 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY ConduitLLM.WebUI/package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Copy client dependencies
+COPY Clients/ ../Clients/
+
+# Install client dependencies
+RUN cd ../Clients/Node/Admin && npm install && cd /app
+RUN cd ../Clients/Node/Core && npm install && cd /app
+
+# Install WebUI dependencies
+RUN npm install
 
 # Copy source code
-COPY . .
+COPY ConduitLLM.WebUI/ .
 
 # Build the Next.js application
 RUN npm run build
@@ -27,20 +34,24 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
-# Copy built application from builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/next.config.js ./
+# Set ownership of the app directory
+RUN chown nextjs:nodejs /app
+
+# Copy built application from builder with proper ownership
+COPY --from=builder --chown=nextjs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
 # Copy src directory for API routes
-COPY --from=builder /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+# Copy only the built client libraries (not node_modules)
+COPY --from=builder --chown=nextjs:nodejs ../Clients/Node/Admin/dist ../Clients/Node/Admin/dist
+COPY --from=builder --chown=nextjs:nodejs ../Clients/Node/Admin/package.json ../Clients/Node/Admin/package.json
+COPY --from=builder --chown=nextjs:nodejs ../Clients/Node/Core/dist ../Clients/Node/Core/dist
+COPY --from=builder --chown=nextjs:nodejs ../Clients/Node/Core/package.json ../Clients/Node/Core/package.json
 
-# Install only production dependencies
-RUN npm ci --only=production
-
-# Set ownership
-RUN chown -R nextjs:nodejs /app
-
+# Install only production dependencies as the nextjs user
 USER nextjs
+RUN npm install --omit=dev
 
 # Expose port
 EXPOSE 3000
