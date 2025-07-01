@@ -668,13 +668,30 @@ namespace ConduitLLM.Tests.Core.Services
                 // Act - Cancel only one task
                 cancelledCts.Cancel();
                 
-                // Wait for grace period to expire plus extra time for cleanup timer
-                // Grace period (300ms) + cleanup timer worst case (1000ms) + buffer
-                await Task.Delay(1500);
+                // Wait a bit to ensure the cancellation callback is processed
+                await Task.Delay(100);
+                
+                // Poll for the expected state with a reasonable timeout
+                // This is more reliable than a fixed delay
+                var timeout = DateTime.UtcNow.AddSeconds(5); // 5 second timeout
+                var cancelled = false;
+                
+                while (DateTime.UtcNow < timeout)
+                {
+                    // Check if the cancelled task has been removed
+                    if (!registry.TryGetCancellationToken(cancelledTaskId, out _))
+                    {
+                        cancelled = true;
+                        break;
+                    }
+                    
+                    // Small delay to avoid tight loop
+                    await Task.Delay(50);
+                }
                 
                 // Assert
                 registry.TryGetCancellationToken(activeTaskId, out _).Should().BeTrue("active task should not be removed");
-                registry.TryGetCancellationToken(cancelledTaskId, out _).Should().BeFalse("cancelled task should be removed after grace period");
+                cancelled.Should().BeTrue("cancelled task should be removed after grace period within timeout");
             }
             finally
             {
