@@ -21,6 +21,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ConnectionIndicator } from './ConnectionIndicator';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface HeaderProps {
   mobileOpened: boolean;
@@ -43,10 +44,6 @@ export function Header({
     router.push('/login');
   };
 
-  const handleProfile = () => {
-    // TODO: Implement profile page
-    console.log('Navigate to profile');
-  };
 
   const handleSettings = () => {
     router.push('/configuration');
@@ -78,6 +75,8 @@ export function Header({
         
         <Divider orientation="vertical" />
         
+        <ThemeToggle />
+        
         <ActionIcon variant="light" size="lg">
           <IconBell size={18} />
         </ActionIcon>
@@ -98,17 +97,6 @@ export function Header({
           </Menu.Target>
 
           <Menu.Dropdown>
-            <Menu.Label>
-              Signed in as Admin
-            </Menu.Label>
-            
-            <Menu.Item
-              leftSection={<IconUser style={{ width: rem(14), height: rem(14) }} />}
-              onClick={handleProfile}
-            >
-              Profile
-            </Menu.Item>
-            
             <Menu.Item
               leftSection={<IconSettings style={{ width: rem(14), height: rem(14) }} />}
               onClick={handleSettings}

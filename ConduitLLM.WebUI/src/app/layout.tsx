@@ -3,7 +3,9 @@ import { ColorSchemeScript } from '@mantine/core';
 import { MantineProvider } from '@/lib/providers/MantineProvider';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { AuthProvider } from '@/lib/providers/AuthProvider';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppWrapper } from '@/components/layout/AppWrapper';
+import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -24,17 +26,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme="auto" />
       </head>
       <body>
         <QueryProvider>
-          <MantineProvider>
-            <AuthProvider>
-              <AppWrapper>
-                {children}
-              </AppWrapper>
-            </AuthProvider>
-          </MantineProvider>
+          <ThemeProvider>
+            <MantineProvider>
+              <AuthProvider>
+                <ErrorBoundary>
+                  <AppWrapper>
+                    {children}
+                  </AppWrapper>
+                </ErrorBoundary>
+              </AuthProvider>
+            </MantineProvider>
+          </ThemeProvider>
         </QueryProvider>
       </body>
     </html>

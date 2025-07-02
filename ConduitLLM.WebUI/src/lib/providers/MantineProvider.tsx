@@ -4,6 +4,7 @@ import { MantineProvider as BaseMantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { theme } from '@/styles/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
@@ -18,8 +19,10 @@ interface MantineProviderProps {
 }
 
 export function MantineProvider({ children }: MantineProviderProps) {
+  const { colorScheme } = useTheme();
+
   return (
-    <BaseMantineProvider theme={theme}>
+    <BaseMantineProvider theme={theme} forceColorScheme={colorScheme}>
       <ModalsProvider>
         <Notifications position="top-right" zIndex={9999} />
         {children}
