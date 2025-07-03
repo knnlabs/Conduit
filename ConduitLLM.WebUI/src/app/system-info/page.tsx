@@ -45,48 +45,7 @@ import { useState, useEffect } from 'react';
 import { useSystemInfo, useSystemMetrics, useSystemHealth } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 
-interface SystemMetrics {
-  cpu: {
-    usage: number;
-    cores: number;
-    model: string;
-    frequency: number;
-  };
-  memory: {
-    total: number;
-    used: number;
-    available: number;
-    usage: number;
-  };
-  disk: {
-    total: number;
-    used: number;
-    available: number;
-    usage: number;
-  };
-  network: {
-    bytesReceived: number;
-    bytesSent: number;
-    packetsReceived: number;
-    packetsSent: number;
-  };
-}
-
-interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical';
-  services: Array<{
-    name: string;
-    status: 'running' | 'stopped' | 'error';
-    uptime: string;
-    version?: string;
-  }>;
-  dependencies: Array<{
-    name: string;
-    status: 'connected' | 'disconnected' | 'degraded';
-    version?: string;
-    latency?: number;
-  }>;
-}
+// Types will come from the SDK responses
 
 export default function SystemInfoPage() {
   const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
@@ -209,16 +168,16 @@ export default function SystemInfoPage() {
               <Text size="xs" tt="uppercase" fw={700} c="dimmed">
                 CPU Usage
               </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.cpu.usage)}>
+              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.cpu?.usage || 0)}>
                 <IconCpu size={16} />
               </ThemeIcon>
             </Group>
             <Text fw={700} size="xl">
-              {metrics.cpu.usage.toFixed(1)}%
+              {(metrics.cpu?.usage || 0).toFixed(1)}%
             </Text>
-            <Progress value={metrics.cpu.usage} color={getUsageColor(metrics.cpu.usage)} size="sm" mt="xs" />
+            <Progress value={metrics.cpu?.usage || 0} color={getUsageColor(metrics.cpu?.usage || 0)} size="sm" mt="xs" />
             <Text size="xs" c="dimmed" mt="xs">
-              {metrics.cpu.cores} cores @ {metrics.cpu.frequency} GHz
+              {metrics.cpu?.cores || 0} cores
             </Text>
           </Card>
 
@@ -227,16 +186,16 @@ export default function SystemInfoPage() {
               <Text size="xs" tt="uppercase" fw={700} c="dimmed">
                 Memory Usage
               </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.memory.usage)}>
+              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.memory?.percentage || 0)}>
                 <IconMemory size={16} />
               </ThemeIcon>
             </Group>
             <Text fw={700} size="xl">
-              {metrics.memory.usage.toFixed(1)}%
+              {(metrics.memory?.percentage || 0).toFixed(1)}%
             </Text>
-            <Progress value={metrics.memory.usage} color={getUsageColor(metrics.memory.usage)} size="sm" mt="xs" />
+            <Progress value={metrics.memory?.percentage || 0} color={getUsageColor(metrics.memory?.percentage || 0)} size="sm" mt="xs" />
             <Text size="xs" c="dimmed" mt="xs">
-              {formatBytes(metrics.memory.used)} / {formatBytes(metrics.memory.total)}
+              {formatBytes(metrics.memory?.used || 0)} / {formatBytes(metrics.memory?.total || 0)}
             </Text>
           </Card>
 
@@ -245,16 +204,16 @@ export default function SystemInfoPage() {
               <Text size="xs" tt="uppercase" fw={700} c="dimmed">
                 Disk Usage
               </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.disk.usage)}>
+              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.disk?.percentage || 0)}>
                 <IconHardDrive size={16} />
               </ThemeIcon>
             </Group>
             <Text fw={700} size="xl">
-              {metrics.disk.usage.toFixed(1)}%
+              {(metrics.disk?.percentage || 0).toFixed(1)}%
             </Text>
-            <Progress value={metrics.disk.usage} color={getUsageColor(metrics.disk.usage)} size="sm" mt="xs" />
+            <Progress value={metrics.disk?.percentage || 0} color={getUsageColor(metrics.disk?.percentage || 0)} size="sm" mt="xs" />
             <Text size="xs" c="dimmed" mt="xs">
-              {formatBytes(metrics.disk.used)} / {formatBytes(metrics.disk.total)}
+              {formatBytes(metrics.disk?.used || 0)} / {formatBytes(metrics.disk?.total || 0)}
             </Text>
           </Card>
 
@@ -268,10 +227,10 @@ export default function SystemInfoPage() {
               </ThemeIcon>
             </Group>
             <Text fw={700} size="lg">
-              ↓ {formatBytes(metrics.network.bytesReceived)}
+              ↓ {formatBytes(metrics.network?.bytesIn || 0)}
             </Text>
             <Text fw={700} size="lg">
-              ↑ {formatBytes(metrics.network.bytesSent)}
+              ↑ {formatBytes(metrics.network?.bytesOut || 0)}
             </Text>
           </Card>
         </SimpleGrid>
@@ -304,7 +263,7 @@ export default function SystemInfoPage() {
                   <Group justify="space-between">
                     <Text fw={600}>Service Status</Text>
                     <Badge color={health ? getStatusColor(health.status) : 'gray'} variant="light">
-                      {health?.status.toUpperCase()}
+                      {health?.status?.toUpperCase() || 'UNKNOWN'}
                     </Badge>
                   </Group>
                 </Card.Section>
@@ -312,28 +271,28 @@ export default function SystemInfoPage() {
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>Service</Table.Th>
+                        <Table.Th>Check</Table.Th>
                         <Table.Th>Status</Table.Th>
-                        <Table.Th>Uptime</Table.Th>
-                        <Table.Th>Version</Table.Th>
+                        <Table.Th>Duration</Table.Th>
+                        <Table.Th>Description</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {health?.services.map((service: any) => (
-                        <Table.Tr key={service.name}>
+                      {health?.checks && Object.entries(health.checks).map(([name, check]: [string, any]) => (
+                        <Table.Tr key={name}>
                           <Table.Td>
-                            <Text fw={500}>{service.name}</Text>
+                            <Text fw={500}>{name}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Badge color={getStatusColor(service.status)} variant="light" size="sm">
-                              {service.status.toUpperCase()}
+                            <Badge color={getStatusColor(check.status)} variant="light" size="sm">
+                              {check.status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{service.uptime}</Text>
+                            <Text size="sm">{check.duration ? `${check.duration}ms` : 'N/A'}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{service.version || 'N/A'}</Text>
+                            <Text size="sm">{check.description || check.error || 'N/A'}</Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -342,46 +301,6 @@ export default function SystemInfoPage() {
                 </Card.Section>
               </Card>
 
-              {/* Dependencies Status */}
-              <Card withBorder>
-                <Card.Section p="md" withBorder>
-                  <Text fw={600}>External Dependencies</Text>
-                </Card.Section>
-                <Card.Section>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Dependency</Table.Th>
-                        <Table.Th>Status</Table.Th>
-                        <Table.Th>Latency</Table.Th>
-                        <Table.Th>Version</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {health?.dependencies.map((dep: any) => (
-                        <Table.Tr key={dep.name}>
-                          <Table.Td>
-                            <Text fw={500}>{dep.name}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge color={getStatusColor(dep.status)} variant="light" size="sm">
-                              {dep.status.toUpperCase()}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">
-                              {dep.latency ? `${dep.latency}ms` : 'N/A'}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">{dep.version || 'N/A'}</Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Card.Section>
-              </Card>
             </SimpleGrid>
           </div>
         </Tabs.Panel>
@@ -400,72 +319,38 @@ export default function SystemInfoPage() {
                   <Accordion.Panel>
                     <Stack gap="xs">
                       <Group justify="space-between">
-                        <Text size="sm">Connection String</Text>
-                        <Group gap="xs">
-                          <Code>postgresql://***:***@localhost:5432/conduit</Code>
-                          <CopyButton value="postgresql://***:***@localhost:5432/conduit">
-                            {({ copied, copy }) => (
-                              <Tooltip label={copied ? 'Copied' : 'Copy'}>
-                                <ActionIcon color={copied ? 'teal' : 'gray'} size="sm" onClick={copy}>
-                                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </CopyButton>
+                        <Text size="sm">Provider</Text>
+                        <Text size="sm" c="dimmed">{systemInfo?.database?.provider || 'Unknown'}</Text>
+                      </Group>
+                      <Group justify="space-between">
+                        <Text size="sm">Status</Text>
+                        <Badge color={systemInfo?.database?.isConnected ? 'green' : 'red'} variant="light">
+                          {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+                        </Badge>
+                      </Group>
+                      {systemInfo?.database?.pendingMigrations && systemInfo.database.pendingMigrations.length > 0 && (
+                        <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+                          {systemInfo.database.pendingMigrations.length} pending migrations
+                        </Alert>
+                      )}
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+
+                <Accordion.Item value="features">
+                  <Accordion.Control icon={<IconSettings size={20} />}>
+                    Enabled Features
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack gap="xs">
+                      {systemInfo?.features && Object.entries(systemInfo.features).map(([feature, enabled]) => (
+                        <Group key={feature} justify="space-between">
+                          <Text size="sm">{feature}</Text>
+                          <Badge color={enabled ? 'green' : 'gray'} variant="light">
+                            {enabled ? 'Enabled' : 'Disabled'}
+                          </Badge>
                         </Group>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Max Pool Size</Text>
-                        <Text size="sm" c="dimmed">100</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Command Timeout</Text>
-                        <Text size="sm" c="dimmed">30 seconds</Text>
-                      </Group>
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-
-                <Accordion.Item value="redis">
-                  <Accordion.Control icon={<IconMemory size={20} />}>
-                    Redis Configuration
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap="xs">
-                      <Group justify="space-between">
-                        <Text size="sm">Connection String</Text>
-                        <Code>redis://localhost:6379</Code>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Database</Text>
-                        <Text size="sm" c="dimmed">0</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Key Prefix</Text>
-                        <Text size="sm" c="dimmed">conduit:</Text>
-                      </Group>
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-
-                <Accordion.Item value="messaging">
-                  <Accordion.Control icon={<IconNetwork size={20} />}>
-                    Message Bus Configuration
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap="xs">
-                      <Group justify="space-between">
-                        <Text size="sm">Transport</Text>
-                        <Text size="sm" c="dimmed">RabbitMQ</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Host</Text>
-                        <Text size="sm" c="dimmed">rabbitmq:5672</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Virtual Host</Text>
-                        <Text size="sm" c="dimmed">/</Text>
-                      </Group>
+                      ))}
                     </Stack>
                   </Accordion.Panel>
                 </Accordion.Item>
@@ -487,20 +372,26 @@ export default function SystemInfoPage() {
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Text size="sm">Operating System</Text>
-                    <Text size="sm" c="dimmed">Linux 6.12.10</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.os || 'Unknown'}</Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="sm">.NET Runtime</Text>
-                    <Text size="sm" c="dimmed">8.0.11</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.dotnetVersion || 'Unknown'}</Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="sm">ASP.NET Core</Text>
-                    <Text size="sm" c="dimmed">8.0.11</Text>
+                    <Text size="sm">Architecture</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.architecture || 'Unknown'}</Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="sm">GC Mode</Text>
-                    <Text size="sm" c="dimmed">Server</Text>
+                    <Text size="sm">Memory Usage</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.memoryUsage ? `${systemInfo.runtime.memoryUsage.toFixed(1)} MB` : 'Unknown'}</Text>
                   </Group>
+                  {systemInfo?.runtime?.cpuUsage !== undefined && (
+                    <Group justify="space-between">
+                      <Text size="sm">CPU Usage</Text>
+                      <Text size="sm" c="dimmed">{systemInfo.runtime.cpuUsage.toFixed(1)}%</Text>
+                    </Group>
+                  )}
                 </Stack>
               </Card.Section>
             </Card>
@@ -508,27 +399,27 @@ export default function SystemInfoPage() {
             <Card withBorder>
               <Card.Section p="md" withBorder>
                 <Group>
-                  <IconBrandDocker size={20} />
-                  <Text fw={600}>Container Environment</Text>
+                  <IconCloud size={20} />
+                  <Text fw={600}>Application Info</Text>
                 </Group>
               </Card.Section>
               <Card.Section p="md">
                 <Stack gap="xs">
                   <Group justify="space-between">
-                    <Text size="sm">Container Runtime</Text>
-                    <Text size="sm" c="dimmed">Docker 25.0.3</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Image Tag</Text>
-                    <Text size="sm" c="dimmed">conduit:2.1.0</Text>
+                    <Text size="sm">Version</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.version || 'Unknown'}</Text>
                   </Group>
                   <Group justify="space-between">
                     <Text size="sm">Build Date</Text>
-                    <Text size="sm" c="dimmed">2024-01-20</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.buildDate || 'Unknown'}</Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="sm">Memory Limit</Text>
-                    <Text size="sm" c="dimmed">16 GB</Text>
+                    <Text size="sm">Environment</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.environment || 'Unknown'}</Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="sm">Uptime</Text>
+                    <Text size="sm" c="dimmed">{systemInfo?.uptime ? `${(systemInfo.uptime / 3600).toFixed(1)} hours` : 'Unknown'}</Text>
                   </Group>
                 </Stack>
               </Card.Section>
@@ -542,59 +433,50 @@ export default function SystemInfoPage() {
               <Text fw={600}>System Diagnostics</Text>
             </Card.Section>
             <Card.Section p="md">
-              <Timeline active={4} bulletSize={24} lineWidth={2}>
-                <Timeline.Item
-                  bullet={<IconCheck size={12} />}
-                  title="System Health Check"
-                  color="green"
-                >
-                  <Text c="dimmed" size="sm">
-                    All services are running normally
+              <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                <Stack gap="xs">
+                  <Text size="sm" fw={500}>Diagnostics Summary</Text>
+                  <Text size="sm" c="dimmed">
+                    System Time: {systemInfo?.systemTime || new Date().toISOString()}
                   </Text>
-                  <Text size="xs" c="dimmed">
-                    Last checked: {new Date().toLocaleString()}
-                  </Text>
-                </Timeline.Item>
+                  {health && (
+                    <Text size="sm" c="dimmed">
+                      Health Status: {health.status} (checked in {health.totalDuration}ms)
+                    </Text>
+                  )}
+                </Stack>
+              </Alert>
 
-                <Timeline.Item
-                  bullet={<IconDatabase size={12} />}
-                  title="Database Connectivity"
-                  color="green"
-                >
-                  <Text c="dimmed" size="sm">
-                    PostgreSQL connection established successfully
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Latency: 12ms
-                  </Text>
-                </Timeline.Item>
-
-                <Timeline.Item
-                  bullet={<IconMemory size={12} />}
-                  title="Cache Performance"
-                  color="green"
-                >
-                  <Text c="dimmed" size="sm">
-                    Redis cache responding normally
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Hit rate: 94.2%
-                  </Text>
-                </Timeline.Item>
-
-                <Timeline.Item
-                  bullet={<IconNetwork size={12} />}
-                  title="External API Health"
-                  color="yellow"
-                >
-                  <Text c="dimmed" size="sm">
-                    Some providers experiencing higher latency
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Average response time: 245ms
-                  </Text>
-                </Timeline.Item>
-              </Timeline>
+              {health?.checks && Object.entries(health.checks).length > 0 && (
+                <Stack gap="md" mt="md">
+                  <Text fw={500}>Health Check Details</Text>
+                  {Object.entries(health.checks).map(([name, check]: [string, any]) => (
+                    <Card key={name} withBorder p="sm">
+                      <Group justify="space-between">
+                        <Group>
+                          <ThemeIcon color={getStatusColor(check.status)} variant="light" size="sm">
+                            {check.status === 'healthy' ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
+                          </ThemeIcon>
+                          <Text size="sm" fw={500}>{name}</Text>
+                        </Group>
+                        <Badge color={getStatusColor(check.status)} variant="light" size="sm">
+                          {check.status}
+                        </Badge>
+                      </Group>
+                      {check.description && (
+                        <Text size="xs" c="dimmed" mt="xs">
+                          {check.description}
+                        </Text>
+                      )}
+                      {check.error && (
+                        <Text size="xs" c="red" mt="xs">
+                          Error: {check.error}
+                        </Text>
+                      )}
+                    </Card>
+                  ))}
+                </Stack>
+              )}
             </Card.Section>
           </Card>
         </Tabs.Panel>
