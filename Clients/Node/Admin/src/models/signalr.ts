@@ -173,9 +173,12 @@ export interface INavigationStateHubServer {
 }
 
 export interface IAdminNotificationHubServer {
-  Subscribe(): Promise<void>;
-  Unsubscribe(): Promise<void>;
-  AcknowledgeNotification(notificationId: string): Promise<void>;
+  SubscribeToVirtualKey(virtualKeyId: number): Promise<void>;
+  UnsubscribeFromVirtualKey(virtualKeyId: number): Promise<void>;
+  SubscribeToProvider(providerName: string): Promise<void>;
+  UnsubscribeFromProvider(providerName: string): Promise<void>;
+  RefreshProviderHealth(): Promise<void>;
+  AcknowledgeNotification?(notificationId: string): Promise<void>;
 }
 
 /**

@@ -80,17 +80,38 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
   }
 
   /**
-   * Subscribe to all admin notifications
+   * Subscribe to notifications for a specific virtual key
    */
-  async subscribe(): Promise<void> {
-    await this.invoke('Subscribe');
+  async subscribeToVirtualKey(virtualKeyId: number): Promise<void> {
+    await this.invoke('SubscribeToVirtualKey', virtualKeyId);
   }
 
   /**
-   * Unsubscribe from admin notifications
+   * Unsubscribe from notifications for a specific virtual key
    */
-  async unsubscribe(): Promise<void> {
-    await this.invoke('Unsubscribe');
+  async unsubscribeFromVirtualKey(virtualKeyId: number): Promise<void> {
+    await this.invoke('UnsubscribeFromVirtualKey', virtualKeyId);
+  }
+
+  /**
+   * Subscribe to notifications for a specific provider
+   */
+  async subscribeToProvider(providerName: string): Promise<void> {
+    await this.invoke('SubscribeToProvider', providerName);
+  }
+
+  /**
+   * Unsubscribe from notifications for a specific provider
+   */
+  async unsubscribeFromProvider(providerName: string): Promise<void> {
+    await this.invoke('UnsubscribeFromProvider', providerName);
+  }
+
+  /**
+   * Request a refresh of provider health status
+   */
+  async refreshProviderHealth(): Promise<void> {
+    await this.invoke('RefreshProviderHealth');
   }
 
   /**

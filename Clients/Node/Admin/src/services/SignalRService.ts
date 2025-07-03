@@ -57,8 +57,8 @@ export class SignalRService {
       // Set up connection event handlers
       this.adminNotificationHub.onConnected = async () => {
         console.log('Admin notification hub connected');
-        // Auto-subscribe to notifications when connected
-        await this.adminNotificationHub!.subscribe();
+        // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
+        // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
       };
       
       this.adminNotificationHub.onDisconnected = async (error) => {
@@ -71,8 +71,8 @@ export class SignalRService {
       
       this.adminNotificationHub.onReconnected = async () => {
         console.log('Admin notification hub reconnected');
-        // Re-subscribe after reconnection
-        await this.adminNotificationHub!.subscribe();
+        // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
+        // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
       };
     }
     

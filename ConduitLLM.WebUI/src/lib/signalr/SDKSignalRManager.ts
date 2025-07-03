@@ -250,52 +250,55 @@ export class SDKSignalRManager {
     }
 
     // Get or create navigation state hub
-    const navHub = await signalRService.getOrCreateNavigationStateHub();
+    // NOTE: The navigation state hub doesn't exist on the server
+    // This functionality needs to be moved to the admin notification hub
+    // const navHub = await signalRService.getOrCreateNavigationStateHub();
     
     // Navigation state updates
-    navHub.onNavigationStateUpdate((event: any) => {
-      if (this.eventHandlers.onNavigationStateUpdate) {
-        this.eventHandlers.onNavigationStateUpdate({
-          type: event.entityType as 'model_mapping' | 'provider' | 'virtual_key',
-          action: event.action as 'created' | 'updated' | 'deleted',
-          data: event.entityData,
-          timestamp: event.timestamp,
-        });
-      }
-    });
+    // navHub.onNavigationStateUpdate((event: any) => {
+    //   if (this.eventHandlers.onNavigationStateUpdate) {
+    //     this.eventHandlers.onNavigationStateUpdate({
+    //       type: event.entityType as 'model_mapping' | 'provider' | 'virtual_key',
+    //       action: event.action as 'created' | 'updated' | 'deleted',
+    //       data: event.entityData,
+    //       timestamp: event.timestamp,
+    //     });
+    //   }
+    // });
 
     // Model discovery events
-    navHub.onModelDiscovered((event: any) => {
-      if (this.eventHandlers.onModelDiscovered) {
-        this.eventHandlers.onModelDiscovered({
-          providerId: event.providerId,
-          providerName: event.providerName,
-          modelsDiscovered: event.models || [],
-          timestamp: event.timestamp,
-        });
-      }
-    });
+    // navHub.onModelDiscovered((event: any) => {
+    //   if (this.eventHandlers.onModelDiscovered) {
+    //     this.eventHandlers.onModelDiscovered({
+    //       providerId: event.providerId,
+    //       providerName: event.providerName,
+    //       modelsDiscovered: event.models || [],
+    //       timestamp: event.timestamp,
+    //     });
+    //   }
+    // });
 
     // Provider health changes
-    navHub.onProviderHealthChange((event: any) => {
-      if (this.eventHandlers.onProviderHealthChange) {
-        this.eventHandlers.onProviderHealthChange({
-          providerId: event.providerId,
-          providerName: event.providerName,
-          status: event.healthStatus as 'healthy' | 'degraded' | 'unhealthy',
-          latency: event.latency,
-          error: event.error,
-        });
-      }
-    });
+    // navHub.onProviderHealthChange((event: any) => {
+    //   if (this.eventHandlers.onProviderHealthChange) {
+    //     this.eventHandlers.onProviderHealthChange({
+    //       providerId: event.providerId,
+    //       providerName: event.providerName,
+    //       status: event.healthStatus as 'healthy' | 'degraded' | 'unhealthy',
+    //       latency: event.latency,
+    //       error: event.error,
+    //     });
+    //   }
+    // });
 
     // Subscribe to all updates
-    await navHub.subscribeToUpdates();
+    // NOTE: Removed - the navigation state hub doesn't exist on the server
+    // await navHub.subscribeToUpdates();
     
     // Add cleanup function
-    this.cleanupFunctions.push(async () => {
-      await navHub.unsubscribeFromUpdates();
-    });
+    // this.cleanupFunctions.push(async () => {
+    //   await navHub.unsubscribeFromUpdates();
+    // });
 
     // Get or create admin notification hub if available
     const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
@@ -329,12 +332,14 @@ export class SDKSignalRManager {
       }
 
       // Subscribe to all admin updates
-      if (adminHub.subscribeToUpdates) {
-        await adminHub.subscribeToUpdates();
-        this.cleanupFunctions.push(async () => {
-          await adminHub.unsubscribeFromUpdates?.();
-        });
-      }
+      // NOTE: Removed - the admin hub doesn't have a generic subscribe method
+      // The client should call specific methods like subscribeToVirtualKey
+      // if (adminHub.subscribeToUpdates) {
+      //   await adminHub.subscribeToUpdates();
+      //   this.cleanupFunctions.push(async () => {
+      //     await adminHub.unsubscribeFromUpdates?.();
+      //   });
+      // }
     }
 
     logger.info('Admin event listeners setup complete');
@@ -370,10 +375,11 @@ export class SDKSignalRManager {
       const signalRService = (this.adminClient as any).signalRService;
       if (signalRService) {
         // Start navigation state hub
-        const navHub = await signalRService.getOrCreateNavigationStateHub();
-        if (navHub) {
-          promises.push(navHub.start());
-        }
+        // NOTE: Navigation state hub doesn't exist on the server
+        // const navHub = await signalRService.getOrCreateNavigationStateHub();
+        // if (navHub) {
+        //   promises.push(navHub.start());
+        // }
         
         // Start admin notification hub if available
         const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
@@ -402,11 +408,12 @@ export class SDKSignalRManager {
     if (this.adminClient) {
       const signalRService = (this.adminClient as any).signalRService;
       if (signalRService) {
-        // Stop navigation state hub
-        const navHub = await signalRService.getOrCreateNavigationStateHub();
-        if (navHub) {
-          promises.push(navHub.stop());
-        }
+        // Stop navigation state hub  
+        // NOTE: Navigation state hub doesn't exist on the server
+        // const navHub = await signalRService.getOrCreateNavigationStateHub();
+        // if (navHub) {
+        //   promises.push(navHub.stop());
+        // }
         
         // Stop admin notification hub if available
         const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
