@@ -26,28 +26,35 @@ export const coreApiKeys = {
 export function useChatCompletion() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
-      const response = await fetch('/api/core/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ virtual_key: virtualKey, ...body }),
-      });
+      try {
+        const response = await fetch('/api/core/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to create chat completion' }));
-        throw new Error(error.error || 'Failed to create chat completion');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to create chat completion' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to create chat completion' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Chat Error',
-        message: error.message || 'Failed to create chat completion',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -62,60 +69,67 @@ export function useStreamingChatCompletion() {
       onChunk: (chunk: any) => void;
       [key: string]: any;
     }) => {
-      const response = await fetch('/api/core/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ virtual_key: virtualKey, stream: true, ...body }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to create streaming chat completion' }));
-        throw new Error(error.error || 'Failed to create streaming chat completion');
-      }
-
-      if (!response.body) {
-        throw new Error('No response body for streaming');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        const response = await fetch('/api/core/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, stream: true, ...body }),
+        });
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to create streaming chat completion' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to create streaming chat completion' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                return;
-              }
-              try {
-                const parsed = JSON.parse(data);
-                onChunk(parsed);
-              } catch {
-                // Skip invalid JSON
+        if (!response.body) {
+          throw BackendErrorHandler.classifyError(new Error('No response body for streaming'));
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                  return;
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  onChunk(parsed);
+                } catch {
+                  // Skip invalid JSON
+                }
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
-      } finally {
-        reader.releaseLock();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Streaming Chat Error',
-        message: error.message || 'Failed to create streaming chat completion',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -125,20 +139,25 @@ export function useImageGeneration() {
 
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
-      const response = await fetch('/api/core/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ virtual_key: virtualKey, ...body }),
-      });
+      try {
+        const response = await fetch('/api/core/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to generate image' }));
-        throw new Error(error.error || 'Failed to generate image');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to generate image' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to generate image' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.imageHistory(variables.virtualKey) });
@@ -149,12 +168,14 @@ export function useImageGeneration() {
       });
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Image Generation Error',
-        message: error.message || 'Failed to generate image',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -162,22 +183,28 @@ export function useImageHistory(virtualKey: string) {
   return useQuery({
     queryKey: coreApiKeys.imageHistory(virtualKey),
     queryFn: async () => {
-      const response = await fetch(`/api/core/images/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await fetch(`/api/core/images/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch image history' }));
-        throw new Error(error.error || 'Failed to fetch image history');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to fetch image history' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to fetch image history' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     enabled: !!virtualKey,
     staleTime: 30 * 1000,
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -187,20 +214,25 @@ export function useVideoGeneration() {
 
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
-      const response = await fetch('/api/core/videos/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ virtual_key: virtualKey, ...body }),
-      });
+      try {
+        const response = await fetch('/api/core/videos/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to generate video' }));
-        throw new Error(error.error || 'Failed to generate video');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to generate video' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to generate video' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.videoHistory(variables.virtualKey) });
@@ -211,12 +243,14 @@ export function useVideoGeneration() {
       });
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Video Generation Error',
-        message: error.message || 'Failed to generate video',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -224,22 +258,28 @@ export function useVideoHistory(virtualKey: string) {
   return useQuery({
     queryKey: coreApiKeys.videoHistory(virtualKey),
     queryFn: async () => {
-      const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch video history' }));
-        throw new Error(error.error || 'Failed to fetch video history');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to fetch video history' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to fetch video history' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     enabled: !!virtualKey,
     staleTime: 30 * 1000,
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -247,23 +287,29 @@ export function useVideoStatus(virtualKey: string, taskId: string) {
   return useQuery({
     queryKey: [...coreApiKeys.videos(), 'status', virtualKey, taskId],
     queryFn: async () => {
-      const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}&task_id=${encodeURIComponent(taskId)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}&task_id=${encodeURIComponent(taskId)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch video status' }));
-        throw new Error(error.error || 'Failed to fetch video status');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to fetch video status' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to fetch video status' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     enabled: !!virtualKey && !!taskId,
     refetchInterval: 5000, // Poll every 5 seconds for status updates
     staleTime: 0, // Always fetch fresh status
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -273,28 +319,33 @@ export function useAudioTranscription() {
 
   return useMutation({
     mutationFn: async ({ virtualKey, file, ...options }: { virtualKey: string; file: File; [key: string]: any }) => {
-      const formData = new FormData();
-      formData.append('virtual_key', virtualKey);
-      formData.append('file', file);
-      
-      // Add other options to form data
-      Object.entries(options).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
+      try {
+        const formData = new FormData();
+        formData.append('virtual_key', virtualKey);
+        formData.append('file', file);
+        
+        // Add other options to form data
+        Object.entries(options).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+          }
+        });
+
+        const response = await fetch('/api/core/audio/transcriptions', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to transcribe audio' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to transcribe audio' };
+          throw BackendErrorHandler.classifyError(backendError);
         }
-      });
 
-      const response = await fetch('/api/core/audio/transcriptions', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to transcribe audio' }));
-        throw new Error(error.error || 'Failed to transcribe audio');
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.audioHistory(variables.virtualKey) });
@@ -305,12 +356,14 @@ export function useAudioTranscription() {
       });
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Transcription Error',
-        message: error.message || 'Failed to transcribe audio',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -318,22 +371,28 @@ export function useAudioHistory(virtualKey: string) {
   return useQuery({
     queryKey: coreApiKeys.audioHistory(virtualKey),
     queryFn: async () => {
-      const response = await fetch(`/api/core/audio/transcriptions?virtual_key=${encodeURIComponent(virtualKey)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await fetch(`/api/core/audio/transcriptions?virtual_key=${encodeURIComponent(virtualKey)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch transcription history' }));
-        throw new Error(error.error || 'Failed to fetch transcription history');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to fetch transcription history' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to fetch transcription history' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     enabled: !!virtualKey,
     staleTime: 30 * 1000,
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -342,21 +401,27 @@ export function useAvailableModels() {
   return useQuery({
     queryKey: [...coreApiKeys.all, 'models'],
     queryFn: async () => {
-      const response = await fetch('/api/core/models', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await fetch('/api/core/models', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch available models' }));
-        throw new Error(error.error || 'Failed to fetch available models');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to fetch available models' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to fetch available models' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }
 
@@ -364,27 +429,34 @@ export function useAvailableModels() {
 export function useAudioSpeech() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
-      const response = await fetch('/api/core/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ virtual_key: virtualKey, ...body }),
-      });
+      try {
+        const response = await fetch('/api/core/audio/speech', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to generate speech' }));
-        throw new Error(error.error || 'Failed to generate speech');
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to generate speech' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to generate speech' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.blob();
+      } catch (error: any) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.blob();
     },
     onError: (error: any) => {
+      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Speech Generation Error',
-        message: error.message || 'Failed to generate speech',
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
         color: 'red',
       });
     },
+    ...BackendErrorHandler.getRetryConfig(),
   });
 }

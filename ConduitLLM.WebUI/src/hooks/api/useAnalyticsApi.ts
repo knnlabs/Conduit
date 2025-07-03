@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { DateRange } from '@knn_labs/conduit-admin-client';
+import type { CostByModelResponse, CostByKeyResponse } from '@/types/sdk-extensions';
 
 // Query key factory for Analytics API
 export const analyticsApiKeys = {
@@ -72,6 +74,60 @@ export interface TimeRangeFilter {
   endDate?: string;
 }
 
+// Helper functions for SDK integration
+function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRange {
+  if (timeRange.range === 'custom' && timeRange.startDate && timeRange.endDate) {
+    return {
+      startDate: timeRange.startDate,
+      endDate: timeRange.endDate,
+    };
+  }
+  
+  const now = new Date();
+  let startDate: Date;
+  
+  switch (timeRange.range) {
+    case '1h':
+      startDate = new Date(now.getTime() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  }
+  
+  return {
+    startDate: startDate.toISOString(),
+    endDate: now.toISOString(),
+  };
+}
+
+function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'day' | 'week' | 'month' {
+  switch (timeRange.range) {
+    case '1h':
+    case '24h':
+      return 'hour';
+    case '7d':
+      return 'day';
+    case '30d':
+      return 'day';
+    case '90d':
+      return 'week';
+    default:
+      return 'day';
+  }
+}
+
 // Cost Analytics Hooks
 export function useCostSummary(timeRange: TimeRangeFilter) {
   return useQuery({
@@ -80,23 +136,28 @@ export function useCostSummary(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getCostSummary(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getCostSummary(dateRange);
         
-        // Mock data for now
-        const mockData: CostSummary = {
-          totalSpend: 1247.86,
-          totalBudget: 2000.00,
-          totalRequests: 45237,
-          totalTokens: 1847293,
-          activeVirtualKeys: 12,
-          averageCostPerRequest: 0.0276,
-          averageCostPerToken: 0.0000067,
-          spendTrend: 12.5,
-          requestTrend: 8.3,
+        // Transform SDK response to UI format
+        const costSummary: CostSummary = {
+          totalSpend: response.totalCost,
+          totalBudget: 0, // TODO: Get budget data from virtual keys
+          totalRequests: response.costByKey.reduce((sum, key) => sum + key.requestCount, 0),
+          totalTokens: response.totalInputTokens + response.totalOutputTokens,
+          activeVirtualKeys: response.costByKey.length,
+          averageCostPerRequest: response.costByKey.reduce((sum, key) => sum + key.requestCount, 0) > 0 
+            ? response.totalCost / response.costByKey.reduce((sum, key) => sum + key.requestCount, 0)
+            : 0,
+          averageCostPerToken: (response.totalInputTokens + response.totalOutputTokens) > 0
+            ? response.totalCost / (response.totalInputTokens + response.totalOutputTokens)
+            : 0,
+          spendTrend: 0, // TODO: Calculate trend from historical data
+          requestTrend: 0,
         };
 
-        return mockData;
+        return costSummary;
       } catch (error: any) {
         reportError(error, 'Failed to fetch cost summary');
         throw new Error(error?.message || 'Failed to fetch cost summary');
@@ -114,40 +175,21 @@ export function useCostTrends(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getCostTrends(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const groupBy = getGroupByFromTimeRange(timeRange);
+        const response = await client.analytics.getCostByPeriod(dateRange, groupBy);
         
-        // Generate mock trend data based on time range
-        const generateMockTrends = (days: number): CostTrendData[] => {
-          const trends: CostTrendData[] = [];
-          const now = new Date();
-          
-          for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            
-            const baseSpend = 45 + Math.random() * 30;
-            const requests = Math.floor(1200 + Math.random() * 800);
-            const tokens = Math.floor(requests * (40 + Math.random() * 20));
-            
-            trends.push({
-              date: date.toISOString().split('T')[0],
-              spend: Math.round(baseSpend * 100) / 100,
-              requests,
-              tokens,
-              averageCostPerRequest: Math.round((baseSpend / requests) * 10000) / 10000,
-            });
-          }
-          
-          return trends;
-        };
+        // Transform SDK response to UI format
+        const costTrends: CostTrendData[] = response.periods.map(period => ({
+          date: period.startDate.split('T')[0], // Extract date part
+          spend: period.totalCost,
+          requests: period.requestCount,
+          tokens: period.inputTokens + period.outputTokens,
+          averageCostPerRequest: period.requestCount > 0 ? period.totalCost / period.requestCount : 0,
+        }));
 
-        const days = timeRange.range === '24h' ? 1 : 
-                    timeRange.range === '7d' ? 7 :
-                    timeRange.range === '30d' ? 30 : 
-                    timeRange.range === '90d' ? 90 : 7;
-
-        return generateMockTrends(days);
+        return costTrends;
       } catch (error: any) {
         reportError(error, 'Failed to fetch cost trends');
         throw new Error(error?.message || 'Failed to fetch cost trends');
@@ -164,46 +206,41 @@ export function useProviderCosts(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getProviderCosts(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getCostSummary(dateRange);
         
-        // Mock provider data
-        const mockData: ProviderCostData[] = [
-          {
-            provider: 'OpenAI',
-            spend: 567.43,
-            requests: 18234,
-            percentage: 45.5,
-            models: ['gpt-4', 'gpt-3.5-turbo', 'dall-e-3'],
-            averageCost: 0.0311,
-          },
-          {
-            provider: 'Anthropic',
-            spend: 398.67,
-            requests: 12456,
-            percentage: 32.0,
-            models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-            averageCost: 0.0320,
-          },
-          {
-            provider: 'Azure OpenAI',
-            spend: 189.23,
-            requests: 7892,
-            percentage: 15.2,
-            models: ['azure-gpt-4', 'azure-gpt-35-turbo'],
-            averageCost: 0.0240,
-          },
-          {
-            provider: 'MiniMax',
-            spend: 92.53,
-            requests: 6655,
-            percentage: 7.4,
-            models: ['minimax-chat', 'minimax-image', 'video-01'],
-            averageCost: 0.0139,
-          },
-        ];
+        const totalCost = response.totalCost;
+        
+        // Transform SDK response to UI format
+        const providerCosts: ProviderCostData[] = response.costByProvider.map(provider => {
+          const percentage = totalCost > 0 ? (provider.cost / totalCost) * 100 : 0;
+          const averageCost = provider.requestCount > 0 ? provider.cost / provider.requestCount : 0;
+          
+          // Get models for this provider from costByModel
+          const providerModels = response.costByModel
+            .filter(model => {
+              const modelLower = model.modelId.toLowerCase();
+              const providerLower = provider.providerName.toLowerCase();
+              return modelLower.includes(providerLower) || 
+                     providerLower.includes(modelLower.split('-')[0]) ||
+                     (providerLower.includes('openai') && (modelLower.includes('gpt') || modelLower.includes('dall-e'))) ||
+                     (providerLower.includes('anthropic') && modelLower.includes('claude')) ||
+                     (providerLower.includes('azure') && modelLower.includes('azure'));
+            })
+            .map(model => model.modelId);
+          
+          return {
+            provider: provider.providerName,
+            spend: provider.cost,
+            requests: provider.requestCount,
+            percentage: Math.round(percentage * 10) / 10,
+            models: providerModels.length > 0 ? providerModels : ['Unknown'],
+            averageCost: Math.round(averageCost * 10000) / 10000,
+          };
+        });
 
-        return mockData;
+        return providerCosts.sort((a, b) => b.spend - a.spend);
       } catch (error: any) {
         reportError(error, 'Failed to fetch provider costs');
         throw new Error(error?.message || 'Failed to fetch provider costs');
@@ -220,59 +257,39 @@ export function useModelCosts(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getModelCosts(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getCostByModel(dateRange) as CostByModelResponse;
         
-        // Mock model data
-        const mockData: ModelCostData[] = [
-          {
-            model: 'gpt-4',
-            provider: 'OpenAI',
-            spend: 345.67,
-            requests: 8924,
-            tokens: 1247839,
-            averageCostPerRequest: 0.0387,
-            averageCostPerToken: 0.0000277,
-          },
-          {
-            model: 'claude-3-opus',
-            provider: 'Anthropic',
-            spend: 287.43,
-            requests: 6732,
-            tokens: 982456,
-            averageCostPerRequest: 0.0427,
-            averageCostPerToken: 0.0000292,
-          },
-          {
-            model: 'gpt-3.5-turbo',
-            provider: 'OpenAI',
-            spend: 156.78,
-            requests: 15634,
-            tokens: 1543287,
-            averageCostPerRequest: 0.0100,
-            averageCostPerToken: 0.0000102,
-          },
-          {
-            model: 'claude-3-sonnet',
-            provider: 'Anthropic',
-            spend: 111.24,
-            requests: 5724,
-            tokens: 734582,
-            averageCostPerRequest: 0.0194,
-            averageCostPerToken: 0.0000151,
-          },
-          {
-            model: 'dall-e-3',
-            provider: 'OpenAI',
-            spend: 89.43,
-            requests: 2156,
-            tokens: 0, // No tokens for image generation
-            averageCostPerRequest: 0.0415,
-            averageCostPerToken: 0,
-          },
-        ];
+        // Transform SDK response to UI format
+        const modelCosts: ModelCostData[] = response.models.map(model => {
+          const totalTokens = model.totalTokens;
+          const averageCostPerToken = totalTokens > 0 ? model.totalCost / totalTokens : 0;
+          const averageCostPerRequest = model.totalRequests > 0 ? model.totalCost / model.totalRequests : 0;
+          
+          // Determine provider from model name
+          let provider = 'Unknown';
+          const modelLower = model.modelId.toLowerCase();
+          if (modelLower.includes('gpt') || modelLower.includes('dall-e') || modelLower.includes('whisper')) {
+            provider = modelLower.includes('azure') ? 'Azure OpenAI' : 'OpenAI';
+          } else if (modelLower.includes('claude')) {
+            provider = 'Anthropic';
+          } else if (modelLower.includes('minimax')) {
+            provider = 'MiniMax';
+          }
+          
+          return {
+            model: model.modelId,
+            provider,
+            spend: model.totalCost,
+            requests: model.totalRequests,
+            tokens: totalTokens,
+            averageCostPerRequest: Math.round(averageCostPerRequest * 10000) / 10000,
+            averageCostPerToken: Math.round(averageCostPerToken * 10000000) / 10000000,
+          };
+        });
 
-        return mockData;
+        return modelCosts.sort((a, b) => b.spend - a.spend);
       } catch (error: any) {
         reportError(error, 'Failed to fetch model costs');
         throw new Error(error?.message || 'Failed to fetch model costs');
@@ -289,58 +306,46 @@ export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getVirtualKeyCosts(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getCostByKey(dateRange) as CostByKeyResponse;
         
-        // Mock virtual key data
-        const mockData: VirtualKeyCostData[] = [
-          {
-            keyId: 'vk_prod_001',
-            keyName: 'Production API',
-            spend: 456.78,
-            budget: 500.00,
-            requests: 18456,
-            usagePercentage: 91.4,
-            isOverBudget: false,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 minutes ago
-            topModels: ['gpt-4', 'claude-3-opus'],
-          },
-          {
-            keyId: 'vk_dev_002',
-            keyName: 'Development Key',
-            spend: 234.56,
-            budget: 300.00,
-            requests: 12034,
-            usagePercentage: 78.2,
-            isOverBudget: false,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-            topModels: ['gpt-3.5-turbo', 'claude-3-sonnet'],
-          },
-          {
-            keyId: 'vk_test_003',
-            keyName: 'Testing Environment',
-            spend: 89.34,
-            budget: 100.00,
-            requests: 5672,
-            usagePercentage: 89.3,
-            isOverBudget: false,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-            topModels: ['gpt-3.5-turbo'],
-          },
-          {
-            keyId: 'vk_exp_004',
-            keyName: 'Experimental Features',
-            spend: 156.78,
-            budget: 150.00,
-            requests: 3245,
-            usagePercentage: 104.5,
-            isOverBudget: true,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6 hours ago
-            topModels: ['dall-e-3', 'minimax-video'],
-          },
-        ];
-
-        return mockData;
+        // Get detailed data for each key
+        const virtualKeyCostsPromises = response.keys.map(async (key) => {
+          try {
+            const keyUsage = await client.analytics.getKeyUsage(key.keyId, dateRange);
+            
+            return {
+              keyId: key.keyId.toString(),
+              keyName: keyUsage.keyName,
+              spend: keyUsage.totalCost,
+              budget: keyUsage.budgetUsed + keyUsage.budgetRemaining,
+              requests: keyUsage.totalRequests,
+              usagePercentage: keyUsage.budgetUsed + keyUsage.budgetRemaining > 0 
+                ? (keyUsage.budgetUsed / (keyUsage.budgetUsed + keyUsage.budgetRemaining)) * 100 
+                : 0,
+              isOverBudget: keyUsage.budgetRemaining < 0,
+              lastActivity: keyUsage.lastUsed,
+              topModels: keyUsage.popularModels.map(model => model.modelId),
+            };
+          } catch (error) {
+            // If detailed data fails, return basic data
+            return {
+              keyId: key.keyId.toString(),
+              keyName: key.keyName,
+              spend: key.totalCost,
+              budget: 1000, // Default budget
+              requests: key.totalRequests,
+              usagePercentage: (key.totalCost / 1000) * 100,
+              isOverBudget: key.totalCost > 1000,
+              lastActivity: new Date().toISOString(),
+              topModels: [],
+            };
+          }
+        });
+        
+        const virtualKeyCosts = await Promise.all(virtualKeyCostsPromises);
+        return virtualKeyCosts.sort((a, b) => b.spend - a.spend);
       } catch (error: any) {
         reportError(error, 'Failed to fetch virtual key costs');
         throw new Error(error?.message || 'Failed to fetch virtual key costs');
@@ -367,20 +372,27 @@ export function useExportCostData() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.exportCostData({ type, timeRange, format });
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
         
-        // Mock export functionality
+        // Use the SDK export functionality
+        const filters = {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          includeMetadata: true,
+        };
+        
+        const blob = await client.analytics.export(filters, format as 'csv' | 'json' | 'excel');
+        
+        // Create download URL
+        const url = URL.createObjectURL(blob);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `cost-${type}-${timestamp}.${format}`;
         
-        // Simulate file generation delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
         return {
           filename,
-          url: `#mock-download-${filename}`,
-          size: Math.floor(Math.random() * 1000000) + 50000, // Random file size
+          url,
+          size: blob.size,
         };
       } catch (error: any) {
         reportError(error, 'Failed to export cost data');
@@ -398,41 +410,50 @@ export function useCostAlerts() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getCostAlerts();
+        // Get virtual key costs to check for budget alerts
+        const today = new Date();
+        const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+        const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
         
-        // Mock alert data
-        const mockAlerts = [
-          {
-            id: 'alert_001',
-            type: 'budget_exceeded',
-            severity: 'high',
-            message: 'Virtual key "Experimental Features" has exceeded its budget by 4.5%',
-            virtualKeyId: 'vk_exp_004',
-            createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            acknowledged: false,
-          },
-          {
-            id: 'alert_002',
-            type: 'budget_warning',
-            severity: 'medium',
-            message: 'Virtual key "Production API" is at 91% of budget',
-            virtualKeyId: 'vk_prod_001',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            acknowledged: false,
-          },
-          {
-            id: 'alert_003',
-            type: 'unusual_spending',
-            severity: 'low',
-            message: 'Spending spike detected for model "gpt-4" (+35% from average)',
-            modelId: 'gpt-4',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-            acknowledged: true,
-          },
-        ];
+        const response = await client.analytics.getCostByKey({ startDate, endDate });
+        
+        const alerts: any[] = [];
+        
+        // Check for budget alerts
+        for (const key of response.keys) {
+          try {
+            const keyUsage = await client.analytics.getKeyUsage(key.keyId, { startDate, endDate });
+            const totalBudget = keyUsage.budgetUsed + keyUsage.budgetRemaining;
+            const usagePercentage = totalBudget > 0 ? (keyUsage.budgetUsed / totalBudget) * 100 : 0;
+            
+            if (usagePercentage > 100) {
+              alerts.push({
+                id: `budget_exceeded_${key.keyId}`,
+                type: 'budget_exceeded',
+                severity: 'high',
+                message: `Virtual key "${keyUsage.keyName}" has exceeded its budget by ${(usagePercentage - 100).toFixed(1)}%`,
+                virtualKeyId: key.keyId.toString(),
+                createdAt: new Date().toISOString(),
+                acknowledged: false,
+              });
+            } else if (usagePercentage > 90) {
+              alerts.push({
+                id: `budget_warning_${key.keyId}`,
+                type: 'budget_warning',
+                severity: 'medium',
+                message: `Virtual key "${keyUsage.keyName}" is at ${usagePercentage.toFixed(1)}% of budget`,
+                virtualKeyId: key.keyId.toString(),
+                createdAt: new Date().toISOString(),
+                acknowledged: false,
+              });
+            }
+          } catch (error) {
+            // Skip this key if we can't get detailed usage
+            continue;
+          }
+        }
 
-        return mockAlerts;
+        return alerts;
       } catch (error: any) {
         reportError(error, 'Failed to fetch cost alerts');
         return [];

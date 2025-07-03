@@ -1,46 +1,55 @@
-# WebUI Dockerfile - Fixed npm config
-FROM node:20-alpine
+# Optimized multi-stage Dockerfile for ConduitLLM.WebUI
+# Features: Multi-stage build, Alpine base, non-root user, health checks
 
-# Install tools
-RUN apk add --no-cache python3 make g++ curl
-
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Test network connectivity
-RUN echo "Testing network connectivity..." && \
-    curl -I https://registry.npmjs.org || echo "Warning: npm registry may be unreachable" && \
-    nslookup registry.npmjs.org || echo "Warning: DNS issues detected"
-
-# Configure npm for better reliability
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-retries 10 && \
-    npm config set fetch-retry-mintimeout 60000 && \
-    npm config set fetch-retry-maxtimeout 300000 && \
-    npm config set maxsockets 5
-
-# Copy everything
+# Copy the entire monorepo to maintain file path dependencies
 COPY . .
 
-# Try to build with retries
+# Build Admin SDK
 WORKDIR /app/Clients/Node/Admin
-RUN echo "Building Admin SDK..." && \
-    (npm install || (echo "Retrying after delay..." && sleep 30 && npm install)) && \
-    npm run build
+RUN npm install --no-audit --no-fund && npm run build
 
+# Build Core SDK
 WORKDIR /app/Clients/Node/Core
-RUN echo "Building Core SDK..." && \
-    (npm install || (echo "Retrying after delay..." && sleep 30 && npm install)) && \
-    npm run build
+RUN npm install --no-audit --no-fund && npm run build
 
+# Build WebUI
 WORKDIR /app/ConduitLLM.WebUI
-RUN echo "Building WebUI..." && \
-    (npm install || (echo "Retrying after delay..." && sleep 30 && npm install)) && \
-    npm run build
+RUN npm install --no-audit --no-fund && npm run build
 
-# Production
+# Production stage - smaller final image
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Set production environment
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy only what's needed from builder
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/package*.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/node_modules ./node_modules
+
+# Copy the built SDK packages that WebUI depends on
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Admin /app/Clients/Node/Admin
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Core /app/Clients/Node/Core
+
+# Switch to non-root user
+USER nextjs
 
 EXPOSE 3000
+
+# Health check for container orchestration
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
+
 CMD ["npm", "start"]

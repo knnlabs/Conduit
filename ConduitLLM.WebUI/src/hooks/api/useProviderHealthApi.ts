@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { HealthStatusMap } from '@/types/sdk-extensions';
 
 // Query key factory for Provider Health API
 export const providerHealthApiKeys = {
@@ -186,143 +187,77 @@ export function useProviderHealthOverview() {
       try {
         const client = getAdminClient();
         
-        // Get health status from SDK
-        const healthSummary = await client.providers.getHealthStatus();
+        // Get provider health data from SDK
+        const healthSummary = await client.providerHealth.getHealthSummary();
         
-        // Transform the summary into individual provider health records
-        // Note: The actual response structure may differ, this is based on typical patterns
-        if ((healthSummary as any).providerStatuses) {
-          return (healthSummary as any).providerStatuses.map((status: any) => ({
-            providerId: status.providerId || status.providerName,
-            providerName: status.providerName,
-            status: status.isHealthy ? 'healthy' : status.status || 'down',
-            lastChecked: status.lastChecked || new Date().toISOString(),
-            responseTime: status.responseTime || status.latency || 0,
-            uptime: status.uptime || 99.0,
-            availability: status.availability || 99.0,
-            errorRate: status.errorRate || 0,
-            requestsPerMinute: status.requestsPerMinute || 0,
-            activeModels: status.activeModels || 0,
-            totalModels: status.totalModels || 0,
-            region: status.region,
-            endpoint: status.endpoint || '',
-            version: status.version,
-            capabilities: status.capabilities || [],
-            issues: status.issues || [],
-          }));
-        }
+        // Transform SDK health data to match our interface
+        const providerHealth: ProviderHealth[] = await Promise.all(
+          healthSummary.providers.map(async (provider) => {
+            try {
+              // Get detailed health status for each provider
+              const detailedStatus = await client.providerHealth.getProviderHealthStatus(provider.providerName);
+              
+              // Determine status based on health data
+              let status: 'healthy' | 'degraded' | 'down' | 'maintenance' = 'healthy';
+              if (!provider.isHealthy) {
+                if (provider.consecutiveFailures > 5) {
+                  status = 'down';
+                } else if (provider.consecutiveFailures > 2) {
+                  status = 'degraded';
+                }
+              }
+              
+              return {
+                providerId: provider.providerName.toLowerCase().replace(/\s+/g, '-'),
+                providerName: provider.providerName,
+                status,
+                lastChecked: detailedStatus.lastCheckTime || new Date().toISOString(),
+                responseTime: detailedStatus.averageResponseTimeMs || 0,
+                uptime: detailedStatus.uptime || 0,
+                availability: provider.isHealthy ? 99.9 : ((1 - (detailedStatus.errorRate || 0) / 100) * 100),
+                errorRate: detailedStatus.errorRate || 0,
+                requestsPerMinute: 0, // Not available in SDK - would need metrics data
+                activeModels: 0, // Not available in SDK
+                totalModels: 0, // Not available in SDK
+                region: 'Global', // Not available in SDK
+                endpoint: 'Unknown', // Not available in SDK
+                version: 'v1',
+                capabilities: ['chat', 'completion'], // Default capabilities
+                issues: !provider.isHealthy ? [{
+                  id: `issue_${Date.now()}_${provider.providerName}`,
+                  severity: provider.consecutiveFailures > 5 ? 'high' : 'medium' as 'low' | 'medium' | 'high' | 'critical',
+                  message: `Provider health check failed (${provider.consecutiveFailures} consecutive failures)`,
+                  timestamp: detailedStatus.lastFailureTime || new Date().toISOString(),
+                  resolved: false,
+                }] : [],
+              };
+            } catch (error) {
+              reportError(error as Error, `Failed to get detailed status for ${provider.providerName}`);
+              // Return basic info if detailed fetch fails
+              return {
+                providerId: provider.providerName.toLowerCase().replace(/\s+/g, '-'),
+                providerName: provider.providerName,
+                status: provider.isHealthy ? 'healthy' : 'down' as 'healthy' | 'degraded' | 'down' | 'maintenance',
+                lastChecked: provider.lastCheckTime || new Date().toISOString(),
+                responseTime: provider.averageResponseTimeMs || 0,
+                uptime: provider.uptime || 0,
+                availability: provider.isHealthy ? 99.9 : 0,
+                errorRate: provider.errorRate || 0,
+                requestsPerMinute: 0,
+                activeModels: 0,
+                totalModels: 0,
+                region: 'Global',
+                endpoint: 'Unknown',
+                version: 'v1',
+                capabilities: ['chat', 'completion'],
+                issues: [],
+              };
+            }
+          })
+        );
         
-        // Fallback to mock data if API response is not in expected format
-        const mockData: ProviderHealth[] = [
-          {
-            providerId: 'openai',
-            providerName: 'OpenAI',
-            status: 'healthy',
-            lastChecked: new Date().toISOString(),
-            responseTime: 847,
-            uptime: 99.8,
-            availability: 99.9,
-            errorRate: 0.2,
-            requestsPerMinute: 1247,
-            activeModels: 8,
-            totalModels: 10,
-            region: 'US-East',
-            endpoint: 'https://api.openai.com',
-            version: 'v1',
-            capabilities: ['chat', 'completion', 'image', 'audio', 'embeddings'],
-            issues: [],
-          },
-          {
-            providerId: 'anthropic',
-            providerName: 'Anthropic',
-            status: 'healthy',
-            lastChecked: new Date().toISOString(),
-            responseTime: 734,
-            uptime: 99.9,
-            availability: 99.8,
-            errorRate: 0.1,
-            requestsPerMinute: 892,
-            activeModels: 6,
-            totalModels: 6,
-            region: 'US-West',
-            endpoint: 'https://api.anthropic.com',
-            version: 'v1',
-            capabilities: ['chat', 'completion'],
-            issues: [],
-          },
-          {
-            providerId: 'azure-openai',
-            providerName: 'Azure OpenAI',
-            status: 'degraded',
-            lastChecked: new Date().toISOString(),
-            responseTime: 1456,
-            uptime: 98.2,
-            availability: 98.5,
-            errorRate: 2.3,
-            requestsPerMinute: 456,
-            activeModels: 4,
-            totalModels: 6,
-            region: 'East-US',
-            endpoint: 'https://your-instance.openai.azure.com',
-            version: '2023-12-01-preview',
-            capabilities: ['chat', 'completion', 'embeddings'],
-            issues: [
-              {
-                id: 'issue_001',
-                severity: 'medium',
-                message: 'Elevated response times detected',
-                timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-                resolved: false,
-              },
-            ],
-          },
-          {
-            providerId: 'minimax',
-            providerName: 'MiniMax',
-            status: 'healthy',
-            lastChecked: new Date().toISOString(),
-            responseTime: 1234,
-            uptime: 99.1,
-            availability: 99.3,
-            errorRate: 0.7,
-            requestsPerMinute: 234,
-            activeModels: 3,
-            totalModels: 4,
-            region: 'Asia-Pacific',
-            endpoint: 'https://api.minimax.chat',
-            version: 'v1',
-            capabilities: ['chat', 'image', 'video'],
-            issues: [],
-          },
-          {
-            providerId: 'replicate',
-            providerName: 'Replicate',
-            status: 'maintenance',
-            lastChecked: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            responseTime: 0,
-            uptime: 95.0,
-            availability: 0,
-            errorRate: 100,
-            requestsPerMinute: 0,
-            activeModels: 0,
-            totalModels: 15,
-            region: 'Global',
-            endpoint: 'https://api.replicate.com',
-            version: 'v1',
-            capabilities: ['image', 'video', 'audio'],
-            issues: [
-              {
-                id: 'issue_002',
-                severity: 'high',
-                message: 'Scheduled maintenance in progress',
-                timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-                resolved: false,
-              },
-            ],
-          },
-        ];
-
-        return mockData;
+        // If no providers found, return empty array
+        return providerHealth.length > 0 ? providerHealth : [];
       } catch (error: any) {
         reportError(error, 'Failed to fetch provider health overview');
         throw new Error(error?.message || 'Failed to fetch provider health overview');
@@ -341,48 +276,46 @@ export function useProviderStatus() {
       try {
         const client = getAdminClient();
         
-        // Get health summary from SDK
-        const healthSummary = await client.providers.getHealthStatus();
+        // Get provider health summary and metrics
+        const [healthSummary, systemMetrics] = await Promise.all([
+          client.providerHealth.getHealthSummary(),
+          client.metrics.getAllMetrics(),
+        ]);
         
-        // Transform the health summary into provider status
-        if (healthSummary) {
-          const totalProviders = healthSummary.totalProviders || 0;
-          const healthyProviders = healthSummary.healthyProviders || 0;
-          const degradedProviders = (healthSummary as any).degradedProviders || 0;
-          const downProviders = (healthSummary as any).downProviders || (healthSummary as any).providers || 0;
-          
-          return {
-            overall: (healthSummary as any).overallStatus || 
-                    (downProviders > 0 ? 'outage' : 
-                     degradedProviders > 0 ? 'degraded' : 
-                     'operational'),
-            totalProviders,
-            healthyProviders,
-            degradedProviders,
-            downProviders,
-            averageResponseTime: (healthSummary as any).averageResponseTime || 0,
-            averageUptime: (healthSummary as any).averageUptime || 99.0,
-            totalRequests: (healthSummary as any).totalRequests || 0,
-            failedRequests: (healthSummary as any).failedRequests || 0,
-            lastUpdated: (healthSummary as any).lastUpdated || new Date().toISOString(),
-          };
+        // Calculate provider status from health data
+        const totalProviders = healthSummary.totalProviders;
+        const healthyProviders = healthSummary.healthyProviders;
+        
+        // Categorize unhealthy providers
+        let degradedProviders = 0;
+        let downProviders = 0;
+        
+        for (const provider of healthSummary.providers) {
+          if (!provider.isHealthy) {
+            if (provider.consecutiveFailures > 5) {
+              downProviders++;
+            } else {
+              degradedProviders++;
+            }
+          }
         }
         
-        // Fallback to mock data if API response is not available
-        const mockData: ProviderStatus = {
-          overall: 'degraded',
-          totalProviders: 5,
-          healthyProviders: 3,
-          degradedProviders: 1,
-          downProviders: 0,
-          averageResponseTime: 954,
-          averageUptime: 98.4,
-          totalRequests: 145672,
-          failedRequests: 1234,
+        const overall: 'operational' | 'degraded' | 'outage' | 'maintenance' = 
+          downProviders > totalProviders * 0.5 ? 'outage' :
+          downProviders > 0 || degradedProviders > 0 ? 'degraded' : 'operational';
+        
+        return {
+          overall,
+          totalProviders,
+          healthyProviders,
+          degradedProviders,
+          downProviders,
+          averageResponseTime: systemMetrics.metrics.requests.averageResponseTime,
+          averageUptime: 99.0, // TODO: Calculate based on actual uptime data
+          totalRequests: systemMetrics.metrics.requests.totalRequests,
+          failedRequests: Math.floor(systemMetrics.metrics.requests.totalRequests * systemMetrics.metrics.requests.errorRate / 100),
           lastUpdated: new Date().toISOString(),
         };
-
-        return mockData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch provider status');
         throw new Error(error?.message || 'Failed to fetch provider status');
@@ -401,45 +334,88 @@ export function useProviderMetrics(providerId: string, timeRange: string = '24h'
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getMetrics(providerId, timeRange);
-        
-        // Generate mock metrics data
-        const generateMetrics = (hours: number) => {
-          const metrics = [];
-          const now = new Date();
-          
-          for (let i = hours - 1; i >= 0; i--) {
-            const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
-            const baseResponseTime = 500 + Math.random() * 1000;
-            const requestCount = Math.floor(800 + Math.random() * 400);
-            const errorCount = Math.floor(requestCount * (0.005 + Math.random() * 0.02));
-            
-            metrics.push({
-              timestamp: timestamp.toISOString(),
-              responseTime: Math.round(baseResponseTime),
-              requestCount,
-              errorCount,
-              successRate: Math.round(((requestCount - errorCount) / requestCount) * 1000) / 10,
-              throughput: Math.round(requestCount / 60 * 10) / 10, // requests per minute
-            });
-          }
-          
-          return metrics;
-        };
-
+        // Calculate date range
+        const now = new Date();
         const hours = timeRange === '1h' ? 1 : 
                      timeRange === '24h' ? 24 :
                      timeRange === '7d' ? 24 * 7 : 24;
-
-        const mockData: ProviderMetrics = {
+        const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000);
+        
+        // Get request logs for this provider
+        const requestLogs = await client.analytics.getRequestLogs({
+          startDate: startDate.toISOString(),
+          endDate: now.toISOString(),
+          provider: providerId,
+          pageSize: 1000,
+        });
+        
+        // Get provider info
+        const provider = await client.providers.getByName(providerId);
+        
+        // Group requests by hour
+        const hourlyMetrics = new Map<string, {
+          timestamp: string;
+          requestCount: number;
+          errorCount: number;
+          totalResponseTime: number;
+        }>();
+        
+        requestLogs.items.forEach(log => {
+          const hour = new Date(log.timestamp);
+          hour.setMinutes(0, 0, 0);
+          const hourKey = hour.toISOString();
+          
+          const existing = hourlyMetrics.get(hourKey) || {
+            timestamp: hourKey,
+            requestCount: 0,
+            errorCount: 0,
+            totalResponseTime: 0,
+          };
+          
+          existing.requestCount++;
+          if (log.status === 'error') existing.errorCount++;
+          existing.totalResponseTime += log.duration;
+          
+          hourlyMetrics.set(hourKey, existing);
+        });
+        
+        // Transform to metrics format
+        const metrics = Array.from(hourlyMetrics.values()).map(metric => ({
+          timestamp: metric.timestamp,
+          responseTime: metric.requestCount > 0 ? Math.round(metric.totalResponseTime / metric.requestCount) : 0,
+          requestCount: metric.requestCount,
+          errorCount: metric.errorCount,
+          successRate: metric.requestCount > 0 ? Math.round(((metric.requestCount - metric.errorCount) / metric.requestCount) * 1000) / 10 : 100,
+          throughput: Math.round(metric.requestCount / 60 * 10) / 10,
+        }));
+        
+        // Fill in missing hours with zero data
+        for (let i = 0; i < hours; i++) {
+          const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+          hour.setMinutes(0, 0, 0);
+          const hourKey = hour.toISOString();
+          
+          if (!hourlyMetrics.has(hourKey)) {
+            metrics.push({
+              timestamp: hourKey,
+              responseTime: 0,
+              requestCount: 0,
+              errorCount: 0,
+              successRate: 100,
+              throughput: 0,
+            });
+          }
+        }
+        
+        // Sort by timestamp
+        metrics.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        return {
           providerId,
-          providerName: providerId.charAt(0).toUpperCase() + providerId.slice(1),
+          providerName: provider.providerName,
           timeRange,
-          metrics: generateMetrics(hours),
+          metrics,
         };
-
-        return mockData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch provider metrics');
         throw new Error(error?.message || 'Failed to fetch provider metrics');

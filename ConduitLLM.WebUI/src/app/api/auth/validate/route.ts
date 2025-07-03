@@ -43,11 +43,12 @@ export async function POST(request: NextRequest) {
       message: 'Admin access granted',
     });
 
-    // Set secure session cookie
+    // Set secure session cookie with admin access
     response.cookies.set('conduit_session', JSON.stringify({
       sessionId,
       isAuthenticated: true,
       expiresAt,
+      masterKeyHash: 'admin', // This indicates admin access for the WebUI
     }), {
       httpOnly: true, // Prevent XSS
       secure: process.env.NODE_ENV === 'production', // HTTPS only in production

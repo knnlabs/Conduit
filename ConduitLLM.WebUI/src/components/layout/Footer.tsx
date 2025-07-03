@@ -10,7 +10,7 @@ export function Footer() {
       <Container py="md">
         <Group justify="space-between" align="center">
           <Text size="sm" c="dimmed">
-            © 2024 Conduit AI Gateway. All rights reserved.
+            © 2025 KNN Labs, Inc.
           </Text>
           
           <Group gap="md">
@@ -37,7 +37,7 @@ export function Footer() {
             </Anchor>
             
             <Anchor
-              href="#"
+              href="https://github.com/knnlabs/Conduit/blob/main/LICENSE"
               size="sm"
               c="dimmed"
               style={{ display: 'flex', alignItems: 'center', gap: 4 }}
@@ -46,10 +46,6 @@ export function Footer() {
               License
             </Anchor>
           </Group>
-          
-          <Text size="xs" c="dimmed">
-            Version 2.0.0
-          </Text>
         </Group>
       </Container>
     </footer>

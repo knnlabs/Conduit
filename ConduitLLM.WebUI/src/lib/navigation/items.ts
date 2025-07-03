@@ -69,7 +69,7 @@ export const navigationSections: NavigationSection[] = [
         id: 'audio-test',
         label: 'Audio Processing',
         icon: IconMicrophone,
-        href: '/audio-test',
+        href: '/audio-processing',
         description: 'Transcription, translation, and TTS',
         color: 'teal',
       },
@@ -224,6 +224,14 @@ export const navigationSections: NavigationSection[] = [
         icon: IconDeviceDesktop,
         href: '/system-info',
         description: 'System status and information',
+      },
+      {
+        id: 'system-performance',
+        label: 'System Performance',
+        icon: IconActivity,
+        href: '/system-performance',
+        description: 'Performance monitoring and metrics',
+        color: 'teal',
       },
       {
         id: 'provider-health',

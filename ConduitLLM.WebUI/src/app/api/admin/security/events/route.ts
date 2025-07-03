@@ -8,58 +8,76 @@ export const GET = withSDKAuth(
   async (request, { auth }) => {
     try {
       const params = parseQueryParams(request);
+      const hours = parseInt(params.get('hours') || '24');
       
-      // Since there's no specific security events method, return empty data
-      // This endpoint is a placeholder for future security event functionality
-      return transformPaginatedResponse([], {
+      // Call the Admin API's security events endpoint directly
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${auth.masterKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Security events API returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Transform events to match expected format
+      const events = data.events || [];
+      const paginatedEvents = events.slice(
+        (params.page - 1) * params.pageSize,
+        params.page * params.pageSize
+      );
+      
+      return transformPaginatedResponse(paginatedEvents, {
         page: params.page,
         pageSize: params.pageSize,
-        total: 0,
+        total: events.length,
+        meta: {
+          timeRange: data.timeRange,
+          totalEvents: data.totalEvents,
+          eventsByType: data.eventsByType,
+          eventsBySeverity: data.eventsBySeverity,
+        },
       });
     } catch (error: any) {
-      // Return empty result for 404
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
-        return transformPaginatedResponse([], {
-          page: 1,
-          pageSize: 20,
-          total: 0,
-        });
-      }
-      return mapSDKErrorToResponse(error);
+      // Return empty result for failures
+      return transformPaginatedResponse([], {
+        page: 1,
+        pageSize: 20,
+        total: 0,
+      });
     }
   },
   { requireAdmin: true }
 );
 
-// Report a security event (placeholder)
+// Report a security event (not yet implemented in backend)
 export const POST = withSDKAuth(
   async (request, { auth }) => {
     try {
       const body = await request.json();
       
-      // This is a placeholder implementation
-      // In a real implementation, this would store security events
-      const mockEvent = {
-        id: `sec_${Date.now()}`,
-        type: body.type || 'suspicious_activity',
-        severity: body.severity || 'medium',
-        description: body.description,
-        ipAddress: body.ipAddress,
-        virtualKeyId: body.virtualKeyId,
-        requestId: body.requestId,
-        metadata: body.metadata,
-        action: body.action || 'logged',
-        timestamp: new Date().toISOString(),
-      };
-
-      return transformSDKResponse(mockEvent, {
-        status: 201,
-        meta: {
-          created: true,
-          eventId: mockEvent.id,
-          timestamp: mockEvent.timestamp,
+      // Backend doesn't have a security event reporting endpoint yet
+      // Return a placeholder response indicating the feature is not available
+      return transformSDKResponse(
+        {
+          message: 'Security event reporting is not yet implemented',
+          received: body,
+        },
+        {
+          status: 501, // Not Implemented
+          meta: {
+            feature: 'security-event-reporting',
+            available: false,
+          }
         }
-      });
+      );
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -67,14 +85,32 @@ export const POST = withSDKAuth(
   { requireAdmin: true }
 );
 
-// Export security events (placeholder)
+// Export security events
 export const PUT = withSDKAuth(
   async (request, { auth }) => {
     try {
       const body = await request.json();
       const { format = 'json', filters = {} } = body;
+      const hours = filters.hours || 24;
       
-      // Generate sample security events data
+      // Fetch security events from the Admin API
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${auth.masterKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Security events API returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const events = data.events || [];
+      
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `security-events-${timestamp}.${format}`;
       
@@ -82,35 +118,28 @@ export const PUT = withSDKAuth(
       let contentType: string;
       
       if (format === 'csv') {
-        content = `Timestamp,Type,Severity,IP Address,Description,Action
-${new Date().toISOString()},failed_login,high,192.168.1.100,Multiple failed login attempts,blocked
-${new Date().toISOString()},suspicious_activity,medium,10.0.0.50,Unusual API usage pattern,logged
-${new Date().toISOString()},rate_limit_exceeded,low,172.16.0.25,Rate limit exceeded,throttled`;
+        // Convert events to CSV
+        const headers = 'Timestamp,Type,Severity,Source,VirtualKeyId,Details';
+        const rows = events.map((e: any) => 
+          `${e.timestamp},${e.type},${e.severity},${e.source},${e.virtualKeyId || ''},"${e.details}"`
+        ).join('\n');
+        content = `${headers}\n${rows}`;
         contentType = 'text/csv';
-      } else if (format === 'json') {
+      } else {
+        // JSON format
         content = JSON.stringify({
           exportDate: new Date().toISOString(),
-          events: [
-            {
-              timestamp: new Date().toISOString(),
-              type: 'failed_login',
-              severity: 'high',
-              ipAddress: '192.168.1.100',
-              description: 'Multiple failed login attempts',
-              action: 'blocked'
-            }
-          ],
+          timeRange: data.timeRange,
+          totalEvents: data.totalEvents,
+          eventsByType: data.eventsByType,
+          eventsBySeverity: data.eventsBySeverity,
+          events: events,
           metadata: {
-            totalEvents: 1,
+            totalRecords: events.length,
             exportVersion: '1.0'
           }
         }, null, 2);
         contentType = 'application/json';
-      } else {
-        // Excel format - return CSV as fallback
-        content = `Timestamp,Type,Severity,IP Address,Description,Action
-${new Date().toISOString()},security_event,medium,127.0.0.1,Sample event,logged`;
-        contentType = 'text/csv';
       }
 
       return new Response(content, {

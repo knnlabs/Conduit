@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
   Stack,
   Title,
   Text,
   Group,
   Button,
-  TextInput,
+  PasswordInput,
   Checkbox,
   Alert,
   Center,
@@ -26,18 +28,23 @@ export default function LoginPage() {
   const [adminKey, setAdminKey] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { login } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!adminKey.trim()) {
-      alert('Admin key is required');
+      setError('Admin key is required');
       return;
     }
 
     setLoading(true);
+    setError(null);
     
     try {
+      // First validate with the API to set the cookie
       const response = await fetch('/api/auth/validate', {
         method: 'POST',
         headers: {
@@ -49,16 +56,21 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        alert('Login successful! Redirecting...');
-        window.location.href = '/';
+        // Update the auth store to match the cookie state
+        const success = await login(adminKey.trim(), rememberMe);
+        
+        if (success) {
+          router.push('/');
+        } else {
+          setError('Unable to update authentication state');
+        }
       } else {
-        const error = await response.json().catch(() => ({ error: 'Login failed' }));
-        alert('Login failed: ' + (error.error || 'Invalid admin key'));
+        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
+        setError(errorData.error || 'Invalid admin key');
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login error: Unable to connect to server');
+      setError('Unable to connect to server');
     } finally {
       setLoading(false);
     }
@@ -97,16 +109,22 @@ export default function LoginPage() {
           <Alert icon={<IconKey size={16} />} color="blue" mb="md" variant="light">
             <Text size="sm">
               <strong>Admin Key Required:</strong><br />
-              Use: <code>conduit123</code> (configured in CONDUIT_WEBUI_AUTH_KEY)
+              Enter the administrator key to access the dashboard
             </Text>
           </Alert>
 
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              <TextInput
+              {error && (
+                <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
+                  <Text size="sm">{error}</Text>
+                </Alert>
+              )}
+              
+              <PasswordInput
                 label="Admin Key"
-                placeholder="Enter your admin key (conduit123)"
-                description="Enter the CONDUIT_WEBUI_AUTH_KEY to access the dashboard"
+                placeholder="Enter your admin key"
+                description="Contact your administrator for access credentials"
                 required
                 leftSection={<IconShield size={16} />}
                 value={adminKey}

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession, createUnauthorizedResponse } from '@/lib/auth/middleware';
+import { getAdminClient } from '@/lib/clients/conduit';
+import { reportError } from '@/lib/utils/logging';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,34 +11,27 @@ export async function GET(request: NextRequest) {
       return createUnauthorizedResponse(validation.error);
     }
 
-    // Make direct API call to Conduit Admin API
-    const adminApiUrl = process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL;
-    const masterKey = process.env.CONDUIT_MASTER_KEY;
-    
-    if (!adminApiUrl || !masterKey) {
+    try {
+      // Use SDK to get system info
+      const adminClient = getAdminClient();
+      const systemInfo = await adminClient.system.getSystemInfo();
+      
+      return NextResponse.json(systemInfo);
+    } catch (sdkError: any) {
+      reportError(sdkError, 'Failed to fetch system info from SDK');
+      
+      // Return error response instead of mock data
       return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
+        { 
+          error: 'System information is currently unavailable',
+          message: sdkError.message || 'Failed to fetch system information'
+        },
+        { status: 503 }
       );
     }
-    
-    const response = await fetch(`${adminApiUrl}/v1/system/info`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${masterKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API call failed with status: ${response.status}`);
-    }
-    
-    const systemInfo = await response.json();
-    
-    return NextResponse.json(systemInfo);
   } catch (error: any) {
     console.error('System Info API error:', error);
+    reportError(error, 'System Info API error');
     return NextResponse.json(
       { error: 'Failed to fetch system information' },
       { status: 500 }

@@ -43,6 +43,7 @@ import { useChatCompletion, useStreamingChatCompletion, useAvailableModels, Chat
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
+import { ErrorState } from '@/components/common/ErrorState';
 
 export default function ChatPage() {
   const [message, setMessage] = useState('');
@@ -76,8 +77,8 @@ export default function ChatPage() {
     clearConversation,
   } = useChatStore();
 
-  const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeys();
-  const { data: models, isLoading: modelsLoading } = useAvailableModels();
+  const { data: virtualKeys, isLoading: keysLoading, error: keysError } = useVirtualKeys();
+  const { data: models, isLoading: modelsLoading, error: modelsError } = useAvailableModels();
   const chatCompletion = useChatCompletion();
   
   const streamingCompletion = useStreamingChatCompletion();
@@ -261,6 +262,23 @@ export default function ChatPage() {
   const formatMessageTime = (conversation: any) => {
     return new Date(conversation.updatedAt).toLocaleTimeString();
   };
+
+  // Show error state if critical data fails to load
+  if (keysError || modelsError) {
+    return (
+      <Stack gap="md">
+        <div>
+          <Title order={1}>Chat Interface</Title>
+          <Text c="dimmed">Interactive chat with LLM models</Text>
+        </div>
+        <ErrorState 
+          error={keysError || modelsError} 
+          title="Failed to load configuration"
+          fullPage
+        />
+      </Stack>
+    );
+  }
 
   return (
     <>

@@ -161,6 +161,8 @@ services:
       # Redis configuration for session storage
       REDIS_URL: "redis://redis:6379"
       REDIS_SESSION_PREFIX: "conduit:session:"
+      # WebUI authentication key (should match CONDUIT_MASTER_KEY)
+      CONDUIT_WEBUI_AUTH_KEY: conduit123
     ports:
       - "3000:3000"
     restart: on-failure

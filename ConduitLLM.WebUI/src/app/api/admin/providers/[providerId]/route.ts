@@ -10,7 +10,7 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
       
       // Get provider details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.get(providerId),
+        async () => auth.adminClient!.providers.getProviderDataByNameAsync(providerId),
         `get provider ${providerId}`
       );
 
@@ -28,28 +28,15 @@ export const PUT = createDynamicRouteHandler<{ providerId: string }>(
       const { providerId } = params;
       const body = await request.json();
       
-      // Update provider configuration
-      const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.update(providerId, {
-          providerName: body.providerName,
-          providerType: body.providerType,
-          apiKey: body.apiKey,
-          apiUrl: body.apiUrl,
-          organizationId: body.organizationId,
-          additionalSettings: body.additionalSettings,
-          isEnabled: body.isEnabled,
-          priority: body.priority,
-          metadata: body.metadata,
-        }),
-        `update provider ${providerId}`
+      // Provider metadata cannot be updated directly.
+      // To manage provider settings, use provider credentials API instead.
+      return transformSDKResponse(
+        { 
+          error: 'Provider metadata cannot be updated directly',
+          message: 'Use provider credentials API to manage provider configurations' 
+        },
+        { status: 400 }
       );
-
-      return transformSDKResponse(result, {
-        meta: {
-          updated: true,
-          providerId,
-        }
-      });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -62,21 +49,14 @@ export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
     try {
       const { providerId } = params;
       
-      // Delete provider
-      await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.delete(providerId),
-        `delete provider ${providerId}`
-      );
-
+      // Provider metadata cannot be deleted directly.
+      // To remove provider access, use provider credentials API instead.
       return transformSDKResponse(
-        { message: 'Provider deleted successfully' },
-        {
-          status: 200,
-          meta: {
-            deleted: true,
-            providerId,
-          }
-        }
+        { 
+          error: 'Provider metadata cannot be deleted directly',
+          message: 'Use provider credentials API to remove provider configurations' 
+        },
+        { status: 400 }
       );
     } catch (error) {
       return mapSDKErrorToResponse(error);

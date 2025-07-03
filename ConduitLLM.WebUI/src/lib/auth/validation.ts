@@ -6,7 +6,22 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
       return false;
     }
 
-    // Create a temporary admin client to test the master key
+    // If running on the client side, validate against the API endpoint
+    if (typeof window !== 'undefined') {
+      const response = await fetch('/api/auth/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          adminKey: masterKey.trim()
+        }),
+      });
+      
+      return response.ok;
+    }
+
+    // Server-side validation
     const adminClient = new ConduitAdminClient({
       adminApiUrl: process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL!,
       masterKey: masterKey,
@@ -27,7 +42,7 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
     
     // For other errors (network, etc), we'll assume the key might be valid
     // This prevents network issues from blocking login
-    return true;
+    return false;
   }
 }
 
@@ -42,8 +57,9 @@ export function validateMasterKeyFormat(masterKey: string): string | null {
     return 'Master key is required';
   }
   
-  if (sanitized.length < 16) {
-    return 'Master key must be at least 16 characters for security';
+  // Allow shorter keys for development/WebUI auth
+  if (sanitized.length < 4) {
+    return 'Master key must be at least 4 characters';
   }
   
   if (sanitized.length > 100) {

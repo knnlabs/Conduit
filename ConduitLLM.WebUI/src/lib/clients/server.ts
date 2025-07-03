@@ -6,8 +6,9 @@ import { logger } from '@/lib/utils/logging';
 function validateEnvironment() {
   const required = {
     CONDUIT_MASTER_KEY: process.env.CONDUIT_MASTER_KEY,
-    NEXT_PUBLIC_CONDUIT_ADMIN_API_URL: process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL,
-    NEXT_PUBLIC_CONDUIT_CORE_API_URL: process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL,
+    // Use internal URLs for server-side API calls
+    CONDUIT_ADMIN_API_BASE_URL: process.env.CONDUIT_ADMIN_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL,
+    CONDUIT_API_BASE_URL: process.env.CONDUIT_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL,
   };
 
   const missing = Object.entries(required)
@@ -44,12 +45,12 @@ export function createServerAdminClient(config?: Partial<SDKConfig>): ConduitAdm
   const finalConfig = { ...defaultSDKConfig, ...config };
 
   logger.info('Creating Conduit Admin client', { 
-    url: env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL,
+    url: env.CONDUIT_ADMIN_API_BASE_URL,
     config: finalConfig 
   });
 
   return new ConduitAdminClient({
-    adminApiUrl: env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL!,
+    adminApiUrl: env.CONDUIT_ADMIN_API_BASE_URL!,
     masterKey: env.CONDUIT_MASTER_KEY!,
     options: {
       timeout: finalConfig.timeout,
@@ -67,13 +68,13 @@ export function createServerCoreClient(virtualKey: string, config?: Partial<SDKC
   const finalConfig = { ...defaultSDKConfig, ...config };
   
   logger.info('Creating Conduit Core client', { 
-    url: env.NEXT_PUBLIC_CONDUIT_CORE_API_URL,
+    url: env.CONDUIT_API_BASE_URL,
     keyPrefix: virtualKey.substring(0, 8) + '...',
     config: finalConfig 
   });
 
   return new ConduitCoreClient({
-    baseURL: env.NEXT_PUBLIC_CONDUIT_CORE_API_URL!,
+    baseURL: env.CONDUIT_API_BASE_URL!,
     apiKey: virtualKey,
     timeout: finalConfig.timeout,
     maxRetries: finalConfig.retries,

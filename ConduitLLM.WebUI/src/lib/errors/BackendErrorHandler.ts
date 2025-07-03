@@ -161,4 +161,17 @@ export class BackendErrorHandler {
         return 'If this problem persists, please contact support.';
     }
   }
+
+  static getRetryConfig(maxRetries: number = 3) {
+    return {
+      retry: (failureCount: number, error: any) => {
+        const backendError = error.type ? error : BackendErrorHandler.classifyError(error);
+        return BackendErrorHandler.shouldRetry(backendError, failureCount, maxRetries);
+      },
+      retryDelay: (attemptIndex: number, error: any) => {
+        const backendError = error.type ? error : BackendErrorHandler.classifyError(error);
+        return BackendErrorHandler.getRetryDelay(backendError, attemptIndex);
+      },
+    };
+  }
 }

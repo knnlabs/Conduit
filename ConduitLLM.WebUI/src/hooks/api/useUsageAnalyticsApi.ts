@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { DateRange } from '@knn_labs/conduit-admin-client';
+import type { UsageMetricsDto } from '@/types/sdk-extensions';
 
 // Query key factory for Usage Analytics API
 export const usageAnalyticsApiKeys = {
@@ -114,6 +116,60 @@ export interface TimeRangeFilter {
   endDate?: string;
 }
 
+// Helper functions for SDK integration
+function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRange {
+  if (timeRange.range === 'custom' && timeRange.startDate && timeRange.endDate) {
+    return {
+      startDate: timeRange.startDate,
+      endDate: timeRange.endDate,
+    };
+  }
+  
+  const now = new Date();
+  let startDate: Date;
+  
+  switch (timeRange.range) {
+    case '1h':
+      startDate = new Date(now.getTime() - 60 * 60 * 1000);
+      break;
+    case '24h':
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  }
+  
+  return {
+    startDate: startDate.toISOString(),
+    endDate: now.toISOString(),
+  };
+}
+
+function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'day' | 'week' | 'month' {
+  switch (timeRange.range) {
+    case '1h':
+    case '24h':
+      return 'hour';
+    case '7d':
+      return 'day';
+    case '30d':
+      return 'day';
+    case '90d':
+      return 'week';
+    default:
+      return 'day';
+  }
+}
+
 // Usage Metrics Hook
 export function useUsageMetrics(timeRange: TimeRangeFilter) {
   return useQuery({
@@ -122,28 +178,34 @@ export function useUsageMetrics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getUsageMetrics(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getUsageMetrics(dateRange);
         
-        // Mock data for now
-        const mockData: UsageMetrics = {
-          totalRequests: 127456,
-          totalTokens: 5847293,
-          totalUsers: 23,
-          averageLatency: 847,
-          errorRate: 2.3,
-          requestsPerSecond: 14.7,
-          tokensPerRequest: 45.9,
-          successRate: 97.7,
-          uniqueVirtualKeys: 23,
-          activeProviders: 4,
-          requestsTrend: 15.2,
-          tokensTrend: 18.7,
-          errorsTrend: -12.4,
-          latencyTrend: -5.3,
+        // Transform SDK response to UI format
+        const metrics = response as UsageMetricsDto;
+        const totalInputTokens = metrics.totalInputTokens || 0;
+        const totalOutputTokens = metrics.totalOutputTokens || 0;
+        const totalTokens = totalInputTokens + totalOutputTokens;
+        
+        const usageMetrics: UsageMetrics = {
+          totalRequests: response.totalRequests || 0,
+          totalTokens,
+          totalUsers: response.uniqueKeys || 0,
+          averageLatency: response.averageLatency || 0,
+          errorRate: response.errorRate || 0,
+          requestsPerSecond: (response.requestsPerMinute || 0) / 60,
+          tokensPerRequest: response.totalRequests > 0 ? totalTokens / response.totalRequests : 0,
+          successRate: response.totalRequests > 0 ? ((response.successfulRequests || 0) / response.totalRequests) * 100 : 100,
+          uniqueVirtualKeys: response.uniqueKeys || 0,
+          activeProviders: response.uniqueModels || 0, // Using unique models as proxy for active providers
+          requestsTrend: 0, // TODO: Calculate trend from historical data
+          tokensTrend: 0,
+          errorsTrend: 0,
+          latencyTrend: 0,
         };
 
-        return mockData;
+        return usageMetrics;
       } catch (error: any) {
         reportError(error, 'Failed to fetch usage metrics');
         throw new Error(error?.message || 'Failed to fetch usage metrics');
@@ -162,40 +224,22 @@ export function useRequestVolumeAnalytics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getRequestVolume(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const groupBy = getGroupByFromTimeRange(timeRange);
+        const response = await client.analytics.getCostByPeriod(dateRange, groupBy);
         
-        // Generate mock request volume data
-        const generateMockData = (hours: number): RequestVolumeData[] => {
-          const data: RequestVolumeData[] = [];
-          const now = new Date();
-          
-          for (let i = hours - 1; i >= 0; i--) {
-            const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
-            const baseRequests = 1200 + Math.random() * 800;
-            const failedRequests = Math.floor(baseRequests * (0.01 + Math.random() * 0.04));
-            const successfulRequests = Math.floor(baseRequests - failedRequests);
-            const tokensProcessed = Math.floor(baseRequests * (40 + Math.random() * 30));
-            
-            data.push({
-              timestamp: timestamp.toISOString(),
-              requests: Math.floor(baseRequests),
-              successfulRequests,
-              failedRequests,
-              averageLatency: Math.floor(500 + Math.random() * 1000),
-              tokensProcessed,
-            });
-          }
-          
-          return data;
-        };
+        // Transform SDK response to UI format
+        const requestVolumeData: RequestVolumeData[] = response.periods.map(period => ({
+          timestamp: period.startDate,
+          requests: period.requestCount,
+          successfulRequests: period.requestCount, // Actual success/failure breakdown not available in cost data
+          failedRequests: 0, // Error counts would need to come from request logs
+          averageLatency: 0, // Latency data not available in cost endpoint
+          tokensProcessed: period.inputTokens + period.outputTokens,
+        }));
 
-        const hours = timeRange.range === '1h' ? 1 : 
-                     timeRange.range === '24h' ? 24 :
-                     timeRange.range === '7d' ? 24 * 7 : 
-                     timeRange.range === '30d' ? 24 * 30 : 24;
-
-        return generateMockData(hours);
+        return requestVolumeData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch request volume analytics');
         throw new Error(error?.message || 'Failed to fetch request volume analytics');
@@ -213,41 +257,27 @@ export function useTokenUsageAnalytics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getTokenUsage(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const groupBy = getGroupByFromTimeRange(timeRange);
+        const response = await client.analytics.getCostByPeriod(dateRange, groupBy);
         
-        // Generate mock token usage data
-        const generateMockData = (hours: number): TokenUsageData[] => {
-          const data: TokenUsageData[] = [];
-          const now = new Date();
+        // Transform SDK response to UI format
+        const tokenUsageData: TokenUsageData[] = response.periods.map(period => {
+          const totalTokens = period.inputTokens + period.outputTokens;
+          const averageTokensPerRequest = period.requestCount > 0 ? totalTokens / period.requestCount : 0;
           
-          for (let i = hours - 1; i >= 0; i--) {
-            const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
-            const inputTokens = Math.floor(15000 + Math.random() * 10000);
-            const outputTokens = Math.floor(25000 + Math.random() * 15000);
-            const totalTokens = inputTokens + outputTokens;
-            const cost = (totalTokens * 0.0001) + Math.random() * 5;
-            const requests = 800 + Math.random() * 400;
-            
-            data.push({
-              timestamp: timestamp.toISOString(),
-              inputTokens,
-              outputTokens,
-              totalTokens,
-              cost: Math.round(cost * 100) / 100,
-              averageTokensPerRequest: Math.round((totalTokens / requests) * 10) / 10,
-            });
-          }
-          
-          return data;
-        };
+          return {
+            timestamp: period.startDate,
+            inputTokens: period.inputTokens,
+            outputTokens: period.outputTokens,
+            totalTokens,
+            cost: period.totalCost,
+            averageTokensPerRequest: Math.round(averageTokensPerRequest * 10) / 10,
+          };
+        });
 
-        const hours = timeRange.range === '1h' ? 1 : 
-                     timeRange.range === '24h' ? 24 :
-                     timeRange.range === '7d' ? 24 * 7 : 
-                     timeRange.range === '30d' ? 24 * 30 : 24;
-
-        return generateMockData(hours);
+        return tokenUsageData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch token usage analytics');
         throw new Error(error?.message || 'Failed to fetch token usage analytics');
@@ -265,82 +295,59 @@ export function useErrorAnalytics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getErrorAnalytics(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getRequestLogs({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          status: 'error',
+          pageSize: 1000, // Get more data for error analysis
+        });
         
-        // Mock error analytics data
-        const mockData: ErrorAnalyticsData[] = [
-          {
-            errorType: 'Rate Limit Exceeded',
-            count: 234,
-            percentage: 45.2,
-            lastOccurrence: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-            affectedEndpoints: ['/v1/chat/completions', '/v1/images/generations'],
-            examples: [
-              {
-                message: 'Rate limit exceeded for virtual key: vk_prod_001',
-                timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-                virtualKey: 'vk_prod_001',
-                provider: 'OpenAI',
-              },
-              {
-                message: 'Rate limit exceeded for virtual key: vk_dev_002',
-                timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-                virtualKey: 'vk_dev_002',
-                provider: 'OpenAI',
-              },
-            ],
-          },
-          {
-            errorType: 'Authentication Failed',
-            count: 156,
-            percentage: 30.1,
-            lastOccurrence: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            affectedEndpoints: ['/v1/chat/completions', '/v1/audio/transcriptions'],
-            examples: [
-              {
-                message: 'Invalid API key provided',
-                timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-                virtualKey: 'vk_invalid_001',
-              },
-              {
-                message: 'Virtual key not found or disabled',
-                timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                virtualKey: 'vk_disabled_003',
-              },
-            ],
-          },
-          {
-            errorType: 'Model Not Available',
-            count: 89,
-            percentage: 17.2,
-            lastOccurrence: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-            affectedEndpoints: ['/v1/chat/completions'],
-            examples: [
-              {
-                message: 'Model gpt-4-turbo not available for provider',
-                timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-                provider: 'Azure OpenAI',
-              },
-            ],
-          },
-          {
-            errorType: 'Timeout',
-            count: 39,
-            percentage: 7.5,
-            lastOccurrence: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-            affectedEndpoints: ['/v1/images/generations', '/v1/audio/speech'],
-            examples: [
-              {
-                message: 'Request timeout after 30 seconds',
-                timestamp: new Date(Date.now() - 1000 * 60 * 150).toISOString(),
-                provider: 'MiniMax',
-              },
-            ],
-          },
-        ];
+        // Aggregate error data by type
+        const errorCounts = new Map<string, {
+          count: number;
+          examples: typeof response.items;
+          lastOccurrence: string;
+        }>();
+        
+        response.items.forEach(log => {
+          const errorType = log.errorMessage || 'Unknown Error';
+          const existing = errorCounts.get(errorType) || {
+            count: 0,
+            examples: [],
+            lastOccurrence: log.timestamp,
+          };
+          
+          existing.count++;
+          if (existing.examples.length < 3) {
+            existing.examples.push(log);
+          }
+          if (new Date(log.timestamp) > new Date(existing.lastOccurrence)) {
+            existing.lastOccurrence = log.timestamp;
+          }
+          
+          errorCounts.set(errorType, existing);
+        });
+        
+        const totalErrors = response.items.length;
+        
+        // Transform to UI format
+        const errorAnalytics: ErrorAnalyticsData[] = Array.from(errorCounts.entries()).map(([errorType, data]) => ({
+          errorType,
+          count: data.count,
+          percentage: totalErrors > 0 ? (data.count / totalErrors) * 100 : 0,
+          lastOccurrence: data.lastOccurrence,
+          affectedEndpoints: [...new Set(data.examples.map(ex => `/v1/${ex.model || 'unknown'}`))],
+          examples: data.examples.map(ex => ({
+            message: ex.errorMessage || 'Unknown error',
+            timestamp: ex.timestamp,
+            virtualKey: ex.virtualKeyName,
+            provider: ex.provider,
+          })),
+        }));
 
-        return mockData;
+        return errorAnalytics.sort((a, b) => b.count - a.count); // Sort by count descending
       } catch (error: any) {
         reportError(error, 'Failed to fetch error analytics');
         throw new Error(error?.message || 'Failed to fetch error analytics');
@@ -358,71 +365,73 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getLatencyMetrics(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getRequestLogs({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          pageSize: 1000,
+        });
         
-        // Mock latency metrics data
-        const mockData: LatencyMetrics[] = [
-          {
-            endpoint: '/v1/chat/completions',
-            averageLatency: 847,
-            p50: 654,
-            p90: 1234,
-            p95: 1567,
-            p99: 2845,
-            requestCount: 45678,
-            slowestRequests: [
-              {
-                latency: 8934,
-                timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                virtualKey: 'vk_slow_001',
-                model: 'gpt-4',
-              },
-              {
-                latency: 7234,
-                timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-                virtualKey: 'vk_slow_002',
-                model: 'claude-3-opus',
-              },
-            ],
-          },
-          {
-            endpoint: '/v1/images/generations',
-            averageLatency: 15678,
-            p50: 12345,
-            p90: 23456,
-            p95: 28901,
-            p99: 45678,
-            requestCount: 8934,
-            slowestRequests: [
-              {
-                latency: 67890,
-                timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-                virtualKey: 'vk_image_001',
-                model: 'dall-e-3',
-              },
-            ],
-          },
-          {
-            endpoint: '/v1/audio/transcriptions',
-            averageLatency: 3456,
-            p50: 2345,
-            p90: 5678,
-            p95: 7890,
-            p99: 12345,
-            requestCount: 12345,
-            slowestRequests: [
-              {
-                latency: 23456,
-                timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-                virtualKey: 'vk_audio_001',
-                model: 'whisper-1',
-              },
-            ],
-          },
-        ];
+        // Group by endpoint/model to calculate latency metrics
+        const endpointMetrics = new Map<string, {
+          durations: number[];
+          requests: typeof response.items;
+        }>();
+        
+        response.items.forEach(log => {
+          const endpoint = `/v1/${log.model.includes('chat') ? 'chat/completions' : 
+                                log.model.includes('dall-e') ? 'images/generations' :
+                                log.model.includes('whisper') ? 'audio/transcriptions' :
+                                'chat/completions'}`;
+          
+          const existing = endpointMetrics.get(endpoint) || {
+            durations: [],
+            requests: [],
+          };
+          
+          existing.durations.push(log.duration);
+          existing.requests.push(log);
+          endpointMetrics.set(endpoint, existing);
+        });
+        
+        // Calculate percentiles for each endpoint
+        const latencyMetrics: LatencyMetrics[] = Array.from(endpointMetrics.entries()).map(([endpoint, data]) => {
+          const sortedDurations = data.durations.sort((a, b) => a - b);
+          const count = sortedDurations.length;
+          
+          const getPercentile = (p: number) => {
+            if (count === 0) return 0;
+            const index = Math.floor((p / 100) * count);
+            return sortedDurations[Math.min(index, count - 1)];
+          };
+          
+          const averageLatency = count > 0 ? sortedDurations.reduce((sum, d) => sum + d, 0) / count : 0;
+          
+          // Get slowest requests
+          const slowestRequests = data.requests
+            .sort((a, b) => b.duration - a.duration)
+            .slice(0, 3)
+            .map(log => ({
+              latency: log.duration,
+              timestamp: log.timestamp,
+              virtualKey: log.virtualKeyName || 'unknown',
+              model: log.model,
+            }));
+          
+          return {
+            endpoint,
+            averageLatency: Math.round(averageLatency),
+            p50: Math.round(getPercentile(50)),
+            p90: Math.round(getPercentile(90)),
+            p95: Math.round(getPercentile(95)),
+            p99: Math.round(getPercentile(99)),
+            requestCount: count,
+            slowestRequests,
+          };
+        });
 
-        return mockData;
+        return latencyMetrics.sort((a, b) => b.requestCount - a.requestCount);
       } catch (error: any) {
         reportError(error, 'Failed to fetch latency metrics');
         throw new Error(error?.message || 'Failed to fetch latency metrics');
@@ -440,65 +449,78 @@ export function useUserAnalytics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getUserAnalytics(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const costByKeyResponse = await client.analytics.getCostByKey(dateRange);
         
-        // Mock user analytics data
-        const mockData: UserAnalytics[] = [
-          {
-            virtualKeyId: 'vk_prod_001',
-            virtualKeyName: 'Production API',
-            totalRequests: 23456,
-            totalTokens: 1234567,
-            totalCost: 456.78,
-            averageLatency: 734,
-            errorRate: 1.2,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            topModels: ['gpt-4', 'claude-3-opus', 'dall-e-3'],
-            topEndpoints: ['/v1/chat/completions', '/v1/images/generations'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 1245 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 1567 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 1890 },
-            ],
-          },
-          {
-            virtualKeyId: 'vk_dev_002',
-            virtualKeyName: 'Development Key',
-            totalRequests: 12345,
-            totalTokens: 567890,
-            totalCost: 234.56,
-            averageLatency: 892,
-            errorRate: 3.4,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-            topModels: ['gpt-3.5-turbo', 'claude-3-sonnet'],
-            topEndpoints: ['/v1/chat/completions', '/v1/audio/transcriptions'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 678 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 789 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 901 },
-            ],
-          },
-          {
-            virtualKeyId: 'vk_test_003',
-            virtualKeyName: 'Testing Environment',
-            totalRequests: 5678,
-            totalTokens: 234567,
-            totalCost: 89.34,
-            averageLatency: 654,
-            errorRate: 5.6,
-            lastActivity: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            topModels: ['gpt-3.5-turbo'],
-            topEndpoints: ['/v1/chat/completions'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 234 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 345 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 456 },
-            ],
-          },
-        ];
-
-        return mockData;
+        // Get detailed data for each key
+        const userAnalyticsPromises = costByKeyResponse.keys.map(async (key) => {
+          try {
+            const keyUsage = await client.analytics.getKeyUsage(key.keyId, dateRange);
+            
+            // Get request logs for this key to calculate additional metrics
+            const requestLogs = await client.analytics.getRequestLogs({
+              startDate: dateRange.startDate,
+              endDate: dateRange.endDate,
+              virtualKeyId: key.keyId,
+              pageSize: 1000,
+            });
+            
+            // Calculate error rate
+            const errorCount = requestLogs.items.filter(log => log.status === 'error').length;
+            const errorRate = requestLogs.items.length > 0 ? (errorCount / requestLogs.items.length) * 100 : 0;
+            
+            // Calculate average latency
+            const averageLatency = requestLogs.items.length > 0 
+              ? requestLogs.items.reduce((sum, log) => sum + log.duration, 0) / requestLogs.items.length
+              : 0;
+            
+            // Get top models
+            const modelCounts = new Map<string, number>();
+            requestLogs.items.forEach(log => {
+              modelCounts.set(log.model, (modelCounts.get(log.model) || 0) + 1);
+            });
+            const topModels = Array.from(modelCounts.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([model]) => model);
+            
+            // Requests over time not available without hourly/daily breakdown
+            const requestsOverTime: { timestamp: string; requests: number; }[] = [];
+            
+            return {
+              virtualKeyId: key.keyId.toString(),
+              virtualKeyName: keyUsage.keyName,
+              totalRequests: keyUsage.totalRequests,
+              totalTokens: 0, // Token count would need to come from request logs
+              totalCost: keyUsage.totalCost,
+              averageLatency,
+              errorRate,
+              lastActivity: keyUsage.lastUsed,
+              topModels,
+              topEndpoints: [], // Endpoint breakdown not available in current data
+              requestsOverTime,
+            };
+          } catch (error) {
+            // If detailed data fails, return basic data
+            return {
+              virtualKeyId: key.keyId.toString(),
+              virtualKeyName: key.keyName,
+              totalRequests: key.totalRequests,
+              totalTokens: 0,
+              totalCost: key.totalCost,
+              averageLatency: 0,
+              errorRate: 0,
+              lastActivity: new Date().toISOString(),
+              topModels: [],
+              topEndpoints: [],
+              requestsOverTime: [],
+            };
+          }
+        });
+        
+        const userAnalytics = await Promise.all(userAnalyticsPromises);
+        return userAnalytics.sort((a, b) => b.totalCost - a.totalCost); // Sort by cost descending
       } catch (error: any) {
         reportError(error, 'Failed to fetch user analytics');
         throw new Error(error?.message || 'Failed to fetch user analytics');
@@ -516,78 +538,82 @@ export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.getEndpointUsage(timeRange);
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
+        const response = await client.analytics.getRequestLogs({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          pageSize: 1000,
+        });
         
-        // Mock endpoint usage data
-        const mockData: EndpointUsage[] = [
-          {
-            endpoint: '/v1/chat/completions',
+        // Group by endpoint
+        const endpointData = new Map<string, {
+          requests: typeof response.items;
+          models: Set<string>;
+        }>();
+        
+        response.items.forEach(log => {
+          const endpoint = `/v1/${log.model.includes('chat') ? 'chat/completions' : 
+                                log.model.includes('dall-e') ? 'images/generations' :
+                                log.model.includes('whisper') ? 'audio/transcriptions' :
+                                log.model.includes('tts') ? 'audio/speech' :
+                                'chat/completions'}`;
+          
+          const existing = endpointData.get(endpoint) || {
+            requests: [],
+            models: new Set<string>(),
+          };
+          
+          existing.requests.push(log);
+          existing.models.add(log.model);
+          endpointData.set(endpoint, existing);
+        });
+        
+        // Calculate metrics for each endpoint
+        const endpointUsage: EndpointUsage[] = Array.from(endpointData.entries()).map(([endpoint, data]) => {
+          const totalRequests = data.requests.length;
+          const successfulRequests = data.requests.filter(log => log.status === 'success').length;
+          const errorRate = totalRequests > 0 ? ((totalRequests - successfulRequests) / totalRequests) * 100 : 0;
+          const successRate = 100 - errorRate;
+          
+          const averageLatency = totalRequests > 0 
+            ? data.requests.reduce((sum, log) => sum + log.duration, 0) / totalRequests
+            : 0;
+          
+          const totalTokens = data.requests.reduce((sum, log) => sum + log.inputTokens + log.outputTokens, 0);
+          const tokensPerRequest = totalRequests > 0 ? totalTokens / totalRequests : 0;
+          
+          const totalCost = data.requests.reduce((sum, log) => sum + log.cost, 0);
+          const costPerRequest = totalRequests > 0 ? totalCost / totalRequests : 0;
+          
+          // Get popular models
+          const modelCounts = new Map<string, number>();
+          data.requests.forEach(log => {
+            modelCounts.set(log.model, (modelCounts.get(log.model) || 0) + 1);
+          });
+          const popularModels = Array.from(modelCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([model]) => model);
+          
+          // Requests over time not available without temporal breakdown
+          const requestsOverTime: { timestamp: string; requests: number; }[] = [];
+          
+          return {
+            endpoint,
             method: 'POST',
-            totalRequests: 67890,
-            averageLatency: 847,
-            errorRate: 2.1,
-            successRate: 97.9,
-            tokensPerRequest: 45.7,
-            costPerRequest: 0.0234,
-            popularModels: ['gpt-4', 'gpt-3.5-turbo', 'claude-3-opus'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 2345 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 3456 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 4567 },
-            ],
-          },
-          {
-            endpoint: '/v1/images/generations',
-            method: 'POST',
-            totalRequests: 12345,
-            averageLatency: 15678,
-            errorRate: 3.2,
-            successRate: 96.8,
-            tokensPerRequest: 0,
-            costPerRequest: 0.0456,
-            popularModels: ['dall-e-3', 'dall-e-2', 'minimax-image'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 456 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 567 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 678 },
-            ],
-          },
-          {
-            endpoint: '/v1/audio/transcriptions',
-            method: 'POST',
-            totalRequests: 8901,
-            averageLatency: 3456,
-            errorRate: 1.8,
-            successRate: 98.2,
-            tokensPerRequest: 67.8,
-            costPerRequest: 0.0123,
-            popularModels: ['whisper-1'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 234 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 345 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 456 },
-            ],
-          },
-          {
-            endpoint: '/v1/audio/speech',
-            method: 'POST',
-            totalRequests: 5678,
-            averageLatency: 4567,
-            errorRate: 2.5,
-            successRate: 97.5,
-            tokensPerRequest: 34.5,
-            costPerRequest: 0.0089,
-            popularModels: ['tts-1', 'tts-1-hd'],
-            requestsOverTime: [
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), requests: 123 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), requests: 234 },
-              { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), requests: 345 },
-            ],
-          },
-        ];
+            totalRequests,
+            averageLatency: Math.round(averageLatency),
+            errorRate: Math.round(errorRate * 100) / 100,
+            successRate: Math.round(successRate * 100) / 100,
+            tokensPerRequest: Math.round(tokensPerRequest * 10) / 10,
+            costPerRequest: Math.round(costPerRequest * 10000) / 10000,
+            popularModels,
+            requestsOverTime,
+          };
+        });
 
-        return mockData;
+        return endpointUsage.sort((a, b) => b.totalRequests - a.totalRequests);
       } catch (error: any) {
         reportError(error, 'Failed to fetch endpoint usage analytics');
         throw new Error(error?.message || 'Failed to fetch endpoint usage analytics');
@@ -614,20 +640,27 @@ export function useExportUsageData() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.analytics.exportUsageData({ type, timeRange, format });
+        // Convert TimeRangeFilter to DateRange for SDK
+        const dateRange = convertTimeRangeToDateRange(timeRange);
         
-        // Mock export functionality
+        // Use the SDK export functionality
+        const filters = {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          includeMetadata: true,
+        };
+        
+        const blob = await client.analytics.export(filters, format as 'csv' | 'json' | 'excel');
+        
+        // Create download URL
+        const url = URL.createObjectURL(blob);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `usage-${type}-${timestamp}.${format}`;
         
-        // Simulate file generation delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
         return {
           filename,
-          url: `#mock-download-${filename}`,
-          size: Math.floor(Math.random() * 2000000) + 100000, // Random file size
+          url,
+          size: blob.size,
         };
       } catch (error: any) {
         reportError(error, 'Failed to export usage data');

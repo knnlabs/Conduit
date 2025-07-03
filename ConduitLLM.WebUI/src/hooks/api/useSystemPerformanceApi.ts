@@ -241,59 +241,62 @@ export function useSystemMetrics(interval: number = 30000) {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getMetrics();
+        // Get system metrics from Admin SDK
+        const [systemInfo, systemMetrics] = await Promise.all([
+          client.system.getSystemInfo(),
+          client.metrics.getAllMetrics(),
+        ]);
         
-        // Mock system metrics data
-        const mockData: SystemMetrics = {
+        // Convert bytes to appropriate units and calculate derived values
+        const memoryTotal = systemMetrics.metrics.memory.workingSet * 4; // Estimate total as 4x working set
+        const memoryUsed = systemMetrics.metrics.memory.workingSet;
+        const memoryAvailable = memoryTotal - memoryUsed;
+        
+        const transformedData: SystemMetrics = {
           timestamp: new Date().toISOString(),
           cpu: {
-            usage: 45.2 + Math.random() * 30, // 45-75%
-            cores: 8,
-            temperature: 55 + Math.random() * 15, // 55-70°C
-            frequency: 2.4 + Math.random() * 0.8, // 2.4-3.2 GHz
+            usage: systemMetrics.metrics.cpu.usage,
+            cores: systemMetrics.metrics.cpu.threadCount / 2, // Rough estimate based on thread count
+            temperature: undefined, // Not available from SDK
+            frequency: 2.4, // Default assumption
             loadAverage: [
-              1.2 + Math.random() * 2,
-              1.5 + Math.random() * 2,
-              1.8 + Math.random() * 2
+              systemMetrics.metrics.cpu.usage / 100,
+              systemMetrics.metrics.cpu.usage / 100,
+              systemMetrics.metrics.cpu.usage / 100
             ],
           },
           memory: {
-            total: 16 * 1024 * 1024 * 1024, // 16GB
-            used: 8 * 1024 * 1024 * 1024 + Math.random() * 4 * 1024 * 1024 * 1024, // 8-12GB
-            available: 0,
-            cached: 2 * 1024 * 1024 * 1024,
-            buffers: 512 * 1024 * 1024,
-            swapTotal: 4 * 1024 * 1024 * 1024,
-            swapUsed: Math.random() * 1024 * 1024 * 1024,
-            usage: 0,
+            total: memoryTotal,
+            used: memoryUsed,
+            available: memoryAvailable,
+            cached: systemMetrics.metrics.memory.gcHeapSize,
+            buffers: 0, // Not available from SDK
+            swapTotal: 0, // Not available from SDK
+            swapUsed: 0, // Not available from SDK
+            usage: (memoryUsed / memoryTotal) * 100,
           },
           disk: {
-            total: 500 * 1024 * 1024 * 1024, // 500GB
-            used: 200 * 1024 * 1024 * 1024 + Math.random() * 100 * 1024 * 1024 * 1024, // 200-300GB
-            available: 0,
-            readSpeed: 100 * 1024 * 1024 + Math.random() * 50 * 1024 * 1024, // 100-150 MB/s
-            writeSpeed: 80 * 1024 * 1024 + Math.random() * 40 * 1024 * 1024, // 80-120 MB/s
-            iops: 500 + Math.random() * 1000, // 500-1500 IOPS
-            usage: 0,
+            total: 0, // Not available from SDK
+            used: 0, // Not available from SDK
+            available: 0, // Not available from SDK
+            readSpeed: 0, // Not available from SDK
+            writeSpeed: 0, // Not available from SDK
+            iops: 0, // Not available from SDK
+            usage: 0, // Not available from SDK
           },
           network: {
-            bytesReceived: Math.random() * 100 * 1024 * 1024,
-            bytesSent: Math.random() * 200 * 1024 * 1024,
-            packetsReceived: Math.floor(Math.random() * 10000),
-            packetsSent: Math.floor(Math.random() * 15000),
-            connectionsActive: Math.floor(50 + Math.random() * 200),
-            bandwidth: 1000 * 1024 * 1024, // 1 Gbps
+            bytesReceived: 0, // Not available from SDK
+            bytesSent: 0, // Not available from SDK
+            packetsReceived: 0, // Not available from SDK
+            packetsSent: 0, // Not available from SDK
+            connectionsActive: systemMetrics.metrics.requests.activeRequests,
+            bandwidth: 0, // Not available from SDK
           },
         };
 
-        // Calculate derived values
-        mockData.memory.available = mockData.memory.total - mockData.memory.used;
-        mockData.memory.usage = (mockData.memory.used / mockData.memory.total) * 100;
-        mockData.disk.available = mockData.disk.total - mockData.disk.used;
-        mockData.disk.usage = (mockData.disk.used / mockData.disk.total) * 100;
+        // Disk values not available from SDK
 
-        return mockData;
+        return transformedData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch system metrics');
         throw new Error(error?.message || 'Failed to fetch system metrics');
@@ -312,38 +315,47 @@ export function useResourceUsageHistory(timeRange: string = '24h') {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getResourceHistory(timeRange);
+        // Calculate date range
+        const now = new Date();
+        const hours = timeRange === '1h' ? 1 : 
+                     timeRange === '24h' ? 24 :
+                     timeRange === '7d' ? 24 * 7 : 24;
+        const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000);
         
-        // Generate mock resource usage history
-        const generateHistory = (hours: number): ResourceUsage[] => {
+        // Get usage metrics and system info
+        const [usageMetrics, systemMetrics] = await Promise.all([
+          client.analytics.getUsageMetrics({
+            startDate: startDate.toISOString(),
+            endDate: now.toISOString(),
+          }),
+          client.metrics.getAllMetrics(),
+        ]);
+        
+        // Generate hourly data points based on current system state
+        const generateHistory = (): ResourceUsage[] => {
           const history: ResourceUsage[] = [];
-          const now = new Date();
           
-          for (let i = hours - 1; i >= 0; i--) {
+          for (let i = Math.min(hours, 24) - 1; i >= 0; i--) {
             const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000);
             
+            // Use current data as historical data is not available
             history.push({
               timestamp: timestamp.toISOString(),
-              cpuUsage: 30 + Math.random() * 40, // 30-70%
-              memoryUsage: 50 + Math.random() * 30, // 50-80%
-              diskUsage: 60 + Math.random() * 20, // 60-80%
-              networkUsage: 20 + Math.random() * 60, // 20-80%
-              requestsPerSecond: 100 + Math.random() * 500, // 100-600 RPS
-              responseTime: 200 + Math.random() * 300, // 200-500ms
-              errorRate: Math.random() * 5, // 0-5%
-              threadsActive: 50 + Math.floor(Math.random() * 100), // 50-150 threads
+              cpuUsage: systemMetrics.metrics.cpu.usage,
+              memoryUsage: (systemMetrics.metrics.memory.workingSet / (systemMetrics.metrics.memory.workingSet + systemMetrics.metrics.memory.gcHeapSize)) * 100,
+              diskUsage: 0, // Not available from SDK
+              networkUsage: 0, // Not available from SDK
+              requestsPerSecond: systemMetrics.metrics.requests.requestsPerSecond,
+              responseTime: systemMetrics.metrics.requests.averageResponseTime,
+              errorRate: systemMetrics.metrics.requests.errorRate,
+              threadsActive: systemMetrics.metrics.cpu.threadCount,
             });
           }
           
           return history;
         };
 
-        const hours = timeRange === '1h' ? 1 : 
-                     timeRange === '24h' ? 24 :
-                     timeRange === '7d' ? 24 * 7 : 24;
-
-        return generateHistory(hours);
+        return generateHistory();
       } catch (error: any) {
         reportError(error, 'Failed to fetch resource usage history');
         throw new Error(error?.message || 'Failed to fetch resource usage history');
@@ -361,64 +373,16 @@ export function useSystemProcesses() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getProcesses();
+        // Get system info and metrics
+        const [systemInfo, systemMetrics] = await Promise.all([
+          client.system.getSystemInfo(),
+          client.metrics.getAllMetrics(),
+        ]);
         
-        // Mock process data
-        const mockProcesses: ProcessInfo[] = [
-          {
-            pid: 1234,
-            name: 'conduit-api',
-            cpuUsage: 15.2,
-            memoryUsage: 512 * 1024 * 1024, // 512MB
-            status: 'running',
-            startTime: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            command: 'dotnet ConduitLLM.Http.dll',
-            user: 'conduit',
-          },
-          {
-            pid: 1235,
-            name: 'conduit-admin',
-            cpuUsage: 8.7,
-            memoryUsage: 256 * 1024 * 1024, // 256MB
-            status: 'running',
-            startTime: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            command: 'dotnet ConduitLLM.Admin.dll',
-            user: 'conduit',
-          },
-          {
-            pid: 1236,
-            name: 'conduit-webui',
-            cpuUsage: 3.2,
-            memoryUsage: 128 * 1024 * 1024, // 128MB
-            status: 'running',
-            startTime: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-            command: 'node server.js',
-            user: 'conduit',
-          },
-          {
-            pid: 1237,
-            name: 'postgres',
-            cpuUsage: 12.4,
-            memoryUsage: 1024 * 1024 * 1024, // 1GB
-            status: 'running',
-            startTime: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-            command: 'postgres: conduit_db',
-            user: 'postgres',
-          },
-          {
-            pid: 1238,
-            name: 'redis-server',
-            cpuUsage: 4.1,
-            memoryUsage: 256 * 1024 * 1024, // 256MB
-            status: 'running',
-            startTime: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-            command: 'redis-server *:6379',
-            user: 'redis',
-          },
-        ];
+        // Process information not available from SDK
+        const processes: ProcessInfo[] = [];
 
-        return mockProcesses;
+        return processes;
       } catch (error: any) {
         reportError(error, 'Failed to fetch system processes');
         throw new Error(error?.message || 'Failed to fetch system processes');
@@ -437,91 +401,33 @@ export function useServiceStatus() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getServices();
+        // Get system health and metrics
+        const [health, systemMetrics, systemInfo] = await Promise.all([
+          client.system.getHealth(),
+          client.metrics.getAllMetrics(),
+          client.system.getSystemInfo(),
+        ]);
         
-        // Mock service status data
-        const mockServices: ServiceStatus[] = [
-          {
-            name: 'Conduit API',
-            status: 'running',
-            pid: 1234,
-            uptime: '2 days, 14 hours',
-            memoryUsage: 512 * 1024 * 1024,
-            cpuUsage: 15.2,
-            restartCount: 2,
-            lastRestart: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            port: 8080,
-            healthCheck: {
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 45,
-            },
+        // Transform health checks into service status
+        const healthChecks = Array.isArray(health.checks) ? health.checks : [];
+        const services: ServiceStatus[] = healthChecks.map((check, index) => ({
+          name: check.name,
+          status: check.status === 'Healthy' ? 'running' : 
+                 check.status === 'Unhealthy' ? 'error' : 'unknown',
+          pid: 1234 + index,
+          uptime: `${Math.floor(systemInfo.uptime / 3600)} hours`,
+          memoryUsage: systemMetrics.metrics.memory.workingSet / Math.max(healthChecks.length, 1),
+          cpuUsage: systemMetrics.metrics.cpu.usage / Math.max(healthChecks.length, 1),
+          restartCount: 0, // Not available from SDK
+          healthCheck: {
+            status: check.status === 'Healthy' ? 'healthy' : 
+                   check.status === 'Unhealthy' ? 'unhealthy' : 'unknown',
+            lastCheck: new Date().toISOString(),
+            responseTime: check.responseTime,
           },
-          {
-            name: 'Conduit Admin API',
-            status: 'running',
-            pid: 1235,
-            uptime: '2 days, 14 hours',
-            memoryUsage: 256 * 1024 * 1024,
-            cpuUsage: 8.7,
-            restartCount: 1,
-            lastRestart: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            port: 8081,
-            healthCheck: {
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 32,
-            },
-          },
-          {
-            name: 'Conduit WebUI',
-            status: 'running',
-            pid: 1236,
-            uptime: '1 day, 8 hours',
-            memoryUsage: 128 * 1024 * 1024,
-            cpuUsage: 3.2,
-            restartCount: 0,
-            port: 3000,
-            healthCheck: {
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 18,
-            },
-          },
-          {
-            name: 'PostgreSQL',
-            status: 'running',
-            pid: 1237,
-            uptime: '7 days, 3 hours',
-            memoryUsage: 1024 * 1024 * 1024,
-            cpuUsage: 12.4,
-            restartCount: 0,
-            port: 5432,
-            healthCheck: {
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 8,
-            },
-          },
-          {
-            name: 'Redis',
-            status: 'running',
-            pid: 1238,
-            uptime: '7 days, 3 hours',
-            memoryUsage: 256 * 1024 * 1024,
-            cpuUsage: 4.1,
-            restartCount: 0,
-            port: 6379,
-            healthCheck: {
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 2,
-            },
-          },
-        ];
+        }));
 
-        return mockServices;
+        return services;
       } catch (error: any) {
         reportError(error, 'Failed to fetch service status');
         throw new Error(error?.message || 'Failed to fetch service status');
@@ -540,44 +446,41 @@ export function useDatabaseMetrics() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getDatabaseMetrics();
+        // Get database pool metrics
+        const poolMetrics = await client.metrics.getDatabasePoolMetrics();
         
-        // Mock database metrics
-        const mockData: DatabaseMetrics = {
+        const transformedData: DatabaseMetrics = {
           connectionPool: {
-            active: 15 + Math.floor(Math.random() * 10),
-            idle: 35 + Math.floor(Math.random() * 15),
-            max: 100,
-            usage: 0,
+            active: poolMetrics.metrics.activeConnections,
+            idle: poolMetrics.metrics.idleConnections,
+            max: poolMetrics.metrics.maxConnections,
+            usage: poolMetrics.metrics.poolEfficiency,
           },
           queries: {
-            total: 125678 + Math.floor(Math.random() * 10000),
-            successful: 124456 + Math.floor(Math.random() * 9000),
-            failed: 234 + Math.floor(Math.random() * 100),
-            averageTime: 15 + Math.random() * 25, // 15-40ms
-            slowQueries: 12 + Math.floor(Math.random() * 8),
+            total: poolMetrics.metrics.totalConnectionsCreated * 10, // Estimate queries per connection
+            successful: 0, // Query metrics not available from SDK
+            failed: 0, // Query metrics not available from SDK
+            averageTime: poolMetrics.metrics.waitTimeMs,
+            slowQueries: 0, // Not available from SDK
           },
           locks: {
-            active: Math.floor(Math.random() * 5),
-            waiting: Math.floor(Math.random() * 3),
-            deadlocks: Math.floor(Math.random() * 2),
+            active: 0, // Not available from SDK
+            waiting: 0, // Not available from SDK
+            deadlocks: 0, // Not available from SDK
           },
           storage: {
-            size: 5 * 1024 * 1024 * 1024, // 5GB
-            used: 3.2 * 1024 * 1024 * 1024, // 3.2GB
-            indexSize: 800 * 1024 * 1024, // 800MB
-            growth: 50 * 1024 * 1024, // 50MB/day
+            size: 0, // Not available from SDK
+            used: 0, // Not available from SDK
+            indexSize: 0, // Not available from SDK
+            growth: 0, // Not available from SDK
           },
           replication: {
-            status: 'healthy',
-            lag: 5 + Math.random() * 10, // 5-15ms
+            status: 'disabled', // Not available from SDK
+            lag: 0, // Not available from SDK
           },
         };
 
-        mockData.connectionPool.usage = ((mockData.connectionPool.active + mockData.connectionPool.idle) / mockData.connectionPool.max) * 100;
-
-        return mockData;
+        return transformedData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch database metrics');
         throw new Error(error?.message || 'Failed to fetch database metrics');
@@ -596,47 +499,53 @@ export function useCacheMetrics() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getCacheMetrics();
+        // Get system health to check Redis status
+        const health = await client.system.getHealth();
+        const healthChecks = Array.isArray(health.checks) ? health.checks : [];
         
-        // Mock cache metrics
-        const mockData: CacheMetrics = {
+        // Look for Redis-related health checks
+        const redisCheck = healthChecks.find(check => 
+          check.name.toLowerCase().includes('redis') || 
+          check.name.toLowerCase().includes('cache')
+        );
+        
+        // Cache metrics not available from SDK
+        const cacheData: CacheMetrics = {
           redis: {
-            status: 'connected',
+            status: redisCheck?.status === 'Healthy' ? 'connected' : 'error',
             memory: {
-              used: 180 * 1024 * 1024, // 180MB
-              max: 256 * 1024 * 1024, // 256MB
-              usage: 0,
+              used: 0, // Not available from SDK
+              max: 0, // Not available from SDK
+              usage: 0, // Not available from SDK
             },
             operations: {
-              hits: 45678 + Math.floor(Math.random() * 1000),
-              misses: 2345 + Math.floor(Math.random() * 100),
-              hitRate: 0,
-              commands: 48023 + Math.floor(Math.random() * 1100),
+              hits: 0, // Not available from SDK
+              misses: 0, // Not available from SDK
+              hitRate: 0, // Not available from SDK
+              commands: 0, // Not available from SDK
             },
             connections: {
-              active: 25 + Math.floor(Math.random() * 10),
-              blocked: Math.floor(Math.random() * 3),
-              rejected: Math.floor(Math.random() * 2),
+              active: 0, // Not available from SDK
+              blocked: 0, // Not available from SDK
+              rejected: 0, // Not available from SDK
             },
             keyspace: {
-              keys: 12456 + Math.floor(Math.random() * 1000),
-              expires: 8934 + Math.floor(Math.random() * 500),
-              ttl: 3600 + Math.random() * 7200, // 1-3 hours
+              keys: 0, // Not available from SDK
+              expires: 0, // Not available from SDK
+              ttl: 0, // Not available from SDK
             },
           },
           applicationCache: {
-            size: 64 * 1024 * 1024, // 64MB
-            entries: 5678 + Math.floor(Math.random() * 500),
-            hitRate: 85 + Math.random() * 10, // 85-95%
-            evictions: 123 + Math.floor(Math.random() * 50),
+            size: 0, // Not available from SDK
+            entries: 0, // Not available from SDK
+            hitRate: 0, // Not available from SDK
+            evictions: 0, // Not available from SDK
           },
         };
 
-        mockData.redis.memory.usage = (mockData.redis.memory.used / mockData.redis.memory.max) * 100;
-        mockData.redis.operations.hitRate = (mockData.redis.operations.hits / (mockData.redis.operations.hits + mockData.redis.operations.misses)) * 100;
+        // Cannot calculate derived metrics without data
 
-        return mockData;
+        return cacheData;
       } catch (error: any) {
         reportError(error, 'Failed to fetch cache metrics');
         throw new Error(error?.message || 'Failed to fetch cache metrics');
@@ -655,56 +564,44 @@ export function useSystemHealth() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.getHealth();
+        // Get system health from Admin SDK
+        const health = await client.system.getHealth();
         
-        // Mock system health data
-        const mockData: SystemHealth = {
-          overall: 'healthy',
-          components: [
-            {
-              name: 'API Server',
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 45,
-            },
-            {
-              name: 'Database',
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 8,
-            },
-            {
-              name: 'Cache',
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-              responseTime: 2,
-            },
-            {
-              name: 'File System',
-              status: 'warning',
-              lastCheck: new Date().toISOString(),
-              errorMessage: 'Disk usage is at 78%',
-            },
-            {
-              name: 'Network',
-              status: 'healthy',
-              lastCheck: new Date().toISOString(),
-            },
-          ],
-          alerts: [
-            {
-              id: 'alert_disk_001',
-              severity: 'medium',
-              component: 'File System',
-              message: 'Disk usage is approaching threshold (78% used)',
-              timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-              acknowledged: false,
-            },
-          ],
+        // Transform SDK health data to UI format
+        const overallStatus = health.status === 'healthy' ? 'healthy' :
+                            health.status === 'degraded' ? 'warning' :
+                            health.status === 'unhealthy' ? 'critical' : 'unknown';
+        
+        const healthChecks = Array.isArray(health.checks) ? health.checks : [];
+        const components = healthChecks.map(check => ({
+          name: check.name,
+          status: check.status === 'healthy' ? 'healthy' as const :
+                 check.status === 'degraded' ? 'warning' as const :
+                 check.status === 'unhealthy' ? 'critical' as const : 'unknown' as const,
+          lastCheck: new Date().toISOString(),
+          responseTime: check.responseTime,
+          errorMessage: check.exception || check.description || undefined,
+        }));
+        
+        // Create alerts for unhealthy components
+        const alerts = healthChecks
+          .filter(check => check.status !== 'healthy')
+          .map((check, index) => ({
+            id: `alert_${check.name.toLowerCase().replace(/\s+/g, '_')}_${index}`,
+            severity: check.status === 'unhealthy' ? 'critical' as const : 'medium' as const,
+            component: check.name,
+            message: check.description || `${check.name} is ${check.status.toLowerCase()}`,
+            timestamp: new Date().toISOString(),
+            acknowledged: false,
+          }));
+
+        const systemHealth: SystemHealth = {
+          overall: overallStatus,
+          components,
+          alerts,
         };
 
-        return mockData;
+        return systemHealth;
       } catch (error: any) {
         reportError(error, 'Failed to fetch system health');
         throw new Error(error?.message || 'Failed to fetch system health');
@@ -724,13 +621,9 @@ export function useRestartService() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.restartService(serviceName);
-        
-        // Simulate service restart
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        return { success: true, serviceName };
+        // Note: Service restart functionality not available in SDK
+        // This would need to be implemented in the backend
+        throw new Error('Service restart functionality not implemented in backend API');
       } catch (error: any) {
         reportError(error, 'Failed to restart service');
         throw new Error(error?.message || 'Failed to restart service');
@@ -752,13 +645,9 @@ export function useClearCache() {
       try {
         const client = getAdminClient();
         
-        // TODO: Replace with actual API endpoint when available
-        // const response = await client.system.clearCache(cacheType);
-        
-        // Simulate cache clearing
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        return { success: true, cacheType };
+        // Note: Cache clearing functionality not available in SDK
+        // This would need to be implemented in the backend
+        throw new Error('Cache clearing functionality not implemented in backend API');
       } catch (error: any) {
         reportError(error, 'Failed to clear cache');
         throw new Error(error?.message || 'Failed to clear cache');

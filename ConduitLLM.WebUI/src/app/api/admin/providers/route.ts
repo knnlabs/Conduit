@@ -9,22 +9,25 @@ export const GET = withSDKAuth(
     try {
       const params = parseQueryParams(request);
       
-      // List all providers with optional filtering
+      // List all provider metadata
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list({
-          isEnabled: params.includeDisabled ? undefined : true,
-          providerName: params.get('providerName') || undefined,
-          pageNumber: params.page,
-          pageSize: params.pageSize,
-        }),
+        async () => auth.adminClient!.providers.list(),
         'list providers'
       );
 
-      // The SDK returns an array directly
-      return transformPaginatedResponse(result, {
+      // Convert to array and apply filters
+      const resultArray = Array.from(result);
+      const filteredResult = resultArray.filter(provider => {
+        if (params.get('providerName')) {
+          return provider.providerName.toLowerCase().includes(params.get('providerName')!.toLowerCase());
+        }
+        return true;
+      });
+
+      return transformPaginatedResponse(filteredResult, {
         page: params.page,
         pageSize: params.pageSize,
-        total: result.length,
+        total: filteredResult.length,
       });
     } catch (error) {
       return mapSDKErrorToResponse(error);
@@ -38,7 +41,7 @@ export const POST = withSDKAuth(
     try {
       const body = await request.json();
       
-      // Create provider configuration
+      // Create provider credential (not provider metadata)
       const result = await withSDKErrorHandling(
         async () => auth.adminClient!.providers.create({
           providerName: body.providerName,
@@ -48,19 +51,25 @@ export const POST = withSDKAuth(
           additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
           isEnabled: body.isEnabled ?? true,
         }),
-        'create provider'
+        'create provider credential'
       );
 
       // Test connection if requested
       if (body.testConnection) {
         try {
           await withSDKErrorHandling(
-            async () => auth.adminClient!.providers.testConnectionById(result.id),
+            async () => auth.adminClient!.providers.testConnection({
+              providerName: body.providerName,
+              apiKey: body.apiKey,
+              apiEndpoint: body.apiUrl || body.apiEndpoint,
+              organizationId: body.organizationId,
+              additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
+            }),
             'test provider connection'
           );
         } catch (testError) {
           // Log test failure but still return created provider
-          console.warn('Provider created but connection test failed:', testError);
+          console.warn('Provider credential created but connection test failed:', testError);
         }
       }
 
@@ -68,7 +77,7 @@ export const POST = withSDKAuth(
         status: 201,
         meta: {
           created: true,
-          providerId: result.id,
+          credentialId: result.id,
           connectionTested: body.testConnection || false,
         }
       });

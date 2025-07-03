@@ -1,0 +1,18 @@
+# Simplified WebUI Dockerfile for testing
+FROM node:20
+
+WORKDIR /app
+
+# Copy everything needed
+COPY Clients/ /Clients/
+COPY ConduitLLM.WebUI/ /app/
+
+# Install dependencies
+RUN npm install
+
+# Build
+RUN npm run build
+
+ENV NODE_ENV=production
+EXPOSE 3000
+CMD ["npm", "start"]

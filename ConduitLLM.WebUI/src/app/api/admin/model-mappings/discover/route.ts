@@ -8,31 +8,32 @@ export const POST = withSDKAuth(
     try {
       const body = await request.json();
       
-      // Get available providers
-      const providers = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list({
-          isEnabled: !body.includeDisabledProviders,
-        }),
+      // Get available providers metadata
+      const allProviders = await withSDKErrorHandling(
+        async () => auth.adminClient!.providers.list(),
         'list providers'
       );
+      
+      // Convert to array and filter
+      const providers = Array.from(allProviders);
 
       // For each provider, get available models and suggest mappings
       const discoveryResults = await Promise.all(
         providers
-          .filter(p => !body.providerIds || body.providerIds.includes(p.id))
+          .filter(p => !body.providerIds || body.providerIds.includes(p.providerName))
           .map(async (provider) => {
             try {
               // Get available models from provider (this would need actual provider API calls)
               // For now, return sample data
               return {
-                providerId: provider.id,
+                providerId: provider.providerName,
                 providerName: provider.providerName,
                 models: getSampleModelsForProvider(provider.providerName),
                 status: 'success' as const,
               };
             } catch (error) {
               return {
-                providerId: provider.id,
+                providerId: provider.providerName,
                 providerName: provider.providerName,
                 models: [],
                 status: 'error' as const,

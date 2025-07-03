@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSession, createUnauthorizedResponse } from '@/lib/auth/middleware';
+import { getAdminClient } from '@/lib/clients/conduit';
+import { reportError } from '@/lib/utils/logging';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,119 +11,42 @@ export async function GET(request: NextRequest) {
       return createUnauthorizedResponse(validation.error);
     }
 
-    // Make direct API call to Conduit Admin API
-    const adminApiUrl = process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL;
-    const masterKey = process.env.CONDUIT_MASTER_KEY;
-    
-    if (!adminApiUrl || !masterKey) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-    
     try {
-      // Try to get real system health from Admin API
-      const healthResponse = await fetch(`${adminApiUrl}/v1/system/health`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${masterKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Use SDK to get system health
+      const adminClient = getAdminClient();
+      const health = await adminClient.system.getHealth();
       
-      if (healthResponse.ok) {
-        const health = await healthResponse.json();
-        return NextResponse.json(health);
-      }
-      
-      // If system health endpoint doesn't exist, generate simulated data
-      console.warn('Real system health not available, using simulated data');
-      
-      // Try to get basic system info to build health data
-      let systemInfo = null;
-      try {
-        const infoResponse = await fetch(`${adminApiUrl}/v1/system/info`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${masterKey}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (infoResponse.ok) {
-          systemInfo = await infoResponse.json();
-        }
-      } catch (infoError) {
-        console.warn('System info not available:', infoError);
-      }
-      
-      const simulatedHealth = {
-        status: 'healthy' as const,
-        services: [
-          {
-            name: 'Conduit Core API',
-            status: 'running' as const,
-            uptime: systemInfo?.uptime || 'Unknown',
-            version: systemInfo?.version || 'Unknown',
-          },
-          {
-            name: 'Conduit Admin API',
-            status: 'running' as const,
-            uptime: systemInfo?.uptime || 'Unknown',
-            version: systemInfo?.version || 'Unknown',
-          },
-          {
-            name: 'Database',
-            status: 'running' as const,
-            uptime: 'Unknown',
-            version: 'PostgreSQL 16.x',
-          },
-          {
-            name: 'Redis Cache',
-            status: 'running' as const,
-            uptime: 'Unknown',
-            version: 'Redis 7.x',
-          },
-          {
-            name: 'RabbitMQ',
-            status: 'running' as const,
-            uptime: 'Unknown',
-            version: 'RabbitMQ 3.x',
-          },
-        ],
-        dependencies: [
-          {
-            name: 'Primary Database',
-            status: 'connected' as const,
-            version: 'PostgreSQL 16.x',
-            latency: Math.floor(Math.random() * 20) + 5,
-          },
-          {
-            name: 'Redis Cache',
-            status: 'connected' as const,
-            version: 'Redis 7.x',
-            latency: Math.floor(Math.random() * 10) + 2,
-          },
-          {
-            name: 'Message Queue',
-            status: 'connected' as const,
-            version: 'RabbitMQ 3.x',
-            latency: Math.floor(Math.random() * 15) + 5,
-          },
-        ],
+      // Transform SDK response to match expected format
+      const transformedHealth = {
+        status: health.status,
+        timestamp: health.timestamp,
+        services: Object.entries(health.checks).map(([name, check]) => ({
+          name,
+          status: check.status === 'healthy' ? 'running' : check.status === 'degraded' ? 'degraded' : 'stopped',
+          health: check.status,
+          description: check.description,
+          duration: check.duration,
+          error: check.error,
+        })),
+        totalDuration: health.totalDuration,
       };
 
-      return NextResponse.json(simulatedHealth);
-    } catch (fallbackError: any) {
-      console.error('Fallback system health generation failed:', fallbackError);
+      return NextResponse.json(transformedHealth);
+    } catch (sdkError: any) {
+      reportError(sdkError, 'Failed to fetch system health from SDK');
+      
+      // Return error response instead of mock data
       return NextResponse.json(
-        { error: 'Failed to generate system health data' },
-        { status: 500 }
+        { 
+          error: 'System health is currently unavailable',
+          message: sdkError.message || 'Failed to fetch system health'
+        },
+        { status: 503 }
       );
     }
   } catch (error: any) {
     console.error('System Health API error:', error);
+    reportError(error, 'System Health API error');
     return NextResponse.json(
       { error: 'Failed to fetch system health' },
       { status: 500 }

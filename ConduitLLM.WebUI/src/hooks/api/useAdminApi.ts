@@ -20,6 +20,7 @@ export const adminApiKeys = {
   securityEvents: () => [...adminApiKeys.all, 'security-events'] as const,
   threatDetections: () => [...adminApiKeys.all, 'threat-detections'] as const,
   settings: () => [...adminApiKeys.all, 'settings'] as const,
+  audioUsage: () => [...adminApiKeys.all, 'audio-usage'] as const,
 } as const;
 
 // Virtual Keys API

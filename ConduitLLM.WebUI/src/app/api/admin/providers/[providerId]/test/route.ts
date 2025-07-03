@@ -8,9 +8,14 @@ export const POST = createDynamicRouteHandler<{ providerId: string }>(
     try {
       const { providerId } = params;
       
-      // Test provider connection
+      // To test a provider connection, we need to get the credential first
+      // since we can't test connection for provider metadata directly
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.testConnection(providerId),
+        async () => {
+          // This endpoint expects a credential ID, not a provider name
+          // We should return an error indicating the correct endpoint to use
+          throw new Error('Use /api/admin/providers/test-connection with provider configuration to test connections');
+        },
         `test provider connection ${providerId}`
       );
 
