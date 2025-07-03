@@ -58,18 +58,29 @@ export default function VirtualKeysDashboardPage() {
     }
   };
 
-  const timeSeriesData = generateTimeSeriesData(getDaysFromPeriod(selectedPeriod));
+  // Time series data will come from SDK when available
+  const timeSeriesData: Array<{ date: string; requests: number; cost: number }> = [];
+
+  // Virtual keys data will come from SDK when available
+  const mockVirtualKeys: Array<any> = [];
 
   // Calculate summary statistics
   const totalRequests = mockVirtualKeys.reduce((sum, key) => sum + key.requests, 0);
   const totalCost = mockVirtualKeys.reduce((sum, key) => sum + key.cost, 0);
   const totalBudget = mockVirtualKeys.reduce((sum, key) => sum + key.budget, 0);
-  const averageBudgetUsed = mockVirtualKeys.reduce((sum, key) => sum + key.budgetUsed, 0) / mockVirtualKeys.length;
+  const averageBudgetUsed = mockVirtualKeys.length > 0 
+    ? mockVirtualKeys.reduce((sum, key) => sum + key.budgetUsed, 0) / mockVirtualKeys.length
+    : 0;
 
-  // Calculate growth rates (mock)
-  const requestsGrowth = 12.5;
-  const costGrowth = 8.3;
-  const activeKeysGrowth = 5.0;
+  // Calculate growth rates (will come from SDK)
+  const requestsGrowth = 0;
+  const costGrowth = 0;
+  const activeKeysGrowth = 0;
+  const activeKeys = 0;
+
+  // Mock data that will be replaced with SDK data
+  const mockModelUsage: Array<{ name: string; value: number }> = [];
+  const mockBudgetAlerts: Array<any> = [];
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -356,7 +367,7 @@ export default function VirtualKeysDashboardPage() {
             
             <Stack gap="xs" mt="md">
               {mockModelUsage.map((model, index) => (
-                <Group key={model.model} justify="space-between">
+                <Group key={model.name} justify="space-between">
                   <Group gap="xs">
                     <div
                       style={{
@@ -366,10 +377,10 @@ export default function VirtualKeysDashboardPage() {
                         borderRadius: 2,
                       }}
                     />
-                    <Text size="sm">{model.model}</Text>
+                    <Text size="sm">{model.name}</Text>
                   </Group>
                   <Text size="sm" c="dimmed">
-                    {formatNumber(model.requests)} requests
+                    {formatNumber(model.value)} requests
                   </Text>
                 </Group>
               ))}

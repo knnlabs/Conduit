@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 export interface IPRule {
   id: string;
@@ -53,7 +54,7 @@ export function useIPRules(filters?: {
       if (filters?.page) params.append('page', filters.page.toString());
       if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
 
-      const response = await fetch(`/api/admin/security/ip-rules?${params}`, {
+      const response = await apiFetch(`/api/admin/security/ip-rules?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export function useCreateIPRule() {
 
   return useMutation({
     mutationFn: async (data: IPRuleFormData) => {
-      const response = await fetch('/api/admin/security/ip-rules', {
+      const response = await apiFetch('/api/admin/security/ip-rules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export function useUpdateIPRule() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<IPRuleFormData> }) => {
-      const response = await fetch(`/api/admin/security/ip-rules/${id}`, {
+      const response = await apiFetch(`/api/admin/security/ip-rules/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ export function useDeleteIPRule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/admin/security/ip-rules/${id}`, {
+      const response = await apiFetch(`/api/admin/security/ip-rules/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 import {
   Stack,
   Title,
@@ -45,7 +46,7 @@ export default function LoginPage() {
     
     try {
       // First validate with the API to set the cookie
-      const response = await fetch('/api/auth/validate', {
+      const response = await apiFetch('/api/auth/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

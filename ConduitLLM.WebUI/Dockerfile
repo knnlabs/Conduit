@@ -17,6 +17,8 @@ RUN npm install --no-audit --no-fund && npm run build
 
 # Build WebUI
 WORKDIR /app/ConduitLLM.WebUI
+# Create public directory if it doesn't exist (Next.js 15 doesn't require it)
+RUN mkdir -p public
 RUN npm install --no-audit --no-fund && npm run build
 
 # Production stage - smaller final image
@@ -36,8 +38,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Copy only what's needed from builder
 COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/package*.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
 
 # Copy the built SDK packages that WebUI depends on
 COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Admin /app/Clients/Node/Admin

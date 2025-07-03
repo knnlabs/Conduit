@@ -1,4 +1,5 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 export async function validateMasterKey(masterKey: string): Promise<boolean> {
   try {
@@ -8,7 +9,7 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
 
     // If running on the client side, validate against the API endpoint
     if (typeof window !== 'undefined') {
-      const response = await fetch('/api/auth/validate', {
+      const response = await apiFetch('/api/auth/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

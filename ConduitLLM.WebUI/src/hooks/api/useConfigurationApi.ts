@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory for Configuration API
 export const configApiKeys = {
@@ -146,7 +147,7 @@ export function useRoutingConfig() {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/config/routing', {
+        const response = await apiFetch('/api/config/routing', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -176,7 +177,7 @@ export function useCachingConfig() {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/config/caching', {
+        const response = await apiFetch('/api/config/caching', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -214,7 +215,7 @@ export function useUpdateRoutingConfig() {
     mutationFn: async (data: UpdateRoutingConfigData) => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/config/routing', {
+        const response = await apiFetch('/api/config/routing', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -256,7 +257,7 @@ export function useUpdateCachingConfig() {
     mutationFn: async (data: UpdateCachingConfigData) => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/config/caching', {
+        const response = await apiFetch('/api/config/caching', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -290,7 +291,7 @@ export function useClearCache() {
     mutationFn: async (cacheId: string) => {
       try {
         const client = await getAdminClient();
-        const response = await fetch(`/api/config/caching/${cacheId}/clear`, {
+        const response = await apiFetch(`/api/config/caching/${cacheId}/clear`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

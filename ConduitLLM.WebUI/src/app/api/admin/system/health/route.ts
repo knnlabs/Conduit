@@ -16,26 +16,12 @@ export async function GET(request: NextRequest) {
       const adminClient = getAdminClient();
       const health = await adminClient.system.getHealth();
       
-      // Transform SDK response to match expected format
-      const transformedHealth = {
-        status: health.status,
-        timestamp: health.timestamp,
-        services: Object.entries(health.checks).map(([name, check]) => ({
-          name,
-          status: check.status === 'healthy' ? 'running' : check.status === 'degraded' ? 'degraded' : 'stopped',
-          health: check.status,
-          description: check.description,
-          duration: check.duration,
-          error: check.error,
-        })),
-        totalDuration: health.totalDuration,
-      };
-
-      return NextResponse.json(transformedHealth);
+      // Return the health response as-is
+      return NextResponse.json(health);
     } catch (sdkError: any) {
       reportError(sdkError, 'Failed to fetch system health from SDK');
       
-      // Return error response instead of mock data
+      // Return error response
       return NextResponse.json(
         { 
           error: 'System health is currently unavailable',

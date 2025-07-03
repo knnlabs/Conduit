@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 
 export const POST = withSDKAuth(
   async (request, { auth }) => {
@@ -46,18 +45,13 @@ export const POST = withSDKAuth(
       const allModels = discoveryResults.flatMap(r => r.models);
       const successfulProviders = discoveryResults.filter(r => r.status === 'success').length;
 
-      return transformSDKResponse({
+      return NextResponse.json({
         providers: discoveryResults,
         summary: {
           providersChecked: providers.length,
           successfulProviders,
           modelsFound: allModels.length,
           mappingsCreated: 0, // Would be set if autoCreateMappings was true
-        }
-      }, {
-        meta: {
-          discovered: true,
-          timestamp: new Date().toISOString(),
         }
       });
     } catch (error) {

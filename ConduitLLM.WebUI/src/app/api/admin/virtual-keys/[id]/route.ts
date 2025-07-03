@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, sanitizeResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ id: string }>(
@@ -17,10 +16,8 @@ export const GET = createDynamicRouteHandler<{ id: string }>(
         `get virtual key ${id}`
       );
 
-      // Sanitize sensitive data if needed
-      const sanitized = sanitizeResponse(result, ['apiKey']);
-      
-      return transformSDKResponse(sanitized);
+      // Return the SDK response directly
+      return NextResponse.json(result);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -51,12 +48,7 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
         `update virtual key ${id}`
       );
 
-      return transformSDKResponse(result, {
-        meta: {
-          updated: true,
-          keyId: id,
-        }
-      });
+      return NextResponse.json(result);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -75,15 +67,9 @@ export const DELETE = createDynamicRouteHandler<{ id: string }>(
         `delete virtual key ${id}`
       );
 
-      return transformSDKResponse(
+      return NextResponse.json(
         { success: true, message: 'Virtual key deleted successfully' },
-        { 
-          status: 200,
-          meta: {
-            deleted: true,
-            keyId: id,
-          }
-        }
+        { status: 200 }
       );
     } catch (error) {
       return mapSDKErrorToResponse(error);

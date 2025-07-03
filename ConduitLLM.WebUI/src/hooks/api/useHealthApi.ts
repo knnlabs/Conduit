@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory for Health API
 export const healthApiKeys = {
@@ -100,7 +101,7 @@ export function useServiceHealth() {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/health/services', {
+        const response = await apiFetch('/api/health/services', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -129,7 +130,7 @@ export function useIncidents(days: number = 7) {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch(`/api/health/incidents?days=${days}`, {
+        const response = await apiFetch(`/api/health/incidents?days=${days}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -157,7 +158,7 @@ export function useHealthHistory(hours: number = 24) {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch(`/api/health/history?hours=${hours}`, {
+        const response = await apiFetch(`/api/health/history?hours=${hours}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });

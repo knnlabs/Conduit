@@ -363,7 +363,7 @@ export default function MediaAssetsPage() {
 
       {/* Media Grid */}
       <Grid>
-        {paginatedAssets.map((asset) => (
+        {paginatedAssets.map((asset: any) => (
           <Grid.Col key={asset.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
             <Card withBorder p={0} style={{ position: 'relative' }}>
               <Card.Section>

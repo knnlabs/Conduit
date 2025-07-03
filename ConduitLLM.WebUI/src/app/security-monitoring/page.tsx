@@ -72,6 +72,7 @@ import {
 } from 'recharts';
 import { formatNumber, formatRelativeTime } from '@/lib/utils/formatting';
 import { useSecurityEvents, useThreatAnalytics, useComplianceMetrics } from '@/hooks/api/useSecurityApi';
+import { FeatureUnavailable } from '@/components/error/FeatureUnavailable';
 
 // Type to severity mapping
 const getEventSeverity = (type: string): 'low' | 'medium' | 'high' | 'critical' => {
@@ -125,6 +126,19 @@ export default function SecurityMonitoringPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  // Check if security monitoring feature is available
+  const isFeatureAvailable = false; // Security monitoring is not yet implemented
+
+  // Show feature unavailable message if not available
+  if (!isFeatureAvailable) {
+    return (
+      <FeatureUnavailable 
+        feature="security-event-reporting"
+        title="Security Monitoring"
+      />
+    );
+  }
 
   // Fetch data using the security API hooks
   const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useSecurityEvents(parseInt(selectedTimeRange));

@@ -7,8 +7,14 @@ export function useOverallMediaStats() {
   return useQuery({
     queryKey: [adminApiKeys.all, 'media', 'overallStats'],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.getOverallStorageStats();
+      // Media API not yet available in SDK
+      return {
+        totalSize: 0,
+        totalCount: 0,
+        imageCount: 0,
+        videoCount: 0,
+        audioCount: 0,
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -19,8 +25,8 @@ export function useMediaByVirtualKey(virtualKeyId: number | undefined) {
     queryKey: [adminApiKeys.all, 'media', 'byVirtualKey', virtualKeyId],
     queryFn: async () => {
       if (!virtualKeyId) return [];
-      const adminClient = createAdminClient();
-      return await adminClient.media.getMediaByVirtualKey(virtualKeyId);
+      // Media API not yet available in SDK
+      return [];
     },
     enabled: !!virtualKeyId,
     staleTime: 5 * 60 * 1000,
@@ -32,8 +38,14 @@ export function useMediaStorageStatsByVirtualKey(virtualKeyId: number | undefine
     queryKey: [adminApiKeys.all, 'media', 'statsByVirtualKey', virtualKeyId],
     queryFn: async () => {
       if (!virtualKeyId) return null;
-      const adminClient = createAdminClient();
-      return await adminClient.media.getStorageStatsByVirtualKey(virtualKeyId);
+      // Media API not yet available in SDK
+      return {
+        totalSize: 0,
+        totalCount: 0,
+        imageCount: 0,
+        videoCount: 0,
+        audioCount: 0,
+      };
     },
     enabled: !!virtualKeyId,
     staleTime: 5 * 60 * 1000,
@@ -44,8 +56,8 @@ export function useMediaStorageByProvider() {
   return useQuery({
     queryKey: [adminApiKeys.all, 'media', 'storageByProvider'],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.getStorageStatsByProvider();
+      // Media API not yet available in SDK
+      return [];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -55,8 +67,8 @@ export function useMediaStorageByType() {
   return useQuery({
     queryKey: [adminApiKeys.all, 'media', 'storageByType'],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.getStorageStatsByMediaType();
+      // Media API not yet available in SDK
+      return [];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -66,8 +78,8 @@ export function useSearchMedia(storageKeyPattern: string) {
   return useQuery({
     queryKey: [adminApiKeys.all, 'media', 'search', storageKeyPattern],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.searchMediaByStorageKey(storageKeyPattern);
+      // Media API not yet available in SDK
+      return [];
     },
     enabled: !!storageKeyPattern,
     staleTime: 5 * 60 * 1000,
@@ -79,8 +91,8 @@ export function useDeleteMedia() {
 
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.deleteMedia(mediaId);
+      // Media API not yet available in SDK
+      throw new Error('Media deletion is not yet available');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
@@ -105,8 +117,8 @@ export function useCleanupExpiredMedia() {
 
   return useMutation({
     mutationFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.cleanupExpiredMedia();
+      // Media API not yet available in SDK
+      throw new Error('Media cleanup is not yet available');
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
@@ -131,8 +143,8 @@ export function useCleanupOrphanedMedia() {
 
   return useMutation({
     mutationFn: async () => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.cleanupOrphanedMedia();
+      // Media API not yet available in SDK
+      throw new Error('Orphaned media cleanup is not yet available');
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
@@ -157,8 +169,8 @@ export function usePruneOldMedia() {
 
   return useMutation({
     mutationFn: async (daysToKeep: number) => {
-      const adminClient = createAdminClient();
-      return await adminClient.media.pruneOldMedia(daysToKeep);
+      // Media API not yet available in SDK
+      throw new Error('Media pruning is not yet available');
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });

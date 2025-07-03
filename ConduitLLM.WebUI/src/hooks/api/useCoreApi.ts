@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Chat types
 export interface ChatMessage {
@@ -27,7 +28,7 @@ export function useChatCompletion() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
       try {
-        const response = await fetch('/api/core/chat/completions', {
+        const response = await apiFetch('/api/core/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -70,7 +71,7 @@ export function useStreamingChatCompletion() {
       [key: string]: any;
     }) => {
       try {
-        const response = await fetch('/api/core/chat/completions', {
+        const response = await apiFetch('/api/core/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -140,7 +141,7 @@ export function useImageGeneration() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
       try {
-        const response = await fetch('/api/core/images/generations', {
+        const response = await apiFetch('/api/core/images/generations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -184,7 +185,7 @@ export function useImageHistory(virtualKey: string) {
     queryKey: coreApiKeys.imageHistory(virtualKey),
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/core/images/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
+        const response = await apiFetch(`/api/core/images/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -215,7 +216,7 @@ export function useVideoGeneration() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
       try {
-        const response = await fetch('/api/core/videos/generations', {
+        const response = await apiFetch('/api/core/videos/generations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -259,7 +260,7 @@ export function useVideoHistory(virtualKey: string) {
     queryKey: coreApiKeys.videoHistory(virtualKey),
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
+        const response = await apiFetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -288,7 +289,7 @@ export function useVideoStatus(virtualKey: string, taskId: string) {
     queryKey: [...coreApiKeys.videos(), 'status', virtualKey, taskId],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}&task_id=${encodeURIComponent(taskId)}`, {
+        const response = await apiFetch(`/api/core/videos/generations?virtual_key=${encodeURIComponent(virtualKey)}&task_id=${encodeURIComponent(taskId)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -331,7 +332,7 @@ export function useAudioTranscription() {
           }
         });
 
-        const response = await fetch('/api/core/audio/transcriptions', {
+        const response = await apiFetch('/api/core/audio/transcriptions', {
           method: 'POST',
           body: formData,
         });
@@ -372,7 +373,7 @@ export function useAudioHistory(virtualKey: string) {
     queryKey: coreApiKeys.audioHistory(virtualKey),
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/core/audio/transcriptions?virtual_key=${encodeURIComponent(virtualKey)}`, {
+        const response = await apiFetch(`/api/core/audio/transcriptions?virtual_key=${encodeURIComponent(virtualKey)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -402,7 +403,7 @@ export function useAvailableModels() {
     queryKey: [...coreApiKeys.all, 'models'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/core/models', {
+        const response = await apiFetch('/api/core/models', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -430,7 +431,7 @@ export function useAudioSpeech() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
       try {
-        const response = await fetch('/api/core/audio/speech', {
+        const response = await apiFetch('/api/core/audio/speech', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

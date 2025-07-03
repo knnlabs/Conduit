@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { validateCoreSession } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { getServerCoreClient } from '@/lib/clients/server';
 
 export async function GET(request: NextRequest) {
@@ -26,30 +25,8 @@ export async function GET(request: NextRequest) {
     const isHealthy = healthResult.status === 'Healthy';
     const statusCode = isHealthy ? 200 : 503;
 
-    // Transform health data to match expected format
-    const healthData = {
-      status: healthResult.status || 'Unknown',
-      checks: healthResult.checks || [],
-      timestamp: new Date().toISOString(),
-      version: '1.0.0', // Could be obtained from a version endpoint
-      environment: process.env.NODE_ENV || 'development',
-      uptime: process.uptime(),
-      dependencies: healthResult.checks?.reduce((deps: Record<string, unknown>, check: any) => {
-        if (check.data) {
-          deps[check.name] = check.data;
-        }
-        return deps;
-      }, {} as Record<string, unknown>) || {},
-      totalDuration: healthResult.totalDuration,
-    };
-
-    return transformSDKResponse(healthData, {
-      status: statusCode,
-      meta: {
-        checkedAt: new Date().toISOString(),
-        responseTime: healthResult.totalDuration || 0,
-      }
-    });
+    // Return the SDK response directly
+    return NextResponse.json(healthResult, { status: statusCode });
 
   } catch (error: any) {
     // Handle timeout errors

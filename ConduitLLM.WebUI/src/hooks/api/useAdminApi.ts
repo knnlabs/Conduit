@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory
 export const adminApiKeys = {
@@ -29,7 +30,7 @@ export function useVirtualKeys() {
     queryKey: adminApiKeys.virtualKeys(),
     queryFn: async () => {
       try {
-        const response = await fetch('/api/admin/virtual-keys', {
+        const response = await apiFetch('/api/admin/virtual-keys', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -61,7 +62,7 @@ export function useVirtualKey(id: string) {
   return useQuery({
     queryKey: adminApiKeys.virtualKey(id),
     queryFn: async () => {
-      const response = await fetch(`/api/admin/virtual-keys/${id}`, {
+      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ export function useCreateVirtualKey() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/admin/virtual-keys', {
+      const response = await apiFetch('/api/admin/virtual-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export function useUpdateVirtualKey() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`/api/admin/virtual-keys/${id}`, {
+      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +163,7 @@ export function useDeleteVirtualKey() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/admin/virtual-keys/${id}`, {
+      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +200,7 @@ export function useProviders() {
   return useQuery({
     queryKey: adminApiKeys.providers(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/providers', {
+      const response = await apiFetch('/api/admin/providers', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +223,7 @@ export function useCreateProvider() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/admin/providers', {
+      const response = await apiFetch('/api/admin/providers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +261,7 @@ export function useUpdateProvider() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`/api/admin/providers/${id}`, {
+      const response = await apiFetch(`/api/admin/providers/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -298,7 +299,7 @@ export function useDeleteProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await fetch(`/api/admin/providers/${providerId}`, {
+      const response = await apiFetch(`/api/admin/providers/${providerId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -335,7 +336,7 @@ export function useModelMappings() {
   return useQuery({
     queryKey: adminApiKeys.modelMappings(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/model-mappings', {
+      const response = await apiFetch('/api/admin/model-mappings', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -358,7 +359,7 @@ export function useCreateModelMapping() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/admin/model-mappings', {
+      const response = await apiFetch('/api/admin/model-mappings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -396,7 +397,7 @@ export function useUpdateModelMapping() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`/api/admin/model-mappings/${id}`, {
+      const response = await apiFetch(`/api/admin/model-mappings/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -433,7 +434,7 @@ export function useUpdateModelMapping() {
 export function useTestModelMapping() {
   return useMutation({
     mutationFn: async (mappingId: string) => {
-      const response = await fetch(`/api/admin/model-mappings/${mappingId}/test`, {
+      const response = await apiFetch(`/api/admin/model-mappings/${mappingId}/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -470,7 +471,7 @@ export function useDeleteModelMapping() {
   
   return useMutation({
     mutationFn: async (mappingId: string) => {
-      const response = await fetch(`/api/admin/model-mappings/${mappingId}`, {
+      const response = await apiFetch(`/api/admin/model-mappings/${mappingId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -508,7 +509,7 @@ export function useBulkDiscoverModelMappings() {
   
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/admin/model-mappings/discover', {
+      const response = await apiFetch('/api/admin/model-mappings/discover', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -546,7 +547,7 @@ export function useSystemInfo() {
   return useQuery({
     queryKey: adminApiKeys.systemInfo(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/system/info', {
+      const response = await apiFetch('/api/admin/system/info', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -569,7 +570,7 @@ export function useSystemSettings() {
   return useQuery({
     queryKey: adminApiKeys.systemSettings(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/system/settings', {
+      const response = await apiFetch('/api/admin/system/settings', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -592,7 +593,7 @@ export function useUpdateSystemSettings() {
   
   return useMutation({
     mutationFn: async (settings: any) => {
-      const response = await fetch('/api/admin/system/settings', {
+      const response = await apiFetch('/api/admin/system/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -630,7 +631,7 @@ export function useSystemMetrics() {
   return useQuery({
     queryKey: adminApiKeys.systemMetrics(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/system/metrics', {
+      const response = await apiFetch('/api/admin/system/metrics', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -654,7 +655,7 @@ export function useSystemHealth() {
   return useQuery({
     queryKey: adminApiKeys.systemHealth(),
     queryFn: async () => {
-      const response = await fetch('/api/admin/system/health', {
+      const response = await apiFetch('/api/admin/system/health', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -714,7 +715,7 @@ export function useSecurityEvents(filters?: {
       params.append('page', (filters?.page || 1).toString());
       params.append('pageSize', (filters?.pageSize || 20).toString());
 
-      const response = await fetch(`/api/admin/security/events?${params}`, {
+      const response = await apiFetch(`/api/admin/security/events?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -748,7 +749,7 @@ export function useThreatDetections(filters?: {
       params.append('page', (filters?.page || 1).toString());
       params.append('pageSize', (filters?.pageSize || 20).toString());
 
-      const response = await fetch(`/api/admin/security/threats?${params}`, {
+      const response = await apiFetch(`/api/admin/security/threats?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -772,7 +773,7 @@ export function useTestProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await fetch(`/api/admin/providers/${providerId}/test`, {
+      const response = await apiFetch(`/api/admin/providers/${providerId}/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -810,7 +811,7 @@ export function useTestProvider() {
 export function useTestProviderConnection() {
   return useMutation({
     mutationFn: async (providerConfig: any) => {
-      const response = await fetch('/api/admin/providers/test-connection', {
+      const response = await apiFetch('/api/admin/providers/test-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -48,6 +48,7 @@ import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useSecurityEvents, useThreatDetections } from '@/hooks/api/useAdminApi';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 interface SecurityMetrics {
   threatLevel: 'low' | 'medium' | 'high' | 'critical';
@@ -161,7 +162,7 @@ export default function SecurityPage() {
 
   const handleToggleThreat = async (threatId: string, enabled: boolean) => {
     try {
-      const response = await fetch('/api/admin/security/threats', {
+      const response = await apiFetch('/api/admin/security/threats', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 export interface ExportOptions {
   type: 'usage' | 'cost' | 'virtual-keys' | 'security-events';
@@ -17,7 +18,7 @@ export interface ExportOptions {
 export function useExportData() {
   return useMutation({
     mutationFn: async (options: ExportOptions) => {
-      const response = await fetch('/api/admin/analytics/export', {
+      const response = await apiFetch('/api/admin/analytics/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

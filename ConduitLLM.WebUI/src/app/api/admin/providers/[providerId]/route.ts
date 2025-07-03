@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ providerId: string }>(
@@ -14,7 +13,7 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
         `get provider ${providerId}`
       );
 
-      return transformSDKResponse(result);
+      return NextResponse.json(result);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -30,7 +29,7 @@ export const PUT = createDynamicRouteHandler<{ providerId: string }>(
       
       // Provider metadata cannot be updated directly.
       // To manage provider settings, use provider credentials API instead.
-      return transformSDKResponse(
+      return NextResponse.json(
         { 
           error: 'Provider metadata cannot be updated directly',
           message: 'Use provider credentials API to manage provider configurations' 
@@ -51,7 +50,7 @@ export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
       
       // Provider metadata cannot be deleted directly.
       // To remove provider access, use provider credentials API instead.
-      return transformSDKResponse(
+      return NextResponse.json(
         { 
           error: 'Provider metadata cannot be deleted directly',
           message: 'Use provider credentials API to remove provider configurations' 

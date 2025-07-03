@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory for Auth API
 export const authApiKeys = {
@@ -38,7 +39,7 @@ export function useLogin() {
     mutationFn: async (request: LoginRequest): Promise<LoginResponse> => {
       try {
         // Validate admin key with server-side API
-        const response = await fetch('/api/auth/validate', {
+        const response = await apiFetch('/api/auth/validate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ export function useLogout() {
     mutationFn: async (): Promise<void> => {
       try {
         // Call logout endpoint to clear server-side session
-        const response = await fetch('/api/auth/logout', {
+        const response = await apiFetch('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

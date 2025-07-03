@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
@@ -15,7 +14,7 @@ export const GET = withSDKAuth(
         `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
         {
           headers: {
-            'Authorization': `Bearer ${auth.masterKey}`,
+            'Authorization': `Bearer ${process.env.CONDUIT_MASTER_KEY}`,
             'Content-Type': 'application/json',
           },
         }
@@ -27,30 +26,16 @@ export const GET = withSDKAuth(
       
       const data = await response.json();
       
-      // Transform events to match expected format
-      const events = data.events || [];
-      const paginatedEvents = events.slice(
-        (params.page - 1) * params.pageSize,
-        params.page * params.pageSize
-      );
-      
-      return transformPaginatedResponse(paginatedEvents, {
-        page: params.page,
-        pageSize: params.pageSize,
-        total: events.length,
-        meta: {
-          timeRange: data.timeRange,
-          totalEvents: data.totalEvents,
-          eventsByType: data.eventsByType,
-          eventsBySeverity: data.eventsBySeverity,
-        },
-      });
+      // Return the data directly
+      return NextResponse.json(data);
     } catch (error: any) {
       // Return empty result for failures
-      return transformPaginatedResponse([], {
-        page: 1,
-        pageSize: 20,
-        total: 0,
+      return NextResponse.json({
+        events: [],
+        timeRange: null,
+        totalEvents: 0,
+        eventsByType: {},
+        eventsBySeverity: {}
       });
     }
   },
@@ -65,17 +50,13 @@ export const POST = withSDKAuth(
       
       // Backend doesn't have a security event reporting endpoint yet
       // Return a placeholder response indicating the feature is not available
-      return transformSDKResponse(
+      return NextResponse.json(
         {
           message: 'Security event reporting is not yet implemented',
           received: body,
         },
         {
           status: 501, // Not Implemented
-          meta: {
-            feature: 'security-event-reporting',
-            available: false,
-          }
         }
       );
     } catch (error) {
@@ -98,7 +79,7 @@ export const PUT = withSDKAuth(
         `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
         {
           headers: {
-            'Authorization': `Bearer ${auth.masterKey}`,
+            'Authorization': `Bearer ${process.env.CONDUIT_MASTER_KEY}`,
             'Content-Type': 'application/json',
           },
         }

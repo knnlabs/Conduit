@@ -39,6 +39,7 @@ import { notifications } from '@mantine/notifications';
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
+import { QueryErrorBoundary } from '@/components/error/QueryErrorBoundary';
 
 interface VirtualKey {
   id: string;
@@ -234,12 +235,13 @@ export default function VirtualKeysPage() {
   }
 
   return (
-    <Stack gap="xl">
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>Virtual Keys</Title>
-          <Text c="dimmed">Manage API keys and access control</Text>
-        </div>
+    <QueryErrorBoundary>
+      <Stack gap="xl">
+        <Group justify="space-between">
+          <div>
+            <Title order={1}>Virtual Keys</Title>
+            <Text c="dimmed">Manage API keys and access control</Text>
+          </div>
 
         <Group>
           <Menu shadow="md" width={200}>
@@ -353,5 +355,6 @@ export default function VirtualKeysPage() {
         virtualKey={selectedKey}
       />
     </Stack>
+    </QueryErrorBoundary>
   );
 }

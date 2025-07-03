@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 export interface RequestLog {
   id: string;
@@ -67,7 +68,7 @@ export function useRequestLogs(filters?: RequestLogsFilters) {
       if (filters?.page) params.append('page', filters.page.toString());
       if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
 
-      const response = await fetch(`/api/admin/request-logs?${params}`, {
+      const response = await apiFetch(`/api/admin/request-logs?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ export function useRequestLogs(filters?: RequestLogsFilters) {
 export function useExportRequestLogs() {
   return useMutation({
     mutationFn: async ({ format, filters }: { format: 'csv' | 'json' | 'excel'; filters?: ExportFilters }) => {
-      const response = await fetch('/api/admin/request-logs', {
+      const response = await apiFetch('/api/admin/request-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

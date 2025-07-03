@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
 
 export const GET = withSDKAuth(
   async (request, { auth }) => {
@@ -34,23 +33,8 @@ export const GET = withSDKAuth(
         'list virtual keys'
       );
 
-      // The SDK returns an array directly for virtualKeys.list()
-      // We need to check if it's a paginated response or just an array
-      if (Array.isArray(result)) {
-        // Simple array response - create our own pagination
-        return transformSDKResponse({
-          items: result,
-          pagination: {
-            page: pageNumber,
-            pageSize: pageSize,
-            total: result.length,
-            totalPages: Math.ceil(result.length / pageSize)
-          }
-        });
-      }
-
-      // If it's already a paginated response, transform it
-      return transformSDKResponse(result);
+      // Return the SDK response directly
+      return NextResponse.json(result);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -79,14 +63,8 @@ export const POST = withSDKAuth(
         'create virtual key'
       );
 
-      // Transform the response
-      return transformSDKResponse(result, { 
-        status: 201,
-        meta: {
-          created: true,
-          keyId: result.keyInfo?.id,
-        }
-      });
+      // Return the SDK response directly
+      return NextResponse.json(result, { status: 201 });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }

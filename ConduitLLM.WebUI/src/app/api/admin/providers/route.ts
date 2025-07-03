@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
@@ -24,11 +23,8 @@ export const GET = withSDKAuth(
         return true;
       });
 
-      return transformPaginatedResponse(filteredResult, {
-        page: params.page,
-        pageSize: params.pageSize,
-        total: filteredResult.length,
-      });
+      // Return the filtered result directly
+      return NextResponse.json(filteredResult);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -73,14 +69,8 @@ export const POST = withSDKAuth(
         }
       }
 
-      return transformSDKResponse(result, {
-        status: 201,
-        meta: {
-          created: true,
-          credentialId: result.id,
-          connectionTested: body.testConnection || false,
-        }
-      });
+      // Return the SDK response directly
+      return NextResponse.json(result, { status: 201 });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }

@@ -28,6 +28,7 @@ export function useBackendHealth() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
         });
 
         if (!response.ok) {
@@ -61,6 +62,7 @@ export function useBackendHealth() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
         });
 
         if (!response.ok) {

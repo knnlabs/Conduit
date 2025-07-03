@@ -1,8 +1,7 @@
 'use client';
 
 import { Group, Indicator, Text, Tooltip, ThemeIcon } from '@mantine/core';
-import { IconServer, IconDatabase, IconNetwork } from '@tabler/icons-react';
-import { useConnectionStore } from '@/stores/useConnectionStore';
+import { IconServer, IconDatabase } from '@tabler/icons-react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { ConnectionStatus } from '@/types/navigation';
 
@@ -66,7 +65,6 @@ function ConnectionItem({ label, status, icon: Icon }: ConnectionItemProps) {
 }
 
 export function ConnectionIndicator() {
-  const { status } = useConnectionStore();
   const { healthStatus } = useBackendHealth();
 
   // Convert health status to connection status
@@ -91,12 +89,6 @@ export function ConnectionIndicator() {
         label="Admin API"
         status={getConnectionStatus(healthStatus.adminApi)}
         icon={IconDatabase}
-      />
-      
-      <ConnectionItem
-        label="SignalR"
-        status={status.signalR}
-        icon={IconNetwork}
       />
       
       <Text size="xs" c="dimmed" ml="xs">

@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams, validateRequiredFields, createValidationError } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
@@ -25,12 +24,8 @@ export const GET = withSDKAuth(
         'list model mappings'
       );
 
-      // The SDK returns an array directly, so we need to create our own pagination
-      return transformPaginatedResponse(result, {
-        page: params.page,
-        pageSize: params.pageSize,
-        total: result.length, // This is not ideal as it only shows current page count
-      });
+      // Return the SDK response directly
+      return NextResponse.json(result);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -65,13 +60,8 @@ export const POST = withSDKAuth(
         'create model mapping'
       );
 
-      return transformSDKResponse(result, {
-        status: 201,
-        meta: {
-          created: true,
-          mappingId: result.id,
-        }
-      });
+      // Return the SDK response directly
+      return NextResponse.json(result, { status: 201 });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }

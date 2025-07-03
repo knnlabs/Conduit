@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory for Security API
 export const securityApiKeys = {
@@ -105,7 +106,7 @@ export function useSecurityEvents(hours: number = 24) {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch(`/api/security/events?hours=${hours}`, {
+        const response = await apiFetch(`/api/security/events?hours=${hours}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -133,7 +134,7 @@ export function useThreatAnalytics() {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/security/threats', {
+        const response = await apiFetch('/api/security/threats', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -162,7 +163,7 @@ export function useComplianceMetrics() {
     queryFn: async () => {
       try {
         const client = await getAdminClient();
-        const response = await fetch('/api/security/compliance', {
+        const response = await apiFetch('/api/security/compliance', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });

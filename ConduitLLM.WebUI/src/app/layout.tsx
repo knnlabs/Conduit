@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/providers/AuthProvider';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppWrapper } from '@/components/layout/AppWrapper';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { ErrorHandlerInitializer } from '@/components/error/ErrorHandlerInitializer';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({
             <MantineProvider>
               <AuthProvider>
                 <ErrorBoundary>
+                  <ErrorHandlerInitializer />
                   <AppWrapper>
                     {children}
                   </AppWrapper>

@@ -17,6 +17,11 @@ export function createServerAdminClient(): ConduitAdminClient {
     throw new Error('Admin API URL is not configured');
   }
 
+  console.log('Creating ConduitAdminClient with:', {
+    adminApiUrl,
+    masterKey: masterKey ? 'set' : 'not set',
+  });
+  
   return new ConduitAdminClient({
     adminApiUrl,
     masterKey,
