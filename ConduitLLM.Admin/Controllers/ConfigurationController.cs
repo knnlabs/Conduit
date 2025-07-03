@@ -271,6 +271,9 @@ namespace ConduitLLM.Admin.Controllers
                 // In a real implementation, this would update configuration in database or config service
                 _logger.LogInformation("Updating routing configuration");
 
+                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
+                await Task.CompletedTask;
+
                 // Clear related caches
                 _cache.Remove("routing:config");
                 _cache.Remove("routing:stats");
@@ -297,6 +300,9 @@ namespace ConduitLLM.Admin.Controllers
             {
                 // In a real implementation, this would update configuration in database or config service
                 _logger.LogInformation("Updating caching configuration");
+
+                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
+                await Task.CompletedTask;
 
                 // Clear all caches to apply new configuration
                 if (config.ClearAllCaches)
@@ -329,6 +335,9 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 _logger.LogInformation("Clearing cache: {CacheId}", cacheId);
+
+                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
+                await Task.CompletedTask;
 
                 // Clear specific cache based on ID
                 switch (cacheId)
@@ -412,6 +421,8 @@ namespace ConduitLLM.Admin.Controllers
         private async Task<object> GetCacheStatistics(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
         {
             // In a real implementation, these would come from actual cache metrics
+        // Added to ensure the method remains asynchronous and to avoid CS1998 warning
+        await Task.CompletedTask;
             return new
             {
                 TotalHits = 125432,

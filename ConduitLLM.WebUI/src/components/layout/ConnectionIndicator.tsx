@@ -4,6 +4,7 @@ import { Group, Indicator, Text, Tooltip, ThemeIcon } from '@mantine/core';
 import { IconServer, IconDatabase } from '@tabler/icons-react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { ConnectionStatus } from '@/types/navigation';
+import { CoreApiStatusIndicator } from './CoreApiStatusIndicator';
 
 const getStatusColor = (status: ConnectionStatus['coreApi'] | ConnectionStatus['signalR']) => {
   switch (status) {
@@ -79,10 +80,10 @@ export function ConnectionIndicator() {
 
   return (
     <Group gap="xs">
-      <ConnectionItem
-        label="Core API"
-        status={getConnectionStatus(healthStatus.coreApi)}
-        icon={IconServer}
+      <CoreApiStatusIndicator
+        status={healthStatus.coreApi}
+        message={healthStatus.coreApiMessage}
+        checks={healthStatus.coreApiChecks}
       />
       
       <ConnectionItem

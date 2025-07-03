@@ -379,6 +379,8 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 // This would vary by database provider
+                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
+                await Task.CompletedTask;
                 return "Unknown";
             }
             catch

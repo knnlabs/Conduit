@@ -116,7 +116,7 @@ namespace ConduitLLM.Admin.Controllers
                         Type = "suspicious_activity",
                         Severity = "high",
                         Source = g.Key ?? "Unknown",
-                        VirtualKeyId = (string)null,
+                        VirtualKeyId = (string?)null!, // null-forgiving operator added to suppress CS8600
                         Details = $"Multiple failed requests: {g.Count()} attempts",
                         StatusCode = 0
                     })

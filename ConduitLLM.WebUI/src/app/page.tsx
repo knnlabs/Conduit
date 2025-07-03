@@ -23,10 +23,14 @@ import {
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useConnectionStore } from '@/stores/useConnectionStore';
+import { useBackendHealth } from '@/hooks/useBackendHealth';
+import { Alert } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 
 export default function HomePage() {
   const router = useRouter();
   const { status } = useConnectionStore();
+  const { healthStatus } = useBackendHealth();
 
   const quickAccessCards = [
     {
@@ -106,6 +110,11 @@ export default function HomePage() {
     }
   };
 
+  // Check if Core API is degraded due to no providers
+  const isNoProvidersIssue = healthStatus.coreApi === 'degraded' && 
+    (healthStatus.coreApiMessage?.toLowerCase().includes('no enabled providers') || 
+     healthStatus.coreApiMessage?.toLowerCase().includes('no providers'));
+
   return (
     <Stack gap="xl">
       <div>
@@ -116,6 +125,41 @@ export default function HomePage() {
           Manage your LLM infrastructure, test models, and monitor usage all in one place.
         </Text>
       </div>
+
+      {/* Show prominent alert if no providers are configured */}
+      {isNoProvidersIssue && (
+        <Alert 
+          icon={<IconAlertCircle size={16} />} 
+          title="Action Required: Configure LLM Providers" 
+          color="yellow"
+          variant="light"
+        >
+          <Stack gap="sm">
+            <Text size="sm">
+              The Core API is running in a degraded state because no LLM providers are configured. 
+              You need to add at least one provider (OpenAI, Anthropic, etc.) to enable AI functionality.
+            </Text>
+            <Group>
+              <Button 
+                variant="filled" 
+                color="yellow" 
+                size="sm"
+                onClick={() => router.push('/llm-providers')}
+              >
+                Configure Providers
+              </Button>
+              <Button 
+                variant="subtle" 
+                color="yellow" 
+                size="sm"
+                onClick={() => router.push('/getting-started')}
+              >
+                View Setup Guide
+              </Button>
+            </Group>
+          </Stack>
+        </Alert>
+      )}
 
       <Grid>
         {quickAccessCards.map((card) => (

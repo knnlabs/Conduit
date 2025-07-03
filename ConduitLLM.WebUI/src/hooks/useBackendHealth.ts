@@ -10,6 +10,13 @@ export interface BackendHealthStatus {
   lastChecked: Date;
   adminApiDetails?: any;
   coreApiDetails?: any;
+  coreApiMessage?: string;
+  coreApiChecks?: {
+    name: string;
+    status: string;
+    description?: string;
+    data?: any;
+  }[];
 }
 
 export function useBackendHealth() {
@@ -87,12 +94,27 @@ export function useBackendHealth() {
   });
 
   useEffect(() => {
+    // Extract message and checks from Core API health response
+    let coreApiMessage: string | undefined;
+    let coreApiChecks: BackendHealthStatus['coreApiChecks'] | undefined;
+    
+    if (coreHealth?.checks) {
+      coreApiChecks = coreHealth.checks;
+      // Look for provider check message
+      const providerCheck = coreHealth.checks.find((check: any) => check.name === 'providers');
+      if (providerCheck?.description) {
+        coreApiMessage = providerCheck.description;
+      }
+    }
+    
     setHealthStatus({
       adminApi: getServiceStatus(adminHealth, adminError, adminLoading),
       coreApi: getServiceStatus(coreHealth, coreError, coreLoading),
       lastChecked: new Date(),
       adminApiDetails: adminHealth,
       coreApiDetails: coreHealth,
+      coreApiMessage,
+      coreApiChecks,
     });
   }, [adminHealth, adminError, adminLoading, coreHealth, coreError, coreLoading]);
 
