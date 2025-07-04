@@ -15,33 +15,28 @@ import {
   Table,
   ScrollArea,
   Paper,
-  RingProgress,
-  Center,
   SimpleGrid,
 } from '@mantine/core';
 import {
   IconKey,
   IconTrendingUp,
-  IconTrendingDown,
   IconActivity,
   IconCoin,
-  IconClock,
   IconAlertCircle,
   IconRefresh,
   IconDownload,
-  IconCalendar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { DatePickerInput } from '@mantine/dates';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+// Removed unused DatePickerInput
 import { notifications } from '@mantine/notifications';
-import { formatCurrency, formatNumber, formatPercent, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils/formatting';
 
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function VirtualKeysDashboardPage() {
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+  const [_dateRange, _setDateRange] = useState<[Date | null, Date | null]>([
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     new Date(),
   ]);
@@ -49,7 +44,7 @@ export default function VirtualKeysDashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Generate mock data based on selected period
-  const getDaysFromPeriod = (period: string) => {
+  const _getDaysFromPeriod = (period: string) => {
     switch (period) {
       case '7d': return 7;
       case '30d': return 30;
@@ -67,7 +62,7 @@ export default function VirtualKeysDashboardPage() {
   // Calculate summary statistics
   const totalRequests = mockVirtualKeys.reduce((sum, key) => sum + (key as { requests: number }).requests, 0);
   const totalCost = mockVirtualKeys.reduce((sum, key) => sum + (key as { cost: number }).cost, 0);
-  const totalBudget = mockVirtualKeys.reduce((sum, key) => sum + (key as { budget: number }).budget, 0);
+  const _totalBudget = mockVirtualKeys.reduce((sum, key) => sum + (key as { budget: number }).budget, 0);
   const averageBudgetUsed = mockVirtualKeys.length > 0 
     ? mockVirtualKeys.reduce((sum, key) => sum + (key as { budgetUsed: number }).budgetUsed, 0) / mockVirtualKeys.length
     : 0;
@@ -80,7 +75,7 @@ export default function VirtualKeysDashboardPage() {
 
   // Mock data that will be replaced with SDK data
   const mockModelUsage: Array<{ name: string; value: number }> = [];
-  const mockBudgetAlerts: Array<unknown> = [];
+  const _mockBudgetAlerts: Array<unknown> = [];
 
   const handleRefresh = () => {
     setIsRefreshing(true);

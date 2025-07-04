@@ -18,7 +18,7 @@ import { useForm } from '@mantine/form';
 import { useCreateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
-import { notifications } from '@mantine/notifications';
+// Removed unused notifications import
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -150,7 +150,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     setTestingConnection(true);
     try {
       await testProviderConnection.mutateAsync(providerConfig);
-    } catch (error: unknown) {
+    } catch (_error: unknown) {
       // Error notification is handled by the hook
     } finally {
       setTestingConnection(false);

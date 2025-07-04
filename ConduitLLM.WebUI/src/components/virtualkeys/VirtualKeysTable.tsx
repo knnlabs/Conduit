@@ -15,7 +15,7 @@ import {
   Stack,
   LoadingOverlay,
   Alert,
-  Transition,
+  // Removed unused Transition import
 } from '@mantine/core';
 import {
   IconDots,
@@ -24,7 +24,7 @@ import {
   IconEye,
   IconCopy,
   IconAlertCircle,
-  IconActivity,
+  // Removed unused IconActivity import
 } from '@tabler/icons-react';
 import { useVirtualKeys, useDeleteVirtualKey } from '@/hooks/api/useAdminApi';
 import { modals } from '@mantine/modals';
@@ -54,7 +54,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
   const { data: defaultKeys, isLoading, error } = useVirtualKeys();
   const deleteVirtualKey = useDeleteVirtualKey();
   const { status } = useConnectionStore();
-  const signalRStatus = status.signalR;
+  const _signalRStatus = status.signalR;
   const [updatedKeys, setUpdatedKeys] = useState<Set<string>>(new Set());
   
   // Use provided data or default to fetched data
@@ -84,7 +84,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
       title: 'Delete Virtual Key',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the virtual key "{key.keyName}"? 
+          Are you sure you want to delete the virtual key &quot;{key.keyName}&quot;? 
           This action cannot be undone and will immediately revoke access for this key.
         </Text>
       ),

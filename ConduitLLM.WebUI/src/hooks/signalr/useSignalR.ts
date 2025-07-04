@@ -77,9 +77,9 @@ export function useSignalR({
         );
         
         setIsConnected(hubConnection.state === 'Connected');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(`Failed to connect to ${hubName} hub:`, err);
-        setError(err.message || 'Connection failed');
+        setError(err instanceof Error ? err.message : 'Connection failed');
         setIsConnected(false);
       } finally {
         setIsConnecting(false);
@@ -107,9 +107,9 @@ export function useSignalR({
       const hubConnection = await managerRef.current.connectHub(hubName, hubPath);
       setConnection(hubConnection);
       setIsConnected(hubConnection.state === 'Connected');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Failed to reconnect to ${hubName} hub:`, err);
-      setError(err.message || 'Reconnection failed');
+      setError(err instanceof Error ? err.message : 'Reconnection failed');
       setIsConnected(false);
     } finally {
       setIsConnecting(false);
@@ -124,9 +124,9 @@ export function useSignalR({
       setConnection(null);
       setIsConnected(false);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Failed to disconnect from ${hubName} hub:`, err);
-      setError(err.message || 'Disconnection failed');
+      setError(err instanceof Error ? err.message : 'Disconnection failed');
     }
   };
 

@@ -29,20 +29,10 @@ import {
   IconRefresh,
   IconAlertCircle,
   IconCircleCheck,
-  IconChartBar,
-  IconCloud,
-  IconNetwork,
-  IconSettings,
   IconTrash,
-  IconPlayerPlay,
-  IconPlayerStop,
   IconEye,
-  IconActivity,
   IconServer as IconHardDrive,
   IconCpu as IconMemory,
-  IconBrandDocker,
-  IconDownload,
-  IconInfoCircle,
   IconCheck,
 } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -100,10 +90,10 @@ export default function SystemPerformancePage() {
         message: `${serviceName} has been restarted successfully`,
         color: 'green',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Restart Failed',
-        message: error.message || 'Failed to restart service',
+        message: error instanceof Error ? error.message : 'Failed to restart service',
         color: 'red',
       });
     }
@@ -117,10 +107,10 @@ export default function SystemPerformancePage() {
         message: `${cacheType} cache has been cleared successfully`,
         color: 'green',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Clear Failed',
-        message: error.message || 'Failed to clear cache',
+        message: error instanceof Error ? error.message : 'Failed to clear cache',
         color: 'red',
       });
     }

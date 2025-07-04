@@ -11,14 +11,14 @@ import {
   Tooltip,
   Alert,
   ScrollArea,
-  Button,
+  // Removed unused Button import
   Divider,
 } from '@mantine/core';
 import {
   IconClock,
   IconCheck,
   IconX,
-  IconRefresh,
+  // Removed unused IconRefresh import
   IconTrash,
   IconPhoto,
   IconVideo,
@@ -27,7 +27,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { TaskProgress, useTaskProgressHub } from '@/hooks/signalr/useTaskProgressHub';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface TaskProgressPanelProps {
   virtualKey?: string; // Made optional since we no longer use it for SignalR auth
@@ -38,13 +38,13 @@ interface TaskProgressPanelProps {
 }
 
 export function TaskProgressPanel({
-  virtualKey,
+  virtualKey: _virtualKey,
   taskType,
   onTaskCompleted,
   showAll = false,
   maxHeight = 300,
 }: TaskProgressPanelProps) {
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [_expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const { tasks, isConnected, getTasksByType, clearTask, clearCompletedTasks } = useTaskProgressHub(
     {
@@ -111,7 +111,7 @@ export function TaskProgressPanel({
     }
   };
 
-  const toggleTaskExpansion = (taskId: string) => {
+  const _toggleTaskExpansion = (taskId: string) => {
     setExpandedTasks(prev => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {

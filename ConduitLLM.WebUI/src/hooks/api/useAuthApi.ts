@@ -163,7 +163,7 @@ export function useValidateAdminKey() {
   return useMutation({
     mutationFn: async (adminKey: string): Promise<{ isValid: boolean; message?: string }> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.auth.validateAdminKey(adminKey);

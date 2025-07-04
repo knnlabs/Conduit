@@ -22,7 +22,7 @@ import { NavigationSection, NavigationItem } from '@/types/navigation';
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { sections, activeItem, setActiveItem, toggleSection } = useNavigationStore();
+  const { sections, activeItem, setActiveItem, toggleSection: _toggleSection } = useNavigationStore();
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(sections.map(s => s.id))
   );

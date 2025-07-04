@@ -146,7 +146,7 @@ export function useRoutingConfig() {
     queryKey: configApiKeys.routing(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/config/routing', {
           method: 'GET',
           headers: {
@@ -176,7 +176,7 @@ export function useCachingConfig() {
     queryKey: configApiKeys.caching(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/config/caching', {
           method: 'GET',
           headers: {
@@ -214,7 +214,7 @@ export function useUpdateRoutingConfig() {
   return useMutation({
     mutationFn: async (data: UpdateRoutingConfigData) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/config/routing', {
           method: 'PUT',
           headers: {
@@ -256,7 +256,7 @@ export function useUpdateCachingConfig() {
   return useMutation({
     mutationFn: async (data: UpdateCachingConfigData) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/config/caching', {
           method: 'PUT',
           headers: {
@@ -290,7 +290,7 @@ export function useClearCache() {
   return useMutation({
     mutationFn: async (cacheId: string) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/config/caching/${cacheId}/clear`, {
           method: 'POST',
           headers: {

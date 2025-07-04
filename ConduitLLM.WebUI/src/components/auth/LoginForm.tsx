@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import {
   Paper,
-  TextInput,
   PasswordInput,
   Button,
   Title,
@@ -18,7 +17,7 @@ import {
   Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconKey, IconAlertCircle, IconShield } from '@tabler/icons-react';
+import { IconKey, IconAlertCircle } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { LoginCredentials } from '@/types/auth';
 import { validateMasterKeyFormat, getMasterKeyStrength } from '@/lib/auth/validation';

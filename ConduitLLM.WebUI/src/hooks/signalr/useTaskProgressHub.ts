@@ -11,7 +11,7 @@ export interface TaskProgress {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
   message?: string;
-  result?: any;
+  result?: unknown;
   error?: string;
   startedAt: Date;
   completedAt?: Date;

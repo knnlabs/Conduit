@@ -9,7 +9,7 @@ export const GET = createDynamicRouteHandler<{ mappingId: string }>(
       
       // Get model mapping details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.get(mappingId),
+        async () => auth.adminClient!.modelMappings.get(Number(mappingId)),
         `get model mapping ${mappingId}`
       );
 
@@ -29,7 +29,7 @@ export const PUT = createDynamicRouteHandler<{ mappingId: string }>(
       
       // Update model mapping
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.update(mappingId, {
+        async () => auth.adminClient!.modelMappings.update(Number(mappingId), {
           modelName: body.modelName,
           providerId: body.providerId,
           providerModelName: body.providerModelName,
@@ -62,7 +62,7 @@ export const DELETE = createDynamicRouteHandler<{ mappingId: string }>(
       
       // Delete model mapping
       await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.delete(mappingId),
+        async () => auth.adminClient!.modelMappings.delete(Number(mappingId)),
         `delete model mapping ${mappingId}`
       );
 

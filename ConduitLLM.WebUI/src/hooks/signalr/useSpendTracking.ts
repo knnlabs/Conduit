@@ -39,10 +39,10 @@ export function useSpendTracking() {
     console.log('Spend update received:', event);
 
     // Update the virtual keys query cache
-    queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: any[]) => {
+    queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
       if (!oldData) return oldData;
       
-      return oldData.map(key => {
+      return (oldData as unknown[]).map((key: unknown) => {
         if (key.id === event.virtualKeyId || key.keyHash === event.keyHash) {
           return {
             ...key,
@@ -57,7 +57,7 @@ export function useSpendTracking() {
     });
 
     // Update individual virtual key cache if it exists
-    queryClient.setQueryData(adminApiKeys.virtualKey(event.virtualKeyId), (oldData: any) => {
+    queryClient.setQueryData(adminApiKeys.virtualKey(event.virtualKeyId), (oldData: unknown) => {
       if (!oldData) return oldData;
       
       return {
@@ -74,9 +74,8 @@ export function useSpendTracking() {
     console.log('Budget alert received:', event);
 
     // Show notification based on alert type
-    const { notifications } = require('@mantine/notifications');
-    
-    const alertConfig = {
+    import('@mantine/notifications').then(({ notifications }) => {
+      const alertConfig = {
       warning: {
         color: 'orange',
         title: 'Budget Warning',
@@ -96,10 +95,11 @@ export function useSpendTracking() {
 
     const config = alertConfig[event.alertType];
     
-    notifications.show({
-      id: `budget-alert-${event.virtualKeyId}`,
-      ...config,
-      autoClose: 10000,
+      notifications.show({
+        id: `budget-alert-${event.virtualKeyId}`,
+        ...config,
+        autoClose: 10000,
+      });
     });
 
   }, []);
@@ -108,22 +108,23 @@ export function useSpendTracking() {
     console.log('Batch spend update received:', events);
 
     // Update multiple keys at once for efficiency
-    queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: any[]) => {
+    queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
       if (!oldData) return oldData;
       
       const updates = new Map(events.map(event => [event.virtualKeyId, event]));
       
-      return oldData.map(key => {
-        const update = updates.get(key.id);
+      return (oldData as unknown[]).map((key: unknown) => {
+        const k = key as { id: string; requestCount: number; [key: string]: unknown };
+        const update = updates.get(k.id);
         if (update) {
           return {
-            ...key,
+            ...k,
             currentSpend: update.newSpend,
             lastUsed: update.timestamp,
-            requestCount: update.requestId ? key.requestCount + 1 : key.requestCount,
+            requestCount: update.requestId ? k.requestCount + 1 : k.requestCount,
           };
         }
-        return key;
+        return k;
       });
     });
 

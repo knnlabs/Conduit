@@ -4,10 +4,6 @@ import {
   Card,
   Group,
   Text,
-  Switch,
-  NumberInput,
-  TextInput,
-  Button,
   Stack,
   Divider,
   Badge,
@@ -15,7 +11,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconEdit, IconCheck, IconX } from '@tabler/icons-react';
-import { useState } from 'react';
+// Removed unused useState import
 
 interface SettingsCardProps {
   title: string;

@@ -17,9 +17,7 @@ import {
   Select,
   NumberInput,
   Tabs,
-  Code,
   ActionIcon,
-  Tooltip,
   SimpleGrid,
   LoadingOverlay,
 } from '@mantine/core';
@@ -27,33 +25,54 @@ import {
   IconHeartbeat,
   IconServer,
   IconDatabase,
-  IconNetwork,
   IconClock,
   IconRefresh,
   IconDownload,
   IconCheck,
   IconX,
   IconAlertCircle,
-  IconInfoCircle,
   IconActivity,
-  IconBrandDocker,
   IconApi,
   IconMessage2,
   IconCircle,
   IconCloud,
-  IconTrendingUp,
   IconTrendingDown,
   IconBell,
-  IconSettings,
-  IconChartBar,
-  IconHistory,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatNumber, formatPercent, formatRelativeTime, formatDuration, formatBytes } from '@/lib/utils/formatting';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { formatNumber, formatPercent, formatRelativeTime } from '@/lib/utils/formatting';
 import { useServiceHealth, useIncidents, useHealthHistory } from '@/hooks/api/useHealthApi';
 
+// Type definitions
+interface ServiceMetrics {
+  cpu?: number;
+  memory?: number;
+  queueDepth?: number;
+}
+
+interface HealthCheck {
+  status: 'pass' | 'warn' | 'fail';
+  name: string;
+  duration: number;
+}
+
+interface Service {
+  name: string;
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  type?: string;
+  metrics?: ServiceMetrics;
+  checks?: HealthCheck[];
+}
+
+interface Incident {
+  startTime: string;
+  endTime?: string;
+  service?: string;
+  description?: string;
+  impact?: string;
+}
 
 const serviceTypeIcons = {
   api: IconApi,
@@ -81,13 +100,13 @@ const severityColors = {
 export default function HealthMonitoringPage() {
   const [activeTab, setActiveTab] = useState<string | null>('overview');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [_refreshInterval, _setRefreshInterval] = useState(30);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '24h' | '7d'>('24h');
 
   // Fetch data using the health API hooks
   const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useServiceHealth();
   const { data: incidentsData, isLoading: incidentsLoading } = useIncidents();
-  const { data: historyData, isLoading: historyLoading } = useHealthHistory(
+  const { data: historyData, isLoading: _historyLoading } = useHealthHistory(
     selectedTimeRange === '1h' ? 1 : selectedTimeRange === '24h' ? 24 : 168
   );
 
@@ -111,10 +130,10 @@ export default function HealthMonitoringPage() {
     
     const interval = setInterval(() => {
       refetchHealth();
-    }, refreshInterval * 1000);
+    }, _refreshInterval * 1000);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, refetchHealth]);
+  }, [autoRefresh, refetchHealth, _refreshInterval]);
 
   const handleRefresh = () => {
     refetchHealth();
@@ -133,7 +152,7 @@ export default function HealthMonitoringPage() {
     });
   };
 
-  const handleTestService = (service: any) => {
+  const handleTestService = (service: Service) => {
     notifications.show({
       title: 'Running Health Check',
       message: `Testing ${service.name}...`,
@@ -169,7 +188,7 @@ export default function HealthMonitoringPage() {
             <Switch
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.currentTarget.checked)}
-              label={`Auto-refresh (${refreshInterval}s)`}
+              label={`Auto-refresh (${_refreshInterval}s)`}
             />
           </Group>
           <Button
@@ -338,7 +357,7 @@ export default function HealthMonitoringPage() {
                       variant="light"
                       color={statusColors[service.status]}
                     >
-                      {getServiceIcon((service as any).type || 'api')}
+                      {getServiceIcon((service as Service).type || 'api')}
                     </ThemeIcon>
                     <div>
                       <Text fw={500}>{service.name}</Text>
@@ -375,40 +394,40 @@ export default function HealthMonitoringPage() {
                   </Group>
 
                   {/* Service-specific metrics */}
-                  {(service as any).metrics?.cpu !== undefined && (
+                  {(service as Service).metrics?.cpu !== undefined && (
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">CPU Usage</Text>
                       <Group gap="xs">
-                        <Text size="sm" fw={500}>{(service as any).metrics.cpu}%</Text>
+                        <Text size="sm" fw={500}>{(service as Service).metrics!.cpu}%</Text>
                         <Progress
-                          value={(service as any).metrics.cpu}
+                          value={(service as Service).metrics!.cpu!}
                           size="sm"
                           w={60}
-                          color={(service as any).metrics.cpu > 80 ? 'red' : (service as any).metrics.cpu > 60 ? 'yellow' : 'green'}
+                          color={(service as Service).metrics!.cpu! > 80 ? 'red' : (service as Service).metrics!.cpu! > 60 ? 'yellow' : 'green'}
                         />
                       </Group>
                     </Group>
                   )}
 
-                  {(service as any).metrics?.memory !== undefined && (
+                  {(service as Service).metrics?.memory !== undefined && (
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">Memory Usage</Text>
                       <Group gap="xs">
-                        <Text size="sm" fw={500}>{(service as any).metrics.memory}%</Text>
+                        <Text size="sm" fw={500}>{(service as Service).metrics!.memory}%</Text>
                         <Progress
-                          value={(service as any).metrics.memory}
+                          value={(service as Service).metrics!.memory!}
                           size="sm"
                           w={60}
-                          color={(service as any).metrics.memory > 80 ? 'red' : (service as any).metrics.memory > 60 ? 'yellow' : 'green'}
+                          color={(service as Service).metrics!.memory! > 80 ? 'red' : (service as Service).metrics!.memory! > 60 ? 'yellow' : 'green'}
                         />
                       </Group>
                     </Group>
                   )}
 
-                  {(service as any).metrics?.queueDepth !== undefined && (
+                  {(service as Service).metrics?.queueDepth !== undefined && (
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">Queue Depth</Text>
-                      <Text size="sm" fw={500}>{formatNumber((service as any).metrics.queueDepth)}</Text>
+                      <Text size="sm" fw={500}>{formatNumber((service as Service).metrics!.queueDepth!)}</Text>
                     </Group>
                   )}
 
@@ -416,7 +435,7 @@ export default function HealthMonitoringPage() {
                   <div>
                     <Text size="sm" c="dimmed" mb="xs">Health Checks</Text>
                     <Stack gap={4}>
-                      {((service as any).checks || []).map((check: any, index: number) => (
+                      {((service as Service).checks || []).map((check: HealthCheck, index: number) => (
                         <Group key={index} gap="xs">
                           {check.status === 'pass' ? (
                             <IconCheck size={14} color="var(--mantine-color-green-6)" />
@@ -484,11 +503,11 @@ export default function HealthMonitoringPage() {
                   }
                 >
                   <Text c="dimmed" size="sm">
-                    {(incident as any).service || 'System'} • Started {formatRelativeTime(new Date(incident.startTime))}
+                    {(incident as Incident).service || 'System'} • Started {formatRelativeTime(new Date(incident.startTime))}
                     {incident.endTime && ` • Resolved ${formatRelativeTime(new Date(incident.endTime))}`}
                   </Text>
-                  <Text size="sm" mt={4}>{(incident as any).description || 'No description'}</Text>
-                  <Text size="sm" c="dimmed" mt={4}>Impact: {(incident as any).impact || 'Unknown'}</Text>
+                  <Text size="sm" mt={4}>{(incident as Incident).description || 'No description'}</Text>
+                  <Text size="sm" c="dimmed" mt={4}>Impact: {(incident as Incident).impact || 'Unknown'}</Text>
                 </Timeline.Item>
               ))}
             </Timeline>

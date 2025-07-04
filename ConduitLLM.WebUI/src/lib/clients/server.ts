@@ -177,12 +177,12 @@ export function invalidateClientCache(type: 'admin' | 'core' | 'all', virtualKey
 export async function checkClientHealth(): Promise<{
   admin: boolean;
   core: boolean;
-  details: any;
+  details: Record<string, unknown>;
 }> {
   const results = {
     admin: false,
     core: false,
-    details: {} as any,
+    details: {} as Record<string, unknown>,
   };
 
   try {
@@ -198,7 +198,7 @@ export async function checkClientHealth(): Promise<{
     // Use a test key for Core health check if available
     const testKey = process.env.CONDUIT_TEST_VIRTUAL_KEY;
     if (testKey) {
-      const coreClient = getServerCoreClient(testKey);
+      const _coreClient = getServerCoreClient(testKey);
       // TODO: SDK does not yet support health.check()
       // await coreClient.health.check();
       results.core = true;

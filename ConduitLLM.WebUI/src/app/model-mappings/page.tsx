@@ -25,7 +25,6 @@ import {
   IconAlertCircle,
   IconActivity,
   IconChartLine,
-  IconSettings,
   IconDownload,
   IconFileTypeCsv,
   IconJson,

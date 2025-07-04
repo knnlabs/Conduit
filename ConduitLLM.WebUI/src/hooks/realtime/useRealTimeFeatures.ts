@@ -156,7 +156,7 @@ export function useRealTimeFeatures(options: UseRealTimeFeaturesOptions = {}) {
         });
       }
     };
-  }, [enabled, isAuthenticated]); // Don't include initializeManager to avoid loops
+  }, [enabled, isAuthenticated, initializeManager, manager]);
 
   // Monitor connection changes
   useEffect(() => {

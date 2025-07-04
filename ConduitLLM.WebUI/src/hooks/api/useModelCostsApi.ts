@@ -65,7 +65,7 @@ export function useModelCosts() {
     queryKey: modelCostsApiKeys.list(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/modelcosts', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -93,7 +93,7 @@ export function useModelCost(id: number) {
     queryKey: modelCostsApiKeys.byId(id),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/modelcosts/${id}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@ export function useModelCostsByProvider(providerName: string) {
     queryKey: modelCostsApiKeys.byProvider(providerName),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/modelcosts/provider/${providerName}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -151,7 +151,7 @@ export function useModelCostOverview(startDate: string, endDate: string) {
     queryKey: modelCostsApiKeys.overview(startDate, endDate),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/modelcosts/overview?startDate=${startDate}&endDate=${endDate}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -181,7 +181,7 @@ export function useCreateModelCost() {
   return useMutation({
     mutationFn: async (data: CreateModelCost) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/modelcosts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -213,7 +213,7 @@ export function useUpdateModelCost() {
   return useMutation({
     mutationFn: async (data: UpdateModelCost) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/modelcosts/${data.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -246,7 +246,7 @@ export function useDeleteModelCost() {
   return useMutation({
     mutationFn: async (id: number) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/modelcosts/${id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -277,7 +277,7 @@ export function useImportModelCosts() {
   return useMutation({
     mutationFn: async (modelCosts: CreateModelCost[]) => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/modelcosts/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

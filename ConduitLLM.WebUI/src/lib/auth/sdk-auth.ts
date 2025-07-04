@@ -266,7 +266,7 @@ export function createSDKSession(options: {
 export function withSDKAuth(
   handler: (
     request: NextRequest,
-    context: { params: any; auth: SDKAuthResult }
+    context: { auth: SDKAuthResult }
   ) => Promise<Response>,
   options?: {
     requireAdmin?: boolean;
@@ -274,7 +274,7 @@ export function withSDKAuth(
     requireVirtualKey?: boolean;
   }
 ) {
-  return async (request: NextRequest, context: { params: any }) => {
+  return async (request: NextRequest) => {
     const auth = await validateSDKSession(request, options);
     
     if (!auth.isValid) {
@@ -287,6 +287,6 @@ export function withSDKAuth(
       );
     }
 
-    return handler(request, { ...context, auth });
+    return handler(request, { auth });
   };
 }

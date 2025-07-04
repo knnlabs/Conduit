@@ -20,7 +20,7 @@ import { useForm } from '@mantine/form';
 import { useUpdateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { notifications } from '@mantine/notifications';
+// Removed unused notifications import
 
 interface ModelMapping {
   id: string;
@@ -128,7 +128,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
       const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === modelMapping.providerName);
       setSelectedProvider(provider);
     }
-  }, [modelMapping, providers]);
+  }, [modelMapping, providers, form]);
 
   const handleSubmit = async (values: EditModelMappingForm) => {
     if (!modelMapping) return;

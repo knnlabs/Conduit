@@ -8,8 +8,7 @@ import {
   ActionIcon,
   Tooltip,
   Stack,
-  Progress,
-  Button,
+  // Removed unused Progress, Button imports
   Collapse,
   Card,
 } from '@mantine/core';
@@ -20,7 +19,7 @@ import {
   IconRefresh,
   IconChevronDown,
   IconChevronUp,
-  IconWifi,
+  // Removed unused IconWifi import
   IconWifiOff,
 } from '@tabler/icons-react';
 import { useState } from 'react';

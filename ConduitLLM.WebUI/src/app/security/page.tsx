@@ -31,20 +31,14 @@ import {
   IconAlertTriangle,
   IconBug,
   IconLock,
-  IconKey,
   IconRefresh,
   IconSettings,
   IconEye,
   IconBan,
   IconActivity,
   IconClock,
-  IconGitBranch,
-  IconDatabase,
-  IconServer,
-  IconNetwork,
-  IconFingerprint,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useSecurityEvents, useThreatDetections } from '@/hooks/api/useAdminApi';
@@ -144,7 +138,7 @@ export default function SecurityPage() {
         message: 'All security metrics have been updated',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Refresh Failed',
         message: 'Failed to refresh security data',
@@ -184,7 +178,7 @@ export default function SecurityPage() {
         message: `Threat detection ${enabled ? 'enabled' : 'disabled'}`,
         color: 'blue',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Update Failed',
         message: 'Failed to update threat detection settings',
@@ -517,7 +511,7 @@ export default function SecurityPage() {
               </Card.Section>
               <Card.Section p="md">
                 <Timeline active={events.length} bulletSize={24} lineWidth={2}>
-                  {events.slice(0, 5).map((event: SecurityEvent, index: number) => {
+                  {events.slice(0, 5).map((event: SecurityEvent, _index: number) => {
                     const TypeIcon = getEventTypeIcon(event.type);
                     return (
                       <Timeline.Item

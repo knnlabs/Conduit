@@ -8,8 +8,7 @@ import {
   Badge,
   Button,
   Modal,
-  ActionIcon,
-  Tooltip,
+  // Removed unused ActionIcon, Tooltip imports
   Alert,
   Grid,
   Progress,
@@ -18,15 +17,13 @@ import {
 import {
   IconActivity,
   IconEye,
-  IconSettings,
   IconAlertCircle,
   IconCheck,
-  IconClock,
   IconX,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+// Removed unused useState import
 import { useDisclosure } from '@mantine/hooks';
-import { TaskProgress, useTaskProgressHub } from '@/hooks/signalr/useTaskProgressHub';
+import { useTaskProgressHub } from '@/hooks/signalr/useTaskProgressHub';
 import TaskProgressPanel from './TaskProgressPanel';
 
 interface GlobalTaskMonitorProps {

@@ -11,47 +11,28 @@ import {
   ThemeIcon,
   Progress,
   Badge,
-  RingProgress,
-  Center,
   Select,
   Paper,
   Table,
   ScrollArea,
-  Alert,
   Tabs,
-  ActionIcon,
-  Tooltip,
   Switch,
-  Code,
   LoadingOverlay,
 } from '@mantine/core';
 import {
   IconActivity,
   IconServer,
-  IconDatabase,
   IconCpu,
   IconChartLine,
   IconRefresh,
   IconDownload,
-  IconClock,
   IconTrendingUp,
   IconTrendingDown,
   IconAlertCircle,
-  IconCheck,
-  IconX,
   IconBolt,
   IconCloudDataConnection,
-  IconDeviceAnalytics,
-  IconGauge,
-  IconSettings,
-  IconBellRinging,
-  IconChartBar,
-  IconNetwork,
   IconCircle,
-  IconBrandSpeedtest,
   IconArrowUp,
-  IconArrowDown,
-  IconFilter,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
@@ -72,7 +53,7 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { formatNumber, formatBytes, formatPercent, formatLatency, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatNumber, formatPercent, formatLatency, formatRelativeTime } from '@/lib/utils/formatting';
 import { useRealtimeMetrics, useTimeSeriesMetrics, useProviderMetrics } from '@/hooks/api/useDashboardApi';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -80,7 +61,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export default function MetricsDashboardPage() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [_selectedProvider, _setSelectedProvider] = useState<string | null>(null);
 
   // Fetch data using the dashboard API hooks
   const { data: realtimeData, isLoading: realtimeLoading, refetch: refetchRealtime } = useRealtimeMetrics();
@@ -116,7 +97,7 @@ export default function MetricsDashboardPage() {
   };
 
   // Calculate trend for a metric
-  const calculateTrend = (current: number, previous: number) => {
+  const _calculateTrend = (current: number, previous: number) => {
     if (!previous) return { value: 0, direction: 'stable' as const };
     const change = ((current - previous) / previous) * 100;
     return {
@@ -125,7 +106,7 @@ export default function MetricsDashboardPage() {
     };
   };
 
-  const getTrendIcon = (direction: 'up' | 'down' | 'stable') => {
+  const _getTrendIcon = (direction: 'up' | 'down' | 'stable') => {
     switch (direction) {
       case 'up':
         return <IconTrendingUp size={16} />;
@@ -136,7 +117,7 @@ export default function MetricsDashboardPage() {
     }
   };
 
-  const getTrendColor = (direction: 'up' | 'down' | 'stable', inverse = false) => {
+  const _getTrendColor = (direction: 'up' | 'down' | 'stable', inverse = false) => {
     if (direction === 'stable') return 'gray';
     if (inverse) {
       return direction === 'up' ? 'red' : 'green';

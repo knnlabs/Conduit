@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { MantineColorScheme } from '@mantine/core';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+// Removed unused MantineColorScheme import
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   };
 
   // Update color scheme based on mode
-  const updateColorScheme = (newMode: ThemeMode) => {
+  const updateColorScheme = useCallback((newMode: ThemeMode) => {
     let newColorScheme: 'light' | 'dark';
     
     if (newMode === 'auto') {
@@ -48,7 +48,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
     
     setColorScheme(newColorScheme);
-  };
+  }, []);
 
   // Handle mode changes
   const handleSetMode = (newMode: ThemeMode) => {
@@ -87,12 +87,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         mediaQuery.removeEventListener('change', handleSystemThemeChange);
       };
     }
-  }, [mode]);
+  }, [mode, updateColorScheme]);
 
   // Update color scheme when mode changes
   useEffect(() => {
     updateColorScheme(mode);
-  }, [mode]);
+  }, [mode, updateColorScheme]);
 
   const value: ThemeContextType = {
     mode,

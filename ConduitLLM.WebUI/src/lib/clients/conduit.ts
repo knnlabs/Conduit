@@ -109,31 +109,36 @@ export function canCreateCoreClient(virtualKey?: string): boolean {
 }
 
 // Error handling helpers
-export function isAuthError(error: any): boolean {
-  return error?.status === 401 || error?.status === 403;
+export function isAuthError(error: unknown): boolean {
+  const errorObj = error as { status?: number };
+  return errorObj?.status === 401 || errorObj?.status === 403;
 }
 
-export function isNetworkError(error: any): boolean {
-  return error?.name === 'NetworkError' || 
-         error?.code === 'NETWORK_ERROR' ||
-         error?.message?.includes('Failed to fetch') ||
-         error?.message?.includes('Network request failed') ||
+export function isNetworkError(error: unknown): boolean {
+  const errorObj = error as { name?: string; code?: string; message?: string };
+  return errorObj?.name === 'NetworkError' || 
+         errorObj?.code === 'NETWORK_ERROR' ||
+         errorObj?.message?.includes('Failed to fetch') ||
+         errorObj?.message?.includes('Network request failed') ||
          !navigator.onLine;
 }
 
-export function isRateLimitError(error: any): boolean {
-  return error?.status === 429;
+export function isRateLimitError(error: unknown): boolean {
+  const errorObj = error as { status?: number };
+  return errorObj?.status === 429;
 }
 
-export function isServerError(error: any): boolean {
-  return error?.status >= 500 && error?.status < 600;
+export function isServerError(error: unknown): boolean {
+  const errorObj = error as { status?: number };
+  return errorObj?.status !== undefined && errorObj.status >= 500 && errorObj.status < 600;
 }
 
-export function isValidationError(error: any): boolean {
-  return error?.status === 400 || error?.status === 422;
+export function isValidationError(error: unknown): boolean {
+  const errorObj = error as { status?: number };
+  return errorObj?.status === 400 || errorObj?.status === 422;
 }
 
-export function getErrorMessage(error: any, context: string): string {
+export function getErrorMessage(error: unknown, context: string): string {
   if (isAuthError(error)) {
     return 'Your session has expired. Please log in again.';
   }
@@ -155,19 +160,21 @@ export function getErrorMessage(error: any, context: string): string {
   
   if (isValidationError(error)) {
     // Try to extract validation details
-    const details = error?.response?.data?.errors || error?.details;
+    const errorObj = error as { response?: { data?: { errors?: unknown } }; details?: unknown; message?: string };
+    const details = errorObj?.response?.data?.errors || errorObj?.details;
     if (details && typeof details === 'object') {
       const messages = Object.values(details).flat().join(', ');
       return `Validation failed: ${messages}`;
     }
-    return error?.message || 'Invalid request data.';
+    return errorObj?.message || 'Invalid request data.';
   }
   
   // Generic error with context
-  return error?.message || `${context} failed. Please try again.`;
+  const errorObj = error as { message?: string };
+  return errorObj?.message || `${context} failed. Please try again.`;
 }
 
-export function handleClientError(error: any, context: string): never {
+export function handleClientError(error: unknown, context: string): never {
   reportError(error, context);
   
   if (isAuthError(error)) {
@@ -181,7 +188,7 @@ export function handleClientError(error: any, context: string): never {
 }
 
 // Retry configuration for different error types
-export function shouldRetry(error: any, attempt: number): boolean {
+export function shouldRetry(error: unknown, attempt: number): boolean {
   const maxAttempts = 3;
   
   if (attempt >= maxAttempts) return false;
@@ -204,7 +211,7 @@ export function shouldRetry(error: any, attempt: number): boolean {
   return false;
 }
 
-export function getRetryDelay(attempt: number, error?: any): number {
+export function getRetryDelay(attempt: number, error?: unknown): number {
   // Base delay of 1 second
   let delay = 1000;
   

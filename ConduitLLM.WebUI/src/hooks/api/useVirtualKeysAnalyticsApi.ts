@@ -431,7 +431,7 @@ export function useVirtualKeysOverview() {
               createdAt: key.createdAt,
               lastUsed: key.lastUsedAt || new Date().toISOString(),
               totalRequests: keyCostMonth.requestCount,
-              totalTokens: ((keyCostMonth as any).inputTokens || 0) + ((keyCostMonth as any).outputTokens || 0),
+              totalTokens: ((keyCostMonth as { inputTokens?: number; outputTokens?: number }).inputTokens || 0) + ((keyCostMonth as { inputTokens?: number; outputTokens?: number }).outputTokens || 0),
               totalCost: keyCostMonth.cost,
               budget: {
                 limit: budgetLimit,
@@ -478,7 +478,7 @@ export function useVirtualKeyUsageMetrics(keyId: string, timeRange: TimeRangeFil
         const dateRange = convertTimeRangeToDateRange(timeRange);
         
         // Get key usage analytics and request logs
-        const [keyUsage, requestLogs, costByModel] = await Promise.all([
+        const [_keyUsage, requestLogs, costByModel] = await Promise.all([
           client.analytics.getKeyUsage(parseInt(keyId), dateRange),
           client.analytics.getRequestLogs({
             startDate: dateRange.startDate,
@@ -564,7 +564,7 @@ export function useVirtualKeyUsageMetrics(keyId: string, timeRange: TimeRangeFil
         }>();
         
         requestLogs.items.forEach(log => {
-          const endpoint = (log as any).endpoint || '/v1/chat/completions';
+          const endpoint = (log as { endpoint?: string }).endpoint || '/v1/chat/completions';
           const existing = endpointMap.get(endpoint) || {
             requests: 0,
             cost: 0,
@@ -776,7 +776,7 @@ export function useVirtualKeyPerformanceMetrics(keyId: string, timeRange: TimeRa
         const dateRange = convertTimeRangeToDateRange(timeRange);
         
         // Get request logs and key details
-        const [requestLogs, virtualKey, systemMetrics] = await Promise.all([
+        const [requestLogs, virtualKey, _systemMetrics] = await Promise.all([
           client.analytics.getRequestLogs({
             startDate: dateRange.startDate,
             endDate: dateRange.endDate,
@@ -927,7 +927,7 @@ export function useVirtualKeySecurityMetrics(keyId: string, timeRange: TimeRange
         }>();
         
         requestLogs.items.forEach(log => {
-          const ip = (log as any).clientIP || 'unknown';
+          const ip = (log as { clientIP?: string }).clientIP || 'unknown';
           const existing = ipMap.get(ip) || {
             requests: 0,
             lastSeen: log.timestamp,
@@ -972,7 +972,7 @@ export function useVirtualKeySecurityMetrics(keyId: string, timeRange: TimeRange
           }));
         
         // Calculate authentication metrics
-        const totalRequests = requestLogs.items.length;
+        const _totalRequests = requestLogs.items.length;
         const validRequests = requestLogs.items.filter(log => log.status === 'success').length;
         const invalidRequests = requestLogs.items.filter(log => String(log.status).includes('unauthorized') || String(log.status).includes('auth')).length;
         const malformedRequests = requestLogs.items.filter(log => String(log.status).includes('bad') || String(log.status).includes('malformed')).length;
@@ -1369,7 +1369,7 @@ export function useVirtualKeysLeaderboard(period: string = '30d') {
 
 // Export Virtual Keys Data
 export function useExportVirtualKeysData() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (request: ExportRequest): Promise<ExportResponse> => {

@@ -7,7 +7,6 @@ import {
   IconVideo,
   IconMicrophone,
   IconSettings,
-  IconChartBar,
   IconUsers,
   IconShield,
   IconShield as IconHealth,

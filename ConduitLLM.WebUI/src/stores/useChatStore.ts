@@ -206,12 +206,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setStreaming: (isStreaming: boolean) => {
     set({ isStreaming });
     if (!isStreaming) {
-      set({ streamingMessage: '' });
+      // When streaming stops, finalize the message
+      const { activeConversationId, streamingMessage } = get();
+      if (activeConversationId && streamingMessage) {
+        // Update the last assistant message with the final content
+        set((state) => ({
+          conversations: state.conversations.map(conv => {
+            if (conv.id === activeConversationId) {
+              const updatedMessages = [...conv.messages];
+              const lastMessageIndex = updatedMessages.length - 1;
+              if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].role === 'assistant') {
+                updatedMessages[lastMessageIndex] = {
+                  ...updatedMessages[lastMessageIndex],
+                  content: streamingMessage,
+                };
+              }
+              return { ...conv, messages: updatedMessages, updatedAt: new Date() };
+            }
+            return conv;
+          }),
+          streamingMessage: '',
+        }));
+      } else {
+        set({ streamingMessage: '' });
+      }
     }
   },
 
   updateStreamingMessage: (content: string) => {
-    set({ streamingMessage: content });
+    set((state) => ({ streamingMessage: state.streamingMessage + content }));
   },
 
   exportConversation: (id: string) => {

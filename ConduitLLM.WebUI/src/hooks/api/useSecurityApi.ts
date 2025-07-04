@@ -105,7 +105,7 @@ export function useSecurityEvents(hours: number = 24) {
     queryKey: securityApiKeys.events(hours),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/security/events?hours=${hours}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -133,7 +133,7 @@ export function useThreatAnalytics() {
     queryKey: securityApiKeys.threats(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/security/threats', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -162,7 +162,7 @@ export function useComplianceMetrics() {
     queryKey: securityApiKeys.compliance(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/security/compliance', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },

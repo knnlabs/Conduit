@@ -37,7 +37,7 @@ export function Header({
   toggleDesktop,
 }: HeaderProps) {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user: _user, logout } = useAuthStore();
 
   const handleLogout = () => {
     logout();

@@ -26,7 +26,7 @@ interface ModelMappingEvent {
     newMappings: number;
     errors: number;
   };
-  changes?: Record<string, any>;
+  changes?: Record<string, unknown>;
 }
 
 export function useModelMappingHub() {
@@ -99,10 +99,10 @@ export function useModelMappingHub() {
       safeLog('Model mapping test result received', event);
       
       // Update the model mapping cache with test result
-      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: any) => {
-        if (!oldData) return oldData;
+      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: unknown) => {
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
-        return oldData.map((mapping: any) => {
+        return oldData.map((mapping: unknown) => {
           if (mapping.id === event.mappingId) {
             return {
               ...mapping,
@@ -155,10 +155,10 @@ export function useModelMappingHub() {
       safeLog('Model mapping usage update', { mappingId, requestCount, lastUsed });
       
       // Update cache with new usage data
-      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: any) => {
-        if (!oldData) return oldData;
+      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: unknown) => {
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
-        return oldData.map((mapping: any) => {
+        return oldData.map((mapping: unknown) => {
           if (mapping.id === mappingId) {
             return {
               ...mapping,
@@ -176,13 +176,13 @@ export function useModelMappingHub() {
       safeLog('Batch usage update received', { count: updates.length });
       
       // Update cache for all mappings at once
-      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: any) => {
-        if (!oldData) return oldData;
+      queryClient.setQueryData(adminApiKeys.modelMappings(), (oldData: unknown) => {
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         const updateMap = new Map(updates.map(u => [u.mappingId, u]));
         
-        return oldData.map((mapping: any) => {
-          const update = updateMap.get(mapping.id);
+        return oldData.map((mapping: unknown) => {
+          const update = updateMap.get(typeof mapping === 'object' && mapping !== null && 'id' in mapping ? (mapping as { id: string }).id : '');
           if (update) {
             return {
               ...mapping,

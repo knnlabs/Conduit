@@ -1,7 +1,7 @@
 'use client';
 
 import { Group, Indicator, Text, Tooltip, ThemeIcon } from '@mantine/core';
-import { IconServer, IconDatabase } from '@tabler/icons-react';
+import { IconDatabase } from '@tabler/icons-react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { ConnectionStatus } from '@/types/navigation';
 import { CoreApiStatusIndicator } from './CoreApiStatusIndicator';

@@ -12,21 +12,17 @@ import {
   Select,
   Tabs,
   LoadingOverlay,
-  Alert,
   Badge,
   Table,
   Progress,
-  Center,
   ActionIcon,
   Tooltip,
   Modal,
-  NumberInput,
 } from '@mantine/core';
 import {
   IconActivity,
   IconDownload,
   IconRefresh,
-  IconAlertCircle,
   IconTrendingUp,
   IconTrendingDown,
   IconClock,
@@ -34,10 +30,7 @@ import {
   IconServer,
   IconAlertCircle as IconBugReport,
   IconChartLine,
-  IconCalendar,
-  IconFilter,
   IconEye,
-  IconCode,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -126,7 +119,7 @@ export default function UsageAnalyticsPage() {
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
-  const formatBytes = (bytes: number) => {
+  const _formatBytes = (bytes: number) => {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;

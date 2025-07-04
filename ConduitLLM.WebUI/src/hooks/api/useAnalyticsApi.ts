@@ -332,7 +332,7 @@ export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
               lastActivity: keyUsage.lastUsed,
               topModels: keyUsage.popularModels.map(model => model.modelId),
             };
-          } catch (error) {
+          } catch (_error) {
             // If detailed data fails, return basic data
             return {
               keyId: key.keyId.toString(),
@@ -362,7 +362,7 @@ export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
 
 // Export cost data
 export function useExportCostData() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ 
@@ -461,7 +461,7 @@ export function useCostAlerts() {
                 acknowledged: false,
               });
             }
-          } catch (error) {
+          } catch (_error) {
             // Skip this key if we can't get detailed usage
             continue;
           }

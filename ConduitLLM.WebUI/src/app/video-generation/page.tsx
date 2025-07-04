@@ -16,7 +16,6 @@ import {
   Modal,
   NumberInput,
   Alert,
-  LoadingOverlay,
   ScrollArea,
   Progress,
   Center,
@@ -26,13 +25,10 @@ import {
   IconSettings,
   IconDownload,
   IconTrash,
-  IconRefresh,
   IconEye,
   IconCopy,
-  IconCheck,
   IconAlertCircle,
   IconClock,
-  IconUpload,
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -197,7 +193,7 @@ export default function VideoGenerationPage() {
         message: 'Video downloaded successfully',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Download Failed',
         message: 'Failed to download video',
@@ -232,7 +228,7 @@ export default function VideoGenerationPage() {
         message: 'Prompt copied to clipboard',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Copy Failed',
         message: 'Failed to copy prompt',
@@ -332,7 +328,7 @@ export default function VideoGenerationPage() {
 
               <Alert icon={<IconClock size={16} />} variant="light">
                 <Text size="sm">
-                  Video generation can take several minutes. You'll be notified when complete.
+                  Video generation can take several minutes. You&apos;ll be notified when complete.
                 </Text>
               </Alert>
 

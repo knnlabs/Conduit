@@ -154,10 +154,20 @@ export default function ChatPage() {
           temperature: parameters.temperature,
           top_p: parameters.top_p,
           max_tokens: parameters.max_tokens,
-          onChunk: (content: string) => {
-            updateStreamingMessage(content);
+          onChunk: (chunk: unknown) => {
+            // Handle OpenAI streaming format
+            if (typeof chunk === 'object' && chunk !== null && 'choices' in chunk) {
+              const chunkData = chunk as { choices: Array<{ delta?: { content?: string } }> };
+              const content = chunkData.choices?.[0]?.delta?.content;
+              if (content) {
+                updateStreamingMessage(content);
+              }
+            }
           },
         });
+        
+        // Streaming completed successfully, finalize the message
+        setStreaming(false);
       } else {
         // Standard completion request
         const response = await chatCompletion.mutateAsync({

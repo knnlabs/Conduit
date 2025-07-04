@@ -1,4 +1,5 @@
 
+import { NextRequest } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse, createStreamingResponse } from '@/lib/utils/sdk-transforms';

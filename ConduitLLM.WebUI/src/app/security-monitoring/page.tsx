@@ -13,13 +13,9 @@ import {
   Badge,
   ThemeIcon,
   Progress,
-  Paper,
-  Alert,
-  ActionIcon,
   Select,
   TextInput,
   Tabs,
-  Timeline,
   RingProgress,
   Center,
   Tooltip,
@@ -31,31 +27,21 @@ import {
   IconAlertTriangle,
   IconLock,
   IconKey,
-  IconFingerprint,
   IconRefresh,
   IconDownload,
   IconSearch,
-  IconFilter,
   IconActivity,
-  IconClock,
-  IconMapPin,
-  IconDeviceDesktop,
   IconAlertCircle,
   IconCheck,
   IconX,
-  IconTrendingUp,
-  IconTrendingDown,
-  IconUserCheck,
   IconUserX,
   IconBan,
   IconEye,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { DatePickerInput } from '@mantine/dates';
+// Removed unused DatePickerInput
 import { notifications } from '@mantine/notifications';
 import { 
-  AreaChart, 
-  Area, 
   BarChart, 
   Bar, 
   PieChart, 
@@ -75,7 +61,7 @@ import { useSecurityEvents, useThreatAnalytics, useComplianceMetrics } from '@/h
 import { FeatureUnavailable } from '@/components/error/FeatureUnavailable';
 
 // Type to severity mapping
-const getEventSeverity = (type: string): 'low' | 'medium' | 'high' | 'critical' => {
+const _getEventSeverity = (type: string): 'low' | 'medium' | 'high' | 'critical' => {
   switch (type) {
     case 'auth_failure':
     case 'rate_limit':
@@ -127,6 +113,11 @@ export default function SecurityMonitoringPage() {
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
+  // Fetch data using the security API hooks (must be called before any conditional returns)
+  const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useSecurityEvents(parseInt(selectedTimeRange));
+  const { data: threatsData, isLoading: threatsLoading } = useThreatAnalytics();
+  const { data: complianceData, isLoading: complianceLoading } = useComplianceMetrics();
+
   // Check if security monitoring feature is available
   const isFeatureAvailable = false; // Security monitoring is not yet implemented
 
@@ -139,11 +130,6 @@ export default function SecurityMonitoringPage() {
       />
     );
   }
-
-  // Fetch data using the security API hooks
-  const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useSecurityEvents(parseInt(selectedTimeRange));
-  const { data: threatsData, isLoading: threatsLoading } = useThreatAnalytics();
-  const { data: complianceData, isLoading: complianceLoading } = useComplianceMetrics();
 
   // Filter events based on search and filters
   const filteredEvents = eventsData?.events?.filter(event => {

@@ -16,8 +16,8 @@ interface ProviderEvent {
   isHealthy?: boolean;
   healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
   modelsAvailable?: number;
-  modelCapabilities?: any[];
-  changes?: Record<string, any>;
+  modelCapabilities?: unknown[];
+  changes?: Record<string, unknown>;
 }
 
 export function useProviderHub() {
@@ -86,10 +86,10 @@ export function useProviderHub() {
       safeLog('Provider health changed', event);
       
       // Update provider cache with new health status
-      queryClient.setQueryData(adminApiKeys.providers(), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
         if (!oldData) return oldData;
         
-        return oldData.map((provider: any) => {
+        return oldData.map((provider: unknown) => {
           if (provider.id === event.providerId) {
             return {
               ...provider,
@@ -124,10 +124,10 @@ export function useProviderHub() {
       safeLog('Model capabilities discovered', event);
       
       // Update provider cache with new model count
-      queryClient.setQueryData(adminApiKeys.providers(), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
         if (!oldData) return oldData;
         
-        return oldData.map((provider: any) => {
+        return oldData.map((provider: unknown) => {
           if (provider.id === event.providerId) {
             return {
               ...provider,
@@ -157,12 +157,12 @@ export function useProviderHub() {
       safeLog('Batch provider update received', { count: events.length });
       
       // Update cache for all providers at once
-      queryClient.setQueryData(adminApiKeys.providers(), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
         if (!oldData) return oldData;
         
         const updateMap = new Map(events.map(e => [e.providerId, e]));
         
-        return oldData.map((provider: any) => {
+        return oldData.map((provider: unknown) => {
           const update = updateMap.get(provider.id);
           if (update) {
             return {

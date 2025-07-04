@@ -34,7 +34,7 @@ export interface IPRulesResponse {
 const ipRulesKeys = {
   all: ['ip-rules'] as const,
   lists: () => [...ipRulesKeys.all, 'list'] as const,
-  list: (filters?: any) => [...ipRulesKeys.lists(), filters] as const,
+  list: (filters?: Record<string, unknown>) => [...ipRulesKeys.lists(), filters] as const,
   details: () => [...ipRulesKeys.all, 'detail'] as const,
   detail: (id: string) => [...ipRulesKeys.details(), id] as const,
 };

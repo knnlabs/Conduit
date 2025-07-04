@@ -506,7 +506,7 @@ export function useUserAnalytics(timeRange: TimeRangeFilter) {
               topEndpoints: [], // Endpoint breakdown not available in current data
               requestsOverTime,
             };
-          } catch (error) {
+          } catch (_error) {
             // If detailed data fails, return basic data
             return {
               virtualKeyId: key.keyId.toString(),
@@ -632,7 +632,7 @@ export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
 
 // Export usage data
 export function useExportUsageData() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ 

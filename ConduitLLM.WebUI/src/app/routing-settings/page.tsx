@@ -8,60 +8,36 @@ import {
   Grid,
   Group,
   Button,
-  Select,
   Switch,
   NumberInput,
-  TextInput,
   Badge,
   Table,
   ScrollArea,
   ActionIcon,
   Tooltip,
-  Modal,
   Tabs,
-  JsonInput,
-  Alert,
   Paper,
   ThemeIcon,
   Code,
-  Slider,
-  SegmentedControl,
-  Checkbox,
-  MultiSelect,
-  Accordion,
   LoadingOverlay,
   Progress,
 } from '@mantine/core';
 import {
   IconRoute,
   IconSettings,
-  IconPlus,
-  IconTrash,
-  IconEdit,
-  IconCheck,
-  IconX,
   IconRefresh,
-  IconAlertCircle,
-  IconInfoCircle,
-  IconArrowUp,
-  IconArrowDown,
   IconCopy,
   IconTestPipe,
   IconScale,
-  IconNetwork,
   IconBrandSpeedtest,
-  IconClock,
   IconRepeat,
-  IconShieldCheck,
   IconFilter,
-  IconSortAscending,
   IconDeviceFloppy,
   IconDownload,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   useRoutingConfig, 
   useUpdateRoutingConfig,
@@ -97,16 +73,16 @@ export default function RoutingSettingsPage() {
     circuitBreakerThreshold: 5,
   };
   
-  const [ruleModalOpened, { open: openRuleModal, close: closeRuleModal }] = useDisclosure(false);
-  const [balancerModalOpened, { open: openBalancerModal, close: closeBalancerModal }] = useDisclosure(false);
-  const [retryModalOpened, { open: openRetryModal, close: closeRetryModal }] = useDisclosure(false);
+  const [_ruleModalOpened, { open: _openRuleModal, close: _closeRuleModal }] = useDisclosure(false);
+  const [_balancerModalOpened, { open: _openBalancerModal, close: _closeBalancerModal }] = useDisclosure(false);
+  const [_retryModalOpened, { open: _openRetryModal, close: _closeRetryModal }] = useDisclosure(false);
   
-  const [editingRule, setEditingRule] = useState<RoutingRule | null>(null);
-  const [editingBalancer, setEditingBalancer] = useState<LoadBalancer | null>(null);
-  const [editingRetry, setEditingRetry] = useState<RetryPolicy | null>(null);
+  const [_editingRule, _setEditingRule] = useState<RoutingRule | null>(null);
+  const [_editingBalancer, _setEditingBalancer] = useState<LoadBalancer | null>(null);
+  const [_editingRetry, _setEditingRetry] = useState<RetryPolicy | null>(null);
 
   // Form states
-  const [ruleFormData, setRuleFormData] = useState<{
+  const [_ruleFormData, _setRuleFormData] = useState<{
     name: string;
     conditions: unknown[];
     actions: unknown[];
@@ -120,18 +96,18 @@ export default function RoutingSettingsPage() {
     enabled: true,
   });
 
-  const handleDragEnd = (result: unknown) => {
-    if (!result.destination) return;
+  const _handleDragEnd = (_result: unknown) => {
+    // if (!result.destination) return;
 
-    const items = Array.from(routingRules);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    // const items = Array.from(routingRules);
+    // const [reorderedItem] = items.splice(result.source.index, 1);
+    // items.splice(result.destination.index, 0, reorderedItem);
 
     // Update priorities based on new order
-    const updatedItems = items.map((item, index) => ({
-      ...item,
-      priority: index + 1,
-    }));
+    // const _updatedItems = items.map((item, index) => ({
+    //   ...item,
+    //   priority: index + 1,
+    // }));
 
     // TODO: Update via API when endpoint is available
     notifications.show({
@@ -141,31 +117,31 @@ export default function RoutingSettingsPage() {
     });
   };
 
-  const handleAddRule = () => {
-    setEditingRule(null);
-    setRuleFormData({
-      name: '',
-      conditions: [],
-      actions: [],
-      description: '',
-      enabled: true,
-    });
-    openRuleModal();
+  const _handleAddRule = () => {
+    // setEditingRule(null);
+    // setRuleFormData({
+    //   name: '',
+    //   conditions: [],
+    //   actions: [],
+    //   description: '',
+    //   enabled: true,
+    // });
+    // openRuleModal();
   };
 
-  const handleEditRule = (rule: RoutingRule) => {
-    setEditingRule(rule);
-    setRuleFormData({
-      name: rule.modelAlias,
-      conditions: [],
-      actions: [],
-      description: '',
-      enabled: rule.isEnabled,
-    });
-    openRuleModal();
+  const _handleEditRule = (_rule: RoutingRule) => {
+    // setEditingRule(rule);
+    // setRuleFormData({
+    //   name: rule.modelAlias,
+    //   conditions: [],
+    //   actions: [],
+    //   description: '',
+    //   enabled: rule.isEnabled,
+    // });
+    // openRuleModal();
   };
 
-  const handleDeleteRule = (id: number) => {
+  const _handleDeleteRule = (_id: number) => {
     // TODO: Delete via API when endpoint is available
     notifications.show({
       title: 'Rule Deleted',
@@ -213,7 +189,7 @@ export default function RoutingSettingsPage() {
         message: 'Routing settings have been saved successfully',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to save routing configuration',

@@ -9,7 +9,7 @@ import {
   Group,
   Text,
   Textarea,
-  Select,
+  // Removed unused Select import
   PasswordInput,
   Alert,
   Divider,
@@ -18,9 +18,9 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useUpdateProvider } from '@/hooks/api/useAdminApi';
-import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
+import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { notifications } from '@mantine/notifications';
+// Removed unused notifications import
 
 interface Provider {
   id: string;
@@ -103,7 +103,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
         isEnabled: provider.isEnabled,
       });
     }
-  }, [provider]);
+  }, [provider, form]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;

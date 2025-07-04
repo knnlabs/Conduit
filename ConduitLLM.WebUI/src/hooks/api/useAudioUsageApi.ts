@@ -121,12 +121,12 @@ export function useActiveSessions() {
 }
 
 export function useExportAudioUsage() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ 
-      query, 
-      format 
+      query: _query, 
+      format: _format 
     }: { 
       query: unknown; 
       format: 'csv' | 'json' 

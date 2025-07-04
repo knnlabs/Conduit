@@ -20,7 +20,7 @@ export interface ServiceHealth {
   uptime: string | { days: number };
   lastCheck: string;
   responseTime: number;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 export interface HealthSummary {
@@ -100,7 +100,7 @@ export function useServiceHealth() {
     queryKey: healthApiKeys.services(),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch('/api/health/services', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -129,7 +129,7 @@ export function useIncidents(days: number = 7) {
     queryKey: healthApiKeys.incidents(days),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/health/incidents?days=${days}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ export function useHealthHistory(hours: number = 24) {
     queryKey: healthApiKeys.history(hours),
     queryFn: async () => {
       try {
-        const client = await getAdminClient();
+        const _client = await getAdminClient();
         const response = await apiFetch(`/api/health/history?hours=${hours}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },

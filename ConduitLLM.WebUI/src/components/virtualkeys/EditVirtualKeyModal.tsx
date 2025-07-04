@@ -89,7 +89,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
         allowedModels: virtualKey.allowedModels || [],
       });
     }
-  }, [virtualKey]);
+  }, [virtualKey, form]);
 
   const handleSubmit = async (values: EditVirtualKeyForm) => {
     if (!virtualKey) return;

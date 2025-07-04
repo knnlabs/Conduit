@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
-import { HealthStatusMap } from '@/types/sdk-extensions';
+import { HealthStatusMap as _HealthStatusMap } from '@/types/sdk-extensions';
 
 // Query key factory for Provider Health API
 export const providerHealthApiKeys = {
@@ -185,7 +185,7 @@ export function useProviderHealthOverview() {
     queryKey: providerHealthApiKeys.health(),
     queryFn: async (): Promise<ProviderHealth[]> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // Get provider health data from SDK
         const healthSummary = await client.providerHealth.getHealthSummary();
@@ -275,7 +275,7 @@ export function useProviderStatus() {
     queryKey: providerHealthApiKeys.status(),
     queryFn: async (): Promise<ProviderStatus> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // Get provider health summary and metrics
         const [healthSummary, systemMetrics] = await Promise.all([
@@ -334,7 +334,7 @@ export function useProviderMetrics(providerId: string, timeRange: string = '24h'
     queryKey: [...providerHealthApiKeys.metrics(), providerId, timeRange],
     queryFn: async (): Promise<ProviderMetrics> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // Calculate date range
         const now = new Date();
@@ -435,7 +435,7 @@ export function useProviderIncidents() {
     queryKey: providerHealthApiKeys.incidents(),
     queryFn: async (): Promise<ProviderIncident[]> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.getIncidents();
@@ -544,7 +544,7 @@ export function useProviderUptime(providerId: string, period: '24h' | '7d' | '30
     queryKey: [...providerHealthApiKeys.uptime(), providerId, period],
     queryFn: async (): Promise<ProviderUptimeData> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.getUptime(providerId, period);
@@ -612,7 +612,7 @@ export function useProviderLatency(providerId: string, timeRange: string = '24h'
     queryKey: [...providerHealthApiKeys.latency(), providerId, timeRange],
     queryFn: async (): Promise<ProviderLatencyData> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.getLatency(providerId, timeRange);
@@ -685,7 +685,7 @@ export function useProviderAlerts() {
     queryKey: providerHealthApiKeys.alerts(),
     queryFn: async (): Promise<ProviderAlert[]> => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.getAlerts();
@@ -762,7 +762,7 @@ export function useAcknowledgeAlert() {
   return useMutation({
     mutationFn: async (alertId: string) => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.acknowledgeAlert(alertId);
@@ -790,7 +790,7 @@ export function useTriggerHealthCheck() {
   return useMutation({
     mutationFn: async (providerId?: string) => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
         // const response = await client.providers.triggerHealthCheck(providerId);

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiKeys } from './useAdminApi';
-import { createAdminClient } from '@/lib/clients/conduit';
+import { createAdminClient as _createAdminClient } from '@/lib/clients/conduit';
 import { notifications } from '@mantine/notifications';
 
 export function useOverallMediaStats() {
@@ -90,7 +90,7 @@ export function useDeleteMedia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (mediaId: string) => {
+    mutationFn: async (_mediaId: string) => {
       // Media API not yet available in SDK
       throw new Error('Media deletion is not yet available');
     },
@@ -171,7 +171,7 @@ export function usePruneOldMedia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (daysToKeep: number) => {
+    mutationFn: async (_daysToKeep: number) => {
       // Media API not yet available in SDK
       throw new Error('Media pruning is not yet available');
     },

@@ -27,6 +27,7 @@ import {
   IconClock,
   IconCoin,
   IconVolume,
+  IconFilter,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -58,13 +59,13 @@ export default function AudioUsagePage() {
     selectedVirtualKey,
     undefined
   );
-  const { data: logsData, isLoading: logsLoading } = useAudioUsageLogs({
+  const { data: _logsData, isLoading: logsLoading } = useAudioUsageLogs({
     startDate: dateRange[0] || undefined,
     endDate: dateRange[1] || undefined,
     virtualKey: selectedVirtualKey,
     model: selectedModel,
   });
-  const { data: realtimeMetrics } = useRealtimeSessionMetrics();
+  const { data: _realtimeMetrics } = useRealtimeSessionMetrics();
   const { mutate: exportData } = useExportAudioUsage();
 
   // Virtual keys options

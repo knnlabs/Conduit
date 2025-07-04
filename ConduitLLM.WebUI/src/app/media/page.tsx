@@ -14,17 +14,13 @@ import {
   ActionIcon,
   Image,
   Paper,
-  ScrollArea,
   Pagination,
   Modal,
   Checkbox,
-  Tooltip,
   Center,
   Loader,
   ThemeIcon,
-  Progress,
   Menu,
-  UnstyledButton,
 } from '@mantine/core';
 import {
   IconPhoto,
@@ -35,17 +31,12 @@ import {
   IconTrash,
   IconEye,
   IconCalendar,
-  IconClock,
-  IconUser,
   IconKey,
   IconCloud,
-  IconExternalLink,
   IconCopy,
-  IconCheck,
-  IconX,
   IconRefresh,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DatePickerInput } from '@mantine/dates';
@@ -54,9 +45,7 @@ import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { 
   useOverallMediaStats, 
   useMediaByVirtualKey,
-  useMediaStorageByType,
   useDeleteMedia,
-  useCleanupExpiredMedia
 } from '@/hooks/api/useMediaApi';
 
 export default function MediaAssetsPage() {
@@ -76,9 +65,9 @@ export default function MediaAssetsPage() {
   const { data: mediaByKey, isLoading: mediaLoading } = useMediaByVirtualKey(
     virtualKeyFilter !== 'all' ? parseInt(virtualKeyFilter) : undefined
   );
-  const { data: storageByType } = useMediaStorageByType();
+  const { data: _storageByType } = useMediaStorageByType();
   const { mutate: deleteMedia } = useDeleteMedia();
-  const { mutate: cleanupExpired } = useCleanupExpiredMedia();
+  const { mutate: _cleanupExpired } = useCleanupExpiredMedia();
   
   // Convert media data to display format
   const assets = mediaByKey || [];
@@ -153,7 +142,7 @@ export default function MediaAssetsPage() {
   };
 
   const handleDeleteAssets = async () => {
-    const count = selectedAssets.size;
+    const _count = selectedAssets.size;
     const deletePromises = Array.from(selectedAssets).map(id => deleteMedia(id));
     
     try {

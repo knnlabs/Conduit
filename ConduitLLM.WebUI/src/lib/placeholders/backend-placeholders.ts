@@ -4,7 +4,6 @@
  */
 
 import type {
-  SecurityEvent,
   SecurityEventsSummary,
   ThreatAnalytics,
   ProviderIncident,
@@ -54,7 +53,7 @@ export function getEmptyThreatAnalytics(): ThreatAnalytics {
 /**
  * Generate empty provider incidents response
  */
-export function getEmptyProviderIncidents(providerId: string): ProviderIncident[] {
+export function getEmptyProviderIncidents(_providerId: string): ProviderIncident[] {
   return [];
 }
 
@@ -165,7 +164,7 @@ export function getFeatureMessage(feature: string): string {
 /**
  * Get a placeholder response for unavailable features
  */
-export function getPlaceholderResponse(feature: string, requested: any = {}) {
+export function getPlaceholderResponse(feature: string, requested: unknown = {}) {
   return {
     success: false,
     available: false,

@@ -21,9 +21,6 @@ import {
   Tooltip,
   Modal,
   RingProgress,
-  Timeline,
-  NumberInput,
-  Divider,
   Code,
 } from '@mantine/core';
 import {
@@ -38,20 +35,11 @@ import {
   IconActivity,
   IconChartLine,
   IconCreditCard,
-  IconEye,
-  IconSettings,
-  IconFilter,
-  IconSearch,
   IconBan,
   IconCheck,
   IconX,
   IconTarget,
   IconBolt,
-  IconUsers,
-  IconServer,
-  IconGlobe,
-  IconLock,
-  IconBell,
   IconTrophy,
   IconFlame,
   IconHeartHandshake,
@@ -89,7 +77,7 @@ export default function VirtualKeysAnalyticsPage() {
   const { data: selectedKeyBudget } = useVirtualKeyBudgetAnalytics(selectedKey?.keyId || '', timeRangeValue);
   const { data: selectedKeyPerformance } = useVirtualKeyPerformanceMetrics(selectedKey?.keyId || '', timeRange);
   const { data: selectedKeySecurity } = useVirtualKeySecurityMetrics(selectedKey?.keyId || '', timeRange);
-  const { data: selectedKeyTrends } = useVirtualKeyTrends(selectedKey?.keyId || '', timeRange);
+  const { data: _selectedKeyTrends } = useVirtualKeyTrends(selectedKey?.keyId || '', timeRange);
   const { data: leaderboard } = useVirtualKeysLeaderboard(timeRangeValue);
   const exportData = useExportVirtualKeysData();
 

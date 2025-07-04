@@ -19,7 +19,7 @@ import { useForm } from '@mantine/form';
 import { useCreateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-import { notifications } from '@mantine/notifications';
+// Removed unused notifications import
 
 interface CreateModelMappingModalProps {
   opened: boolean;

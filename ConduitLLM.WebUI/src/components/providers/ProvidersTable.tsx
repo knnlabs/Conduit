@@ -63,7 +63,7 @@ export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the provider "{provider.providerName}"? 
+          Are you sure you want to delete the provider &quot;{provider.providerName}&quot;? 
           This action cannot be undone and will remove all associated model mappings.
         </Text>
       ),

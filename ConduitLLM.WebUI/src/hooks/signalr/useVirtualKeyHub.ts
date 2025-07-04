@@ -13,7 +13,7 @@ interface VirtualKeyEvent {
   keyName: string;
   eventType: 'created' | 'updated' | 'deleted' | 'spendUpdated';
   timestamp: string;
-  changes?: Record<string, any>;
+  changes?: Record<string, unknown>;
   currentSpend?: number;
   spendAmount?: number;
 }
@@ -81,10 +81,10 @@ export function useVirtualKeyHub() {
       safeLog('Virtual key spend updated', event);
       
       // Update the cache with new spend data without refetching
-      queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
         if (!oldData) return oldData;
         
-        return oldData.map((key: any) => {
+        return oldData.map((key: unknown) => {
           if (key.id === event.keyId) {
             return {
               ...key,
@@ -96,7 +96,7 @@ export function useVirtualKeyHub() {
       });
       
       // Also update individual key cache
-      queryClient.setQueryData(adminApiKeys.virtualKey(event.keyId), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.virtualKey(event.keyId), (oldData: unknown) => {
         if (!oldData) return oldData;
         
         return {
@@ -121,12 +121,12 @@ export function useVirtualKeyHub() {
       safeLog('Batch spend update received', { count: events.length });
       
       // Update cache for all keys at once
-      queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: any) => {
+      queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
         if (!oldData) return oldData;
         
         const spendMap = new Map(events.map(e => [e.keyId, e.currentSpend]));
         
-        return oldData.map((key: any) => {
+        return oldData.map((key: unknown) => {
           const newSpend = spendMap.get(key.id);
           if (newSpend !== undefined) {
             return { ...key, currentSpend: newSpend };

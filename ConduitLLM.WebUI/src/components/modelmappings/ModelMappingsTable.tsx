@@ -49,7 +49,7 @@ interface ModelMappingsTableProps {
   showProvider?: boolean;
 }
 
-export function ModelMappingsTable({ onEdit, onTest, data, showProvider = true }: ModelMappingsTableProps) {
+export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showProvider = true }: ModelMappingsTableProps) {
   const { data: defaultMappings, isLoading, error, refetch } = useModelMappings();
   const deleteModelMapping = useDeleteModelMapping();
   
@@ -61,7 +61,7 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider = true }
       title: 'Delete Model Mapping',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the mapping for "{mapping.internalModelName}"? 
+          Are you sure you want to delete the mapping for &quot;{mapping.internalModelName}&quot;? 
           This will prevent routing requests to this model configuration.
         </Text>
       ),

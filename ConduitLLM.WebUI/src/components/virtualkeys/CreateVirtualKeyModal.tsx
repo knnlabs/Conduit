@@ -18,7 +18,7 @@ import {
 import { useForm } from '@mantine/form';
 import { useCreateVirtualKey } from '@/hooks/api/useAdminApi';
 import { useAvailableModels } from '@/hooks/api/useCoreApi';
-import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 
 interface CreateVirtualKeyModalProps {

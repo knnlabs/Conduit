@@ -15,13 +15,10 @@ import {
   Select,
   Modal,
   ActionIcon,
-  Tooltip,
   Switch,
-  Tabs,
   Grid,
   ThemeIcon,
   Paper,
-  Alert,
   LoadingOverlay,
 } from '@mantine/core';
 import {
@@ -35,16 +32,13 @@ import {
   IconUpload,
   IconCalculator,
   IconTrendingUp,
-  IconAlertCircle,
   IconCheck,
-  IconX,
   IconRefresh,
-  IconCurrencyDollar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { formatCurrency, formatNumber } from '@/lib/utils/formatting';
+// Removed unused formatCurrency and formatNumber imports
 import { 
   useModelCosts, 
   useCreateModelCost, 
@@ -64,7 +58,7 @@ const categoryColors = {
   video: 'red',
 };
 
-const categoryIcons = {
+const _categoryIcons = {
   text: IconCoin,
   embedding: IconCalculator,
   image: IconCoin,
@@ -176,7 +170,7 @@ export default function ModelCostsPage() {
         });
       }
       closeModal();
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to save model cost',
@@ -193,7 +187,7 @@ export default function ModelCostsPage() {
         message: 'Model pricing has been removed',
         color: 'red',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to delete model cost',
@@ -208,7 +202,7 @@ export default function ModelCostsPage() {
         ...cost,
         isActive: !cost.isActive,
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to update model cost',

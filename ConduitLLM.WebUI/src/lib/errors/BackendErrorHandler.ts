@@ -13,13 +13,15 @@ export interface BackendError {
   message: string;
   retryable: boolean;
   retryAfter?: number; // seconds
-  details?: any;
+  details?: unknown;
 }
 
 export class BackendErrorHandler {
-  static classifyError(error: any): BackendError {
+  static classifyError(error: unknown): BackendError {
+    const errorObj = error as { name?: string; message?: string; status?: number };
+    
     // Network/Connection errors
-    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+    if (errorObj.name === 'TypeError' && errorObj.message?.includes('fetch')) {
       return {
         type: BackendErrorType.CONNECTION_FAILED,
         message: 'Unable to connect to the server. Please check your internet connection.',
@@ -29,8 +31,8 @@ export class BackendErrorHandler {
     }
 
     // HTTP status-based errors
-    if (error.status) {
-      switch (error.status) {
+    if (errorObj.status) {
+      switch (errorObj.status) {
         case 401:
           return {
             type: BackendErrorType.AUTHENTICATION_FAILED,
@@ -74,21 +76,21 @@ export class BackendErrorHandler {
         case 400:
           return {
             type: BackendErrorType.INVALID_REQUEST,
-            message: error.message || 'Invalid request. Please check your input.',
+            message: errorObj.message || 'Invalid request. Please check your input.',
             retryable: false,
           };
 
         default:
           return {
             type: BackendErrorType.INTERNAL_ERROR,
-            message: error.message || 'An unexpected error occurred.',
+            message: errorObj.message || 'An unexpected error occurred.',
             retryable: false,
           };
       }
     }
 
     // Timeout errors
-    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+    if (errorObj.name === 'AbortError' || errorObj.message?.includes('timeout')) {
       return {
         type: BackendErrorType.TIMEOUT,
         message: 'The request timed out. Please try again.',
@@ -100,7 +102,7 @@ export class BackendErrorHandler {
     // Default fallback
     return {
       type: BackendErrorType.INTERNAL_ERROR,
-      message: error.message || 'An unexpected error occurred.',
+      message: errorObj.message || 'An unexpected error occurred.',
       retryable: false,
       details: error,
     };
@@ -164,12 +166,14 @@ export class BackendErrorHandler {
 
   static getRetryConfig(maxRetries: number = 3) {
     return {
-      retry: (failureCount: number, error: any) => {
-        const backendError = error.type ? error : BackendErrorHandler.classifyError(error);
+      retry: (failureCount: number, error: unknown) => {
+        const errorObj = error as { type?: string };
+        const backendError = errorObj.type ? error as BackendError : BackendErrorHandler.classifyError(error);
         return BackendErrorHandler.shouldRetry(backendError, failureCount, maxRetries);
       },
-      retryDelay: (attemptIndex: number, error: any) => {
-        const backendError = error.type ? error : BackendErrorHandler.classifyError(error);
+      retryDelay: (attemptIndex: number, error: unknown) => {
+        const errorObj = error as { type?: string };
+        const backendError = errorObj.type ? error as BackendError : BackendErrorHandler.classifyError(error);
         return BackendErrorHandler.getRetryDelay(backendError, attemptIndex);
       },
     };

@@ -14,13 +14,11 @@ import {
   LoadingOverlay,
   Alert,
   Badge,
-  Table,
   Progress,
   ActionIcon,
   Tooltip,
   Modal,
   Timeline,
-  Divider,
   Center,
   Grid,
 } from '@mantine/core';
@@ -33,18 +31,11 @@ import {
   IconAlertTriangle,
   IconClock,
   IconTrendingUp,
-  IconTrendingDown,
   IconEye,
-  IconCheck,
-  IconX,
   IconActivity,
   IconBolt,
-  IconShield,
   IconChartLine,
-  IconCalendar,
   IconBell,
-  IconSettings,
-  IconPlaylistX,
   IconWifi,
 } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -89,7 +80,7 @@ export default function ProviderHealthPage() {
   const acknowledgeAlert = useAcknowledgeAlert();
   const triggerHealthCheck = useTriggerHealthCheck();
 
-  const isLoading = providersLoading || statusLoading;
+  const _isLoading = providersLoading || statusLoading;
 
   const handleRefresh = async () => {
     try {

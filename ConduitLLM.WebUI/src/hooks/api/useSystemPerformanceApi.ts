@@ -242,7 +242,7 @@ export function useSystemMetrics(interval: number = 30000) {
         const client = getAdminClient();
         
         // Get system metrics from Admin SDK
-        const [systemInfo, systemMetrics] = await Promise.all([
+        const [_systemInfo, systemMetrics] = await Promise.all([
           client.system.getSystemInfo(),
           client.metrics.getAllMetrics(),
         ]);
@@ -324,7 +324,7 @@ export function useResourceUsageHistory(timeRange: string = '24h') {
         const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000);
         
         // Get usage metrics and system info
-        const [usageMetrics, systemMetrics] = await Promise.all([
+        const [_usageMetrics, systemMetrics] = await Promise.all([
           client.analytics.getUsageMetrics({
             startDate: startDate.toISOString(),
             endDate: now.toISOString(),
@@ -376,7 +376,7 @@ export function useSystemProcesses() {
         const client = getAdminClient();
         
         // Get system info and metrics
-        const [systemInfo, systemMetrics] = await Promise.all([
+        const [_systemInfo, _systemMetrics] = await Promise.all([
           client.system.getSystemInfo(),
           client.metrics.getAllMetrics(),
         ]);
@@ -624,9 +624,9 @@ export function useRestartService() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (serviceName: string) => {
+    mutationFn: async (_serviceName: string) => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // Note: Service restart functionality not available in SDK
         // This would need to be implemented in the backend
@@ -649,9 +649,9 @@ export function useClearCache() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (cacheType: 'redis' | 'application' | 'all') => {
+    mutationFn: async (_cacheType: 'redis' | 'application' | 'all') => {
       try {
-        const client = getAdminClient();
+        const _client = getAdminClient();
         
         // Note: Cache clearing functionality not available in SDK
         // This would need to be implemented in the backend

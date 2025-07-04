@@ -32,15 +32,11 @@ import {
   IconFilter,
   IconX,
   IconAlertCircle,
-  IconCheck,
-  IconClock,
-  IconUser,
   IconCode,
   IconChartBar,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { notifications } from '@mantine/notifications';
 import { useRequestLogs, useExportRequestLogs, type RequestLog as ApiRequestLog } from '@/hooks/api/useRequestLogsApi';
 
 // Use RequestLog from API hook
