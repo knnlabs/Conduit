@@ -18,7 +18,6 @@ import {
   Tooltip,
   Switch,
   Textarea,
-  NumberInput,
   Tabs,
   Progress,
   SimpleGrid,
@@ -35,17 +34,12 @@ import {
   IconShieldX,
   IconAlertTriangle,
   IconCheck,
-  IconX,
   IconGlobe,
-  IconMapPin,
-  IconClock,
   IconBan,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { DateInput } from '@mantine/dates';
 import { useIPRules, useCreateIPRule, useUpdateIPRule, useDeleteIPRule, type IPRule } from '@/hooks/api/useIPRulesApi';
 import { useExportData } from '@/hooks/api/useExportApi';
 
@@ -66,7 +60,7 @@ export default function IpFilteringPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
-  const [page, setPage] = useState(1);
+  const [page, _setPage] = useState(1);
 
   // API hooks
   const { data: rulesData, isLoading, refetch } = useIPRules({
@@ -149,7 +143,7 @@ export default function IpFilteringPage() {
       
       closeModal();
       form.reset();
-    } catch (error) {
+    } catch (_error) {
       // Error notifications are handled by the mutation hooks
     }
   };
@@ -161,12 +155,12 @@ export default function IpFilteringPage() {
       await deleteIPRule.mutateAsync(selectedRule.id);
       closeDeleteModal();
       setSelectedRule(null);
-    } catch (error) {
+    } catch (_error) {
       // Error notifications are handled by the mutation hook
     }
   };
 
-  const handleToggleRule = async (rule: IPRule, isActive: boolean) => {
+  const handleToggleRule = async (rule: IPRule, _isActive: boolean) => {
     try {
       await updateIPRule.mutateAsync({
         id: rule.id,
@@ -178,7 +172,7 @@ export default function IpFilteringPage() {
           expiresAt: rule.expiresAt,
         },
       });
-    } catch (error) {
+    } catch (_error) {
       // Error notifications are handled by the mutation hook
     }
   };
@@ -193,7 +187,7 @@ export default function IpFilteringPage() {
           status: filterStatus || undefined,
         },
       });
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by the mutation hook
     }
   };

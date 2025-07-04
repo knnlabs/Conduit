@@ -64,7 +64,7 @@ const CAPABILITY_OPTIONS = [
 export function EditModelMappingModal({ opened, onClose, modelMapping }: EditModelMappingModalProps) {
   const updateModelMapping = useUpdateModelMapping();
   const { data: providers } = useProviders();
-  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [selectedProvider, setSelectedProvider] = useState<unknown>(null);
 
   const form = useForm<EditModelMappingForm>({
     initialValues: {
@@ -125,7 +125,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
       });
       
       // Find and set the selected provider
-      const provider = providers?.find((p: any) => p.providerName === modelMapping.providerName);
+      const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === modelMapping.providerName);
       setSelectedProvider(provider);
     }
   }, [modelMapping, providers]);
@@ -149,7 +149,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
       });
       
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       // Error is handled by the mutation hook
       console.error('Update model mapping error:', error);
     }
@@ -175,10 +175,13 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
     return null;
   }
 
-  const providerOptions = providers?.map((p: any) => ({
-    value: p.providerName,
-    label: p.providerName,
-  })) || [];
+  const providerOptions = providers?.map((p: unknown) => {
+    const provider = p as { providerName: string };
+    return {
+      value: provider.providerName,
+      label: provider.providerName,
+    };
+  }) || [];
 
   return (
     <Modal
@@ -230,7 +233,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
             {...form.getInputProps('providerName')}
             onChange={(value) => {
               form.setFieldValue('providerName', value || '');
-              const provider = providers?.find((p: any) => p.providerName === value);
+              const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === value);
               setSelectedProvider(provider);
             }}
           />
@@ -238,11 +241,11 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
           {selectedProvider && (
             <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
               <Text size="sm">
-                Provider has {selectedProvider.modelsAvailable} models available.
+                Provider has {(selectedProvider as { modelsAvailable: number }).modelsAvailable} models available.
                 Status: <Badge size="sm" variant="light" color={
-                  selectedProvider.healthStatus === 'healthy' ? 'green' : 'red'
+                  (selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'red'
                 }>
-                  {selectedProvider.healthStatus}
+                  {(selectedProvider as { healthStatus: string }).healthStatus}
                 </Badge>
               </Text>
             </Alert>

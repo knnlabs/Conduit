@@ -158,9 +158,10 @@ export function useCostSummary(timeRange: TimeRangeFilter) {
         };
 
         return costSummary;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch cost summary');
-        throw new Error(error?.message || 'Failed to fetch cost summary');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch cost summary';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -190,9 +191,10 @@ export function useCostTrends(timeRange: TimeRangeFilter) {
         }));
 
         return costTrends;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch cost trends');
-        throw new Error(error?.message || 'Failed to fetch cost trends');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch cost trends';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -241,9 +243,10 @@ export function useProviderCosts(timeRange: TimeRangeFilter) {
         });
 
         return providerCosts.sort((a, b) => b.spend - a.spend);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider costs');
-        throw new Error(error?.message || 'Failed to fetch provider costs');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider costs';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -290,9 +293,10 @@ export function useModelCosts(timeRange: TimeRangeFilter) {
         });
 
         return modelCosts.sort((a, b) => b.spend - a.spend);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch model costs');
-        throw new Error(error?.message || 'Failed to fetch model costs');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch model costs';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -346,9 +350,10 @@ export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
         
         const virtualKeyCosts = await Promise.all(virtualKeyCostsPromises);
         return virtualKeyCosts.sort((a, b) => b.spend - a.spend);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key costs');
-        throw new Error(error?.message || 'Failed to fetch virtual key costs');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key costs';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -394,9 +399,10 @@ export function useExportCostData() {
           url,
           size: blob.size,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to export cost data');
-        throw new Error(error?.message || 'Failed to export cost data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to export cost data';
+        throw new Error(errorMessage);
       }
     },
   });
@@ -417,7 +423,15 @@ export function useCostAlerts() {
         
         const response = await client.analytics.getCostByKey({ startDate, endDate });
         
-        const alerts: any[] = [];
+        const alerts: Array<{
+          id: string;
+          type: string;
+          severity: string;
+          message: string;
+          virtualKeyId: string;
+          createdAt: string;
+          acknowledged: boolean;
+        }> = [];
         
         // Check for budget alerts
         for (const key of response.keys) {
@@ -454,7 +468,7 @@ export function useCostAlerts() {
         }
 
         return alerts;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch cost alerts');
         return [];
       }

@@ -15,9 +15,7 @@ import {
   Tooltip,
   Modal,
   NumberInput,
-  Switch,
   Alert,
-  LoadingOverlay,
   Image,
   ScrollArea,
 } from '@mantine/core';
@@ -26,13 +24,9 @@ import {
   IconSettings,
   IconDownload,
   IconTrash,
-  IconRefresh,
-  IconUpload,
   IconEye,
   IconCopy,
-  IconCheck,
   IconAlertCircle,
-  IconX,
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -75,18 +69,21 @@ export default function ImageGenerationPage() {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const [previewOpened, { open: openPreview, close: closePreview }] = useDisclosure(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const _fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeys();
   const { data: models, isLoading: modelsLoading } = useAvailableModels();
   const imageGeneration = useImageGeneration();
 
   // Filter models for image generation
-  const imageModels = models?.filter((model: any) => 
-    model.id.includes('dall-e') || 
-    model.id.includes('image') || 
-    model.id.includes('minimax') ||
-    model.id.includes('replicate')
+  const imageModels = models?.filter((model: unknown) => 
+    typeof model === 'object' && model !== null && 'id' in model &&
+    typeof (model as { id: string }).id === 'string' && (
+      (model as { id: string }).id.includes('dall-e') || 
+      (model as { id: string }).id.includes('image') || 
+      (model as { id: string }).id.includes('minimax') ||
+      (model as { id: string }).id.includes('replicate')
+    )
   ) || [];
 
   const handleGenerateImage = async () => {
@@ -117,16 +114,31 @@ export default function ImageGenerationPage() {
       const response = await imageGeneration.mutateAsync(request);
 
       if (response.data && response.data.length > 0) {
-        const newImages: GeneratedImage[] = response.data.map((imageData: any, index: number) => ({
-          id: `img_${Date.now()}_${index}`,
-          url: imageData.url || imageData.b64_json,
-          prompt: prompt.trim(),
-          model: selectedModel,
-          size,
-          quality,
-          style: selectedModel === 'dall-e-3' ? style : undefined,
-          createdAt: new Date(),
-        }));
+        const newImages: GeneratedImage[] = response.data.map((imageData: unknown, index: number) => {
+          if (typeof imageData === 'object' && imageData !== null) {
+            const imgData = imageData as { url?: string; b64_json?: string };
+            return {
+              id: `img_${Date.now()}_${index}`,
+              url: imgData.url || imgData.b64_json || '',
+              prompt: prompt.trim(),
+              model: selectedModel,
+              size,
+              quality,
+              style: selectedModel === 'dall-e-3' ? style : undefined,
+              createdAt: new Date(),
+            };
+          }
+          return {
+            id: `img_${Date.now()}_${index}`,
+            url: '',
+            prompt: prompt.trim(),
+            model: selectedModel,
+            size,
+            quality,
+            style: selectedModel === 'dall-e-3' ? style : undefined,
+            createdAt: new Date(),
+          };
+        });
 
         setGeneratedImages(prev => [...newImages, ...prev]);
         
@@ -136,23 +148,53 @@ export default function ImageGenerationPage() {
           count: newImages.length,
         });
       }
-    } catch (error: any) {
-      safeLog('Image generation failed', { error: error.message });
+    } catch (error: unknown) {
+      safeLog('Image generation failed', { error: error instanceof Error ? error.message : String(error) });
     }
   };
 
-  const handleTaskCompleted = (task: any) => {
-    if (task.type === 'image' && task.status === 'completed' && task.result) {
-      const newImages: GeneratedImage[] = task.result.data?.map((imageData: any, index: number) => ({
-        id: `img_${task.taskId}_${index}`,
-        url: imageData.url || imageData.b64_json,
-        prompt: task.result.prompt || 'Generated image',
-        model: task.result.model || selectedModel,
-        size: task.result.size || size,
-        quality: task.result.quality || quality,
-        style: task.result.style,
-        createdAt: new Date(),
-      })) || [];
+  const handleTaskCompleted = (task: unknown) => {
+    if (typeof task === 'object' && task !== null &&
+        'type' in task && 'status' in task && 'result' in task &&
+        (task as { type: string }).type === 'image' &&
+        (task as { status: string }).status === 'completed' &&
+        (task as { result: unknown }).result) {
+      const taskObj = task as {
+        taskId: string;
+        result: {
+          data?: unknown[];
+          prompt?: string;
+          model?: string;
+          size?: string;
+          quality?: string;
+          style?: string;
+        };
+      };
+      const newImages: GeneratedImage[] = taskObj.result.data?.map((imageData: unknown, index: number) => {
+        if (typeof imageData === 'object' && imageData !== null) {
+          const imgData = imageData as { url?: string; b64_json?: string };
+          return {
+            id: `img_${taskObj.taskId}_${index}`,
+            url: imgData.url || imgData.b64_json || '',
+            prompt: taskObj.result.prompt || 'Generated image',
+            model: taskObj.result.model || selectedModel,
+            size: taskObj.result.size || size,
+            quality: taskObj.result.quality || quality,
+            style: taskObj.result.style,
+            createdAt: new Date(),
+          };
+        }
+        return {
+          id: `img_${taskObj.taskId}_${index}`,
+          url: '',
+          prompt: taskObj.result.prompt || 'Generated image',
+          model: taskObj.result.model || selectedModel,
+          size: taskObj.result.size || size,
+          quality: taskObj.result.quality || quality,
+          style: taskObj.result.style,
+          createdAt: new Date(),
+        };
+      }) || [];
       
       if (newImages.length > 0) {
         setGeneratedImages(prev => [...newImages, ...prev]);
@@ -178,7 +220,7 @@ export default function ImageGenerationPage() {
         message: 'Image downloaded successfully',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Download Failed',
         message: 'Failed to download image',
@@ -213,7 +255,7 @@ export default function ImageGenerationPage() {
         message: 'Prompt copied to clipboard',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Copy Failed',
         message: 'Failed to copy prompt',
@@ -307,10 +349,15 @@ export default function ImageGenerationPage() {
                 <Select
                   label="Model"
                   placeholder="Select a model"
-                  data={imageModels.map((model: any) => ({
-                    value: model.id,
-                    label: model.id,
-                  }))}
+                  data={imageModels.map((model: unknown) => {
+                    if (typeof model === 'object' && model !== null && 'id' in model) {
+                      return {
+                        value: (model as { id: string }).id,
+                        label: (model as { id: string }).id,
+                      };
+                    }
+                    return { value: '', label: 'Invalid model' };
+                  })}
                   value={selectedModel}
                   onChange={(value) => setSelectedModel(value || 'dall-e-3')}
                   disabled={!selectedVirtualKey || modelsLoading}
@@ -506,10 +553,15 @@ export default function ImageGenerationPage() {
           <Select
             label="Virtual Key"
             placeholder="Select a virtual key"
-            data={virtualKeys?.map((key: any) => ({
-              value: key.id,
-              label: key.keyName,
-            })) || []}
+            data={virtualKeys?.map((key: unknown) => {
+              if (typeof key === 'object' && key !== null && 'id' in key && 'keyName' in key) {
+                return {
+                  value: (key as { id: string }).id,
+                  label: (key as { keyName: string }).keyName,
+                };
+              }
+              return { value: '', label: 'Invalid key' };
+            }) || []}
             value={selectedVirtualKey}
             onChange={(value) => setSelectedVirtualKey(value || '')}
             disabled={keysLoading}

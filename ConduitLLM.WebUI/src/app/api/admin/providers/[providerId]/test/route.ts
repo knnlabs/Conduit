@@ -1,10 +1,9 @@
-import { NextRequest } from 'next/server';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const POST = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params }) => {
     try {
       const { providerId } = params;
       

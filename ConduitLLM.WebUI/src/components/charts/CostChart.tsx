@@ -5,8 +5,12 @@ import { Card, Group, Text, Select, Button, Stack } from '@mantine/core';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
 
+interface ChartDataItem {
+  [key: string]: string | number;
+}
+
 interface CostChartProps {
-  data: any[];
+  data: ChartDataItem[];
   title: string;
   type: 'line' | 'bar' | 'pie';
   valueKey: string;

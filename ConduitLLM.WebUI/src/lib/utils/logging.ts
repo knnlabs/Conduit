@@ -21,7 +21,7 @@ function isSensitiveKey(key: string): boolean {
 /**
  * Sanitize an object by masking sensitive values
  */
-function sanitizeObject(obj: any, depth = 0): any {
+function sanitizeObject(obj: unknown, depth = 0): unknown {
   if (depth > 10) return '[Max Depth Reached]'; // Prevent infinite recursion
   
   if (obj === null || obj === undefined) return obj;
@@ -40,9 +40,9 @@ function sanitizeObject(obj: any, depth = 0): any {
     return obj.map(item => sanitizeObject(item, depth + 1));
   }
   
-  const sanitized: any = {};
+  const sanitized: Record<string, unknown> = {};
   
-  for (const [key, value] of Object.entries(obj)) {
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     if (isSensitiveKey(key)) {
       sanitized[key] = typeof value === 'string' && value.length > 0 
         ? `[REDACTED: ${value.length} chars]` 
@@ -58,7 +58,7 @@ function sanitizeObject(obj: any, depth = 0): any {
 /**
  * Safe console.log that automatically sanitizes sensitive data
  */
-export function safeLog(message: string, ...args: any[]) {
+export function safeLog(message: string, ...args: unknown[]) {
   if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_ENABLE_DEBUG_LOGS) {
     return; // Don't log in production unless explicitly enabled
   }
@@ -70,7 +70,7 @@ export function safeLog(message: string, ...args: any[]) {
 /**
  * Safe console.warn that automatically sanitizes sensitive data
  */
-export function safeWarn(message: string, ...args: any[]) {
+export function safeWarn(message: string, ...args: unknown[]) {
   const sanitizedArgs = args.map(arg => sanitizeObject(arg));
   console.warn(`[Conduit] ${message}`, ...sanitizedArgs);
 }
@@ -78,7 +78,7 @@ export function safeWarn(message: string, ...args: any[]) {
 /**
  * Safe console.error that automatically sanitizes sensitive data
  */
-export function safeError(message: string, ...args: any[]) {
+export function safeError(message: string, ...args: unknown[]) {
   const sanitizedArgs = args.map(arg => sanitizeObject(arg));
   console.error(`[Conduit] ${message}`, ...sanitizedArgs);
 }
@@ -86,7 +86,7 @@ export function safeError(message: string, ...args: any[]) {
 /**
  * Debug logging that only works in development
  */
-export function debugLog(message: string, ...args: any[]) {
+export function debugLog(message: string, ...args: unknown[]) {
   if (process.env.NODE_ENV === 'development') {
     safeLog(`[DEBUG] ${message}`, ...args);
   }
@@ -95,7 +95,7 @@ export function debugLog(message: string, ...args: any[]) {
 /**
  * Log performance metrics safely
  */
-export function perfLog(operation: string, duration: number, metadata?: any) {
+export function perfLog(operation: string, duration: number, metadata?: unknown) {
   if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_PERF_LOGS) {
     safeLog(`[PERF] ${operation}: ${duration}ms`, metadata ? sanitizeObject(metadata) : undefined);
   }
@@ -108,7 +108,7 @@ export function createPerfTimer(operation: string) {
   const start = performance.now();
   
   return {
-    end: (metadata?: any) => {
+    end: (metadata?: unknown) => {
       const duration = performance.now() - start;
       perfLog(operation, duration, metadata);
       return duration;
@@ -119,15 +119,16 @@ export function createPerfTimer(operation: string) {
 /**
  * Safe error reporting that removes sensitive data
  */
-export function reportError(error: Error, context?: string, metadata?: any) {
+export function reportError(error: unknown, context?: string, metadata?: unknown) {
+  const errorObj = error instanceof Error ? error : new Error(String(error));
   const sanitizedMetadata = metadata ? sanitizeObject(metadata) : undefined;
   
   safeError(
     context ? `Error in ${context}` : 'Unexpected error',
     {
-      message: error.message,
-      name: error.name,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : '[Stack trace hidden in production]',
+      message: errorObj.message,
+      name: errorObj.name,
+      stack: process.env.NODE_ENV === 'development' ? errorObj.stack : '[Stack trace hidden in production]',
       metadata: sanitizedMetadata
     }
   );

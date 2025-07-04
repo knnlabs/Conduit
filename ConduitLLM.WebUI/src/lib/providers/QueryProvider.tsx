@@ -15,7 +15,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
           queries: {
             staleTime: 30 * 1000, // 30 seconds
             gcTime: 5 * 60 * 1000, // 5 minutes
-            retry: (failureCount, error: any) => {
+            retry: (failureCount, error: { status?: number }) => {
               if (error?.status === 401 || error?.status === 403) {
                 return false;
               }

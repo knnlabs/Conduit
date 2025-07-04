@@ -109,7 +109,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
       });
       
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       // Error is handled by the mutation hook
       console.error('Update virtual key error:', error);
     }

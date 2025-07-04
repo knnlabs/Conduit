@@ -91,8 +91,9 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
         }
         
         get().setApiStatus(apiType, isConnected ? 'connected' : 'error');
-      } catch (error: any) {
-        console.warn(`${apiType} connection check failed:`, error.message);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`${apiType} connection check failed:`, errorMessage);
         get().setApiStatus(apiType, 'error');
       }
     };

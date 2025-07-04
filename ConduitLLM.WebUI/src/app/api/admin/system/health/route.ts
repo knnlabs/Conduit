@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { validateSession, createUnauthorizedResponse } from '@/lib/auth/middleware';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
@@ -18,19 +18,19 @@ export async function GET(request: NextRequest) {
       
       // Return the health response as-is
       return NextResponse.json(health);
-    } catch (sdkError: any) {
+    } catch (sdkError: unknown) {
       reportError(sdkError, 'Failed to fetch system health from SDK');
       
       // Return error response
       return NextResponse.json(
         { 
           error: 'System health is currently unavailable',
-          message: sdkError.message || 'Failed to fetch system health'
+          message: (sdkError as { message?: string })?.message || 'Failed to fetch system health'
         },
         { status: 503 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('System Health API error:', error);
     reportError(error, 'System Health API error');
     return NextResponse.json(

@@ -456,9 +456,10 @@ export function useVirtualKeysOverview() {
         );
         
         return keysOverview;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual keys overview');
-        throw new Error(error?.message || 'Failed to fetch virtual keys overview');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual keys overview';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -595,9 +596,10 @@ export function useVirtualKeyUsageMetrics(keyId: string, timeRange: TimeRangeFil
           endpointBreakdown,
           geographicDistribution: [], // Geographic data not available in current SDK
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key usage metrics');
-        throw new Error(error?.message || 'Failed to fetch virtual key usage metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key usage metrics';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!keyId,
@@ -752,9 +754,10 @@ export function useVirtualKeyBudgetAnalytics(keyId: string, period: string = '30
           alerts,
           recommendations,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key budget analytics');
-        throw new Error(error?.message || 'Failed to fetch virtual key budget analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key budget analytics';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!keyId,
@@ -883,9 +886,10 @@ export function useVirtualKeyPerformanceMetrics(keyId: string, timeRange: TimeRa
           },
           performanceHistory,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key performance metrics');
-        throw new Error(error?.message || 'Failed to fetch virtual key performance metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key performance metrics';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!keyId,
@@ -1009,9 +1013,10 @@ export function useVirtualKeySecurityMetrics(keyId: string, timeRange: TimeRange
             auditLogsEnabled: true,
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key security metrics');
-        throw new Error(error?.message || 'Failed to fetch virtual key security metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key security metrics';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!keyId,
@@ -1156,9 +1161,10 @@ export function useVirtualKeyTrends(keyId: string, timeRange: TimeRangeFilter) {
             quietHours,
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual key trends');
-        throw new Error(error?.message || 'Failed to fetch virtual key trends');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual key trends';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!keyId,
@@ -1350,9 +1356,10 @@ export function useVirtualKeysLeaderboard(period: string = '30d') {
             mostReliable,
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch virtual keys leaderboard');
-        throw new Error(error?.message || 'Failed to fetch virtual keys leaderboard');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch virtual keys leaderboard';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -1387,9 +1394,10 @@ export function useExportVirtualKeysData() {
           size: exportResult.size || 1024 * 1024, // Use blob size or default estimate
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to export virtual keys data');
-        throw new Error(error?.message || 'Failed to export virtual keys data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to export virtual keys data';
+        throw new Error(errorMessage);
       }
     },
   });

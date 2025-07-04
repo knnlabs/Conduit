@@ -206,9 +206,10 @@ export function useUsageMetrics(timeRange: TimeRangeFilter) {
         };
 
         return usageMetrics;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch usage metrics');
-        throw new Error(error?.message || 'Failed to fetch usage metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch usage metrics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -240,9 +241,10 @@ export function useRequestVolumeAnalytics(timeRange: TimeRangeFilter) {
         }));
 
         return requestVolumeData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch request volume analytics');
-        throw new Error(error?.message || 'Failed to fetch request volume analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch request volume analytics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -278,9 +280,10 @@ export function useTokenUsageAnalytics(timeRange: TimeRangeFilter) {
         });
 
         return tokenUsageData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch token usage analytics');
-        throw new Error(error?.message || 'Failed to fetch token usage analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch token usage analytics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -348,9 +351,10 @@ export function useErrorAnalytics(timeRange: TimeRangeFilter) {
         }));
 
         return errorAnalytics.sort((a, b) => b.count - a.count); // Sort by count descending
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch error analytics');
-        throw new Error(error?.message || 'Failed to fetch error analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch error analytics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -432,9 +436,10 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
         });
 
         return latencyMetrics.sort((a, b) => b.requestCount - a.requestCount);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch latency metrics');
-        throw new Error(error?.message || 'Failed to fetch latency metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch latency metrics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -521,9 +526,10 @@ export function useUserAnalytics(timeRange: TimeRangeFilter) {
         
         const userAnalytics = await Promise.all(userAnalyticsPromises);
         return userAnalytics.sort((a, b) => b.totalCost - a.totalCost); // Sort by cost descending
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch user analytics');
-        throw new Error(error?.message || 'Failed to fetch user analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch user analytics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -614,9 +620,10 @@ export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
         });
 
         return endpointUsage.sort((a, b) => b.totalRequests - a.totalRequests);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch endpoint usage analytics');
-        throw new Error(error?.message || 'Failed to fetch endpoint usage analytics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch endpoint usage analytics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -662,9 +669,10 @@ export function useExportUsageData() {
           url,
           size: blob.size,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to export usage data');
-        throw new Error(error?.message || 'Failed to export usage data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to export usage data';
+        throw new Error(errorMessage);
       }
     },
   });

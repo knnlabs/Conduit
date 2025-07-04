@@ -77,12 +77,13 @@ export function useLogin() {
           ...authResult,
           expiresAt, // Use our calculated expiration
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to authenticate with admin key');
-        throw new Error(error?.message || 'Authentication failed');
+        const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+        throw new Error(errorMessage);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: authApiKeys.all });
     },
   });
@@ -109,7 +110,7 @@ export function useLogout() {
         // Clear client-side session data
         localStorage.removeItem('conduit_session');
         localStorage.removeItem('conduit_admin_key');
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to logout');
         // Continue with logout even if API call fails
         localStorage.removeItem('conduit_session');
@@ -148,7 +149,7 @@ export function useCurrentSession() {
         // const isValid = await client.auth.validateSession(session.sessionId);
         
         return session;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch current session');
         return { isAuthenticated: false };
       }
@@ -179,9 +180,10 @@ export function useValidateAdminKey() {
         }
         
         return { isValid: true, message: 'Admin key is valid' };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to validate admin key');
-        throw new Error(error?.message || 'Failed to validate admin key');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to validate admin key';
+        throw new Error(errorMessage);
       }
     },
   });
@@ -210,9 +212,10 @@ export function useExtendSession() {
         localStorage.setItem('conduit_session', JSON.stringify(updatedSession));
         
         return { expiresAt: newExpiresAt };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to extend session');
-        throw new Error(error?.message || 'Failed to extend session');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to extend session';
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {

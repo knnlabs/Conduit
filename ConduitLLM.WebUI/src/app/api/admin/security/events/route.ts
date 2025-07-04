@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request) => {
     try {
       const params = parseQueryParams(request);
       const hours = parseInt(params.get('hours') || '24');
@@ -28,7 +28,7 @@ export const GET = withSDKAuth(
       
       // Return the data directly
       return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (_error: unknown) {
       // Return empty result for failures
       return NextResponse.json({
         events: [],
@@ -44,7 +44,7 @@ export const GET = withSDKAuth(
 
 // Report a security event (not yet implemented in backend)
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request) => {
     try {
       const body = await request.json();
       
@@ -68,7 +68,7 @@ export const POST = withSDKAuth(
 
 // Export security events
 export const PUT = withSDKAuth(
-  async (request, { auth }) => {
+  async (request) => {
     try {
       const body = await request.json();
       const { format = 'json', filters = {} } = body;
@@ -101,7 +101,7 @@ export const PUT = withSDKAuth(
       if (format === 'csv') {
         // Convert events to CSV
         const headers = 'Timestamp,Type,Severity,Source,VirtualKeyId,Details';
-        const rows = events.map((e: any) => 
+        const rows = events.map((e: Record<string, unknown>) => 
           `${e.timestamp},${e.type},${e.severity},${e.source},${e.virtualKeyId || ''},"${e.details}"`
         ).join('\n');
         content = `${headers}\n${rows}`;

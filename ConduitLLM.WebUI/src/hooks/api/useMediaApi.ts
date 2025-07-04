@@ -102,10 +102,11 @@ export function useDeleteMedia() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete media file';
       notifications.show({
         title: 'Delete Failed',
-        message: error.message || 'Failed to delete media file',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -120,7 +121,7 @@ export function useCleanupExpiredMedia() {
       // Media API not yet available in SDK
       throw new Error('Media cleanup is not yet available');
     },
-    onSuccess: (count) => {
+    onSuccess: (count: number) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
       notifications.show({
         title: 'Cleanup Complete',
@@ -128,10 +129,11 @@ export function useCleanupExpiredMedia() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cleanup expired media';
       notifications.show({
         title: 'Cleanup Failed',
-        message: error.message || 'Failed to cleanup expired media',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -146,7 +148,7 @@ export function useCleanupOrphanedMedia() {
       // Media API not yet available in SDK
       throw new Error('Orphaned media cleanup is not yet available');
     },
-    onSuccess: (count) => {
+    onSuccess: (count: number) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
       notifications.show({
         title: 'Cleanup Complete',
@@ -154,10 +156,11 @@ export function useCleanupOrphanedMedia() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cleanup orphaned media';
       notifications.show({
         title: 'Cleanup Failed',
-        message: error.message || 'Failed to cleanup orphaned media',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -172,7 +175,7 @@ export function usePruneOldMedia() {
       // Media API not yet available in SDK
       throw new Error('Media pruning is not yet available');
     },
-    onSuccess: (count) => {
+    onSuccess: (count: number) => {
       queryClient.invalidateQueries({ queryKey: [adminApiKeys.all, 'media'] });
       notifications.show({
         title: 'Prune Complete',
@@ -180,10 +183,11 @@ export function usePruneOldMedia() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to prune old media';
       notifications.show({
         title: 'Prune Failed',
-        message: error.message || 'Failed to prune old media',
+        message: errorMessage,
         color: 'red',
       });
     },

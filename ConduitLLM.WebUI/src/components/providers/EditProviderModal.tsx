@@ -124,7 +124,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
       });
       
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       // Error is handled by the mutation hook
       console.error('Update provider error:', error);
     }

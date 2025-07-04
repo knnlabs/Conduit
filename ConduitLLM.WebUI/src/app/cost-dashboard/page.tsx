@@ -49,9 +49,9 @@ export default function CostDashboardPage() {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [selectedVirtualKey, setSelectedVirtualKey] = useState('');
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as any };
+  const timeRange: TimeRangeFilter = { range: timeRangeValue as '7d' | '30d' | '90d' | 'custom' };
   
-  const { data: virtualKeys, isLoading: keysLoading, error } = useVirtualKeys();
+  const { data: _virtualKeys, isLoading: keysLoading, error } = useVirtualKeys();
   const { data: costSummary, isLoading: summaryLoading } = useCostSummary(timeRange);
   const { data: costTrends, isLoading: trendsLoading } = useCostTrends(timeRange);
   const { data: providerCosts, isLoading: providersLoading } = useProviderCosts(timeRange);
@@ -90,7 +90,7 @@ export default function CostDashboardPage() {
       
       // In a real implementation, this would trigger a download
       console.log('Download URL:', result.url);
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.update({
         id: 'export-start',
         title: 'Export Failed',

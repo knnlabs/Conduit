@@ -139,7 +139,7 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
       form.reset();
       setShowAdvanced(false);
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       // Error is handled by the mutation hook
       console.error('Create virtual key error:', error);
     }
@@ -152,10 +152,13 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
   };
 
   // Get available models for selection
-  const modelOptions = availableModels?.models?.map((model: any) => ({
-    value: model.id,
-    label: `${model.id} (${model.provider})`,
-  })) || [];
+  const modelOptions = availableModels?.models?.map((model: unknown) => {
+    const m = model as { id: string; provider: string };
+    return {
+      value: m.id,
+      label: `${m.id} (${m.provider})`,
+    };
+  }) || [];
 
   // Add option to allow all models
   if (modelOptions.length > 0) {

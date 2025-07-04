@@ -33,11 +33,13 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
     await adminClient.system.getSystemInfo();
     
     return true;
-  } catch (error: any) {
-    console.warn('Master key validation failed:', error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.warn('Master key validation failed:', errorMessage);
     
     // Check if it's an authentication error
-    if (error.status === 401 || error.status === 403) {
+    const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
+    if (status === 401 || status === 403) {
       return false;
     }
     

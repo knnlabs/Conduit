@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -66,16 +66,16 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     
     const result = await withSDKErrorHandling(
-      async () => (client as any).audio.transcribe({
+      async () => (client as { audio: { transcribe: (params: unknown) => Promise<unknown> } }).audio.transcribe({
         file: {
           data: buffer,
           filename: audioFile.name,
           contentType: audioFile.type,
         },
-        model: model as any, // Cast to TranscriptionModel
+        model: model as unknown, // Cast to TranscriptionModel
         language,
         prompt,
-        response_format: responseFormat as any,
+        response_format: responseFormat as unknown,
         temperature,
         timestamp_granularities: timestampGranularities,
       }),
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     // Handle different response formats
     if (responseFormat === 'text' || responseFormat === 'srt' || responseFormat === 'vtt') {
       // For text-based formats, the result should be the text property
-      const textResult = typeof result === 'string' ? result : (result as any).text || '';
+      const textResult = typeof result === 'string' ? result : (result as { text?: string }).text || '';
       return new Response(textResult, {
         headers: {
           'Content-Type': responseFormat === 'text' ? 'text/plain' : 
@@ -103,14 +103,14 @@ export async function POST(request: NextRequest) {
         fileSize: audioFile.size,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle validation errors specially
-    if (error.message?.includes('required')) {
-      return createValidationError(error.message);
+    if ((error as { message?: string })?.message?.includes('required')) {
+      return createValidationError((error as { message?: string })?.message);
     }
     
     // Handle file size errors
-    if (error.statusCode === 413 || error.message?.includes('too large')) {
+    if ((error as Record<string, unknown>)?.statusCode === 413 || (error as { message?: string })?.message?.includes('too large')) {
       return createValidationError('File too large. Maximum size is 25MB', {
         maxSize: '25MB',
         providedSize: error.fileSize,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Handle unsupported media type
-    if (error.statusCode === 415 || error.message?.includes('unsupported')) {
+    if ((error as Record<string, unknown>)?.statusCode === 415 || (error as { message?: string })?.message?.includes('unsupported')) {
       return createValidationError('Unsupported media type. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm', {
         providedType: error.mediaType,
       });
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Support for GET to check endpoint availability
-export async function GET(request: NextRequest) {
+export async function GET(_request: Request) {
   return transformSDKResponse({
     endpoint: '/v1/audio/transcriptions',
     methods: ['POST'],

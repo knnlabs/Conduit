@@ -44,15 +44,15 @@ export function useVirtualKeys() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       return BackendErrorHandler.shouldRetry(error, failureCount);
     },
-    retryDelay: (attemptIndex, error: any) => {
+    retryDelay: (attemptIndex, error: unknown) => {
       return BackendErrorHandler.getRetryDelay(error, attemptIndex);
     },
   });
@@ -84,7 +84,7 @@ export function useCreateVirtualKey() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: unknown) => {
       const response = await apiFetch('/api/admin/virtual-keys', {
         method: 'POST',
         headers: {
@@ -108,7 +108,7 @@ export function useCreateVirtualKey() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Error',
@@ -123,7 +123,7 @@ export function useUpdateVirtualKey() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
       const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
         method: 'PUT',
         headers: {
@@ -148,10 +148,11 @@ export function useUpdateVirtualKey() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update virtual key';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to update virtual key',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -185,10 +186,11 @@ export function useDeleteVirtualKey() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete virtual key';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to delete virtual key',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -222,7 +224,7 @@ export function useCreateProvider() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: unknown) => {
       const response = await apiFetch('/api/admin/providers', {
         method: 'POST',
         headers: {
@@ -246,10 +248,11 @@ export function useCreateProvider() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create provider';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to create provider',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -260,7 +263,7 @@ export function useUpdateProvider() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
       const response = await apiFetch(`/api/admin/providers/${id}`, {
         method: 'PUT',
         headers: {
@@ -284,10 +287,11 @@ export function useUpdateProvider() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update provider';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to update provider',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -321,10 +325,11 @@ export function useDeleteProvider() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete provider';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to delete provider',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -358,7 +363,7 @@ export function useCreateModelMapping() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: unknown) => {
       const response = await apiFetch('/api/admin/model-mappings', {
         method: 'POST',
         headers: {
@@ -382,10 +387,11 @@ export function useCreateModelMapping() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create model mapping';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to create model mapping',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -396,7 +402,7 @@ export function useUpdateModelMapping() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
       const response = await apiFetch(`/api/admin/model-mappings/${id}`, {
         method: 'PUT',
         headers: {
@@ -420,10 +426,11 @@ export function useUpdateModelMapping() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update model mapping';
       notifications.show({
         title: 'Error',
-        message: error.message || 'Failed to update model mapping',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -448,7 +455,7 @@ export function useTestModelMapping() {
 
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       notifications.show({
         title: 'Model Test Successful',
         message: 'Model is responding correctly',
@@ -523,7 +530,7 @@ export function useBulkDiscoverModelMappings() {
 
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { modelsDiscovered?: number }) => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.modelMappings() });
       const modelsFound = data.modelsDiscovered || 0;
       notifications.show({
@@ -592,7 +599,7 @@ export function useUpdateSystemSettings() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (settings: any) => {
+    mutationFn: async (settings: unknown) => {
       const response = await apiFetch('/api/admin/system/settings', {
         method: 'PUT',
         headers: {
@@ -616,10 +623,11 @@ export function useUpdateSystemSettings() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings';
       notifications.show({
         title: 'Save Failed',
-        message: error.message || 'Failed to save settings',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -787,7 +795,7 @@ export function useTestProvider() {
 
       return response.json();
     },
-    onSuccess: (data, providerId) => {
+    onSuccess: () => {
       notifications.show({
         title: 'Connection Test Successful',
         message: 'Provider is responding correctly',
@@ -810,7 +818,7 @@ export function useTestProvider() {
 // Test provider connection before creation
 export function useTestProviderConnection() {
   return useMutation({
-    mutationFn: async (providerConfig: any) => {
+    mutationFn: async (providerConfig: unknown) => {
       const response = await apiFetch('/api/admin/providers/test-connection', {
         method: 'POST',
         headers: {
@@ -826,7 +834,7 @@ export function useTestProviderConnection() {
 
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       notifications.show({
         title: 'Connection Test Successful',
         message: 'Provider configuration is valid',

@@ -65,9 +65,9 @@ export function setupGlobalErrorHandler() {
 /**
  * Error serializer for logging
  */
-export function serializeError(error: unknown): Record<string, any> {
+export function serializeError(error: unknown): Record<string, unknown> {
   if (error instanceof Error) {
-    const { name, message, stack, ...rest } = error as any;
+    const { name, message, stack, ...rest } = error as Error & Record<string, unknown>;
     return {
       name,
       message,

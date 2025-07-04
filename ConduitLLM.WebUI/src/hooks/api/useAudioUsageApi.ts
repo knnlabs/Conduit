@@ -128,13 +128,13 @@ export function useExportAudioUsage() {
       query, 
       format 
     }: { 
-      query: any; 
+      query: unknown; 
       format: 'csv' | 'json' 
     }) => {
       // Feature not yet available - throw error to trigger error handling
       throw new Error('Audio usage export is not yet available');
     },
-    onSuccess: (data, { format }) => {
+    onSuccess: (data: string, { format }: { format: 'csv' | 'json' }) => {
       // Create a download link
       const blob = new Blob([data], { 
         type: format === 'csv' ? 'text/csv' : 'application/json' 
@@ -154,10 +154,11 @@ export function useExportAudioUsage() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export audio usage data';
       notifications.show({
         title: 'Export Failed',
-        message: error.message || 'Failed to export audio usage data',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -187,10 +188,11 @@ export function useTerminateSession() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to terminate session';
       notifications.show({
         title: 'Termination Failed',
-        message: error.message || 'Failed to terminate session',
+        message: errorMessage,
         color: 'red',
       });
     },

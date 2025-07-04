@@ -59,9 +59,9 @@ export default function UsageAnalyticsPage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
   const [selectedTab, setSelectedTab] = useState('overview');
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
-  const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<unknown>(null);
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as any };
+  const timeRange: TimeRangeFilter = { range: timeRangeValue as unknown };
   
   const { data: usageMetrics, isLoading: metricsLoading } = useUsageMetrics(timeRange);
   const { data: requestVolume, isLoading: requestsLoading } = useRequestVolumeAnalytics(timeRange);
@@ -97,11 +97,11 @@ export default function UsageAnalyticsPage() {
       });
       
       console.log('Download URL:', result.url);
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.update({
         id: 'export-start',
         title: 'Export Failed',
-        message: error.message || 'Failed to export data',
+        message: (error as Error).message || 'Failed to export data',
         color: 'red',
         loading: false,
         autoClose: 5000,
@@ -151,7 +151,7 @@ export default function UsageAnalyticsPage() {
     }
   };
 
-  const openEndpointDetails = (endpoint: any) => {
+  const openEndpointDetails = (endpoint: unknown) => {
     setSelectedEndpoint(endpoint);
     openDetails();
   };
@@ -687,17 +687,17 @@ export default function UsageAnalyticsPage() {
           <Stack gap="md">
             <Group justify="space-between">
               <div>
-                <Text fw={600} size="lg">{selectedEndpoint.endpoint}</Text>
+                <Text fw={600} size="lg">{(selectedEndpoint as { endpoint: string }).endpoint}</Text>
                 <Badge color="gray" variant="light">
-                  {selectedEndpoint.method}
+                  {(selectedEndpoint as { method: string }).method}
                 </Badge>
               </div>
               <Group gap="xs">
                 <Badge variant="light">
-                  {formatNumber(selectedEndpoint.totalRequests)} requests
+                  {formatNumber((selectedEndpoint as { totalRequests: number }).totalRequests)} requests
                 </Badge>
                 <Badge color={getStatusColor(selectedEndpoint.successRate, 'success')} variant="light">
-                  {selectedEndpoint.successRate.toFixed(1)}% success
+                  {(selectedEndpoint as { successRate: number }).successRate.toFixed(1)}% success
                 </Badge>
               </Group>
             </Group>
@@ -705,18 +705,18 @@ export default function UsageAnalyticsPage() {
             <SimpleGrid cols={2} spacing="lg">
               <Card withBorder>
                 <Text size="sm" c="dimmed" mb="xs">Average Latency</Text>
-                <Text fw={600} size="xl">{formatLatency(selectedEndpoint.averageLatency)}</Text>
+                <Text fw={600} size="xl">{formatLatency((selectedEndpoint as { averageLatency: number }).averageLatency)}</Text>
               </Card>
               <Card withBorder>
                 <Text size="sm" c="dimmed" mb="xs">Cost per Request</Text>
-                <Text fw={600} size="xl">${selectedEndpoint.costPerRequest.toFixed(4)}</Text>
+                <Text fw={600} size="xl">${(selectedEndpoint as { costPerRequest: number }).costPerRequest.toFixed(4)}</Text>
               </Card>
             </SimpleGrid>
             
             <div>
               <Text fw={500} mb="xs">Popular Models</Text>
               <Group gap="xs">
-                {selectedEndpoint.popularModels.map((model: string) => (
+                {(selectedEndpoint as { popularModels: string[] }).popularModels.map((model: string) => (
                   <Badge key={model} variant="light">
                     {model}
                   </Badge>
@@ -725,7 +725,7 @@ export default function UsageAnalyticsPage() {
             </div>
             
             <CostChart
-              data={selectedEndpoint.requestsOverTime || []}
+              data={(selectedEndpoint as { requestsOverTime?: unknown[] }).requestsOverTime || []}
               title="Request Volume Over Time"
               type="line"
               valueKey="requests"

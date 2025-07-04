@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 
@@ -36,7 +36,7 @@ export const POST = withSDKAuth(
                 providerName: provider.providerName,
                 models: [],
                 status: 'error' as const,
-                error: error instanceof Error ? error.message : 'Unknown error',
+                error: error instanceof Error ? (error as { message?: string })?.message : 'Unknown error',
               };
             }
           })

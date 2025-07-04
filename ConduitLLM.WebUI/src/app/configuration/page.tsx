@@ -15,10 +15,8 @@ import {
   LoadingOverlay,
 } from '@mantine/core';
 import {
-  IconSettings,
   IconDeviceFloppy,
   IconRefresh,
-  IconAlertCircle,
   IconInfoCircle,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
@@ -59,7 +57,7 @@ export default function ConfigurationPage() {
   const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
   const { data: systemSettings, isLoading: settingsLoading } = useSystemSettings();
   const updateSystemSettings = useUpdateSystemSettings();
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, _setIsLoading] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
 
   const form = useForm<SystemSettings>({
@@ -88,9 +86,9 @@ export default function ConfigurationPage() {
     if (systemSettings) {
       form.setValues(systemSettings);
     }
-  }, [systemSettings]);
+  }, [systemSettings, form]);
 
-  const handleSaveSection = async (section: string) => {
+  const handleSaveSection = async (_section: string) => {
     try {
       await updateSystemSettings.mutateAsync(form.values);
       setEditingSection(null);

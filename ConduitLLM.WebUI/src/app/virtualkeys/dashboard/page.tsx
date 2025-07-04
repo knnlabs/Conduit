@@ -62,14 +62,14 @@ export default function VirtualKeysDashboardPage() {
   const timeSeriesData: Array<{ date: string; requests: number; cost: number }> = [];
 
   // Virtual keys data will come from SDK when available
-  const mockVirtualKeys: Array<any> = [];
+  const mockVirtualKeys: Array<unknown> = [];
 
   // Calculate summary statistics
-  const totalRequests = mockVirtualKeys.reduce((sum, key) => sum + key.requests, 0);
-  const totalCost = mockVirtualKeys.reduce((sum, key) => sum + key.cost, 0);
-  const totalBudget = mockVirtualKeys.reduce((sum, key) => sum + key.budget, 0);
+  const totalRequests = mockVirtualKeys.reduce((sum, key) => sum + (key as { requests: number }).requests, 0);
+  const totalCost = mockVirtualKeys.reduce((sum, key) => sum + (key as { cost: number }).cost, 0);
+  const totalBudget = mockVirtualKeys.reduce((sum, key) => sum + (key as { budget: number }).budget, 0);
   const averageBudgetUsed = mockVirtualKeys.length > 0 
-    ? mockVirtualKeys.reduce((sum, key) => sum + key.budgetUsed, 0) / mockVirtualKeys.length
+    ? mockVirtualKeys.reduce((sum, key) => sum + (key as { budgetUsed: number }).budgetUsed, 0) / mockVirtualKeys.length
     : 0;
 
   // Calculate growth rates (will come from SDK)
@@ -80,7 +80,7 @@ export default function VirtualKeysDashboardPage() {
 
   // Mock data that will be replaced with SDK data
   const mockModelUsage: Array<{ name: string; value: number }> = [];
-  const mockBudgetAlerts: Array<any> = [];
+  const mockBudgetAlerts: Array<unknown> = [];
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -303,34 +303,34 @@ export default function VirtualKeysDashboardPage() {
                 </Table.Thead>
                 <Table.Tbody>
                   {mockVirtualKeys.map((key) => (
-                    <Table.Tr key={key.id}>
+                    <Table.Tr key={(key as { id: string }).id}>
                       <Table.Td>
                         <Group gap="xs">
                           <ThemeIcon size="xs" variant="light">
                             <IconKey size={12} />
                           </ThemeIcon>
                           <div>
-                            <Text size="sm" fw={500}>{key.name}</Text>
-                            <Text size="xs" c="dimmed">{key.id}</Text>
+                            <Text size="sm" fw={500}>{(key as { name: string }).name}</Text>
+                            <Text size="xs" c="dimmed">{(key as { id: string }).id}</Text>
                           </div>
                         </Group>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="light" color={getStatusColor(key.status)}>
-                          {key.status}
+                        <Badge variant="light" color={getStatusColor((key as { status: string }).status)}>
+                          {(key as { status: string }).status}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>{formatNumber(key.requests)}</Table.Td>
-                      <Table.Td>{formatCurrency(key.cost)}</Table.Td>
-                      <Table.Td>{formatCurrency(key.budget)}</Table.Td>
+                      <Table.Td>{formatNumber((key as { requests: number }).requests)}</Table.Td>
+                      <Table.Td>{formatCurrency((key as { cost: number }).cost)}</Table.Td>
+                      <Table.Td>{formatCurrency((key as { budget: number }).budget)}</Table.Td>
                       <Table.Td>
                         <Stack gap={4}>
                           <Progress 
-                            value={key.budgetUsed} 
-                            color={getBudgetColor(key.budgetUsed)}
+                            value={(key as { budgetUsed: number }).budgetUsed} 
+                            color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
                             size="sm"
                           />
-                          <Text size="xs" c="dimmed">{formatPercent(key.budgetUsed)}</Text>
+                          <Text size="xs" c="dimmed">{formatPercent((key as { budgetUsed: number }).budgetUsed)}</Text>
                         </Stack>
                       </Table.Td>
                     </Table.Tr>
@@ -394,36 +394,36 @@ export default function VirtualKeysDashboardPage() {
         <Group justify="space-between" mb="md">
           <Text fw={600}>Budget Alerts</Text>
           <Badge variant="light" color="orange">
-            {mockVirtualKeys.filter(k => k.budgetUsed > 75).length} warnings
+            {mockVirtualKeys.filter(k => (k as { budgetUsed: number }).budgetUsed > 75).length} warnings
           </Badge>
         </Group>
         <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }}>
           {mockVirtualKeys
-            .filter(k => k.budgetUsed > 50)
-            .sort((a, b) => b.budgetUsed - a.budgetUsed)
+            .filter(k => (k as { budgetUsed: number }).budgetUsed > 50)
+            .sort((a, b) => (b as { budgetUsed: number }).budgetUsed - (a as { budgetUsed: number }).budgetUsed)
             .map((key) => (
-              <Paper key={key.id} p="md" withBorder>
+              <Paper key={(key as { id: string }).id} p="md" withBorder>
                 <Group justify="space-between" mb="xs">
-                  <Text fw={500}>{key.name}</Text>
+                  <Text fw={500}>{(key as { name: string }).name}</Text>
                   <Badge 
                     variant="light" 
-                    color={getBudgetColor(key.budgetUsed)}
+                    color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
                   >
-                    {formatPercent(key.budgetUsed)} used
+                    {formatPercent((key as { budgetUsed: number }).budgetUsed)} used
                   </Badge>
                 </Group>
                 <Progress 
-                  value={key.budgetUsed} 
-                  color={getBudgetColor(key.budgetUsed)}
+                  value={(key as { budgetUsed: number }).budgetUsed} 
+                  color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
                   size="lg"
                   mb="xs"
                 />
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">
-                    {formatCurrency(key.cost)} / {formatCurrency(key.budget)}
+                    {formatCurrency((key as { cost: number }).cost)} / {formatCurrency((key as { budget: number }).budget)}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {formatCurrency(key.budget - key.cost)} remaining
+                    {formatCurrency((key as { budget: number }).budget - (key as { cost: number }).cost)} remaining
                   </Text>
                 </Group>
               </Paper>

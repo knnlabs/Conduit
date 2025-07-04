@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL || 'http://localhost:5002';
 const masterKey = process.env.CONDUIT_MASTER_KEY || '';
@@ -51,10 +51,10 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Threat detections API error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: (error as { message?: string })?.message || 'Internal server error' },
       { status: 500 }
     );
   }
@@ -93,10 +93,10 @@ export async function PUT(request: NextRequest) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update threat status error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: (error as { message?: string })?.message || 'Internal server error' },
       { status: 500 }
     );
   }

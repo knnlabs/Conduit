@@ -26,7 +26,7 @@ export const coreApiKeys = {
 // Chat Completions API
 export function useChatCompletion() {
   return useMutation({
-    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
+    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: unknown }) => {
       try {
         const response = await apiFetch('/api/core/chat/completions', {
           method: 'POST',
@@ -43,11 +43,11 @@ export function useChatCompletion() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Chat Error',
@@ -67,8 +67,8 @@ export function useStreamingChatCompletion() {
       ...body 
     }: { 
       virtualKey: string; 
-      onChunk: (chunk: any) => void;
-      [key: string]: any;
+      onChunk: (chunk: unknown) => void;
+      [key: string]: unknown;
     }) => {
       try {
         const response = await apiFetch('/api/core/chat/completions', {
@@ -118,11 +118,11 @@ export function useStreamingChatCompletion() {
         } finally {
           reader.releaseLock();
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Streaming Chat Error',
@@ -139,7 +139,7 @@ export function useImageGeneration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
+    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: unknown }) => {
       try {
         const response = await apiFetch('/api/core/images/generations', {
           method: 'POST',
@@ -156,11 +156,11 @@ export function useImageGeneration() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data: unknown, variables: { virtualKey: string }) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.imageHistory(variables.virtualKey) });
       notifications.show({
         title: 'Image Generated',
@@ -168,7 +168,7 @@ export function useImageGeneration() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Image Generation Error',
@@ -199,7 +199,7 @@ export function useImageHistory(virtualKey: string) {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
@@ -214,7 +214,7 @@ export function useVideoGeneration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
+    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: unknown }) => {
       try {
         const response = await apiFetch('/api/core/videos/generations', {
           method: 'POST',
@@ -231,11 +231,11 @@ export function useVideoGeneration() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data: unknown, variables: { virtualKey: string }) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.videoHistory(variables.virtualKey) });
       notifications.show({
         title: 'Video Generation Started',
@@ -243,7 +243,7 @@ export function useVideoGeneration() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Video Generation Error',
@@ -274,7 +274,7 @@ export function useVideoHistory(virtualKey: string) {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
@@ -303,7 +303,7 @@ export function useVideoStatus(virtualKey: string, taskId: string) {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
@@ -319,7 +319,7 @@ export function useAudioTranscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ virtualKey, file, ...options }: { virtualKey: string; file: File; [key: string]: any }) => {
+    mutationFn: async ({ virtualKey, file, ...options }: { virtualKey: string; file: File; [key: string]: unknown }) => {
       try {
         const formData = new FormData();
         formData.append('virtual_key', virtualKey);
@@ -344,11 +344,11 @@ export function useAudioTranscription() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data: unknown, variables: { virtualKey: string }) => {
       queryClient.invalidateQueries({ queryKey: coreApiKeys.audioHistory(variables.virtualKey) });
       notifications.show({
         title: 'Audio Transcribed',
@@ -356,7 +356,7 @@ export function useAudioTranscription() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Transcription Error',
@@ -387,7 +387,7 @@ export function useAudioHistory(virtualKey: string) {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
@@ -417,7 +417,7 @@ export function useAvailableModels() {
         }
 
         return response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
@@ -429,7 +429,7 @@ export function useAvailableModels() {
 // Audio Speech API
 export function useAudioSpeech() {
   return useMutation({
-    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: any }) => {
+    mutationFn: async ({ virtualKey, ...body }: { virtualKey: string; [key: string]: unknown }) => {
       try {
         const response = await apiFetch('/api/core/audio/speech', {
           method: 'POST',
@@ -446,11 +446,11 @@ export function useAudioSpeech() {
         }
 
         return response.blob();
-      } catch (error: any) {
+      } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Speech Generation Error',

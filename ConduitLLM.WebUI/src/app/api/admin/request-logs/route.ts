@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
+import { transformPaginatedResponse } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams, createFileResponse, createValidationError } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
@@ -38,9 +37,9 @@ export const GET = withSDKAuth(
         pageSize: result.pageSize || params.pageSize,
         total: result.totalCount || 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return empty result for 404
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return transformPaginatedResponse([], {
           page: 1,
           pageSize: 50,
@@ -56,7 +55,7 @@ export const GET = withSDKAuth(
 // Export request logs
 export const POST = withSDKAuth(
   async (request, { auth }) => {
-    let body: any;
+    let body: { format?: string; filters?: Record<string, unknown> };
     try {
       body = await request.json();
       const { format, filters } = body;
@@ -108,9 +107,9 @@ export const POST = withSDKAuth(
           disposition: 'attachment',
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Provide sample data if not available
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         const format = body.format || 'csv';
         const sampleData = generateSampleRequestLogs(format);
         

@@ -108,8 +108,8 @@ export default function RoutingSettingsPage() {
   // Form states
   const [ruleFormData, setRuleFormData] = useState<{
     name: string;
-    conditions: any[];
-    actions: any[];
+    conditions: unknown[];
+    actions: unknown[];
     description: string;
     enabled: boolean;
   }>({
@@ -120,7 +120,7 @@ export default function RoutingSettingsPage() {
     enabled: true,
   });
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: unknown) => {
     if (!result.destination) return;
 
     const items = Array.from(routingRules);

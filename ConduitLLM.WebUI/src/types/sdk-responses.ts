@@ -34,7 +34,7 @@ export interface VirtualKey {
   createdDate: string;
   modifiedDate: string;
   lastUsedDate: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface VirtualKeyValidationResult {
@@ -52,7 +52,7 @@ export interface CreateVirtualKeyRequest {
   allowedModels?: string[];
   allowedProviders?: string[];
   expirationDate?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CreateVirtualKeyResponse {
@@ -68,7 +68,7 @@ export interface Provider {
   isEnabled: boolean;
   endpoint?: string;
   supportedModels: string[];
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   createdDate: string;
   modifiedDate: string;
 }
@@ -427,7 +427,7 @@ export interface ModelMapping {
   targetModel: string;
   isActive: boolean;
   priority: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdDate: string;
   modifiedDate: string;
 }

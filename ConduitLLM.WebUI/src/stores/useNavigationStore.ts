@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { NavigationState } from '@/types/navigation';
 import { navigationSections } from '@/lib/navigation/items';
 
-export const useNavigationStore = create<NavigationState>((set, get) => ({
+export const useNavigationStore = create<NavigationState>((set) => ({
   sections: navigationSections,
   activeItem: null,
   isLoading: false,

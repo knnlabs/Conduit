@@ -6,7 +6,7 @@ export function transformSDKResponse<T>(
   options: {
     status?: number;
     headers?: Record<string, string>;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
   } = {}
 ): NextResponse {
   const { status = 200, headers = {}, meta } = options;
@@ -51,10 +51,10 @@ export function transformPaginatedResponse<T>(
 
 // Transform streaming responses
 export function createStreamingResponse(
-  stream: AsyncIterable<any>,
+  stream: AsyncIterable<unknown>,
   options: {
     headers?: Record<string, string>;
-    transformer?: (chunk: any) => string;
+    transformer?: (chunk: unknown) => string;
   } = {}
 ): Response {
   const { headers = {}, transformer = (chunk) => JSON.stringify(chunk) + '\n' } = options;
@@ -86,7 +86,7 @@ export function createStreamingResponse(
 }
 
 // Transform batch operation responses
-export function transformBatchResponse<T, E = any>(
+export function transformBatchResponse<T, E = unknown>(
   results: Array<{ success: boolean; data?: T; error?: E; index: number }>,
   options: {
     status?: number;
@@ -132,15 +132,16 @@ export function createFileResponse(
 }
 
 // Helper to extract pagination from SDK responses
-export function extractPagination(sdkResponse: any): {
+export function extractPagination(sdkResponse: unknown): {
   page: number;
   pageSize: number;
   total: number;
 } | null {
   // Handle different SDK pagination formats
-  if (sdkResponse.pagination) {
+  if (sdkResponse && typeof sdkResponse === 'object' && 'pagination' in sdkResponse) {
+    const pagination = (sdkResponse as {pagination: {page?: number}}).pagination;
     return {
-      page: sdkResponse.pagination.page || 1,
+      page: pagination.page || 1,
       pageSize: sdkResponse.pagination.pageSize || 20,
       total: sdkResponse.pagination.total || 0,
     };
@@ -169,9 +170,9 @@ export function extractPagination(sdkResponse: any): {
 // Transform webhook payloads
 export function transformWebhookPayload(
   event: string,
-  data: any,
-  metadata?: Record<string, any>
-): any {
+  data: unknown,
+  metadata?: Record<string, unknown>
+): unknown {
   return {
     event,
     timestamp: new Date().toISOString(),
@@ -181,15 +182,16 @@ export function transformWebhookPayload(
 }
 
 // Transform error details for logging
-export function transformErrorForLogging(error: any): Record<string, any> {
+export function transformErrorForLogging(error: unknown): Record<string, unknown> {
+  const err = error as Record<string, unknown>;
   return {
-    message: error.message,
-    type: error.type || error.name || 'Unknown',
-    statusCode: error.statusCode || error.response?.status,
-    context: error.context,
-    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    message: err.message || 'Unknown error',
+    type: err.type || err.name || 'Unknown',
+    statusCode: err.statusCode || (err.response as {status?: number})?.status,
+    context: err.context,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     timestamp: new Date().toISOString(),
-    ...(error.response && {
+    ...(err.response && {
       response: {
         status: error.response.status,
         data: error.response.data,
@@ -200,11 +202,11 @@ export function transformErrorForLogging(error: any): Record<string, any> {
 }
 
 // Sanitize SDK responses to remove sensitive data
-export function sanitizeResponse<T extends Record<string, any>>(
+export function sanitizeResponse<T extends Record<string, unknown>>(
   data: T,
   sensitiveFields: string[] = ['apiKey', 'masterKey', 'password', 'secret']
 ): T {
-  const sanitized = { ...data } as any;
+  const sanitized = { ...data } as Record<string, unknown>;
 
   for (const field of sensitiveFields) {
     if (field in sanitized) {

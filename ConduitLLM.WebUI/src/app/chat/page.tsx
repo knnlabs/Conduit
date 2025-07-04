@@ -19,21 +19,17 @@ import {
   NumberInput,
   Switch,
   Divider,
-  LoadingOverlay,
 } from '@mantine/core';
 import {
   IconSend,
   IconSettings,
   IconTrash,
   IconDownload,
-  IconUpload,
   IconPlus,
   IconMessageCircle,
   IconRobot,
   IconUser,
-  IconRefresh,
   IconCopy,
-  IconCheck,
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { useState, useRef, useEffect } from 'react';
@@ -66,7 +62,7 @@ export default function ChatPage() {
     deleteConversation,
     setActiveConversation,
     addMessage,
-    updateMessage,
+    // updateMessage,
     setSelectedVirtualKey,
     setSelectedModel,
     updateParameters,
@@ -188,17 +184,17 @@ export default function ChatPage() {
         messageCount: apiMessages.length,
         streaming: useStreaming
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       setStreaming(false);
       
       // Add error message to chat
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: `Error: ${error.message || 'Failed to generate response'}`,
+        content: `Error: ${error instanceof Error ? error.message : 'Failed to generate response'}`,
       };
       addMessage(conversationId, errorMessage);
       
-      safeLog('Chat completion failed', { error: error.message });
+      safeLog('Chat completion failed', { error: error instanceof Error ? error.message : String(error) });
     }
   };
 
@@ -250,7 +246,7 @@ export default function ChatPage() {
         message: 'Message copied to clipboard',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Copy Failed',
         message: 'Failed to copy to clipboard',
@@ -259,7 +255,7 @@ export default function ChatPage() {
     }
   };
 
-  const formatMessageTime = (conversation: any) => {
+  const formatMessageTime = (conversation: { updatedAt: string | Date }) => {
     return new Date(conversation.updatedAt).toLocaleTimeString();
   };
 
@@ -545,10 +541,15 @@ export default function ChatPage() {
               <Select
                 label="Virtual Key"
                 placeholder="Select a virtual key"
-                data={virtualKeys?.map((key: any) => ({
-                  value: key.id,
-                  label: key.keyName,
-                })) || []}
+                data={virtualKeys?.map((key: unknown) => {
+                  if (typeof key === 'object' && key !== null && 'id' in key && 'keyName' in key) {
+                    return {
+                      value: (key as { id: string }).id,
+                      label: (key as { keyName: string }).keyName,
+                    };
+                  }
+                  return { value: '', label: 'Invalid key' };
+                }) || []}
                 value={selectedVirtualKey}
                 onChange={(value) => setSelectedVirtualKey(value || '')}
                 disabled={keysLoading}
@@ -557,10 +558,15 @@ export default function ChatPage() {
               <Select
                 label="Model"
                 placeholder="Select a model"
-                data={models?.map((model: any) => ({
-                  value: model.id,
-                  label: model.id,
-                })) || []}
+                data={models?.map((model: unknown) => {
+                  if (typeof model === 'object' && model !== null && 'id' in model) {
+                    return {
+                      value: (model as { id: string }).id,
+                      label: (model as { id: string }).id,
+                    };
+                  }
+                  return { value: '', label: 'Invalid model' };
+                }) || []}
                 value={selectedModel}
                 onChange={(value) => setSelectedModel(value || '')}
                 disabled={!selectedVirtualKey || modelsLoading}

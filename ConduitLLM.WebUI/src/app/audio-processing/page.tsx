@@ -19,25 +19,19 @@ import {
   ScrollArea,
   Tabs,
   NumberInput,
-  Divider,
-  Center,
-  Progress,
 } from '@mantine/core';
 import {
   IconMicrophone,
   IconSettings,
   IconDownload,
   IconTrash,
-  IconRefresh,
   IconUpload,
   IconVolume,
   IconFileText,
   IconCopy,
-  IconCheck,
   IconAlertCircle,
   IconPlayerPlay,
   IconPlayerPause,
-  IconPlayerStop,
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -98,11 +92,14 @@ export default function AudioProcessingPage() {
   const speech = useAudioSpeech();
 
   // Filter models for audio processing
-  const audioModels = models?.filter((model: any) => 
-    model.id.includes('whisper') || 
-    model.id.includes('tts') ||
-    model.id.includes('audio') ||
-    model.id.includes('speech')
+  const audioModels = models?.filter((model: unknown) => 
+    typeof model === 'object' && model !== null && 'id' in model &&
+    typeof (model as { id: string }).id === 'string' && (
+      (model as { id: string }).id.includes('whisper') || 
+      (model as { id: string }).id.includes('tts') ||
+      (model as { id: string }).id.includes('audio') ||
+      (model as { id: string }).id.includes('speech')
+    )
   ) || [];
 
   const handleTranscribeAudio = async () => {
@@ -121,7 +118,7 @@ export default function AudioProcessingPage() {
         file: audioFile,
         model: transcriptionModel,
         language: language || undefined,
-        response_format: responseFormat as any,
+        response_format: responseFormat as 'json' | 'text' | 'srt' | 'vtt' | 'verbose_json',
         temperature: temperature || undefined,
       };
 
@@ -144,33 +141,37 @@ export default function AudioProcessingPage() {
         fileName: audioFile.name,
         textLength: result.text.length,
       });
-    } catch (error: any) {
-      safeLog('Audio transcription failed', { error: error.message });
+    } catch (error: unknown) {
+      safeLog('Audio transcription failed', { error: error instanceof Error ? error.message : String(error) });
     }
   };
 
-  const handleTaskCompleted = (task: any) => {
-    if (task.type === 'audio_transcription' && task.status === 'completed' && task.result) {
+  const handleTaskCompleted = (task: unknown) => {
+    if (typeof task !== 'object' || task === null) return;
+    const taskObj = task as { type?: string; status?: string; result?: unknown; taskId?: string; startedAt?: string };
+    if (taskObj.type === 'audio_transcription' && taskObj.status === 'completed' && taskObj.result) {
+      const resultObj = taskObj.result as { fileName?: string; text?: string; model?: string; language?: string };
       const result: TranscriptionResult = {
-        id: task.taskId,
-        fileName: task.result.fileName || 'Unknown file',
-        text: task.result.text || 'No transcription generated',
-        model: task.result.model || transcriptionModel,
-        language: task.result.language,
-        createdAt: new Date(task.startedAt),
+        id: taskObj.taskId || '',
+        fileName: resultObj.fileName || 'Unknown file',
+        text: resultObj.text || 'No transcription generated',
+        model: resultObj.model || transcriptionModel,
+        language: resultObj.language,
+        createdAt: new Date(taskObj.startedAt || Date.now()),
       };
       
       setTranscriptionResults(prev => [result, ...prev]);
-    } else if (task.type === 'audio_speech' && task.status === 'completed' && task.result) {
+    } else if (taskObj.type === 'audio_speech' && taskObj.status === 'completed' && taskObj.result) {
+      const resultObj = taskObj.result as { text?: string; audioUrl?: string; url?: string; model?: string; voice?: string; format?: string; speed?: number };
       const result: SpeechResult = {
-        id: task.taskId,
-        text: task.result.text || 'Generated speech',
-        audioUrl: task.result.audioUrl || task.result.url,
-        model: task.result.model || speechModel,
-        voice: task.result.voice || voice,
-        format: task.result.format || speechFormat,
-        speed: task.result.speed || speed,
-        createdAt: new Date(task.startedAt),
+        id: taskObj.taskId || '',
+        text: resultObj.text || 'Generated speech',
+        audioUrl: resultObj.audioUrl || resultObj.url || '',
+        model: resultObj.model || speechModel,
+        voice: resultObj.voice || voice,
+        format: resultObj.format || speechFormat,
+        speed: resultObj.speed || speed,
+        createdAt: new Date(taskObj.startedAt || Date.now()),
       };
       
       setSpeechResults(prev => [result, ...prev]);
@@ -193,7 +194,7 @@ export default function AudioProcessingPage() {
         model: speechModel,
         input: speechText.trim(),
         voice,
-        response_format: speechFormat as any,
+        response_format: speechFormat as 'mp3' | 'opus' | 'aac' | 'flac',
         speed,
       };
 
@@ -221,8 +222,8 @@ export default function AudioProcessingPage() {
         voice,
         textLength: speechText.trim().length,
       });
-    } catch (error: any) {
-      safeLog('Text-to-speech failed', { error: error.message });
+    } catch (error: unknown) {
+      safeLog('Text-to-speech failed', { error: error instanceof Error ? error.message : String(error) });
     }
   };
 
@@ -261,7 +262,7 @@ export default function AudioProcessingPage() {
         message: 'Audio file downloaded successfully',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Download Failed',
         message: 'Failed to download audio file',
@@ -278,7 +279,7 @@ export default function AudioProcessingPage() {
         message: 'Text copied to clipboard',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Copy Failed',
         message: 'Failed to copy text',
@@ -396,10 +397,14 @@ export default function AudioProcessingPage() {
                     <Select
                       label="Model"
                       data={audioModels
-                        .filter((model: any) => model.id.includes('whisper'))
-                        .map((model: any) => ({
-                          value: model.id,
-                          label: model.id,
+                        .filter((model: unknown) => 
+                          typeof model === 'object' && model !== null && 'id' in model &&
+                          typeof (model as { id: string }).id === 'string' &&
+                          (model as { id: string }).id.includes('whisper')
+                        )
+                        .map((model: unknown) => ({
+                          value: (model as { id: string }).id,
+                          label: (model as { id: string }).id,
                         }))}
                       value={transcriptionModel}
                       onChange={(value) => setTranscriptionModel(value || 'whisper-1')}
@@ -570,10 +575,14 @@ export default function AudioProcessingPage() {
                     <Select
                       label="Model"
                       data={audioModels
-                        .filter((model: any) => model.id.includes('tts'))
-                        .map((model: any) => ({
-                          value: model.id,
-                          label: model.id,
+                        .filter((model: unknown) => 
+                          typeof model === 'object' && model !== null && 'id' in model &&
+                          typeof (model as { id: string }).id === 'string' &&
+                          (model as { id: string }).id.includes('tts')
+                        )
+                        .map((model: unknown) => ({
+                          value: (model as { id: string }).id,
+                          label: (model as { id: string }).id,
                         }))}
                       value={speechModel}
                       onChange={(value) => setSpeechModel(value || 'tts-1')}
@@ -743,10 +752,15 @@ export default function AudioProcessingPage() {
           <Select
             label="Virtual Key"
             placeholder="Select a virtual key"
-            data={virtualKeys?.map((key: any) => ({
-              value: key.id,
-              label: key.keyName,
-            })) || []}
+            data={virtualKeys?.map((key: unknown) => {
+              if (typeof key === 'object' && key !== null && 'id' in key && 'keyName' in key) {
+                return {
+                  value: (key as { id: string }).id,
+                  label: (key as { keyName: string }).keyName,
+                };
+              }
+              return { value: '', label: 'Invalid key' };
+            }) || []}
             value={selectedVirtualKey}
             onChange={(value) => setSelectedVirtualKey(value || '')}
             disabled={keysLoading}

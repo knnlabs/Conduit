@@ -46,20 +46,20 @@ import { usePaginatedData } from '@/hooks/usePaginatedData';
 export default function ModelMappingsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedMapping, setSelectedMapping] = useState<any>(null);
+  const [selectedMapping, setSelectedMapping] = useState<unknown>(null);
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { data: modelMappings, isLoading, error, refetch } = useModelMappings();
   const testModelMapping = useTestModelMapping();
   const bulkDiscoverModelMappings = useBulkDiscoverModelMappings();
 
-  const handleEdit = (mapping: any) => {
+  const handleEdit = (mapping: unknown) => {
     setSelectedMapping(mapping);
     openEditModal();
   };
 
-  const handleTest = async (mapping: any) => {
-    await testModelMapping.mutateAsync(mapping.id);
+  const handleTest = async (mapping: unknown) => {
+    await testModelMapping.mutateAsync((mapping as { id: string }).id);
   };
 
   const handleRefreshAll = () => {
@@ -85,16 +85,16 @@ export default function ModelMappingsPage() {
       return;
     }
 
-    const exportData = filteredMappings.map((mapping: any) => ({
-      internalModel: mapping.internalModelName,
-      providerModel: mapping.providerModelName,
-      provider: mapping.providerName,
-      status: mapping.isEnabled ? 'Active' : 'Disabled',
-      priority: mapping.priority,
-      capabilities: mapping.capabilities?.join('; ') || '',
-      requestCount: mapping.requestCount,
-      createdAt: formatDateForExport(mapping.createdAt),
-      lastUsed: formatDateForExport(mapping.lastUsed),
+    const exportData = filteredMappings.map((mapping: unknown) => ({
+      internalModel: (mapping as { internalModelName: string }).internalModelName,
+      providerModel: (mapping as { providerModelName: string }).providerModelName,
+      provider: (mapping as { providerName: string }).providerName,
+      status: (mapping as { isEnabled: boolean }).isEnabled ? 'Active' : 'Disabled',
+      priority: (mapping as { priority: number }).priority,
+      capabilities: (mapping as { capabilities?: string[] }).capabilities?.join('; ') || '',
+      requestCount: (mapping as { requestCount?: number }).requestCount || 0,
+      createdAt: formatDateForExport((mapping as { createdAt: string }).createdAt),
+      lastUsed: formatDateForExport((mapping as { lastUsed?: string }).lastUsed),
     }));
 
     exportToCSV(
@@ -150,22 +150,22 @@ export default function ModelMappingsPage() {
     let filtered = modelMappings;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = modelMappings.filter((m: any) => 
-        m.internalModelName.toLowerCase().includes(query) ||
-        m.providerModelName.toLowerCase().includes(query) ||
-        m.providerName.toLowerCase().includes(query) ||
-        m.capabilities?.some((cap: string) => cap.toLowerCase().includes(query))
+      filtered = modelMappings.filter((m: unknown) => 
+        (m as { internalModelName: string }).internalModelName.toLowerCase().includes(query) ||
+        (m as { providerModelName: string }).providerModelName.toLowerCase().includes(query) ||
+        (m as { providerName: string }).providerName.toLowerCase().includes(query) ||
+        (m as { capabilities?: string[] }).capabilities?.some((cap: string) => cap.toLowerCase().includes(query))
       );
     }
     
     // Then apply tab filter
     switch (activeTab) {
       case 'active':
-        return filtered.filter((m: any) => m.isEnabled);
+        return filtered.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled);
       case 'by-provider':
         // Group by provider - return sorted by provider name
-        return [...filtered].sort((a: any, b: any) => 
-          a.providerName.localeCompare(b.providerName)
+        return [...filtered].sort((a: unknown, b: unknown) => 
+          (a as { providerName: string }).providerName.localeCompare((b as { providerName: string }).providerName)
         );
       default:
         return filtered;
@@ -187,9 +187,9 @@ export default function ModelMappingsPage() {
   // Calculate statistics based on filtered data (not paginated)
   const stats = filteredMappings ? {
     totalMappings: filteredMappings.length,
-    activeMappings: filteredMappings.filter((m: any) => m.isEnabled).length,
-    uniqueProviders: new Set(filteredMappings.map((m: any) => m.providerName)).size,
-    totalRequests: filteredMappings.reduce((sum: number, m: any) => sum + (m.requestCount || 0), 0),
+    activeMappings: filteredMappings.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled).length,
+    uniqueProviders: new Set(filteredMappings.map((m: unknown) => (m as { providerName: string }).providerName)).size,
+    totalRequests: filteredMappings.reduce((sum: number, m: unknown) => sum + ((m as { requestCount?: number }).requestCount || 0), 0),
   } : null;
 
   const statCards = stats ? [
@@ -380,7 +380,7 @@ export default function ModelMappingsPage() {
                 All Mappings ({modelMappings?.length || 0})
               </Tabs.Tab>
               <Tabs.Tab value="active">
-                Active Only ({modelMappings?.filter((m: any) => m.isEnabled).length || 0})
+                Active Only ({modelMappings?.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled).length || 0})
               </Tabs.Tab>
               <Tabs.Tab value="by-provider">
                 By Provider
@@ -434,19 +434,20 @@ export default function ModelMappingsPage() {
                 {filteredMappings.length > 0 ? (
                   <Stack gap="md">
                     {Object.entries(
-                      filteredMappings.reduce((acc: any, mapping: any) => {
-                        if (!acc[mapping.providerName]) {
-                          acc[mapping.providerName] = [];
+                      filteredMappings.reduce((acc: Record<string, unknown[]>, mapping: unknown) => {
+                        const providerName = (mapping as { providerName: string }).providerName;
+                        if (!acc[providerName]) {
+                          acc[providerName] = [];
                         }
-                        acc[mapping.providerName].push(mapping);
+                        acc[providerName].push(mapping);
                         return acc;
                       }, {})
-                    ).map(([provider, mappings]: [string, any]) => (
+                    ).map(([provider, mappings]: [string, unknown[]]) => (
                       <div key={provider}>
                         <Group gap="xs" mb="xs">
                           <Badge variant="dot" size="lg">{provider}</Badge>
                           <Text size="sm" c="dimmed">
-                            {mappings.length} mapping{mappings.length !== 1 ? 's' : ''}
+                            {(mappings as unknown[]).length} mapping{(mappings as unknown[]).length !== 1 ? 's' : ''}
                           </Text>
                         </Group>
                         <ModelMappingsTable 

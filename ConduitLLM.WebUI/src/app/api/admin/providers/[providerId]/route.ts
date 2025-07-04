@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
@@ -22,10 +22,10 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
 );
 
 export const PUT = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params: _params }) => {
     try {
-      const { providerId } = params;
-      const body = await request.json();
+      // No need to extract providerId as it's not used
+      await request.json();
       
       // Provider metadata cannot be updated directly.
       // To manage provider settings, use provider credentials API instead.
@@ -44,9 +44,9 @@ export const PUT = createDynamicRouteHandler<{ providerId: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, auth }) => {
+  async (_request, { params: _params }) => {
     try {
-      const { providerId } = params;
+      // No need to extract providerId as it's not used
       
       // Provider metadata cannot be deleted directly.
       // To remove provider access, use provider credentials API instead.

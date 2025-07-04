@@ -21,8 +21,8 @@ export class SDKError extends Error {
     public type: SDKErrorType,
     message: string,
     public statusCode: number,
-    public context?: any,
-    public originalError?: any
+    public context?: unknown,
+    public originalError?: unknown
   ) {
     super(message);
     this.name = 'SDKError';
@@ -30,13 +30,14 @@ export class SDKError extends Error {
 }
 
 // Map SDK errors to appropriate HTTP responses
-export function mapSDKErrorToResponse(error: any): NextResponse {
-  logger.error('SDK operation failed', {
-    error: error.message,
-    type: error.type,
-    context: error.context,
-    stack: error.stack,
-  });
+export function mapSDKErrorToResponse(error: unknown): NextResponse {
+  const errorInfo = {
+    error: error instanceof Error ? error.message : 'Unknown error',
+    type: error && typeof error === 'object' && 'type' in error ? error.type : 'unknown',
+    context: error && typeof error === 'object' && 'context' in error ? error.context : undefined,
+    stack: error instanceof Error ? error.stack : undefined,
+  };
+  logger.error('SDK operation failed', errorInfo);
 
   // Handle SDK-specific errors
   if (error instanceof SDKError) {
@@ -53,7 +54,8 @@ export function mapSDKErrorToResponse(error: any): NextResponse {
   }
 
   // Handle network errors
-  if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+  const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+  if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
     return NextResponse.json(
       {
         error: {
@@ -66,7 +68,8 @@ export function mapSDKErrorToResponse(error: any): NextResponse {
   }
 
   // Handle timeout errors
-  if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+  const errorMessage = error instanceof Error ? error.message : '';
+  if (errorCode === 'ETIMEDOUT' || errorMessage.includes('timeout')) {
     return NextResponse.json(
       {
         error: {
@@ -79,9 +82,10 @@ export function mapSDKErrorToResponse(error: any): NextResponse {
   }
 
   // Handle Conduit API errors (from SDK)
-  if (error.response) {
-    const status = error.response.status || 500;
-    const data = error.response.data || {};
+  const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
+  if (response && typeof response === 'object') {
+    const status = 'status' in response ? (response.status as number) || 500 : 500;
+    const data = 'data' in response ? response.data || {} : {};
 
     switch (status) {
       case 400:
@@ -174,8 +178,8 @@ export function mapSDKErrorToResponse(error: any): NextResponse {
         type: SDKErrorType.UNKNOWN,
         message: 'An unexpected error occurred',
         ...(process.env.NODE_ENV === 'development' && { 
-          originalError: error.message,
-          stack: error.stack,
+          originalError: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
         }),
       },
     },
@@ -190,22 +194,29 @@ export async function withSDKErrorHandling<T>(
 ): Promise<T> {
   try {
     return await operation();
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(`SDK operation failed: ${context}`, { error });
 
     // Enhance error with context
-    if (error.response) {
+    const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
+    if (response && typeof response === 'object' && 'status' in response) {
+      const status = response.status as number;
+      const data = 'data' in response ? response.data : null;
+      const dataError = data && typeof data === 'object' && 'error' in data ? data.error : null;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
       throw new SDKError(
-        getErrorType(error.response.status),
-        error.response.data?.error || error.message,
-        error.response.status,
+        getErrorType(status),
+        dataError || errorMessage,
+        status,
         { operation: context },
         error
       );
     }
 
     // Network or timeout errors
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+    if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
       throw new SDKError(
         SDKErrorType.NETWORK,
         'Service unavailable',
@@ -215,7 +226,7 @@ export async function withSDKErrorHandling<T>(
       );
     }
 
-    if (error.code === 'ETIMEDOUT') {
+    if (errorCode === 'ETIMEDOUT') {
       throw new SDKError(
         SDKErrorType.TIMEOUT,
         'Operation timed out',
@@ -231,9 +242,10 @@ export async function withSDKErrorHandling<T>(
     }
 
     // Unknown errors
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new SDKError(
       SDKErrorType.UNKNOWN,
-      error.message || 'Unknown error',
+      errorMessage,
       500,
       { operation: context },
       error
@@ -288,34 +300,40 @@ export async function withRetry<T>(
   options: {
     maxRetries?: number;
     retryDelay?: number;
-    shouldRetry?: (error: any) => boolean;
+    shouldRetry?: (error: unknown) => boolean;
   } = {}
 ): Promise<T> {
   const { 
     maxRetries = 3, 
     retryDelay = 1000,
-    shouldRetry = (error) => {
+    shouldRetry = (error: unknown) => {
       // Retry on network errors and 5xx errors
-      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') return true;
-      if (error.response?.status >= 500) return true;
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+      if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') return true;
+      
+      const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
+      const status = response && typeof response === 'object' && 'status' in response ? response.status as number : null;
+      if (status && status >= 500) return true;
+      
       return false;
     }
   } = options;
 
-  let lastError: any;
+  let lastError: unknown;
   
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation();
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
       
       if (!shouldRetry(error) || i === maxRetries - 1) {
         throw error;
       }
       
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.warn(`Retrying operation (attempt ${i + 2}/${maxRetries})`, {
-        error: error.message,
+        error: errorMessage,
       });
       
       // Exponential backoff

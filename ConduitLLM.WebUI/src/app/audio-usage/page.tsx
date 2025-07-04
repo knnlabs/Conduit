@@ -12,14 +12,9 @@ import {
   Table,
   Badge,
   ScrollArea,
-  LoadingOverlay,
   Center,
-  Paper,
   ThemeIcon,
-  RingProgress,
   Progress,
-  ActionIcon,
-  Tooltip,
   Loader,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
@@ -31,16 +26,11 @@ import {
   IconDownload,
   IconClock,
   IconCoin,
-  IconTrendingUp,
   IconVolume,
-  IconLanguage,
-  IconFilter,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useState } from 'react';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatCurrency, formatNumber } from '@/lib/utils/formatting';
-import { ErrorState } from '@/components/common/ErrorState';
-import { notifications } from '@mantine/notifications';
 import { 
   useAudioUsageSummary, 
   useAudioUsageLogs,
@@ -80,10 +70,15 @@ export default function AudioUsagePage() {
   // Virtual keys options
   const virtualKeys = [
     { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData?.data || []).map((key: any) => ({
-      value: key.id,
-      label: key.name,
-    })),
+    ...(virtualKeysData?.data || []).map((key: unknown) => {
+      if (typeof key === 'object' && key !== null && 'id' in key && 'name' in key) {
+        return {
+          value: (key as { id: string }).id,
+          label: (key as { name: string }).name,
+        };
+      }
+      return { value: '', label: 'Invalid key' };
+    }),
   ];
 
   // Audio models (hardcoded for now as SDK doesn't provide this)
@@ -328,7 +323,7 @@ export default function AudioUsagePage() {
                     fill="#8884d8"
                     dataKey="requests"
                   >
-                    {summaryData.topModels.map((entry: any, index: number) => (
+                    {summaryData.topModels.map((entry: unknown, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -354,22 +349,29 @@ export default function AudioUsagePage() {
             </Group>
             {summaryData?.topModels && summaryData.topModels.length > 0 ? (
               <Stack gap="sm">
-                {summaryData.topModels.map((model: any, index: number) => (
-                  <div key={model.model}>
-                    <Group justify="space-between" mb={4}>
-                      <Text size="sm">{model.model}</Text>
-                      <Group gap="xs">
-                        <Text size="sm" c="dimmed">{formatNumber(model.requests)} requests</Text>
-                        <Text size="sm" c="green">{formatCurrency(model.cost)}</Text>
-                      </Group>
-                    </Group>
-                    <Progress 
-                      value={(model.requests / summaryData.topModels[0].requests) * 100} 
-                      size="sm" 
-                      color={COLORS[index % COLORS.length]}
-                    />
-                  </div>
-                ))}
+                {summaryData.topModels.map((model: unknown, index: number) => {
+                  if (typeof model === 'object' && model !== null && 'model' in model && 'requests' in model && 'cost' in model) {
+                    const modelData = model as { model: string; requests: number; cost: number };
+                    const firstModelRequests = typeof summaryData.topModels[0] === 'object' && summaryData.topModels[0] !== null && 'requests' in summaryData.topModels[0] ? (summaryData.topModels[0] as { requests: number }).requests : 1;
+                    return (
+                      <div key={modelData.model}>
+                        <Group justify="space-between" mb={4}>
+                          <Text size="sm">{modelData.model}</Text>
+                          <Group gap="xs">
+                            <Text size="sm" c="dimmed">{formatNumber(modelData.requests)} requests</Text>
+                            <Text size="sm" c="green">{formatCurrency(modelData.cost)}</Text>
+                          </Group>
+                        </Group>
+                        <Progress 
+                          value={(modelData.requests / firstModelRequests) * 100} 
+                          size="sm" 
+                          color={COLORS[index % COLORS.length]}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
               </Stack>
             ) : (
               <Center h={200}>
@@ -401,23 +403,30 @@ export default function AudioUsagePage() {
             </Table.Thead>
             <Table.Tbody>
               {summaryData?.topModels && summaryData.topModels.length > 0 ? (
-                summaryData.topModels.map((model: any) => (
-                  <Table.Tr key={model.model}>
-                    <Table.Td>
-                      <Badge variant="light">{model.model}</Badge>
-                    </Table.Td>
-                    <Table.Td>{formatNumber(model.requests)}</Table.Td>
-                    <Table.Td>{formatNumber(Math.floor(Math.random() * 500) + 100)}</Table.Td>
-                    <Table.Td>{(Math.random() * 2 + 0.5).toFixed(1)}s</Table.Td>
-                    <Table.Td>
-                      <Text c="green">
-                        {(95 + Math.random() * 5).toFixed(1)}%
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>{formatCurrency(model.cost)}</Table.Td>
-                    <Table.Td>{formatCurrency(model.cost / (Math.floor(Math.random() * 500) + 100))}</Table.Td>
-                  </Table.Tr>
-                ))
+                summaryData.topModels.map((model: unknown) => {
+                  if (typeof model === 'object' && model !== null && 'model' in model && 'requests' in model && 'cost' in model) {
+                    const modelData = model as { model: string; requests: number; cost: number };
+                    const minutesProcessed = Math.floor(Math.random() * 500) + 100;
+                    return (
+                      <Table.Tr key={modelData.model}>
+                        <Table.Td>
+                          <Badge variant="light">{modelData.model}</Badge>
+                        </Table.Td>
+                        <Table.Td>{formatNumber(modelData.requests)}</Table.Td>
+                        <Table.Td>{formatNumber(minutesProcessed)}</Table.Td>
+                        <Table.Td>{(Math.random() * 2 + 0.5).toFixed(1)}s</Table.Td>
+                        <Table.Td>
+                          <Text c="green">
+                            {(95 + Math.random() * 5).toFixed(1)}%
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>{formatCurrency(modelData.cost)}</Table.Td>
+                        <Table.Td>{formatCurrency(modelData.cost / minutesProcessed)}</Table.Td>
+                      </Table.Tr>
+                    );
+                  }
+                  return null;
+                })
               ) : (
                 <Table.Tr>
                   <Table.Td colSpan={7} style={{ textAlign: 'center' }}>

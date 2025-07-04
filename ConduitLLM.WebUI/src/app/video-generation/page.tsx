@@ -83,12 +83,12 @@ export default function VideoGenerationPage() {
   const videoGeneration = useVideoGeneration();
 
   // Filter models for video generation
-  const videoModels = models?.filter((model: any) => 
-    model.id.includes('video') || 
-    model.id.includes('minimax') ||
-    model.id.includes('replicate') ||
-    model.id.includes('runway') ||
-    model.id.includes('stable-video')
+  const videoModels = models?.filter((model: unknown) => 
+    (model as { id: string }).id.includes('video') || 
+    (model as { id: string }).id.includes('minimax') ||
+    (model as { id: string }).id.includes('replicate') ||
+    (model as { id: string }).id.includes('runway') ||
+    (model as { id: string }).id.includes('stable-video')
   ) || [];
 
   const handleGenerateVideo = async () => {
@@ -145,25 +145,25 @@ export default function VideoGenerationPage() {
           color: 'blue',
         });
       }
-    } catch (error: any) {
-      safeLog('Video generation failed', { error: error.message });
+    } catch (error: unknown) {
+      safeLog('Video generation failed', { error: (error as Error).message });
     }
   };
 
-  const handleTaskCompleted = (task: any) => {
-    if (task.type === 'video' && task.status === 'completed' && task.result) {
+  const handleTaskCompleted = (task: unknown) => {
+    if ((task as { type: string; status: string; result?: unknown }).type === 'video' && (task as { status: string }).status === 'completed' && (task as { result?: unknown }).result) {
       const newVideo: GeneratedVideo = {
-        id: task.taskId,
-        prompt: task.result.prompt || 'Generated video',
-        model: task.result.model || selectedModel,
-        size: task.result.size || size,
-        duration: task.result.duration || duration,
-        fps: task.result.fps || fps,
+        id: (task as { taskId: string }).taskId,
+        prompt: ((task as { result: { prompt?: string } }).result.prompt) || 'Generated video',
+        model: ((task as { result: { model?: string } }).result.model) || selectedModel,
+        size: ((task as { result: { size?: string } }).result.size) || size,
+        duration: ((task as { result: { duration?: number } }).result.duration) || duration,
+        fps: ((task as { result: { fps?: number } }).result.fps) || fps,
         status: 'completed',
         progress: 100,
-        url: task.result.url,
-        createdAt: new Date(task.startedAt),
-        completedAt: new Date(task.completedAt),
+        url: (task as { result: { url: string } }).result.url,
+        createdAt: new Date((task as { startedAt: string }).startedAt),
+        completedAt: new Date((task as { completedAt: string }).completedAt),
       };
       
       setGeneratedVideos(prev => [newVideo, ...prev]);
@@ -350,9 +350,9 @@ export default function VideoGenerationPage() {
                 <Select
                   label="Model"
                   placeholder="Select a model"
-                  data={videoModels.map((model: any) => ({
-                    value: model.id,
-                    label: model.id,
+                  data={videoModels.map((model: unknown) => ({
+                    value: (model as { id: string }).id,
+                    label: (model as { id: string }).id,
                   }))}
                   value={selectedModel}
                   onChange={(value) => setSelectedModel(value || 'minimax-video')}
@@ -583,9 +583,9 @@ export default function VideoGenerationPage() {
           <Select
             label="Virtual Key"
             placeholder="Select a virtual key"
-            data={virtualKeys?.map((key: any) => ({
-              value: key.id,
-              label: key.keyName,
+            data={virtualKeys?.map((key: unknown) => ({
+              value: (key as { id: string }).id,
+              label: (key as { keyName: string }).keyName,
             })) || []}
             value={selectedVirtualKey}
             onChange={(value) => setSelectedVirtualKey(value || '')}

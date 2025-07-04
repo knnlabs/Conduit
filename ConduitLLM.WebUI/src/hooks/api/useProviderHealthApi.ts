@@ -258,9 +258,10 @@ export function useProviderHealthOverview() {
         
         // If no providers found, return empty array
         return providerHealth.length > 0 ? providerHealth : [];
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider health overview');
-        throw new Error(error?.message || 'Failed to fetch provider health overview');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider health overview';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -316,9 +317,10 @@ export function useProviderStatus() {
           failedRequests: Math.floor(systemMetrics.metrics.requests.totalRequests * systemMetrics.metrics.requests.errorRate / 100),
           lastUpdated: new Date().toISOString(),
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider status');
-        throw new Error(error?.message || 'Failed to fetch provider status');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider status';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 15 * 1000, // 15 seconds
@@ -416,9 +418,10 @@ export function useProviderMetrics(providerId: string, timeRange: string = '24h'
           timeRange,
           metrics,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider metrics');
-        throw new Error(error?.message || 'Failed to fetch provider metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider metrics';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!providerId,
@@ -524,9 +527,10 @@ export function useProviderIncidents() {
         ];
 
         return mockData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider incidents');
-        throw new Error(error?.message || 'Failed to fetch provider incidents');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider incidents';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -591,9 +595,10 @@ export function useProviderUptime(providerId: string, period: '24h' | '7d' | '30
         };
 
         return mockData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider uptime data');
-        throw new Error(error?.message || 'Failed to fetch provider uptime data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider uptime data';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!providerId,
@@ -663,9 +668,10 @@ export function useProviderLatency(providerId: string, timeRange: string = '24h'
         };
 
         return mockData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider latency data');
-        throw new Error(error?.message || 'Failed to fetch provider latency data');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider latency data';
+        throw new Error(errorMessage);
       }
     },
     enabled: !!providerId,
@@ -738,9 +744,10 @@ export function useProviderAlerts() {
         ];
 
         return mockData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch provider alerts');
-        throw new Error(error?.message || 'Failed to fetch provider alerts');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch provider alerts';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -764,9 +771,10 @@ export function useAcknowledgeAlert() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         return { success: true, alertId };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to acknowledge alert');
-        throw new Error(error?.message || 'Failed to acknowledge alert');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to acknowledge alert';
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
@@ -791,9 +799,10 @@ export function useTriggerHealthCheck() {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         return { success: true, providerId };
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to trigger health check');
-        throw new Error(error?.message || 'Failed to trigger health check');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to trigger health check';
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {

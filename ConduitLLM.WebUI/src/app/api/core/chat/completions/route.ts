@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse, createStreamingResponse } from '@/lib/utils/sdk-transforms';
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove virtual_key from body before sending to API
-    const { virtual_key, ...chatRequest } = body;
+    const { virtual_key: _virtualKey, ...chatRequest } = body;
     
     // Validate required fields
     if (!chatRequest.messages || !Array.isArray(chatRequest.messages)) {
@@ -119,10 +119,10 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle validation errors specially
-    if (error.message?.includes('required')) {
-      return createValidationError(error.message);
+    if ((error as { message?: string })?.message?.includes('required')) {
+      return createValidationError((error as { message?: string })?.message);
     }
     
     return mapSDKErrorToResponse(error);
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Support for GET to check endpoint availability
-export async function GET(request: NextRequest) {
+export async function GET(_request: Request) {
   return transformSDKResponse({
     endpoint: '/v1/chat/completions',
     methods: ['POST'],

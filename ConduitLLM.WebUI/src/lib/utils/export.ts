@@ -1,4 +1,4 @@
-export function exportToCSV<T extends Record<string, any>>(
+export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   filename: string,
   columns?: { key: keyof T; label: string }[]

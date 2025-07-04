@@ -48,7 +48,7 @@ export function middleware(request: NextRequest) {
     }
     
     return NextResponse.next()
-  } catch (error) {
+  } catch {
     // Invalid session cookie, redirect to login
     const response = NextResponse.redirect(new URL('/login', request.url))
     response.cookies.delete('conduit_session')

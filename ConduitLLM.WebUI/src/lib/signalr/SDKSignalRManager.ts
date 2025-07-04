@@ -1,7 +1,6 @@
 import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 import { logger } from '@/lib/utils/logging';
-import { useConnectionStore } from '@/stores/useConnectionStore';
 
 export interface SDKSignalRConfig {
   coreApiUrl?: string;
@@ -37,7 +36,7 @@ export interface SignalREventHandlers {
 export interface NavigationStateUpdate {
   type: 'model_mapping' | 'provider' | 'virtual_key';
   action: 'created' | 'updated' | 'deleted';
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -98,8 +97,8 @@ export interface VirtualKeyEvent {
 export interface ConfigurationEvent {
   category: string;
   setting: string;
-  oldValue: any;
-  newValue: any;
+  oldValue: unknown;
+  newValue: unknown;
   timestamp: string;
 }
 
@@ -136,7 +135,7 @@ export class SDKSignalRManager {
       //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
       //   reconnectInterval: this.config.reconnectInterval,
       // },
-    } as any);
+    } as unknown as ConduitCoreClient);
 
     // Set up Core event listeners
     await this.setupCoreEventListeners();
@@ -160,7 +159,7 @@ export class SDKSignalRManager {
       //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
       //   reconnectInterval: this.config.reconnectInterval,
       // },
-    } as any);
+    } as unknown as ConduitAdminClient);
 
     // Set up Admin event listeners
     await this.setupAdminEventListeners();
@@ -175,7 +174,7 @@ export class SDKSignalRManager {
     logger.info('Setting up Core event listeners');
 
     // Video generation progress
-    const videoSub = await this.coreClient.notifications.onVideoProgress((event: any) => {
+    const videoSub = await this.coreClient.notifications.onVideoProgress((event: { taskId: string; status: string; progress?: number; metadata?: { url?: string }; message?: string }) => {
       if (this.eventHandlers.onVideoGenerationProgress) {
         this.eventHandlers.onVideoGenerationProgress({
           taskId: event.taskId,
@@ -190,7 +189,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => videoSub.unsubscribe());
 
     // Image generation progress
-    const imageSub = await this.coreClient.notifications.onImageProgress((event: any) => {
+    const imageSub = await this.coreClient.notifications.onImageProgress((event: { taskId: string; status: string; progress?: number; images?: { url?: string }[]; message?: string }) => {
       if (this.eventHandlers.onImageGenerationProgress) {
         this.eventHandlers.onImageGenerationProgress({
           taskId: event.taskId,
@@ -204,7 +203,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => imageSub.unsubscribe());
 
     // Spend updates
-    const spendSub = await this.coreClient.notifications.onSpendUpdate((event: any) => {
+    const spendSub = await this.coreClient.notifications.onSpendUpdate((event: { virtualKeyId: string | number; amount: number; totalSpend: number; model: string; timestamp: string }) => {
       if (this.eventHandlers.onSpendUpdate) {
         this.eventHandlers.onSpendUpdate({
           virtualKeyId: String(event.virtualKeyId),
@@ -218,7 +217,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => spendSub.unsubscribe());
 
     // Spend limit alerts
-    const limitSub = await this.coreClient.notifications.onSpendLimitAlert((event: any) => {
+    const limitSub = await this.coreClient.notifications.onSpendLimitAlert((event: { virtualKeyId: string | number; currentSpend: number; spendLimit?: number; limit?: number; spendPercentage?: number; percentage?: number; severity?: string; alertLevel?: string }) => {
       if (this.eventHandlers.onSpendLimitAlert) {
         this.eventHandlers.onSpendLimitAlert({
           virtualKeyId: String(event.virtualKeyId),
@@ -243,7 +242,7 @@ export class SDKSignalRManager {
     logger.info('Setting up Admin event listeners');
 
     // Get SignalR service from admin client
-    const signalRService = (this.adminClient as any).signalRService;
+    const signalRService = (this.adminClient as { signalRService?: unknown }).signalRService;
     if (!signalRService) {
       logger.warn('Admin client does not have SignalR service - notifications will not work');
       return;
@@ -305,7 +304,7 @@ export class SDKSignalRManager {
     if (adminHub) {
       // Virtual key events
       if (adminHub.onVirtualKeyUpdate) {
-        adminHub.onVirtualKeyUpdate((event: any) => {
+        adminHub.onVirtualKeyUpdate((event: { keyId: string; action: string; changes?: string[] }) => {
           if (this.eventHandlers.onVirtualKeyUpdate) {
             this.eventHandlers.onVirtualKeyUpdate({
               keyId: event.keyId,
@@ -318,7 +317,7 @@ export class SDKSignalRManager {
 
       // Configuration changes
       if (adminHub.onConfigurationChange) {
-        adminHub.onConfigurationChange((event: any) => {
+        adminHub.onConfigurationChange((event: { category: string; setting: string; oldValue: unknown; newValue: unknown; timestamp: string }) => {
           if (this.eventHandlers.onConfigurationChange) {
             this.eventHandlers.onConfigurationChange({
               category: event.category,
@@ -364,7 +363,7 @@ export class SDKSignalRManager {
 
     // Connect Core SignalR
     if (this.coreClient) {
-      const signalR = (this.coreClient as any).signalr;
+      const signalR = (this.coreClient as { signalr?: { startAllConnections: () => Promise<void> } }).signalr;
       if (signalR) {
         promises.push(signalR.startAllConnections());
       }
@@ -372,7 +371,7 @@ export class SDKSignalRManager {
 
     // Connect Admin SignalR
     if (this.adminClient) {
-      const signalRService = (this.adminClient as any).signalRService;
+      const signalRService = (this.adminClient as { signalRService?: { getOrCreateAdminNotificationHub?: () => Promise<{ start: () => Promise<void> }> } }).signalRService;
       if (signalRService) {
         // Start navigation state hub
         // NOTE: Navigation state hub doesn't exist on the server
@@ -398,7 +397,7 @@ export class SDKSignalRManager {
 
     // Disconnect Core SignalR
     if (this.coreClient) {
-      const signalR = (this.coreClient as any).signalr;
+      const signalR = (this.coreClient as { signalr?: { stopAllConnections: () => Promise<void> } }).signalr;
       if (signalR) {
         promises.push(signalR.stopAllConnections());
       }
@@ -406,7 +405,7 @@ export class SDKSignalRManager {
 
     // Disconnect Admin SignalR
     if (this.adminClient) {
-      const signalRService = (this.adminClient as any).signalRService;
+      const signalRService = (this.adminClient as { signalRService?: { getOrCreateAdminNotificationHub?: () => Promise<{ stop: () => Promise<void> }> } }).signalRService;
       if (signalRService) {
         // Stop navigation state hub  
         // NOTE: Navigation state hub doesn't exist on the server
@@ -433,22 +432,22 @@ export class SDKSignalRManager {
 
     // Check Core SignalR status
     if (this.coreClient) {
-      const signalR = (this.coreClient as any).signalr;
+      const signalR = (this.coreClient as { signalr?: { getConnectionStatus?: () => Record<string, string> } }).signalr;
       if (signalR) {
         const statuses = signalR.getConnectionStatus?.();
         if (statuses) {
-          connected = Object.values(statuses).some((status: any) => status === 'Connected');
+          connected = Object.values(statuses).some((status: string) => status === 'Connected');
         }
       }
     }
 
     // Check Admin SignalR status
     if (!connected && this.adminClient) {
-      const signalRService = (this.adminClient as any).signalRService;
+      const signalRService = (this.adminClient as { signalRService?: { getConnectionStates?: () => Record<string, string> } }).signalRService;
       if (signalRService) {
         const connectionStates = signalRService.getConnectionStates?.();
         if (connectionStates) {
-          connected = Object.values(connectionStates).some((state: any) => state === 'Connected');
+          connected = Object.values(connectionStates).some((state: string) => state === 'Connected');
         }
       }
     }

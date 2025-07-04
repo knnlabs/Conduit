@@ -1,9 +1,8 @@
-import { NextRequest } from 'next/server';
+
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { transformSDKResponse, transformPaginatedResponse, extractPagination } from '@/lib/utils/sdk-transforms';
+import { transformSDKResponse, transformPaginatedResponse } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams, validateRequiredFields, createValidationError } from '@/lib/utils/route-helpers';
-import type { FilterType } from '@knn_labs/conduit-admin-client';
 
 export const GET = withSDKAuth(
   async (request, { auth }) => {
@@ -32,9 +31,9 @@ export const GET = withSDKAuth(
         pageSize: params.pageSize,
         total: result.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return empty result for 404
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return transformPaginatedResponse([], {
           page: 1,
           pageSize: 20,

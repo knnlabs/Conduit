@@ -15,14 +15,10 @@ import {
   PasswordInput,
   Select,
   Switch,
-  Grid,
   Tooltip,
   ScrollArea,
-  Menu,
   LoadingOverlay,
   Alert,
-  Code,
-  Tabs,
   JsonInput,
   ThemeIcon,
 } from '@mantine/core';
@@ -30,18 +26,13 @@ import {
   IconPlus,
   IconEdit,
   IconTrash,
-  IconDots,
-  IconCheck,
-  IconX,
   IconTestPipe,
-  IconKey,
   IconCloud,
   IconAlertCircle,
   IconRefresh,
   IconMicrophone,
   IconVolume,
   IconLanguage,
-  IconSettings,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -68,7 +59,7 @@ interface AudioProvider {
     apiKey?: string;
     endpoint?: string;
     region?: string;
-    voiceSettings?: any;
+    voiceSettings?: Record<string, unknown>;
   };
   statistics: {
     requestsToday: number;
@@ -92,25 +83,39 @@ function getProviderTypeFromName(name: string): AudioProviderType {
 }
 
 // Transform SDK DTO to UI AudioProvider
-function transformAudioProvider(dto: any): AudioProvider {
+function transformAudioProvider(dto: unknown): AudioProvider {
+  if (typeof dto !== 'object' || dto === null) {
+    throw new Error('Invalid provider data');
+  }
+  const providerDto = dto as {
+    id?: string;
+    name?: string;
+    isEnabled?: boolean;
+    supportedOperations?: string[];
+    apiKey?: string;
+    baseUrl?: string;
+    settings?: { region?: string; voiceSettings?: Record<string, unknown> };
+    createdAt?: string;
+    updatedAt?: string;
+  };
   const providerType = getProviderTypeFromName(dto.name);
   
   return {
-    id: dto.id,
-    name: dto.name,
+    id: providerDto.id || '',
+    name: providerDto.name || '',
     type: providerType,
-    enabled: dto.isEnabled,
+    enabled: providerDto.isEnabled || false,
     capabilities: {
-      transcription: dto.supportedOperations?.includes('transcription') || false,
-      textToSpeech: dto.supportedOperations?.includes('text-to-speech') || false,
-      translation: dto.supportedOperations?.includes('translation') || false,
-      realtime: dto.supportedOperations?.includes('realtime') || false,
+      transcription: providerDto.supportedOperations?.includes('transcription') || false,
+      textToSpeech: providerDto.supportedOperations?.includes('text-to-speech') || false,
+      translation: providerDto.supportedOperations?.includes('translation') || false,
+      realtime: providerDto.supportedOperations?.includes('realtime') || false,
     },
     config: {
-      apiKey: dto.apiKey ? '***hidden***' : undefined,
-      endpoint: dto.baseUrl,
-      region: dto.settings?.region,
-      voiceSettings: dto.settings?.voiceSettings,
+      apiKey: providerDto.apiKey ? '***hidden***' : undefined,
+      endpoint: providerDto.baseUrl,
+      region: providerDto.settings?.region,
+      voiceSettings: providerDto.settings?.voiceSettings,
     },
     statistics: {
       requestsToday: 0, // TODO: Get from usage analytics
@@ -118,8 +123,8 @@ function transformAudioProvider(dto: any): AudioProvider {
       avgLatency: 250, // TODO: Get from health metrics
       lastChecked: new Date(),
     },
-    createdAt: new Date(dto.createdAt || Date.now()),
-    updatedAt: new Date(dto.updatedAt || Date.now()),
+    createdAt: new Date(providerDto.createdAt || Date.now()),
+    updatedAt: new Date(providerDto.updatedAt || Date.now()),
   };
 }
 
@@ -132,9 +137,9 @@ function useAudioProviders() {
         const client = getAdminClient();
         const response = await client.audioConfiguration.getProviders();
         return response.map(transformAudioProvider);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch audio providers');
-        throw new Error(error?.message || 'Failed to fetch audio providers');
+        throw new Error(error instanceof Error ? error.message : 'Failed to fetch audio providers');
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -168,13 +173,13 @@ function useCreateAudioProvider() {
         if (data.capabilities.translation) supportedOperations.push('translation');
         if (data.capabilities.realtime) supportedOperations.push('realtime');
         
-        let settings: any = {};
+        let settings: Record<string, unknown> = {};
         if (data.region) settings.region = data.region;
         if (data.advancedConfig) {
           try {
             const parsedConfig = JSON.parse(data.advancedConfig);
             settings = { ...settings, ...parsedConfig };
-          } catch (e) {
+          } catch (_e) {
             // Ignore invalid JSON
           }
         }
@@ -192,9 +197,9 @@ function useCreateAudioProvider() {
         
         const response = await client.audioConfiguration.createProvider(request);
         return transformAudioProvider(response);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to create audio provider');
-        throw new Error(error?.message || 'Failed to create audio provider');
+        throw new Error(error instanceof Error ? error.message : 'Failed to create audio provider');
       }
     },
     onSuccess: () => {
@@ -231,13 +236,13 @@ function useUpdateAudioProvider() {
         if (data.capabilities.translation) supportedOperations.push('translation');
         if (data.capabilities.realtime) supportedOperations.push('realtime');
         
-        let settings: any = {};
+        let settings: Record<string, unknown> = {};
         if (data.region) settings.region = data.region;
         if (data.advancedConfig) {
           try {
             const parsedConfig = JSON.parse(data.advancedConfig);
             settings = { ...settings, ...parsedConfig };
-          } catch (e) {
+          } catch (_e) {
             // Ignore invalid JSON
           }
         }
@@ -255,9 +260,9 @@ function useUpdateAudioProvider() {
         
         const response = await client.audioConfiguration.updateProvider(data.id, request);
         return transformAudioProvider(response);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to update audio provider');
-        throw new Error(error?.message || 'Failed to update audio provider');
+        throw new Error(error instanceof Error ? error.message : 'Failed to update audio provider');
       }
     },
     onSuccess: () => {
@@ -274,9 +279,9 @@ function useDeleteAudioProvider() {
       try {
         const client = getAdminClient();
         await client.audioConfiguration.deleteProvider(providerId);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to delete audio provider');
-        throw new Error(error?.message || 'Failed to delete audio provider');
+        throw new Error(error instanceof Error ? error.message : 'Failed to delete audio provider');
       }
     },
     onSuccess: () => {
@@ -291,9 +296,9 @@ function useTestAudioProvider() {
       try {
         const client = getAdminClient();
         return await client.audioConfiguration.testProvider(providerId);
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to test audio provider');
-        throw new Error(error?.message || 'Failed to test audio provider');
+        throw new Error(error instanceof Error ? error.message : 'Failed to test audio provider');
       }
     },
   });
@@ -382,10 +387,10 @@ export default function AudioProvidersPage() {
           color: 'green',
         });
         closeDeleteModal();
-      } catch (error: any) {
+      } catch (error: unknown) {
         notifications.show({
           title: 'Delete Failed',
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Failed to delete provider',
           color: 'red',
         });
       }
@@ -426,10 +431,10 @@ export default function AudioProvidersPage() {
       }
       
       closeModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Save Failed',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Failed to save provider',
         color: 'red',
       });
     }
@@ -453,18 +458,18 @@ export default function AudioProvidersPage() {
         color: 'green',
         loading: false,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.update({
         id: 'test-notification',
         title: 'Test Failed',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Test failed',
         color: 'red',
         loading: false,
       });
     }
   };
 
-  const handleToggleProvider = async (provider: AudioProvider) => {
+  const _handleToggleProvider = async (_provider: AudioProvider) => {
     // Note: This would require an enable/disable endpoint in the SDK
     notifications.show({
       title: 'Feature Not Available',

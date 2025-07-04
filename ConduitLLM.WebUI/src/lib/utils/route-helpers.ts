@@ -2,15 +2,15 @@ import { NextRequest } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 
 // Generic route params interface for dynamic routes
-export interface DynamicRouteParams<T = any> {
+export interface DynamicRouteParams<T = Record<string, string>> {
   params: Promise<T>;
 }
 
 // Helper to create route handlers with dynamic params support
-export function createDynamicRouteHandler<TParams = any>(
+export function createDynamicRouteHandler<TParams = Record<string, string>>(
   handler: (
     request: NextRequest,
-    context: { params: TParams; auth: any }
+    context: { params: TParams; auth: unknown }
   ) => Promise<Response>,
   authOptions?: Parameters<typeof withSDKAuth>[1]
 ) {
@@ -38,9 +38,9 @@ export async function processBatchOperation<T, R>(
     concurrency?: number;
     continueOnError?: boolean;
   } = {}
-): Promise<Array<{ success: boolean; data?: R; error?: any; index: number }>> {
+): Promise<Array<{ success: boolean; data?: R; error?: unknown; index: number }>> {
   const { concurrency = 5, continueOnError = true } = options;
-  const results: Array<{ success: boolean; data?: R; error?: any; index: number }> = [];
+  const results: Array<{ success: boolean; data?: R; error?: unknown; index: number }> = [];
   
   // Process in batches
   for (let i = 0; i < items.length; i += concurrency) {
@@ -96,7 +96,7 @@ export function parseQueryParams(request: NextRequest) {
 }
 
 // Validate required fields helper
-export function validateRequiredFields<T extends Record<string, any>>(
+export function validateRequiredFields<T extends Record<string, unknown>>(
   data: T,
   requiredFields: Array<keyof T>
 ): { isValid: boolean; missingFields: string[] } {
@@ -113,7 +113,7 @@ export function validateRequiredFields<T extends Record<string, any>>(
 // Create consistent validation error response
 export function createValidationError(
   message: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): Response {
   return new Response(
     JSON.stringify({

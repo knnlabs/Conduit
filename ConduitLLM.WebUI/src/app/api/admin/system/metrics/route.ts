@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -57,9 +57,9 @@ export const GET = withSDKAuth(
           includeHistory,
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return default metrics for 404
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return transformSDKResponse(DEFAULT_METRICS, {
           meta: {
             isDefault: true,
@@ -78,7 +78,7 @@ export const POST = withSDKAuth(
   async (request, { auth }) => {
     try {
       const body = await request.json();
-      const { metricType, startTime, endTime, interval } = body;
+      const { metricType, interval } = body;
       
       // Get system metrics (using the same method as there's no separate performance metrics)
       const result = await withSDKErrorHandling(
@@ -93,9 +93,9 @@ export const POST = withSDKAuth(
           timestamp: new Date().toISOString(),
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return empty metrics for 404
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return transformSDKResponse({
           requestsPerSecond: 0,
           averageLatency: 0,

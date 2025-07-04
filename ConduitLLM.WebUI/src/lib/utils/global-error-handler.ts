@@ -47,7 +47,7 @@ export function setupGlobalErrorHandlers() {
   }
 }
 
-export function reportError(error: Error, context?: Record<string, any>) {
+export function reportError(error: Error, context?: Record<string, unknown>) {
   // Log to console in development
   safeLog('Error reported', {
     error: {

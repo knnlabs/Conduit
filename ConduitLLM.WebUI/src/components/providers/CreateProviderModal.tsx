@@ -101,7 +101,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     try {
       new URL(string);
       return true;
-    } catch (_) {
+    } catch (_error: unknown) {
       return false;
     }
   };
@@ -150,7 +150,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     setTestingConnection(true);
     try {
       await testProviderConnection.mutateAsync(providerConfig);
-    } catch (error) {
+    } catch (error: unknown) {
       // Error notification is handled by the hook
     } finally {
       setTestingConnection(false);
@@ -176,7 +176,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
       // Reset form and close modal on success
       form.reset();
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Create provider error:', error);
     }
   };

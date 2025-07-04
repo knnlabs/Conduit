@@ -12,15 +12,10 @@ import {
   SimpleGrid,
   ThemeIcon,
   Progress,
-  Code,
   Tabs,
   LoadingOverlay,
   Alert,
-  Timeline,
   Accordion,
-  CopyButton,
-  ActionIcon,
-  Tooltip,
 } from '@mantine/core';
 import {
   IconServer,
@@ -31,13 +26,11 @@ import {
   IconNetwork,
   IconRefresh,
   IconDownload,
-  IconCopy,
   IconCheck,
   IconAlertCircle,
   IconInfoCircle,
   IconChartBar,
   IconSettings,
-  IconBrandDocker,
   IconCloud,
   IconDeviceDesktop,
 } from '@tabler/icons-react';
@@ -51,7 +44,7 @@ export default function SystemInfoPage() {
   const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useSystemMetrics();
   const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, _setAutoRefresh] = useState(false);
   
   const isLoading = systemLoading || metricsLoading || healthLoading;
 
@@ -278,24 +271,30 @@ export default function SystemInfoPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {health?.checks && Object.entries(health.checks).map(([name, check]: [string, any]) => (
+                      {health?.checks && Object.entries(health.checks).map(([name, check]: [string, unknown]) => {
+                        if (typeof check === 'object' && check !== null && 'status' in check && 'description' in check) {
+                          const healthCheck = check as { status: string; description: string };
+                          return (
                         <Table.Tr key={name}>
                           <Table.Td>
                             <Text fw={500}>{name}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Badge color={getStatusColor(check.status)} variant="light" size="sm">
-                              {check.status?.toUpperCase() || 'UNKNOWN'}
+                            <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
+                              {healthCheck.status?.toUpperCase() || 'UNKNOWN'}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{check.duration ? `${check.duration}ms` : 'N/A'}</Text>
+                            <Text size="sm">{(healthCheck as { duration?: number }).duration ? `${(healthCheck as { duration?: number }).duration}ms` : 'N/A'}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{check.description || check.error || 'N/A'}</Text>
+                            <Text size="sm">{healthCheck.description || (healthCheck as { error?: string }).error || 'N/A'}</Text>
                           </Table.Td>
                         </Table.Tr>
-                      ))}
+                        );
+                        }
+                        return null;
+                      })}
                     </Table.Tbody>
                   </Table>
                 </Card.Section>
@@ -450,31 +449,37 @@ export default function SystemInfoPage() {
               {health?.checks && Object.entries(health.checks).length > 0 && (
                 <Stack gap="md" mt="md">
                   <Text fw={500}>Health Check Details</Text>
-                  {Object.entries(health.checks).map(([name, check]: [string, any]) => (
+                  {Object.entries(health.checks).map(([name, check]: [string, unknown]) => {
+                    if (typeof check === 'object' && check !== null && 'status' in check && 'description' in check) {
+                      const healthCheck = check as { status: string; description: string };
+                      return (
                     <Card key={name} withBorder p="sm">
                       <Group justify="space-between">
                         <Group>
-                          <ThemeIcon color={getStatusColor(check.status)} variant="light" size="sm">
-                            {check.status === 'healthy' ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
+                          <ThemeIcon color={getStatusColor(healthCheck.status)} variant="light" size="sm">
+                            {healthCheck.status === 'healthy' ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
                           </ThemeIcon>
                           <Text size="sm" fw={500}>{name}</Text>
                         </Group>
-                        <Badge color={getStatusColor(check.status)} variant="light" size="sm">
-                          {check.status}
+                        <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
+                          {healthCheck.status}
                         </Badge>
                       </Group>
-                      {check.description && (
+                      {healthCheck.description && (
                         <Text size="xs" c="dimmed" mt="xs">
-                          {check.description}
+                          {healthCheck.description}
                         </Text>
                       )}
-                      {check.error && (
+                      {(healthCheck as { error?: string }).error && (
                         <Text size="xs" c="red" mt="xs">
-                          Error: {check.error}
+                          Error: {(healthCheck as { error?: string }).error}
                         </Text>
                       )}
                     </Card>
-                  ))}
+                    );
+                    }
+                    return null;
+                  })}
                 </Stack>
               )}
             </Card.Section>

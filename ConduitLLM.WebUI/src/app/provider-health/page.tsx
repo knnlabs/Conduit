@@ -70,7 +70,7 @@ export default function ProviderHealthPage() {
   const [selectedProvider, setSelectedProvider] = useState<ProviderHealth | null>(null);
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
   const [incidentOpened, { open: openIncident, close: closeIncident }] = useDisclosure(false);
-  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [selectedIncident, setSelectedIncident] = useState<unknown>(null);
   
   const { data: providers, isLoading: providersLoading } = useProviderHealthOverview();
   const { data: status, isLoading: statusLoading } = useProviderStatus();
@@ -80,7 +80,7 @@ export default function ProviderHealthPage() {
     selectedProvider?.providerId || '', timeRangeValue
   );
   const { data: selectedProviderUptime } = useProviderUptime(
-    selectedProvider?.providerId || '', timeRangeValue as any
+    selectedProvider?.providerId || '', timeRangeValue as unknown
   );
   const { data: selectedProviderLatency } = useProviderLatency(
     selectedProvider?.providerId || '', timeRangeValue
@@ -99,10 +99,10 @@ export default function ProviderHealthPage() {
         message: 'Provider health status has been updated',
         color: 'green',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Health Check Failed',
-        message: error.message || 'Failed to trigger health check',
+        message: (error as Error).message || 'Failed to trigger health check',
         color: 'red',
       });
     }
@@ -116,10 +116,10 @@ export default function ProviderHealthPage() {
         message: 'Alert has been acknowledged successfully',
         color: 'blue',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       notifications.show({
         title: 'Acknowledge Failed',
-        message: error.message || 'Failed to acknowledge alert',
+        message: (error as Error).message || 'Failed to acknowledge alert',
         color: 'red',
       });
     }
@@ -174,7 +174,7 @@ export default function ProviderHealthPage() {
     openDetails();
   };
 
-  const openIncidentDetails = (incident: any) => {
+  const openIncidentDetails = (incident: unknown) => {
     setSelectedIncident(incident);
     openIncident();
   };
@@ -866,12 +866,12 @@ export default function ProviderHealthPage() {
             <div>
               <Text fw={500} mb="md">Updates</Text>
               <Timeline>
-                {selectedIncident.updates.map((update: any, index: number) => (
-                  <Timeline.Item key={index} title={update.status}>
+                {(selectedIncident as { updates: unknown[] }).updates.map((update: unknown, index: number) => (
+                  <Timeline.Item key={index} title={(update as { status: string }).status}>
                     <Text size="sm" c="dimmed" mb="xs">
-                      {new Date(update.timestamp).toLocaleString()} • {update.author}
+                      {new Date((update as { timestamp: string }).timestamp).toLocaleString()} • {(update as { author: string }).author}
                     </Text>
-                    <Text size="sm">{update.message}</Text>
+                    <Text size="sm">{(update as { message: string }).message}</Text>
                   </Timeline.Item>
                 ))}
               </Timeline>

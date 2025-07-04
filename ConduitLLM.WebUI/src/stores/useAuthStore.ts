@@ -3,7 +3,7 @@ import { AuthState, AuthUser } from '@/types/auth';
 import { authStorage, StoredAuth } from '@/lib/auth/storage';
 import { validateMasterKey, sanitizeMasterKey } from '@/lib/auth/validation';
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
   error: null,
@@ -46,10 +46,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ user, isLoading: false, error: null });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
       set({ 
-        error: error.message || 'Login failed. Please try again.', 
+        error: errorMessage, 
         isLoading: false 
       });
       return false;

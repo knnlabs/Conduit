@@ -54,7 +54,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       if (success) {
         onSuccess?.();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Login submission error:', error);
     } finally {
       setIsSubmitting(false);

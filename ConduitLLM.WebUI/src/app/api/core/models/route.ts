@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -18,7 +18,7 @@ export const GET = withSDKAuth(
 
       // Transform the model mappings to a simple model list
       // The SDK returns an array directly
-      const models = result.map((mapping: any) => ({
+      const models = result.map((mapping: { modelId: string; providerId: string; createdAt: string }) => ({
         id: mapping.modelId,
         object: 'model',
         created: new Date(mapping.createdAt).getTime() / 1000,

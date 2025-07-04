@@ -297,9 +297,10 @@ export function useSystemMetrics(interval: number = 30000) {
         // Disk values not available from SDK
 
         return transformedData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch system metrics');
-        throw new Error(error?.message || 'Failed to fetch system metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch system metrics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: interval / 2,
@@ -356,9 +357,10 @@ export function useResourceUsageHistory(timeRange: string = '24h') {
         };
 
         return generateHistory();
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch resource usage history');
-        throw new Error(error?.message || 'Failed to fetch resource usage history');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch resource usage history';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 60 * 1000, // 1 minute
@@ -383,9 +385,10 @@ export function useSystemProcesses() {
         const processes: ProcessInfo[] = [];
 
         return processes;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch system processes');
-        throw new Error(error?.message || 'Failed to fetch system processes');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch system processes';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -428,9 +431,10 @@ export function useServiceStatus() {
         }));
 
         return services;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch service status');
-        throw new Error(error?.message || 'Failed to fetch service status');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch service status';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -481,9 +485,10 @@ export function useDatabaseMetrics() {
         };
 
         return transformedData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch database metrics');
-        throw new Error(error?.message || 'Failed to fetch database metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch database metrics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -546,9 +551,10 @@ export function useCacheMetrics() {
         // Cannot calculate derived metrics without data
 
         return cacheData;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch cache metrics');
-        throw new Error(error?.message || 'Failed to fetch cache metrics');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch cache metrics';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -602,9 +608,10 @@ export function useSystemHealth() {
         };
 
         return systemHealth;
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to fetch system health');
-        throw new Error(error?.message || 'Failed to fetch system health');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch system health';
+        throw new Error(errorMessage);
       }
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -624,9 +631,10 @@ export function useRestartService() {
         // Note: Service restart functionality not available in SDK
         // This would need to be implemented in the backend
         throw new Error('Service restart functionality not implemented in backend API');
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to restart service');
-        throw new Error(error?.message || 'Failed to restart service');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to restart service';
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
@@ -648,9 +656,10 @@ export function useClearCache() {
         // Note: Cache clearing functionality not available in SDK
         // This would need to be implemented in the backend
         throw new Error('Cache clearing functionality not implemented in backend API');
-      } catch (error: any) {
+      } catch (error: unknown) {
         reportError(error, 'Failed to clear cache');
-        throw new Error(error?.message || 'Failed to clear cache');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to clear cache';
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {

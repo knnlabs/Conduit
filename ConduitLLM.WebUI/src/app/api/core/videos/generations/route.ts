@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove virtual_key from body before sending to API
-    const { virtual_key, ...videoRequest } = body;
+    const { virtual_key: _virtualKey, ...videoRequest } = body;
     
     // Validate required fields
     if (!videoRequest.prompt) {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const client = getServerCoreClient(virtualKey);
     
     const result = await withSDKErrorHandling(
-      async () => (client as any).videos.generateAsync({
+      async () => (client as { videos: { generateAsync: (params: unknown) => Promise<{ task_id: string }> } }).videos.generateAsync({
         prompt: videoRequest.prompt,
         model: videoRequest.model,
         duration: videoRequest.duration,
@@ -72,10 +72,10 @@ export async function POST(request: NextRequest) {
         taskId: result.task_id,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle validation errors specially
-    if (error.message?.includes('required')) {
-      return createValidationError(error.message);
+    if ((error as { message?: string })?.message?.includes('required')) {
+      return createValidationError((error as { message?: string })?.message);
     }
     
     return mapSDKErrorToResponse(error);
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     if (taskId) {
       // Get specific video generation task status
       const result = await withSDKErrorHandling(
-        async () => (client as any).videos.getTaskStatus(taskId),
+        async () => (client as { videos: { getTaskStatus: (taskId: string) => Promise<unknown> } }).videos.getTaskStatus(taskId),
         `get video generation task ${taskId}`
       );
 
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
 
       return transformSDKResponse(result);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return mapSDKErrorToResponse(error);
   }
 }
@@ -183,7 +183,7 @@ export async function DELETE(request: NextRequest) {
     
     const result = await withSDKErrorHandling(
       async () => {
-        await (client as any).videos.cancelTask(taskId);
+        await (client as { videos: { cancelTask: (taskId: string) => Promise<void> } }).videos.cancelTask(taskId);
         return {
           success: true,
           message: `Task ${taskId} cancelled successfully.`,
@@ -198,7 +198,7 @@ export async function DELETE(request: NextRequest) {
         taskId,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return mapSDKErrorToResponse(error);
   }
 }

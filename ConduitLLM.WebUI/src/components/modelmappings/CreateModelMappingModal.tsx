@@ -78,7 +78,7 @@ const MODEL_PRESETS = [
 export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingModalProps) {
   const createModelMapping = useCreateModelMapping();
   const { data: providers } = useProviders();
-  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [selectedProvider, setSelectedProvider] = useState<unknown>(null);
   const [showPresets, setShowPresets] = useState(true);
 
   const form = useForm<CreateModelMappingForm>({
@@ -133,7 +133,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
   // Update selected provider info when provider changes
   useEffect(() => {
     if (form.values.providerName) {
-      const provider = providers?.find((p: any) => p.providerName === form.values.providerName);
+      const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === form.values.providerName);
       setSelectedProvider(provider);
     }
   }, [form.values.providerName, providers]);
@@ -154,7 +154,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
       // Reset form and close modal on success
       form.reset();
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       // Error is handled by the mutation hook
       console.error('Create model mapping error:', error);
     }
@@ -176,11 +176,14 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     setShowPresets(false);
   };
 
-  const providerOptions = providers?.map((p: any) => ({
-    value: p.providerName,
-    label: p.providerName,
-    disabled: !p.isEnabled,
-  })) || [];
+  const providerOptions = providers?.map((p: unknown) => {
+    const provider = p as { providerName: string; isEnabled: boolean };
+    return {
+      value: provider.providerName,
+      label: provider.providerName,
+      disabled: !provider.isEnabled,
+    };
+  }) || [];
 
   return (
     <Modal
@@ -234,7 +237,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
           {selectedProvider && (
             <Alert 
               icon={<IconInfoCircle size={16} />} 
-              color={selectedProvider.healthStatus === 'healthy' ? 'green' : 'orange'} 
+              color={(selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'orange'} 
               variant="light"
             >
               <Group gap="xs">
@@ -242,12 +245,12 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
                   Provider Status:
                 </Text>
                 <Badge size="sm" variant="light" color={
-                  selectedProvider.healthStatus === 'healthy' ? 'green' : 'red'
+                  (selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'red'
                 }>
-                  {selectedProvider.healthStatus}
+                  {(selectedProvider as { healthStatus: string }).healthStatus}
                 </Badge>
                 <Text size="sm" c="dimmed">
-                  • {selectedProvider.modelsAvailable} models available
+                  • {(selectedProvider as { modelsAvailable: number }).modelsAvailable} models available
                 </Text>
               </Group>
             </Alert>

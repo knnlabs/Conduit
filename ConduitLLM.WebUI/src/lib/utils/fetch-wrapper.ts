@@ -32,7 +32,7 @@ export async function fetchWithCredentials(
  * @param options - Fetch options
  * @returns Promise<T> - Parsed JSON response
  */
-export async function fetchJSON<T = any>(
+export async function fetchJSON<T = unknown>(
   url: string,
   options: FetchOptions = {}
 ): Promise<T> {

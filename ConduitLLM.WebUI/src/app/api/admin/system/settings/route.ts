@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -37,7 +37,7 @@ export const GET = withSDKAuth(
             // Get settings by category
             const categorySettings = await auth.adminClient!.settings.getSettingsByCategory(category);
             // Convert array to object format
-            const settingsObj: Record<string, any> = {};
+            const settingsObj: Record<string, unknown> = {};
             categorySettings.forEach(setting => {
               settingsObj[setting.key] = setting.value;
             });
@@ -47,7 +47,7 @@ export const GET = withSDKAuth(
           // Get all global settings
           const allSettings = await auth.adminClient!.settings.getGlobalSettings();
           // Convert array to object format grouped by category
-          const settingsObj: Record<string, any> = {};
+          const settingsObj: Record<string, unknown> = {};
           allSettings.forEach(setting => {
             const cat = setting.category || 'general';
             if (!settingsObj[cat]) {
@@ -68,9 +68,9 @@ export const GET = withSDKAuth(
       }
 
       return transformSDKResponse(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle 404 by returning defaults
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return transformSDKResponse(DEFAULT_SETTINGS, {
           meta: { isDefault: true }
         });

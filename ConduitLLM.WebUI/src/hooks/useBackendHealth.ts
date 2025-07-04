@@ -8,14 +8,14 @@ export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
   coreApi: 'healthy' | 'degraded' | 'unavailable';
   lastChecked: Date;
-  adminApiDetails?: any;
-  coreApiDetails?: any;
+  adminApiDetails?: unknown;
+  coreApiDetails?: unknown;
   coreApiMessage?: string;
   coreApiChecks?: {
     name: string;
     status: string;
     description?: string;
-    data?: any;
+    data?: unknown;
   }[];
 }
 
@@ -43,13 +43,13 @@ export function useBackendHealth() {
         }
 
         return await response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         const classifiedError = BackendErrorHandler.classifyError(error);
         throw classifiedError;
       }
     },
     refetchInterval: 30000, // Check every 30 seconds
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry if it's an authentication error
       if (error?.type === BackendErrorType.AUTHENTICATION_FAILED) {
         return false;
@@ -77,13 +77,13 @@ export function useBackendHealth() {
         }
 
         return await response.json();
-      } catch (error: any) {
+      } catch (error: unknown) {
         const classifiedError = BackendErrorHandler.classifyError(error);
         throw classifiedError;
       }
     },
     refetchInterval: 30000, // Check every 30 seconds
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry if it's an authentication error
       if (error?.type === BackendErrorType.AUTHENTICATION_FAILED) {
         return false;
@@ -98,10 +98,10 @@ export function useBackendHealth() {
     let coreApiMessage: string | undefined;
     let coreApiChecks: BackendHealthStatus['coreApiChecks'] | undefined;
     
-    if (coreHealth?.checks) {
+    if (coreHealth && typeof coreHealth === 'object' && 'checks' in coreHealth && Array.isArray(coreHealth.checks)) {
       coreApiChecks = coreHealth.checks;
       // Look for provider check message
-      const providerCheck = coreHealth.checks.find((check: any) => check.name === 'providers');
+      const providerCheck = coreHealth.checks.find((check: { name: string; description?: string }) => check.name === 'providers');
       if (providerCheck?.description) {
         coreApiMessage = providerCheck.description;
       }
@@ -119,8 +119,8 @@ export function useBackendHealth() {
   }, [adminHealth, adminError, adminLoading, coreHealth, coreError, coreLoading]);
 
   function getServiceStatus(
-    data: any, 
-    error: any, 
+    data: unknown, 
+    error: unknown, 
     loading: boolean
   ): 'healthy' | 'degraded' | 'unavailable' {
     if (loading) {
@@ -145,7 +145,7 @@ export function useBackendHealth() {
       }
     }
 
-    if (data) {
+    if (data && typeof data === 'object' && 'status' in data) {
       // Check the health status from the response
       if (data.status === 'Healthy') {
         return 'healthy';

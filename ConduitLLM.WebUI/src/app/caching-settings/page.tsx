@@ -11,50 +11,36 @@ import {
   Switch,
   NumberInput,
   Select,
-  Slider,
   Badge,
   ThemeIcon,
   Progress,
-  Paper,
   Alert,
   ScrollArea,
   Table,
   ActionIcon,
   Tooltip,
-  Code,
   TextInput,
   MultiSelect,
   JsonInput,
   Tabs,
-  SimpleGrid,
-  RingProgress,
-  Center,
   PasswordInput,
   LoadingOverlay,
 } from '@mantine/core';
 import {
-  IconCircle,
   IconSettings,
   IconDatabase,
-  IconClock,
-  IconDownload,
-  IconServer,
   IconRefresh,
   IconTrash,
-  IconAlertCircle,
   IconInfoCircle,
   IconChartBar,
   IconBolt,
   IconKey,
   IconNetwork,
   IconDeviceFloppy,
-  IconCloudDataConnection,
-  IconHistory,
   IconFilter,
   IconPlus,
   IconEdit,
   IconCheck,
-  IconX,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
@@ -64,8 +50,6 @@ import {
   useCachingConfig, 
   useUpdateCachingConfig,
   useClearCache,
-  type CachePolicy,
-  type CacheRegion,
 } from '@/hooks/api/useConfigurationApi';
 
 
@@ -136,7 +120,7 @@ export default function CachingSettingsPage() {
         message: 'Cache configuration has been updated successfully',
         color: 'green',
       });
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to save cache configuration',
@@ -169,7 +153,7 @@ export default function CachingSettingsPage() {
           color: 'orange',
         });
       }
-    } catch (error) {
+    } catch (_error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to clear cache',
@@ -178,7 +162,7 @@ export default function CachingSettingsPage() {
     }
   };
 
-  const handleTogglePolicy = (policyId: string) => {
+  const handleTogglePolicy = (_policyId: string) => {
     // TODO: Implement policy toggle via API when endpoint is available
     notifications.show({
       title: 'Policy Updated',

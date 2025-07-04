@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { createFileResponse, createValidationError } from '@/lib/utils/route-helpers';
@@ -8,7 +7,7 @@ const VALID_FORMATS = ['csv', 'json', 'excel'];
 
 export const POST = withSDKAuth(
   async (request, { auth }) => {
-    let body: any;
+    let body: { type?: string; format?: string; filters?: Record<string, unknown> };
     try {
       body = await request.json();
       const { type, format, filters } = body;
@@ -69,9 +68,9 @@ export const POST = withSDKAuth(
           disposition: 'attachment',
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return error if export not available
-      if (error.statusCode === 404 || error.type === 'NOT_FOUND') {
+      if ((error as Record<string, unknown>)?.statusCode === 404 || (error as Record<string, unknown>)?.type === 'NOT_FOUND') {
         return createValidationError(
           'Analytics export feature is not yet available',
           { feature: 'analytics-export', available: false }
