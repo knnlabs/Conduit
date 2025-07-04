@@ -238,7 +238,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
             }}
           />
 
-          {selectedProvider && (
+          {selectedProvider && selectedProvider as any && (
             <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
               <Text size="sm">
                 Provider has {(selectedProvider as { modelsAvailable: number }).modelsAvailable} models available.

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { validateCoreSession } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/clients/server';
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error: unknown) {
     // Handle timeout errors
-    if (error.code === 'ETIMEDOUT' || (error as { message?: string })?.message?.includes('timeout')) {
+    if ((error as Record<string, unknown>)?.code === 'ETIMEDOUT' || (error as { message?: string })?.message?.includes('timeout')) {
       return new Response(
         JSON.stringify({
           status: 'Unhealthy',
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Handle connection errors
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    if ((error as Record<string, unknown>)?.code === 'ECONNREFUSED' || (error as Record<string, unknown>)?.code === 'ENOTFOUND') {
       return new Response(
         JSON.stringify({
           status: 'Unavailable',

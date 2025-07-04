@@ -278,7 +278,7 @@ export default function ChatPage() {
           <Text c="dimmed">Interactive chat with LLM models</Text>
         </div>
         <ErrorState 
-          error={keysError || modelsError} 
+          error={(keysError || modelsError) as Error} 
           title="Failed to load configuration"
           fullPage
         />

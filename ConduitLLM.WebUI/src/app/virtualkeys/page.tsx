@@ -228,7 +228,7 @@ export default function VirtualKeysPage() {
           title="Error loading virtual keys"
           color="red"
         >
-          {error.message || 'Failed to load virtual keys. Please try again.'}
+          {error instanceof Error ? error.message : 'Failed to load virtual keys. Please try again.'}
         </Alert>
       </Stack>
     );

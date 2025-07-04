@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { validateSession, createUnauthorizedResponse } from '@/lib/auth/middleware';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';

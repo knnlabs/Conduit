@@ -26,7 +26,7 @@ export function createDynamicRouteHandler<TParams = Record<string, string>>(
         auth: authContext.auth,
       }),
       authOptions
-    )(request, { params });
+    )(request);
   };
 }
 

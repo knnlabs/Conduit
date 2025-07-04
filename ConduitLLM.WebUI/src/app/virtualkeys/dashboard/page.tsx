@@ -162,7 +162,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatNumber(totalRequests)}
+              {formatNumber(totalRequests as number)}
             </Text>
             <Group gap="xs" mt={4}>
               <Text size="xs" c="green" fw={500}>
@@ -186,7 +186,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatCurrency(totalCost)}
+              {formatCurrency(totalCost as number)}
             </Text>
             <Group gap="xs" mt={4}>
               <Text size="xs" c="green" fw={500}>

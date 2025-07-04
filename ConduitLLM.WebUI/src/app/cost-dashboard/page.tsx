@@ -94,7 +94,7 @@ export default function CostDashboardPage() {
       notifications.update({
         id: 'export-start',
         title: 'Export Failed',
-        message: error.message || 'Failed to export data',
+        message: error instanceof Error ? error.message : 'Failed to export data',
         color: 'red',
         loading: false,
         autoClose: 5000,
@@ -183,7 +183,7 @@ export default function CostDashboardPage() {
           title="Error loading cost data"
           color="red"
         >
-          {error.message || 'Failed to load cost analytics. Please try again.'}
+          {error instanceof Error ? error.message : 'Failed to load cost analytics. Please try again.'}
         </Alert>
       </Stack>
     );
@@ -327,7 +327,7 @@ export default function CostDashboardPage() {
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
-                  data={costTrends || []}
+                  data={(costTrends || []) as any[]}
                   title="Spending Over Time"
                   type="line"
                   valueKey="spend"
@@ -338,7 +338,7 @@ export default function CostDashboardPage() {
                 />
                 
                 <CostChart
-                  data={costTrends || []}
+                  data={(costTrends || []) as any[]}
                   title="Request Volume"
                   type="bar"
                   valueKey="requests"
@@ -364,7 +364,7 @@ export default function CostDashboardPage() {
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
-                  data={providerCosts || []}
+                  data={(providerCosts || []) as any[]}
                   title="Spend by Provider"
                   type="pie"
                   valueKey="spend"

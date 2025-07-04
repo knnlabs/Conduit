@@ -7,12 +7,9 @@ export const GET = createDynamicRouteHandler<{ id: string }>(
     try {
       const { id } = params;
       
-      // Get virtual key details including usage stats
+      // Get virtual key details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.get(id, {
-          includeUsageStats: true,
-          includeSpendHistory: false,
-        }),
+        async () => auth.adminClient!.virtualKeys.getById(Number(id)),
         `get virtual key ${id}`
       );
 
@@ -31,20 +28,21 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
       const { id } = params;
       const body = await request.json();
       
-      // Update virtual key using SDK
+      // Update virtual key using SDK - only include fields that can be updated
+      const updateData: Record<string, unknown> = {};
+      
+      if (body.keyName !== undefined) updateData.keyName = body.keyName;
+      if (body.allowedModels !== undefined) updateData.allowedModels = body.allowedModels;
+      if (body.maxBudget !== undefined) updateData.maxBudget = body.maxBudget;
+      if (body.budgetDuration !== undefined) updateData.budgetDuration = body.budgetDuration;
+      if (body.rateLimits !== undefined) updateData.rateLimits = body.rateLimits;
+      if (body.ipWhitelist !== undefined) updateData.ipWhitelist = body.ipWhitelist;
+      if (body.metadata !== undefined) updateData.metadata = body.metadata;
+      if (body.isEnabled !== undefined) updateData.isEnabled = body.isEnabled;
+      if (body.expiresAt !== undefined) updateData.expiresAt = body.expiresAt;
+      
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.update(id, {
-          keyName: body.keyName,
-          description: body.description,
-          allowedModels: body.allowedModels,
-          maxBudget: body.maxBudget,
-          budgetDuration: body.budgetDuration,
-          rateLimits: body.rateLimits,
-          ipWhitelist: body.ipWhitelist,
-          metadata: body.metadata,
-          isEnabled: body.isEnabled,
-          expiresAt: body.expiresAt,
-        }),
+        async () => auth.adminClient!.virtualKeys.update(Number(id), updateData),
         `update virtual key ${id}`
       );
 
@@ -63,7 +61,7 @@ export const DELETE = createDynamicRouteHandler<{ id: string }>(
       
       // Delete virtual key using SDK
       await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.delete(id),
+        async () => auth.adminClient!.virtualKeys.deleteById(Number(id)),
         `delete virtual key ${id}`
       );
 

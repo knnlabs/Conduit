@@ -125,10 +125,8 @@ export function useExportAudioUsage() {
 
   return useMutation({
     mutationFn: async ({ 
-      query: _query, 
       format: _format 
     }: { 
-      query: unknown; 
       format: 'csv' | 'json' 
     }) => {
       // Feature not yet available - throw error to trigger error handling

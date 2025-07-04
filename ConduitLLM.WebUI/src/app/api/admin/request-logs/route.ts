@@ -55,7 +55,7 @@ export const GET = withSDKAuth(
 // Export request logs
 export const POST = withSDKAuth(
   async (request, { auth }) => {
-    let body: { format?: string; filters?: Record<string, unknown> };
+    let body: { format?: string; filters?: Record<string, unknown> } = {};
     try {
       body = await request.json();
       const { format, filters } = body;
@@ -73,11 +73,11 @@ export const POST = withSDKAuth(
       const blob = await withSDKErrorHandling(
         async () => auth.adminClient!.analytics.exportAnalytics(
           {
-            startDate: filters?.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            endDate: filters?.endDate || new Date().toISOString(),
-            virtualKeyIds: filters?.virtualKeyId ? [parseInt(filters.virtualKeyId)] : undefined,
-            models: filters?.modelName ? [filters.modelName] : undefined,
-            providers: filters?.providerId ? [filters.providerId] : undefined,
+            startDate: (filters?.startDate as string) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: (filters?.endDate as string) || new Date().toISOString(),
+            virtualKeyIds: filters?.virtualKeyId ? [Number(filters.virtualKeyId)] : undefined,
+            models: filters?.modelName ? [filters.modelName as string] : undefined,
+            providers: filters?.providerId ? [filters.providerId as string] : undefined,
             includeMetadata: true,
           },
           format as 'csv' | 'excel' | 'json'

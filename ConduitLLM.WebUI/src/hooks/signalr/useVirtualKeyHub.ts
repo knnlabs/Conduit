@@ -127,9 +127,9 @@ export function useVirtualKeyHub() {
         const spendMap = new Map(events.map(e => [e.keyId, e.currentSpend]));
         
         return oldData.map((key: unknown) => {
-          const newSpend = spendMap.get(key.id);
+          const newSpend = spendMap.get((key as any).id);
           if (newSpend !== undefined) {
-            return { ...key, currentSpend: newSpend };
+            return { ...(key as any), currentSpend: newSpend };
           }
           return key;
         });

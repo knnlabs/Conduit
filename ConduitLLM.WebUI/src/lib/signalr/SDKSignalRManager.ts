@@ -135,7 +135,7 @@ export class SDKSignalRManager {
       //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
       //   reconnectInterval: this.config.reconnectInterval,
       // },
-    } as unknown as ConduitCoreClient);
+    });
 
     // Set up Core event listeners
     await this.setupCoreEventListeners();
@@ -150,8 +150,8 @@ export class SDKSignalRManager {
     logger.info('Initializing Admin client with SignalR');
 
     this.adminClient = new ConduitAdminClient({
-      adminApiUrl: this.config.adminApiUrl,
-      masterKey: masterKey,
+      baseURL: this.config.adminApiUrl,
+      apiKey: masterKey,
       // TODO: SignalR configuration not yet supported in SDK v1.0.1
       // signalR: {
       //   enabled: true,
@@ -174,7 +174,7 @@ export class SDKSignalRManager {
     logger.info('Setting up Core event listeners');
 
     // Video generation progress
-    const videoSub = await this.coreClient.notifications.onVideoProgress((event: { taskId: string; status: string; progress?: number; metadata?: { url?: string }; message?: string }) => {
+    const videoSub = await this.coreClient.notifications.onVideoProgress((event: any) => {
       if (this.eventHandlers.onVideoGenerationProgress) {
         this.eventHandlers.onVideoGenerationProgress({
           taskId: event.taskId,
@@ -222,7 +222,7 @@ export class SDKSignalRManager {
         this.eventHandlers.onSpendLimitAlert({
           virtualKeyId: String(event.virtualKeyId),
           currentSpend: event.currentSpend,
-          limit: event.spendLimit || event.limit,
+          limit: event.spendLimit || event.limit || 0,
           percentage: event.spendPercentage || event.percentage || 0,
           alertLevel: (event.severity || event.alertLevel || 'warning') as 'warning' | 'critical',
         });
@@ -300,7 +300,7 @@ export class SDKSignalRManager {
     // });
 
     // Get or create admin notification hub if available
-    const adminHub = await signalRService.getOrCreateAdminNotificationHub?.();
+    const adminHub = await (signalRService as any).getOrCreateAdminNotificationHub?.();
     if (adminHub) {
       // Virtual key events
       if (adminHub.onVirtualKeyUpdate) {

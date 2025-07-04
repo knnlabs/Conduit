@@ -34,6 +34,7 @@ import {
   IconServer as IconHardDrive,
   IconCpu as IconMemory,
   IconCheck,
+  IconNetwork,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -421,7 +422,7 @@ export default function SystemPerformancePage() {
                 {resourceHistory && (
                   <>
                     <CostChart
-                      data={resourceHistory}
+                      data={(resourceHistory || []) as any[]}
                       title="CPU & Memory Usage"
                       type="line"
                       valueKey="cpuUsage"
@@ -431,7 +432,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={resourceHistory}
+                      data={(resourceHistory || []) as any[]}
                       title="Network & Disk Usage"
                       type="line"
                       valueKey="networkUsage"
@@ -441,7 +442,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={resourceHistory}
+                      data={(resourceHistory || []) as any[]}
                       title="Response Time"
                       type="line"
                       valueKey="responseTime"
@@ -451,7 +452,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={resourceHistory}
+                      data={(resourceHistory || []) as any[]}
                       title="Requests per Second"
                       type="bar"
                       valueKey="requestsPerSecond"

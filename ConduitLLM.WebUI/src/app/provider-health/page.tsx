@@ -835,18 +835,18 @@ export default function ProviderHealthPage() {
               )}
               <div>
                 <Text size="sm" c="dimmed" mb="xs">Duration</Text>
-                <Text>{selectedIncident.duration ? `${selectedIncident.duration} minutes` : 'Ongoing'}</Text>
+                <Text>{(selectedIncident as any).duration ? `${(selectedIncident as any).duration} minutes` : 'Ongoing'}</Text>
               </div>
               <div>
                 <Text size="sm" c="dimmed" mb="xs">Affected Users</Text>
-                <Text>{selectedIncident.impact.usersAffected.toLocaleString()}</Text>
+                <Text>{(selectedIncident as any).impact?.usersAffected?.toLocaleString()}</Text>
               </div>
             </SimpleGrid>
             
             <div>
               <Text fw={500} mb="xs">Affected Models</Text>
               <Group gap="xs">
-                {selectedIncident.affectedModels.map((model: string) => (
+                {(selectedIncident as any).affectedModels?.map((model: string) => (
                   <Badge key={model} variant="light">
                     {model}
                   </Badge>

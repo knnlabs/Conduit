@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
 
       // Return SSE stream
       return createStreamingResponse(stream, {
-        transformer: (chunk) => {
+        transformer: (chunk: unknown) => {
           // Transform SDK chunk to OpenAI format SSE
-          if (chunk.object === 'chat.completion.chunk') {
+          if (typeof chunk === 'object' && chunk !== null && 'object' in chunk && (chunk as Record<string, unknown>).object === 'chat.completion.chunk') {
             return `data: ${JSON.stringify(chunk)}\n\n`;
           }
           // Handle special tokens
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     // Handle validation errors specially
     if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message);
+      return createValidationError((error as { message?: string })?.message || 'Validation error');
     }
     
     return mapSDKErrorToResponse(error);

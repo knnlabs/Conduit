@@ -7,11 +7,23 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
     try {
       const { providerId } = params;
       
-      // Get provider details
-      const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.getProviderDataByNameAsync(providerId),
-        `get provider ${providerId}`
+      // Get all providers and find the specific one
+      const providers = await withSDKErrorHandling(
+        async () => auth.adminClient!.providers.list(),
+        'list providers to find specific provider'
       );
+      
+      // Find the specific provider by name (providerId is actually the provider name)
+      const provider = Array.from(providers).find(p => p.providerName === providerId);
+      
+      if (!provider) {
+        return NextResponse.json(
+          { error: `Provider ${providerId} not found` },
+          { status: 404 }
+        );
+      }
+      
+      const result = provider;
 
       return NextResponse.json(result);
     } catch (error) {

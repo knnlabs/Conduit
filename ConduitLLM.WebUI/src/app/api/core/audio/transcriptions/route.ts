@@ -1,4 +1,5 @@
 
+import { NextRequest } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -106,21 +107,21 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     // Handle validation errors specially
     if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message);
+      return createValidationError((error as { message?: string })?.message || 'Validation error');
     }
     
     // Handle file size errors
     if ((error as Record<string, unknown>)?.statusCode === 413 || (error as { message?: string })?.message?.includes('too large')) {
       return createValidationError('File too large. Maximum size is 25MB', {
         maxSize: '25MB',
-        providedSize: error.fileSize,
+        providedSize: (error as Record<string, unknown>).fileSize,
       });
     }
     
     // Handle unsupported media type
     if ((error as Record<string, unknown>)?.statusCode === 415 || (error as { message?: string })?.message?.includes('unsupported')) {
       return createValidationError('Unsupported media type. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm', {
-        providedType: error.mediaType,
+        providedType: (error as Record<string, unknown>).mediaType,
       });
     }
     

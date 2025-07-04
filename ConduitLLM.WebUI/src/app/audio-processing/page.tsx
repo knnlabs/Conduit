@@ -127,7 +127,7 @@ export default function AudioProcessingPage() {
       const result: TranscriptionResult = {
         id: `trans_${Date.now()}`,
         fileName: audioFile.name,
-        text: typeof response === 'string' ? response : response.text || 'No transcription generated',
+        text: typeof response === 'string' ? response : String((response as Record<string, unknown>).text || 'No transcription generated'),
         model: transcriptionModel,
         language: language || undefined,
         createdAt: new Date(),

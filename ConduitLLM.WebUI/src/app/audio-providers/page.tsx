@@ -98,7 +98,7 @@ function transformAudioProvider(dto: unknown): AudioProvider {
     createdAt?: string;
     updatedAt?: string;
   };
-  const providerType = getProviderTypeFromName(dto.name);
+  const providerType = getProviderTypeFromName(providerDto.name || '');
   
   return {
     id: providerDto.id || '',

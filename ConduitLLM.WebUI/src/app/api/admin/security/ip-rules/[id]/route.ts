@@ -9,7 +9,7 @@ export const GET = createDynamicRouteHandler<{ id: string }>(
       
       // Get IP rule details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.get(id),
+        async () => auth.adminClient!.ipFilters.getById(Number(id)),
         `get IP rule ${id}`
       );
 
@@ -27,16 +27,16 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
       const { id } = params;
       const body = await request.json();
       
-      // Update IP rule
+      // Update IP rule - build update data with required id field
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.update(id, {
-          ipAddress: body.ipAddress,
-          action: body.action,
-          description: body.description,
-          expiresAt: body.expiresAt,
-          metadata: body.metadata,
-          isEnabled: body.isEnabled,
-        }),
+        async () => auth.adminClient!.ipFilters.update(Number(id), {
+          id: Number(id),
+          ...(body.ipAddress !== undefined && { ipAddressOrCidr: body.ipAddress }),
+          ...(body.action !== undefined && { filterType: body.action === 'allow' ? 'whitelist' : 'blacklist' }),
+          ...(body.description !== undefined && { description: body.description }),
+          ...(body.isEnabled !== undefined && { isEnabled: body.isEnabled }),
+          ...(body.name !== undefined && { name: body.name }),
+        }), // SDK type should accept this
         `update IP rule ${id}`
       );
 
@@ -60,7 +60,7 @@ export const DELETE = createDynamicRouteHandler<{ id: string }>(
       
       // Delete IP rule
       await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.delete(id),
+        async () => auth.adminClient!.ipFilters.deleteById(Number(id)),
         `delete IP rule ${id}`
       );
 

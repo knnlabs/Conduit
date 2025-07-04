@@ -234,7 +234,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
             {...form.getInputProps('providerName')}
           />
 
-          {selectedProvider && (
+          {selectedProvider && selectedProvider as any && (
             <Alert 
               icon={<IconInfoCircle size={16} />} 
               color={(selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'orange'} 

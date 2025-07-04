@@ -109,7 +109,7 @@ export default function VideoGenerationPage() {
 
       const response = await videoGeneration.mutateAsync(request);
 
-      if (response.url || response.data) {
+      if ((response as any).url || (response as any).data) {
         // Video generation completed immediately
         const newVideo: GeneratedVideo = {
           id: `video_${Date.now()}`,
@@ -120,7 +120,7 @@ export default function VideoGenerationPage() {
           fps,
           status: 'completed',
           progress: 100,
-          url: response.url || response.data?.[0]?.url,
+          url: (response as any).url || (response as any).data?.[0]?.url,
           createdAt: new Date(),
           completedAt: new Date(),
         };

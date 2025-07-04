@@ -109,12 +109,6 @@ export default function AudioUsagePage() {
 
   const handleExport = () => {
     exportData({
-      query: {
-        startDate: dateRange[0]?.toISOString(),
-        endDate: dateRange[1]?.toISOString(),
-        virtualKey: selectedVirtualKey === 'all' ? undefined : selectedVirtualKey,
-        model: selectedModel === 'all' ? undefined : selectedModel,
-      },
       format: 'csv',
     });
   };

@@ -41,11 +41,12 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
+import type { ModelMapping } from '@/types/sdk-responses';
 
 export default function ModelMappingsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedMapping, setSelectedMapping] = useState<unknown>(null);
+  const [selectedMapping, setSelectedMapping] = useState<ModelMapping | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { data: modelMappings, isLoading, error, refetch } = useModelMappings();
@@ -53,7 +54,7 @@ export default function ModelMappingsPage() {
   const bulkDiscoverModelMappings = useBulkDiscoverModelMappings();
 
   const handleEdit = (mapping: unknown) => {
-    setSelectedMapping(mapping);
+    setSelectedMapping(mapping as ModelMapping);
     openEditModal();
   };
 
@@ -441,7 +442,7 @@ export default function ModelMappingsPage() {
                         acc[providerName].push(mapping);
                         return acc;
                       }, {})
-                    ).map(([provider, mappings]: [string, unknown[]]) => (
+                    ).map(([provider, mappings]) => (
                       <div key={provider}>
                         <Group gap="xs" mb="xs">
                           <Badge variant="dot" size="lg">{provider}</Badge>
@@ -452,7 +453,7 @@ export default function ModelMappingsPage() {
                         <ModelMappingsTable 
                           onEdit={handleEdit} 
                           onTest={handleTest} 
-                          data={mappings}
+                          data={mappings as ModelMapping[]}
                           showProvider={false}
                         />
                       </div>

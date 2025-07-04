@@ -47,7 +47,7 @@ export const GET = withSDKAuth(
           // Get all global settings
           const allSettings = await auth.adminClient!.settings.getGlobalSettings();
           // Convert array to object format grouped by category
-          const settingsObj: Record<string, unknown> = {};
+          const settingsObj: Record<string, Record<string, unknown>> = {};
           allSettings.forEach(setting => {
             const cat = setting.category || 'general';
             if (!settingsObj[cat]) {

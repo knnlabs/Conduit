@@ -1,4 +1,5 @@
 
+import { NextRequest } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     // Handle validation errors specially
     if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message);
+      return createValidationError((error as { message?: string })?.message || 'Validation error');
     }
     
     return mapSDKErrorToResponse(error);

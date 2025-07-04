@@ -46,6 +46,8 @@ import {
   useOverallMediaStats, 
   useMediaByVirtualKey,
   useDeleteMedia,
+  useMediaStorageByType,
+  useCleanupExpiredMedia,
 } from '@/hooks/api/useMediaApi';
 
 export default function MediaAssetsPage() {
@@ -487,7 +489,7 @@ export default function MediaAssetsPage() {
         title={(selectedAsset as { filename?: string } | null)?.filename}
         size="xl"
       >
-        {selectedAsset && (
+        {selectedAsset && selectedAsset as any && (
           <Stack gap="md">
             {(selectedAsset as { type: string }).type === 'image' ? (
               <Image

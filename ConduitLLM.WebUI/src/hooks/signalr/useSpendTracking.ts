@@ -64,7 +64,7 @@ export function useSpendTracking() {
         ...oldData,
         currentSpend: event.newSpend,
         lastUsed: event.timestamp,
-        requestCount: event.requestId ? oldData.requestCount + 1 : oldData.requestCount,
+        requestCount: event.requestId ? (oldData as any).requestCount + 1 : (oldData as any).requestCount,
       };
     });
 

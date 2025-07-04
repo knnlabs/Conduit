@@ -163,13 +163,13 @@ export function useProviderHub() {
         const updateMap = new Map(events.map(e => [e.providerId, e]));
         
         return oldData.map((provider: unknown) => {
-          const update = updateMap.get(provider.id);
+          const update = updateMap.get((provider as any).id);
           if (update) {
             return {
               ...provider,
-              healthStatus: update.healthStatus ?? provider.healthStatus,
-              isHealthy: update.isHealthy ?? provider.isHealthy,
-              modelsAvailable: update.modelsAvailable ?? provider.modelsAvailable,
+              healthStatus: update.healthStatus ?? (provider as any).healthStatus,
+              isHealthy: update.isHealthy ?? (provider as any).isHealthy,
+              modelsAvailable: update.modelsAvailable ?? (provider as any).modelsAvailable,
               lastHealthCheck: update.timestamp,
             };
           }

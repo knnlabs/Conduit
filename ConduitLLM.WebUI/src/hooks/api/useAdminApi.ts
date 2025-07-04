@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
 import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Query key factory
@@ -50,10 +50,10 @@ export function useVirtualKeys() {
     },
     staleTime: 30 * 1000, // 30 seconds
     retry: (failureCount, error: unknown) => {
-      return BackendErrorHandler.shouldRetry(error, failureCount);
+      return BackendErrorHandler.shouldRetry(error as BackendError, failureCount);
     },
     retryDelay: (attemptIndex, error: unknown) => {
-      return BackendErrorHandler.getRetryDelay(error, attemptIndex);
+      return BackendErrorHandler.getRetryDelay(error as BackendError, attemptIndex);
     },
   });
 }

@@ -132,7 +132,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
         title="Error loading virtual keys"
         color="red"
       >
-        {error.message || 'Failed to load virtual keys. Please try again.'}
+        {error instanceof Error ? error.message : 'Failed to load virtual keys. Please try again.'}
       </Alert>
     );
   }

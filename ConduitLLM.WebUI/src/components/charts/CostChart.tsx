@@ -97,9 +97,9 @@ export function CostChart({
           <PieChart
             h={height}
             data={data.map(item => ({
-              name: item[nameKey],
+              name: String(item[nameKey]),
               value: item[valueKey],
-              color: `blue.${Math.floor(Math.random() * 9) + 1}`,
+              color: `blue.${Math.floor(Math.random() * 9) + 1}` as any,
             }))}
             valueFormatter={formatCurrency}
             withLabelsLine={false}

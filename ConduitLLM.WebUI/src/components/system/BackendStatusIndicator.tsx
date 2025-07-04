@@ -24,7 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
-import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
 
 interface BackendStatusIndicatorProps {
   compact?: boolean;
@@ -205,21 +205,21 @@ export function BackendStatusIndicator({
             <Stack gap="xs">
               <Text size="xs" fw={500}>Service Details</Text>
               
-              {healthStatus.adminApiDetails && (
+              {healthStatus.adminApiDetails && (healthStatus.adminApiDetails as any) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Admin API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {healthStatus.adminApiDetails.status}<br/>
+                    Status: {(healthStatus.adminApiDetails as any).status}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>
               )}
               
-              {healthStatus.coreApiDetails && (
+              {healthStatus.coreApiDetails && (healthStatus.coreApiDetails as any) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Core API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {healthStatus.coreApiDetails.status}<br/>
+                    Status: {(healthStatus.coreApiDetails as any).status}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>

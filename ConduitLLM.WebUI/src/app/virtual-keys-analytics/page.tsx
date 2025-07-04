@@ -70,7 +70,7 @@ export default function VirtualKeysAnalyticsPage() {
   const [performanceOpened, { open: openPerformance, close: closePerformance }] = useDisclosure(false);
   const [securityOpened, { open: openSecurity, close: closeSecurity }] = useDisclosure(false);
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as unknown };
+  const timeRange: TimeRangeFilter = { range: timeRangeValue as TimeRangeFilter['range'] };
   
   const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeysOverview();
   const { data: selectedKeyUsage } = useVirtualKeyUsageMetrics(selectedKey?.keyId || '', timeRange);

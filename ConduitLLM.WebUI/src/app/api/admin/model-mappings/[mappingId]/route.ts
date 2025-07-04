@@ -27,18 +27,20 @@ export const PUT = createDynamicRouteHandler<{ mappingId: string }>(
       const { mappingId } = params;
       const body = await request.json();
       
-      // Update model mapping
+      // Update model mapping - Note: SDK update may not allow changing modelId/providerId
+      const updateData: Record<string, unknown> = {};
+      
+      // Only include fields that can be updated - handle both field name formats
+      if (body.providerModelName !== undefined || body.internalModelName !== undefined) {
+        updateData.providerModelId = body.providerModelName || body.internalModelName;
+      }
+      if (body.priority !== undefined) updateData.priority = body.priority;
+      if (body.isEnabled !== undefined) updateData.isEnabled = body.isEnabled;
+      if (body.metadata !== undefined) updateData.metadata = JSON.stringify(body.metadata);
+      if (body.capabilities !== undefined) updateData.capabilities = body.capabilities;
+      
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.update(Number(mappingId), {
-          modelName: body.modelName,
-          providerId: body.providerId,
-          providerModelName: body.providerModelName,
-          priority: body.priority,
-          isEnabled: body.isEnabled,
-          metadata: body.metadata,
-          capabilities: body.capabilities,
-          costMultiplier: body.costMultiplier,
-        }),
+        async () => auth.adminClient!.modelMappings.update(Number(mappingId), updateData),
         `update model mapping ${mappingId}`
       );
 
@@ -62,7 +64,7 @@ export const DELETE = createDynamicRouteHandler<{ mappingId: string }>(
       
       // Delete model mapping
       await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.delete(Number(mappingId)),
+        async () => auth.adminClient!.modelMappings.deleteById(Number(mappingId)),
         `delete model mapping ${mappingId}`
       );
 

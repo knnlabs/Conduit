@@ -718,7 +718,7 @@ export default function UsageAnalyticsPage() {
             </div>
             
             <CostChart
-              data={(selectedEndpoint as { requestsOverTime?: unknown[] }).requestsOverTime || []}
+              data={(selectedEndpoint as { requestsOverTime?: unknown[] }).requestsOverTime || [] as any[]}
               title="Request Volume Over Time"
               type="line"
               valueKey="requests"

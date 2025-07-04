@@ -127,7 +127,7 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
           {
             error: {
               type: SDKErrorType.NOT_FOUND,
-              message: data.error || 'Resource not found',
+              message: (data as any).error || 'Resource not found',
             },
           },
           { status: 404 }
@@ -138,7 +138,7 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
           {
             error: {
               type: SDKErrorType.CONFLICT,
-              message: data.error || 'Resource conflict',
+              message: (data as any).error || 'Resource conflict',
             },
           },
           { status: 409 }

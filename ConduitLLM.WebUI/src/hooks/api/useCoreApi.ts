@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
 import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 // Chat types
@@ -48,10 +48,10 @@ export function useChatCompletion() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Chat Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },
@@ -123,10 +123,10 @@ export function useStreamingChatCompletion() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Streaming Chat Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },
@@ -169,10 +169,10 @@ export function useImageGeneration() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Image Generation Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },
@@ -244,10 +244,10 @@ export function useVideoGeneration() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Video Generation Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },
@@ -318,8 +318,8 @@ export function useVideoStatus(virtualKey: string, taskId: string) {
 export function useAudioTranscription() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ virtualKey, file, ...options }: { virtualKey: string; file: File; [key: string]: unknown }) => {
+  return useMutation<unknown, Error, { virtualKey: string; file: File; [key: string]: unknown }>({
+    mutationFn: async ({ virtualKey, file, ...options }) => {
       try {
         const formData = new FormData();
         formData.append('virtual_key', virtualKey);
@@ -357,10 +357,10 @@ export function useAudioTranscription() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Transcription Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },
@@ -451,10 +451,10 @@ export function useAudioSpeech() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = error.type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Speech Generation Error',
-        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError),
+        message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
         color: 'red',
       });
     },

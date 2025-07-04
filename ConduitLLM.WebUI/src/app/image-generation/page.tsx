@@ -113,8 +113,8 @@ export default function ImageGenerationPage() {
 
       const response = await imageGeneration.mutateAsync(request);
 
-      if (response.data && response.data.length > 0) {
-        const newImages: GeneratedImage[] = response.data.map((imageData: unknown, index: number) => {
+      if ((response as any).data && (response as any).data.length > 0) {
+        const newImages: GeneratedImage[] = (response as any).data.map((imageData: unknown, index: number) => {
           if (typeof imageData === 'object' && imageData !== null) {
             const imgData = imageData as { url?: string; b64_json?: string };
             return {
@@ -159,17 +159,7 @@ export default function ImageGenerationPage() {
         (task as { type: string }).type === 'image' &&
         (task as { status: string }).status === 'completed' &&
         (task as { result: unknown }).result) {
-      const taskObj = task as {
-        taskId: string;
-        result: {
-          data?: unknown[];
-          prompt?: string;
-          model?: string;
-          size?: string;
-          quality?: string;
-          style?: string;
-        };
-      };
+      const taskObj = task as any;
       const newImages: GeneratedImage[] = taskObj.result.data?.map((imageData: unknown, index: number) => {
         if (typeof imageData === 'object' && imageData !== null) {
           const imgData = imageData as { url?: string; b64_json?: string };
