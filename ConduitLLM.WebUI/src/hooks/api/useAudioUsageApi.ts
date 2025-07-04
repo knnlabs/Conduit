@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiKeys } from './useAdminApi';
 import { notifications } from '@mantine/notifications';
-import { getEmptyAudioUsageSummary, getEmptyRequestLogs } from '@/lib/placeholders/backend-placeholders';
+import { getAdminClient } from '@/lib/clients/conduit';
 import type { AudioUsageSummary } from '@/types/sdk-responses';
 
 export function useAudioUsageSummary(
@@ -10,12 +10,58 @@ export function useAudioUsageSummary(
   virtualKey?: string,
   provider?: string
 ) {
+  const adminSdk = getAdminClient();
+
   return useQuery<AudioUsageSummary>({
     queryKey: [adminApiKeys.audioUsage, 'summary', startDate, endDate, virtualKey, provider],
     queryFn: async () => {
-      // Return empty data until backend endpoint exists
-      // This provides a realistic empty state instead of fake data
-      return getEmptyAudioUsageSummary(startDate, endDate);
+      try {
+        const summary = await adminSdk.audioConfiguration.getUsageSummary({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          virtualKey,
+          provider,
+        });
+        
+        // Transform SDK response to expected format
+        const summaryAny = summary as unknown as Record<string, unknown>;
+        const result: AudioUsageSummary = {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalCost: Number(summaryAny.totalCost) || 0,
+          totalDuration: Number(summaryAny.totalDurationSeconds || summaryAny.totalDuration) || 0,
+          totalRequests: Number(summaryAny.totalRequests) || 0,
+          averageLatency: Number(summaryAny.averageLatency) || 0,
+          topModels: [],
+          dailyUsage: [],
+          modelUsage: summaryAny.byModel ? Object.entries(summaryAny.byModel as Record<string, unknown>).map(([model, data]) => {
+            const modelData = data as Record<string, unknown>;
+            return {
+              model,
+              requests: Number(modelData.requests) || 0,
+              cost: Number(modelData.cost) || 0,
+              duration: Number(modelData.duration) || 0,
+            };
+          }) : [],
+        };
+        return result;
+      } catch (error) {
+        // Return empty data if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            totalCost: 0,
+            totalDuration: 0,
+            totalRequests: 0,
+            averageLatency: 0,
+            topModels: [],
+            dailyUsage: [],
+            modelUsage: [],
+          };
+        }
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -30,11 +76,43 @@ export function useAudioUsageLogs(query: {
   provider?: string;
   model?: string;
 }) {
+  const adminSdk = getAdminClient();
+
   return useQuery({
     queryKey: [adminApiKeys.audioUsage, 'logs', query],
     queryFn: async () => {
-      // Return empty logs until backend endpoint exists
-      return getEmptyRequestLogs(query.page || 1, query.pageSize || 20);
+      try {
+        const response = await adminSdk.audioConfiguration.getUsage({
+          page: query.page || 1,
+          pageSize: query.pageSize || 20,
+          startDate: query.startDate?.toISOString(),
+          endDate: query.endDate?.toISOString(),
+          virtualKey: query.virtualKey,
+          provider: query.provider,
+        });
+        
+        const pageSize = response.pageSize || 20;
+        const totalCount = response.totalCount || 0;
+        return {
+          items: response.data || [],
+          page: response.page || 1,
+          pageSize,
+          totalCount,
+          totalPages: Math.ceil(totalCount / pageSize) || 0,
+        };
+      } catch (error) {
+        // Return empty logs if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return {
+            items: [],
+            page: query.page || 1,
+            pageSize: query.pageSize || 20,
+            totalCount: 0,
+            totalPages: 0,
+          };
+        }
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -45,22 +123,51 @@ export function useAudioUsageByKey(
   startDate?: Date,
   endDate?: Date
 ) {
+  const adminSdk = getAdminClient();
+
   return useQuery({
     queryKey: [adminApiKeys.audioUsage, 'byKey', virtualKey, startDate, endDate],
     queryFn: async () => {
-      // Return empty data until backend endpoint exists
-      return {
-        virtualKey,
-        totalRequests: 0,
-        totalCost: 0,
-        totalDuration: 0,
-        averageLatency: 0,
-        operations: {
-          transcription: 0,
-          textToSpeech: 0,
-          translation: 0,
-        },
-      };
+      try {
+        const filters = {
+          startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate: endDate?.toISOString() || new Date().toISOString(),
+          virtualKey,
+        };
+        
+        const summary = await adminSdk.audioConfiguration.getUsageSummary(filters);
+        const summaryAny = summary as unknown as Record<string, unknown>;
+        
+        return {
+          virtualKey,
+          totalRequests: Number(summaryAny.totalRequests) || 0,
+          totalCost: Number(summaryAny.totalCost) || 0,
+          totalDuration: Number(summaryAny.totalDurationSeconds || summaryAny.totalDuration) || 0,
+          averageLatency: 0,
+          operations: (summaryAny.byOperation as Record<string, number>) || {
+            transcription: 0,
+            textToSpeech: 0,
+            translation: 0,
+          },
+        };
+      } catch (error) {
+        // Return empty data if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return {
+            virtualKey,
+            totalRequests: 0,
+            totalCost: 0,
+            totalDuration: 0,
+            averageLatency: 0,
+            operations: {
+              transcription: 0,
+              textToSpeech: 0,
+              translation: 0,
+            },
+          };
+        }
+        throw error;
+      }
     },
     enabled: !!virtualKey && virtualKey !== 'all',
     staleTime: 5 * 60 * 1000,
@@ -72,18 +179,43 @@ export function useAudioUsageByProvider(
   startDate?: Date,
   endDate?: Date
 ) {
+  const adminSdk = getAdminClient();
+
   return useQuery({
     queryKey: [adminApiKeys.audioUsage, 'byProvider', provider, startDate, endDate],
     queryFn: async () => {
-      // Return empty data until backend endpoint exists
-      return {
-        provider,
-        totalRequests: 0,
-        totalCost: 0,
-        totalDuration: 0,
-        averageLatency: 0,
-        models: {},
-      };
+      try {
+        const filters = {
+          startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate: endDate?.toISOString() || new Date().toISOString(),
+          provider,
+        };
+        
+        const summary = await adminSdk.audioConfiguration.getUsageSummary(filters);
+        const summaryAny = summary as unknown as Record<string, unknown>;
+        
+        return {
+          provider,
+          totalRequests: Number(summaryAny.totalRequests) || 0,
+          totalCost: Number(summaryAny.totalCost) || 0,
+          totalDuration: Number(summaryAny.totalDurationSeconds || summaryAny.totalDuration) || 0,
+          averageLatency: 0,
+          models: (summaryAny.byModel as Record<string, unknown>) || {},
+        };
+      } catch (error) {
+        // Return empty data if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return {
+            provider,
+            totalRequests: 0,
+            totalCost: 0,
+            totalDuration: 0,
+            averageLatency: 0,
+            models: {},
+          };
+        }
+        throw error;
+      }
     },
     enabled: !!provider && provider !== 'all',
     staleTime: 5 * 60 * 1000,
@@ -91,17 +223,51 @@ export function useAudioUsageByProvider(
 }
 
 export function useRealtimeSessionMetrics() {
+  const adminSdk = getAdminClient();
+
   return useQuery({
     queryKey: [adminApiKeys.audioUsage, 'realtimeMetrics'],
     queryFn: async () => {
-      // Return empty metrics until backend endpoint exists
-      return {
-        activeSessions: 0,
-        totalSessionsToday: 0,
-        averageSessionDuration: 0,
-        peakConcurrentSessions: 0,
-        bandwidthUsage: 0,
-      };
+      try {
+        // Get active sessions to calculate metrics
+        const sessions = await adminSdk.audioConfiguration.getActiveSessions();
+        
+        // Calculate metrics from active sessions
+        const activeSessions = sessions.length;
+        const totalSessionsToday = sessions.filter(
+          s => new Date(s.startedAt).toDateString() === new Date().toDateString()
+        ).length;
+        
+        const durations = sessions.map(s => {
+          const start = new Date(s.startedAt).getTime();
+          const end = Date.now(); // Active sessions don't have an end time
+          return (end - start) / 1000; // Convert to seconds
+        });
+        
+        const averageSessionDuration = durations.length > 0
+          ? durations.reduce((a, b) => a + b, 0) / durations.length
+          : 0;
+        
+        return {
+          activeSessions,
+          totalSessionsToday,
+          averageSessionDuration,
+          peakConcurrentSessions: activeSessions, // Would need historical data for real peak
+          bandwidthUsage: 0, // Not available from current SDK
+        };
+      } catch (error) {
+        // Return empty metrics if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return {
+            activeSessions: 0,
+            totalSessionsToday: 0,
+            averageSessionDuration: 0,
+            peakConcurrentSessions: 0,
+            bandwidthUsage: 0,
+          };
+        }
+        throw error;
+      }
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
@@ -109,11 +275,21 @@ export function useRealtimeSessionMetrics() {
 }
 
 export function useActiveSessions() {
+  const adminSdk = getAdminClient();
+
   return useQuery({
     queryKey: [adminApiKeys.audioUsage, 'activeSessions'],
     queryFn: async () => {
-      // Return empty array until backend endpoint exists
-      return [];
+      try {
+        const sessions = await adminSdk.audioConfiguration.getActiveSessions();
+        return sessions || [];
+      } catch (error) {
+        // Return empty array if endpoint returns 404
+        if ((error as Record<string, unknown>)?.statusCode === 404) {
+          return [];
+        }
+        throw error;
+      }
     },
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,

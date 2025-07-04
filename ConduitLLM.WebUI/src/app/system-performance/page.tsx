@@ -18,198 +18,146 @@ import {
   Progress,
   ActionIcon,
   Tooltip,
-  Modal,
-  RingProgress,
   Center,
-  Divider,
-  Code,
+  RingProgress,
 } from '@mantine/core';
 import {
-  IconCpu,
   IconRefresh,
   IconAlertCircle,
   IconCircleCheck,
-  IconTrash,
-  IconEye,
-  IconServer as IconHardDrive,
-  IconCpu as IconMemory,
-  IconCheck,
-  IconNetwork,
+  IconChartLine,
+  IconCurrencyDollar,
+  IconAlertTriangle,
+  IconActivity,
+  IconExternalLink,
+  IconClock,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { useDisclosure } from '@mantine/hooks';
 import { 
-  useSystemMetrics,
-  useResourceUsageHistory,
-  useSystemProcesses,
-  useServiceStatus,
-  useDatabaseMetrics,
-  useCacheMetrics,
-  useSystemHealth,
-  useRestartService,
-  useClearCache,
-  ProcessInfo,
-  ServiceStatus
-} from '@/hooks/api/useSystemPerformanceApi';
+  useProviderHealth,
+} from '@/hooks/api/useProviderHealthApi';
+import { 
+  useCostSummary,
+  useCostTrends,
+  TimeRangeFilter
+} from '@/hooks/api/useAnalyticsApi';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 
 export default function SystemPerformancePage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [selectedProcess, setSelectedProcess] = useState<ProcessInfo | null>(null);
-  const [selectedService, setSelectedService] = useState<ServiceStatus | null>(null);
-  const [processOpened, { open: openProcess, close: closeProcess }] = useDisclosure(false);
-  const [serviceOpened, { open: openService, close: closeService }] = useDisclosure(false);
   
-  const { data: systemMetrics, isLoading: metricsLoading } = useSystemMetrics();
-  const { data: resourceHistory, isLoading: historyLoading } = useResourceUsageHistory(timeRangeValue);
-  const { data: processes, isLoading: processesLoading } = useSystemProcesses();
-  const { data: services, isLoading: servicesLoading } = useServiceStatus();
-  const { data: databaseMetrics, isLoading: dbLoading } = useDatabaseMetrics();
-  const { data: cacheMetrics, isLoading: cacheLoading } = useCacheMetrics();
-  const { data: systemHealth, isLoading: healthLoading } = useSystemHealth();
+  const timeRange: TimeRangeFilter = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
   
-  const restartService = useRestartService();
-  const clearCache = useClearCache();
+  // Provider health data
+  const { data: providerHealth, isLoading: providerHealthLoading, refetch: refetchProviderHealth } = useProviderHealth();
+  
+  // Cost analytics data
+  const { data: costSummary, isLoading: costSummaryLoading } = useCostSummary(timeRange);
+  const { data: costTrends, isLoading: costTrendsLoading } = useCostTrends(timeRange);
 
-  const isLoading = metricsLoading || healthLoading;
+  const isLoading = providerHealthLoading || costSummaryLoading;
 
   const handleRefresh = () => {
+    refetchProviderHealth();
     notifications.show({
       title: 'Refreshing Data',
-      message: 'Updating system performance metrics...',
+      message: 'Updating performance metrics...',
       color: 'blue',
     });
   };
 
-  const handleRestartService = async (serviceName: string) => {
-    try {
-      await restartService.mutateAsync(serviceName);
-      notifications.show({
-        title: 'Service Restarted',
-        message: `${serviceName} has been restarted successfully`,
-        color: 'green',
-      });
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Restart Failed',
-        message: error instanceof Error ? error.message : 'Failed to restart service',
-        color: 'red',
-      });
-    }
-  };
-
-  const handleClearCache = async (cacheType: 'redis' | 'application' | 'all') => {
-    try {
-      await clearCache.mutateAsync(cacheType);
-      notifications.show({
-        title: 'Cache Cleared',
-        message: `${cacheType} cache has been cleared successfully`,
-        color: 'green',
-      });
-    } catch (error: unknown) {
-      notifications.show({
-        title: 'Clear Failed',
-        message: error instanceof Error ? error.message : 'Failed to clear cache',
-        color: 'red',
-      });
-    }
-  };
-
-  const formatBytes = (bytes: number) => {
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let size = bytes;
-    let unitIndex = 0;
-    
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-    
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
-  };
-
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'healthy':
-      case 'running':
       case 'connected':
+      case 'operational':
         return 'green';
-      case 'warning':
       case 'degraded':
+      case 'warning':
         return 'orange';
-      case 'critical':
+      case 'unhealthy':
       case 'error':
-      case 'stopped':
-      case 'disconnected':
+      case 'failed':
         return 'red';
       default:
         return 'gray';
     }
   };
 
-  const getUsageColor = (usage: number) => {
-    if (usage >= 90) return 'red';
-    if (usage >= 75) return 'orange';
-    if (usage >= 50) return 'yellow';
-    return 'green';
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+    }).format(amount);
   };
 
-  const openProcessDetails = (process: ProcessInfo) => {
-    setSelectedProcess(process);
-    openProcess();
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-US').format(num);
   };
 
-  const openServiceDetails = (service: ServiceStatus) => {
-    setSelectedService(service);
-    openService();
+  // Calculate overall health percentage
+  const overallHealth = providerHealth && providerHealth.length > 0
+    ? (providerHealth.filter((p) => p.status === 'healthy').length / providerHealth.length) * 100
+    : 0;
+
+  // Extract health incidents from provider issues
+  const allIssues = providerHealth?.flatMap(provider => 
+    provider.issues.map(issue => ({
+      ...issue,
+      provider: provider.providerName,
+      providerId: provider.providerId,
+      startTime: issue.timestamp,
+      description: issue.message,
+    }))
+  ) || [];
+
+  const healthIncidents = {
+    activeIncidents: allIssues.filter(issue => !issue.resolved),
+    resolvedIncidents: allIssues.filter(issue => issue.resolved),
   };
 
-  const healthAlerts = systemHealth?.alerts?.filter(alert => !alert.acknowledged) || [];
-  const criticalAlerts = healthAlerts.filter(alert => alert.severity === 'critical' || alert.severity === 'high');
-
-  const systemOverviewCards = systemMetrics ? [
+  // Performance overview cards
+  const performanceCards = [
     {
-      title: 'CPU Usage',
-      value: formatPercentage(systemMetrics.cpu.usage),
-      icon: IconCpu,
-      color: getUsageColor(systemMetrics.cpu.usage),
-      description: `${systemMetrics.cpu.cores} cores @ ${systemMetrics.cpu.frequency.toFixed(1)} GHz`,
+      title: 'System Health',
+      value: `${overallHealth.toFixed(0)}%`,
+      icon: IconActivity,
+      color: overallHealth >= 90 ? 'green' : overallHealth >= 70 ? 'orange' : 'red',
+      description: `${providerHealth?.filter((p) => p.status === 'healthy').length || 0} of ${providerHealth?.length || 0} providers healthy`,
     },
     {
-      title: 'Memory Usage',
-      value: formatPercentage(systemMetrics.memory.usage),
-      icon: IconMemory,
-      color: getUsageColor(systemMetrics.memory.usage),
-      description: `${formatBytes(systemMetrics.memory.used)} / ${formatBytes(systemMetrics.memory.total)}`,
-    },
-    {
-      title: 'Disk Usage',
-      value: formatPercentage(systemMetrics.disk.usage),
-      icon: IconHardDrive,
-      color: getUsageColor(systemMetrics.disk.usage),
-      description: `${formatBytes(systemMetrics.disk.used)} / ${formatBytes(systemMetrics.disk.total)}`,
-    },
-    {
-      title: 'Network',
-      value: formatBytes(systemMetrics.network.bandwidth),
-      icon: IconNetwork,
+      title: 'Total Requests',
+      value: formatNumber(costSummary?.totalRequests || 0),
+      icon: IconChartLine,
       color: 'blue',
-      description: `${systemMetrics.network.connectionsActive} active connections`,
+      description: `Last ${timeRangeValue}`,
     },
-  ] : [];
+    {
+      title: 'Total Cost',
+      value: formatCurrency(costSummary?.totalSpend || 0),
+      icon: IconCurrencyDollar,
+      color: 'green',
+      description: `Last ${timeRangeValue}`,
+    },
+    {
+      title: 'Active Incidents',
+      value: 0, // TODO: Implement incidents tracking
+      icon: IconAlertTriangle,
+      color: 'green',
+      description: `0 resolved`,
+    },
+  ];
 
   return (
     <Stack gap="xl">
       <Group justify="space-between">
         <div>
           <Title order={1}>System Performance</Title>
-          <Text c="dimmed">Monitor system resources, services, and performance metrics</Text>
+          <Text c="dimmed">Monitor LLM gateway performance, provider health, and cost analytics</Text>
         </div>
 
         <Group>
@@ -220,7 +168,6 @@ export default function SystemPerformancePage() {
               { value: '1h', label: 'Last Hour' },
               { value: '24h', label: 'Last 24 Hours' },
               { value: '7d', label: 'Last 7 Days' },
-              { value: '30d', label: 'Last 30 Days' },
             ]}
             w={180}
           />
@@ -235,32 +182,32 @@ export default function SystemPerformancePage() {
         </Group>
       </Group>
 
-      {/* Critical Alerts */}
-      {criticalAlerts.length > 0 && (
-        <Alert icon={<IconAlertCircle size={16} />} color="red" title="System Alerts">
+      {/* Active Incidents Alert */}
+      {healthIncidents?.activeIncidents?.length > 0 && (
+        <Alert icon={<IconAlertCircle size={16} />} color="red" title="Active Incidents">
           <Stack gap="xs">
-            {criticalAlerts.slice(0, 3).map((alert) => (
-              <Group key={alert.id} justify="space-between">
+            {healthIncidents.activeIncidents.slice(0, 3).map((incident) => (
+              <Group key={incident.id} justify="space-between">
                 <Text size="sm">
-                  <Text span fw={500}>{alert.component}:</Text> {alert.message}
+                  <Text span fw={500}>{incident.provider}:</Text> {incident.description}
                 </Text>
-                <Badge color={alert.severity === 'critical' ? 'red' : 'orange'} variant="light">
-                  {alert.severity}
+                <Badge color="red" variant="light" size="sm">
+                  {new Date(incident.startTime).toLocaleTimeString()}
                 </Badge>
               </Group>
             ))}
-            {criticalAlerts.length > 3 && (
+            {healthIncidents.activeIncidents.length > 3 && (
               <Text size="sm" c="dimmed">
-                +{criticalAlerts.length - 3} more alerts
+                +{healthIncidents.activeIncidents.length - 3} more incidents
               </Text>
             )}
           </Stack>
         </Alert>
       )}
 
-      {/* System Overview Cards */}
+      {/* Performance Overview Cards */}
       <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {systemOverviewCards.map((stat) => (
+        {performanceCards.map((stat) => (
           <Card key={stat.title} p="md" withBorder>
             <Group justify="space-between" mb="xs">
               <Text size="xs" tt="uppercase" fw={700} c="dimmed">
@@ -284,125 +231,60 @@ export default function SystemPerformancePage() {
       <Card>
         <Tabs value={selectedTab} onChange={(value) => setSelectedTab(value || 'overview')}>
           <Tabs.List>
-            <Tabs.Tab value="overview">System Overview</Tabs.Tab>
-            <Tabs.Tab value="resources">Resource Usage</Tabs.Tab>
-            <Tabs.Tab value="processes">Processes</Tabs.Tab>
-            <Tabs.Tab value="services">Services</Tabs.Tab>
-            <Tabs.Tab value="database">Database</Tabs.Tab>
-            <Tabs.Tab value="cache">Cache</Tabs.Tab>
+            <Tabs.Tab value="overview">Overview</Tabs.Tab>
+            <Tabs.Tab value="providers">Provider Health</Tabs.Tab>
+            <Tabs.Tab value="performance">Request Performance</Tabs.Tab>
+            <Tabs.Tab value="costs">Cost Analytics</Tabs.Tab>
+            <Tabs.Tab value="incidents">Incidents</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="overview" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={metricsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                {/* System Resource Rings */}
+                {/* Provider Health Summary */}
                 <Card withBorder>
                   <Card.Section p="md" withBorder>
-                    <Text fw={600}>System Resources</Text>
+                    <Text fw={600}>Provider Health Summary</Text>
                   </Card.Section>
                   <Card.Section p="md">
-                    <SimpleGrid cols={2} spacing="md">
-                      {systemMetrics && (
-                        <>
-                          <Center>
-                            <RingProgress
-                              size={120}
-                              thickness={8}
-                              sections={[
-                                { value: systemMetrics.cpu.usage, color: getUsageColor(systemMetrics.cpu.usage) }
-                              ]}
-                              label={
-                                <Text size="xs" ta="center">
-                                  CPU<br />
-                                  {formatPercentage(systemMetrics.cpu.usage)}
-                                </Text>
-                              }
-                            />
-                          </Center>
-                          <Center>
-                            <RingProgress
-                              size={120}
-                              thickness={8}
-                              sections={[
-                                { value: systemMetrics.memory.usage, color: getUsageColor(systemMetrics.memory.usage) }
-                              ]}
-                              label={
-                                <Text size="xs" ta="center">
-                                  Memory<br />
-                                  {formatPercentage(systemMetrics.memory.usage)}
-                                </Text>
-                              }
-                            />
-                          </Center>
-                          <Center>
-                            <RingProgress
-                              size={120}
-                              thickness={8}
-                              sections={[
-                                { value: systemMetrics.disk.usage, color: getUsageColor(systemMetrics.disk.usage) }
-                              ]}
-                              label={
-                                <Text size="xs" ta="center">
-                                  Disk<br />
-                                  {formatPercentage(systemMetrics.disk.usage)}
-                                </Text>
-                              }
-                            />
-                          </Center>
-                          <Center>
-                            <RingProgress
-                              size={120}
-                              thickness={8}
-                              sections={[
-                                { value: Math.min((systemMetrics.network.connectionsActive / 500) * 100, 100), color: 'blue' }
-                              ]}
-                              label={
-                                <Text size="xs" ta="center">
-                                  Network<br />
-                                  {systemMetrics.network.connectionsActive}
-                                </Text>
-                              }
-                            />
-                          </Center>
-                        </>
-                      )}
-                    </SimpleGrid>
-                  </Card.Section>
-                </Card>
-
-                {/* System Health */}
-                <Card withBorder>
-                  <Card.Section p="md" withBorder>
-                    <Group justify="space-between">
-                      <Text fw={600}>System Health</Text>
-                      <Badge color={getStatusColor(systemHealth?.overall || 'unknown')} variant="light">
-                        {systemHealth?.overall || 'Unknown'}
-                      </Badge>
-                    </Group>
-                  </Card.Section>
-                  <Card.Section p="md">
-                    <Stack gap="sm">
-                      {systemHealth?.components.map((component) => (
-                        <Group key={component.name} justify="space-between">
+                    <Center mb="md">
+                      <RingProgress
+                        size={140}
+                        thickness={12}
+                        sections={[
+                          { value: overallHealth, color: overallHealth >= 90 ? 'green' : overallHealth >= 70 ? 'orange' : 'red' }
+                        ]}
+                        label={
+                          <Text size="lg" ta="center" fw={700}>
+                            {overallHealth.toFixed(0)}%<br />
+                            <Text size="xs" c="dimmed" fw={400}>
+                              Overall Health
+                            </Text>
+                          </Text>
+                        }
+                      />
+                    </Center>
+                    
+                    <Stack gap="xs">
+                      {providerHealth?.slice(0, 5).map((provider) => (
+                        <Group key={provider.providerName} justify="space-between">
                           <Group gap="xs">
-                            <ThemeIcon size="sm" color={getStatusColor(component.status)} variant="light">
-                              {component.status === 'healthy' ? 
-                                <IconCheck size={12} /> : 
+                            <ThemeIcon size="sm" color={getStatusColor(provider.status)} variant="light">
+                              {provider.status === 'healthy' ? 
+                                <IconCircleCheck size={12} /> : 
                                 <IconAlertCircle size={12} />
                               }
                             </ThemeIcon>
-                            <Text size="sm">{component.name}</Text>
+                            <Text size="sm">{provider.providerName}</Text>
                           </Group>
                           <Group gap="xs">
-                            {component.responseTime && (
-                              <Text size="xs" c="dimmed">
-                                {component.responseTime}ms
-                              </Text>
-                            )}
-                            <Badge size="xs" color={getStatusColor(component.status)} variant="light">
-                              {component.status}
+                            <Text size="xs" c="dimmed">
+                              {provider.responseTime}ms
+                            </Text>
+                            <Badge size="xs" color={getStatusColor(provider.status)} variant="light">
+                              {provider.uptime.toFixed(0)}%
                             </Badge>
                           </Group>
                         </Group>
@@ -410,113 +292,125 @@ export default function SystemPerformancePage() {
                     </Stack>
                   </Card.Section>
                 </Card>
-              </SimpleGrid>
-            </div>
-          </Tabs.Panel>
 
-          <Tabs.Panel value="resources" pt="md">
-            <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={historyLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-              
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                {resourceHistory && (
-                  <>
-                    <CostChart
-                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
-                      title="CPU & Memory Usage"
-                      type="line"
-                      valueKey="cpuUsage"
-                      nameKey="timestamp"
-                      timeKey="timestamp"
-                      onRefresh={handleRefresh}
-                    />
-                    
-                    <CostChart
-                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
-                      title="Network & Disk Usage"
-                      type="line"
-                      valueKey="networkUsage"
-                      nameKey="timestamp"
-                      timeKey="timestamp"
-                      onRefresh={handleRefresh}
-                    />
-                    
-                    <CostChart
-                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
-                      title="Response Time"
-                      type="line"
-                      valueKey="responseTime"
-                      nameKey="timestamp"
-                      timeKey="timestamp"
-                      onRefresh={handleRefresh}
-                    />
-                    
-                    <CostChart
-                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
-                      title="Requests per Second"
-                      type="bar"
-                      valueKey="requestsPerSecond"
-                      nameKey="timestamp"
-                      timeKey="timestamp"
-                      onRefresh={handleRefresh}
-                    />
-                  </>
+                {/* Cost Summary */}
+                <Card withBorder>
+                  <Card.Section p="md" withBorder>
+                    <Text fw={600}>Cost Summary</Text>
+                  </Card.Section>
+                  <Card.Section p="md">
+                    <Stack gap="md">
+                      <div>
+                        <Text size="xs" c="dimmed" mb={4}>Total Spend</Text>
+                        <Text size="xl" fw={700}>{formatCurrency(costSummary?.totalSpend || 0)}</Text>
+                        <Text size="xs" c="dimmed">Last {timeRangeValue}</Text>
+                      </div>
+                      
+                      <SimpleGrid cols={2} spacing="md">
+                        <div>
+                          <Text size="xs" c="dimmed" mb={4}>Requests</Text>
+                          <Text fw={500}>{formatNumber(costSummary?.totalRequests || 0)}</Text>
+                        </div>
+                        <div>
+                          <Text size="xs" c="dimmed" mb={4}>Avg Cost/Request</Text>
+                          <Text fw={500}>
+                            {costSummary?.totalRequests ? 
+                              formatCurrency((costSummary.totalSpend || 0) / costSummary.totalRequests) : 
+                              '$0.00'
+                            }
+                          </Text>
+                        </div>
+                      </SimpleGrid>
+
+                      {/* TODO: Add top models by cost when available from API */}
+                    </Stack>
+                  </Card.Section>
+                </Card>
+              </SimpleGrid>
+
+              {/* Charts */}
+              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" mt="lg">
+                {/* TODO: Add health history chart */}
+                
+                {costTrends && (
+                  <CostChart
+                    data={costTrends.map(trend => ({
+                      date: trend.date,
+                      value: trend.spend,
+                      name: trend.date
+                    })) as ChartDataItem[]}
+                    title="Daily Cost Trend"
+                    type="bar"
+                    valueKey="value"
+                    nameKey="name"
+                    timeKey="date"
+                    onRefresh={handleRefresh}
+                  />
                 )}
               </SimpleGrid>
             </div>
           </Tabs.Panel>
 
-          <Tabs.Panel value="processes" pt="md">
+          <Tabs.Panel value="providers" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={processesLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={providerHealthLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Card withBorder>
                 <Card.Section p="md" withBorder>
                   <Group justify="space-between">
-                    <Text fw={600}>System Processes</Text>
-                    <Badge variant="light">{processes?.length || 0} processes</Badge>
+                    <Text fw={600}>Provider Health Status</Text>
+                    <Badge variant="light">
+                      {providerHealth?.length || 0} providers
+                    </Badge>
                   </Group>
                 </Card.Section>
                 <Card.Section>
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>PID</Table.Th>
-                        <Table.Th>Name</Table.Th>
+                        <Table.Th>Provider</Table.Th>
                         <Table.Th>Status</Table.Th>
-                        <Table.Th>CPU</Table.Th>
-                        <Table.Th>Memory</Table.Th>
-                        <Table.Th>User</Table.Th>
+                        <Table.Th>Uptime</Table.Th>
+                        <Table.Th>Avg Response</Table.Th>
+                        <Table.Th>Error Rate</Table.Th>
+                        <Table.Th>Last Check</Table.Th>
                         <Table.Th>Actions</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {processes?.map((process) => (
-                        <Table.Tr key={process.pid}>
+                      {providerHealth?.map((provider) => (
+                        <Table.Tr key={provider.providerName}>
                           <Table.Td>
-                            <Code>{process.pid}</Code>
+                            <Text fw={500}>{provider.providerName}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Text fw={500}>{process.name}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge color={getStatusColor(process.status)} variant="light" size="sm">
-                              {process.status}
+                            <Badge color={getStatusColor(provider.status)} variant="light" size="sm">
+                              {provider.status}
                             </Badge>
                           </Table.Td>
-                          <Table.Td>{process.cpuUsage.toFixed(1)}%</Table.Td>
-                          <Table.Td>{formatBytes(process.memoryUsage)}</Table.Td>
                           <Table.Td>
-                            <Text size="sm" c="dimmed">{process.user}</Text>
+                            <Group gap="xs">
+                              <Progress value={provider.uptime} size="sm" w={60} />
+                              <Text size="sm">{provider.uptime.toFixed(0)}%</Text>
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm">{provider.responseTime}ms</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c={provider.errorRate > 5 ? 'red' : undefined}>
+                              {provider.errorRate.toFixed(2)}%
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm" c="dimmed">
+                              {new Date(provider.lastChecked).toLocaleTimeString()}
+                            </Text>
                           </Table.Td>
                           <Table.Td>
                             <Tooltip label="View details">
-                              <ActionIcon
-                                size="sm"
-                                variant="light"
-                                onClick={() => openProcessDetails(process)}
-                              >
-                                <IconEye size={14} />
+                              <ActionIcon size="sm" variant="light">
+                                <IconExternalLink size={14} />
                               </ActionIcon>
                             </Tooltip>
                           </Table.Td>
@@ -529,469 +423,163 @@ export default function SystemPerformancePage() {
             </div>
           </Tabs.Panel>
 
-          <Tabs.Panel value="services" pt="md">
+          <Tabs.Panel value="performance" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={servicesLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
-              <Stack gap="md">
-                {services?.map((service) => (
-                  <Card key={service.name} withBorder p="md">
-                    <Group justify="space-between" mb="md">
-                      <Group gap="md">
-                        <ThemeIcon color={getStatusColor(service.status)} variant="light">
-                          {service.status === 'running' ? 
-                            <IconCircleCheck size={20} /> : 
-                            <IconAlertCircle size={20} />
-                          }
-                        </ThemeIcon>
-                        <div>
-                          <Text fw={600} size="lg">{service.name}</Text>
-                          <Group gap="xs">
-                            <Badge color={getStatusColor(service.status)} variant="light">
-                              {service.status}
-                            </Badge>
-                            {service.port && (
-                              <Badge variant="light" color="gray">
-                                Port {service.port}
-                              </Badge>
-                            )}
-                          </Group>
-                        </div>
-                      </Group>
-                      
-                      <Group gap="xs">
-                        <Tooltip label="View details">
-                          <ActionIcon
-                            variant="light"
-                            onClick={() => openServiceDetails(service)}
-                          >
-                            <IconEye size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Restart service">
-                          <ActionIcon
-                            variant="light"
-                            color="orange"
-                            onClick={() => handleRestartService(service.name)}
-                            loading={restartService.isPending}
-                          >
-                            <IconRefresh size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
-                    </Group>
+              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+                {/* TODO: Add performance charts when health history data is available */}
+              </SimpleGrid>
+            </div>
+          </Tabs.Panel>
 
-                    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-                      <div>
-                        <Text size="xs" c="dimmed" mb={4}>Uptime</Text>
-                        <Text fw={500} size="sm">{service.uptime}</Text>
-                      </div>
-                      <div>
-                        <Text size="xs" c="dimmed" mb={4}>Memory</Text>
-                        <Text fw={500} size="sm">{formatBytes(service.memoryUsage)}</Text>
-                      </div>
-                      <div>
-                        <Text size="xs" c="dimmed" mb={4}>CPU</Text>
-                        <Text fw={500} size="sm">{service.cpuUsage.toFixed(1)}%</Text>
-                      </div>
-                      <div>
-                        <Text size="xs" c="dimmed" mb={4}>Health</Text>
-                        <Group gap="xs">
-                          <Badge color={getStatusColor(service.healthCheck.status)} variant="light" size="sm">
-                            {service.healthCheck.status}
-                          </Badge>
-                          {service.healthCheck.responseTime && (
-                            <Text size="xs" c="dimmed">
-                              {service.healthCheck.responseTime}ms
-                            </Text>
-                          )}
-                        </Group>
-                      </div>
-                    </SimpleGrid>
-                  </Card>
-                ))}
+          <Tabs.Panel value="costs" pt="md">
+            <div style={{ position: 'relative' }}>
+              <LoadingOverlay visible={costTrendsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              
+              <Stack gap="lg">
+                {/* Cost by Model */}
+                {/* TODO: Add cost by model table when available from API */}
+
+                {/* Cost Charts */}
+                <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+                  {costTrends && (
+                    <>
+                      <CostChart
+                        data={costTrends.map(trend => ({
+                          date: trend.date,
+                          value: trend.spend,
+                          name: trend.date
+                        })) as ChartDataItem[]}
+                        title="Cost Trend"
+                        type="line"
+                        valueKey="value"
+                        nameKey="name"
+                        timeKey="date"
+                        onRefresh={handleRefresh}
+                      />
+                      
+                      <CostChart
+                        data={costTrends.map(trend => ({
+                          date: trend.date,
+                          value: trend.requests,
+                          name: trend.date
+                        })) as ChartDataItem[]}
+                        title="Request Volume"
+                        type="bar"
+                        valueKey="value"
+                        nameKey="name"
+                        timeKey="date"
+                        onRefresh={handleRefresh}
+                      />
+                    </>
+                  )}
+                </SimpleGrid>
               </Stack>
             </div>
           </Tabs.Panel>
 
-          <Tabs.Panel value="database" pt="md">
+          <Tabs.Panel value="incidents" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={dbLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                {databaseMetrics && (
-                  <>
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Connection Pool</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="md">
-                          <div>
+              <Stack gap="lg">
+                {/* Active Incidents */}
+                {healthIncidents?.activeIncidents?.length > 0 && (
+                  <Card withBorder>
+                    <Card.Section p="md" withBorder>
+                      <Group justify="space-between">
+                        <Text fw={600} c="red">Active Incidents</Text>
+                        <Badge color="red" variant="light">
+                          {healthIncidents.activeIncidents.length}
+                        </Badge>
+                      </Group>
+                    </Card.Section>
+                    <Card.Section p="md">
+                      <Stack gap="md">
+                        {healthIncidents.activeIncidents.map((incident) => (
+                          <Card key={incident.id} withBorder p="sm">
                             <Group justify="space-between" mb="xs">
-                              <Text size="sm">Pool Usage</Text>
-                              <Text size="sm">{formatPercentage(databaseMetrics.connectionPool.usage)}</Text>
+                              <Group gap="xs">
+                                <ThemeIcon color="red" variant="light" size="sm">
+                                  <IconAlertCircle size={16} />
+                                </ThemeIcon>
+                                <Text fw={500}>{incident.provider}</Text>
+                              </Group>
+                              <Badge color="red" variant="light" size="sm">
+                                {incident.severity}
+                              </Badge>
                             </Group>
-                            <Progress
-                              value={databaseMetrics.connectionPool.usage}
-                              color={getUsageColor(databaseMetrics.connectionPool.usage)}
-                              size="lg"
-                            />
-                          </div>
-                          
-                          <SimpleGrid cols={3} spacing="md">
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Active</Text>
-                              <Text fw={500}>{databaseMetrics.connectionPool.active}</Text>
-                            </div>
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Idle</Text>
-                              <Text fw={500}>{databaseMetrics.connectionPool.idle}</Text>
-                            </div>
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Max</Text>
-                              <Text fw={500}>{databaseMetrics.connectionPool.max}</Text>
-                            </div>
-                          </SimpleGrid>
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Query Performance</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <SimpleGrid cols={2} spacing="md">
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Total Queries</Text>
-                            <Text fw={500} size="lg">{databaseMetrics.queries.total.toLocaleString()}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Average Time</Text>
-                            <Text fw={500} size="lg">{databaseMetrics.queries.averageTime.toFixed(1)}ms</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Success Rate</Text>
-                            <Text fw={500} size="lg">
-                              {((databaseMetrics.queries.successful / databaseMetrics.queries.total) * 100).toFixed(1)}%
-                            </Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Slow Queries</Text>
-                            <Text fw={500} size="lg">{databaseMetrics.queries.slowQueries}</Text>
-                          </div>
-                        </SimpleGrid>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Storage</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <SimpleGrid cols={2} spacing="md">
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Database Size</Text>
-                            <Text fw={500}>{formatBytes(databaseMetrics.storage.size)}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Used Space</Text>
-                            <Text fw={500}>{formatBytes(databaseMetrics.storage.used)}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Index Size</Text>
-                            <Text fw={500}>{formatBytes(databaseMetrics.storage.indexSize)}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Growth Rate</Text>
-                            <Text fw={500}>{formatBytes(databaseMetrics.storage.growth)}/day</Text>
-                          </div>
-                        </SimpleGrid>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Locks & Replication</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <SimpleGrid cols={2} spacing="md">
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Active Locks</Text>
-                            <Text fw={500}>{databaseMetrics.locks.active}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Waiting Locks</Text>
-                            <Text fw={500}>{databaseMetrics.locks.waiting}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Replication Status</Text>
-                            <Badge color={getStatusColor(databaseMetrics.replication.status)} variant="light">
-                              {databaseMetrics.replication.status}
-                            </Badge>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Replication Lag</Text>
-                            <Text fw={500}>{databaseMetrics.replication.lag.toFixed(1)}ms</Text>
-                          </div>
-                        </SimpleGrid>
-                      </Card.Section>
-                    </Card>
-                  </>
-                )}
-              </SimpleGrid>
-            </div>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="cache" pt="md">
-            <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={cacheLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-              
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                {cacheMetrics && (
-                  <>
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group justify="space-between">
-                          <Text fw={600}>Redis Cache</Text>
-                          <Group gap="xs">
-                            <Badge color={getStatusColor(cacheMetrics.redis.status)} variant="light">
-                              {cacheMetrics.redis.status}
-                            </Badge>
-                            <Button
-                              size="xs"
-                              variant="light"
-                              leftSection={<IconTrash size={14} />}
-                              onClick={() => handleClearCache('redis')}
-                              loading={clearCache.isPending}
-                            >
-                              Clear
-                            </Button>
-                          </Group>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="md">
-                          <div>
-                            <Group justify="space-between" mb="xs">
-                              <Text size="sm">Memory Usage</Text>
-                              <Text size="sm">{formatPercentage(cacheMetrics.redis.memory.usage)}</Text>
+                            <Text size="sm" mb="xs">{incident.description}</Text>
+                            <Group gap="xs">
+                              <IconClock size={14} />
+                              <Text size="xs" c="dimmed">
+                                Started {new Date(incident.startTime).toLocaleString()}
+                              </Text>
                             </Group>
-                            <Progress
-                              value={cacheMetrics.redis.memory.usage}
-                              color={getUsageColor(cacheMetrics.redis.memory.usage)}
-                              size="lg"
-                            />
-                            <Text size="xs" c="dimmed" mt={4}>
-                              {formatBytes(cacheMetrics.redis.memory.used)} / {formatBytes(cacheMetrics.redis.memory.max)}
-                            </Text>
-                          </div>
-                          
-                          <SimpleGrid cols={2} spacing="md">
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Hit Rate</Text>
-                              <Text fw={500} size="lg">{formatPercentage(cacheMetrics.redis.operations.hitRate)}</Text>
-                            </div>
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Keys</Text>
-                              <Text fw={500} size="lg">{cacheMetrics.redis.keyspace.keys.toLocaleString()}</Text>
-                            </div>
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Connections</Text>
-                              <Text fw={500} size="lg">{cacheMetrics.redis.connections.active}</Text>
-                            </div>
-                            <div>
-                              <Text size="xs" c="dimmed" mb={4}>Commands</Text>
-                              <Text fw={500} size="lg">{cacheMetrics.redis.operations.commands.toLocaleString()}</Text>
-                            </div>
-                          </SimpleGrid>
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group justify="space-between">
-                          <Text fw={600}>Application Cache</Text>
-                          <Button
-                            size="xs"
-                            variant="light"
-                            leftSection={<IconTrash size={14} />}
-                            onClick={() => handleClearCache('application')}
-                            loading={clearCache.isPending}
-                          >
-                            Clear
-                          </Button>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <SimpleGrid cols={2} spacing="md">
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Cache Size</Text>
-                            <Text fw={500} size="lg">{formatBytes(cacheMetrics.applicationCache.size)}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Entries</Text>
-                            <Text fw={500} size="lg">{cacheMetrics.applicationCache.entries.toLocaleString()}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Hit Rate</Text>
-                            <Text fw={500} size="lg">{formatPercentage(cacheMetrics.applicationCache.hitRate)}</Text>
-                          </div>
-                          <div>
-                            <Text size="xs" c="dimmed" mb={4}>Evictions</Text>
-                            <Text fw={500} size="lg">{cacheMetrics.applicationCache.evictions}</Text>
-                          </div>
-                        </SimpleGrid>
-                      </Card.Section>
-                    </Card>
-                  </>
+                          </Card>
+                        ))}
+                      </Stack>
+                    </Card.Section>
+                  </Card>
                 )}
-              </SimpleGrid>
+
+                {/* Recent Resolved Incidents */}
+                <Card withBorder>
+                  <Card.Section p="md" withBorder>
+                    <Group justify="space-between">
+                      <Text fw={600}>Recent Incidents</Text>
+                      <Badge variant="light">
+                        {healthIncidents?.resolvedIncidents?.length || 0} resolved
+                      </Badge>
+                    </Group>
+                  </Card.Section>
+                  <Card.Section>
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Provider</Table.Th>
+                          <Table.Th>Severity</Table.Th>
+                          <Table.Th>Description</Table.Th>
+                          <Table.Th>Time</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {healthIncidents?.resolvedIncidents?.slice(0, 10).map((incident) => (
+                          <Table.Tr key={incident.id}>
+                            <Table.Td>
+                              <Text size="sm" fw={500}>{incident.provider}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color={incident.severity === 'high' ? 'red' : 'orange'} variant="light" size="sm">
+                                {incident.severity}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">{incident.description}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm" c="dimmed">
+                                {new Date(incident.startTime).toLocaleString()}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color="green" variant="light" size="sm">
+                                Resolved
+                              </Badge>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Card.Section>
+                </Card>
+              </Stack>
             </div>
           </Tabs.Panel>
         </Tabs>
       </Card>
-
-      {/* Process Details Modal */}
-      <Modal
-        opened={processOpened}
-        onClose={closeProcess}
-        title="Process Details"
-        size="md"
-      >
-        {selectedProcess && (
-          <Stack gap="md">
-            <Group justify="space-between">
-              <div>
-                <Text fw={600} size="lg">{selectedProcess.name}</Text>
-                <Badge color={getStatusColor(selectedProcess.status)} variant="light">
-                  {selectedProcess.status}
-                </Badge>
-              </div>
-              <Code>{selectedProcess.pid}</Code>
-            </Group>
-            
-            <SimpleGrid cols={2} spacing="lg">
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">CPU Usage</Text>
-                <Text fw={600}>{selectedProcess.cpuUsage.toFixed(1)}%</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Memory Usage</Text>
-                <Text fw={600}>{formatBytes(selectedProcess.memoryUsage)}</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">User</Text>
-                <Text fw={600}>{selectedProcess.user}</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Start Time</Text>
-                <Text fw={600}>{new Date(selectedProcess.startTime).toLocaleString()}</Text>
-              </div>
-            </SimpleGrid>
-            
-            <div>
-              <Text size="sm" c="dimmed" mb="xs">Command</Text>
-              <Code block>{selectedProcess.command}</Code>
-            </div>
-          </Stack>
-        )}
-      </Modal>
-
-      {/* Service Details Modal */}
-      <Modal
-        opened={serviceOpened}
-        onClose={closeService}
-        title="Service Details"
-        size="lg"
-      >
-        {selectedService && (
-          <Stack gap="md">
-            <Group justify="space-between">
-              <div>
-                <Text fw={600} size="lg">{selectedService.name}</Text>
-                <Group gap="xs">
-                  <Badge color={getStatusColor(selectedService.status)} variant="light">
-                    {selectedService.status}
-                  </Badge>
-                  {selectedService.port && (
-                    <Badge variant="light" color="gray">
-                      Port {selectedService.port}
-                    </Badge>
-                  )}
-                </Group>
-              </div>
-              
-              <Group gap="xs">
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="orange"
-                  leftSection={<IconRefresh size={14} />}
-                  onClick={() => handleRestartService(selectedService.name)}
-                  loading={restartService.isPending}
-                >
-                  Restart
-                </Button>
-              </Group>
-            </Group>
-            
-            <SimpleGrid cols={2} spacing="lg">
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Status</Text>
-                <Badge color={getStatusColor(selectedService.status)} variant="light">
-                  {selectedService.status}
-                </Badge>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Uptime</Text>
-                <Text fw={600}>{selectedService.uptime}</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Memory Usage</Text>
-                <Text fw={600}>{formatBytes(selectedService.memoryUsage)}</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">CPU Usage</Text>
-                <Text fw={600}>{selectedService.cpuUsage.toFixed(1)}%</Text>
-              </div>
-              <div>
-                <Text size="sm" c="dimmed" mb="xs">Restart Count</Text>
-                <Text fw={600}>{selectedService.restartCount}</Text>
-              </div>
-              {selectedService.lastRestart && (
-                <div>
-                  <Text size="sm" c="dimmed" mb="xs">Last Restart</Text>
-                  <Text fw={600}>{new Date(selectedService.lastRestart).toLocaleString()}</Text>
-                </div>
-              )}
-            </SimpleGrid>
-            
-            <Divider />
-            
-            <div>
-              <Text fw={500} mb="md">Health Check</Text>
-              <Group justify="space-between">
-                <Group gap="xs">
-                  <Badge color={getStatusColor(selectedService.healthCheck.status)} variant="light">
-                    {selectedService.healthCheck.status}
-                  </Badge>
-                  {selectedService.healthCheck.responseTime && (
-                    <Text size="sm" c="dimmed">
-                      {selectedService.healthCheck.responseTime}ms response time
-                    </Text>
-                  )}
-                </Group>
-                <Text size="sm" c="dimmed">
-                  Last check: {new Date(selectedService.healthCheck.lastCheck).toLocaleString()}
-                </Text>
-              </Group>
-            </div>
-          </Stack>
-        )}
-      </Modal>
     </Stack>
   );
 }

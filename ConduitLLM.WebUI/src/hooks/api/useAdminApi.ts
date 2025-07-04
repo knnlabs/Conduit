@@ -15,7 +15,6 @@ export const adminApiKeys = {
   modelMappings: () => [...adminApiKeys.all, 'model-mappings'] as const,
   systemInfo: () => [...adminApiKeys.all, 'system-info'] as const,
   systemSettings: () => [...adminApiKeys.all, 'system-settings'] as const,
-  systemMetrics: () => [...adminApiKeys.all, 'system-metrics'] as const,
   systemHealth: () => [...adminApiKeys.all, 'system-health'] as const,
   securityMetrics: () => [...adminApiKeys.all, 'security-metrics'] as const,
   securityEvents: () => [...adminApiKeys.all, 'security-events'] as const,
@@ -631,30 +630,6 @@ export function useUpdateSystemSettings() {
         color: 'red',
       });
     },
-  });
-}
-
-// System Metrics API
-export function useSystemMetrics() {
-  return useQuery({
-    queryKey: adminApiKeys.systemMetrics(),
-    queryFn: async () => {
-      const response = await apiFetch('/api/admin/system/metrics', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch system metrics' }));
-        throw new Error(error.error || 'Failed to fetch system metrics');
-      }
-
-      return response.json();
-    },
-    staleTime: 30 * 1000, // 30 seconds for real-time metrics
-    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
   });
 }
 

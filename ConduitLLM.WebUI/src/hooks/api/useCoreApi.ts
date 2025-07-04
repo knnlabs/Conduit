@@ -416,7 +416,16 @@ export function useAvailableModels() {
           throw BackendErrorHandler.classifyError(backendError);
         }
 
-        return response.json();
+        const data = await response.json();
+        // Ensure the response has the expected structure
+        if (data && Array.isArray(data.data)) {
+          return data.data;
+        }
+        // Or if it's directly an array
+        if (Array.isArray(data)) {
+          return data;
+        }
+        return [];
       } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }

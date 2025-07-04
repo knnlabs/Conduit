@@ -16,28 +16,63 @@ export const POST = withSDKAuth(
       // Convert to array and filter
       const providers = Array.from(allProviders);
 
-      // For each provider, get available models and suggest mappings
+      // For each provider, get available models using the SDK
       const discoveryResults = await Promise.all(
         providers
           .filter(p => !body.providerIds || body.providerIds.includes(p.providerName))
           .map(async (provider) => {
             try {
-              // Get available models from provider (this would need actual provider API calls)
-              // For now, return sample data
+              // Get available models from the provider using the SDK
+              const modelsResponse = await withSDKErrorHandling(
+                async () => auth.adminClient!.providerModels.getProviderModels(
+                  provider.providerName.toLowerCase(),
+                  { forceRefresh: body.forceRefresh || false }
+                ),
+                `get models for ${provider.providerName}`
+              );
+              
+              // Transform the models to the expected format
+              const models = modelsResponse.data.map(model => ({
+                modelId: model.id,
+                modelName: model.id,
+                capabilities: determineCapabilities(model.id),
+              }));
+              
               return {
                 providerId: provider.providerName,
                 providerName: provider.providerName,
-                models: getSampleModelsForProvider(provider.providerName),
+                models,
                 status: 'success' as const,
               };
             } catch (error) {
-              return {
-                providerId: provider.providerName,
-                providerName: provider.providerName,
-                models: [],
-                status: 'error' as const,
-                error: error instanceof Error ? (error as { message?: string })?.message : 'Unknown error',
-              };
+              // If provider models fails, try using discovery service
+              try {
+                const discoveryModels = await withSDKErrorHandling(
+                  async () => auth.adminClient!.discovery.getProviderModels(provider.providerName.toLowerCase()),
+                  `discover models for ${provider.providerName}`
+                );
+                
+                const models = discoveryModels.models?.map(model => ({
+                  modelId: model.name,
+                  modelName: model.name,
+                  capabilities: model.capabilities || determineCapabilities(model.name),
+                })) || [];
+                
+                return {
+                  providerId: provider.providerName,
+                  providerName: provider.providerName,
+                  models,
+                  status: 'success' as const,
+                };
+              } catch (_discoveryError) {
+                return {
+                  providerId: provider.providerName,
+                  providerName: provider.providerName,
+                  models: [],
+                  status: 'error' as const,
+                  error: error instanceof Error ? error.message : 'Failed to retrieve models',
+                };
+              }
             }
           })
       );
@@ -61,27 +96,45 @@ export const POST = withSDKAuth(
   { requireAdmin: true }
 );
 
-// Sample models for demonstration
-function getSampleModelsForProvider(providerName: string): Array<{
-  modelId: string;
-  modelName: string;
-  capabilities: string[];
-}> {
-  const models: Record<string, Array<{ modelId: string; modelName: string; capabilities: string[] }>> = {
-    'OpenAI': [
-      { modelId: 'gpt-4', modelName: 'GPT-4', capabilities: ['chat', 'completion'] },
-      { modelId: 'gpt-3.5-turbo', modelName: 'GPT-3.5 Turbo', capabilities: ['chat', 'completion'] },
-      { modelId: 'dall-e-3', modelName: 'DALL-E 3', capabilities: ['image-generation'] },
-    ],
-    'Anthropic': [
-      { modelId: 'claude-3-opus-20240229', modelName: 'Claude 3 Opus', capabilities: ['chat', 'completion'] },
-      { modelId: 'claude-3-sonnet-20240229', modelName: 'Claude 3 Sonnet', capabilities: ['chat', 'completion'] },
-    ],
-    'Google': [
-      { modelId: 'gemini-pro', modelName: 'Gemini Pro', capabilities: ['chat', 'completion'] },
-      { modelId: 'gemini-pro-vision', modelName: 'Gemini Pro Vision', capabilities: ['chat', 'vision'] },
-    ],
-  };
+// Helper function to determine capabilities based on model name
+function determineCapabilities(modelId: string): string[] {
+  const lowerModel = modelId.toLowerCase();
+  const capabilities: string[] = [];
   
-  return models[providerName] || [];
+  // Chat/completion models
+  if (lowerModel.includes('gpt') || lowerModel.includes('claude') || lowerModel.includes('gemini') ||
+      lowerModel.includes('llama') || lowerModel.includes('mixtral') || lowerModel.includes('mistral')) {
+    capabilities.push('chat', 'completion');
+  }
+  
+  // Image generation models
+  if (lowerModel.includes('dall-e') || lowerModel.includes('stable-diffusion') || 
+      lowerModel.includes('midjourney') || lowerModel.includes('imagen')) {
+    capabilities.push('image-generation');
+  }
+  
+  // Vision models
+  if (lowerModel.includes('vision') || lowerModel.includes('gpt-4v')) {
+    capabilities.push('vision');
+  }
+  
+  // Audio models
+  if (lowerModel.includes('whisper')) {
+    capabilities.push('transcription');
+  }
+  if (lowerModel.includes('tts')) {
+    capabilities.push('text-to-speech');
+  }
+  
+  // Embedding models
+  if (lowerModel.includes('embedding') || lowerModel.includes('ada')) {
+    capabilities.push('embeddings');
+  }
+  
+  // Default to chat if no specific capabilities detected
+  if (capabilities.length === 0) {
+    capabilities.push('chat');
+  }
+  
+  return capabilities;
 }

@@ -93,7 +93,9 @@ export abstract class BaseSignalRConnection {
         },
         withCredentials: false
       })
-      .withAutomaticReconnect([0, 2000, 10000, 30000]); // Retry delays
+      .withAutomaticReconnect([0, 2000, 10000, 30000]) // Retry delays
+      .withServerTimeout(120000) // 120 seconds server timeout to account for keep-alive interval
+      .withKeepAliveInterval(15000); // 15 seconds keep-alive interval
 
     // Configure logging
     builder.configureLogging(signalR.LogLevel.Information);

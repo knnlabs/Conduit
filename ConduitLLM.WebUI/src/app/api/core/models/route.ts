@@ -9,8 +9,6 @@ export const GET = withSDKAuth(
       // Use the admin client to get available models from model mappings
       const result = await withSDKErrorHandling(
         async () => auth.adminClient!.modelMappings.list({
-          pageNumber: 1,
-          pageSize: 100, // Get all models in one page
           isEnabled: true, // Only get enabled models
         }),
         'list available models'

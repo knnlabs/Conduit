@@ -776,7 +776,7 @@ export function useVirtualKeyPerformanceMetrics(keyId: string, timeRange: TimeRa
         const dateRange = convertTimeRangeToDateRange(timeRange);
         
         // Get request logs and key details
-        const [requestLogs, virtualKey, _systemMetrics] = await Promise.all([
+        const [requestLogs, virtualKey] = await Promise.all([
           client.analytics.getRequestLogs({
             startDate: dateRange.startDate,
             endDate: dateRange.endDate,
@@ -784,7 +784,6 @@ export function useVirtualKeyPerformanceMetrics(keyId: string, timeRange: TimeRa
             pageSize: 1000,
           }),
           client.virtualKeys.getById(parseInt(keyId)),
-          client.metrics.getRequestStatistics(),
         ]);
         
         // Calculate latency metrics

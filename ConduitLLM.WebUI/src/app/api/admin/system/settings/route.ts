@@ -4,6 +4,12 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
+interface SettingItem {
+  key: string;
+  value: string;
+  category?: string;
+}
+
 // Default settings if none exist
 const DEFAULT_SETTINGS = {
   systemName: 'Conduit LLM Platform',
@@ -38,7 +44,7 @@ export const GET = withSDKAuth(
             const categorySettings = await auth.adminClient!.settings.getSettingsByCategory(category);
             // Convert array to object format
             const settingsObj: Record<string, unknown> = {};
-            categorySettings.forEach(setting => {
+            categorySettings.forEach((setting: SettingItem) => {
               settingsObj[setting.key] = setting.value;
             });
             return { [category]: settingsObj };
@@ -48,7 +54,7 @@ export const GET = withSDKAuth(
           const allSettings = await auth.adminClient!.settings.getGlobalSettings();
           // Convert array to object format grouped by category
           const settingsObj: Record<string, Record<string, unknown>> = {};
-          allSettings.forEach(setting => {
+          allSettings.forEach((setting: SettingItem) => {
             const cat = setting.category || 'general';
             if (!settingsObj[cat]) {
               settingsObj[cat] = {};

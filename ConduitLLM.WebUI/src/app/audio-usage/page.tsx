@@ -39,6 +39,7 @@ import {
   useRealtimeSessionMetrics 
 } from '@/hooks/api/useAudioUsageApi';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
+import type { AudioUsageSummary } from '@/types/sdk-responses';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -58,7 +59,7 @@ export default function AudioUsagePage() {
     dateRange[1] || new Date(),
     selectedVirtualKey,
     undefined
-  );
+  ) as { data: AudioUsageSummary | undefined; isLoading: boolean };
   const { data: _logsData, isLoading: logsLoading } = useAudioUsageLogs({
     startDate: dateRange[0] || undefined,
     endDate: dateRange[1] || undefined,

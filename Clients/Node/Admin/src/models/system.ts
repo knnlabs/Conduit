@@ -215,31 +215,3 @@ export interface AuditLogFilters extends FilterOptions {
   resourceType?: string;
   result?: 'success' | 'failure';
 }
-
-export interface SystemMetricsDto {
-  timestamp: string;
-  cpu: {
-    usage: number;
-    cores: number;
-  };
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  disk: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  network: {
-    bytesIn: number;
-    bytesOut: number;
-    requestsPerSecond: number;
-  };
-  database: {
-    connections: number;
-    maxConnections: number;
-    queryTime: number;
-  };
-}

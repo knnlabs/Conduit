@@ -14,7 +14,6 @@ import {
   MaintenanceTaskResult,
   AuditLogDto,
   AuditLogFilters,
-  SystemMetricsDto,
 } from '../models/system';
 import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
@@ -54,10 +53,6 @@ export class SystemService extends BaseApiClient {
 
   async getHealth(): Promise<HealthStatusDto> {
     return super.get<HealthStatusDto>(ENDPOINTS.SYSTEM.HEALTH);
-  }
-
-  async getSystemMetrics(): Promise<SystemMetricsDto> {
-    return super.get<SystemMetricsDto>('/api/systeminfo/metrics');
   }
 
   // Backup Management
@@ -240,17 +235,6 @@ export class SystemService extends BaseApiClient {
     throw new NotImplementedError(
       'getDiagnostics requires Admin API endpoint implementation. ' +
         'Consider implementing GET /api/systeminfo/diagnostics'
-    );
-  }
-
-  async streamSystemMetrics(
-    _onMessage?: (metrics: SystemMetricsDto) => void,
-    _onError?: (error: Error) => void
-  ): Promise<() => void> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'streamSystemMetrics requires Admin API SSE endpoint implementation. ' +
-        'Consider implementing GET /api/systeminfo/metrics/stream as Server-Sent Events'
     );
   }
 

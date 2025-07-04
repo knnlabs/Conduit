@@ -245,7 +245,7 @@ export class SDKSignalRManager {
     logger.info('Setting up Admin event listeners');
 
     // Get SignalR service from admin client
-    const signalRService = (this.adminClient as { signalRService?: unknown }).signalRService;
+    const signalRService = (this.adminClient as { signalr?: unknown }).signalr;
     if (!signalRService) {
       logger.warn('Admin client does not have SignalR service - notifications will not work');
       return;
@@ -374,7 +374,7 @@ export class SDKSignalRManager {
 
     // Connect Admin SignalR
     if (this.adminClient) {
-      const signalRService = (this.adminClient as { signalRService?: { getOrCreateAdminNotificationHub?: () => Promise<{ start: () => Promise<void> }> } }).signalRService;
+      const signalRService = (this.adminClient as { signalr?: { getOrCreateAdminNotificationHub?: () => Promise<{ start: () => Promise<void> }> } }).signalr;
       if (signalRService) {
         // Start navigation state hub
         // NOTE: Navigation state hub doesn't exist on the server
@@ -408,7 +408,7 @@ export class SDKSignalRManager {
 
     // Disconnect Admin SignalR
     if (this.adminClient) {
-      const signalRService = (this.adminClient as { signalRService?: { getOrCreateAdminNotificationHub?: () => Promise<{ stop: () => Promise<void> }> } }).signalRService;
+      const signalRService = (this.adminClient as { signalr?: { getOrCreateAdminNotificationHub?: () => Promise<{ stop: () => Promise<void> }> } }).signalr;
       if (signalRService) {
         // Stop navigation state hub  
         // NOTE: Navigation state hub doesn't exist on the server
@@ -446,7 +446,7 @@ export class SDKSignalRManager {
 
     // Check Admin SignalR status
     if (!connected && this.adminClient) {
-      const signalRService = (this.adminClient as { signalRService?: { getConnectionStates?: () => Record<string, string> } }).signalRService;
+      const signalRService = (this.adminClient as { signalr?: { getConnectionStates?: () => Record<string, string> } }).signalr;
       if (signalRService) {
         const connectionStates = signalRService.getConnectionStates?.();
         if (connectionStates) {

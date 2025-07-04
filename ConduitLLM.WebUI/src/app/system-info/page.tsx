@@ -11,7 +11,6 @@ import {
   Table,
   SimpleGrid,
   ThemeIcon,
-  Progress,
   Tabs,
   LoadingOverlay,
   Alert,
@@ -20,10 +19,6 @@ import {
 import {
   IconServer,
   IconDatabase,
-  IconCpu,
-  IconCpu as IconMemory,
-  IconServer as IconHardDrive,
-  IconNetwork,
   IconRefresh,
   IconDownload,
   IconCheck,
@@ -34,30 +29,19 @@ import {
   IconCloud,
   IconDeviceDesktop,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
-import { useSystemInfo, useSystemMetrics, useSystemHealth } from '@/hooks/api/useAdminApi';
+import { useSystemInfo, useSystemHealth } from '@/hooks/api/useAdminApi';
+import { useProviderHealth } from '@/hooks/api/useProviderHealthApi';
 import { notifications } from '@mantine/notifications';
 
 // Types will come from the SDK responses
 
 export default function SystemInfoPage() {
-  const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
-  const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useSystemMetrics();
+  const { data: systemInfo, isLoading: systemLoading, refetch: refetchSystemInfo } = useSystemInfo();
   const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  const [autoRefresh, _setAutoRefresh] = useState(false);
+  const { data: providerHealth, isLoading: providerHealthLoading } = useProviderHealth();
   
-  const isLoading = systemLoading || metricsLoading || healthLoading;
+  const isLoading = systemLoading || healthLoading || providerHealthLoading;
 
-  // Auto-refresh functionality
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        refetchMetrics();
-        refetchHealth();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh, refetchMetrics, refetchHealth]);
 
   const handleExportDiagnostics = () => {
     notifications.show({
@@ -76,12 +60,6 @@ export default function SystemInfoPage() {
     }, 3000);
   };
 
-  const formatBytes = (bytes: number) => {
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    if (bytes === 0) return '0 B';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,18 +80,13 @@ export default function SystemInfoPage() {
     }
   };
 
-  const getUsageColor = (usage: number) => {
-    if (usage < 60) return 'green';
-    if (usage < 80) return 'yellow';
-    return 'red';
-  };
 
   return (
     <Stack gap="xl">
       <Group justify="space-between">
         <div>
           <Title order={1}>System Information</Title>
-          <Text c="dimmed">Monitor system health, performance, and configuration</Text>
+          <Text c="dimmed">Monitor system configuration, health status, and provider connectivity</Text>
         </div>
 
         <Group>
@@ -121,7 +94,7 @@ export default function SystemInfoPage() {
             variant="light"
             leftSection={<IconRefresh size={16} />}
             onClick={() => {
-              refetchMetrics();
+              refetchSystemInfo();
               refetchHealth();
             }}
             loading={isLoading}
@@ -153,81 +126,59 @@ export default function SystemInfoPage() {
         </Alert>
       )}
 
-      {/* Resource Usage Cards */}
-      {metrics && (
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-          <Card p="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                CPU Usage
-              </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.cpu?.usage || 0)}>
-                <IconCpu size={16} />
-              </ThemeIcon>
-            </Group>
-            <Text fw={700} size="xl">
-              {(metrics.cpu?.usage || 0).toFixed(1)}%
+      {/* System Status Overview */}
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+        <Card p="md" withBorder>
+          <Group justify="space-between" mb="xs">
+            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+              System Health
             </Text>
-            <Progress value={metrics.cpu?.usage || 0} color={getUsageColor(metrics.cpu?.usage || 0)} size="sm" mt="xs" />
-            <Text size="xs" c="dimmed" mt="xs">
-              {metrics.cpu?.cores || 0} cores
-            </Text>
-          </Card>
+            <ThemeIcon size="sm" variant="light" color={health ? getStatusColor(health.status) : 'gray'}>
+              <IconServer size={16} />
+            </ThemeIcon>
+          </Group>
+          <Text fw={700} size="xl">
+            {health?.status?.toUpperCase() || 'UNKNOWN'}
+          </Text>
+          <Text size="xs" c="dimmed" mt="xs">
+            {health?.checks ? Object.keys(health.checks).length : 0} health checks
+          </Text>
+        </Card>
 
-          <Card p="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                Memory Usage
-              </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.memory?.percentage || 0)}>
-                <IconMemory size={16} />
-              </ThemeIcon>
-            </Group>
-            <Text fw={700} size="xl">
-              {(metrics.memory?.percentage || 0).toFixed(1)}%
+        <Card p="md" withBorder>
+          <Group justify="space-between" mb="xs">
+            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+              Active Providers
             </Text>
-            <Progress value={metrics.memory?.percentage || 0} color={getUsageColor(metrics.memory?.percentage || 0)} size="sm" mt="xs" />
-            <Text size="xs" c="dimmed" mt="xs">
-              {formatBytes(metrics.memory?.used || 0)} / {formatBytes(metrics.memory?.total || 0)}
-            </Text>
-          </Card>
+            <ThemeIcon size="sm" variant="light" color="blue">
+              <IconCloud size={16} />
+            </ThemeIcon>
+          </Group>
+          <Text fw={700} size="xl">
+            {providerHealth?.filter((p) => p.status === 'healthy').length || 0} / {providerHealth?.length || 0}
+          </Text>
+          <Text size="xs" c="dimmed" mt="xs">
+            Healthy providers
+          </Text>
+        </Card>
 
-          <Card p="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                Disk Usage
-              </Text>
-              <ThemeIcon size="sm" variant="light" color={getUsageColor(metrics.disk?.percentage || 0)}>
-                <IconHardDrive size={16} />
-              </ThemeIcon>
-            </Group>
-            <Text fw={700} size="xl">
-              {(metrics.disk?.percentage || 0).toFixed(1)}%
+        <Card p="md" withBorder>
+          <Group justify="space-between" mb="xs">
+            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+              Database Status
             </Text>
-            <Progress value={metrics.disk?.percentage || 0} color={getUsageColor(metrics.disk?.percentage || 0)} size="sm" mt="xs" />
-            <Text size="xs" c="dimmed" mt="xs">
-              {formatBytes(metrics.disk?.used || 0)} / {formatBytes(metrics.disk?.total || 0)}
-            </Text>
-          </Card>
-
-          <Card p="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                Network I/O
-              </Text>
-              <ThemeIcon size="sm" variant="light" color="blue">
-                <IconNetwork size={16} />
-              </ThemeIcon>
-            </Group>
-            <Text fw={700} size="lg">
-              ↓ {formatBytes(metrics.network?.bytesIn || 0)}
-            </Text>
-            <Text fw={700} size="lg">
-              ↑ {formatBytes(metrics.network?.bytesOut || 0)}
-            </Text>
-          </Card>
-        </SimpleGrid>
-      )}
+            <ThemeIcon size="sm" variant="light" color={systemInfo?.database?.isConnected ? 'green' : 'red'}>
+              <IconDatabase size={16} />
+            </ThemeIcon>
+          </Group>
+          <Text fw={700} size="xl">
+            {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+          </Text>
+          <Text size="xs" c="dimmed" mt="xs">
+            {systemInfo?.database?.provider || 'Unknown provider'}
+          </Text>
+        </Card>
+      </SimpleGrid>
 
       <Tabs defaultValue="services">
         <Tabs.List>
@@ -249,12 +200,12 @@ export default function SystemInfoPage() {
           <div style={{ position: 'relative' }}>
             <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
             
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+            <Stack gap="lg">
               {/* Services Status */}
               <Card withBorder>
                 <Card.Section p="md" withBorder>
                   <Group justify="space-between">
-                    <Text fw={600}>Service Status</Text>
+                    <Text fw={600}>Service Health Status</Text>
                     <Badge color={health ? getStatusColor(health.status) : 'gray'} variant="light">
                       {health?.status?.toUpperCase() || 'UNKNOWN'}
                     </Badge>
@@ -264,16 +215,16 @@ export default function SystemInfoPage() {
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>Check</Table.Th>
+                        <Table.Th>Component</Table.Th>
                         <Table.Th>Status</Table.Th>
-                        <Table.Th>Duration</Table.Th>
-                        <Table.Th>Description</Table.Th>
+                        <Table.Th>Response Time</Table.Th>
+                        <Table.Th>Details</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       {health?.checks && Object.entries(health.checks).map(([name, check]: [string, unknown]) => {
-                        if (typeof check === 'object' && check !== null && 'status' in check && 'description' in check) {
-                          const healthCheck = check as { status: string; description: string };
+                        if (typeof check === 'object' && check !== null && 'status' in check) {
+                          const healthCheck = check as { status: string; description?: string; duration?: number; error?: string };
                           return (
                         <Table.Tr key={name}>
                           <Table.Td>
@@ -285,10 +236,10 @@ export default function SystemInfoPage() {
                             </Badge>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{(healthCheck as { duration?: number }).duration ? `${(healthCheck as { duration?: number }).duration}ms` : 'N/A'}</Text>
+                            <Text size="sm">{healthCheck.duration ? `${healthCheck.duration}ms` : '-'}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="sm">{healthCheck.description || (healthCheck as { error?: string }).error || 'N/A'}</Text>
+                            <Text size="sm">{healthCheck.description || healthCheck.error || '-'}</Text>
                           </Table.Td>
                         </Table.Tr>
                         );
@@ -300,7 +251,62 @@ export default function SystemInfoPage() {
                 </Card.Section>
               </Card>
 
-            </SimpleGrid>
+              {/* Provider Health Status */}
+              <Card withBorder>
+                <Card.Section p="md" withBorder>
+                  <Group justify="space-between">
+                    <Text fw={600}>Provider Health Status</Text>
+                    <Badge variant="light">
+                      {providerHealth?.length || 0} providers configured
+                    </Badge>
+                  </Group>
+                </Card.Section>
+                <Card.Section>
+                  {providerHealth && providerHealth.length > 0 ? (
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Provider</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                          <Table.Th>Response Time</Table.Th>
+                          <Table.Th>Last Check</Table.Th>
+                          <Table.Th>Uptime</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {providerHealth?.map((provider) => (
+                          <Table.Tr key={provider.providerId}>
+                            <Table.Td>
+                              <Text fw={500}>{provider.providerName}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color={getStatusColor(provider.status)} variant="light" size="sm">
+                                {provider.status?.toUpperCase() || 'UNKNOWN'}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">{provider.responseTime ? `${provider.responseTime}ms` : '-'}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">
+                                {provider.lastChecked ? new Date(provider.lastChecked).toLocaleTimeString() : '-'}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm">{provider.uptime ? `${provider.uptime.toFixed(1)}%` : '-'}</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  ) : (
+                    <Card.Section p="md">
+                      <Text size="sm" c="dimmed" ta="center">No providers configured</Text>
+                    </Card.Section>
+                  )}
+                </Card.Section>
+              </Card>
+            </Stack>
           </div>
         </Tabs.Panel>
 

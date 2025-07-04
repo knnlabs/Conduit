@@ -19,6 +19,7 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
   private virtualKeyCallbacks: ((event: VirtualKeyEvent) => void)[] = [];
   private configChangeCallbacks: ((event: ConfigurationChangeEvent) => void)[] = [];
   private adminNotificationCallbacks: ((event: AdminNotificationEvent) => void)[] = [];
+  private initialProviderHealthCallbacks: ((data: unknown) => void)[] = [];
 
   /**
    * Configures event handlers for the admin notification hub
@@ -56,6 +57,30 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
         }
       });
     });
+
+    // Initial provider health handler (sent on connection)
+    connection.on('InitialProviderHealth', (data: unknown) => {
+      this.initialProviderHealthCallbacks.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error('Error in initial provider health callback:', error);
+        }
+      });
+    });
+
+    // Also handle other server events that might be sent
+    connection.on('Error', (data: { message: string }) => {
+      console.error('Server error:', data.message);
+    });
+
+    connection.on('ProviderHealthStatus', (data: unknown) => {
+      console.log('Provider health status received:', data);
+    });
+
+    connection.on('ProviderHealthRefreshed', (data: unknown) => {
+      console.log('Provider health refreshed:', data);
+    });
   }
 
   /**
@@ -77,6 +102,13 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
    */
   onAdminNotification(callback: (event: AdminNotificationEvent) => void): void {
     this.adminNotificationCallbacks.push(callback);
+  }
+
+  /**
+   * Subscribe to initial provider health updates
+   */
+  onInitialProviderHealth(callback: (data: unknown) => void): void {
+    this.initialProviderHealthCallbacks.push(callback);
   }
 
   /**
@@ -128,6 +160,7 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
     this.virtualKeyCallbacks = [];
     this.configChangeCallbacks = [];
     this.adminNotificationCallbacks = [];
+    this.initialProviderHealthCallbacks = [];
   }
 
   /**
@@ -166,7 +199,8 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
   getActiveCallbackCount(): number {
     return this.virtualKeyCallbacks.length + 
            this.configChangeCallbacks.length + 
-           this.adminNotificationCallbacks.length;
+           this.adminNotificationCallbacks.length +
+           this.initialProviderHealthCallbacks.length;
   }
 
   /**
