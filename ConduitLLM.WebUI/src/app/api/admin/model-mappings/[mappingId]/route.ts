@@ -9,7 +9,7 @@ export const GET = createDynamicRouteHandler<{ mappingId: string }>(
       
       // Get model mapping details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.get(Number(mappingId)),
+        async () => auth.adminClient!.modelMappings.getById(Number(mappingId)),
         `get model mapping ${mappingId}`
       );
 
