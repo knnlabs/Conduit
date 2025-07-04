@@ -22,15 +22,41 @@ A Terminal User Interface (TUI) for Conduit LLM Gateway that provides full funct
 
 ## Installation
 
+### Install as .NET Tool (Recommended)
+
+```bash
+# Install globally from NuGet.org
+dotnet tool install --global ConduitLLM.TUI
+
+# Or install a specific version
+dotnet tool install --global ConduitLLM.TUI --version 1.0.0
+
+# Update to latest version
+dotnet tool update --global ConduitLLM.TUI
+
+# Run the tool
+conduit-tui --master-key YOUR_MASTER_KEY
+```
+
+### Install Development Versions
+
+```bash
+# Add GitHub Packages source
+dotnet nuget add source https://nuget.pkg.github.com/knnlabs/index.json -n github
+
+# Install development version
+dotnet tool install --global ConduitLLM.TUI --version 0.1.0-dev.xxx --add-source github
+```
+
+### Build from Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/knnlabs/Conduit.git
 cd Conduit/ConduitLLM.TUI
 
-# Build the project
+# Build and run
 dotnet build
-
-# Run the TUI
 dotnet run -- --master-key YOUR_MASTER_KEY
 ```
 

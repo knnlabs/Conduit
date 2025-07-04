@@ -7,6 +7,23 @@
     <Nullable>enable</Nullable>
     <AssemblyName>conduit-tui</AssemblyName>
     <RootNamespace>ConduitLLM.TUI</RootNamespace>
+    
+    <!-- .NET Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>conduit-tui</ToolCommandName>
+    <PackageId>ConduitLLM.TUI</PackageId>
+    <Title>Conduit LLM TUI</Title>
+    <Description>Terminal User Interface for managing Conduit LLM services, virtual keys, and monitoring system performance.</Description>
+    <Authors>KNN Labs, Inc.</Authors>
+    <Company>KNN Labs, Inc.</Company>
+    <Product>Conduit LLM</Product>
+    <Copyright>© 2025 KNN Labs, Inc.</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/knnlabs/Conduit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>conduit;llm;tui;terminal;ai;management;dotnet-tool</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +50,11 @@
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" Condition="Exists('icon.png')" />
   </ItemGroup>
 
 </Project>
