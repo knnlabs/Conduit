@@ -34,8 +34,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Start web UI: `dotnet run --project ConduitLLM.WebUI`
 - Start both services: `docker compose up -d`
 
+## Build Verification - CRITICAL
+**ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
+
+### Project-Specific Build Commands
+- **WebUI**: `cd ConduitLLM.WebUI && npm run build`
+- **Core API**: `dotnet build ConduitLLM.Http`
+- **Admin Client**: `cd Clients/Node/Admin && npm run build`
+- **Core Client**: `cd Clients/Node/Core && npm run build`
+- **Full Solution**: `dotnet build`
+
+### Incremental Development Rules
+1. **NEVER make more than 3-5 file changes without building**
+2. **ALWAYS run the appropriate build command after ANY TypeScript/React changes**
+3. **Fix ALL ESLint errors immediately - do not accumulate technical debt**
+4. **Never commit code that doesn't build cleanly**
+
+### TypeScript/React Specific Rules
+- When replacing `any` types, test immediately with `npm run build`
+- Check existing error handling patterns before creating new ones
+- Use small, incremental changes (1-3 files at a time)
+- Follow established import patterns in the codebase
+- Validate type changes before moving to next files
+
+### ESLint Error Prevention
+- Configure stricter ESLint rules at the start of work
+- Run `npm run lint` frequently during development
+- Address warnings immediately, don't let them accumulate
+- Use proper TypeScript patterns from existing codebase
+
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
+- **For WebUI changes**: ALWAYS run `cd ConduitLLM.WebUI && npm run build` 
 - Test your changes locally before committing
 - When working with API changes, test with curl or a REST client
 - For UI changes, verify in the browser with developer tools open
