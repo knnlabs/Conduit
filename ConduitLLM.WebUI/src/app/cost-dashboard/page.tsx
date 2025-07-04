@@ -49,16 +49,21 @@ export default function CostDashboardPage() {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [selectedVirtualKey, setSelectedVirtualKey] = useState('');
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as '7d' | '30d' | '90d' | 'custom' };
+  const timeRangeFilter: TimeRangeFilter = { range: timeRangeValue as '7d' | '30d' | '90d' | 'custom' };
+  
+  // Convert TimeRangeFilter to DateRange for the hooks
+  const dateRange = timeRangeFilter.startDate && timeRangeFilter.endDate 
+    ? { startDate: timeRangeFilter.startDate, endDate: timeRangeFilter.endDate }
+    : null;
   
   const { data: _virtualKeys, isLoading: keysLoading, error } = useVirtualKeys();
-  const { data: costSummary, isLoading: summaryLoading } = useCostSummary(timeRange);
-  const { data: costTrends, isLoading: trendsLoading } = useCostTrends(timeRange);
-  const { data: providerCosts, isLoading: providersLoading } = useProviderCosts(timeRange);
-  const { data: modelCosts, isLoading: modelsLoading } = useModelCosts(timeRange);
-  const { data: virtualKeyCosts, isLoading: keysCostsLoading } = useVirtualKeyCosts(timeRange);
+  const { data: costSummary, isLoading: summaryLoading } = useCostSummary(dateRange);
+  const { data: costTrends, isLoading: trendsLoading } = useCostTrends(dateRange, 'day');
+  const { data: providerCosts, isLoading: providersLoading } = useProviderCosts(dateRange);
+  const { data: modelCosts, isLoading: modelsLoading } = useModelCosts(dateRange);
+  const { data: virtualKeyCosts, isLoading: keysCostsLoading } = useVirtualKeyCosts(dateRange);
   const { data: costAlerts } = useCostAlerts();
-  const exportCostData = useExportCostData();
+  const exportCostData = useExportCostData(dateRange);
   
   const isLoading = keysLoading || summaryLoading;
 
@@ -77,19 +82,19 @@ export default function CostDashboardPage() {
         autoClose: false,
       });
       
-      const result = await exportCostData.mutateAsync({ type, timeRange });
+      const result = await exportCostData.mutateAsync('csv');
       
       notifications.update({
         id: 'export-start',
         title: 'Export Complete',
-        message: `${type} data exported as ${result.filename}`,
+        message: `${type} data exported successfully`,
         color: 'green',
         loading: false,
         autoClose: 5000,
       });
       
       // In a real implementation, this would trigger a download
-      console.log('Download URL:', result.url);
+      console.log('Export result:', result);
     } catch (error: unknown) {
       notifications.update({
         id: 'export-start',
@@ -123,8 +128,8 @@ export default function CostDashboardPage() {
     return Math.min((stats.totalSpend / stats.totalBudget) * 100, 100);
   };
   
-  const unacknowledgedAlerts = costAlerts?.filter(alert => !alert.acknowledged) || [];
-  const highPriorityAlerts = unacknowledgedAlerts.filter(alert => alert.severity === 'high');
+  const unacknowledgedAlerts = Array.isArray(costAlerts) ? costAlerts.filter((alert: { acknowledged?: boolean }) => !alert.acknowledged) : [];
+  const highPriorityAlerts = unacknowledgedAlerts.filter((alert: { severity?: string }) => alert.severity === 'high');
 
   const getBudgetUsageColor = () => {
     const percentage = getBudgetUsagePercentage();
@@ -232,9 +237,9 @@ export default function CostDashboardPage() {
       {highPriorityAlerts.length > 0 && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" title="Budget Alerts">
           <Stack gap="xs">
-            {highPriorityAlerts.slice(0, 3).map((alert) => (
-              <Text key={alert.id} size="sm">
-                {alert.message}
+            {highPriorityAlerts.slice(0, 3).map((alert: { id?: string; message?: string }, index) => (
+              <Text key={alert.id || index} size="sm">
+                {alert.message || 'Alert message not available'}
               </Text>
             ))}
             {highPriorityAlerts.length > 3 && (
@@ -520,8 +525,8 @@ export default function CostDashboardPage() {
                           data={[
                             { value: '', label: 'All Keys' },
                             ...(virtualKeyCosts || []).map(key => ({
-                              value: key.keyId,
-                              label: key.keyName,
+                              value: String(key.keyId),
+                              label: String(key.keyName),
                             }))
                           ]}
                           value={selectedVirtualKey}
@@ -555,7 +560,7 @@ export default function CostDashboardPage() {
                       </Table.Thead>
                       <Table.Tbody>
                         {virtualKeyCosts
-                          .filter(key => !selectedVirtualKey || key.keyId === selectedVirtualKey)
+                          .filter(key => !selectedVirtualKey || String(key.keyId) === selectedVirtualKey)
                           .map((key) => {
                             const usageColor = key.isOverBudget ? 'red' : 
                                              key.usagePercentage >= 75 ? 'orange' : 'green';

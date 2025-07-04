@@ -48,14 +48,19 @@ export default function SystemPerformancePage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
   const [selectedTab, setSelectedTab] = useState('overview');
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
+  const timeRangeFilter: TimeRangeFilter = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
+  
+  // Convert TimeRangeFilter to DateRange for the hooks
+  const dateRange = timeRangeFilter.startDate && timeRangeFilter.endDate 
+    ? { startDate: timeRangeFilter.startDate, endDate: timeRangeFilter.endDate }
+    : null;
   
   // Provider health data
   const { data: providerHealth, isLoading: providerHealthLoading, refetch: refetchProviderHealth } = useProviderHealth();
   
   // Cost analytics data
-  const { data: costSummary, isLoading: costSummaryLoading } = useCostSummary(timeRange);
-  const { data: costTrends, isLoading: costTrendsLoading } = useCostTrends(timeRange);
+  const { data: costSummary, isLoading: costSummaryLoading } = useCostSummary(dateRange);
+  const { data: costTrends, isLoading: costTrendsLoading } = useCostTrends(dateRange, 'day');
 
   const isLoading = providerHealthLoading || costSummaryLoading;
 
