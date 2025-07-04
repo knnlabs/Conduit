@@ -76,14 +76,11 @@ export default function ImageGenerationPage() {
   const imageGeneration = useImageGeneration();
 
   // Filter models for image generation
-  const imageModels = models?.filter((model: unknown) => 
-    typeof model === 'object' && model !== null && 'id' in model &&
-    typeof (model as { id: string }).id === 'string' && (
-      (model as { id: string }).id.includes('dall-e') || 
-      (model as { id: string }).id.includes('image') || 
-      (model as { id: string }).id.includes('minimax') ||
-      (model as { id: string }).id.includes('replicate')
-    )
+  const imageModels = models?.filter((model: { id: string }) => 
+    model.id.includes('dall-e') || 
+    model.id.includes('image') || 
+    model.id.includes('minimax') ||
+    model.id.includes('replicate')
   ) || [];
 
   const handleGenerateImage = async () => {
@@ -113,24 +110,16 @@ export default function ImageGenerationPage() {
 
       const response = await imageGeneration.mutateAsync(request);
 
-      if ((response as any).data && (response as any).data.length > 0) {
-        const newImages: GeneratedImage[] = (response as any).data.map((imageData: unknown, index: number) => {
-          if (typeof imageData === 'object' && imageData !== null) {
-            const imgData = imageData as { url?: string; b64_json?: string };
-            return {
-              id: `img_${Date.now()}_${index}`,
-              url: imgData.url || imgData.b64_json || '',
-              prompt: prompt.trim(),
-              model: selectedModel,
-              size,
-              quality,
-              style: selectedModel === 'dall-e-3' ? style : undefined,
-              createdAt: new Date(),
-            };
-          }
+      interface ImageGenerationResponse {
+        data?: Array<{ url?: string; b64_json?: string }>;
+      }
+
+      const imgResponse = response as ImageGenerationResponse;
+      if (imgResponse.data && imgResponse.data.length > 0) {
+        const newImages: GeneratedImage[] = imgResponse.data.map((imageData, index) => {
           return {
             id: `img_${Date.now()}_${index}`,
-            url: '',
+            url: imageData.url || imageData.b64_json || '',
             prompt: prompt.trim(),
             model: selectedModel,
             size,
@@ -159,24 +148,22 @@ export default function ImageGenerationPage() {
         (task as { type: string }).type === 'image' &&
         (task as { status: string }).status === 'completed' &&
         (task as { result: unknown }).result) {
-      const taskObj = task as any;
-      const newImages: GeneratedImage[] = taskObj.result.data?.map((imageData: unknown, index: number) => {
-        if (typeof imageData === 'object' && imageData !== null) {
-          const imgData = imageData as { url?: string; b64_json?: string };
-          return {
-            id: `img_${taskObj.taskId}_${index}`,
-            url: imgData.url || imgData.b64_json || '',
-            prompt: taskObj.result.prompt || 'Generated image',
-            model: taskObj.result.model || selectedModel,
-            size: taskObj.result.size || size,
-            quality: taskObj.result.quality || quality,
-            style: taskObj.result.style,
-            createdAt: new Date(),
-          };
-        }
+      interface TaskResult {
+        taskId: string;
+        result: {
+          data?: Array<{ url?: string; b64_json?: string }>;
+          prompt?: string;
+          model?: string;
+          size?: string;
+          quality?: string;
+          style?: string;
+        };
+      }
+      const taskObj = task as unknown as TaskResult;
+      const newImages: GeneratedImage[] = taskObj.result.data?.map((imageData, index) => {
         return {
           id: `img_${taskObj.taskId}_${index}`,
-          url: '',
+          url: imageData.url || imageData.b64_json || '',
           prompt: taskObj.result.prompt || 'Generated image',
           model: taskObj.result.model || selectedModel,
           size: taskObj.result.size || size,

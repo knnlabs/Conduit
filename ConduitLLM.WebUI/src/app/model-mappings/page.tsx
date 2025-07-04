@@ -41,7 +41,19 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { ModelMapping } from '@/types/sdk-responses';
+// Define ModelMapping interface to match components
+interface ModelMapping {
+  id: string;
+  internalModelName: string;
+  providerModelName: string;
+  providerName: string;
+  isEnabled: boolean;
+  capabilities: string[];
+  priority: number;
+  createdAt: string;
+  lastUsed?: string;
+  requestCount: number;
+}
 
 export default function ModelMappingsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
@@ -442,22 +454,24 @@ export default function ModelMappingsPage() {
                         acc[providerName].push(mapping);
                         return acc;
                       }, {})
-                    ).map(([provider, mappings]) => (
+                    ).map(([provider, mappings]) => {
+                      const typedMappings = mappings as unknown[];
+                      return (
                       <div key={provider}>
                         <Group gap="xs" mb="xs">
                           <Badge variant="dot" size="lg">{provider}</Badge>
                           <Text size="sm" c="dimmed">
-                            {(mappings as unknown[]).length} mapping{(mappings as unknown[]).length !== 1 ? 's' : ''}
+                            {typedMappings.length} mapping{typedMappings.length !== 1 ? 's' : ''}
                           </Text>
                         </Group>
                         <ModelMappingsTable 
                           onEdit={handleEdit} 
                           onTest={handleTest} 
-                          data={mappings as ModelMapping[]}
+                          data={typedMappings as never}
                           showProvider={false}
                         />
                       </div>
-                    ))}
+                    );})}
                   </Stack>
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">

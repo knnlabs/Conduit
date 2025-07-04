@@ -61,7 +61,23 @@ export default function ProviderHealthPage() {
   const [selectedProvider, setSelectedProvider] = useState<ProviderHealth | null>(null);
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
   const [incidentOpened, { open: openIncident, close: closeIncident }] = useDisclosure(false);
-  const [selectedIncident, setSelectedIncident] = useState<unknown>(null);
+  interface Incident {
+    id: string;
+    title: string;
+    severity: string;
+    providerId: string;
+    providerName: string;
+    description: string;
+    status: string;
+    startTime: string;
+    endTime?: string;
+    affectedModels?: string[];
+    updates: Array<{ status: string; timestamp: string; author: string; message: string }>;
+    duration?: number;
+    impact?: { usersAffected?: number };
+  }
+  
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   
   const { data: providers, isLoading: providersLoading } = useProviderHealthOverview();
   const { data: status, isLoading: statusLoading } = useProviderStatus();
@@ -71,7 +87,7 @@ export default function ProviderHealthPage() {
     selectedProvider?.providerId || '', timeRangeValue
   );
   const { data: selectedProviderUptime } = useProviderUptime(
-    selectedProvider?.providerId || '', timeRangeValue as unknown
+    selectedProvider?.providerId || '', timeRangeValue as '24h' | '7d' | '30d' | '90d'
   );
   const { data: selectedProviderLatency } = useProviderLatency(
     selectedProvider?.providerId || '', timeRangeValue
@@ -165,7 +181,7 @@ export default function ProviderHealthPage() {
     openDetails();
   };
 
-  const openIncidentDetails = (incident: unknown) => {
+  const openIncidentDetails = (incident: Incident) => {
     setSelectedIncident(incident);
     openIncident();
   };
@@ -835,18 +851,18 @@ export default function ProviderHealthPage() {
               )}
               <div>
                 <Text size="sm" c="dimmed" mb="xs">Duration</Text>
-                <Text>{(selectedIncident as any).duration ? `${(selectedIncident as any).duration} minutes` : 'Ongoing'}</Text>
+                <Text>{selectedIncident.duration ? `${selectedIncident.duration} minutes` : 'Ongoing'}</Text>
               </div>
               <div>
                 <Text size="sm" c="dimmed" mb="xs">Affected Users</Text>
-                <Text>{(selectedIncident as any).impact?.usersAffected?.toLocaleString()}</Text>
+                <Text>{selectedIncident.impact?.usersAffected?.toLocaleString()}</Text>
               </div>
             </SimpleGrid>
             
             <div>
               <Text fw={500} mb="xs">Affected Models</Text>
               <Group gap="xs">
-                {(selectedIncident as any).affectedModels?.map((model: string) => (
+                {selectedIncident.affectedModels?.map((model) => (
                   <Badge key={model} variant="light">
                     {model}
                   </Badge>

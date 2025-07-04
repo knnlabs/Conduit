@@ -50,6 +50,19 @@ import {
   useCleanupExpiredMedia,
 } from '@/hooks/api/useMediaApi';
 
+interface MediaAsset {
+  id: string;
+  filename: string;
+  type: string;
+  url: string;
+  size: number;
+  dimensions: { width: number; height: number };
+  model: string;
+  virtualKeyName: string;
+  createdAt: Date;
+  metadata?: { prompt?: string; duration?: number; fps?: number };
+}
+
 export default function MediaAssetsPage() {
   const [selectedAssets, setSelectedAssets] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +71,7 @@ export default function MediaAssetsPage() {
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
-  const [selectedAsset, setSelectedAsset] = useState<unknown>(null);
+  const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Fetch data from SDK
@@ -126,15 +139,15 @@ export default function MediaAssetsPage() {
     }
   };
 
-  const handleViewAsset = (asset: unknown) => {
+  const handleViewAsset = (asset: MediaAsset) => {
     setSelectedAsset(asset);
     openViewModal();
   };
 
-  const handleDownloadAsset = (asset: unknown) => {
+  const handleDownloadAsset = (asset: MediaAsset) => {
     // Open the media URL directly for download
-    if ((asset as { mediaUrl?: string }).mediaUrl) {
-      window.open((asset as { mediaUrl: string }).mediaUrl, '_blank');
+    if (asset.url) {
+      window.open(asset.url, '_blank');
       notifications.show({
         title: 'Download Started',
         message: `Opening media file for download...`,
@@ -354,21 +367,23 @@ export default function MediaAssetsPage() {
 
       {/* Media Grid */}
       <Grid>
-        {paginatedAssets.map((asset: unknown) => (
-          <Grid.Col key={(asset as { id: string }).id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+        {paginatedAssets.map((asset: unknown) => {
+          const mediaAsset = asset as MediaAsset;
+          return (
+          <Grid.Col key={mediaAsset.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
             <Card withBorder p={0} style={{ position: 'relative' }}>
               <Card.Section>
                 <div style={{ position: 'relative' }}>
                   <Image
-                    src={(asset as { thumbnailUrl: string }).thumbnailUrl}
+                    src={mediaAsset.url}
                     height={200}
-                    alt={(asset as { filename: string }).filename}
+                    alt={mediaAsset.filename}
                     style={{ cursor: 'pointer' }}
-                    onClick={() => handleViewAsset(asset)}
+                    onClick={() => handleViewAsset(mediaAsset)}
                   />
                   <Checkbox
-                    checked={selectedAssets.has((asset as { id: string }).id)}
-                    onChange={() => handleSelectAsset((asset as { id: string }).id)}
+                    checked={selectedAssets.has(mediaAsset.id)}
+                    onChange={() => handleSelectAsset(mediaAsset.id)}
                     style={{
                       position: 'absolute',
                       top: 8,
@@ -377,16 +392,16 @@ export default function MediaAssetsPage() {
                   />
                   <Badge
                     variant="filled"
-                    color={(asset as { type: string }).type === 'video' ? 'red' : 'blue'}
+                    color={mediaAsset.type === 'video' ? 'red' : 'blue'}
                     style={{
                       position: 'absolute',
                       top: 8,
                       right: 8,
                     }}
                   >
-                    {(asset as { type: string }).type}
+                    {mediaAsset.type}
                   </Badge>
-                  {(asset as { type: string; metadata: { duration?: number } }).type === 'video' && (asset as { metadata: { duration?: number } }).metadata.duration && (
+                  {mediaAsset.type === 'video' && mediaAsset.metadata?.duration && (
                     <Badge
                       variant="filled"
                       color="dark"
@@ -396,7 +411,7 @@ export default function MediaAssetsPage() {
                         right: 8,
                       }}
                     >
-                      {(asset as { metadata: { duration: number } }).metadata.duration}s
+                      {mediaAsset.metadata.duration}s
                     </Badge>
                   )}
                 </div>
@@ -404,28 +419,28 @@ export default function MediaAssetsPage() {
               
               <Stack gap="xs" p="sm">
                 <Text size="sm" fw={500} lineClamp={1}>
-                  {(asset as { filename: string }).filename}
+                  {mediaAsset.filename}
                 </Text>
                 <Group gap="xs">
                   <Badge size="xs" variant="light">
-                    {(asset as { model: string }).model}
+                    {mediaAsset.model}
                   </Badge>
                   <Text size="xs" c="dimmed">
-                    {formatBytes((asset as { size: number }).size)}
+                    {formatBytes(mediaAsset.size)}
                   </Text>
                 </Group>
                 <Text size="xs" c="dimmed" lineClamp={2}>
-                  {(asset as { prompt: string }).prompt}
+                  {mediaAsset.metadata?.prompt || ''}
                 </Text>
                 <Group justify="space-between">
                   <Text size="xs" c="dimmed">
-                    {formatRelativeTime((asset as { createdAt: Date }).createdAt)}
+                    {formatRelativeTime(mediaAsset.createdAt)}
                   </Text>
                   <Group gap={4}>
-                    <ActionIcon size="sm" variant="subtle" onClick={() => handleViewAsset(asset)}>
+                    <ActionIcon size="sm" variant="subtle" onClick={() => handleViewAsset(mediaAsset)}>
                       <IconEye size={16} />
                     </ActionIcon>
-                    <ActionIcon size="sm" variant="subtle" onClick={() => handleDownloadAsset(asset)}>
+                    <ActionIcon size="sm" variant="subtle" onClick={() => handleDownloadAsset(mediaAsset)}>
                       <IconDownload size={16} />
                     </ActionIcon>
                     <Menu position="bottom-end">
@@ -437,18 +452,11 @@ export default function MediaAssetsPage() {
                       <Menu.Dropdown>
                         <Menu.Item
                           leftSection={<IconCopy size={14} />}
-                          onClick={() => handleCopyUrl((asset as { url: string }).url)}
+                          onClick={() => handleCopyUrl(mediaAsset.url)}
                         >
                           Copy URL
                         </Menu.Item>
-                        {(asset as { storage: { cdnUrl?: string } }).storage.cdnUrl && (
-                          <Menu.Item
-                            leftSection={<IconCloud size={14} />}
-                            onClick={() => handleCopyUrl(`${(asset as { storage: { cdnUrl: string }; filename: string }).storage.cdnUrl}/${(asset as { filename: string }).filename}`)}
-                          >
-                            Copy CDN URL
-                          </Menu.Item>
-                        )}
+                        {/* CDN URL menu item removed - not in MediaAsset interface */}
                       </Menu.Dropdown>
                     </Menu>
                   </Group>
@@ -456,7 +464,7 @@ export default function MediaAssetsPage() {
               </Stack>
             </Card>
           </Grid.Col>
-        ))}
+        );})}
       </Grid>
 
       {/* Empty State */}
@@ -486,21 +494,21 @@ export default function MediaAssetsPage() {
       <Modal
         opened={viewModalOpened}
         onClose={closeViewModal}
-        title={(selectedAsset as { filename?: string } | null)?.filename}
+        title={selectedAsset?.filename}
         size="xl"
       >
-        {selectedAsset && selectedAsset as any && (
+        {selectedAsset && (
           <Stack gap="md">
-            {(selectedAsset as { type: string }).type === 'image' ? (
+            {selectedAsset.type === 'image' ? (
               <Image
-                src={(selectedAsset as { url: string }).url}
-                alt={(selectedAsset as { filename: string }).filename}
+                src={selectedAsset.url}
+                alt={selectedAsset.filename}
                 maw="100%"
                 style={{ maxHeight: '70vh', objectFit: 'contain' }}
               />
             ) : (
               <video
-                src={(selectedAsset as { url: string }).url}
+                src={selectedAsset.url}
                 controls
                 style={{ width: '100%', maxHeight: '70vh' }}
               />
@@ -512,25 +520,25 @@ export default function MediaAssetsPage() {
                 <Stack gap="xs" mt="xs">
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Type:</Text>
-                    <Badge variant="light">{(selectedAsset as { type: string }).type}</Badge>
+                    <Badge variant="light">{selectedAsset.type}</Badge>
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Size:</Text>
-                    <Text size="sm">{formatBytes((selectedAsset as { size: number }).size)}</Text>
+                    <Text size="sm">{formatBytes(selectedAsset.size)}</Text>
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Dimensions:</Text>
-                    <Text size="sm">{(selectedAsset as { dimensions: { width: number; height: number } }).dimensions.width} × {(selectedAsset as { dimensions: { width: number; height: number } }).dimensions.height}</Text>
+                    <Text size="sm">{selectedAsset.dimensions.width} × {selectedAsset.dimensions.height}</Text>
                   </Group>
-                  {(selectedAsset as { type: string }).type === 'video' && (
+                  {selectedAsset.type === 'video' && (
                     <>
                       <Group gap="xs">
                         <Text size="sm" c="dimmed">Duration:</Text>
-                        <Text size="sm">{(selectedAsset as { metadata: { duration: number } }).metadata.duration}s</Text>
+                        <Text size="sm">{selectedAsset.metadata?.duration}s</Text>
                       </Group>
                       <Group gap="xs">
                         <Text size="sm" c="dimmed">FPS:</Text>
-                        <Text size="sm">{(selectedAsset as { metadata: { fps: number } }).metadata.fps}</Text>
+                        <Text size="sm">{selectedAsset.metadata?.fps}</Text>
                       </Group>
                     </>
                   )}
@@ -542,25 +550,25 @@ export default function MediaAssetsPage() {
                 <Stack gap="xs" mt="xs">
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Model:</Text>
-                    <Badge variant="light">{(selectedAsset as { model: string }).model}</Badge>
+                    <Badge variant="light">{selectedAsset.model}</Badge>
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Virtual Key:</Text>
-                    <Text size="sm">{(selectedAsset as { virtualKeyName: string }).virtualKeyName}</Text>
+                    <Text size="sm">{selectedAsset.virtualKeyName}</Text>
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Created:</Text>
-                    <Text size="sm">{(selectedAsset as { createdAt: Date }).createdAt.toLocaleString()}</Text>
+                    <Text size="sm">{selectedAsset.createdAt.toLocaleString()}</Text>
                   </Group>
                 </Stack>
               </Grid.Col>
             </Grid>
             
-            {(selectedAsset as { metadata?: { prompt?: string } } | null)?.metadata?.prompt && (
+            {selectedAsset.metadata?.prompt && (
               <div>
                 <Text size="sm" fw={500} mb="xs">Prompt</Text>
                 <Paper p="sm" withBorder>
-                  <Text size="sm">{(selectedAsset as { metadata: { prompt: string } }).metadata.prompt}</Text>
+                  <Text size="sm">{selectedAsset.metadata.prompt}</Text>
                 </Paper>
               </div>
             )}
@@ -569,7 +577,7 @@ export default function MediaAssetsPage() {
               <Button
                 variant="light"
                 leftSection={<IconCopy size={16} />}
-                onClick={() => handleCopyUrl((selectedAsset as { url: string }).url)}
+                onClick={() => handleCopyUrl(selectedAsset.url)}
               >
                 Copy URL
               </Button>

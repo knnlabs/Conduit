@@ -24,7 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
-import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
+import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
 
 interface BackendStatusIndicatorProps {
   compact?: boolean;
@@ -90,7 +90,6 @@ export function BackendStatusIndicator({
   return (
     <Card withBorder>
       <Stack gap="md">
-        {/* Overall Status */}
         <Group justify="space-between">
           <Group gap="sm">
             <Badge 
@@ -121,7 +120,6 @@ export function BackendStatusIndicator({
           </Group>
         </Group>
 
-        {/* Service Status */}
         <Group gap="md">
           <Group gap="xs">
             <Text size="xs" c="dimmed">Admin API:</Text>
@@ -146,42 +144,48 @@ export function BackendStatusIndicator({
           </Group>
         </Group>
 
-        {/* Error Messages */}
-        {(adminError || coreError) && (
+        {Boolean(adminError || coreError) && (
           <Stack gap="xs">
-            {adminError && (
+            {Boolean(adminError) && (
               <Alert 
                 icon={<IconAlertCircle size={16} />} 
                 color="red" 
                 title="Admin API Issue"
               >
                 <Text size="xs">
-                  {BackendErrorHandler.getUserFriendlyMessage(adminError)}
+                  {BackendErrorHandler.getUserFriendlyMessage(
+                    BackendErrorHandler.classifyError(adminError)
+                  )}
                 </Text>
                 <Text size="xs" c="dimmed" mt="xs">
-                  {BackendErrorHandler.getActionableMessage(adminError)}
+                  {BackendErrorHandler.getActionableMessage(
+                    BackendErrorHandler.classifyError(adminError)
+                  )}
                 </Text>
               </Alert>
             )}
             
-            {coreError && (
+            {Boolean(coreError) && (
               <Alert 
                 icon={<IconAlertCircle size={16} />} 
                 color="red" 
                 title="Core API Issue"
               >
                 <Text size="xs">
-                  {BackendErrorHandler.getUserFriendlyMessage(coreError)}
+                  {BackendErrorHandler.getUserFriendlyMessage(
+                    BackendErrorHandler.classifyError(coreError)
+                  )}
                 </Text>
                 <Text size="xs" c="dimmed" mt="xs">
-                  {BackendErrorHandler.getActionableMessage(coreError)}
+                  {BackendErrorHandler.getActionableMessage(
+                    BackendErrorHandler.classifyError(coreError)
+                  )}
                 </Text>
               </Alert>
             )}
           </Stack>
         )}
 
-        {/* Graceful Degradation Messages */}
         {isUnavailable && (
           <Alert 
             icon={<IconWifiOff size={16} />} 
@@ -199,27 +203,26 @@ export function BackendStatusIndicator({
           </Alert>
         )}
 
-        {/* Detailed Status */}
         {showDetails && (
           <Collapse in={expanded}>
             <Stack gap="xs">
               <Text size="xs" fw={500}>Service Details</Text>
               
-              {healthStatus.adminApiDetails && (healthStatus.adminApiDetails as any) && (
+              {Boolean(healthStatus.adminApiDetails) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Admin API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.adminApiDetails as any).status}<br/>
+                    Status: {(healthStatus.adminApiDetails as { status?: string })?.status || 'Unknown'}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>
               )}
               
-              {healthStatus.coreApiDetails && (healthStatus.coreApiDetails as any) && (
+              {Boolean(healthStatus.coreApiDetails) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Core API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.coreApiDetails as any).status}<br/>
+                    Status: {(healthStatus.coreApiDetails as { status?: string })?.status || 'Unknown'}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>

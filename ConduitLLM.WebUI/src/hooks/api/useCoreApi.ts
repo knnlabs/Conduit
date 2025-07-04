@@ -48,7 +48,7 @@ export function useChatCompletion() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Chat Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
@@ -123,7 +123,7 @@ export function useStreamingChatCompletion() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Streaming Chat Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
@@ -169,7 +169,7 @@ export function useImageGeneration() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Image Generation Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
@@ -244,7 +244,7 @@ export function useVideoGeneration() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Video Generation Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
@@ -357,7 +357,7 @@ export function useAudioTranscription() {
       });
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Transcription Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),
@@ -451,7 +451,7 @@ export function useAudioSpeech() {
       }
     },
     onError: (error: unknown) => {
-      const classifiedError = (error as any).type ? error : BackendErrorHandler.classifyError(error);
+      const classifiedError = (error as BackendError).type ? error : BackendErrorHandler.classifyError(error);
       notifications.show({
         title: 'Speech Generation Error',
         message: BackendErrorHandler.getUserFriendlyMessage(classifiedError as BackendError),

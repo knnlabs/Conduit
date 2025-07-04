@@ -188,14 +188,14 @@ export function useProviderHealthOverview() {
         const _client = getAdminClient();
         
         // Get provider health data from SDK
-        const healthSummary = await client.providerHealth.getHealthSummary();
+        const healthSummary = await _client.providerHealth.getHealthSummary();
         
         // Transform SDK health data to match our interface
         const providerHealth: ProviderHealth[] = await Promise.all(
           healthSummary.providers.map(async (provider) => {
             try {
               // Get detailed health status for each provider
-              const detailedStatus = await client.providerHealth.getProviderHealthStatus(provider.providerName);
+              const detailedStatus = await _client.providerHealth.getProviderHealthStatus(provider.providerName);
               
               // Determine status based on health data
               let status: 'healthy' | 'degraded' | 'down' | 'maintenance' = 'healthy';
@@ -279,8 +279,8 @@ export function useProviderStatus() {
         
         // Get provider health summary and metrics
         const [healthSummary, systemMetrics] = await Promise.all([
-          client.providerHealth.getHealthSummary(),
-          client.metrics.getAllMetrics(),
+          _client.providerHealth.getHealthSummary(),
+          _client.metrics.getAllMetrics(),
         ]);
         
         // Calculate provider status from health data
@@ -344,7 +344,7 @@ export function useProviderMetrics(providerId: string, timeRange: string = '24h'
         const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000);
         
         // Get request logs for this provider
-        const requestLogs = await client.analytics.getRequestLogs({
+        const requestLogs = await _client.analytics.getRequestLogs({
           startDate: startDate.toISOString(),
           endDate: now.toISOString(),
           provider: providerId,
@@ -352,7 +352,7 @@ export function useProviderMetrics(providerId: string, timeRange: string = '24h'
         });
         
         // Get provider info
-        const provider = await client.providers.getByName(providerId);
+        const provider = await _client.providers.getByName(providerId);
         
         // Group requests by hour
         const hourlyMetrics = new Map<string, {
@@ -438,7 +438,7 @@ export function useProviderIncidents() {
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getIncidents();
+        // const response = await _client.providers.getIncidents();
         
         // Mock incident data
         const mockData: ProviderIncident[] = [
@@ -547,7 +547,7 @@ export function useProviderUptime(providerId: string, period: '24h' | '7d' | '30
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getUptime(providerId, period);
+        // const response = await _client.providers.getUptime(providerId, period);
         
         // Generate mock uptime data
         const generateUptimeHistory = (days: number) => {
@@ -615,7 +615,7 @@ export function useProviderLatency(providerId: string, timeRange: string = '24h'
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getLatency(providerId, timeRange);
+        // const response = await _client.providers.getLatency(providerId, timeRange);
         
         // Generate mock latency data
         const generateLatencyData = (hours: number) => {
@@ -688,7 +688,7 @@ export function useProviderAlerts() {
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.getAlerts();
+        // const response = await _client.providers.getAlerts();
         
         // Mock alert data
         const mockData: ProviderAlert[] = [
@@ -765,7 +765,7 @@ export function useAcknowledgeAlert() {
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.acknowledgeAlert(alertId);
+        // const response = await _client.providers.acknowledgeAlert(alertId);
         
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -793,7 +793,7 @@ export function useTriggerHealthCheck() {
         const _client = getAdminClient();
         
         // TODO: Replace with actual API endpoint when available
-        // const response = await client.providers.triggerHealthCheck(providerId);
+        // const response = await _client.providers.triggerHealthCheck(providerId);
         
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 2000));

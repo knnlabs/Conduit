@@ -40,16 +40,19 @@ export function useSpendTracking() {
 
     // Update the virtual keys query cache
     queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
-      if (!oldData) return oldData;
+      if (!oldData || !Array.isArray(oldData)) return oldData;
       
-      return (oldData as unknown[]).map((key: unknown) => {
-        if (key.id === event.virtualKeyId || key.keyHash === event.keyHash) {
+      return oldData.map((key: unknown) => {
+        if (typeof key === 'object' && key !== null && 
+            (('id' in key && (key as { id: string }).id === event.virtualKeyId) || 
+             ('keyHash' in key && (key as { keyHash: string }).keyHash === event.keyHash))) {
+          const keyData = key as unknown as { requestCount: number };
           return {
-            ...key,
+            ...(key as object),
             currentSpend: event.newSpend,
             lastUsed: event.timestamp,
             // Increment request count if this is a new request
-            requestCount: event.requestId ? key.requestCount + 1 : key.requestCount,
+            requestCount: event.requestId ? keyData.requestCount + 1 : keyData.requestCount,
           };
         }
         return key;
@@ -58,13 +61,13 @@ export function useSpendTracking() {
 
     // Update individual virtual key cache if it exists
     queryClient.setQueryData(adminApiKeys.virtualKey(event.virtualKeyId), (oldData: unknown) => {
-      if (!oldData) return oldData;
+      if (!oldData || typeof oldData !== 'object') return oldData;
       
       return {
-        ...oldData,
+        ...(oldData as object),
         currentSpend: event.newSpend,
         lastUsed: event.timestamp,
-        requestCount: event.requestId ? (oldData as any).requestCount + 1 : (oldData as any).requestCount,
+        requestCount: event.requestId ? ((oldData as { requestCount: number }).requestCount + 1) : (oldData as { requestCount: number }).requestCount,
       };
     });
 

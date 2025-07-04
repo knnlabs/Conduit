@@ -103,9 +103,9 @@ export function useModelMappingHub() {
         if (!oldData || !Array.isArray(oldData)) return oldData;
         
         return oldData.map((mapping: unknown) => {
-          if ((mapping as any).id === event.mappingId) {
+          if ((mapping as { id: string }).id === event.mappingId) {
             return {
-              ...(mapping as any),
+              ...(mapping as object),
               lastTested: event.timestamp,
               lastTestSuccess: event.testResult?.success,
               lastResponseTime: event.testResult?.responseTime,
@@ -159,7 +159,8 @@ export function useModelMappingHub() {
         if (!oldData || !Array.isArray(oldData)) return oldData;
         
         return oldData.map((mapping: unknown) => {
-          if (mapping.id === mappingId) {
+          if (typeof mapping === 'object' && mapping !== null && 'id' in mapping && 
+              (mapping as { id: string }).id === mappingId) {
             return {
               ...mapping,
               requestCount,
@@ -185,7 +186,7 @@ export function useModelMappingHub() {
           const update = updateMap.get(typeof mapping === 'object' && mapping !== null && 'id' in mapping ? (mapping as { id: string }).id : '');
           if (update) {
             return {
-              ...(mapping as any),
+              ...(mapping as object),
               requestCount: update.requestCount,
               lastUsed: update.lastUsed,
             };

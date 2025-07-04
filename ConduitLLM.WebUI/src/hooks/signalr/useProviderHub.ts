@@ -87,10 +87,11 @@ export function useProviderHub() {
       
       // Update provider cache with new health status
       queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         return oldData.map((provider: unknown) => {
-          if (provider.id === event.providerId) {
+          if (typeof provider === 'object' && provider !== null && 'id' in provider &&
+              (provider as { id: string }).id === event.providerId) {
             return {
               ...provider,
               healthStatus: event.healthStatus,
@@ -125,10 +126,11 @@ export function useProviderHub() {
       
       // Update provider cache with new model count
       queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         return oldData.map((provider: unknown) => {
-          if (provider.id === event.providerId) {
+          if (typeof provider === 'object' && provider !== null && 'id' in provider &&
+              (provider as { id: string }).id === event.providerId) {
             return {
               ...provider,
               modelsAvailable: event.modelsAvailable,
@@ -158,18 +160,21 @@ export function useProviderHub() {
       
       // Update cache for all providers at once
       queryClient.setQueryData(adminApiKeys.providers(), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         const updateMap = new Map(events.map(e => [e.providerId, e]));
         
         return oldData.map((provider: unknown) => {
-          const update = updateMap.get((provider as any).id);
+          if (typeof provider !== 'object' || provider === null) return provider;
+          
+          const providerData = provider as { id: string; healthStatus?: string; isHealthy?: boolean; modelsAvailable?: number };
+          const update = updateMap.get(providerData.id);
           if (update) {
             return {
-              ...provider,
-              healthStatus: update.healthStatus ?? (provider as any).healthStatus,
-              isHealthy: update.isHealthy ?? (provider as any).isHealthy,
-              modelsAvailable: update.modelsAvailable ?? (provider as any).modelsAvailable,
+              ...(provider as object),
+              healthStatus: update.healthStatus ?? providerData.healthStatus,
+              isHealthy: update.isHealthy ?? providerData.isHealthy,
+              modelsAvailable: update.modelsAvailable ?? providerData.modelsAvailable,
               lastHealthCheck: update.timestamp,
             };
           }

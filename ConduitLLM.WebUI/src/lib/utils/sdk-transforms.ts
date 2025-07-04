@@ -139,28 +139,46 @@ export function extractPagination(sdkResponse: unknown): {
 } | null {
   // Handle different SDK pagination formats
   if (sdkResponse && typeof sdkResponse === 'object' && 'pagination' in sdkResponse) {
-    const pagination = (sdkResponse as {pagination: {page?: number}}).pagination;
+    const response = sdkResponse as {
+      pagination: {
+        page?: number;
+        pageSize?: number;
+        total?: number;
+      };
+    };
     return {
-      page: pagination.page || 1,
-      pageSize: sdkResponse.pagination.pageSize || 20,
-      total: sdkResponse.pagination.total || 0,
+      page: response.pagination.page || 1,
+      pageSize: response.pagination.pageSize || 20,
+      total: response.pagination.total || 0,
     };
   }
 
-  if (sdkResponse.meta?.pagination) {
+  const responseWithMeta = sdkResponse as {
+    meta?: {
+      pagination?: {
+        currentPage?: number;
+        perPage?: number;
+        totalItems?: number;
+      };
+    };
+    data?: unknown[];
+    totalCount?: number;
+  };
+
+  if (responseWithMeta.meta?.pagination) {
     return {
-      page: sdkResponse.meta.pagination.currentPage || 1,
-      pageSize: sdkResponse.meta.pagination.perPage || 20,
-      total: sdkResponse.meta.pagination.totalItems || 0,
+      page: responseWithMeta.meta.pagination.currentPage || 1,
+      pageSize: responseWithMeta.meta.pagination.perPage || 20,
+      total: responseWithMeta.meta.pagination.totalItems || 0,
     };
   }
 
   // Check for array response with metadata
-  if (Array.isArray(sdkResponse.data) && sdkResponse.totalCount !== undefined) {
+  if (Array.isArray(responseWithMeta.data) && responseWithMeta.totalCount !== undefined) {
     return {
       page: 1,
-      pageSize: sdkResponse.data.length,
-      total: sdkResponse.totalCount,
+      pageSize: responseWithMeta.data.length,
+      total: responseWithMeta.totalCount,
     };
   }
 
@@ -184,21 +202,24 @@ export function transformWebhookPayload(
 // Transform error details for logging
 export function transformErrorForLogging(error: unknown): Record<string, unknown> {
   const err = error as Record<string, unknown>;
-  return {
+  const result: Record<string, unknown> = {
     message: err.message || 'Unknown error',
     type: err.type || err.name || 'Unknown',
     statusCode: err.statusCode || (err.response as {status?: number})?.status,
     context: err.context,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     timestamp: new Date().toISOString(),
-    ...(err.response && {
-      response: {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers,
-      },
-    }),
   };
+  
+  if (err.response) {
+    result.response = {
+      status: (err.response as {status?: number}).status,
+      data: (err.response as {data?: unknown}).data,
+      headers: (err.response as {headers?: unknown}).headers,
+    };
+  }
+  
+  return result;
 }
 
 // Sanitize SDK responses to remove sensitive data
@@ -217,7 +238,7 @@ export function sanitizeResponse<T extends Record<string, unknown>>(
   // Recursively sanitize nested objects
   for (const [key, value] of Object.entries(sanitized)) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      sanitized[key] = sanitizeResponse(value, sensitiveFields);
+      sanitized[key] = sanitizeResponse(value as Record<string, unknown>, sensitiveFields);
     }
   }
 

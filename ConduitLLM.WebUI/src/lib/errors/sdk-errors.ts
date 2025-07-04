@@ -93,8 +93,8 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
           {
             error: {
               type: SDKErrorType.VALIDATION,
-              message: data.error || 'Invalid request parameters',
-              details: data.details,
+              message: (data as { error?: string }).error || 'Invalid request parameters',
+              details: (data as { details?: unknown }).details,
             },
           },
           { status: 400 }
@@ -127,7 +127,7 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
           {
             error: {
               type: SDKErrorType.NOT_FOUND,
-              message: (data as any).error || 'Resource not found',
+              message: (data as { error?: string }).error || 'Resource not found',
             },
           },
           { status: 404 }
@@ -138,7 +138,7 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
           {
             error: {
               type: SDKErrorType.CONFLICT,
-              message: (data as any).error || 'Resource conflict',
+              message: (data as { error?: string }).error || 'Resource conflict',
             },
           },
           { status: 409 }
@@ -150,7 +150,9 @@ export function mapSDKErrorToResponse(error: unknown): NextResponse {
             error: {
               type: SDKErrorType.RATE_LIMIT,
               message: 'Rate limit exceeded. Please slow down your requests.',
-              retryAfter: error.response.headers?.['retry-after'],
+              retryAfter: response && 'headers' in response ? 
+                (response.headers as { ['retry-after']?: string })?.['retry-after'] : 
+                undefined,
             },
           },
           { status: 429 }
@@ -207,7 +209,7 @@ export async function withSDKErrorHandling<T>(
       
       throw new SDKError(
         getErrorType(status),
-        dataError || errorMessage,
+        typeof dataError === 'string' ? dataError : errorMessage,
         status,
         { operation: context },
         error

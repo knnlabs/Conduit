@@ -150,8 +150,11 @@ export class SDKSignalRManager {
     logger.info('Initializing Admin client with SignalR');
 
     this.adminClient = new ConduitAdminClient({
-      baseURL: this.config.adminApiUrl,
-      apiKey: masterKey,
+      adminApiUrl: this.config.adminApiUrl,
+      masterKey: masterKey,
+      options: {
+        timeout: 30000,
+      }
       // TODO: SignalR configuration not yet supported in SDK v1.0.1
       // signalR: {
       //   enabled: true,
@@ -159,7 +162,7 @@ export class SDKSignalRManager {
       //   transports: ['WebSockets', 'ServerSentEvents', 'LongPolling'],
       //   reconnectInterval: this.config.reconnectInterval,
       // },
-    } as unknown as ConduitAdminClient);
+    });
 
     // Set up Admin event listeners
     await this.setupAdminEventListeners();
@@ -174,14 +177,14 @@ export class SDKSignalRManager {
     logger.info('Setting up Core event listeners');
 
     // Video generation progress
-    const videoSub = await this.coreClient.notifications.onVideoProgress((event: any) => {
+    const videoSub = await this.coreClient.notifications.onVideoProgress((event) => {
       if (this.eventHandlers.onVideoGenerationProgress) {
         this.eventHandlers.onVideoGenerationProgress({
           taskId: event.taskId,
           status: event.status as 'queued' | 'processing' | 'completed' | 'failed',
           progress: event.progress || 0,
           estimatedTimeRemaining: undefined, // Not provided by SDK
-          resultUrl: event.status === 'completed' && event.metadata && 'url' in event.metadata ? event.metadata.url : undefined,
+          resultUrl: event.status === 'completed' && event.metadata && typeof event.metadata === 'object' && 'url' in event.metadata ? (event.metadata as { url?: string }).url : undefined,
           error: event.message,
         });
       }
@@ -189,7 +192,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => videoSub.unsubscribe());
 
     // Image generation progress
-    const imageSub = await this.coreClient.notifications.onImageProgress((event: { taskId: string; status: string; progress?: number; images?: { url?: string }[]; message?: string }) => {
+    const imageSub = await this.coreClient.notifications.onImageProgress((event) => {
       if (this.eventHandlers.onImageGenerationProgress) {
         this.eventHandlers.onImageGenerationProgress({
           taskId: event.taskId,
@@ -203,7 +206,7 @@ export class SDKSignalRManager {
     this.cleanupFunctions.push(() => imageSub.unsubscribe());
 
     // Spend updates
-    const spendSub = await this.coreClient.notifications.onSpendUpdate((event: { virtualKeyId: string | number; amount: number; totalSpend: number; model: string; timestamp: string }) => {
+    const spendSub = await this.coreClient.notifications.onSpendUpdate((event) => {
       if (this.eventHandlers.onSpendUpdate) {
         this.eventHandlers.onSpendUpdate({
           virtualKeyId: String(event.virtualKeyId),
@@ -300,11 +303,11 @@ export class SDKSignalRManager {
     // });
 
     // Get or create admin notification hub if available
-    const adminHub = await (signalRService as any).getOrCreateAdminNotificationHub?.();
-    if (adminHub) {
+    const adminHub = await (signalRService as { getOrCreateAdminNotificationHub?: () => Promise<unknown> }).getOrCreateAdminNotificationHub?.();
+    if (adminHub && typeof adminHub === 'object' && adminHub !== null) {
       // Virtual key events
-      if (adminHub.onVirtualKeyUpdate) {
-        adminHub.onVirtualKeyUpdate((event: { keyId: string; action: string; changes?: string[] }) => {
+      if ('onVirtualKeyUpdate' in adminHub && typeof adminHub.onVirtualKeyUpdate === 'function') {
+        (adminHub.onVirtualKeyUpdate as (callback: (event: { keyId: string; action: string; changes?: string[] }) => void) => void)((event: { keyId: string; action: string; changes?: string[] }) => {
           if (this.eventHandlers.onVirtualKeyUpdate) {
             this.eventHandlers.onVirtualKeyUpdate({
               keyId: event.keyId,
@@ -316,8 +319,8 @@ export class SDKSignalRManager {
       }
 
       // Configuration changes
-      if (adminHub.onConfigurationChange) {
-        adminHub.onConfigurationChange((event: { category: string; setting: string; oldValue: unknown; newValue: unknown; timestamp: string }) => {
+      if ('onConfigurationChange' in adminHub && typeof adminHub.onConfigurationChange === 'function') {
+        (adminHub.onConfigurationChange as (callback: (event: { category: string; setting: string; oldValue: unknown; newValue: unknown; timestamp: string }) => void) => void)((event: { category: string; setting: string; oldValue: unknown; newValue: unknown; timestamp: string }) => {
           if (this.eventHandlers.onConfigurationChange) {
             this.eventHandlers.onConfigurationChange({
               category: event.category,

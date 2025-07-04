@@ -64,7 +64,12 @@ const CAPABILITY_OPTIONS = [
 export function EditModelMappingModal({ opened, onClose, modelMapping }: EditModelMappingModalProps) {
   const updateModelMapping = useUpdateModelMapping();
   const { data: providers } = useProviders();
-  const [selectedProvider, setSelectedProvider] = useState<unknown>(null);
+  interface ProviderInfo {
+    healthStatus: string;
+    modelsAvailable: number;
+  }
+  
+  const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
 
   const form = useForm<EditModelMappingForm>({
     initialValues: {
@@ -126,7 +131,11 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
       
       // Find and set the selected provider
       const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === modelMapping.providerName);
-      setSelectedProvider(provider);
+      if (provider && typeof provider === 'object' && 'healthStatus' in provider && 'modelsAvailable' in provider) {
+        setSelectedProvider(provider as ProviderInfo);
+      } else {
+        setSelectedProvider(null);
+      }
     }
   }, [modelMapping, providers, form]);
 
@@ -234,18 +243,22 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
             onChange={(value) => {
               form.setFieldValue('providerName', value || '');
               const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === value);
-              setSelectedProvider(provider);
+              if (provider && typeof provider === 'object' && 'healthStatus' in provider && 'modelsAvailable' in provider) {
+                setSelectedProvider(provider as ProviderInfo);
+              } else {
+                setSelectedProvider(null);
+              }
             }}
           />
 
-          {selectedProvider && selectedProvider as any && (
+          {selectedProvider && (
             <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
               <Text size="sm">
-                Provider has {(selectedProvider as { modelsAvailable: number }).modelsAvailable} models available.
+                Provider has {selectedProvider.modelsAvailable} models available.
                 Status: <Badge size="sm" variant="light" color={
-                  (selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'red'
+                  selectedProvider.healthStatus === 'healthy' ? 'green' : 'red'
                 }>
-                  {(selectedProvider as { healthStatus: string }).healthStatus}
+                  {selectedProvider.healthStatus}
                 </Badge>
               </Text>
             </Alert>

@@ -78,7 +78,12 @@ const MODEL_PRESETS = [
 export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingModalProps) {
   const createModelMapping = useCreateModelMapping();
   const { data: providers } = useProviders();
-  const [selectedProvider, setSelectedProvider] = useState<unknown>(null);
+  interface ProviderInfo {
+    healthStatus: string;
+    modelsAvailable: number;
+  }
+  
+  const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
   const [showPresets, setShowPresets] = useState(true);
 
   const form = useForm<CreateModelMappingForm>({
@@ -134,7 +139,11 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
   useEffect(() => {
     if (form.values.providerName) {
       const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === form.values.providerName);
-      setSelectedProvider(provider);
+      if (provider && typeof provider === 'object' && 'healthStatus' in provider && 'modelsAvailable' in provider) {
+        setSelectedProvider(provider as ProviderInfo);
+      } else {
+        setSelectedProvider(null);
+      }
     }
   }, [form.values.providerName, providers]);
 
@@ -234,10 +243,10 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
             {...form.getInputProps('providerName')}
           />
 
-          {selectedProvider && selectedProvider as any && (
+          {selectedProvider && (
             <Alert 
               icon={<IconInfoCircle size={16} />} 
-              color={(selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'orange'} 
+              color={selectedProvider.healthStatus === 'healthy' ? 'green' : 'orange'} 
               variant="light"
             >
               <Group gap="xs">
@@ -245,12 +254,12 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
                   Provider Status:
                 </Text>
                 <Badge size="sm" variant="light" color={
-                  (selectedProvider as { healthStatus: string }).healthStatus === 'healthy' ? 'green' : 'red'
+                  selectedProvider.healthStatus === 'healthy' ? 'green' : 'red'
                 }>
-                  {(selectedProvider as { healthStatus: string }).healthStatus}
+                  {selectedProvider.healthStatus}
                 </Badge>
                 <Text size="sm" c="dimmed">
-                  • {(selectedProvider as { modelsAvailable: number }).modelsAvailable} models available
+                  • {selectedProvider.modelsAvailable} models available
                 </Text>
               </Group>
             </Alert>

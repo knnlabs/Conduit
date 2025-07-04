@@ -51,7 +51,7 @@ export function useBackendHealth() {
     refetchInterval: 30000, // Check every 30 seconds
     retry: (failureCount, error: unknown) => {
       // Don't retry if it's an authentication error
-      if ((error as any)?.type === BackendErrorType.AUTHENTICATION_FAILED) {
+      if ((error as { type?: BackendErrorType })?.type === BackendErrorType.AUTHENTICATION_FAILED) {
         return false;
       }
       return failureCount < 3;
@@ -85,7 +85,7 @@ export function useBackendHealth() {
     refetchInterval: 30000, // Check every 30 seconds
     retry: (failureCount, error: unknown) => {
       // Don't retry if it's an authentication error
-      if ((error as any)?.type === BackendErrorType.AUTHENTICATION_FAILED) {
+      if ((error as { type?: BackendErrorType })?.type === BackendErrorType.AUTHENTICATION_FAILED) {
         return false;
       }
       return failureCount < 3;

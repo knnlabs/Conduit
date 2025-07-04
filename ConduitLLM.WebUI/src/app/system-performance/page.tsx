@@ -52,7 +52,7 @@ import {
   ServiceStatus
 } from '@/hooks/api/useSystemPerformanceApi';
 import { notifications } from '@mantine/notifications';
-import { CostChart } from '@/components/charts/CostChart';
+import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 
 export default function SystemPerformancePage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
@@ -422,7 +422,7 @@ export default function SystemPerformancePage() {
                 {resourceHistory && (
                   <>
                     <CostChart
-                      data={(resourceHistory || []) as any[]}
+                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
                       title="CPU & Memory Usage"
                       type="line"
                       valueKey="cpuUsage"
@@ -432,7 +432,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={(resourceHistory || []) as any[]}
+                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
                       title="Network & Disk Usage"
                       type="line"
                       valueKey="networkUsage"
@@ -442,7 +442,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={(resourceHistory || []) as any[]}
+                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
                       title="Response Time"
                       type="line"
                       valueKey="responseTime"
@@ -452,7 +452,7 @@ export default function SystemPerformancePage() {
                     />
                     
                     <CostChart
-                      data={(resourceHistory || []) as any[]}
+                      data={(resourceHistory || []) as unknown as ChartDataItem[]}
                       title="Requests per Second"
                       type="bar"
                       valueKey="requestsPerSecond"

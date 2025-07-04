@@ -60,11 +60,11 @@ export default function VirtualKeysDashboardPage() {
   const mockVirtualKeys: Array<unknown> = [];
 
   // Calculate summary statistics
-  const totalRequests = mockVirtualKeys.reduce((sum, key) => sum + (key as { requests: number }).requests, 0);
-  const totalCost = mockVirtualKeys.reduce((sum, key) => sum + (key as { cost: number }).cost, 0);
-  const _totalBudget = mockVirtualKeys.reduce((sum, key) => sum + (key as { budget: number }).budget, 0);
+  const totalRequests = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { requests: number }).requests, 0);
+  const totalCost = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { cost: number }).cost, 0);
+  const _totalBudget = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { budget: number }).budget, 0);
   const averageBudgetUsed = mockVirtualKeys.length > 0 
-    ? mockVirtualKeys.reduce((sum, key) => sum + (key as { budgetUsed: number }).budgetUsed, 0) / mockVirtualKeys.length
+    ? mockVirtualKeys.reduce((sum: number, key) => sum + (key as { budgetUsed: number }).budgetUsed, 0) / mockVirtualKeys.length
     : 0;
 
   // Calculate growth rates (will come from SDK)

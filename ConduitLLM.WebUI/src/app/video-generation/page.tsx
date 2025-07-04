@@ -79,12 +79,12 @@ export default function VideoGenerationPage() {
   const videoGeneration = useVideoGeneration();
 
   // Filter models for video generation
-  const videoModels = models?.filter((model: unknown) => 
-    (model as { id: string }).id.includes('video') || 
-    (model as { id: string }).id.includes('minimax') ||
-    (model as { id: string }).id.includes('replicate') ||
-    (model as { id: string }).id.includes('runway') ||
-    (model as { id: string }).id.includes('stable-video')
+  const videoModels = models?.filter((model: { id: string }) => 
+    model.id.includes('video') || 
+    model.id.includes('minimax') ||
+    model.id.includes('replicate') ||
+    model.id.includes('runway') ||
+    model.id.includes('stable-video')
   ) || [];
 
   const handleGenerateVideo = async () => {
@@ -109,7 +109,13 @@ export default function VideoGenerationPage() {
 
       const response = await videoGeneration.mutateAsync(request);
 
-      if ((response as any).url || (response as any).data) {
+      interface VideoGenerationResponse {
+        url?: string;
+        data?: Array<{ url?: string }>;
+      }
+
+      const videoResponse = response as VideoGenerationResponse;
+      if (videoResponse.url || videoResponse.data) {
         // Video generation completed immediately
         const newVideo: GeneratedVideo = {
           id: `video_${Date.now()}`,
@@ -120,7 +126,7 @@ export default function VideoGenerationPage() {
           fps,
           status: 'completed',
           progress: 100,
-          url: (response as any).url || (response as any).data?.[0]?.url,
+          url: videoResponse.url || videoResponse.data?.[0]?.url,
           createdAt: new Date(),
           completedAt: new Date(),
         };
@@ -142,14 +148,18 @@ export default function VideoGenerationPage() {
         });
       }
     } catch (error: unknown) {
-      safeLog('Video generation failed', { error: (error as Error).message });
+      safeLog('Video generation failed', { error: error instanceof Error ? error.message : String(error) });
     }
   };
 
   const handleTaskCompleted = (task: unknown) => {
-    if ((task as { type: string; status: string; result?: unknown }).type === 'video' && (task as { status: string }).status === 'completed' && (task as { result?: unknown }).result) {
+    if (typeof task === 'object' && task !== null &&
+        'type' in task && 'status' in task && 'result' in task &&
+        (task as { type: string }).type === 'video' &&
+        (task as { status: string }).status === 'completed' &&
+        (task as { result: unknown }).result) {
       const newVideo: GeneratedVideo = {
-        id: (task as { taskId: string }).taskId,
+        id: (task as unknown as { taskId: string }).taskId,
         prompt: ((task as { result: { prompt?: string } }).result.prompt) || 'Generated video',
         model: ((task as { result: { model?: string } }).result.model) || selectedModel,
         size: ((task as { result: { size?: string } }).result.size) || size,
@@ -158,8 +168,8 @@ export default function VideoGenerationPage() {
         status: 'completed',
         progress: 100,
         url: (task as { result: { url: string } }).result.url,
-        createdAt: new Date((task as { startedAt: string }).startedAt),
-        completedAt: new Date((task as { completedAt: string }).completedAt),
+        createdAt: new Date((task as unknown as { startedAt: string }).startedAt),
+        completedAt: new Date((task as unknown as { completedAt: string }).completedAt),
       };
       
       setGeneratedVideos(prev => [newVideo, ...prev]);

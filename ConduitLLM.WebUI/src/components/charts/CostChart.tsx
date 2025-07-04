@@ -5,7 +5,7 @@ import { Card, Group, Text, Select, Button, Stack } from '@mantine/core';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
 
-interface ChartDataItem {
+export interface ChartDataItem {
   [key: string]: string | number;
 }
 
@@ -98,8 +98,8 @@ export function CostChart({
             h={height}
             data={data.map(item => ({
               name: String(item[nameKey]),
-              value: item[valueKey],
-              color: `blue.${Math.floor(Math.random() * 9) + 1}` as any,
+              value: Number(item[valueKey]),
+              color: `blue.${Math.floor(Math.random() * 9) + 1}`,
             }))}
             valueFormatter={formatCurrency}
             withLabelsLine={false}

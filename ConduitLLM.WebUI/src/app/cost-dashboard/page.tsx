@@ -29,7 +29,7 @@ import {
   IconCalendar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { CostChart } from '@/components/charts/CostChart';
+import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { 
   useCostSummary, 
@@ -327,7 +327,7 @@ export default function CostDashboardPage() {
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
-                  data={(costTrends || []) as any[]}
+                  data={(costTrends || []) as unknown as ChartDataItem[]}
                   title="Spending Over Time"
                   type="line"
                   valueKey="spend"
@@ -338,7 +338,7 @@ export default function CostDashboardPage() {
                 />
                 
                 <CostChart
-                  data={(costTrends || []) as any[]}
+                  data={(costTrends || []) as unknown as ChartDataItem[]}
                   title="Request Volume"
                   type="bar"
                   valueKey="requests"
@@ -364,7 +364,7 @@ export default function CostDashboardPage() {
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
-                  data={(providerCosts || []) as any[]}
+                  data={(providerCosts || []) as unknown as ChartDataItem[]}
                   title="Spend by Provider"
                   type="pie"
                   valueKey="spend"

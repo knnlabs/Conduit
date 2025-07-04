@@ -82,13 +82,14 @@ export function useVirtualKeyHub() {
       
       // Update the cache with new spend data without refetching
       queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         return oldData.map((key: unknown) => {
-          if (key.id === event.keyId) {
+          if (typeof key === 'object' && key !== null && 'id' in key && 
+              (key as { id: string }).id === event.keyId) {
             return {
-              ...key,
-              currentSpend: event.currentSpend || key.currentSpend,
+              ...(key as object),
+              currentSpend: event.currentSpend || (key as { currentSpend?: number }).currentSpend,
             };
           }
           return key;
@@ -97,11 +98,11 @@ export function useVirtualKeyHub() {
       
       // Also update individual key cache
       queryClient.setQueryData(adminApiKeys.virtualKey(event.keyId), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || typeof oldData !== 'object') return oldData;
         
         return {
-          ...oldData,
-          currentSpend: event.currentSpend || oldData.currentSpend,
+          ...(oldData as object),
+          currentSpend: event.currentSpend || (oldData as { currentSpend?: number }).currentSpend,
         };
       });
       
@@ -122,14 +123,17 @@ export function useVirtualKeyHub() {
       
       // Update cache for all keys at once
       queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
-        if (!oldData) return oldData;
+        if (!oldData || !Array.isArray(oldData)) return oldData;
         
         const spendMap = new Map(events.map(e => [e.keyId, e.currentSpend]));
         
         return oldData.map((key: unknown) => {
-          const newSpend = spendMap.get((key as any).id);
+          if (typeof key !== 'object' || key === null) return key;
+          
+          const keyData = key as { id: string };
+          const newSpend = spendMap.get(keyData.id);
           if (newSpend !== undefined) {
-            return { ...(key as any), currentSpend: newSpend };
+            return { ...(key as object), currentSpend: newSpend };
           }
           return key;
         });

@@ -69,17 +69,17 @@ export default function AudioUsagePage() {
   const { mutate: exportData } = useExportAudioUsage();
 
   // Virtual keys options
+  interface VirtualKeyDto {
+    id: string;
+    name: string;
+  }
+  
   const virtualKeys = [
     { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData?.data || []).map((key: unknown) => {
-      if (typeof key === 'object' && key !== null && 'id' in key && 'name' in key) {
-        return {
-          value: (key as { id: string }).id,
-          label: (key as { name: string }).name,
-        };
-      }
-      return { value: '', label: 'Invalid key' };
-    }),
+    ...(virtualKeysData?.data || []).map((key: VirtualKeyDto) => ({
+      value: key.id,
+      label: key.name,
+    })),
   ];
 
   // Audio models (hardcoded for now as SDK doesn't provide this)
@@ -318,7 +318,7 @@ export default function AudioUsagePage() {
                     fill="#8884d8"
                     dataKey="requests"
                   >
-                    {summaryData.topModels.map((entry: unknown, index: number) => (
+                    {summaryData.topModels.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -344,28 +344,24 @@ export default function AudioUsagePage() {
             </Group>
             {summaryData?.topModels && summaryData.topModels.length > 0 ? (
               <Stack gap="sm">
-                {summaryData.topModels.map((model: unknown, index: number) => {
-                  if (typeof model === 'object' && model !== null && 'model' in model && 'requests' in model && 'cost' in model) {
-                    const modelData = model as { model: string; requests: number; cost: number };
-                    const firstModelRequests = typeof summaryData.topModels[0] === 'object' && summaryData.topModels[0] !== null && 'requests' in summaryData.topModels[0] ? (summaryData.topModels[0] as { requests: number }).requests : 1;
+                {summaryData.topModels.map((model, index) => {
+                    const firstModelRequests = summaryData.topModels[0]?.requests || 1;
                     return (
-                      <div key={modelData.model}>
+                      <div key={model.model}>
                         <Group justify="space-between" mb={4}>
-                          <Text size="sm">{modelData.model}</Text>
+                          <Text size="sm">{model.model}</Text>
                           <Group gap="xs">
-                            <Text size="sm" c="dimmed">{formatNumber(modelData.requests)} requests</Text>
-                            <Text size="sm" c="green">{formatCurrency(modelData.cost)}</Text>
+                            <Text size="sm" c="dimmed">{formatNumber(model.requests)} requests</Text>
+                            <Text size="sm" c="green">{formatCurrency(model.cost)}</Text>
                           </Group>
                         </Group>
                         <Progress 
-                          value={(modelData.requests / firstModelRequests) * 100} 
+                          value={(model.requests / firstModelRequests) * 100} 
                           size="sm" 
                           color={COLORS[index % COLORS.length]}
                         />
                       </div>
                     );
-                  }
-                  return null;
                 })}
               </Stack>
             ) : (
@@ -398,16 +394,14 @@ export default function AudioUsagePage() {
             </Table.Thead>
             <Table.Tbody>
               {summaryData?.topModels && summaryData.topModels.length > 0 ? (
-                summaryData.topModels.map((model: unknown) => {
-                  if (typeof model === 'object' && model !== null && 'model' in model && 'requests' in model && 'cost' in model) {
-                    const modelData = model as { model: string; requests: number; cost: number };
+                summaryData.topModels.map((model) => {
                     const minutesProcessed = Math.floor(Math.random() * 500) + 100;
                     return (
-                      <Table.Tr key={modelData.model}>
+                      <Table.Tr key={model.model}>
                         <Table.Td>
-                          <Badge variant="light">{modelData.model}</Badge>
+                          <Badge variant="light">{model.model}</Badge>
                         </Table.Td>
-                        <Table.Td>{formatNumber(modelData.requests)}</Table.Td>
+                        <Table.Td>{formatNumber(model.requests)}</Table.Td>
                         <Table.Td>{formatNumber(minutesProcessed)}</Table.Td>
                         <Table.Td>{(Math.random() * 2 + 0.5).toFixed(1)}s</Table.Td>
                         <Table.Td>
@@ -415,12 +409,10 @@ export default function AudioUsagePage() {
                             {(95 + Math.random() * 5).toFixed(1)}%
                           </Text>
                         </Table.Td>
-                        <Table.Td>{formatCurrency(modelData.cost)}</Table.Td>
-                        <Table.Td>{formatCurrency(modelData.cost / minutesProcessed)}</Table.Td>
+                        <Table.Td>{formatCurrency(model.cost)}</Table.Td>
+                        <Table.Td>{formatCurrency(model.cost / minutesProcessed)}</Table.Td>
                       </Table.Tr>
                     );
-                  }
-                  return null;
                 })
               ) : (
                 <Table.Tr>
