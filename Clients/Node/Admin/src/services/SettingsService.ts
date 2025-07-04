@@ -193,7 +193,7 @@ export class SettingsService extends BaseApiClient {
     
     // Update each setting that has a new value
     const updatePromises = settings
-      .filter(setting => updates.hasOwnProperty(setting.key))
+      .filter(setting => Object.prototype.hasOwnProperty.call(updates, setting.key))
       .map(setting => this.updateGlobalSetting(setting.key, { value: updates[setting.key] }));
     
     await Promise.all(updatePromises);

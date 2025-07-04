@@ -18,18 +18,28 @@ describe('ConnectionService (Admin)', () => {
   beforeEach(() => {
     // Create mock hubs
     mockNavigationHub = {
-      isConnected: true,
       start: jest.fn().mockResolvedValue(undefined),
       stop: jest.fn().mockResolvedValue(undefined),
       state: HubConnectionState.Connected
     } as any;
+    
+    // Define isConnected as a getter
+    Object.defineProperty(mockNavigationHub, 'isConnected', {
+      get: jest.fn().mockReturnValue(true),
+      configurable: true
+    });
 
     mockNotificationHub = {
-      isConnected: true,
       start: jest.fn().mockResolvedValue(undefined),
       stop: jest.fn().mockResolvedValue(undefined),
       state: HubConnectionState.Connected
     } as any;
+    
+    // Define isConnected as a getter
+    Object.defineProperty(mockNotificationHub, 'isConnected', {
+      get: jest.fn().mockReturnValue(true),
+      configurable: true
+    });
 
     // Create mock SignalR service
     mockSignalRService = {
@@ -144,7 +154,11 @@ describe('ConnectionService (Admin)', () => {
 
   describe('connectHub', () => {
     it('should connect navigation hub when not connected', async () => {
-      mockNavigationHub.isConnected = false;
+      // Redefine isConnected getter to return false
+      Object.defineProperty(mockNavigationHub, 'isConnected', {
+        get: jest.fn().mockReturnValue(false),
+        configurable: true
+      });
       
       await connectionService.connectHub('navigation');
       
@@ -153,7 +167,11 @@ describe('ConnectionService (Admin)', () => {
     });
 
     it('should not reconnect navigation hub if already connected', async () => {
-      mockNavigationHub.isConnected = true;
+      // Redefine isConnected getter to return true
+      Object.defineProperty(mockNavigationHub, 'isConnected', {
+        get: jest.fn().mockReturnValue(true),
+        configurable: true
+      });
       
       await connectionService.connectHub('navigation');
       
@@ -162,7 +180,11 @@ describe('ConnectionService (Admin)', () => {
     });
 
     it('should connect notification hub', async () => {
-      mockNotificationHub.isConnected = false;
+      // Redefine isConnected getter to return false
+      Object.defineProperty(mockNotificationHub, 'isConnected', {
+        get: jest.fn().mockReturnValue(false),
+        configurable: true
+      });
       
       await connectionService.connectHub('notifications');
       
@@ -173,7 +195,11 @@ describe('ConnectionService (Admin)', () => {
 
   describe('disconnectHub', () => {
     it('should disconnect navigation hub when connected', async () => {
-      mockNavigationHub.isConnected = true;
+      // Redefine isConnected getter to return true
+      Object.defineProperty(mockNavigationHub, 'isConnected', {
+        get: jest.fn().mockReturnValue(true),
+        configurable: true
+      });
       
       await connectionService.disconnectHub('navigation');
       
@@ -182,7 +208,11 @@ describe('ConnectionService (Admin)', () => {
     });
 
     it('should not disconnect navigation hub if already disconnected', async () => {
-      mockNavigationHub.isConnected = false;
+      // Redefine isConnected getter to return false
+      Object.defineProperty(mockNavigationHub, 'isConnected', {
+        get: jest.fn().mockReturnValue(false),
+        configurable: true
+      });
       
       await connectionService.disconnectHub('navigation');
       
