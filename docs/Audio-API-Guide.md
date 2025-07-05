@@ -238,14 +238,61 @@ The Audio API supports multiple routing strategies:
 
 Export audio usage data and costs:
 ```bash
-# Export usage data as CSV
-curl -X GET "https://api.conduit.ai/admin/audio/usage/export?format=csv" \
-  -H "X-Master-Key: your-master-key"
+# Export usage data as CSV (default format)
+curl -X GET "https://api.conduit.ai/admin/audio/usage/export?format=csv&startDate=2024-01-01&endDate=2024-12-31" \
+  -H "X-Master-Key: your-master-key" \
+  -o audio_usage_export.csv
+
+# Export usage data as JSON
+curl -X GET "https://api.conduit.ai/admin/audio/usage/export?format=json&startDate=2024-01-01&endDate=2024-12-31" \
+  -H "X-Master-Key: your-master-key" \
+  -o audio_usage_export.json
+
+# Export with filters (provider and virtual key)
+curl -X GET "https://api.conduit.ai/admin/audio/usage/export?format=csv&provider=openai&virtualKey=key123&startDate=2024-01-01&endDate=2024-12-31" \
+  -H "X-Master-Key: your-master-key" \
+  -o filtered_audio_usage.csv
 
 # Import cost configuration
 curl -X POST "https://api.conduit.ai/admin/audio/costs/import?format=json" \
   -H "X-Master-Key: your-master-key" \
   -d @costs.json
+```
+
+**Export Parameters:**
+- `format`: Export format (`csv` or `json`, defaults to `csv`)
+- `startDate`: Start date filter (YYYY-MM-DD format)
+- `endDate`: End date filter (YYYY-MM-DD format)
+- `virtualKey`: Filter by specific virtual key (optional)
+- `provider`: Filter by provider name (optional)
+- `operationType`: Filter by operation type (`transcription`, `tts`, `realtime`) (optional)
+- `page`: Page number (defaults to 1)
+- `pageSize`: Number of records per page (defaults to max for full export)
+
+**CSV Export Format:**
+```
+Timestamp,VirtualKey,Provider,Operation,Model,Duration,Cost,Status,Language,Voice
+2024-01-01 10:00:00,key_abc123,openai,transcription,whisper-1,120.5,0.0025,200,en,
+2024-01-01 10:01:15,key_abc123,openai,tts,tts-1,,,0.0015,200,en,alloy
+```
+
+**JSON Export Format:**
+```json
+[
+  {
+    "timestamp": "2024-01-01T10:00:00Z",
+    "virtualKey": "key_abc123",
+    "provider": "openai",
+    "operation": "transcription",
+    "model": "whisper-1",
+    "duration": 120.5,
+    "cost": 0.0025,
+    "status": 200,
+    "language": "en",
+    "voice": null,
+    "error": null
+  }
+]
 ```
 
 ## Audio Configuration in Admin API
