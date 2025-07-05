@@ -3,14 +3,14 @@ import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const POST = createDynamicRouteHandler<{ mappingId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { mappingId } = params;
       const body = await request.json();
       
       // Get model mapping details first
       const mapping = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.getById(Number(mappingId)),
+        async () => adminClient!.modelMappings.getById(Number(mappingId)),
         `get model mapping ${mappingId} for testing`
       );
       

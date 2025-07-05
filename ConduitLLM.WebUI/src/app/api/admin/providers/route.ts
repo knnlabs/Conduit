@@ -4,13 +4,13 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       
       // List all provider metadata
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list(),
+        async () => context.adminClient!.providers.list(),
         'list providers'
       );
 
@@ -33,13 +33,13 @@ export const GET = withSDKAuth(
 );
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
       // Create provider credential (not provider metadata)
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.create({
+        async () => context.adminClient!.providers.create({
           providerName: body.providerName,
           apiKey: body.apiKey,
           apiEndpoint: body.apiUrl || body.apiEndpoint,
@@ -54,7 +54,7 @@ export const POST = withSDKAuth(
       if (body.testConnection) {
         try {
           await withSDKErrorHandling(
-            async () => auth.adminClient!.providers.testConnection({
+            async () => context.adminClient!.providers.testConnection({
               providerName: body.providerName,
               apiKey: body.apiKey,
               apiEndpoint: body.apiUrl || body.apiEndpoint,

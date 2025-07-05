@@ -3,13 +3,13 @@ import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
       // Get available providers metadata
       const allProviders = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list(),
+        async () => context.adminClient!.providers.list(),
         'list providers'
       );
       
@@ -24,7 +24,7 @@ export const POST = withSDKAuth(
             try {
               // Get available models from the provider using the SDK
               const modelsResponse = await withSDKErrorHandling(
-                async () => auth.adminClient!.providerModels.getProviderModels(
+                async () => context.adminClient!.providerModels.getProviderModels(
                   provider.providerName.toLowerCase(),
                   { forceRefresh: body.forceRefresh || false }
                 ),
@@ -48,7 +48,7 @@ export const POST = withSDKAuth(
               // If provider models fails, try using discovery service
               try {
                 const discoveryModels = await withSDKErrorHandling(
-                  async () => auth.adminClient!.discovery.getProviderModels(provider.providerName.toLowerCase()),
+                  async () => context.adminClient!.discovery.getProviderModels(provider.providerName.toLowerCase()),
                   `discover models for ${provider.providerName}`
                 );
                 

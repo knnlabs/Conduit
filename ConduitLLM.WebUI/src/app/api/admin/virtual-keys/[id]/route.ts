@@ -3,13 +3,13 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       
       // Get virtual key details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.getById(Number(id)),
+        async () => adminClient!.virtualKeys.getById(Number(id)),
         `get virtual key ${id}`
       );
 
@@ -23,7 +23,7 @@ export const GET = createDynamicRouteHandler<{ id: string }>(
 );
 
 export const PUT = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       const body = await request.json();
@@ -42,7 +42,7 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
       if (body.expiresAt !== undefined) updateData.expiresAt = body.expiresAt;
       
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.update(Number(id), updateData),
+        async () => adminClient!.virtualKeys.update(Number(id), updateData),
         `update virtual key ${id}`
       );
 
@@ -55,13 +55,13 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       
       // Delete virtual key using SDK
       await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.deleteById(Number(id)),
+        async () => adminClient!.virtualKeys.deleteById(Number(id)),
         `delete virtual key ${id}`
       );
 

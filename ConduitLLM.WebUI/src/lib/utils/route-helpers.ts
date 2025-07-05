@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withSDKAuth, SDKAuthResult } from '@/lib/auth/sdk-auth';
+import { withSDKAuth, SDKAuthContext } from '@/lib/auth/sdk-auth';
 
 // Generic route params interface for dynamic routes
 export interface DynamicRouteParams<T = Record<string, string>> {
@@ -10,7 +10,7 @@ export interface DynamicRouteParams<T = Record<string, string>> {
 export function createDynamicRouteHandler<TParams = Record<string, string>>(
   handler: (
     request: NextRequest,
-    context: { params: TParams; auth: SDKAuthResult }
+    context: { params: TParams } & SDKAuthContext
   ) => Promise<Response>,
   authOptions?: Parameters<typeof withSDKAuth>[1]
 ) {
@@ -23,7 +23,7 @@ export function createDynamicRouteHandler<TParams = Record<string, string>>(
     return withSDKAuth(
       (req, authContext) => handler(req, {
         params,
-        auth: authContext.auth,
+        ...authContext,
       }),
       authOptions
     )(request);
