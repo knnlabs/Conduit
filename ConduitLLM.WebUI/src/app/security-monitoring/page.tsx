@@ -60,6 +60,8 @@ import { formatters } from '@/lib/utils/formatters';
 import { useSecurityEvents, useThreatAnalytics, useComplianceMetrics } from '@/hooks/api/useSecurityApi';
 import { FeatureUnavailable } from '@/components/error/FeatureUnavailable';
 import { useIsFeatureAvailable } from '@/hooks/api/useFeatureAvailability';
+import { CreateSecurityEventModal } from '@/components/security/CreateSecurityEventModal';
+import { useDisclosure } from '@mantine/hooks';
 
 // Type to severity mapping
 const _getEventSeverity = (type: string): 'low' | 'medium' | 'high' | 'critical' => {
@@ -113,6 +115,7 @@ export default function SecurityMonitoringPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
 
   // Check if security monitoring feature is available
   const { isAvailable: isFeatureAvailable, isChecking } = useIsFeatureAvailable('security-event-reporting');
@@ -134,8 +137,9 @@ export default function SecurityMonitoringPage() {
 
   // Filter events based on search and filters
   const filteredEvents = eventsData?.events?.filter(event => {
+    const detailsStr = typeof event.details === 'string' ? event.details : JSON.stringify(event.details);
     if (searchQuery && !event.source.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !event.details.toLowerCase().includes(searchQuery.toLowerCase())) {
+        !detailsStr.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     if (selectedSeverity && event.severity !== selectedSeverity) {
@@ -189,6 +193,14 @@ export default function SecurityMonitoringPage() {
             onClick={handleRefresh}
           >
             Refresh
+          </Button>
+          <Button
+            leftSection={<IconAlertTriangle size={16} />}
+            onClick={openCreateModal}
+            variant="light"
+            color="orange"
+          >
+            Report Event
           </Button>
           <Button
             leftSection={<IconDownload size={16} />}
@@ -363,7 +375,7 @@ export default function SecurityMonitoringPage() {
                           </Table.Td>
                           <Table.Td>
                             <Text size="sm" lineClamp={1}>
-                              {event.details}
+                              {typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}
                             </Text>
                           </Table.Td>
                           <Table.Td>
@@ -611,6 +623,11 @@ export default function SecurityMonitoringPage() {
           </Stack>
         </Tabs.Panel>
       </Tabs>
+
+      <CreateSecurityEventModal 
+        opened={createModalOpened} 
+        onClose={closeCreateModal} 
+      />
     </Stack>
   );
 }

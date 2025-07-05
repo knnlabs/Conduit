@@ -1,9 +1,11 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
 import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
+import { notifications } from '@mantine/notifications';
+import type { CreateSecurityEventDto, SecurityEvent as SDKSecurityEvent } from '@knn_labs/conduit-admin-client';
 
 // Query key factory for Security API
 export const securityApiKeys = {
@@ -284,4 +286,44 @@ export function useInvalidateSecurity() {
     invalidateThreats: () => queryClient.invalidateQueries({ queryKey: securityApiKeys.threats() }),
     invalidateCompliance: () => queryClient.invalidateQueries({ queryKey: securityApiKeys.compliance() }),
   };
+}
+
+/**
+ * Hook to create a security event
+ */
+export function useCreateSecurityEvent() {
+  const queryClient = useQueryClient();
+  const client = getAdminClient();
+
+  return useMutation<SDKSecurityEvent, Error, CreateSecurityEventDto>({
+    mutationFn: async (eventData: CreateSecurityEventDto) => {
+      return await client.security.reportEvent(eventData);
+    },
+    onSuccess: (data) => {
+      // Invalidate security events queries to refresh the data
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === 'security-api' && 
+          query.queryKey[1] === 'events'
+      });
+      
+      notifications.show({
+        title: 'Security Event Created',
+        message: `Security event of type "${data.type}" has been reported successfully`,
+        color: 'green',
+      });
+    },
+    onError: (error: Error) => {
+      const backendError = BackendErrorHandler.classifyError(error);
+      const message = BackendErrorHandler.getUserFriendlyMessage(backendError);
+      
+      notifications.show({
+        title: 'Failed to Create Security Event',
+        message,
+        color: 'red',
+      });
+      
+      reportError(error, 'Failed to create security event');
+    },
+  });
 }

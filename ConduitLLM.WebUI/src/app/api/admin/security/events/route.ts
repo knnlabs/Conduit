@@ -4,30 +4,38 @@ import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       const hours = parseInt(params.get('hours') || '24');
       
-      // Call the Admin API's security events endpoint directly
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.CONDUIT_MASTER_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Calculate date range from hours
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
       
-      if (!response.ok) {
-        throw new Error(`Security events API returned ${response.status}`);
-      }
+      // Get security events using SDK
+      const result = await context.adminClient!.security.getEvents({
+        startDate,
+        endDate,
+        pageSize: 100,
+      });
       
-      const data = await response.json();
+      // Transform to match expected format
+      const eventsByType: Record<string, number> = {};
+      const eventsBySeverity: Record<string, number> = {};
       
-      // Return the data directly
-      return NextResponse.json(data);
+      result.items.forEach(event => {
+        eventsByType[event.type] = (eventsByType[event.type] || 0) + 1;
+        eventsBySeverity[event.severity] = (eventsBySeverity[event.severity] || 0) + 1;
+      });
+      
+      return NextResponse.json({
+        events: result.items,
+        timeRange: { start: startDate, end: endDate },
+        totalEvents: result.totalCount,
+        eventsByType,
+        eventsBySeverity,
+      });
     } catch (_error: unknown) {
       // Return empty result for failures
       return NextResponse.json({
@@ -42,23 +50,35 @@ export const GET = withSDKAuth(
   { requireAdmin: true }
 );
 
-// Report a security event (not yet implemented in backend)
+// Report a security event
 export const POST = withSDKAuth(
-  async (request) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
-      // Backend doesn't have a security event reporting endpoint yet
-      // Return a placeholder response indicating the feature is not available
-      return NextResponse.json(
-        {
-          message: 'Security event reporting is not yet implemented',
-          received: body,
-        },
-        {
-          status: 501, // Not Implemented
-        }
-      );
+      // Validate required fields
+      if (!body.type || !body.severity || !body.source) {
+        return NextResponse.json(
+          {
+            error: 'Missing required fields',
+            message: 'type, severity, and source are required',
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Create the security event using the SDK
+      const event = await context.adminClient!.security.reportEvent({
+        type: body.type,
+        severity: body.severity,
+        source: body.source,
+        virtualKeyId: body.virtualKeyId,
+        ipAddress: body.ipAddress,
+        details: body.details || {},
+        statusCode: body.statusCode,
+      });
+      
+      return NextResponse.json(event);
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
@@ -68,29 +88,35 @@ export const POST = withSDKAuth(
 
 // Export security events
 export const PUT = withSDKAuth(
-  async (request) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       const { format = 'json', filters = {} } = body;
       const hours = filters.hours || 24;
       
-      // Fetch security events from the Admin API
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL}/api/security/events?hours=${hours}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.CONDUIT_MASTER_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Calculate date range from hours
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
       
-      if (!response.ok) {
-        throw new Error(`Security events API returned ${response.status}`);
-      }
+      // Get security events using SDK
+      const result = await context.adminClient!.security.getEvents({
+        startDate,
+        endDate,
+        severity: filters.severity,
+        type: filters.type,
+        pageSize: 1000, // Get more events for export
+      });
       
-      const data = await response.json();
-      const events = data.events || [];
+      const events = result.items || [];
+      
+      // Calculate aggregates
+      const eventsByType: Record<string, number> = {};
+      const eventsBySeverity: Record<string, number> = {};
+      
+      events.forEach(event => {
+        eventsByType[event.type] = (eventsByType[event.type] || 0) + 1;
+        eventsBySeverity[event.severity] = (eventsBySeverity[event.severity] || 0) + 1;
+      });
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `security-events-${timestamp}.${format}`;
@@ -101,8 +127,8 @@ export const PUT = withSDKAuth(
       if (format === 'csv') {
         // Convert events to CSV
         const headers = 'Timestamp,Type,Severity,Source,VirtualKeyId,Details';
-        const rows = events.map((e: Record<string, unknown>) => 
-          `${e.timestamp},${e.type},${e.severity},${e.source},${e.virtualKeyId || ''},"${e.details}"`
+        const rows = events.map((e) => 
+          `${e.timestamp},${e.type},${e.severity},${e.source},${e.virtualKeyId || ''},"${JSON.stringify(e.details)}"`
         ).join('\n');
         content = `${headers}\n${rows}`;
         contentType = 'text/csv';
@@ -110,10 +136,10 @@ export const PUT = withSDKAuth(
         // JSON format
         content = JSON.stringify({
           exportDate: new Date().toISOString(),
-          timeRange: data.timeRange,
-          totalEvents: data.totalEvents,
-          eventsByType: data.eventsByType,
-          eventsBySeverity: data.eventsBySeverity,
+          timeRange: { start: startDate, end: endDate },
+          totalEvents: result.totalCount,
+          eventsByType,
+          eventsBySeverity,
           events: events,
           metadata: {
             totalRecords: events.length,
