@@ -384,6 +384,49 @@ namespace ConduitLLM.Admin.Controllers
             return Ok(usage);
         }
 
+        /// <summary>
+        /// Exports audio usage data to CSV or JSON format.
+        /// </summary>
+        /// <param name="query">Query parameters for filtering the export data</param>
+        /// <param name="format">Export format (csv or json, defaults to csv)</param>
+        /// <response code="200">Returns the exported data as a downloadable file</response>
+        /// <response code="400">If the format is not supported</response>
+        [HttpGet("usage/export")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> ExportUsageData(
+            [FromQuery] AudioUsageQueryDto query,
+            [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var exportData = await _usageService.ExportUsageDataAsync(query, format);
+                
+                var fileName = format.ToLowerInvariant() switch
+                {
+                    "csv" => $"audio_usage_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv",
+                    "json" => $"audio_usage_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json",
+                    _ => throw new ArgumentException("Unsupported export format", nameof(format))
+                };
+
+                var contentType = format.ToLowerInvariant() switch
+                {
+                    "csv" => "text/csv",
+                    "json" => "application/json",
+                    _ => "text/plain"
+                };
+
+                return File(
+                    System.Text.Encoding.UTF8.GetBytes(exportData),
+                    contentType,
+                    fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Real-time Session Management

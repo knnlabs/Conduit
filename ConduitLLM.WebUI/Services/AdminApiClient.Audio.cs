@@ -414,6 +414,54 @@ namespace ConduitLLM.WebUI.Services
             }
         }
 
+        /// <summary>
+        /// Exports audio usage data in the specified format.
+        /// </summary>
+        /// <param name="pageNumber">Page number (set to 1 for export)</param>
+        /// <param name="pageSize">Page size (set to large number for full export)</param>
+        /// <param name="virtualKey">Filter by virtual key (optional)</param>
+        /// <param name="provider">Filter by provider (optional)</param>
+        /// <param name="operationType">Filter by operation type (optional)</param>
+        /// <param name="startDate">Start date filter (optional)</param>
+        /// <param name="endDate">End date filter (optional)</param>
+        /// <param name="format">Export format (csv or json)</param>
+        /// <returns>Exported data as a byte array</returns>
+        public async Task<byte[]> ExportAudioUsageDataAsync(
+            int pageNumber = 1,
+            int pageSize = int.MaxValue,
+            string? virtualKey = null,
+            string? provider = null,
+            string? operationType = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string format = "csv")
+        {
+            try
+            {
+                var query = $"?page={pageNumber}&pageSize={pageSize}&format={format}";
+                if (!string.IsNullOrEmpty(virtualKey))
+                    query += $"&virtualKey={virtualKey}";
+                if (!string.IsNullOrEmpty(provider))
+                    query += $"&provider={provider}";
+                if (!string.IsNullOrEmpty(operationType))
+                    query += $"&operationType={operationType}";
+                if (startDate.HasValue)
+                    query += $"&startDate={startDate.Value:yyyy-MM-dd}";
+                if (endDate.HasValue)
+                    query += $"&endDate={endDate.Value:yyyy-MM-dd}";
+
+                var response = await _httpClient.GetAsync($"api/admin/audio/usage/export{query}");
+                response.EnsureSuccessStatusCode();
+                
+                return await response.Content.ReadAsByteArrayAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting audio usage data in format {Format}", format);
+                throw;
+            }
+        }
+
         #endregion
 
         #region Real-time Session Management

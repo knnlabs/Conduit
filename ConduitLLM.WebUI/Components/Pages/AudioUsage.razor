@@ -200,9 +200,14 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Audio Usage Logs</h5>
-                    <button class="btn btn-sm btn-outline-primary" @onclick="DownloadLogsAsync">
-                        <i class="fa fa-download me-2"></i>Export CSV
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => DownloadLogsAsync(\"csv\")">
+                            <i class="fa fa-download me-2"></i>Export CSV
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => DownloadLogsAsync(\"json\")">
+                            <i class="fa fa-download me-2"></i>Export JSON
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -475,38 +480,49 @@
         }
     }
 
-    private async Task DownloadLogsAsync()
+    private async Task DownloadLogsAsync(string format = "csv")
     {
         try
         {
-            // Get all logs for export (up to 10000)
-            var allLogs = await AdminApiClient.GetAudioUsageLogsAsync(
-                1, 10000, _filterVirtualKey, _filterProvider, null, _startDate, _endDate);
+            _logger.LogInformation("Starting audio usage export in {Format} format", format);
             
-            var csv = new System.Text.StringBuilder();
-            csv.AppendLine("Timestamp,VirtualKey,Provider,Operation,Model,Duration/Characters,Cost,Status");
-            
-            foreach (var log in allLogs.Items)
+            // Use backend export functionality
+            var exportData = await AdminApiClient.ExportAudioUsageDataAsync(
+                pageNumber: 1,
+                pageSize: int.MaxValue,
+                virtualKey: _filterVirtualKey,
+                provider: _filterProvider,
+                operationType: null,
+                startDate: _startDate,
+                endDate: _endDate,
+                format: format);
+
+            // Generate filename based on format
+            var fileName = format.ToLowerInvariant() switch
             {
-                var units = log.OperationType == "transcription" && log.DurationSeconds.HasValue
-                    ? $"{(log.DurationSeconds.Value / 60):N1} min" 
-                    : log.CharacterCount.HasValue 
-                        ? $"{log.CharacterCount.Value:N0} chars"
-                        : "N/A";
-                
-                csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.VirtualKey},{log.Provider}," +
-                    $"{log.OperationType},{log.Model ?? "N/A"},{units},{log.Cost:N4},{(log.StatusCode == 200 ? "Success" : "Failed")}");
-            }
+                "csv" => $"audio_usage_{_startDate:yyyyMMdd}_{_endDate:yyyyMMdd}.csv",
+                "json" => $"audio_usage_{_startDate:yyyyMMdd}_{_endDate:yyyyMMdd}.json",
+                _ => $"audio_usage_{_startDate:yyyyMMdd}_{_endDate:yyyyMMdd}.{format}"
+            };
+
+            // Get content type
+            var contentType = format.ToLowerInvariant() switch
+            {
+                "csv" => "text/csv",
+                "json" => "application/json",
+                _ => "text/plain"
+            };
+
+            // Convert byte array to string and trigger download
+            var content = System.Text.Encoding.UTF8.GetString(exportData);
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, content, contentType);
             
-            await JSRuntime.InvokeVoidAsync("downloadFile", 
-                $"audio_usage_{_startDate:yyyyMMdd}_{_endDate:yyyyMMdd}.csv", 
-                "text/csv", 
-                csv.ToString());
+            ToastService.ShowSuccess($"Audio usage data exported successfully as {format.ToUpperInvariant()}");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error downloading usage logs");
-            ToastService.ShowError("Error downloading logs: " + ex.Message);
+            Logger.LogError(ex, "Error downloading usage logs in {Format} format", format);
+            ToastService.ShowError($"Error downloading logs: {ex.Message}");
         }
     }
 
