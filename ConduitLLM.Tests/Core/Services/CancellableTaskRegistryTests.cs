@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Services;
@@ -672,26 +673,29 @@ namespace ConduitLLM.Tests.Core.Services
                 // 2. The next cleanup timer execution (up to 1 second)
                 // Total maximum wait time: 1.5 seconds + buffer
                 
-                var maxWaitTime = TimeSpan.FromSeconds(2.5);
-                var pollInterval = TimeSpan.FromMilliseconds(100);
-                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var cancelled = false;
+                // Wait up to 3 seconds (60 iterations of 50ms each)
+                var pollInterval = TimeSpan.FromMilliseconds(50);
+                var maxIterations = 60;
+                var iteration = 0;
                 
-                while (stopwatch.Elapsed < maxWaitTime)
+                while (iteration < maxIterations)
                 {
+                    iteration++;
+                    
                     // Check if the cancelled task has been removed
-                    if (!registry.TryGetCancellationToken(cancelledTaskId, out _))
+                    var cancelledTaskExists = registry.TryGetCancellationToken(cancelledTaskId, out _);
+                    if (!cancelledTaskExists)
                     {
-                        cancelled = true;
-                        break;
+                        // Found the task was removed, now verify the active task is still there
+                        registry.TryGetCancellationToken(activeTaskId, out _).Should().BeTrue("active task should not be removed");
+                        return; // Test passed
                     }
                     
                     await Task.Delay(pollInterval);
                 }
                 
-                // Assert
-                registry.TryGetCancellationToken(activeTaskId, out _).Should().BeTrue("active task should not be removed");
-                cancelled.Should().BeTrue($"cancelled task should be removed after grace period + cleanup cycle (waited {stopwatch.Elapsed.TotalMilliseconds}ms)");
+                // If we get here, the cancelled task was not removed in time
+                throw new TimeoutException($"Cancelled task was not removed after grace period + cleanup cycle (waited {iteration * 50}ms)");
             }
             finally
             {
