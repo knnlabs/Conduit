@@ -45,7 +45,7 @@ import {
 import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatBytes, formatNumber, formatPercent, formatDuration } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { 
   useCachingConfig, 
   useUpdateCachingConfig,
@@ -214,7 +214,7 @@ export default function CachingSettingsPage() {
                   Hit Rate
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatPercent(overallHitRate)}
+                  {formatters.percentage(overallHitRate)}
                 </Text>
                 <Progress value={overallHitRate} size="sm" mt={8} color="green" />
               </div>
@@ -233,10 +233,10 @@ export default function CachingSettingsPage() {
                   Total Cache Size
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatBytes(totalCacheSize)}
+                  {formatters.fileSize(totalCacheSize)}
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
-                  of {formatBytes(globalSettings.maxMemory * 1024 * 1024)}
+                  of {formatters.fileSize(globalSettings.maxMemory * 1024 * 1024)}
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" variant="light" color="blue">
@@ -254,7 +254,7 @@ export default function CachingSettingsPage() {
                   Cached Entries
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatNumber(totalEntries)}
+                  {formatters.number(totalEntries)}
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
                   Across all policies
@@ -395,7 +395,7 @@ export default function CachingSettingsPage() {
                     <Stack gap="sm">
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">TTL</Text>
-                        <Text size="sm" fw={500}>{formatDuration(policy.ttl * 1000)}</Text>
+                        <Text size="sm" fw={500}>{formatters.duration(policy.ttl * 1000)}</Text>
                       </Group>
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">Type</Text>
@@ -403,7 +403,7 @@ export default function CachingSettingsPage() {
                       </Group>
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">Max Size</Text>
-                        <Text size="sm" fw={500}>{formatBytes(policy.maxSize)}</Text>
+                        <Text size="sm" fw={500}>{formatters.fileSize(policy.maxSize)}</Text>
                       </Group>
                       <Group justify="space-between">
                         <Text size="sm" c="dimmed">Strategy</Text>
@@ -725,7 +725,7 @@ export default function CachingSettingsPage() {
                           <Progress value={region.metrics?.hitRate || 0} size="sm" w={60} color={(region.metrics?.hitRate || 0) > 70 ? 'green' : 'orange'} />
                         </Group>
                       </Table.Td>
-                      <Table.Td>{formatNumber(region.metrics?.items || 0)}</Table.Td>
+                      <Table.Td>{formatters.number(region.metrics?.items || 0)}</Table.Td>
                       <Table.Td>
                         <Group gap="xs">
                           <Tooltip label="Clear Region Cache">

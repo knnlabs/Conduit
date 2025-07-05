@@ -28,6 +28,8 @@ import {
 import { useModelMappings, useDeleteModelMapping } from '@/hooks/api/useAdminApi';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+import { formatters } from '@/lib/utils/formatters';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 interface ModelMapping {
   id: string;
@@ -88,15 +90,6 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
     });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const getCapabilityColor = (capability: string) => {
     const colors: Record<string, string> = {
@@ -141,10 +134,10 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
 
       <Table.Td>
         <Badge 
-          color={mapping.isEnabled ? 'green' : 'red'} 
+          color={badgeHelpers.getStatusColor(mapping.isEnabled)} 
           variant={mapping.isEnabled ? 'light' : 'filled'}
         >
-          {mapping.isEnabled ? 'Active' : 'Disabled'}
+          {badgeHelpers.formatStatus(mapping.isEnabled)}
         </Badge>
       </Table.Td>
 
@@ -177,12 +170,12 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
       </Table.Td>
 
       <Table.Td>
-        <Text size="sm">{mapping.requestCount.toLocaleString()}</Text>
+        <Text size="sm">{formatters.number(mapping.requestCount)}</Text>
       </Table.Td>
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {mapping.lastUsed ? formatDate(mapping.lastUsed) : 'Never'}
+          {formatters.date(mapping.lastUsed)}
         </Text>
       </Table.Td>
 

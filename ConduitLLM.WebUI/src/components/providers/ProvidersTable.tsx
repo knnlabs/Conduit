@@ -30,6 +30,8 @@ import {
 import { useProviders, useDeleteProvider } from '@/hooks/api/useAdminApi';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+import { formatters } from '@/lib/utils/formatters';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 interface Provider {
   id: string;
@@ -95,31 +97,6 @@ export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
     }
   };
 
-  const getHealthStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'green';
-      case 'unhealthy': return 'red';
-      default: return 'gray';
-    }
-  };
-
-  const getHealthStatusText = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'Healthy';
-      case 'unhealthy': return 'Unhealthy';
-      default: return 'Unknown';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   if (error) {
     return (
@@ -140,7 +117,7 @@ export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
           <Group gap="xs">
             <Text fw={500}>{provider.providerName}</Text>
             <Indicator 
-              color={getHealthStatusColor(provider.healthStatus)} 
+              color={badgeHelpers.getHealthColor(provider.healthStatus)} 
               size={8}
             />
           </Group>
@@ -154,17 +131,17 @@ export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
 
       <Table.Td>
         <Badge 
-          color={provider.isEnabled ? 'green' : 'red'} 
+          color={badgeHelpers.getStatusColor(provider.isEnabled)} 
           variant={provider.isEnabled ? 'light' : 'filled'}
         >
-          {provider.isEnabled ? 'Enabled' : 'Disabled'}
+          {badgeHelpers.formatStatus(provider.isEnabled, { activeText: 'Enabled', inactiveText: 'Disabled' })}
         </Badge>
       </Table.Td>
 
       <Table.Td>
         <Group gap="xs">
           {getHealthStatusIcon(provider.healthStatus)}
-          <Text size="sm">{getHealthStatusText(provider.healthStatus)}</Text>
+          <Text size="sm">{badgeHelpers.getStatusConfig(provider.healthStatus, 'health').label}</Text>
         </Group>
       </Table.Td>
 
@@ -174,13 +151,13 @@ export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {provider.lastHealthCheck ? formatDate(provider.lastHealthCheck) : 'Never'}
+          {formatters.date(provider.lastHealthCheck)}
         </Text>
       </Table.Td>
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {formatDate(provider.createdAt)}
+          {formatters.date(provider.createdAt)}
         </Text>
       </Table.Td>
 
