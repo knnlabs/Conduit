@@ -9,10 +9,14 @@ import {
   IpCheckResult,
   IpFilterFilters,
   IpFilterStatistics,
-  BulkIpFilterRequest,
   BulkIpFilterResponse,
   IpFilterValidationResult,
   FilterType,
+  CreateTemporaryIpFilterDto,
+  BulkOperationResult,
+  IpFilterImport,
+  IpFilterImportResult,
+  BlockedRequestStats,
 } from '../models/ipFilter';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
@@ -166,20 +170,146 @@ export class IpFilterService extends BaseApiClient {
     return this.list({ filterType });
   }
 
-  // Stub methods
+  // Bulk operations
+  async bulkCreate(rules: CreateIpFilterDto[]): Promise<BulkOperationResult> {
+    if (!Array.isArray(rules) || rules.length === 0) {
+      throw new ValidationError('Rules array is required and must not be empty');
+    }
+
+    const response = await this.post<BulkOperationResult>(
+      ENDPOINTS.IP_FILTERS.BULK_CREATE,
+      { rules }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async bulkUpdate(operation: 'enable' | 'disable', ruleIds: string[]): Promise<IpFilterDto[]> {
+    if (!['enable', 'disable'].includes(operation)) {
+      throw new ValidationError('Operation must be either "enable" or "disable"');
+    }
+
+    if (!Array.isArray(ruleIds) || ruleIds.length === 0) {
+      throw new ValidationError('Rule IDs array is required and must not be empty');
+    }
+
+    const response = await this.put<IpFilterDto[]>(
+      ENDPOINTS.IP_FILTERS.BULK_UPDATE,
+      { operation, ruleIds }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async bulkDelete(ruleIds: string[]): Promise<BulkOperationResult> {
+    if (!Array.isArray(ruleIds) || ruleIds.length === 0) {
+      throw new ValidationError('Rule IDs array is required and must not be empty');
+    }
+
+    const response = await this.post<BulkOperationResult>(
+      ENDPOINTS.IP_FILTERS.BULK_DELETE,
+      { ruleIds }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  // Temporary rules
+  async createTemporary(rule: CreateTemporaryIpFilterDto): Promise<IpFilterDto> {
+    const temporarySchema = createFilterSchema.extend({
+      expiresAt: z.string().refine((val) => {
+        const date = new Date(val);
+        return !isNaN(date.getTime()) && date > new Date();
+      }, 'expiresAt must be a valid future date'),
+      reason: z.string().optional(),
+    });
+
+    try {
+      temporarySchema.parse(rule);
+    } catch (error) {
+      throw new ValidationError('Invalid temporary IP filter request', error);
+    }
+
+    const response = await this.post<IpFilterDto>(
+      ENDPOINTS.IP_FILTERS.CREATE_TEMPORARY,
+      rule
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async getExpiring(withinHours: number): Promise<IpFilterDto[]> {
+    if (withinHours <= 0) {
+      throw new ValidationError('withinHours must be a positive number');
+    }
+
+    const queryParams = new URLSearchParams({ withinHours: withinHours.toString() });
+    const url = `${ENDPOINTS.IP_FILTERS.EXPIRING}?${queryParams.toString()}`;
+    
+    return this.get<IpFilterDto[]>(url);
+  }
+
+  // Import/Export
+  async import(rules: IpFilterImport[]): Promise<IpFilterImportResult> {
+    if (!Array.isArray(rules) || rules.length === 0) {
+      throw new ValidationError('Rules array is required and must not be empty');
+    }
+
+    const response = await this.post<IpFilterImportResult>(
+      ENDPOINTS.IP_FILTERS.IMPORT,
+      { rules }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async export(format: 'json' | 'csv'): Promise<Blob> {
+    if (!['json', 'csv'].includes(format)) {
+      throw new ValidationError('Format must be either "json" or "csv"');
+    }
+
+    const queryParams = new URLSearchParams({ format });
+    const url = `${ENDPOINTS.IP_FILTERS.EXPORT}?${queryParams.toString()}`;
+
+    const response = await this.get<Blob>(url, {
+      headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' },
+      responseType: 'blob',
+    } as any);
+
+    return response;
+  }
+
+  // Analytics
+  async getBlockedRequestStats(params: { 
+    startDate?: string; 
+    endDate?: string; 
+    groupBy?: 'rule' | 'country' | 'hour' 
+  }): Promise<BlockedRequestStats> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.groupBy) queryParams.append('groupBy', params.groupBy);
+
+    const url = `${ENDPOINTS.IP_FILTERS.BLOCKED_STATS}?${queryParams.toString()}`;
+    
+    return this.withCache(
+      url,
+      () => this.get<BlockedRequestStats>(url),
+      CACHE_TTL.SHORT
+    );
+  }
+
+  // Legacy stub methods for backward compatibility
   async getStatistics(): Promise<IpFilterStatistics> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getStatistics requires Admin API endpoint implementation. ' +
         'Consider implementing GET /api/ipfilter/statistics'
-    );
-  }
-
-  async bulkCreate(_request: BulkIpFilterRequest): Promise<BulkIpFilterResponse> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'bulkCreate requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/ipfilter/bulk'
     );
   }
 

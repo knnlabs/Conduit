@@ -12,6 +12,24 @@ import {
   CostForecastDto,
   AnomalyDto,
 } from '../models/analytics';
+import {
+  ExportUsageParams,
+  ExportCostParams,
+  ExportVirtualKeyParams,
+  ExportProviderParams,
+  ExportSecurityParams,
+  ExportResult,
+  CreateExportScheduleDto,
+  ExportSchedule,
+  ExportHistory,
+  ExportRequestLogsParams,
+  RequestLogStatistics,
+  RequestLogSummaryParams,
+  RequestLogSummary,
+  RequestLog,
+  ExportStatus,
+} from '../models/analyticsExport';
+import { PagedResult } from '../models/security';
 import { PaginatedResponse, DateRange } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
@@ -202,6 +220,177 @@ export class AnalyticsService extends BaseApiClient {
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
     return this.getCostSummary({ startDate, endDate });
+  }
+
+  // Specialized export methods
+  async exportUsageAnalytics(params: ExportUsageParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_USAGE,
+      params
+    );
+    return response;
+  }
+
+  async exportCostAnalytics(params: ExportCostParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_COST,
+      params
+    );
+    return response;
+  }
+
+  async exportVirtualKeyAnalytics(params: ExportVirtualKeyParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_VIRTUAL_KEY,
+      params
+    );
+    return response;
+  }
+
+  async exportProviderAnalytics(params: ExportProviderParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_PROVIDER,
+      params
+    );
+    return response;
+  }
+
+  async exportSecurityAnalytics(params: ExportSecurityParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_SECURITY,
+      params
+    );
+    return response;
+  }
+
+  // Request logs export and analytics
+  async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
+      params
+    );
+    return response;
+  }
+
+  async getRequestLogStatistics(logs: RequestLog[]): Promise<RequestLogStatistics> {
+    // Client-side calculation of statistics
+    const stats: RequestLogStatistics = {
+      totalRequests: logs.length,
+      uniqueVirtualKeys: new Set(logs.map(l => l.virtualKeyId)).size,
+      uniqueIpAddresses: new Set(logs.map(l => l.ipAddress)).size,
+      averageResponseTime: 0,
+      medianResponseTime: 0,
+      p95ResponseTime: 0,
+      p99ResponseTime: 0,
+      totalCost: 0,
+      totalTokensUsed: 0,
+      errorRate: 0,
+      statusCodeDistribution: {},
+      endpointDistribution: [],
+      hourlyDistribution: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
+    };
+
+    if (logs.length === 0) return stats;
+
+    // Calculate response times
+    const responseTimes = logs.map(l => l.responseTime).sort((a, b) => a - b);
+    stats.averageResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+    stats.medianResponseTime = responseTimes[Math.floor(responseTimes.length / 2)];
+    stats.p95ResponseTime = responseTimes[Math.floor(responseTimes.length * 0.95)];
+    stats.p99ResponseTime = responseTimes[Math.floor(responseTimes.length * 0.99)];
+
+    // Calculate other metrics
+    stats.totalCost = logs.reduce((sum, log) => sum + (log.cost || 0), 0);
+    stats.totalTokensUsed = logs.reduce((sum, log) => sum + (log.tokensUsed?.total || 0), 0);
+    const errorCount = logs.filter(l => l.error).length;
+    stats.errorRate = (errorCount / logs.length) * 100;
+
+    // Status code distribution
+    logs.forEach(log => {
+      stats.statusCodeDistribution[log.statusCode] = 
+        (stats.statusCodeDistribution[log.statusCode] || 0) + 1;
+    });
+
+    // Endpoint distribution
+    const endpointMap = new Map<string, { count: number; totalTime: number }>();
+    logs.forEach(log => {
+      const current = endpointMap.get(log.endpoint) || { count: 0, totalTime: 0 };
+      current.count++;
+      current.totalTime += log.responseTime;
+      endpointMap.set(log.endpoint, current);
+    });
+    
+    stats.endpointDistribution = Array.from(endpointMap.entries())
+      .map(([endpoint, data]) => ({
+        endpoint,
+        count: data.count,
+        avgResponseTime: data.totalTime / data.count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Hourly distribution
+    logs.forEach(log => {
+      const hour = new Date(log.timestamp).getHours();
+      stats.hourlyDistribution[hour].count++;
+    });
+
+    return stats;
+  }
+
+  async getRequestLogSummary(params: RequestLogSummaryParams): Promise<RequestLogSummary> {
+    const response = await this.post<RequestLogSummary>(
+      ENDPOINTS.ANALYTICS.REQUEST_LOG_SUMMARY,
+      params
+    );
+    return response;
+  }
+
+  // Scheduled exports
+  async createExportSchedule(schedule: CreateExportScheduleDto): Promise<ExportSchedule> {
+    const response = await this.post<ExportSchedule>(
+      ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES,
+      schedule
+    );
+    return response;
+  }
+
+  async listExportSchedules(): Promise<ExportSchedule[]> {
+    return this.withCache(
+      ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES,
+      () => this.get<ExportSchedule[]>(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES),
+      CACHE_TTL.MEDIUM
+    );
+  }
+
+  async deleteExportSchedule(id: string): Promise<void> {
+    await this.delete(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULE_BY_ID(id));
+    
+    // Invalidate cache
+    if (this.cache) {
+      await this.cache.delete(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES);
+    }
+  }
+
+  // Export history
+  async getExportHistory(params?: { limit?: number; offset?: number }): Promise<PagedResult<ExportHistory>> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const url = `${ENDPOINTS.ANALYTICS.EXPORT_HISTORY}?${queryParams.toString()}`;
+    return this.get<PagedResult<ExportHistory>>(url);
+  }
+
+  async getExportStatus(exportId: string): Promise<ExportStatus> {
+    return this.get<ExportStatus>(ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId));
+  }
+
+  async downloadExport(exportId: string): Promise<Blob> {
+    const response = await this.get<Blob>(ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId), {
+      responseType: 'blob',
+    } as any);
+    return response;
   }
 
   // Stub methods

@@ -112,6 +112,14 @@ export const ENDPOINTS = {
     ENABLED: '/api/IpFilter/enabled',
     SETTINGS: '/api/IpFilter/settings',
     CHECK: (ipAddress: string) => `/api/IpFilter/check/${encodeURIComponent(ipAddress)}`,
+    BULK_CREATE: '/api/IpFilter/bulk',
+    BULK_UPDATE: '/api/IpFilter/bulk-update',
+    BULK_DELETE: '/api/IpFilter/bulk-delete',
+    CREATE_TEMPORARY: '/api/IpFilter/temporary',
+    EXPIRING: '/api/IpFilter/expiring',
+    IMPORT: '/api/IpFilter/import',
+    EXPORT: '/api/IpFilter/export',
+    BLOCKED_STATS: '/api/IpFilter/blocked-stats',
   },
 
   // Model Costs
@@ -119,7 +127,12 @@ export const ENDPOINTS = {
     BASE: '/modelcosts',
     BY_ID: (id: number) => `/modelcosts/${id}`,
     BY_MODEL: (modelId: string) => `/modelcosts/model/${modelId}`,
+    BY_PROVIDER: (providerName: string) => `/modelcosts/provider/${providerName}`,
     BATCH: '/modelcosts/batch',
+    IMPORT: '/modelcosts/import',
+    BULK_UPDATE: '/modelcosts/bulk-update',
+    OVERVIEW: '/modelcosts/overview',
+    TRENDS: '/modelcosts/trends',
   },
 
   // Analytics & Cost Dashboard
@@ -130,6 +143,25 @@ export const ENDPOINTS = {
     COST_BY_KEY: '/costdashboard/by-key',
     REQUEST_LOGS: '/logs',
     REQUEST_LOG_BY_ID: (id: string) => `/logs/${id}`,
+    
+    // Specialized exports
+    EXPORT_USAGE: '/api/analytics/export/usage',
+    EXPORT_COST: '/api/analytics/export/cost',
+    EXPORT_VIRTUAL_KEY: '/api/analytics/export/virtual-key',
+    EXPORT_PROVIDER: '/api/analytics/export/provider',
+    EXPORT_SECURITY: '/api/analytics/export/security',
+    EXPORT_REQUEST_LOGS: '/api/analytics/export/request-logs',
+    
+    // Export management
+    EXPORT_SCHEDULES: '/api/analytics/export/schedules',
+    EXPORT_SCHEDULE_BY_ID: (id: string) => `/api/analytics/export/schedules/${id}`,
+    EXPORT_HISTORY: '/api/analytics/export/history',
+    EXPORT_STATUS: (exportId: string) => `/api/analytics/export/status/${exportId}`,
+    EXPORT_DOWNLOAD: (exportId: string) => `/api/analytics/export/download/${exportId}`,
+    
+    // Request log analytics
+    REQUEST_LOG_STATS: '/api/analytics/request-logs/statistics',
+    REQUEST_LOG_SUMMARY: '/api/analytics/request-logs/summary',
   },
 
   // Provider Health
@@ -169,6 +201,34 @@ export const ENDPOINTS = {
     BULK_CAPABILITIES: '/v1/discovery/bulk/capabilities',
     BULK_MODELS: '/v1/discovery/bulk/models',
     REFRESH: '/v1/discovery/refresh',
+  },
+
+  // Security
+  SECURITY: {
+    EVENTS: '/api/admin/security/events',
+    REPORT_EVENT: '/api/admin/security/events',
+    EXPORT_EVENTS: '/api/admin/security/events/export',
+    THREATS: '/api/admin/security/threats',
+    THREAT_BY_ID: (id: string) => `/api/admin/security/threats/${id}`,
+    THREAT_ANALYTICS: '/api/admin/security/threats/analytics',
+    COMPLIANCE_METRICS: '/api/admin/security/compliance/metrics',
+    COMPLIANCE_REPORT: '/api/admin/security/compliance/report',
+  },
+
+  // Configuration (Routing and Caching)
+  CONFIGURATION: {
+    // Routing
+    ROUTING: '/api/configuration/routing',
+    ROUTING_TEST: '/api/configuration/routing/test',
+    LOAD_BALANCER_HEALTH: '/api/configuration/routing/health',
+    
+    // Caching
+    CACHING: '/api/configuration/caching',
+    CACHE_POLICIES: '/api/configuration/caching/policies',
+    CACHE_POLICY_BY_ID: (id: string) => `/api/configuration/caching/policies/${id}`,
+    CACHE_REGIONS: '/api/configuration/caching/regions',
+    CACHE_CLEAR: (regionId: string) => `/api/configuration/caching/regions/${regionId}/clear`,
+    CACHE_STATISTICS: '/api/configuration/caching/statistics',
   },
 } as const;
 

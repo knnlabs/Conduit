@@ -11,12 +11,15 @@ export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/modelCost';
 export * from './models/analytics';
+export * from './models/analyticsExport';
 export * from './models/system';
 export * from './models/audioConfiguration';
 export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
 export * from './models/notifications';
+export * from './models/security';
+export * from './models/configuration';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -55,6 +58,8 @@ export { DatabaseBackupService } from './services/DatabaseBackupService';
 export { SignalRService } from './services/SignalRService';
 export { ConnectionService } from './services/ConnectionService';
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
+export { SecurityService } from './services/SecurityService';
+export { ConfigurationService } from './services/ConfigurationService';
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
@@ -63,6 +68,7 @@ export { AdminNotificationHubClient } from './signalr/AdminNotificationHubClient
 // Utilities
 export * from './utils/errors';
 export * from './utils/capabilities';
+export * from './utils/webui-auth';
 
 // Constants
 export * from './constants';
