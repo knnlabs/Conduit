@@ -15,12 +15,34 @@ Are you juggling multiple LLM provider APIs in your applications? ConduitLLM sol
 - **Vendor Independence**: Avoid lock-in to any single LLM provider
 - **Simplified API Management**: Centralized key management and usage tracking
 - **Cost Optimization**: Route requests to the most cost-effective or performant models
+- **🚀 Enterprise Scale**: Built to handle **10,000+ concurrent sessions** with a lean, efficient tech stack ([see scaling architecture](docs/Scaling-Architecture.md))
 
 ## Overview
 
 ConduitLLM is a unified, modular, and extensible platform designed to simplify interaction with multiple Large Language Models (LLMs). It provides a single, consistent OpenAI-compatible REST API endpoint, acting as a gateway or "conduit" to various LLM backends such as OpenAI, Anthropic, Azure OpenAI, Google Gemini, Cohere, and others.
 
 Built with .NET and designed for containerization (Docker), ConduitLLM streamlines the development, deployment, and management of LLM-powered applications by abstracting provider-specific complexities.
+
+## 🚧 Project Status
+
+> **Note**: ConduitLLM is actively under development. We recommend using the provided Client SDKs for the most stable integration experience.
+
+### ✅ **Production Ready Features**
+- **Text Generation**: Fully tested with OpenAI, Anthropic, and MiniMax providers
+- **Image Generation**: Complete implementation with manual testing across multiple providers  
+- **Video Generation**: Feature complete with provider integration
+- **Client SDKs**: Stable APIs for Node.js and other platforms
+
+### ⚠️ **In Development**
+- **Audio Support**: Not feature complete - expect significant changes in upcoming releases
+- **Core & Admin APIs**: May evolve without backward compatibility - use Client SDKs instead
+
+### 💡 **Recommended Integration**
+```bash
+# Use Client SDKs for stable integration
+npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-admin-client
+```
 
 ## Key Features
 
@@ -29,7 +51,7 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
 - **Streaming Support**: Real-time token streaming for responsive applications
-- **Audio API Support**: Complete audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming
+- **Audio API Support**: Audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming ⚠️ *In Development*
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
@@ -271,13 +293,44 @@ CONDUIT_CACHE_TYPE=Redis
 
 When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
 
-#### Master Key Configuration
+#### Authentication Configuration
 ```bash
-# Standardized across all services
-CONDUIT_MASTER_KEY=your-secure-master-key
+# Core API Authentication (uses Virtual Keys)
+# Virtual keys are created via Admin API and used for LLM access
+# Format: condt_your-virtual-key-here
+
+# Admin API Authentication
+CONDUIT_MASTER_KEY=your-secure-master-key  # For Admin API service authentication
+
+# WebUI Authentication (separate from Admin API)
+CONDUIT_WEBUI_AUTH_KEY=your-webui-auth-key  # For WebUI dashboard access
 
 # Legacy format (still supported)
 AdminApi__MasterKey=your-secure-master-key
+```
+
+**CRITICAL SECURITY:** The `CONDUIT_MASTER_KEY` and `CONDUIT_WEBUI_AUTH_KEY` serve different purposes:
+- **CONDUIT_MASTER_KEY**: Used by Admin API for service-to-service authentication
+- **CONDUIT_WEBUI_AUTH_KEY**: Used by WebUI for administrator dashboard access
+- **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
+
+#### Next.js WebUI Configuration
+```bash
+# Server-side URLs (for API routes only - never exposed to browser)
+CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
+CONDUIT_API_BASE_URL=http://localhost:5000
+
+# Session management
+SESSION_SECRET=your-session-secret-key-change-in-production
+
+# SignalR real-time updates
+NEXT_PUBLIC_SIGNALR_AUTO_RECONNECT=true
+NEXT_PUBLIC_SIGNALR_RECONNECT_INTERVAL=5000
+
+# Feature flags
+NEXT_PUBLIC_ENABLE_REAL_TIME_UPDATES=true
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
 ```
 
 #### Security Configuration (WebUI)
@@ -301,6 +354,19 @@ CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
 CONDUIT_MAX_FAILED_ATTEMPTS=5
 CONDUIT_IP_BAN_DURATION_MINUTES=30
 ```
+
+#### WebUI Configuration Notes
+
+**Security Architecture:**
+- All API calls are made server-side through Next.js API routes
+- No API keys or sensitive URLs are exposed to the browser
+- WebUI authenticates administrators separately from API consumers
+- SignalR connections use server-side authentication
+
+**Required Configuration:**
+1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
+2. **Separate WebUI authentication** - Set `CONDUIT_WEBUI_AUTH_KEY` distinct from `CONDUIT_MASTER_KEY`
+3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
 
@@ -400,6 +466,7 @@ See the `docs/` directory for detailed documentation:
   - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
   - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
   - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
+- [🚀 Scaling Architecture](docs/Scaling-Architecture.md) - **10,000+ concurrent sessions architecture and roadmap**
 - [Getting Started](docs/Getting-Started.md)
 - [Current Status](docs/Current-Status.md)
 
