@@ -76,7 +76,8 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
   }
 
   // Create a mutation wrapper that handles the payload transformation
-  const mutation = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutation: any = {
     ...updateVirtualKey,
     mutate: (values: EditVirtualKeyForm, options?: Parameters<typeof updateVirtualKey.mutate>[1]) => {
       const payload = {
@@ -84,7 +85,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
         description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
         isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
       };
       updateVirtualKey.mutate({
         id: virtualKey.id,
@@ -97,7 +98,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
         description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
         isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
       };
       return updateVirtualKey.mutateAsync({
         id: virtualKey.id,

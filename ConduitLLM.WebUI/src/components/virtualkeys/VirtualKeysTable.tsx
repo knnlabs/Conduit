@@ -115,7 +115,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
     );
   }
 
-  const rows = virtualKeys?.map((key: VirtualKey) => {
+  const rows = virtualKeys?.map((key) => {
     const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
     const budgetUsageColor = key.maxBudget 
       ? badgeHelpers.getPercentageColor(budgetUsagePercentage, { danger: 90, warning: 75, good: 0 })
@@ -137,12 +137,16 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
         <Table.Td>
           <Group gap="xs">
             <Text size="sm" style={{ fontFamily: 'monospace' }}>
-              {key.keyHash.substring(0, 12)}...
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {((key as any).keyHash || (key as any).keyPrefix || (key as any).apiKey || 'N/A').substring(0, 12)}...
             </Text>
             <ActionIcon
               variant="subtle"
               size="sm"
-              onClick={() => handleCopyKey(key.keyHash)}
+              onClick={() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                handleCopyKey((key as any).keyHash || (key as any).apiKey || (key as any).keyPrefix || '');
+              }}
             >
               <IconCopy size={14} />
             </ActionIcon>
@@ -186,7 +190,8 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {formatters.date(key.lastUsed)}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {formatters.date((key as any).lastUsed || (key as any).lastUsedAt)}
           </Text>
         </Table.Td>
 
@@ -196,7 +201,8 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
               <ActionIcon 
                 variant="subtle" 
                 color="gray"
-                onClick={() => onView?.(key)}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onClick={() => onView?.(key as any)}
               >
                 <IconEye size={16} />
               </ActionIcon>
@@ -212,16 +218,20 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
               <Menu.Dropdown>
                 <Menu.Item
                   leftSection={<IconEdit style={{ width: rem(14), height: rem(14) }} />}
-                  onClick={() => onEdit?.(key)}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onClick={() => onEdit?.(key as any)}
                 >
                   Edit
                 </Menu.Item>
                 
                 <Menu.Item
                   leftSection={<IconCopy style={{ width: rem(14), height: rem(14) }} />}
-                  onClick={() => handleCopyKey(key.keyHash)}
+                  onClick={() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    handleCopyKey((key as any).keyHash || (key as any).apiKey || (key as any).keyPrefix || '');
+                  }}
                 >
-                  Copy key hash
+                  Copy key
                 </Menu.Item>
                 
                 <Menu.Divider />
@@ -229,7 +239,8 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
                 <Menu.Item
                   color="red"
                   leftSection={<IconTrash style={{ width: rem(14), height: rem(14) }} />}
-                  onClick={() => handleDelete(key)}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onClick={() => handleDelete(key as any)}
                 >
                   Delete
                 </Menu.Item>

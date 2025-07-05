@@ -111,19 +111,17 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
   }
 
   // Create a mutation wrapper that handles the payload transformation
-  const mutation = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutation: any = {
     ...createVirtualKey,
     mutate: (values: CreateVirtualKeyForm, options?: Parameters<typeof createVirtualKey.mutate>[1]) => {
       const payload = {
         keyName: values.keyName.trim(),
         description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
-        rateLimitPerMinute: values.rateLimitPerMinute || undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels,
-        allowedEndpoints: values.allowedEndpoints,
-        allowedIpAddresses: values.allowedIpAddresses.length > 0 ? values.allowedIpAddresses : undefined,
-        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) : undefined,
+        rateLimitRpm: values.rateLimitPerMinute || undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+        metadata: values.metadata?.trim() ? values.metadata : undefined, // SDK expects string not object
       };
       createVirtualKey.mutate(payload, options);
     },
@@ -132,12 +130,9 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
         keyName: values.keyName.trim(),
         description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
-        rateLimitPerMinute: values.rateLimitPerMinute || undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels,
-        allowedEndpoints: values.allowedEndpoints,
-        allowedIpAddresses: values.allowedIpAddresses.length > 0 ? values.allowedIpAddresses : undefined,
-        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) : undefined,
+        rateLimitRpm: values.rateLimitPerMinute || undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+        metadata: values.metadata?.trim() ? values.metadata : undefined, // SDK expects string not object
       };
       return createVirtualKey.mutateAsync(payload);
     },

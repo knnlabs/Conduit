@@ -180,7 +180,7 @@ export default function ChatPage() {
         });
 
         // Add assistant response
-        if (response.choices && response.choices.length > 0) {
+        if ('choices' in response && response.choices && response.choices.length > 0) {
           const assistantMessage: ChatMessage = {
             role: 'assistant',
             content: response.choices[0].message?.content || 'No response generated',

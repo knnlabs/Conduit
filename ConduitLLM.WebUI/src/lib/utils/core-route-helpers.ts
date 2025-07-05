@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
-import { generateRequestId } from '@/lib/utils/logging';
+import { generateRequestId, safeError, debugLog } from '@/lib/utils/logging';
 
 export interface CoreRouteOptions {
   requireVirtualKey?: boolean;
@@ -217,11 +217,11 @@ function logSecurityEvent(event: string, data: Record<string, unknown>): void {
 }
 
 function logRequestError(context: string, data: Record<string, unknown>): void {
-  console.error(`[ERROR] ${context}:`, data);
+  safeError(`[ERROR] ${context}:`, data);
 }
 
 function logRequestSuccess(context: string, data: Record<string, unknown>): void {
-  console.log(`[SUCCESS] ${context}:`, data);
+  debugLog(`[SUCCESS] ${context}:`, data);
 }
 
 function sanitizeBodyForLogging(body: unknown): unknown {

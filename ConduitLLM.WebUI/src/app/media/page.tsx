@@ -187,9 +187,9 @@ export default function MediaAssetsPage() {
 
   const virtualKeys = [
     { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData?.data || []).map((key: unknown) => ({
-      value: (key as { id: number }).id.toString(),
-      label: (key as { name: string }).name,
+    ...(virtualKeysData || []).map((key: unknown) => ({
+      value: (key as { id: string }).id,
+      label: (key as { keyName: string }).keyName,
     })),
   ];
   

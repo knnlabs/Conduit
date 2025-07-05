@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from 'react';
 import { useSignalR } from './useSignalR';
 import { useQueryClient } from '@tanstack/react-query';
+import { debugLog } from '@/lib/utils/logging';
 import { adminApiKeys } from '@/hooks/api/useAdminApi';
 
 interface SpendUpdateEvent {
@@ -36,7 +37,7 @@ export function useSpendTracking() {
   const queryClient = useQueryClient();
 
   const handleSpendUpdate = useCallback((event: SpendUpdateEvent) => {
-    console.log('Spend update received:', event);
+    debugLog('Spend update received:', event);
 
     // Update the virtual keys query cache
     queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {
@@ -74,7 +75,7 @@ export function useSpendTracking() {
   }, [queryClient]);
 
   const handleBudgetAlert = useCallback((event: BudgetAlertEvent) => {
-    console.log('Budget alert received:', event);
+    debugLog('Budget alert received:', event);
 
     // Show notification based on alert type
     import('@mantine/notifications').then(({ notifications }) => {
@@ -108,7 +109,7 @@ export function useSpendTracking() {
   }, []);
 
   const handleBatchSpendUpdate = useCallback((events: SpendUpdateEvent[]) => {
-    console.log('Batch spend update received:', events);
+    debugLog('Batch spend update received:', events);
 
     // Update multiple keys at once for efficiency
     queryClient.setQueryData(adminApiKeys.virtualKeys(), (oldData: unknown) => {

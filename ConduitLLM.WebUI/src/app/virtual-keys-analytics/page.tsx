@@ -109,7 +109,7 @@ export default function VirtualKeysAnalyticsPage() {
         autoClose: 5000,
       });
       
-      console.log('Download URL:', result.url);
+      // Download URL available at: result.url
     } catch (error: unknown) {
       notifications.update({
         id: 'export-start',

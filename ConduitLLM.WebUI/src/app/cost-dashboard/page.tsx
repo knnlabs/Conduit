@@ -91,7 +91,7 @@ export default function CostDashboardPage() {
       });
       
       // In a real implementation, this would trigger a download
-      console.log('Download URL:', result.url);
+      // Download URL available at: result.url
     } catch (error: unknown) {
       notifications.update({
         id: 'export-start',

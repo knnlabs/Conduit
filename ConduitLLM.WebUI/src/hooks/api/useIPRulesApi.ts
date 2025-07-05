@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { apiFetch } from '@/lib/utils/fetch-wrapper';
+import { getAdminClient } from '@/lib/clients/conduit';
+import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
 
 export interface IPRule {
   id: string;
@@ -48,25 +49,41 @@ export function useIPRules(filters?: {
   return useQuery({
     queryKey: ipRulesKeys.list(filters),
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filters?.status) params.append('status', filters.status);
-      if (filters?.type) params.append('type', filters.type);
-      if (filters?.page) params.append('page', filters.page.toString());
-      if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString());
-
-      const response = await apiFetch(`/api/admin/security/ip-rules?${params}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch IP rules');
+      try {
+        const client = getAdminClient();
+        const rules = await client.ipFilters.list({
+          filterType: filters?.type as 'whitelist' | 'blacklist' | undefined,
+          isEnabled: filters?.status === 'active' ? true : filters?.status === 'inactive' ? false : undefined,
+        });
+        
+        // Transform SDK response to match expected format
+        const startIndex = ((filters?.page || 1) - 1) * (filters?.pageSize || 10);
+        const endIndex = startIndex + (filters?.pageSize || 10);
+        const paginatedRules = rules.slice(startIndex, endIndex);
+        
+        const transformedResponse: IPRulesResponse = {
+          items: paginatedRules.map(rule => ({
+            id: rule.id.toString(),
+            ipAddress: rule.ipAddressOrCidr,
+            action: rule.filterType === 'whitelist' ? 'allow' : 'block',
+            type: rule.expiresAt ? 'temporary' : 'permanent',
+            reason: rule.description || '',
+            createdAt: rule.createdAt,
+            expiresAt: rule.expiresAt,
+            isActive: rule.isEnabled,
+            createdBy: undefined,
+            modifiedAt: rule.updatedAt,
+          })),
+          totalCount: rules.length,
+          pageNumber: filters?.page || 1,
+          pageSize: filters?.pageSize || 10,
+          totalPages: Math.ceil(rules.length / (filters?.pageSize || 10)),
+        };
+        
+        return transformedResponse;
+      } catch (error) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json() as Promise<IPRulesResponse>;
     },
   });
 }
@@ -76,20 +93,32 @@ export function useCreateIPRule() {
 
   return useMutation({
     mutationFn: async (data: IPRuleFormData) => {
-      const response = await apiFetch('/api/admin/security/ip-rules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create IP rule');
+      try {
+        const client = getAdminClient();
+        
+        if (data.type === 'temporary' && data.expiresAt) {
+          // Create temporary rule
+          return await client.ipFilters.createTemporary({
+            name: `${data.action}-${data.ipAddress}`,
+            ipAddressOrCidr: data.ipAddress,
+            filterType: data.action === 'allow' ? 'whitelist' : 'blacklist',
+            expiresAt: data.expiresAt,
+            reason: data.reason,
+            isEnabled: true,
+          });
+        } else {
+          // Create permanent rule
+          return await client.ipFilters.create({
+            name: `${data.action}-${data.ipAddress}`,
+            ipAddressOrCidr: data.ipAddress,
+            filterType: data.action === 'allow' ? 'whitelist' : 'blacklist',
+            description: data.reason,
+            isEnabled: true,
+          });
+        }
+      } catch (error) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ipRulesKeys.lists() });
@@ -99,10 +128,12 @@ export function useCreateIPRule() {
         color: 'green',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const backendError = BackendErrorHandler.classifyError(error);
+      const message = BackendErrorHandler.getUserFriendlyMessage(backendError);
       notifications.show({
         title: 'Failed to Create IP Rule',
-        message: error.message,
+        message,
         color: 'red',
       });
     },
@@ -114,20 +145,27 @@ export function useUpdateIPRule() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<IPRuleFormData> }) => {
-      const response = await apiFetch(`/api/admin/security/ip-rules/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update IP rule');
+      try {
+        const client = getAdminClient();
+        const updateData: {
+          id: number;
+          ipAddressOrCidr?: string;
+          filterType?: 'whitelist' | 'blacklist';
+          description?: string;
+          expiresAt?: string;
+        } = {
+          id: parseInt(id),
+        };
+        
+        if (data.ipAddress) updateData.ipAddressOrCidr = data.ipAddress;
+        if (data.action) updateData.filterType = data.action === 'allow' ? 'whitelist' : 'blacklist';
+        if (data.reason) updateData.description = data.reason;
+        if (data.expiresAt) updateData.expiresAt = data.expiresAt;
+        
+        return await client.ipFilters.update(parseInt(id), updateData);
+      } catch (error) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ipRulesKeys.lists() });
@@ -138,10 +176,12 @@ export function useUpdateIPRule() {
         color: 'green',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const backendError = BackendErrorHandler.classifyError(error);
+      const message = BackendErrorHandler.getUserFriendlyMessage(backendError);
       notifications.show({
         title: 'Failed to Update IP Rule',
-        message: error.message,
+        message,
         color: 'red',
       });
     },
@@ -153,19 +193,13 @@ export function useDeleteIPRule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiFetch(`/api/admin/security/ip-rules/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete IP rule');
+      try {
+        const client = getAdminClient();
+        await client.ipFilters.deleteById(parseInt(id));
+        return { success: true };
+      } catch (error) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ipRulesKeys.lists() });
@@ -175,10 +209,12 @@ export function useDeleteIPRule() {
         color: 'green',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const backendError = BackendErrorHandler.classifyError(error);
+      const message = BackendErrorHandler.getUserFriendlyMessage(backendError);
       notifications.show({
         title: 'Failed to Delete IP Rule',
-        message: error.message,
+        message,
         color: 'red',
       });
     },

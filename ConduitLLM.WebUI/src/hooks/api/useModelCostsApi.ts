@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
-import { apiFetch } from '@/lib/utils/fetch-wrapper';
+import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
 
 // Query key factory for Model Costs API
 export const modelCostsApiKeys = {
@@ -65,20 +65,28 @@ export function useModelCosts() {
     queryKey: modelCostsApiKeys.list(),
     queryFn: async () => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch('/api/modelcosts', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch model costs: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<ModelCost[]>;
+        const client = getAdminClient();
+        const result = await client.modelCosts.list();
+        
+        // Transform SDK response to match expected format
+        return result.items.map(cost => ({
+          id: cost.id,
+          modelIdPattern: cost.modelIdPattern,
+          providerName: cost.providerName,
+          inputCostPerMillionTokens: cost.inputCostPerMillionTokens || 0,
+          outputCostPerMillionTokens: cost.outputCostPerMillionTokens || 0,
+          isActive: cost.isActive,
+          priority: cost.priority || 0,
+          effectiveDate: cost.effectiveDate || new Date().toISOString(),
+          description: cost.metadata?.description,
+          modelCategory: cost.metadata?.category || 'text',
+          createdAt: cost.createdAt,
+          updatedAt: cost.updatedAt,
+        }));
       } catch (error) {
-        reportError(error as Error, 'Failed to fetch model costs');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to fetch model costs');
+        throw backendError;
       }
     },
     staleTime: 300000, // 5 minutes
@@ -93,20 +101,28 @@ export function useModelCost(id: number) {
     queryKey: modelCostsApiKeys.byId(id),
     queryFn: async () => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch(`/api/modelcosts/${id}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch model cost: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<ModelCost>;
+        const client = getAdminClient();
+        const cost = await client.modelCosts.getById(id);
+        
+        // Transform SDK response to match expected format
+        return {
+          id: cost.id,
+          modelIdPattern: cost.modelIdPattern,
+          providerName: cost.providerName,
+          inputCostPerMillionTokens: cost.inputCostPerMillionTokens || 0,
+          outputCostPerMillionTokens: cost.outputCostPerMillionTokens || 0,
+          isActive: cost.isActive,
+          priority: cost.priority || 0,
+          effectiveDate: cost.effectiveDate || new Date().toISOString(),
+          description: cost.metadata?.description,
+          modelCategory: cost.metadata?.category || 'text',
+          createdAt: cost.createdAt,
+          updatedAt: cost.updatedAt,
+        };
       } catch (error) {
-        reportError(error as Error, 'Failed to fetch model cost');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to fetch model cost');
+        throw backendError;
       }
     },
     enabled: !!id,
@@ -122,20 +138,28 @@ export function useModelCostsByProvider(providerName: string) {
     queryKey: modelCostsApiKeys.byProvider(providerName),
     queryFn: async () => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch(`/api/modelcosts/provider/${providerName}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch model costs: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<ModelCost[]>;
+        const client = getAdminClient();
+        const costs = await client.modelCosts.getByProvider(providerName);
+        
+        // Transform SDK response to match expected format
+        return costs.map(cost => ({
+          id: cost.id,
+          modelIdPattern: cost.modelIdPattern,
+          providerName: cost.providerName,
+          inputCostPerMillionTokens: cost.inputCostPerMillionTokens || 0,
+          outputCostPerMillionTokens: cost.outputCostPerMillionTokens || 0,
+          isActive: cost.isActive,
+          priority: cost.priority || 0,
+          effectiveDate: cost.effectiveDate || new Date().toISOString(),
+          description: cost.metadata?.description,
+          modelCategory: cost.metadata?.category || 'text',
+          createdAt: cost.createdAt,
+          updatedAt: cost.updatedAt,
+        }));
       } catch (error) {
-        reportError(error as Error, 'Failed to fetch model costs by provider');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to fetch model costs by provider');
+        throw backendError;
       }
     },
     enabled: !!providerName,
@@ -151,20 +175,29 @@ export function useModelCostOverview(startDate: string, endDate: string) {
     queryKey: modelCostsApiKeys.overview(startDate, endDate),
     queryFn: async () => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch(`/api/modelcosts/overview?startDate=${startDate}&endDate=${endDate}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+        const client = getAdminClient();
+        const overviews = await client.modelCosts.getOverview({
+          startDate,
+          endDate,
+          groupBy: 'model',
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch model cost overview: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<ModelCostOverview[]>;
+        
+        // Transform SDK response to match expected format
+        return overviews.map(overview => ({
+          modelName: overview.modelName,
+          providerName: overview.providerName,
+          totalRequests: overview.totalRequests,
+          totalInputTokens: overview.totalTokens / 2, // Estimate input tokens as half
+          totalOutputTokens: overview.totalTokens / 2, // Estimate output tokens as half
+          totalCost: overview.totalCost,
+          averageCostPerRequest: overview.averageCostPerRequest,
+          costTrend: (overview.costTrend === 'increasing' ? 'up' : overview.costTrend === 'decreasing' ? 'down' : 'stable') as 'up' | 'down' | 'stable',
+          trendPercentage: overview.trendPercentage || 0,
+        }));
       } catch (error) {
-        reportError(error as Error, 'Failed to fetch model cost overview');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to fetch model cost overview');
+        throw backendError;
       }
     },
     enabled: !!startDate && !!endDate,
@@ -181,21 +214,35 @@ export function useCreateModelCost() {
   return useMutation({
     mutationFn: async (data: CreateModelCost) => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch('/api/modelcosts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+        const client = getAdminClient();
+        const result = await client.modelCosts.create({
+          modelId: data.modelIdPattern,
+          inputTokenCost: data.inputCostPerMillionTokens / 1000,
+          outputTokenCost: data.outputCostPerMillionTokens / 1000,
+          isActive: data.isActive,
+          effectiveDate: data.effectiveDate,
+          providerId: data.providerName,
+          description: data.description,
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create model cost: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<ModelCost>;
+        
+        return {
+          id: result.id,
+          modelIdPattern: result.modelIdPattern,
+          providerName: result.providerName,
+          inputCostPerMillionTokens: result.inputCostPerMillionTokens || 0,
+          outputCostPerMillionTokens: result.outputCostPerMillionTokens || 0,
+          isActive: result.isActive,
+          priority: result.priority || 0,
+          effectiveDate: result.effectiveDate || new Date().toISOString(),
+          description: result.metadata?.description,
+          modelCategory: result.metadata?.category || 'text',
+          createdAt: result.createdAt,
+          updatedAt: result.updatedAt,
+        };
       } catch (error) {
-        reportError(error as Error, 'Failed to create model cost');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to create model cost');
+        throw backendError;
       }
     },
     onSuccess: () => {
@@ -213,21 +260,20 @@ export function useUpdateModelCost() {
   return useMutation({
     mutationFn: async (data: UpdateModelCost) => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch(`/api/modelcosts/${data.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+        const client = getAdminClient();
+        const result = await client.modelCosts.update(data.id, {
+          inputTokenCost: data.inputCostPerMillionTokens / 1000,
+          outputTokenCost: data.outputCostPerMillionTokens / 1000,
+          isActive: data.isActive,
+          effectiveDate: data.effectiveDate,
+          description: data.description,
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to update model cost: ${response.statusText}`);
-        }
-
-        return response.json();
+        
+        return result;
       } catch (error) {
-        reportError(error as Error, 'Failed to update model cost');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to update model cost');
+        throw backendError;
       }
     },
     onSuccess: (_, variables) => {
@@ -246,20 +292,13 @@ export function useDeleteModelCost() {
   return useMutation({
     mutationFn: async (id: number) => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch(`/api/modelcosts/${id}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to delete model cost: ${response.statusText}`);
-        }
-
-        return response.json();
+        const client = getAdminClient();
+        await client.modelCosts.deleteById(id);
+        return { success: true };
       } catch (error) {
-        reportError(error as Error, 'Failed to delete model cost');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to delete model cost');
+        throw backendError;
       }
     },
     onSuccess: () => {
@@ -277,21 +316,23 @@ export function useImportModelCosts() {
   return useMutation({
     mutationFn: async (modelCosts: CreateModelCost[]) => {
       try {
-        const _client = await getAdminClient();
-        const response = await apiFetch('/api/modelcosts/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(modelCosts),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to import model costs: ${response.statusText}`);
-        }
-
-        return response.json() as Promise<number>; // Returns count of imported items
+        const client = getAdminClient();
+        const sdkModelCosts = modelCosts.map(cost => ({
+          modelId: cost.modelIdPattern,
+          inputTokenCost: cost.inputCostPerMillionTokens / 1000,
+          outputTokenCost: cost.outputCostPerMillionTokens / 1000,
+          isActive: cost.isActive,
+          effectiveDate: cost.effectiveDate,
+          description: cost.description,
+          providerId: cost.providerName,
+        }));
+        
+        const result = await client.modelCosts.import(sdkModelCosts);
+        return result.success; // Returns count of imported items
       } catch (error) {
-        reportError(error as Error, 'Failed to import model costs');
-        throw error;
+        const backendError = BackendErrorHandler.classifyError(error);
+        reportError(new Error(BackendErrorHandler.getUserFriendlyMessage(backendError)), 'Failed to import model costs');
+        throw backendError;
       }
     },
     onSuccess: () => {

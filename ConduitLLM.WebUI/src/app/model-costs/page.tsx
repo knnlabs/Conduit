@@ -47,6 +47,7 @@ import {
   useModelCostOverview,
   type ModelCost,
   type CreateModelCost,
+  type ModelCostOverview,
 } from '@/hooks/api/useModelCostsApi';
 
 
@@ -99,7 +100,7 @@ export default function ModelCostsPage() {
   });
 
   // Filter costs
-  const filteredCosts = costs.filter(cost => {
+  const filteredCosts = costs.filter((cost: ModelCost) => {
     const matchesSearch = 
       cost.modelIdPattern.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cost.providerName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -110,12 +111,12 @@ export default function ModelCostsPage() {
   });
 
   // Get unique providers
-  const providers = Array.from(new Set(costs.map(c => c.providerName)));
+  const providers: string[] = Array.from(new Set(costs.map((c: ModelCost) => c.providerName)));
 
   // Calculate statistics
   const totalModels = costs.length;
-  const activeModels = costs.filter(c => c.isActive).length;
-  const totalSpend = overviewData?.reduce((sum, item) => sum + item.totalCost, 0) || 0;
+  const activeModels = costs.filter((c: ModelCost) => c.isActive).length;
+  const totalSpend = overviewData?.reduce((sum: number, item: ModelCostOverview) => sum + item.totalCost, 0) || 0;
 
   const handleAddCost = () => {
     setEditingCost(null);
@@ -409,7 +410,7 @@ export default function ModelCostsPage() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {filteredCosts.map((cost) => {
+              {filteredCosts.map((cost: ModelCost) => {
                 return (
                   <Table.Tr key={cost.id}>
                     <Table.Td>
@@ -499,7 +500,7 @@ export default function ModelCostsPage() {
             <Select
               label="Model"
               placeholder="Select a model"
-              data={costs.map(c => ({
+              data={costs.map((c: ModelCost) => ({
                 value: c.id.toString(),
                 label: `${c.modelIdPattern} (${c.providerName})`,
               }))}

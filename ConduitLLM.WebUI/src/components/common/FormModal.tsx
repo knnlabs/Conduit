@@ -4,7 +4,7 @@ import { UseMutationResult } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { useEffect } from 'react';
 
-export interface FormModalProps<TForm> {
+export interface FormModalProps<TForm, TData = unknown, TError = unknown, TVariables = TForm> {
   // Modal props
   opened: boolean;
   onClose: () => void;
@@ -16,8 +16,7 @@ export interface FormModalProps<TForm> {
   initialValues?: TForm;
   
   // Mutation props
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mutation: UseMutationResult<any, any, any>;
+  mutation: UseMutationResult<TData, TError, TVariables>;
   
   // Content
   children: (form: UseFormReturnType<TForm>) => React.ReactNode;
@@ -33,7 +32,7 @@ export interface FormModalProps<TForm> {
   onError?: (error: Error) => void;
 }
 
-export function FormModal<TForm>({
+export function FormModal<TForm, TData = unknown, TError = unknown, TVariables = TForm>({
   opened,
   onClose,
   title,
@@ -48,7 +47,7 @@ export function FormModal<TForm>({
   cancelText = "Cancel",
   onSuccess,
   onError,
-}: FormModalProps<TForm>) {
+}: FormModalProps<TForm, TData, TError, TVariables>) {
   
   // Handle form reset and population
   useEffect(() => {
@@ -61,7 +60,8 @@ export function FormModal<TForm>({
 
   // Handle form submission
   const handleSubmit = (values: TForm) => {
-    mutation.mutate(values, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mutation.mutate(values as any, {
       onSuccess: (data) => {
         notifications.show({
           title: 'Success',
@@ -78,7 +78,7 @@ export function FormModal<TForm>({
           message: `Failed to ${isEdit ? 'update' : 'create'} ${entityType}`,
           color: 'red',
         });
-        onError?.(error);
+        onError?.(error as Error);
       },
     });
   };

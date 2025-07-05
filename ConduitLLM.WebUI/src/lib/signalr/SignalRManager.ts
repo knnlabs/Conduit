@@ -1,5 +1,6 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { useConnectionStore } from '@/stores/useConnectionStore';
+import { debugLog } from '@/lib/utils/logging';
 
 export interface SignalRConfig {
   baseUrl: string;
@@ -69,7 +70,7 @@ export class SignalRManager {
       useConnectionStore.getState().setSignalRStatus('connecting');
       await connection.start();
       useConnectionStore.getState().setSignalRStatus('connected');
-      console.log(`Connected to ${hubName} hub`);
+      debugLog(`Connected to ${hubName} hub`);
       this.notifyConnectionChange(hubName, true);
     } catch (error) {
       console.error(`Failed to connect to ${hubName} hub:`, error);
@@ -82,19 +83,19 @@ export class SignalRManager {
 
   private setupConnectionEvents(connection: HubConnection, hubName: string) {
     connection.onreconnecting(() => {
-      console.log(`${hubName} hub reconnecting...`);
+      debugLog(`${hubName} hub reconnecting...`);
       useConnectionStore.getState().setSignalRStatus('reconnecting');
       this.notifyConnectionChange(hubName, false);
     });
 
     connection.onreconnected(() => {
-      console.log(`${hubName} hub reconnected`);
+      debugLog(`${hubName} hub reconnected`);
       useConnectionStore.getState().setSignalRStatus('connected');
       this.notifyConnectionChange(hubName, true);
     });
 
     connection.onclose((error) => {
-      console.log(`${hubName} hub disconnected:`, error);
+      debugLog(`${hubName} hub disconnected:`, error);
       useConnectionStore.getState().setSignalRStatus('disconnected');
       this.notifyConnectionChange(hubName, false);
     });

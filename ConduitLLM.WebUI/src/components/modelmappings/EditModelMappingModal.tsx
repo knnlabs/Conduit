@@ -72,20 +72,29 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
   const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
 
   // Create a mutation wrapper that handles the id
-  const mutation = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutation: any = {
     ...updateModelMappingMutation,
     mutate: (values: EditModelMappingForm, options?: Parameters<typeof updateModelMappingMutation.mutate>[1]) => {
       if (!modelMapping) return;
       updateModelMappingMutation.mutate({
         id: modelMapping.id,
-        data: values,
+        data: {
+          ...values,
+          capabilities: values.capabilities.join(','),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
       }, options);
     },
     mutateAsync: async (values: EditModelMappingForm) => {
       if (!modelMapping) throw new Error('No model mapping to update');
       return updateModelMappingMutation.mutateAsync({
         id: modelMapping.id,
-        data: values,
+        data: {
+          ...values,
+          capabilities: values.capabilities.join(','),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
       });
     },
   };

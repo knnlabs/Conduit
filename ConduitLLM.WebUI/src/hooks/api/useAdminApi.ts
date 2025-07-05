@@ -3,7 +3,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
+import { getAdminClient } from '@/lib/clients/conduit';
 import { apiFetch } from '@/lib/utils/fetch-wrapper';
+import type { 
+  CreateVirtualKeyRequest, 
+  UpdateVirtualKeyRequest,
+  CreateProviderCredentialDto,
+  UpdateProviderCredentialDto,
+  CreateModelProviderMappingDto,
+  UpdateModelProviderMappingDto
+} from '@knn_labs/conduit-admin-client';
 
 // Query key factory
 export const adminApiKeys = {
@@ -29,20 +38,15 @@ export function useVirtualKeys() {
     queryKey: adminApiKeys.virtualKeys(),
     queryFn: async () => {
       try {
-        const response = await apiFetch('/api/admin/virtual-keys', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        const client = getAdminClient();
+        const keys = await client.virtualKeys.list({
+          // Get both enabled and disabled keys by not filtering
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: 'Failed to fetch virtual keys' }));
-          const backendError = { status: response.status, message: error.error || 'Failed to fetch virtual keys' };
-          throw BackendErrorHandler.classifyError(backendError);
-        }
-
-        return response.json();
+        // Transform the data to ensure IDs are strings
+        return keys.map(key => ({
+          ...key,
+          id: key.id.toString(), // Convert number to string
+        }));
       } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
@@ -61,19 +65,16 @@ export function useVirtualKey(id: string) {
   return useQuery({
     queryKey: adminApiKeys.virtualKey(id),
     queryFn: async () => {
-      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch virtual key' }));
-        throw new Error(error.error || 'Failed to fetch virtual key');
+      try {
+        const client = getAdminClient();
+        const key = await client.virtualKeys.getById(parseInt(id));
+        return {
+          ...key,
+          id: key.id.toString(), // Convert number to string
+        };
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     enabled: !!id,
   });
@@ -83,21 +84,13 @@ export function useCreateVirtualKey() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: unknown) => {
-      const response = await apiFetch('/api/admin/virtual-keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to create virtual key' }));
-        throw new Error(error.error || 'Failed to create virtual key');
+    mutationFn: async (data: CreateVirtualKeyRequest) => {
+      try {
+        const client = getAdminClient();
+        return await client.virtualKeys.create(data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.virtualKeys() });
@@ -122,21 +115,13 @@ export function useUpdateVirtualKey() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
-      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to update virtual key' }));
-        throw new Error(error.error || 'Failed to update virtual key');
+    mutationFn: async ({ id, data }: { id: string; data: UpdateVirtualKeyRequest }) => {
+      try {
+        const client = getAdminClient();
+        return await client.virtualKeys.update(parseInt(id), data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.virtualKeys() });
@@ -163,19 +148,13 @@ export function useDeleteVirtualKey() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiFetch(`/api/admin/virtual-keys/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to delete virtual key' }));
-        throw new Error(error.error || 'Failed to delete virtual key');
+      try {
+        const client = getAdminClient();
+        await client.virtualKeys.deleteById(parseInt(id));
+        return { success: true };
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.virtualKeys() });
@@ -201,19 +180,24 @@ export function useProviders() {
   return useQuery({
     queryKey: adminApiKeys.providers(),
     queryFn: async () => {
-      const response = await apiFetch('/api/admin/providers', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch providers' }));
-        throw new Error(error.error || 'Failed to fetch providers');
+      try {
+        const client = getAdminClient();
+        const providers = await client.providers.list();
+        
+        // Transform the data to match the expected Provider interface
+        // Since the SDK doesn't provide health status and models count,
+        // we'll set default values for now
+        return providers.map(provider => ({
+          ...provider,
+          id: provider.id.toString(), // Convert number to string
+          providerType: provider.providerName, // Use providerName as type for now
+          healthStatus: 'unknown' as const, // Default to unknown
+          modelsAvailable: 0, // Default to 0
+          lastHealthCheck: undefined,
+        }));
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 30 * 1000,
   });
@@ -223,21 +207,13 @@ export function useCreateProvider() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: unknown) => {
-      const response = await apiFetch('/api/admin/providers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to create provider' }));
-        throw new Error(error.error || 'Failed to create provider');
+    mutationFn: async (data: CreateProviderCredentialDto) => {
+      try {
+        const client = getAdminClient();
+        return await client.providers.create(data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.providers() });
@@ -262,21 +238,13 @@ export function useUpdateProvider() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
-      const response = await apiFetch(`/api/admin/providers/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to update provider' }));
-        throw new Error(error.error || 'Failed to update provider');
+    mutationFn: async ({ id, data }: { id: string; data: UpdateProviderCredentialDto }) => {
+      try {
+        const client = getAdminClient();
+        return await client.providers.update(parseInt(id), data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.providers() });
@@ -302,19 +270,13 @@ export function useDeleteProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await apiFetch(`/api/admin/providers/${providerId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to delete provider' }));
-        throw new Error(error.error || 'Failed to delete provider');
+      try {
+        const client = getAdminClient();
+        await client.providers.deleteById(parseInt(providerId));
+        return { success: true };
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.providers() });
@@ -340,19 +302,26 @@ export function useModelMappings() {
   return useQuery({
     queryKey: adminApiKeys.modelMappings(),
     queryFn: async () => {
-      const response = await apiFetch('/api/admin/model-mappings', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch model mappings' }));
-        throw new Error(error.error || 'Failed to fetch model mappings');
+      try {
+        const client = getAdminClient();
+        const mappings = await client.modelMappings.list({
+          // Get all mappings
+        });
+        // Transform the data to match expected interface
+        return mappings.map(mapping => ({
+          ...mapping,
+          id: mapping.id.toString(), // Convert number to string
+          internalModelName: mapping.modelId,
+          providerModelName: mapping.providerModelId,
+          providerName: mapping.providerId,
+          capabilities: [], // Default empty for now
+          priority: mapping.priority || 100,
+          createdAt: new Date().toISOString(), // Default for now
+          requestCount: 0, // Default for now
+        }));
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 30 * 1000,
   });
@@ -362,21 +331,13 @@ export function useCreateModelMapping() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: unknown) => {
-      const response = await apiFetch('/api/admin/model-mappings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to create model mapping' }));
-        throw new Error(error.error || 'Failed to create model mapping');
+    mutationFn: async (data: CreateModelProviderMappingDto) => {
+      try {
+        const client = getAdminClient();
+        return await client.modelMappings.create(data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.modelMappings() });
@@ -401,21 +362,13 @@ export function useUpdateModelMapping() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: unknown }) => {
-      const response = await apiFetch(`/api/admin/model-mappings/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to update model mapping' }));
-        throw new Error(error.error || 'Failed to update model mapping');
+    mutationFn: async ({ id, data }: { id: string; data: UpdateModelProviderMappingDto }) => {
+      try {
+        const client = getAdminClient();
+        return await client.modelMappings.update(parseInt(id), data);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.modelMappings() });
@@ -436,23 +389,12 @@ export function useUpdateModelMapping() {
   });
 }
 
-// Test model mapping
+// Test model mapping - Not available in SDK yet
 export function useTestModelMapping() {
   return useMutation({
-    mutationFn: async (mappingId: string) => {
-      const response = await apiFetch(`/api/admin/model-mappings/${mappingId}/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to test model');
-      }
-
-      return response.json();
+    mutationFn: async (_mappingId: string) => {
+      // SDK doesn't have test method yet
+      throw new Error('Model mapping test is not yet implemented');
     },
     onSuccess: () => {
       notifications.show({
@@ -477,19 +419,13 @@ export function useDeleteModelMapping() {
   
   return useMutation({
     mutationFn: async (mappingId: string) => {
-      const response = await apiFetch(`/api/admin/model-mappings/${mappingId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete model mapping');
+      try {
+        const client = getAdminClient();
+        await client.modelMappings.deleteById(parseInt(mappingId));
+        return { success: true };
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.modelMappings() });
@@ -509,25 +445,14 @@ export function useDeleteModelMapping() {
   });
 }
 
-// Bulk discover model mappings
+// Bulk discover model mappings - Not available in SDK yet
 export function useBulkDiscoverModelMappings() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      const response = await apiFetch('/api/admin/model-mappings/discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to discover models');
-      }
-
-      return response.json();
+      // SDK doesn't have discoverModels method yet
+      throw new Error('Model discovery is not yet implemented');
     },
     onSuccess: (data: { modelsDiscovered?: number }) => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.modelMappings() });
@@ -553,19 +478,12 @@ export function useSystemInfo() {
   return useQuery({
     queryKey: adminApiKeys.systemInfo(),
     queryFn: async () => {
-      const response = await apiFetch('/api/admin/system/info', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch system information' }));
-        throw new Error(error.error || 'Failed to fetch system information');
+      try {
+        const client = getAdminClient();
+        return await client.system.getSystemInfo();
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 60 * 1000, // 1 minute
   });
@@ -576,19 +494,18 @@ export function useSystemSettings() {
   return useQuery({
     queryKey: adminApiKeys.systemSettings(),
     queryFn: async () => {
-      const response = await apiFetch('/api/admin/system/settings', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch system settings' }));
-        throw new Error(error.error || 'Failed to fetch system settings');
+      try {
+        const client = getAdminClient();
+        const settings = await client.settings.getGlobalSettings();
+        // Transform array of settings into object
+        const settingsObject: Record<string, unknown> = {};
+        settings.forEach(setting => {
+          settingsObject[setting.key] = setting.value;
+        });
+        return settingsObject;
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 60 * 1000, // 1 minute
   });
@@ -598,21 +515,18 @@ export function useUpdateSystemSettings() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (settings: unknown) => {
-      const response = await apiFetch('/api/admin/system/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to update settings' }));
-        throw new Error(error.error || 'Failed to update settings');
+    mutationFn: async (settings: Record<string, string>) => {
+      try {
+        const client = getAdminClient();
+        // Update settings one by one as SDK doesn't have bulk update
+        const promises = Object.entries(settings).map(([key, value]) => 
+          client.settings.updateGlobalSetting(key, { value })
+        );
+        const results = await Promise.all(promises);
+        return results;
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminApiKeys.systemSettings() });
@@ -638,19 +552,12 @@ export function useSystemHealth() {
   return useQuery({
     queryKey: adminApiKeys.systemHealth(),
     queryFn: async () => {
-      const response = await apiFetch('/api/admin/system/health', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to fetch system health' }));
-        throw new Error(error.error || 'Failed to fetch system health');
+      try {
+        const client = getAdminClient();
+        return await client.system.getHealth();
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     staleTime: 60 * 1000, // 1 minute
     refetchInterval: 60 * 1000, // Auto-refresh every minute
@@ -756,19 +663,12 @@ export function useTestProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await apiFetch(`/api/admin/providers/${providerId}/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to test provider connection');
+      try {
+        const client = getAdminClient();
+        return await client.providers.testConnectionById(parseInt(providerId));
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       notifications.show({
@@ -793,21 +693,13 @@ export function useTestProvider() {
 // Test provider connection before creation
 export function useTestProviderConnection() {
   return useMutation({
-    mutationFn: async (providerConfig: unknown) => {
-      const response = await apiFetch('/api/admin/providers/test-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(providerConfig),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to test connection');
+    mutationFn: async (providerConfig: CreateProviderCredentialDto) => {
+      try {
+        const client = getAdminClient();
+        return await client.providers.testConnection(providerConfig);
+      } catch (error: unknown) {
+        throw BackendErrorHandler.classifyError(error);
       }
-
-      return response.json();
     },
     onSuccess: () => {
       notifications.show({

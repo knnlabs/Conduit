@@ -139,7 +139,8 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
   };
 
   // Create a mutation wrapper that handles the payload transformation
-  const mutation = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutation: any = {
     ...createProvider,
     mutate: (values: CreateProviderForm, options?: Parameters<typeof createProvider.mutate>[1]) => {
       const payload = {

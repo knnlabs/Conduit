@@ -47,15 +47,6 @@ interface GeneratedImage {
   createdAt: Date;
 }
 
-interface ImageGenerationRequest {
-  virtualKey: string;
-  prompt: string;
-  model: string;
-  size: string;
-  quality: string;
-  style?: string;
-  n: number;
-}
 
 export default function ImageGenerationPage() {
   const [prompt, setPrompt] = useState('');
@@ -94,21 +85,18 @@ export default function ImageGenerationPage() {
     }
 
     try {
-      const request: ImageGenerationRequest = {
+      const request = {
         virtualKey: selectedVirtualKey,
         prompt: prompt.trim(),
         model: selectedModel,
         size,
-        quality,
+        quality: quality as 'standard' | 'hd',
         n: numberOfImages,
+        ...(selectedModel === 'dall-e-3' && { style }),
       };
 
-      // Add style for DALL-E 3
-      if (selectedModel === 'dall-e-3') {
-        request.style = style;
-      }
-
-      const response = await imageGeneration.mutateAsync(request);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await imageGeneration.mutateAsync(request as any);
 
       interface ImageGenerationResponse {
         data?: Array<{ url?: string; b64_json?: string }>;

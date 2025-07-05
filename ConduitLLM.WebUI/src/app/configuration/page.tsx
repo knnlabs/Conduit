@@ -90,11 +90,15 @@ export default function ConfigurationPage() {
 
   const handleSaveSection = async (_section: string) => {
     try {
-      await updateSystemSettings.mutateAsync(form.values);
+      // Convert form values to Record<string, string>
+      const settings: Record<string, string> = {};
+      Object.entries(form.values).forEach(([key, value]) => {
+        settings[key] = String(value);
+      });
+      await updateSystemSettings.mutateAsync(settings);
       setEditingSection(null);
-    } catch (error) {
+    } catch (_error) {
       // Error notification is handled by the mutation hook
-      console.error('Save settings error:', error);
     }
   };
 

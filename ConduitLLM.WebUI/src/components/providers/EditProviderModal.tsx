@@ -104,7 +104,8 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
   }
 
   // Create a mutation wrapper that handles the payload transformation
-  const mutation = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mutation: any = {
     ...updateProvider,
     mutate: (values: EditProviderForm, options?: Parameters<typeof updateProvider.mutate>[1]) => {
       const payload = {

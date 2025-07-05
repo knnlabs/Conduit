@@ -70,16 +70,11 @@ export default function AudioUsagePage() {
   const { mutate: exportData } = useExportAudioUsage();
 
   // Virtual keys options
-  interface VirtualKeyDto {
-    id: string;
-    name: string;
-  }
-  
   const virtualKeys = [
     { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData?.data || []).map((key: VirtualKeyDto) => ({
+    ...(virtualKeysData || []).map((key) => ({
       value: key.id,
-      label: key.name,
+      label: key.keyName || key.id,
     })),
   ];
 
