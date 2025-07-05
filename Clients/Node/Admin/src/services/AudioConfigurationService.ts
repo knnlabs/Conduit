@@ -309,6 +309,36 @@ export class AudioConfigurationService extends BaseApiClient {
     return this.get<RealtimeSessionDto>(endpoint);
   }
 
+  /**
+   * Terminates an active real-time audio session
+   */
+  async terminateSession(sessionId: string): Promise<{ success: boolean; sessionId: string; message?: string }> {
+    if (!sessionId || sessionId.trim().length === 0) {
+      throw new Error('Session ID is required');
+    }
+
+    const endpoint = `${AudioConfigurationService.SESSIONS_ENDPOINT}/${encodeURIComponent(sessionId)}/terminate`;
+    
+    try {
+      const response = await this.post<{ success: boolean; message?: string }>(endpoint, {});
+      return {
+        success: response.success,
+        sessionId,
+        message: response.message,
+      };
+    } catch (error) {
+      // If the session is already terminated or doesn't exist, handle gracefully
+      if (error && typeof error === 'object' && 'status' in error) {
+        if (error.status === 404) {
+          throw new Error('Session not found or already terminated');
+        } else if (error.status === 409) {
+          throw new Error('Session is already terminated');
+        }
+      }
+      throw error;
+    }
+  }
+
   // #endregion
 
   // #region Export

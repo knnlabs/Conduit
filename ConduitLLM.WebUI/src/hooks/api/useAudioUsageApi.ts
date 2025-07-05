@@ -404,14 +404,17 @@ export function useExportAudioUsage() {
 
 export function useTerminateSession() {
   const queryClient = useQueryClient();
+  const adminSdk = getAdminClient();
 
-  return useMutation({
+  return useMutation<
+    { success: boolean; sessionId: string; message?: string },
+    Error,
+    string
+  >({
     mutationFn: async (sessionId: string) => {
-      // Mock termination for now - replace with actual API call when backend endpoint exists
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-      return { success: true, sessionId };
+      return await adminSdk.audioConfiguration.terminateSession(sessionId);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ 
         queryKey: [adminApiKeys.audioUsage, 'activeSessions'] 
       });
@@ -421,12 +424,12 @@ export function useTerminateSession() {
       
       notifications.show({
         title: 'Session Terminated',
-        message: 'The real-time session has been terminated',
+        message: data.message || 'The real-time session has been terminated',
         color: 'green',
       });
     },
-    onError: (error: unknown) => {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to terminate session';
+    onError: (error: Error) => {
+      const errorMessage = error.message || 'Failed to terminate session';
       notifications.show({
         title: 'Termination Failed',
         message: errorMessage,
