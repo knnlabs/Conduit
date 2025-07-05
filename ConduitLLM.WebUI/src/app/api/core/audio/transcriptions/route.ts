@@ -1,46 +1,21 @@
-
 import { NextRequest } from 'next/server';
-import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { createCoreRoute } from '@/lib/utils/core-route-helpers';
+import { validateAudioTranscriptionRequest } from '@/lib/utils/core-route-validators';
+import { withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { getServerCoreClient } from '@/lib/clients/server';
-import { createValidationError } from '@/lib/utils/route-helpers';
 
-export async function POST(request: NextRequest) {
-  try {
-    // Validate session - don't require virtual key in session yet
-    const validation = await validateCoreSession(request, { requireVirtualKey: false });
-    if (!validation.isValid) {
-      return new Response(
-        JSON.stringify({ error: validation.error || 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse multipart form data for file upload
-    const formData = await request.formData();
-    
-    // Extract virtual key from various sources
-    const virtualKey = formData.get('virtual_key') as string || 
-                      extractVirtualKey(request) || 
-                      validation.session?.virtualKey;
-    
-    if (!virtualKey) {
-      return createValidationError(
-        'Virtual key is required. Provide it via virtual_key field, x-virtual-key header, or Authorization header',
-        { missingField: 'virtual_key' }
-      );
-    }
-
+export const POST = createCoreRoute(
+  {
+    requireVirtualKey: false,
+    parseAsFormData: true,
+    validateFormData: validateAudioTranscriptionRequest,
+    logContext: 'audio_transcriptions'
+  },
+  async ({ virtualKey }, formData: FormData) => {
     // Extract audio file
     const audioFile = formData.get('file') as File;
-    if (!audioFile) {
-      return createValidationError(
-        'Audio file is required',
-        { missingField: 'file' }
-      );
-    }
-
+    
     // Extract transcription parameters
     const model = formData.get('model') as string || 'whisper-1';
     const language = formData.get('language') as string;
@@ -104,30 +79,8 @@ export async function POST(request: NextRequest) {
         fileSize: audioFile.size,
       }
     });
-  } catch (error: unknown) {
-    // Handle validation errors specially
-    if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message || 'Validation error');
-    }
-    
-    // Handle file size errors
-    if ((error as Record<string, unknown>)?.statusCode === 413 || (error as { message?: string })?.message?.includes('too large')) {
-      return createValidationError('File too large. Maximum size is 25MB', {
-        maxSize: '25MB',
-        providedSize: (error as Record<string, unknown>).fileSize,
-      });
-    }
-    
-    // Handle unsupported media type
-    if ((error as Record<string, unknown>)?.statusCode === 415 || (error as { message?: string })?.message?.includes('unsupported')) {
-      return createValidationError('Unsupported media type. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm', {
-        providedType: (error as Record<string, unknown>).mediaType,
-      });
-    }
-    
-    return mapSDKErrorToResponse(error);
   }
-}
+);
 
 // Support for GET to check endpoint availability
 export async function GET(_request: Request) {
