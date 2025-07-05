@@ -1,5 +1,24 @@
 import { FilterOptions } from './common';
 
+export interface ModelCost {
+  id: number;
+  modelIdPattern: string;
+  providerName: string;
+  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
+  costPerRequest?: number;
+  costPerSecond?: number;
+  costPerImage?: number;
+  isActive: boolean;
+  priority: number;
+  effectiveDate: string;
+  expiryDate?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ModelCostDto {
   id: number;
   modelId: string;
@@ -122,4 +141,29 @@ export interface ModelCostComparison {
     percentageDifference: number;
     currency: string;
   }[];
+}
+
+export interface ModelCostOverview {
+  modelName: string;
+  providerName: string;
+  modelType: string;
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number;
+  averageCostPerRequest: number;
+  costTrend: 'increasing' | 'decreasing' | 'stable';
+  trendPercentage: number;
+}
+
+export interface CostTrend {
+  date: string;
+  cost: number;
+  requests: number;
+  tokens: number;
+}
+
+export interface ImportResult {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
 }

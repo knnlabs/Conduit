@@ -17,6 +17,8 @@ import { DatabaseBackupService } from '../services/DatabaseBackupService';
 import { SignalRService } from '../services/SignalRService';
 import { RealtimeNotificationsService } from '../services/RealtimeNotificationsService';
 import { ConnectionService } from '../services/ConnectionService';
+import { SecurityService } from '../services/SecurityService';
+import { ConfigurationService } from '../services/ConfigurationService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -60,6 +62,8 @@ export class ConduitAdminClient {
   public readonly signalr: SignalRService;
   public readonly realtimeNotifications: RealtimeNotificationsService;
   public readonly connection: ConnectionService;
+  public readonly security: SecurityService;
+  public readonly configuration: ConfigurationService;
 
   private readonly config: ConduitConfig;
 
@@ -101,6 +105,8 @@ export class ConduitAdminClient {
     this.providerHealth = new ProviderHealthService(baseConfig);
     this.notifications = new NotificationsService(baseConfig);
     this.databaseBackup = new DatabaseBackupService(baseConfig);
+    this.security = new SecurityService(baseConfig);
+    this.configuration = new ConfigurationService(baseConfig);
     
     // Initialize SignalR services
     const signalRConfig = config.options?.signalR ?? {};

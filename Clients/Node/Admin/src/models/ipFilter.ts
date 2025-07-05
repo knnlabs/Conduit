@@ -14,6 +14,10 @@ export interface IpFilterDto {
   updatedAt: string;
   lastMatchedAt?: string;
   matchCount?: number;
+  expiresAt?: string; // For temporary rules
+  createdBy?: string;
+  lastModifiedBy?: string;
+  blockedCount?: number; // Number of requests blocked
 }
 
 export interface CreateIpFilterDto {
@@ -123,4 +127,55 @@ export interface IpFilterValidationResult {
     name: string;
     ipAddressOrCidr: string;
   }[];
+}
+
+export interface CreateTemporaryIpFilterDto extends CreateIpFilterDto {
+  expiresAt: string; // ISO date string
+  reason?: string;
+}
+
+export interface BulkOperationResult {
+  success: number;
+  failed: number;
+  errors: Array<{
+    id: string;
+    error: string;
+  }>;
+}
+
+export interface IpFilterImport {
+  ipAddress?: string;
+  ipRange?: string;
+  rule: 'allow' | 'deny';
+  description?: string;
+  expiresAt?: string;
+}
+
+export interface IpFilterImportResult {
+  imported: number;
+  skipped: number;
+  failed: number;
+  errors: Array<{
+    row: number;
+    error: string;
+  }>;
+}
+
+export interface BlockedRequestStats {
+  totalBlocked: number;
+  uniqueIps: number;
+  topBlockedIps: Array<{
+    ipAddress: string;
+    count: number;
+    country?: string;
+  }>;
+  blocksByRule: Array<{
+    ruleId: string;
+    ruleName: string;
+    count: number;
+  }>;
+  timeline: Array<{
+    timestamp: string;
+    count: number;
+  }>;
 }
