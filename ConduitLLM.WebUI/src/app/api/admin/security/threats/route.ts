@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { parseQueryParams } from '@/lib/utils/route-helpers';
+import { config, getAdminApiUrl } from '@/config';
 
 // TODO: Replace with SDK methods when security service is added (see issue #274)
 // This is a temporary implementation that maintains authentication consistency
 // while we await SDK support for security endpoints
 
-const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL || 'http://localhost:5002';
-const masterKey = process.env.CONDUIT_MASTER_KEY || '';
+const adminApiUrl = getAdminApiUrl();
+const masterKey = config.auth.masterKey;
 
 export const GET = withSDKAuth(
   async (request) => {

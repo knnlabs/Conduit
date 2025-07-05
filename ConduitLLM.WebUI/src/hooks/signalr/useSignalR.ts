@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HubConnection } from '@microsoft/signalr';
 import { SignalRManager } from '@/lib/signalr/SignalRManager';
+import { config } from '@/config';
 
 interface UseSignalROptions {
   hubName: string;
@@ -25,11 +26,11 @@ let globalSignalRManager: SignalRManager | null = null;
 function getSignalRManager(): SignalRManager {
   if (!globalSignalRManager) {
     // Connect directly to Conduit Core API but with session-based auth
-    const baseUrl = process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL || 'http://localhost:5000';
+    const baseUrl = config.api.public.coreUrl;
     globalSignalRManager = new SignalRManager({
       baseUrl,
-      automaticReconnect: process.env.NEXT_PUBLIC_SIGNALR_AUTO_RECONNECT !== 'false',
-      reconnectInterval: parseInt(process.env.NEXT_PUBLIC_SIGNALR_RECONNECT_INTERVAL || '5000'),
+      automaticReconnect: config.signalr.autoReconnect,
+      reconnectInterval: config.signalr.reconnectInterval,
     });
   }
   return globalSignalRManager;

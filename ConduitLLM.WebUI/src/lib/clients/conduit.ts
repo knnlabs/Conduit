@@ -2,28 +2,25 @@ import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reportError } from '@/lib/utils/logging';
+import { config, getAdminApiUrl } from '@/config';
 
 // Server-side admin client configuration - uses environment variable
 export function createServerAdminClient(): ConduitAdminClient {
-  const masterKey = process.env.CONDUIT_MASTER_KEY;
+  const masterKey = config.auth.masterKey;
   
   if (!masterKey) {
     throw new Error('CONDUIT_MASTER_KEY environment variable is not set');
   }
 
-  const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL;
+  const adminApiUrl = getAdminApiUrl();
   
-  if (!adminApiUrl) {
-    throw new Error('Admin API URL is not configured');
-  }
-
   // Client configuration validated - masterKey presence confirmed
   
   return new ConduitAdminClient({
     adminApiUrl,
     masterKey,
     options: {
-      timeout: 30000,
+      timeout: config.api.timeout,
     }
   });
 }
@@ -37,10 +34,10 @@ export function createClientAdminClient(): ConduitAdminClient {
   }
 
   return new ConduitAdminClient({
-    adminApiUrl: process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL!,
+    adminApiUrl: config.api.public.adminUrl,
     masterKey: user.masterKey,
     options: {
-      timeout: 30000,
+      timeout: config.api.timeout,
     }
   });
 }
@@ -52,9 +49,9 @@ export function createCoreClient(virtualKey?: string): ConduitCoreClient {
   }
 
   return new ConduitCoreClient({
-    baseURL: process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL!,
+    baseURL: config.api.public.coreUrl,
     apiKey: virtualKey,
-    timeout: 30000,
+    timeout: config.api.timeout,
   });
 }
 
@@ -87,7 +84,7 @@ export function getAdminClient(): ConduitAdminClient {
 export function canCreateAdminClient(): boolean {
   // On server-side, check environment variable
   if (typeof window === 'undefined') {
-    return !!process.env.CONDUIT_MASTER_KEY;
+    return !!config.auth.masterKey;
   }
   
   // On client-side, check user auth

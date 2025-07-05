@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppWrapper } from '@/components/layout/AppWrapper';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ErrorHandlerInitializer } from '@/components/error/ErrorHandlerInitializer';
+import { EnvironmentValidator } from '@/components/core/EnvironmentValidator';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
               <AuthProvider>
                 <ErrorBoundary>
                   <ErrorHandlerInitializer />
+                  <EnvironmentValidator />
                   <AppWrapper>
                     {children}
                   </AppWrapper>
