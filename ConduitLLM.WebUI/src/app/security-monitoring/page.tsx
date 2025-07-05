@@ -59,6 +59,7 @@ import {
 import { formatters } from '@/lib/utils/formatters';
 import { useSecurityEvents, useThreatAnalytics, useComplianceMetrics } from '@/hooks/api/useSecurityApi';
 import { FeatureUnavailable } from '@/components/error/FeatureUnavailable';
+import { useIsFeatureAvailable } from '@/hooks/api/useFeatureAvailability';
 
 // Type to severity mapping
 const _getEventSeverity = (type: string): 'low' | 'medium' | 'high' | 'critical' => {
@@ -113,16 +114,16 @@ export default function SecurityMonitoringPage() {
   const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
+  // Check if security monitoring feature is available
+  const { isAvailable: isFeatureAvailable, isChecking } = useIsFeatureAvailable('security-event-reporting');
+
   // Fetch data using the security API hooks (must be called before any conditional returns)
   const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useSecurityEvents(parseInt(selectedTimeRange));
   const { data: threatsData, isLoading: threatsLoading } = useThreatAnalytics();
   const { data: complianceData, isLoading: complianceLoading } = useComplianceMetrics();
 
-  // Check if security monitoring feature is available
-  const isFeatureAvailable = false; // Security monitoring is not yet implemented
-
   // Show feature unavailable message if not available
-  if (!isFeatureAvailable) {
+  if (!isChecking && !isFeatureAvailable) {
     return (
       <FeatureUnavailable 
         feature="security-event-reporting"

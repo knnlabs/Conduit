@@ -129,37 +129,7 @@ export function getEmptyRequestLogs(
   };
 }
 
-/**
- * Check if a feature is available
- */
-export function isFeatureAvailable(feature: string): boolean {
-  const unavailableFeatures = [
-    'security-event-reporting',
-    'threat-detection',
-    'provider-incidents',
-    'audio-usage-detailed',
-    'realtime-sessions',
-    'analytics-export',
-  ];
-  
-  return !unavailableFeatures.includes(feature);
-}
 
-/**
- * Get feature availability message
- */
-export function getFeatureMessage(feature: string): string {
-  const messages: Record<string, string> = {
-    'security-event-reporting': 'Security event reporting is coming soon. This will allow tracking of authentication failures, rate limit violations, and suspicious activities.',
-    'threat-detection': 'Threat detection analytics will help identify patterns in security events and potential risks.',
-    'provider-incidents': 'Provider incident tracking will show historical outages and performance issues.',
-    'audio-usage-detailed': 'Detailed audio usage analytics with language distribution and model performance metrics is under development.',
-    'realtime-sessions': 'Real-time session monitoring for audio streaming is not yet available.',
-    'analytics-export': 'Analytics export functionality is being implemented to support CSV, JSON, and Excel formats.',
-  };
-  
-  return messages[feature] || 'This feature is not yet available.';
-}
 
 /**
  * Get a placeholder response for unavailable features
@@ -169,7 +139,7 @@ export function getPlaceholderResponse(feature: string, requested: unknown = {})
     success: false,
     available: false,
     feature,
-    message: getFeatureMessage(feature),
+    message: 'This feature is not yet available.',
     requested,
     timestamp: new Date().toISOString(),
   };

@@ -14,6 +14,7 @@ import {
   MaintenanceTaskResult,
   AuditLogDto,
   AuditLogFilters,
+  FeatureAvailability,
 } from '../models/system';
 import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
@@ -235,6 +236,15 @@ export class SystemService extends BaseApiClient {
     throw new NotImplementedError(
       'getDiagnostics requires Admin API endpoint implementation. ' +
         'Consider implementing GET /api/systeminfo/diagnostics'
+    );
+  }
+
+  async getFeatureAvailability(): Promise<FeatureAvailability> {
+    const cacheKey = 'feature-availability';
+    return this.withCache(
+      cacheKey,
+      () => super.get<FeatureAvailability>('/api/systeminfo/features'),
+      CACHE_TTL.MEDIUM
     );
   }
 

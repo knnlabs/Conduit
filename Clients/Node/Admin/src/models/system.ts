@@ -215,3 +215,14 @@ export interface AuditLogFilters extends FilterOptions {
   resourceType?: string;
   result?: 'success' | 'failure';
 }
+
+export interface FeatureAvailability {
+  features: Record<string, {
+    available: boolean;
+    status: 'available' | 'coming_soon' | 'in_development' | 'not_planned';
+    message?: string;
+    version?: string;
+    releaseDate?: string;
+  }>;
+  timestamp: string;
+}

@@ -13,6 +13,7 @@ import {
   Group,
   Badge,
   Timeline,
+  Loader,
 } from '@mantine/core';
 import {
   IconAlertCircle,
@@ -23,7 +24,7 @@ import {
   IconArrowLeft,
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { getFeatureMessage } from '@/lib/placeholders/backend-placeholders';
+import { useFeatureMessage, useIsFeatureAvailable } from '@/hooks/api/useFeatureAvailability';
 
 interface FeatureUnavailableProps {
   feature: string;
@@ -44,7 +45,9 @@ export function FeatureUnavailable({
   onBack,
 }: FeatureUnavailableProps) {
   const router = useRouter();
-  const featureMessage = message || getFeatureMessage(feature);
+  const { featureInfo, isChecking } = useIsFeatureAvailable(feature);
+  const defaultMessage = useFeatureMessage(feature);
+  const featureMessage = message || defaultMessage;
 
   const handleBack = () => {
     if (onBack) {
@@ -52,6 +55,35 @@ export function FeatureUnavailable({
     } else {
       router.back();
     }
+  };
+
+  const getStatusBadge = () => {
+    if (isChecking) {
+      return (
+        <Badge size="lg" variant="light" color="gray">
+          <Group gap={4}>
+            <Loader size={12} />
+            Checking...
+          </Group>
+        </Badge>
+      );
+    }
+    
+    const status = featureInfo?.status || 'in_development';
+    const statusConfig = {
+      'available': { color: 'green', label: 'Available' },
+      'coming_soon': { color: 'blue', label: 'Coming Soon' },
+      'in_development': { color: 'orange', label: 'In Development' },
+      'not_planned': { color: 'gray', label: 'Not Planned' },
+    };
+    
+    const config = statusConfig[status] || statusConfig['in_development'];
+    
+    return (
+      <Badge size="lg" variant="light" color={config.color}>
+        {config.label}
+      </Badge>
+    );
   };
 
   return (
@@ -64,9 +96,7 @@ export function FeatureUnavailable({
 
           <Stack align="center" gap="xs">
             <Title order={2}>{title}</Title>
-            <Badge size="lg" variant="light" color="blue">
-              In Development
-            </Badge>
+            {getStatusBadge()}
           </Stack>
 
           <Alert
@@ -76,7 +106,19 @@ export function FeatureUnavailable({
             variant="light"
             w="100%"
           >
-            <Text size="sm">{featureMessage}</Text>
+            <Stack gap="xs">
+              <Text size="sm">{featureMessage}</Text>
+              {featureInfo?.releaseDate && (
+                <Text size="xs" c="dimmed">
+                  Expected release: {new Date(featureInfo.releaseDate).toLocaleDateString()}
+                </Text>
+              )}
+              {featureInfo?.version && (
+                <Text size="xs" c="dimmed">
+                  Target version: {featureInfo.version}
+                </Text>
+              )}
+            </Stack>
           </Alert>
 
           {showTimeline && (
@@ -124,40 +166,3 @@ export function FeatureUnavailable({
   );
 }
 
-/**
- * Hook to check if a feature is available
- */
-export function useFeatureAvailability(feature: string) {
-  const [isAvailable, setIsAvailable] = React.useState(true);
-  const [isChecking, setIsChecking] = React.useState(true);
-
-  React.useEffect(() => {
-    // In a real implementation, this would check with the backend
-    const checkAvailability = async () => {
-      try {
-        // Simulate API check
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const unavailableFeatures = [
-          'security-event-reporting',
-          'threat-detection',
-          'provider-incidents',
-          'audio-usage-detailed',
-          'realtime-sessions',
-          'analytics-export',
-        ];
-        
-        setIsAvailable(!unavailableFeatures.includes(feature));
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkAvailability();
-  }, [feature]);
-
-  return {
-    isAvailable,
-    isChecking,
-  };
-}
