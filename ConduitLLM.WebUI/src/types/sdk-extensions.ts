@@ -8,8 +8,12 @@ import type {
   VirtualKeyDto as BaseVirtualKeyDto, 
   UsageMetricsDto as BaseUsageMetricsDto,
   ModelUsageDto as BaseModelUsageDto,
-  KeyUsageDto as BaseKeyUsageDto
+  KeyUsageDto as BaseKeyUsageDto,
+  DateRange
 } from '@knn_labs/conduit-admin-client';
+
+// Re-export DateRange for convenience
+export type { DateRange };
 
 /**
  * Date range for analytics queries

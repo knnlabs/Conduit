@@ -38,9 +38,9 @@ import {
 } from '@/hooks/api/useProviderHealthApi';
 import { 
   useCostSummary,
-  useCostTrends,
-  TimeRangeFilter
+  useCostTrends
 } from '@/hooks/api/useAnalyticsApi';
+import type { TimeRangeFilter } from '@/types/analytics-types';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 
