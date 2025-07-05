@@ -414,7 +414,7 @@ export default function UsageAnalyticsPage() {
                             </Table.Td>
                             <Table.Td>
                               <Badge variant="light" color="red">
-                                {formatNumber(error.count)}
+                                {formatters.number(error.count)}
                               </Badge>
                             </Table.Td>
                             <Table.Td>{error.percentage.toFixed(1)}%</Table.Td>
@@ -470,14 +470,14 @@ export default function UsageAnalyticsPage() {
                           <Table.Td>
                             <Text fw={500} size="sm">{metric.endpoint}</Text>
                           </Table.Td>
-                          <Table.Td>{formatLatency(metric.averageLatency)}</Table.Td>
-                          <Table.Td>{formatLatency(metric.p50)}</Table.Td>
-                          <Table.Td>{formatLatency(metric.p90)}</Table.Td>
-                          <Table.Td>{formatLatency(metric.p95)}</Table.Td>
-                          <Table.Td>{formatLatency(metric.p99)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(metric.averageLatency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(metric.p50)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(metric.p90)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(metric.p95)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(metric.p99)}</Table.Td>
                           <Table.Td>
                             <Badge variant="light">
-                              {formatNumber(metric.requestCount)}
+                              {formatters.number(metric.requestCount)}
                             </Badge>
                           </Table.Td>
                         </Table.Tr>

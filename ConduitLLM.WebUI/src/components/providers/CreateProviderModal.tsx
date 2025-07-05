@@ -1,11 +1,9 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
   Button,
-  Stack,
   Group,
   Text,
   Textarea,
@@ -18,7 +16,8 @@ import { useForm } from '@mantine/form';
 import { useCreateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
-// Removed unused notifications import
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -65,46 +64,28 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     },
     validate: {
       providerName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Provider name is required';
-        }
-        if (value.length < 3) {
-          return 'Provider name must be at least 3 characters';
-        }
+        const requiredError = validators.required('Provider name')(value);
+        if (requiredError) return requiredError;
+        
+        const minLengthError = validators.minLength('Provider name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
         return null;
       },
-      providerType: (value) => {
-        if (!value) {
-          return 'Provider type is required';
-        }
-        return null;
-      },
-      apiKey: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'API key is required';
-        }
-        return null;
-      },
+      providerType: validators.required('Provider type'),
+      apiKey: validators.required('API key'),
       apiEndpoint: (value, values) => {
         if (values.providerType === 'custom' && (!value || value.trim().length === 0)) {
           return 'API endpoint is required for custom providers';
         }
-        if (value && !isValidUrl(value)) {
-          return 'Please enter a valid URL';
+        if (value && value.trim()) {
+          return validators.url(value);
         }
         return null;
       },
     },
   });
 
-  const isValidUrl = (string: string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch (_error: unknown) {
-      return false;
-    }
-  };
 
   const getProviderInfo = (providerType: string) => {
     const info: Record<string, { endpoint?: string; docs?: string; note?: string }> = {
@@ -157,8 +138,10 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     }
   };
 
-  const handleSubmit = async (values: CreateProviderForm) => {
-    try {
+  // Create a mutation wrapper that handles the payload transformation
+  const mutation = {
+    ...createProvider,
+    mutate: (values: CreateProviderForm, options?: Parameters<typeof createProvider.mutate>[1]) => {
       const payload = {
         providerName: values.providerName.trim(),
         providerType: values.providerType,
@@ -170,34 +153,39 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
         },
         isEnabled: values.isEnabled,
       };
-
-      await createProvider.mutateAsync(payload);
-      
-      // Reset form and close modal on success
-      form.reset();
-      onClose();
-    } catch (error: unknown) {
-      console.error('Create provider error:', error);
-    }
-  };
-
-  const handleClose = () => {
-    form.reset();
-    onClose();
+      createProvider.mutate(payload, options);
+    },
+    mutateAsync: async (values: CreateProviderForm) => {
+      const payload = {
+        providerName: values.providerName.trim(),
+        providerType: values.providerType,
+        description: values.description?.trim() || undefined,
+        credentials: {
+          apiKey: values.apiKey.trim(),
+          apiEndpoint: values.apiEndpoint?.trim() || undefined,
+          organizationId: values.organizationId?.trim() || undefined,
+        },
+        isEnabled: values.isEnabled,
+      };
+      return createProvider.mutateAsync(payload);
+    },
   };
 
   const selectedProviderInfo = getProviderInfo(form.values.providerType);
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
-      onClose={handleClose}
+      onClose={onClose}
       title="Add Provider"
       size="lg"
-      centered
+      form={form}
+      mutation={mutation}
+      entityType="Provider"
+      submitText="Add Provider"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           <TextInput
             label="Provider Name"
             placeholder="Enter a name for this provider instance"
@@ -275,7 +263,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
             </Text>
           </Alert>
 
-          <Group justify="space-between" mt="md">
+          <Group justify="flex-start" mt="md">
             <Button 
               variant="light"
               onClick={handleTestConnection}
@@ -284,26 +272,9 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
             >
               Test Connection
             </Button>
-            
-            <Group>
-              <Button 
-                variant="subtle" 
-                onClick={handleClose}
-                disabled={createProvider.isPending || testingConnection}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                loading={createProvider.isPending}
-                disabled={!form.isValid() || testingConnection}
-              >
-                Add Provider
-              </Button>
-            </Group>
           </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

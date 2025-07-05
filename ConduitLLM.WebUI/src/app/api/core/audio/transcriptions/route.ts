@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { createCoreRoute } from '@/lib/utils/core-route-helpers';
 import { validateAudioTranscriptionRequest } from '@/lib/utils/core-route-validators';
 import { withSDKErrorHandling } from '@/lib/errors/sdk-errors';

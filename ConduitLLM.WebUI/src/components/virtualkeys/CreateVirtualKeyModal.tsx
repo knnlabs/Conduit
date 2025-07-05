@@ -1,13 +1,10 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   NumberInput,
   Switch,
   Button,
-  Stack,
-  Group,
   Text,
   Textarea,
   Alert,
@@ -20,6 +17,8 @@ import { useCreateVirtualKey } from '@/hooks/api/useAdminApi';
 import { useAvailableModels } from '@/hooks/api/useCoreApi';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
@@ -69,84 +68,30 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
     },
     validate: {
       keyName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Key name is required';
-        }
-        if (value.length < 3) {
-          return 'Key name must be at least 3 characters';
-        }
-        if (value.length > 100) {
-          return 'Key name must be less than 100 characters';
-        }
-        return null;
-      },
-      maxBudget: (value) => {
-        if (value !== undefined && value < 0) {
-          return 'Budget must be positive';
-        }
-        return null;
-      },
-      rateLimitPerMinute: (value) => {
-        if (value !== undefined && value < 1) {
-          return 'Rate limit must be at least 1';
-        }
-        return null;
-      },
-      allowedModels: (value) => {
-        if (!value || value.length === 0) {
-          return 'At least one model must be selected';
-        }
-        return null;
-      },
-      allowedEndpoints: (value) => {
-        if (!value || value.length === 0) {
-          return 'At least one endpoint must be selected';
-        }
-        return null;
-      },
-      allowedIpAddresses: (value) => {
-        // Validate IP addresses format
-        const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        const cidrRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:3[0-2]|[12]?[0-9])$/;
+        const requiredError = validators.required('Key name')(value);
+        if (requiredError) return requiredError;
         
-        for (const ip of value) {
-          if (!ipRegex.test(ip) && !cidrRegex.test(ip)) {
-            return `Invalid IP address or CIDR: ${ip}`;
-          }
-        }
+        const minLengthError = validators.minLength('Key name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
+        const maxLengthError = validators.maxLength('Key name', 100)(value);
+        if (maxLengthError) return maxLengthError;
+        
         return null;
       },
+      maxBudget: validators.positiveNumber('Budget'),
+      rateLimitPerMinute: validators.minValue('Rate limit', 1),
+      allowedModels: validators.arrayMinLength('model', 1),
+      allowedEndpoints: validators.arrayMinLength('endpoint', 1),
+      allowedIpAddresses: validators.ipAddresses,
     },
   });
 
-  const handleSubmit = async (values: CreateVirtualKeyForm) => {
-    try {
-      const payload = {
-        keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        rateLimitPerMinute: values.rateLimitPerMinute || undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels,
-        allowedEndpoints: values.allowedEndpoints,
-        allowedIpAddresses: values.allowedIpAddresses.length > 0 ? values.allowedIpAddresses : undefined,
-        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) : undefined,
-      };
-
-      await createVirtualKey.mutateAsync(payload);
-      
-      // Reset form and close modal on success
-      form.reset();
-      setShowAdvanced(false);
-      onClose();
-    } catch (error: unknown) {
-      // Error is handled by the mutation hook
-      console.error('Create virtual key error:', error);
-    }
+  const handleSuccess = () => {
+    setShowAdvanced(false);
   };
 
   const handleClose = () => {
-    form.reset();
     setShowAdvanced(false);
     onClose();
   };
@@ -165,16 +110,53 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
     modelOptions.unshift({ value: '*', label: 'All Models' });
   }
 
+  // Create a mutation wrapper that handles the payload transformation
+  const mutation = {
+    ...createVirtualKey,
+    mutate: (values: CreateVirtualKeyForm, options?: Parameters<typeof createVirtualKey.mutate>[1]) => {
+      const payload = {
+        keyName: values.keyName.trim(),
+        description: values.description?.trim() || undefined,
+        maxBudget: values.maxBudget || undefined,
+        rateLimitPerMinute: values.rateLimitPerMinute || undefined,
+        isEnabled: values.isEnabled,
+        allowedModels: values.allowedModels,
+        allowedEndpoints: values.allowedEndpoints,
+        allowedIpAddresses: values.allowedIpAddresses.length > 0 ? values.allowedIpAddresses : undefined,
+        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) : undefined,
+      };
+      createVirtualKey.mutate(payload, options);
+    },
+    mutateAsync: async (values: CreateVirtualKeyForm) => {
+      const payload = {
+        keyName: values.keyName.trim(),
+        description: values.description?.trim() || undefined,
+        maxBudget: values.maxBudget || undefined,
+        rateLimitPerMinute: values.rateLimitPerMinute || undefined,
+        isEnabled: values.isEnabled,
+        allowedModels: values.allowedModels,
+        allowedEndpoints: values.allowedEndpoints,
+        allowedIpAddresses: values.allowedIpAddresses.length > 0 ? values.allowedIpAddresses : undefined,
+        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) : undefined,
+      };
+      return createVirtualKey.mutateAsync(payload);
+    },
+  };
+
   return (
-    <Modal
+    <FormModal
       opened={opened}
       onClose={handleClose}
       title="Create Virtual Key"
       size="lg"
-      centered
+      form={form}
+      mutation={mutation}
+      entityType="Virtual Key"
+      submitText="Create Virtual Key"
+      onSuccess={handleSuccess}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           <TextInput
             label="Key Name"
             placeholder="My API Key"
@@ -272,25 +254,8 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
               Make sure to copy and store it securely.
             </Text>
           </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button 
-              variant="subtle" 
-              onClick={handleClose}
-              disabled={createVirtualKey.isPending}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              loading={createVirtualKey.isPending}
-              disabled={!form.isValid()}
-            >
-              Create Virtual Key
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

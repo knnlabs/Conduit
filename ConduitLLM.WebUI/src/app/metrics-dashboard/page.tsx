@@ -533,7 +533,7 @@ export default function MetricsDashboardPage() {
                             Response Time: {formatters.responseTime(provider.lastHealthCheck.responseTime)}
                           </Text>
                           <Text size="xs" c="dimmed">
-                            Last Check: {formatters.duration(new Date(provider.lastHealthCheck.checkedAt))}
+                            Last Check: {formatters.date(provider.lastHealthCheck.checkedAt)}
                           </Text>
                         </>
                       )}

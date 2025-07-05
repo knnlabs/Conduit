@@ -340,7 +340,7 @@ export default function SecurityMonitoringPage() {
                       return (
                         <Table.Tr key={`${event.timestamp}-${event.source}`}>
                           <Table.Td>
-                            <Text size="sm">{formatters.duration(new Date(event.timestamp))}</Text>
+                            <Text size="sm">{formatters.date(event.timestamp)}</Text>
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
@@ -457,7 +457,7 @@ export default function SecurityMonitoringPage() {
                             {threat.riskScore.toFixed(1)}
                           </Badge>
                         </Table.Td>
-                        <Table.Td>{formatters.duration(new Date(threat.lastSeen))}</Table.Td>
+                        <Table.Td>{formatters.date(threat.lastSeen)}</Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
@@ -535,7 +535,7 @@ export default function SecurityMonitoringPage() {
                     </Group>
                     <Group justify="space-between">
                       <Text size="sm">Last Audit</Text>
-                      <Text size="sm">{complianceData?.dataProtection.lastAudit ? formatters.duration(new Date(complianceData.dataProtection.lastAudit)) : 'Never'}</Text>
+                      <Text size="sm">{complianceData?.dataProtection.lastAudit ? formatters.date(complianceData.dataProtection.lastAudit) : 'Never'}</Text>
                     </Group>
                   </Stack>
                 </Card>
@@ -601,7 +601,7 @@ export default function SecurityMonitoringPage() {
                     </Group>
                     <Group justify="space-between">
                       <Text size="sm">Last Review</Text>
-                      <Text size="sm">{complianceData?.monitoring.lastSecurityReview ? formatters.duration(new Date(complianceData.monitoring.lastSecurityReview)) : 'Never'}</Text>
+                      <Text size="sm">{complianceData?.monitoring.lastSecurityReview ? formatters.date(complianceData.monitoring.lastSecurityReview) : 'Never'}</Text>
                     </Group>
                   </Stack>
                 </Card>

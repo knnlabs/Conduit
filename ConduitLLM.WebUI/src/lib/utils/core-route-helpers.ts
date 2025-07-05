@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
-import { createValidationError as createValidationErrorResponse } from '@/lib/utils/route-helpers';
 import { generateRequestId } from '@/lib/utils/logging';
 
 export interface CoreRouteOptions {

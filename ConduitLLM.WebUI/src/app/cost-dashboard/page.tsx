@@ -286,10 +286,10 @@ export default function CostDashboardPage() {
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm">
-                  {formatCurrency(stats.totalSpend)} of {formatCurrency(stats.totalBudget)}
+                  {formatters.currency(stats.totalSpend)} of {formatters.currency(stats.totalBudget)}
                 </Text>
                 <Text size="sm" c="dimmed">
-                  {formatCurrency(stats.totalBudget - stats.totalSpend)} remaining
+                  {formatters.currency(stats.totalBudget - stats.totalSpend)} remaining
                 </Text>
               </Group>
               <Progress

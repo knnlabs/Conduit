@@ -1,13 +1,10 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   NumberInput,
   Switch,
-  Button,
   Stack,
-  Group,
   Text,
   Textarea,
   Alert,
@@ -15,7 +12,8 @@ import {
 import { useForm } from '@mantine/form';
 import { useUpdateVirtualKey } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { useEffect } from 'react';
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
 
 interface VirtualKey {
   id: string;
@@ -58,43 +56,29 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
     },
     validate: {
       keyName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Key name is required';
-        }
-        if (value.length < 3) {
-          return 'Key name must be at least 3 characters';
-        }
-        if (value.length > 100) {
-          return 'Key name must be less than 100 characters';
-        }
+        const requiredError = validators.required('Key name')(value);
+        if (requiredError) return requiredError;
+        
+        const minLengthError = validators.minLength('Key name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
+        const maxLengthError = validators.maxLength('Key name', 100)(value);
+        if (maxLengthError) return maxLengthError;
+        
         return null;
       },
-      maxBudget: (value) => {
-        if (value !== undefined && value <= 0) {
-          return 'Budget must be greater than 0';
-        }
-        return null;
-      },
+      maxBudget: validators.positiveNumber('Budget'),
     },
   });
 
-  // Update form when virtual key changes
-  useEffect(() => {
-    if (virtualKey) {
-      form.setValues({
-        keyName: virtualKey.keyName,
-        description: virtualKey.description || '',
-        maxBudget: virtualKey.maxBudget,
-        isEnabled: virtualKey.isEnabled,
-        allowedModels: virtualKey.allowedModels || [],
-      });
-    }
-  }, [virtualKey, form]);
+  if (!virtualKey) {
+    return null;
+  }
 
-  const handleSubmit = async (values: EditVirtualKeyForm) => {
-    if (!virtualKey) return;
-
-    try {
+  // Create a mutation wrapper that handles the payload transformation
+  const mutation = {
+    ...updateVirtualKey,
+    mutate: (values: EditVirtualKeyForm, options?: Parameters<typeof updateVirtualKey.mutate>[1]) => {
       const payload = {
         keyName: values.keyName.trim(),
         description: values.description?.trim() || undefined,
@@ -102,38 +86,47 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
       };
-
-      await updateVirtualKey.mutateAsync({
+      updateVirtualKey.mutate({
+        id: virtualKey.id,
+        data: payload,
+      }, options);
+    },
+    mutateAsync: async (values: EditVirtualKeyForm) => {
+      const payload = {
+        keyName: values.keyName.trim(),
+        description: values.description?.trim() || undefined,
+        maxBudget: values.maxBudget || undefined,
+        isEnabled: values.isEnabled,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+      };
+      return updateVirtualKey.mutateAsync({
         id: virtualKey.id,
         data: payload,
       });
-      
-      onClose();
-    } catch (error: unknown) {
-      // Error is handled by the mutation hook
-      console.error('Update virtual key error:', error);
-    }
+    },
   };
-
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  if (!virtualKey) {
-    return null;
-  }
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
-      onClose={handleClose}
+      onClose={onClose}
       title="Edit Virtual Key"
       size="md"
-      centered
+      form={form}
+      mutation={mutation}
+      entityType="Virtual Key"
+      isEdit={true}
+      submitText="Save Changes"
+      initialValues={{
+        keyName: virtualKey.keyName,
+        description: virtualKey.description || '',
+        maxBudget: virtualKey.maxBudget,
+        isEnabled: virtualKey.isEnabled,
+        allowedModels: virtualKey.allowedModels || [],
+      }}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           <TextInput
             label="Key Name"
             placeholder="Enter a descriptive name for this key"
@@ -183,25 +176,8 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
               )}
             </Stack>
           </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button 
-              variant="subtle" 
-              onClick={handleClose}
-              disabled={updateVirtualKey.isPending}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              loading={updateVirtualKey.isPending}
-              disabled={!form.isValid()}
-            >
-              Save Changes
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

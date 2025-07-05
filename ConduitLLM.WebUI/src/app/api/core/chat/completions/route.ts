@@ -1,10 +1,8 @@
-import { NextRequest } from 'next/server';
 import { createCoreRoute } from '@/lib/utils/core-route-helpers';
 import { validateChatCompletionRequest } from '@/lib/utils/core-route-validators';
 import { withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse, createStreamingResponse } from '@/lib/utils/sdk-transforms';
 import { getServerCoreClient } from '@/lib/clients/server';
-import { createValidationError } from '@/lib/utils/route-helpers';
 
 export const POST = createCoreRoute(
   {
@@ -26,29 +24,14 @@ export const POST = createCoreRoute(
       // Handle streaming response using SDK
       const stream = await withSDKErrorHandling(
         async () => coreClient.chat.completions.create({
-          model: chatRequest.model,
-          messages: chatRequest.messages,
+          ...chatRequest,
           stream: true,
-          temperature: chatRequest.temperature,
-          max_tokens: chatRequest.max_tokens,
-          top_p: chatRequest.top_p,
-          frequency_penalty: chatRequest.frequency_penalty,
-          presence_penalty: chatRequest.presence_penalty,
-          stop: chatRequest.stop,
-          tools: chatRequest.tools,
-          tool_choice: chatRequest.tool_choice,
-          response_format: chatRequest.response_format,
-          seed: chatRequest.seed,
-          logprobs: chatRequest.logprobs,
-          top_logprobs: chatRequest.top_logprobs,
-          n: chatRequest.n,
-          logit_bias: chatRequest.logit_bias,
-        }),
+        } as never),
         'create chat completion stream'
       );
 
       // Return SSE stream
-      return createStreamingResponse(stream, {
+      return createStreamingResponse(stream as unknown as AsyncIterable<unknown>, {
         transformer: (chunk: unknown) => {
           // Transform SDK chunk to OpenAI format SSE
           if (typeof chunk === 'object' && chunk !== null && 'object' in chunk && (chunk as Record<string, unknown>).object === 'chat.completion.chunk') {
@@ -65,24 +48,9 @@ export const POST = createCoreRoute(
       // Handle non-streaming response
       const completion = await withSDKErrorHandling(
         async () => coreClient.chat.completions.create({
-          model: chatRequest.model,
-          messages: chatRequest.messages,
+          ...chatRequest,
           stream: false,
-          temperature: chatRequest.temperature,
-          max_tokens: chatRequest.max_tokens,
-          top_p: chatRequest.top_p,
-          frequency_penalty: chatRequest.frequency_penalty,
-          presence_penalty: chatRequest.presence_penalty,
-          stop: chatRequest.stop,
-          tools: chatRequest.tools,
-          tool_choice: chatRequest.tool_choice,
-          response_format: chatRequest.response_format,
-          seed: chatRequest.seed,
-          logprobs: chatRequest.logprobs,
-          top_logprobs: chatRequest.top_logprobs,
-          n: chatRequest.n,
-          logit_bias: chatRequest.logit_bias,
-        }),
+        } as never),
         'create chat completion'
       );
 
