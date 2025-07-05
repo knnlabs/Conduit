@@ -44,17 +44,17 @@ interface CacheRegion {
 }
 
 export const GET = withSDKAuth(
-  async (_request, { auth }) => {
+  async (_request, context) => {
     try {
       // Get router configuration which includes some cache settings
       const _routerConfig = await withSDKErrorHandling(
-        async () => auth.adminClient!.settings.getRouterConfiguration(),
+        async () => context.adminClient!.settings.getRouterConfiguration(),
         'get router configuration'
       );
 
       // Get cache-related global settings
       const cacheSettings = await withSDKErrorHandling(
-        async () => auth.adminClient!.settings.getSettingsByCategory('cache'),
+        async () => context.adminClient!.settings.getSettingsByCategory('cache'),
         'get cache settings'
       );
 
@@ -199,7 +199,7 @@ export const GET = withSDKAuth(
 );
 
 export const PUT = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -208,7 +208,7 @@ export const PUT = withSDKAuth(
       
       if (body.defaultTTLSeconds !== undefined) {
         updatePromises.push(
-          auth.adminClient!.settings.setSetting(
+          context.adminClient!.settings.setSetting(
             'CACHE_DEFAULT_TTL',
             String(body.defaultTTLSeconds),
             {
@@ -222,7 +222,7 @@ export const PUT = withSDKAuth(
       
       if (body.maxMemorySize !== undefined) {
         updatePromises.push(
-          auth.adminClient!.settings.setSetting(
+          context.adminClient!.settings.setSetting(
             'CACHE_MAX_MEMORY',
             body.maxMemorySize,
             {
@@ -236,7 +236,7 @@ export const PUT = withSDKAuth(
       
       if (body.evictionPolicy !== undefined) {
         updatePromises.push(
-          auth.adminClient!.settings.setSetting(
+          context.adminClient!.settings.setSetting(
             'CACHE_EVICTION_POLICY',
             body.evictionPolicy,
             {
@@ -250,7 +250,7 @@ export const PUT = withSDKAuth(
       
       if (body.enableCompression !== undefined) {
         updatePromises.push(
-          auth.adminClient!.settings.setSetting(
+          context.adminClient!.settings.setSetting(
             'CACHE_ENABLE_COMPRESSION',
             String(body.enableCompression),
             {

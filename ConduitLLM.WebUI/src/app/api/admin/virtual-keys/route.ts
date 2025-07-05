@@ -3,7 +3,7 @@ import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       // Extract query parameters
       const url = new URL(request.url);
@@ -22,7 +22,7 @@ export const GET = withSDKAuth(
 
       // Use the admin client to list virtual keys
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.list({
+        async () => context.adminClient!.virtualKeys.list({
           pageNumber,
           pageSize,
           search,
@@ -43,14 +43,14 @@ export const GET = withSDKAuth(
 );
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       // Parse and validate request body
       const body = await request.json();
       
       // Use the admin client to create virtual key
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.virtualKeys.create({
+        async () => context.adminClient!.virtualKeys.create({
           keyName: body.keyName,
           allowedModels: body.allowedModels,
           maxBudget: body.maxBudget,

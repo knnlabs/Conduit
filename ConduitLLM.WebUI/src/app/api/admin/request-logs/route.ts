@@ -4,13 +4,13 @@ import { transformPaginatedResponse } from '@/lib/utils/sdk-transforms';
 import { parseQueryParams, createFileResponse, createValidationError } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       
       // Get request logs with filtering
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.analytics.getRequestLogs({
+        async () => context.adminClient!.analytics.getRequestLogs({
           pageNumber: params.page,
           pageSize: params.pageSize,
           startDate: params.startDate,
@@ -54,7 +54,7 @@ export const GET = withSDKAuth(
 
 // Export request logs
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     let body: { format?: string; filters?: Record<string, unknown> } = {};
     try {
       body = await request.json();
@@ -71,7 +71,7 @@ export const POST = withSDKAuth(
 
       // Export request logs using the generic analytics export
       const blob = await withSDKErrorHandling(
-        async () => auth.adminClient!.analytics.exportAnalytics(
+        async () => context.adminClient!.analytics.exportAnalytics(
           {
             startDate: (filters?.startDate as string) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
             endDate: (filters?.endDate as string) || new Date().toISOString(),

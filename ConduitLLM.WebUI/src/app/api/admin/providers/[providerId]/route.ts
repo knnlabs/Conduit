@@ -3,13 +3,13 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { providerId } = params;
       
       // Get all providers and find the specific one
       const providers = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list(),
+        async () => adminClient!.providers.list(),
         'list providers to find specific provider'
       );
       
