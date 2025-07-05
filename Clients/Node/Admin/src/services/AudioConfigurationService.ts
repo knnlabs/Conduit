@@ -12,11 +12,13 @@ import type {
   AudioProviderTestResult,
 } from '../models/audioConfiguration';
 import type { PagedResponse } from '../models/common';
+import type { ExportResult } from '../models/analyticsExport';
 import {
   validateAudioProviderRequest,
   validateAudioCostConfigRequest,
   validateAudioUsageFilters,
 } from '../models/audioConfiguration';
+import { ENDPOINTS } from '../constants';
 
 /**
  * Service for managing audio provider configurations, cost settings, and usage analytics
@@ -305,6 +307,52 @@ export class AudioConfigurationService extends BaseApiClient {
     const endpoint = `${AudioConfigurationService.SESSIONS_ENDPOINT}/${encodeURIComponent(sessionId)}`;
     
     return this.get<RealtimeSessionDto>(endpoint);
+  }
+
+  // #endregion
+
+  // #region Export
+
+  /**
+   * Exports audio usage data in the specified format
+   */
+  async exportAudioUsage(params: {
+    startDate: string;
+    endDate: string;
+    format: 'csv' | 'json';
+    virtualKey?: string;
+    provider?: string;
+    operationType?: string;
+  }): Promise<ExportResult> {
+    if (!params.startDate || !params.endDate) {
+      throw new Error('Start date and end date are required for audio usage export');
+    }
+
+    if (!params.format) {
+      throw new Error('Export format is required');
+    }
+
+    if (new Date(params.startDate) >= new Date(params.endDate)) {
+      throw new Error('Start date must be before end date');
+    }
+
+    const requestBody = {
+      format: params.format,
+      dateRange: {
+        startDate: params.startDate,
+        endDate: params.endDate,
+      },
+      filters: {
+        virtualKey: params.virtualKey,
+        provider: params.provider,
+        operationType: params.operationType,
+      },
+    };
+
+    return this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_AUDIO_USAGE,
+      requestBody
+    );
   }
 
   // #endregion

@@ -298,15 +298,78 @@ export function useActiveSessions() {
 
 export function useExportAudioUsage() {
   const _queryClient = useQueryClient();
+  const adminSdk = getAdminClient();
 
-  return useMutation({
+  return useMutation<string, Error, {
+    format: 'csv' | 'json';
+    startDate: Date;
+    endDate: Date;
+    virtualKey?: string;
+    provider?: string;
+    operationType?: string;
+  }>({
     mutationFn: async ({ 
-      format: _format 
+      format,
+      startDate,
+      endDate,
+      virtualKey,
+      provider,
+      operationType,
     }: { 
-      format: 'csv' | 'json' 
+      format: 'csv' | 'json';
+      startDate: Date;
+      endDate: Date;
+      virtualKey?: string;
+      provider?: string;
+      operationType?: string;
     }) => {
-      // Feature not yet available - throw error to trigger error handling
-      throw new Error('Audio usage export is not yet available');
+      const result = await adminSdk.audioConfiguration.exportAudioUsage({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        format,
+        virtualKey,
+        provider,
+        operationType,
+      });
+      
+      // If export is async, wait for completion
+      if (result.status === 'pending' || result.status === 'processing') {
+        // Poll for completion
+        let attempts = 0;
+        const maxAttempts = 60; // 60 seconds timeout
+        
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          
+          const status = await adminSdk.analytics.getExportStatus(result.exportId);
+          
+          if (status.status === 'completed' && status.result?.downloadUrl) {
+            // Download the file
+            const response = await fetch(status.result.downloadUrl);
+            if (!response.ok) {
+              throw new Error('Failed to download export file');
+            }
+            return await response.text();
+          } else if (status.status === 'failed') {
+            throw new Error(status.error || 'Export failed');
+          }
+          
+          attempts++;
+        }
+        
+        throw new Error('Export timed out');
+      }
+      
+      // If export is sync and has downloadUrl, download it
+      if (result.downloadUrl) {
+        const response = await fetch(result.downloadUrl);
+        if (!response.ok) {
+          throw new Error('Failed to download export file');
+        }
+        return await response.text();
+      }
+      
+      throw new Error('Export result missing download URL');
     },
     onSuccess: (data: string, { format }: { format: 'csv' | 'json' }) => {
       // Create a download link

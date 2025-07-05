@@ -151,6 +151,7 @@ export const ENDPOINTS = {
     EXPORT_PROVIDER: '/api/analytics/export/provider',
     EXPORT_SECURITY: '/api/analytics/export/security',
     EXPORT_REQUEST_LOGS: '/api/analytics/export/request-logs',
+    EXPORT_AUDIO_USAGE: '/api/analytics/export/audio-usage',
     
     // Export management
     EXPORT_SCHEDULES: '/api/analytics/export/schedules',

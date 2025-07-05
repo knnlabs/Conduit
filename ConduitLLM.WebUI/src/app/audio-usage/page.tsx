@@ -18,6 +18,7 @@ import {
   Loader,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
+import { notifications } from '@mantine/notifications';
 import {
   IconMicrophone,
   IconFileText,
@@ -104,8 +105,22 @@ export default function AudioUsagePage() {
   };
 
   const handleExport = () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      notifications.show({
+        title: 'Export Failed',
+        message: 'Please select a date range',
+        color: 'red',
+      });
+      return;
+    }
+    
     exportData({
       format: 'csv',
+      startDate: dateRange[0],
+      endDate: dateRange[1],
+      virtualKey: selectedVirtualKey !== 'all' ? selectedVirtualKey : undefined,
+      provider: undefined, // Audio page doesn't have provider filter
+      operationType: undefined, // Audio page doesn't have operation type filter
     });
   };
 
