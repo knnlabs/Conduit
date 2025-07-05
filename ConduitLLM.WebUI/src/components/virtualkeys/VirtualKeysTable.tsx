@@ -31,6 +31,8 @@ import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useConnectionStore } from '@/stores/useConnectionStore';
 import { useState, useEffect } from 'react';
+import { formatters } from '@/lib/utils/formatters';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 interface VirtualKey {
   id: string;
@@ -94,36 +96,12 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
     });
   };
 
-  const getBudgetUsageColor = (currentSpend: number, maxBudget?: number) => {
-    if (!maxBudget) return 'blue';
-    const percentage = (currentSpend / maxBudget) * 100;
-    if (percentage >= 90) return 'red';
-    if (percentage >= 75) return 'orange';
-    return 'green';
-  };
 
   const getBudgetUsagePercentage = (currentSpend: number, maxBudget?: number) => {
     if (!maxBudget) return 0;
     return Math.min((currentSpend / maxBudget) * 100, 100);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 4,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   if (error) {
     return (
@@ -139,7 +117,9 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
 
   const rows = virtualKeys?.map((key: VirtualKey) => {
     const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
-    const budgetUsageColor = getBudgetUsageColor(key.currentSpend, key.maxBudget);
+    const budgetUsageColor = key.maxBudget 
+      ? badgeHelpers.getPercentageColor(budgetUsagePercentage, { danger: 90, warning: 75, good: 0 })
+      : 'blue';
 
     return (
       <Table.Tr key={key.id}>
@@ -171,10 +151,10 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
 
         <Table.Td>
           <Badge 
-            color={key.isEnabled ? 'green' : 'red'} 
+            color={badgeHelpers.getStatusColor(key.isEnabled)} 
             variant={key.isEnabled ? 'light' : 'filled'}
           >
-            {key.isEnabled ? 'Active' : 'Disabled'}
+            {badgeHelpers.formatStatus(key.isEnabled)}
           </Badge>
         </Table.Td>
 
@@ -182,11 +162,11 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
           <Stack gap={4}>
             <Group justify="space-between">
               <Text size="sm" fw={500}>
-                {formatCurrency(key.currentSpend)}
+                {formatters.currency(key.currentSpend, { precision: 4 })}
               </Text>
               {key.maxBudget && (
                 <Text size="xs" c="dimmed">
-                  / {formatCurrency(key.maxBudget)}
+                  / {formatters.currency(key.maxBudget, { precision: 4 })}
                 </Text>
               )}
             </Group>
@@ -201,12 +181,12 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
         </Table.Td>
 
         <Table.Td>
-          <Text size="sm">{key.requestCount.toLocaleString()}</Text>
+          <Text size="sm">{formatters.number(key.requestCount)}</Text>
         </Table.Td>
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {key.lastUsed ? formatDate(key.lastUsed) : 'Never'}
+            {formatters.date(key.lastUsed)}
           </Text>
         </Table.Td>
 

@@ -43,6 +43,8 @@ import {
 } from '@/hooks/api/useAnalyticsApi';
 import { notifications } from '@mantine/notifications';
 import GlobalTaskMonitor from '@/components/realtime/GlobalTaskMonitor';
+import { formatters } from '@/lib/utils/formatters';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 export default function CostDashboardPage() {
   const [timeRangeValue, setTimeRangeValue] = useState('7d');
@@ -110,14 +112,6 @@ export default function CostDashboardPage() {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
   const getBudgetUsagePercentage = () => {
     if (!stats || !stats.totalBudget) return 0;
     return Math.min((stats.totalSpend / stats.totalBudget) * 100, 100);
@@ -128,15 +122,13 @@ export default function CostDashboardPage() {
 
   const getBudgetUsageColor = () => {
     const percentage = getBudgetUsagePercentage();
-    if (percentage >= 90) return 'red';
-    if (percentage >= 75) return 'orange';
-    return 'green';
+    return badgeHelpers.getPercentageColor(percentage, { danger: 90, warning: 75, good: 0 });
   };
 
   const statCards = stats ? [
     {
       title: 'Total Spend',
-      value: formatCurrency(stats.totalSpend),
+      value: formatters.currency(stats.totalSpend),
       icon: IconCreditCard,
       color: 'blue',
       trend: stats.spendTrend > 0 ? `+${stats.spendTrend.toFixed(1)}%` : `${stats.spendTrend.toFixed(1)}%`,
@@ -144,7 +136,7 @@ export default function CostDashboardPage() {
     },
     {
       title: 'Total Budget',
-      value: formatCurrency(stats.totalBudget),
+      value: formatters.currency(stats.totalBudget),
       icon: IconChartBar,
       color: 'green',
     },
@@ -156,7 +148,7 @@ export default function CostDashboardPage() {
     },
     {
       title: 'Total Requests',
-      value: stats.totalRequests.toLocaleString(),
+      value: formatters.number(stats.totalRequests),
       icon: IconTrendingUp,
       color: 'orange',
       trend: stats.requestTrend > 0 ? `+${stats.requestTrend.toFixed(1)}%` : `${stats.requestTrend.toFixed(1)}%`,
@@ -164,7 +156,7 @@ export default function CostDashboardPage() {
     },
     {
       title: 'Avg Cost/Request',
-      value: formatCurrency(stats.averageCostPerRequest),
+      value: formatters.currency(stats.averageCostPerRequest),
       icon: IconCalendar,
       color: 'teal',
     },
@@ -418,12 +410,12 @@ export default function CostDashboardPage() {
                                 </Group>
                               </Stack>
                             </Table.Td>
-                            <Table.Td>{formatCurrency(provider.spend)}</Table.Td>
-                            <Table.Td>{provider.requests.toLocaleString()}</Table.Td>
-                            <Table.Td>{formatCurrency(provider.averageCost)}</Table.Td>
+                            <Table.Td>{formatters.currency(provider.spend)}</Table.Td>
+                            <Table.Td>{formatters.number(provider.requests)}</Table.Td>
+                            <Table.Td>{formatters.currency(provider.averageCost)}</Table.Td>
                             <Table.Td>
                               <Group gap="xs">
-                                <Text size="sm">{provider.percentage.toFixed(1)}%</Text>
+                                <Text size="sm">{formatters.percentage(provider.percentage / 100, undefined, { decimals: 1 })}</Text>
                                 <Progress
                                   value={provider.percentage}
                                   size="sm"
@@ -484,15 +476,15 @@ export default function CostDashboardPage() {
                               {model.provider}
                             </Badge>
                           </Table.Td>
-                          <Table.Td>{formatCurrency(model.spend)}</Table.Td>
-                          <Table.Td>{model.requests.toLocaleString()}</Table.Td>
+                          <Table.Td>{formatters.currency(model.spend)}</Table.Td>
+                          <Table.Td>{formatters.number(model.requests)}</Table.Td>
                           <Table.Td>
-                            {model.tokens > 0 ? model.tokens.toLocaleString() : 'N/A'}
+                            {model.tokens > 0 ? formatters.number(model.tokens) : 'N/A'}
                           </Table.Td>
-                          <Table.Td>{formatCurrency(model.averageCostPerRequest)}</Table.Td>
+                          <Table.Td>{formatters.currency(model.averageCostPerRequest)}</Table.Td>
                           <Table.Td>
                             {model.averageCostPerToken > 0 
-                              ? formatCurrency(model.averageCostPerToken)
+                              ? formatters.currency(model.averageCostPerToken)
                               : 'N/A'
                             }
                           </Table.Td>
@@ -557,8 +549,7 @@ export default function CostDashboardPage() {
                         {virtualKeyCosts
                           .filter(key => !selectedVirtualKey || key.keyId === selectedVirtualKey)
                           .map((key) => {
-                            const usageColor = key.isOverBudget ? 'red' : 
-                                             key.usagePercentage >= 75 ? 'orange' : 'green';
+                            const usageColor = key.isOverBudget ? 'red' : badgeHelpers.getPercentageColor(key.usagePercentage, { danger: 90, warning: 75, good: 0 });
                             
                             return (
                               <Table.Tr key={key.keyId}>
@@ -572,14 +563,14 @@ export default function CostDashboardPage() {
                                     )}
                                   </Group>
                                 </Table.Td>
-                                <Table.Td>{formatCurrency(key.spend)}</Table.Td>
+                                <Table.Td>{formatters.currency(key.spend)}</Table.Td>
                                 <Table.Td>
-                                  {key.budget > 0 ? formatCurrency(key.budget) : 'No limit'}
+                                  {key.budget > 0 ? formatters.currency(key.budget) : 'No limit'}
                                 </Table.Td>
                                 <Table.Td>
                                   {key.budget > 0 ? (
                                     <Group gap="xs">
-                                      <Text size="sm">{key.usagePercentage.toFixed(1)}%</Text>
+                                      <Text size="sm">{formatters.percentage(key.usagePercentage / 100, undefined, { decimals: 1 })}</Text>
                                       <Progress
                                         value={Math.min(key.usagePercentage, 100)}
                                         size="sm"
@@ -591,7 +582,7 @@ export default function CostDashboardPage() {
                                     <Text size="sm" c="dimmed">No limit</Text>
                                   )}
                                 </Table.Td>
-                                <Table.Td>{key.requests.toLocaleString()}</Table.Td>
+                                <Table.Td>{formatters.number(key.requests)}</Table.Td>
                                 <Table.Td>
                                   <Group gap="xs">
                                     {key.topModels.slice(0, 2).map((model) => (
@@ -608,7 +599,7 @@ export default function CostDashboardPage() {
                                 </Table.Td>
                                 <Table.Td>
                                   <Text size="sm" c="dimmed">
-                                    {new Date(key.lastActivity).toLocaleString()}
+                                    {formatters.date(key.lastActivity)}
                                   </Text>
                                 </Table.Td>
                               </Table.Tr>

@@ -56,7 +56,7 @@ import {
   LineChart, 
   Line 
 } from 'recharts';
-import { formatNumber, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { useSecurityEvents, useThreatAnalytics, useComplianceMetrics } from '@/hooks/api/useSecurityApi';
 import { FeatureUnavailable } from '@/components/error/FeatureUnavailable';
 
@@ -209,7 +209,7 @@ export default function SecurityMonitoringPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatNumber(eventsData?.totalEvents || 0)}
+              {formatters.number(eventsData?.totalEvents || 0)}
             </Text>
             <Text size="xs" c="dimmed" mt="xs">
               Last {selectedTimeRange === '1' ? 'hour' : `${selectedTimeRange} hours`}
@@ -226,7 +226,7 @@ export default function SecurityMonitoringPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatNumber(threatsData?.metrics.totalThreatsToday || 0)}
+              {formatters.number(threatsData?.metrics.totalThreatsToday || 0)}
             </Text>
             <Text size="xs" c="dimmed" mt="xs">
               {threatsData?.metrics.uniqueThreatsToday || 0} unique sources
@@ -243,7 +243,7 @@ export default function SecurityMonitoringPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatNumber(threatsData?.metrics.blockedIPs || 0)}
+              {formatters.number(threatsData?.metrics.blockedIPs || 0)}
             </Text>
             <Text size="xs" c="dimmed" mt="xs">
               Active blacklist entries
@@ -340,7 +340,7 @@ export default function SecurityMonitoringPage() {
                       return (
                         <Table.Tr key={`${event.timestamp}-${event.source}`}>
                           <Table.Td>
-                            <Text size="sm">{formatRelativeTime(new Date(event.timestamp))}</Text>
+                            <Text size="sm">{formatters.duration(new Date(event.timestamp))}</Text>
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
@@ -457,7 +457,7 @@ export default function SecurityMonitoringPage() {
                             {threat.riskScore.toFixed(1)}
                           </Badge>
                         </Table.Td>
-                        <Table.Td>{formatRelativeTime(new Date(threat.lastSeen))}</Table.Td>
+                        <Table.Td>{formatters.duration(new Date(threat.lastSeen))}</Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
@@ -535,7 +535,7 @@ export default function SecurityMonitoringPage() {
                     </Group>
                     <Group justify="space-between">
                       <Text size="sm">Last Audit</Text>
-                      <Text size="sm">{complianceData?.dataProtection.lastAudit ? formatRelativeTime(new Date(complianceData.dataProtection.lastAudit)) : 'Never'}</Text>
+                      <Text size="sm">{complianceData?.dataProtection.lastAudit ? formatters.duration(new Date(complianceData.dataProtection.lastAudit)) : 'Never'}</Text>
                     </Group>
                   </Stack>
                 </Card>
@@ -601,7 +601,7 @@ export default function SecurityMonitoringPage() {
                     </Group>
                     <Group justify="space-between">
                       <Text size="sm">Last Review</Text>
-                      <Text size="sm">{complianceData?.monitoring.lastSecurityReview ? formatRelativeTime(new Date(complianceData.monitoring.lastSecurityReview)) : 'Never'}</Text>
+                      <Text size="sm">{complianceData?.monitoring.lastSecurityReview ? formatters.duration(new Date(complianceData.monitoring.lastSecurityReview)) : 'Never'}</Text>
                     </Group>
                   </Stack>
                 </Card>

@@ -40,7 +40,7 @@ import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DatePickerInput } from '@mantine/dates';
-import { formatBytes, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { 
   useOverallMediaStats, 
@@ -293,7 +293,7 @@ export default function MediaAssetsPage() {
                   Storage Used
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatBytes(totalSize)}
+                  {formatters.fileSize(totalSize)}
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" variant="light" color="green">
@@ -426,7 +426,7 @@ export default function MediaAssetsPage() {
                     {mediaAsset.model}
                   </Badge>
                   <Text size="xs" c="dimmed">
-                    {formatBytes(mediaAsset.size)}
+                    {formatters.fileSize(mediaAsset.size)}
                   </Text>
                 </Group>
                 <Text size="xs" c="dimmed" lineClamp={2}>
@@ -434,7 +434,7 @@ export default function MediaAssetsPage() {
                 </Text>
                 <Group justify="space-between">
                   <Text size="xs" c="dimmed">
-                    {formatRelativeTime(mediaAsset.createdAt)}
+                    {formatters.duration(mediaAsset.createdAt)}
                   </Text>
                   <Group gap={4}>
                     <ActionIcon size="sm" variant="subtle" onClick={() => handleViewAsset(mediaAsset)}>
@@ -524,7 +524,7 @@ export default function MediaAssetsPage() {
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Size:</Text>
-                    <Text size="sm">{formatBytes(selectedAsset.size)}</Text>
+                    <Text size="sm">{formatters.fileSize(selectedAsset.size)}</Text>
                   </Group>
                   <Group gap="xs">
                     <Text size="sm" c="dimmed">Dimensions:</Text>

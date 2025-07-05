@@ -53,7 +53,7 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { formatNumber, formatPercent, formatLatency, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { useRealtimeMetrics, useTimeSeriesMetrics, useProviderMetrics } from '@/hooks/api/useDashboardApi';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -177,14 +177,14 @@ export default function MetricsDashboardPage() {
             </Group>
             <Group align="baseline" gap="xs">
               <Text size="xl" fw={700}>
-                {formatNumber(realtimeData?.system.totalRequestsDay || 0)}
+                {formatters.number(realtimeData?.system.totalRequestsDay || 0)}
               </Text>
               <Badge color="gray" variant="light" size="sm">
                 /day
               </Badge>
             </Group>
             <Text size="xs" c="dimmed" mt="xs">
-              {formatNumber(realtimeData?.system.totalRequestsHour || 0)} in last hour
+              {formatters.number(realtimeData?.system.totalRequestsHour || 0)} in last hour
             </Text>
           </Card>
         </Grid.Col>
@@ -199,7 +199,7 @@ export default function MetricsDashboardPage() {
             </Group>
             <Group align="baseline" gap="xs">
               <Text size="xl" fw={700}>
-                {formatLatency(realtimeData?.system.avgLatencyHour || 0)}
+                {formatters.responseTime(realtimeData?.system.avgLatencyHour || 0)}
               </Text>
             </Group>
             <Progress
@@ -221,7 +221,7 @@ export default function MetricsDashboardPage() {
             </Group>
             <Group align="baseline" gap="xs">
               <Text size="xl" fw={700}>
-                {formatPercent(realtimeData?.system.errorRateHour || 0)}
+                {formatters.percentage(realtimeData?.system.errorRateHour || 0)}
               </Text>
             </Group>
             <Progress
@@ -395,15 +395,15 @@ export default function MetricsDashboardPage() {
                               {successRate > 99 ? 'Healthy' : successRate > 95 ? 'Degraded' : 'Unhealthy'}
                             </Badge>
                           </Table.Td>
-                          <Table.Td>{formatNumber(provider.metrics.totalRequests)}</Table.Td>
+                          <Table.Td>{formatters.number(provider.metrics.totalRequests)}</Table.Td>
                           <Table.Td>
                             <Group gap="xs">
-                              <Text size="sm">{formatPercent(successRate)}</Text>
+                              <Text size="sm">{formatters.percentage(successRate)}</Text>
                               <Progress value={successRate} color={successRate > 99 ? 'green' : successRate > 95 ? 'yellow' : 'red'} size="xs" style={{ width: 60 }} />
                             </Group>
                           </Table.Td>
-                          <Table.Td>{formatLatency(provider.metrics.avgLatency)}</Table.Td>
-                          <Table.Td>{formatLatency(provider.metrics.p95Latency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(provider.metrics.avgLatency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(provider.metrics.p95Latency)}</Table.Td>
                           <Table.Td>${provider.metrics.totalCost.toFixed(2)}</Table.Td>
                         </Table.Tr>
                       );
@@ -457,13 +457,13 @@ export default function MetricsDashboardPage() {
                         <Table.Td>
                           <Text size="sm" fw={500}>{model.model}</Text>
                         </Table.Td>
-                        <Table.Td>{formatNumber(model.requestCount)}</Table.Td>
-                        <Table.Td>{formatLatency(model.avgLatency)}</Table.Td>
-                        <Table.Td>{formatNumber(model.totalTokens)}</Table.Td>
+                        <Table.Td>{formatters.number(model.requestCount)}</Table.Td>
+                        <Table.Td>{formatters.responseTime(model.avgLatency)}</Table.Td>
+                        <Table.Td>{formatters.number(model.totalTokens)}</Table.Td>
                         <Table.Td>${model.totalCost.toFixed(2)}</Table.Td>
                         <Table.Td>
                           <Group gap="xs">
-                            <Text size="sm">{formatPercent(model.errorRate)}</Text>
+                            <Text size="sm">{formatters.percentage(model.errorRate)}</Text>
                             <Progress 
                               value={model.errorRate} 
                               color={model.errorRate < 1 ? 'green' : model.errorRate < 5 ? 'yellow' : 'red'} 
@@ -530,10 +530,10 @@ export default function MetricsDashboardPage() {
                       {provider.lastHealthCheck && (
                         <>
                           <Text size="xs" c="dimmed">
-                            Response Time: {formatLatency(provider.lastHealthCheck.responseTime)}
+                            Response Time: {formatters.responseTime(provider.lastHealthCheck.responseTime)}
                           </Text>
                           <Text size="xs" c="dimmed">
-                            Last Check: {formatRelativeTime(new Date(provider.lastHealthCheck.checkedAt))}
+                            Last Check: {formatters.duration(new Date(provider.lastHealthCheck.checkedAt))}
                           </Text>
                         </>
                       )}
@@ -562,11 +562,11 @@ export default function MetricsDashboardPage() {
                         <Table.Td>
                           <Text size="sm" fw={500}>{key.name}</Text>
                         </Table.Td>
-                        <Table.Td>{formatNumber(key.requestsToday)}</Table.Td>
+                        <Table.Td>{formatters.number(key.requestsToday)}</Table.Td>
                         <Table.Td>${key.costToday.toFixed(2)}</Table.Td>
                         <Table.Td>
                           <Group gap="xs">
-                            <Text size="sm">{formatPercent(key.budgetUtilization)}</Text>
+                            <Text size="sm">{formatters.percentage(key.budgetUtilization)}</Text>
                             <Progress 
                               value={key.budgetUtilization} 
                               color={key.budgetUtilization < 80 ? 'blue' : key.budgetUtilization < 95 ? 'yellow' : 'red'} 
