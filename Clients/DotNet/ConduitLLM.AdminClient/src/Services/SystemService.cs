@@ -90,30 +90,6 @@ public class SystemService : BaseApiClient
         }
     }
 
-    /// <summary>
-    /// Gets current system metrics including CPU, memory, disk, and network usage.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Current system metrics.</returns>
-    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
-    public async Task<SystemMetricsDto> GetSystemMetricsAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            // Don't cache metrics as they change frequently
-            var endpoint = $"{BaseEndpoint}/metrics";
-            var response = await GetAsync<SystemMetricsDto>(endpoint, cancellationToken: cancellationToken);
-            
-            _logger?.LogDebug("Retrieved system metrics - CPU: {CPU}%, Memory: {Memory}%, Disk: {Disk}%", 
-                response.CpuUsagePercent, response.Memory?.UsagePercent, response.Disk?.UsagePercent);
-            return response;
-        }
-        catch (Exception ex) when (!(ex is ConduitAdminException))
-        {
-            ErrorHandler.HandleException(ex);
-            throw;
-        }
-    }
 
     /// <summary>
     /// Performs a comprehensive health check of all system components.

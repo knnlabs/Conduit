@@ -54,10 +54,9 @@ import {
   useVirtualKeySecurityMetrics,
   useVirtualKeyTrends,
   useVirtualKeysLeaderboard,
-  useExportVirtualKeysData,
-  VirtualKeyOverview,
-  TimeRangeFilter 
+  useExportVirtualKeysData
 } from '@/hooks/api/useVirtualKeysAnalyticsApi';
+import type { TimeRangeFilter, VirtualKeyOverview } from '@/types/analytics-types';
 import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 

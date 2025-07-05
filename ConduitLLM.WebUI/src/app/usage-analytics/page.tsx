@@ -42,9 +42,9 @@ import {
   useLatencyMetrics,
   useUserAnalytics,
   useEndpointUsageAnalytics,
-  useExportUsageData,
-  TimeRangeFilter 
+  useExportUsageData
 } from '@/hooks/api/useUsageAnalyticsApi';
+import type { TimeRangeFilter } from '@/types/analytics-types';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 import { formatters } from '@/lib/utils/formatters';

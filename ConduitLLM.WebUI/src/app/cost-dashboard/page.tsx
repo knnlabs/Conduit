@@ -38,9 +38,9 @@ import {
   useModelCosts, 
   useVirtualKeyCosts, 
   useCostAlerts,
-  useExportCostData,
-  TimeRangeFilter 
+  useExportCostData
 } from '@/hooks/api/useAnalyticsApi';
+import type { TimeRangeFilter } from '@/types/analytics-types';
 import { notifications } from '@mantine/notifications';
 import GlobalTaskMonitor from '@/components/realtime/GlobalTaskMonitor';
 import { formatters } from '@/lib/utils/formatters';
