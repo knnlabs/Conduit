@@ -31,7 +31,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatCurrency, formatNumber } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { 
   useAudioUsageSummary, 
   useAudioUsageLogs,
@@ -194,7 +194,7 @@ export default function AudioUsagePage() {
                   Total Requests
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatNumber(totalRequests)}
+                  {formatters.number(totalRequests)}
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
                   All operations
@@ -215,7 +215,7 @@ export default function AudioUsagePage() {
                   Avg Latency
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatNumber(averageLatency)}ms
+                  {formatters.number(averageLatency)}ms
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
                   Response time
@@ -236,7 +236,7 @@ export default function AudioUsagePage() {
                   Total Duration
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatNumber(Math.floor(totalDuration / 60))}min
+                  {formatters.number(Math.floor(totalDuration / 60))}min
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
                   Audio processed
@@ -257,7 +257,7 @@ export default function AudioUsagePage() {
                   Total Cost
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatCurrency(totalCost)}
+                  {formatters.currency(totalCost)}
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
                   Current period
@@ -352,8 +352,8 @@ export default function AudioUsagePage() {
                         <Group justify="space-between" mb={4}>
                           <Text size="sm">{model.model}</Text>
                           <Group gap="xs">
-                            <Text size="sm" c="dimmed">{formatNumber(model.requests)} requests</Text>
-                            <Text size="sm" c="green">{formatCurrency(model.cost)}</Text>
+                            <Text size="sm" c="dimmed">{formatters.number(model.requests)} requests</Text>
+                            <Text size="sm" c="green">{formatters.currency(model.cost)}</Text>
                           </Group>
                         </Group>
                         <Progress 
@@ -402,16 +402,16 @@ export default function AudioUsagePage() {
                         <Table.Td>
                           <Badge variant="light">{model.model}</Badge>
                         </Table.Td>
-                        <Table.Td>{formatNumber(model.requests)}</Table.Td>
-                        <Table.Td>{formatNumber(minutesProcessed)}</Table.Td>
+                        <Table.Td>{formatters.number(model.requests)}</Table.Td>
+                        <Table.Td>{formatters.number(minutesProcessed)}</Table.Td>
                         <Table.Td>{(Math.random() * 2 + 0.5).toFixed(1)}s</Table.Td>
                         <Table.Td>
                           <Text c="green">
                             {(95 + Math.random() * 5).toFixed(1)}%
                           </Text>
                         </Table.Td>
-                        <Table.Td>{formatCurrency(model.cost)}</Table.Td>
-                        <Table.Td>{formatCurrency(model.cost / minutesProcessed)}</Table.Td>
+                        <Table.Td>{formatters.currency(model.cost)}</Table.Td>
+                        <Table.Td>{formatters.currency(model.cost / minutesProcessed)}</Table.Td>
                       </Table.Tr>
                     );
                 })

@@ -42,7 +42,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatNumber, formatPercent, formatRelativeTime } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 import { useServiceHealth, useIncidents, useHealthHistory } from '@/hooks/api/useHealthApi';
 
 // Type definitions
@@ -239,7 +239,7 @@ export default function HealthMonitoringPage() {
                   System Uptime
                 </Text>
                 <Text size="xl" fw={700}>
-                  {formatPercent(overallUptime)}
+                  {formatters.percentage(overallUptime)}
                 </Text>
                 <Progress value={overallUptime} size="sm" mt={8} color="green" />
               </div>
@@ -378,7 +378,7 @@ export default function HealthMonitoringPage() {
                   <Group justify="space-between">
                     <Text size="sm" c="dimmed">Uptime</Text>
                     <Group gap="xs">
-                      <Text size="sm" fw={500}>{formatPercent(typeof service.uptime === 'number' ? service.uptime : 99.9)}</Text>
+                      <Text size="sm" fw={500}>{formatters.percentage(typeof service.uptime === 'number' ? service.uptime : 99.9)}</Text>
                       <Progress value={typeof service.uptime === 'number' ? service.uptime : 99.9} size="sm" w={60} color="green" />
                     </Group>
                   </Group>
@@ -390,7 +390,7 @@ export default function HealthMonitoringPage() {
 
                   <Group justify="space-between">
                     <Text size="sm" c="dimmed">Last Check</Text>
-                    <Text size="sm" fw={500}>{formatRelativeTime(new Date(service.lastCheck))}</Text>
+                    <Text size="sm" fw={500}>{formatters.duration(new Date(service.lastCheck))}</Text>
                   </Group>
 
                   {/* Service-specific metrics */}
@@ -427,7 +427,7 @@ export default function HealthMonitoringPage() {
                   {(service as Service).metrics?.queueDepth !== undefined && (
                     <Group justify="space-between">
                       <Text size="sm" c="dimmed">Queue Depth</Text>
-                      <Text size="sm" fw={500}>{formatNumber((service as Service).metrics!.queueDepth!)}</Text>
+                      <Text size="sm" fw={500}>{formatters.number((service as Service).metrics!.queueDepth!)}</Text>
                     </Group>
                   )}
 
@@ -503,8 +503,8 @@ export default function HealthMonitoringPage() {
                   }
                 >
                   <Text c="dimmed" size="sm">
-                    {(incident as Incident).service || 'System'} • Started {formatRelativeTime(new Date(incident.startTime))}
-                    {incident.endTime && ` • Resolved ${formatRelativeTime(new Date(incident.endTime))}`}
+                    {(incident as Incident).service || 'System'} • Started {formatters.duration(new Date(incident.startTime))}
+                    {incident.endTime && ` • Resolved ${formatters.duration(new Date(incident.endTime))}`}
                   </Text>
                   <Text size="sm" mt={4}>{(incident as Incident).description || 'No description'}</Text>
                   <Text size="sm" c="dimmed" mt={4}>Impact: {(incident as Incident).impact || 'Unknown'}</Text>

@@ -45,7 +45,7 @@ import {
   type LoadBalancer,
   type RetryPolicy,
 } from '@/hooks/api/useConfigurationApi';
-import { formatNumber } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 
 
 const strategyDescriptions = {
@@ -377,7 +377,7 @@ export default function RoutingSettingsPage() {
                       Request Volume
                     </Text>
                     <Text size="xl" fw={700}>
-                      {formatNumber(routingData?.statistics?.totalRequests || 0)}
+                      {formatters.number(routingData?.statistics?.totalRequests || 0)}
                     </Text>
                   </div>
                   <ThemeIcon size="xl" radius="md" variant="light" color="green">
@@ -584,7 +584,7 @@ export default function RoutingSettingsPage() {
                       {routingData.statistics.providerDistribution.map((provider, index) => (
                         <Table.Tr key={index}>
                           <Table.Td>{provider.provider}</Table.Td>
-                          <Table.Td>{formatNumber(provider.requestCount)}</Table.Td>
+                          <Table.Td>{formatters.number(provider.requestCount)}</Table.Td>
                           <Table.Td>
                             <Group gap="xs">
                               <Text size="sm">{provider.successRate.toFixed(1)}%</Text>

@@ -4,6 +4,7 @@ import { LineChart, BarChart, PieChart } from '@mantine/charts';
 import { Card, Group, Text, Select, Button, Stack } from '@mantine/core';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
+import { formatters } from '@/lib/utils/formatters';
 
 export interface ChartDataItem {
   [key: string]: string | number;
@@ -43,20 +44,17 @@ export function CostChart({
     { value: '90d', label: 'Last 3 Months' },
   ];
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    }).format(value);
+  const formatChartCurrency = (value: number) => {
+    return formatters.currency(value, { precision: 2 });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatChartDate = (dateString: string) => {
+    return formatters.date(dateString, {
       month: 'short',
       day: 'numeric',
       hour: timeRange === '24h' ? '2-digit' : undefined,
+      includeTime: timeRange === '24h',
+      year: undefined
     });
   };
 
@@ -69,9 +67,9 @@ export function CostChart({
             data={data}
             dataKey={timeKey || nameKey}
             series={[{ name: valueKey, color: 'blue.6' }]}
-            valueFormatter={formatCurrency}
+            valueFormatter={formatChartCurrency}
             xAxisProps={{
-              tickFormatter: timeKey ? formatDate : undefined,
+              tickFormatter: timeKey ? formatChartDate : undefined,
             }}
             curveType="monotone"
             strokeWidth={2}
@@ -87,7 +85,7 @@ export function CostChart({
             data={data}
             dataKey={nameKey}
             series={[{ name: valueKey, color: 'blue.6' }]}
-            valueFormatter={formatCurrency}
+            valueFormatter={formatChartCurrency}
             barProps={{ radius: 4 }}
           />
         );
@@ -101,7 +99,7 @@ export function CostChart({
               value: Number(item[valueKey]),
               color: `blue.${Math.floor(Math.random() * 9) + 1}`,
             }))}
-            valueFormatter={formatCurrency}
+            valueFormatter={formatChartCurrency}
             withLabelsLine={false}
             labelsPosition="outside"
             labelsType="percent"

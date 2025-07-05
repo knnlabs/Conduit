@@ -30,7 +30,7 @@ import { useState } from 'react';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 // Removed unused DatePickerInput
 import { notifications } from '@mantine/notifications';
-import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils/formatting';
+import { formatters } from '@/lib/utils/formatters';
 
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -162,7 +162,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatNumber(totalRequests as number)}
+              {formatters.number(totalRequests as number)}
             </Text>
             <Group gap="xs" mt={4}>
               <Text size="xs" c="green" fw={500}>
@@ -186,7 +186,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatCurrency(totalCost as number)}
+              {formatters.currency(totalCost as number)}
             </Text>
             <Group gap="xs" mt={4}>
               <Text size="xs" c="green" fw={500}>
@@ -234,7 +234,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatPercent(averageBudgetUsed)}
+              {formatters.percentage(averageBudgetUsed)}
             </Text>
             <Text size="xs" c="dimmed" mt={4}>
               Average across all keys
@@ -315,9 +315,9 @@ export default function VirtualKeysDashboardPage() {
                           {(key as { status: string }).status}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>{formatNumber((key as { requests: number }).requests)}</Table.Td>
-                      <Table.Td>{formatCurrency((key as { cost: number }).cost)}</Table.Td>
-                      <Table.Td>{formatCurrency((key as { budget: number }).budget)}</Table.Td>
+                      <Table.Td>{formatters.number((key as { requests: number }).requests)}</Table.Td>
+                      <Table.Td>{formatters.currency((key as { cost: number }).cost)}</Table.Td>
+                      <Table.Td>{formatters.currency((key as { budget: number }).budget)}</Table.Td>
                       <Table.Td>
                         <Stack gap={4}>
                           <Progress 
@@ -325,7 +325,7 @@ export default function VirtualKeysDashboardPage() {
                             color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
                             size="sm"
                           />
-                          <Text size="xs" c="dimmed">{formatPercent((key as { budgetUsed: number }).budgetUsed)}</Text>
+                          <Text size="xs" c="dimmed">{formatters.percentage((key as { budgetUsed: number }).budgetUsed)}</Text>
                         </Stack>
                       </Table.Td>
                     </Table.Tr>
@@ -375,7 +375,7 @@ export default function VirtualKeysDashboardPage() {
                     <Text size="sm">{model.name}</Text>
                   </Group>
                   <Text size="sm" c="dimmed">
-                    {formatNumber(model.value)} requests
+                    {formatters.number(model.value)} requests
                   </Text>
                 </Group>
               ))}
@@ -404,7 +404,7 @@ export default function VirtualKeysDashboardPage() {
                     variant="light" 
                     color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
                   >
-                    {formatPercent((key as { budgetUsed: number }).budgetUsed)} used
+                    {formatters.percentage((key as { budgetUsed: number }).budgetUsed)} used
                   </Badge>
                 </Group>
                 <Progress 
@@ -415,10 +415,10 @@ export default function VirtualKeysDashboardPage() {
                 />
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">
-                    {formatCurrency((key as { cost: number }).cost)} / {formatCurrency((key as { budget: number }).budget)}
+                    {formatters.currency((key as { cost: number }).cost)} / {formatters.currency((key as { budget: number }).budget)}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {formatCurrency((key as { budget: number }).budget - (key as { cost: number }).cost)} remaining
+                    {formatters.currency((key as { budget: number }).budget - (key as { cost: number }).cost)} remaining
                   </Text>
                 </Group>
               </Paper>

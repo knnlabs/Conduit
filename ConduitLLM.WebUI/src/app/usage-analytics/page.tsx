@@ -47,6 +47,8 @@ import {
 } from '@/hooks/api/useUsageAnalyticsApi';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
+import { formatters } from '@/lib/utils/formatters';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 export default function UsageAnalyticsPage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
@@ -119,37 +121,13 @@ export default function UsageAnalyticsPage() {
     });
   };
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
-  };
-
-  const formatLatency = (ms: number) => {
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
-
-  const _formatBytes = (bytes: number) => {
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-    
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-    
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
-  };
 
   const getStatusColor = (rate: number, type: 'error' | 'success') => {
     if (type === 'error') {
-      if (rate >= 5) return 'red';
-      if (rate >= 2) return 'orange';
-      return 'green';
+      return badgeHelpers.getPercentageColor(rate, { danger: 5, warning: 2, good: 0 });
     } else {
-      if (rate >= 98) return 'green';
-      if (rate >= 95) return 'orange';
-      return 'red';
+      // For success rate, reverse the logic
+      return badgeHelpers.getPercentageColor(100 - rate, { danger: 5, warning: 2, good: 0 });
     }
   };
 
@@ -171,7 +149,7 @@ export default function UsageAnalyticsPage() {
   const metricCards = usageMetrics ? [
     {
       title: 'Total Requests',
-      value: formatNumber(usageMetrics.totalRequests),
+      value: formatters.number(usageMetrics.totalRequests),
       icon: IconActivity,
       color: 'blue',
       trend: usageMetrics.requestsTrend > 0 ? `+${usageMetrics.requestsTrend.toFixed(1)}%` : `${usageMetrics.requestsTrend.toFixed(1)}%`,
@@ -179,7 +157,7 @@ export default function UsageAnalyticsPage() {
     },
     {
       title: 'Total Tokens',
-      value: formatNumber(usageMetrics.totalTokens),
+      value: formatters.number(usageMetrics.totalTokens),
       icon: IconChartLine,
       color: 'green',
       trend: usageMetrics.tokensTrend > 0 ? `+${usageMetrics.tokensTrend.toFixed(1)}%` : `${usageMetrics.tokensTrend.toFixed(1)}%`,
@@ -193,7 +171,7 @@ export default function UsageAnalyticsPage() {
     },
     {
       title: 'Avg Latency',
-      value: formatLatency(usageMetrics.averageLatency),
+      value: formatters.responseTime(usageMetrics.averageLatency),
       icon: IconClock,
       color: 'orange',
       trend: usageMetrics.latencyTrend > 0 ? `+${usageMetrics.latencyTrend.toFixed(1)}%` : `${usageMetrics.latencyTrend.toFixed(1)}%`,
@@ -550,15 +528,15 @@ export default function UsageAnalyticsPage() {
                           </Table.Td>
                           <Table.Td>
                             <Badge variant="light">
-                              {formatNumber(user.totalRequests)}
+                              {formatters.number(user.totalRequests)}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
                             <Badge variant="light">
-                              {formatNumber(user.totalTokens)}
+                              {formatters.number(user.totalTokens)}
                             </Badge>
                           </Table.Td>
-                          <Table.Td>{formatLatency(user.averageLatency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(user.averageLatency)}</Table.Td>
                           <Table.Td>
                             <Badge color={getStatusColor(user.errorRate, 'error')} variant="light">
                               {user.errorRate.toFixed(1)}%
@@ -580,7 +558,7 @@ export default function UsageAnalyticsPage() {
                           </Table.Td>
                           <Table.Td>
                             <Text size="sm" c="dimmed">
-                              {new Date(user.lastActivity).toLocaleString()}
+                              {formatters.date(user.lastActivity)}
                             </Text>
                           </Table.Td>
                         </Table.Tr>
@@ -636,10 +614,10 @@ export default function UsageAnalyticsPage() {
                           </Table.Td>
                           <Table.Td>
                             <Badge variant="light">
-                              {formatNumber(endpoint.totalRequests)}
+                              {formatters.number(endpoint.totalRequests)}
                             </Badge>
                           </Table.Td>
-                          <Table.Td>{formatLatency(endpoint.averageLatency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(endpoint.averageLatency)}</Table.Td>
                           <Table.Td>
                             <Group gap="xs">
                               <Text size="sm">{endpoint.successRate.toFixed(1)}%</Text>
@@ -651,7 +629,7 @@ export default function UsageAnalyticsPage() {
                               />
                             </Group>
                           </Table.Td>
-                          <Table.Td>${endpoint.costPerRequest.toFixed(4)}</Table.Td>
+                          <Table.Td>{formatters.currency(endpoint.costPerRequest, { precision: 4 })}</Table.Td>
                           <Table.Td>
                             <Group gap="xs">
                               {endpoint.popularModels.slice(0, 2).map((model) => (
@@ -706,7 +684,7 @@ export default function UsageAnalyticsPage() {
               </div>
               <Group gap="xs">
                 <Badge variant="light">
-                  {formatNumber(selectedEndpoint.requests)} requests
+                  {formatters.number(selectedEndpoint.requests)} requests
                 </Badge>
                 <Badge color={getStatusColor((1 - selectedEndpoint.errorRate) * 100, 'success')} variant="light">
                   {((1 - selectedEndpoint.errorRate) * 100).toFixed(1)}% success
@@ -717,11 +695,11 @@ export default function UsageAnalyticsPage() {
             <SimpleGrid cols={2} spacing="lg">
               <Card withBorder>
                 <Text size="sm" c="dimmed" mb="xs">Average Latency</Text>
-                <Text fw={600} size="xl">{formatLatency(selectedEndpoint.avgLatency)}</Text>
+                <Text fw={600} size="xl">{formatters.responseTime(selectedEndpoint.avgLatency)}</Text>
               </Card>
               <Card withBorder>
                 <Text size="sm" c="dimmed" mb="xs">Cost per Request</Text>
-                <Text fw={600} size="xl">$0.0042</Text>
+                <Text fw={600} size="xl">{formatters.currency(0.0042, { precision: 4 })}</Text>
               </Card>
             </SimpleGrid>
             
