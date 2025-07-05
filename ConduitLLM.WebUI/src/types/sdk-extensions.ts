@@ -12,6 +12,15 @@ import type {
 } from '@knn_labs/conduit-admin-client';
 
 /**
+ * Date range for analytics queries
+ */
+export interface DateRange {
+  startDate: string;
+  endDate: string;
+  [key: string]: string;
+}
+
+/**
  * Extended VirtualKeyDto with additional properties from API responses
  */
 export interface VirtualKeyDto extends BaseVirtualKeyDto {

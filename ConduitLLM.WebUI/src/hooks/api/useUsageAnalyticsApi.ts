@@ -25,6 +25,9 @@ import type {
   BaseExportRequest,
 } from '@/types/analytics-types';
 
+// Re-export types for consumers
+export type { TimeRangeFilter };
+
 
 // Usage Metrics Hook
 export function useUsageMetrics(timeRange: TimeRangeFilter) {

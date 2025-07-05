@@ -24,6 +24,9 @@ import type {
   BaseExportRequest,
 } from '@/types/analytics-types';
 
+// Re-export types for consumers
+export type { TimeRangeFilter, VirtualKeyOverview };
+
 // Virtual Keys specific export request interface
 interface VirtualKeysExportRequest extends BaseExportRequest {
   type: 'overview' | 'usage' | 'budget' | 'performance' | 'security' | 'trends' | 'leaderboard';

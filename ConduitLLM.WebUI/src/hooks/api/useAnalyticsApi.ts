@@ -23,6 +23,9 @@ import type {
   BaseExportRequest,
 } from '@/types/analytics-types';
 
+// Re-export types for consumers
+export type { TimeRangeFilter };
+
 // Cost Analytics Hooks
 export function useCostSummary(timeRange: TimeRangeFilter) {
   return useQuery({
