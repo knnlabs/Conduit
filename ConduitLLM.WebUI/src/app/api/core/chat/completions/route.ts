@@ -1,48 +1,21 @@
-
 import { NextRequest } from 'next/server';
-import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { createCoreRoute } from '@/lib/utils/core-route-helpers';
+import { validateChatCompletionRequest } from '@/lib/utils/core-route-validators';
+import { withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse, createStreamingResponse } from '@/lib/utils/sdk-transforms';
 import { getServerCoreClient } from '@/lib/clients/server';
 import { createValidationError } from '@/lib/utils/route-helpers';
 
-export async function POST(request: NextRequest) {
-  try {
-    // Validate session - don't require virtual key in session yet
-    const validation = await validateCoreSession(request, { requireVirtualKey: false });
-    if (!validation.isValid) {
-      return new Response(
-        JSON.stringify({ error: validation.error || 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse request body
-    const body = await request.json();
-    
-    // Extract virtual key from various sources
-    const virtualKey = body.virtual_key || 
-                      extractVirtualKey(request) || 
-                      validation.session?.virtualKey;
-    
-    if (!virtualKey) {
-      return createValidationError(
-        'Virtual key is required. Provide it via virtual_key field, x-virtual-key header, or Authorization header',
-        { missingField: 'virtual_key' }
-      );
-    }
-
+export const POST = createCoreRoute(
+  {
+    requireVirtualKey: false,
+    validateBody: validateChatCompletionRequest,
+    logContext: 'chat_completions'
+  },
+  async ({ virtualKey }, body) => {
     // Remove virtual_key from body before sending to API
-    const { virtual_key: _virtualKey, ...chatRequest } = body;
+    const { virtual_key: _virtualKey, ...chatRequest } = body as Record<string, unknown>;
     
-    // Validate required fields
-    if (!chatRequest.messages || !Array.isArray(chatRequest.messages)) {
-      return createValidationError(
-        'Messages array is required',
-        { missingField: 'messages' }
-      );
-    }
-
     // Get Core client with the virtual key
     const coreClient = getServerCoreClient(virtualKey);
     
@@ -120,15 +93,8 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-  } catch (error: unknown) {
-    // Handle validation errors specially
-    if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message || 'Validation error');
-    }
-    
-    return mapSDKErrorToResponse(error);
   }
-}
+);
 
 // Support for GET to check endpoint availability
 export async function GET(_request: Request) {

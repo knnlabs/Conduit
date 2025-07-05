@@ -1,48 +1,22 @@
-
 import { NextRequest } from 'next/server';
+import { createCoreRoute } from '@/lib/utils/core-route-helpers';
+import { validateVideoGenerationRequest } from '@/lib/utils/core-route-validators';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { withSDKErrorHandling, mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { getServerCoreClient } from '@/lib/clients/server';
 import { createValidationError, parseQueryParams } from '@/lib/utils/route-helpers';
 
-export async function POST(request: NextRequest) {
-  try {
-    // Validate session - don't require virtual key in session yet
-    const validation = await validateCoreSession(request, { requireVirtualKey: false });
-    if (!validation.isValid) {
-      return new Response(
-        JSON.stringify({ error: validation.error || 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Parse request body
-    const body = await request.json();
-    
-    // Extract virtual key from various sources
-    const virtualKey = body.virtual_key || 
-                      extractVirtualKey(request) || 
-                      validation.session?.virtualKey;
-    
-    if (!virtualKey) {
-      return createValidationError(
-        'Virtual key is required. Provide it via virtual_key field, x-virtual-key header, or Authorization header',
-        { missingField: 'virtual_key' }
-      );
-    }
-
+export const POST = createCoreRoute(
+  {
+    requireVirtualKey: false,
+    validateBody: validateVideoGenerationRequest,
+    logContext: 'video_generations'
+  },
+  async ({ virtualKey }, body) => {
     // Remove virtual_key from body before sending to API
-    const { virtual_key: _virtualKey, ...videoRequest } = body;
+    const { virtual_key: _virtualKey, ...videoRequest } = body as Record<string, unknown>;
     
-    // Validate required fields
-    if (!videoRequest.prompt) {
-      return createValidationError(
-        'Prompt is required',
-        { missingField: 'prompt' }
-      );
-    }
-
     // Use SDK video generation (async only)
     const client = getServerCoreClient(virtualKey);
     
@@ -73,15 +47,8 @@ export async function POST(request: NextRequest) {
         taskId: result.task_id,
       }
     });
-  } catch (error: unknown) {
-    // Handle validation errors specially
-    if ((error as { message?: string })?.message?.includes('required')) {
-      return createValidationError((error as { message?: string })?.message || 'Validation error');
-    }
-    
-    return mapSDKErrorToResponse(error);
   }
-}
+);
 
 export async function GET(request: NextRequest) {
   try {

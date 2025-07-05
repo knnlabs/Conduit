@@ -141,6 +141,13 @@ export function reportError(error: unknown, context?: string, metadata?: unknown
 }
 
 /**
+ * Generate a unique request ID for tracking
+ */
+export function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
  * Logger object that provides a consistent logging interface
  */
 export const logger = {
