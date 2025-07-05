@@ -394,28 +394,56 @@ See [TUI Documentation](ConduitLLM.TUI/README.md) for detailed usage instruction
 
 See the `docs/` directory for detailed documentation:
 
+### Core Documentation
 - [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
   - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
   - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
   - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
+- [Getting Started](docs/Getting-Started.md)
+- [Current Status](docs/Current-Status.md)
+
+### Development Guides
+- [SDK Migration Guide](docs/development/sdk-migration-guide.md)
+- [API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)
+- [SDK Migration Complete](docs/development/SDK-MIGRATION-COMPLETE.md)
+- [Next.js 15 Migration](docs/development/nextjs15-migration.md)
+- [SDK Feature Gaps](docs/development/sdk-gaps.md)
+
+### Deployment & Configuration
+- [Deployment Configuration](docs/deployment/DEPLOYMENT-CONFIGURATION.md)
+- [Docker Optimization](docs/deployment/docker-optimization.md)
+- [Configuration Guide](docs/Configuration-Guide.md)
+- [Environment Variables](docs/Environment-Variables.md)
+- [Cache Configuration](docs/Cache-Configuration.md)
+
+### API Reference
+- [API Reference](docs/api-reference/API-REFERENCE.md)
+- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
+
+### Examples & Integration
+- [Integration Examples](docs/examples/INTEGRATION-EXAMPLES.md)
+- [OpenAI Compatible Example](docs/examples/openai-compatible-example.md)
+
+### Troubleshooting
+- [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
+
+### Feature Documentation
 - [Audio API Guide](docs/Audio-API-Guide.md)
 - [Audio Architecture](docs/Audio-Architecture.md)
 - [Real-time Architecture](docs/Realtime-Architecture.md)
 - [Audio Implementation Status](docs/Audio-Implementation-Status.md)
 - [Budget Management](docs/Budget-Management.md)
-- [Cache Configuration](docs/Cache-Configuration.md)
-- [Configuration Guide](docs/Configuration-Guide.md)
 - [Dashboard Features](docs/Dashboard-Features.md)
-- [Environment Variables](docs/Environment-Variables.md)
-- [Getting Started](docs/Getting-Started.md)
 - [LLM Routing](docs/LLM-Routing.md)
 - [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
-- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
-- [Current Status](docs/Current-Status.md)
+
+### Project Documentation
+- [SDK Integration Epic](docs/epics/sdk-integration.md)
+- [Archived Documentation](docs/archive/webui-migration/)
 
 ## Contributing
 
