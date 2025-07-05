@@ -33,7 +33,7 @@ namespace ConduitLLM.Core.Services
         private long _totalGenerations;
         private long _successfulGenerations;
         private long _failedGenerations;
-        private decimal _totalCost;
+        private long _totalCostCents; // Store cost as cents to use with Interlocked
         private long _totalImages;
         
         private readonly Timer _cleanupTimer;
@@ -161,14 +161,9 @@ namespace ConduitLLM.Core.Services
             // Update virtual key metrics
             RecordVirtualKeyUsage(operation.VirtualKeyId, imagesGenerated, cost, 0);
             
-            // Add to total cost
-            decimal currentCost = cost;
-            decimal newCost;
-            do
-            {
-                currentCost = _totalCost;
-                newCost = currentCost + cost;
-            } while (Interlocked.CompareExchange(ref _totalCost, newCost, currentCost) != currentCost);
+            // Add to total cost (convert to cents for thread-safe operation)
+            var costInCents = (long)(cost * 100);
+            Interlocked.Add(ref _totalCostCents, costInCents);
             
             _logger.LogDebug("Completed tracking image generation {OperationId} - Success: {Success}, Time: {Time}ms", 
                 operationId, success, operation.Stopwatch.ElapsedMilliseconds);
