@@ -22,13 +22,25 @@ interface UseSignalRReturn {
 
 // Global SignalR manager instance
 let globalSignalRManager: SignalRManager | null = null;
+let signalRConfigPromise: Promise<{ coreUrl: string; adminUrl: string }> | null = null;
 
-function getSignalRManager(): SignalRManager {
+async function getSignalRConfig() {
+  if (!signalRConfigPromise) {
+    signalRConfigPromise = fetch('/api/signalr/config')
+      .then(res => res.json())
+      .catch(err => {
+        console.error('Failed to fetch SignalR config:', err);
+        throw err;
+      });
+  }
+  return signalRConfigPromise;
+}
+
+async function getSignalRManager(): Promise<SignalRManager> {
   if (!globalSignalRManager) {
-    // Connect directly to Conduit Core API but with session-based auth
-    const baseUrl = config.api.public.coreUrl;
+    const { coreUrl } = await getSignalRConfig();
     globalSignalRManager = new SignalRManager({
-      baseUrl,
+      baseUrl: coreUrl,
       automaticReconnect: config.signalr.autoReconnect,
       reconnectInterval: config.signalr.reconnectInterval,
     });
@@ -52,14 +64,12 @@ export function useSignalR({
   useEffect(() => {
     if (!enabled) return;
 
-    managerRef.current = getSignalRManager();
-
     const connectToHub = async () => {
-      if (!managerRef.current) return;
-
       try {
         setIsConnecting(true);
         setError(null);
+        
+        managerRef.current = await getSignalRManager();
         
         const hubConnection = await managerRef.current.connectHub(hubName, hubPath);
         setConnection(hubConnection);

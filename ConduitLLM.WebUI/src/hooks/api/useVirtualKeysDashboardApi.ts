@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { adminApiKeys } from './useAdminApi';
-import { createAdminClient } from '@/lib/clients/conduit';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 import type { 
   VirtualKeyCost, 
   CostDashboard, 
@@ -15,14 +15,21 @@ export function useVirtualKeysCostSummary(
   return useQuery<VirtualKeyCost[]>({
     queryKey: [adminApiKeys.all, 'virtualKeys', 'costSummary', startDate, endDate],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      const dateRange = {
-        startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: endDate?.toISOString() || new Date().toISOString()
-      };
-      const result = await adminClient.analytics.getCostByKey(dateRange);
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate.toISOString());
+      if (endDate) params.append('endDate', endDate.toISOString());
+      
+      const response = await apiFetch(`/api/admin/analytics/cost-by-key?${params}`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch cost summary');
+      }
+      
+      const result = await response.json();
       // Transform the response to match VirtualKeyCost[]
-      return result.keys.map(key => ({
+      return result.keys.map((key: { keyId: number; keyName?: string; totalCost: number; totalRequests: number; budgetUsed: number; budgetRemaining: number }) => ({
         virtualKeyId: key.keyId,
         virtualKeyName: key.keyName || `Key ${key.keyId}`,
         totalCost: key.totalCost,
@@ -43,32 +50,20 @@ export function useCostDashboardSummary(
   return useQuery<CostDashboard>({
     queryKey: [adminApiKeys.all, 'costDashboard', 'summary', timeframe, startDate, endDate],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      const dateRange = {
-        startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: endDate?.toISOString() || new Date().toISOString()
-      };
-      const result = await adminClient.analytics.getCostSummary(dateRange);
+      const params = new URLSearchParams();
+      params.append('timeframe', timeframe);
+      if (startDate) params.append('startDate', startDate.toISOString());
+      if (endDate) params.append('endDate', endDate.toISOString());
       
-      // Transform to match CostDashboard type
-      return {
-        totalCost: result.totalCost,
-        totalRequests: 0, // Not available in CostSummaryDto
-        averageCostPerRequest: 0, // Calculate if needed
-        timeframe,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        costByProvider: [], // Not available in this endpoint
-        costByModel: (result.costByModel || []).map(m => ({
-          model: m.modelId,
-          provider: '', // Not available
-          totalCost: m.cost,
-          requestCount: 0, // Not available
-          averageCostPerRequest: 0, // Not available
-        })),
-        costByVirtualKey: [], // Not available in this endpoint
-        costTrend: [], // Not available in this endpoint
-      };
+      const response = await apiFetch(`/api/admin/analytics/cost-summary?${params}`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch cost dashboard summary');
+      }
+      
+      return response.json();
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -82,41 +77,20 @@ export function useCostTrends(
   return useQuery<{ dailyData: CostTrendPoint[]; requestGrowthPercent: number; costGrowthPercent: number }>({
     queryKey: [adminApiKeys.all, 'costDashboard', 'trends', period, startDate, endDate],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      const dateRange = {
-        startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: endDate?.toISOString() || new Date().toISOString()
-      };
-      const groupBy = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month' as 'day' | 'week' | 'month';
-      const result = await adminClient.analytics.getCostByPeriod(dateRange, groupBy);
+      const params = new URLSearchParams();
+      params.append('period', period);
+      if (startDate) params.append('startDate', startDate.toISOString());
+      if (endDate) params.append('endDate', endDate.toISOString());
       
-      // Transform to match expected format
-      const dailyData: CostTrendPoint[] = result.periods.map(p => ({
-        date: p.startDate,
-        totalCost: p.totalCost,
-        requestCount: p.requestCount,
-        providers: {}, // Not available from this endpoint
-      }));
+      const response = await apiFetch(`/api/admin/analytics/cost-trends?${params}`, {
+        method: 'GET',
+      });
       
-      // Calculate growth percentages (comparing last two periods)
-      let requestGrowthPercent = 0;
-      let costGrowthPercent = 0;
-      if (dailyData.length >= 2) {
-        const current = dailyData[dailyData.length - 1];
-        const previous = dailyData[dailyData.length - 2];
-        if (previous.requestCount > 0) {
-          requestGrowthPercent = ((current.requestCount - previous.requestCount) / previous.requestCount) * 100;
-        }
-        if (previous.totalCost > 0) {
-          costGrowthPercent = ((current.totalCost - previous.totalCost) / previous.totalCost) * 100;
-        }
+      if (!response.ok) {
+        throw new Error('Failed to fetch cost trends');
       }
       
-      return {
-        dailyData,
-        requestGrowthPercent,
-        costGrowthPercent,
-      };
+      return response.json();
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -129,21 +103,44 @@ export function useModelCosts(
   return useQuery<ModelCost[]>({
     queryKey: [adminApiKeys.all, 'costDashboard', 'modelCosts', startDate, endDate],
     queryFn: async () => {
-      const adminClient = createAdminClient();
-      const dateRange = {
-        startDate: startDate?.toISOString() || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: endDate?.toISOString() || new Date().toISOString()
-      };
-      const result = await adminClient.analytics.getCostByModel(dateRange);
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate.toISOString());
+      if (endDate) params.append('endDate', endDate.toISOString());
       
-      // Transform to match ModelCost[]
-      return result.models.map(model => ({
-        model: model.modelId,
-        provider: '', // Not available in ModelUsageDto
-        totalCost: model.totalCost,
-        requestCount: model.totalRequests,
-        averageCostPerRequest: model.averageCostPerRequest,
-      }));
+      const response = await apiFetch(`/api/admin/analytics/model-costs?${params}`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch model costs');
+      }
+      
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useProviderCosts(
+  startDate?: Date,
+  endDate?: Date
+) {
+  return useQuery({
+    queryKey: [adminApiKeys.all, 'costDashboard', 'providerCosts', startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate.toISOString());
+      if (endDate) params.append('endDate', endDate.toISOString());
+      
+      const response = await apiFetch(`/api/admin/analytics/provider-costs?${params}`, {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch provider costs');
+      }
+      
+      return response.json();
     },
     staleTime: 5 * 60 * 1000,
   });

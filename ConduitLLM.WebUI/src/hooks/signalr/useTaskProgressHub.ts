@@ -62,30 +62,39 @@ export function useTaskProgressHub(
   }, [callbacks]);
 
   useEffect(() => {
-    // Get session token for authentication
-    const getSessionToken = async (): Promise<string> => {
+    const setupConnection = async () => {
       try {
-        const response = await fetch('/api/auth/session-token', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          return data.token || '';
+        // Get SignalR configuration from server
+        const configResponse = await fetch('/api/signalr/config');
+        if (!configResponse.ok) {
+          throw new Error('Failed to get SignalR configuration');
         }
-      } catch (error) {
-        console.warn('Failed to get session token for SignalR:', error);
-      }
-      return '';
-    };
+        const { coreUrl } = await configResponse.json();
 
-    const newConnection = new HubConnectionBuilder()
-      .withUrl(`${process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL}/hubs/task-progress`, {
-        accessTokenFactory: getSessionToken,
-      })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Information)
-      .build();
+        // Get session token for authentication
+        const getSessionToken = async (): Promise<string> => {
+          try {
+            const response = await fetch('/api/auth/session-token', {
+              method: 'GET',
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const data = await response.json();
+              return data.token || '';
+            }
+          } catch (error) {
+            console.warn('Failed to get session token for SignalR:', error);
+          }
+          return '';
+        };
+
+        const newConnection = new HubConnectionBuilder()
+          .withUrl(`${coreUrl}/hubs/task-progress`, {
+            accessTokenFactory: getSessionToken,
+          })
+          .withAutomaticReconnect()
+          .configureLogging(LogLevel.Information)
+          .build();
 
     // Set up event handlers
     newConnection.on('TaskStarted', (task: TaskProgress) => {
@@ -135,20 +144,26 @@ export function useTaskProgressHub(
       safeLog('Task progress hub reconnected');
     });
 
-    // Start connection
-    newConnection.start()
-      .then(() => {
-        setIsConnected(true);
-        setConnection(newConnection);
-        safeLog('Task progress hub connected');
-      })
-      .catch((error) => {
-        safeLog('Failed to connect to task progress hub', { error: error.message });
-      });
+        // Start connection
+        newConnection.start()
+          .then(() => {
+            setIsConnected(true);
+            setConnection(newConnection);
+            safeLog('Task progress hub connected');
+          })
+          .catch((error) => {
+            safeLog('Failed to connect to task progress hub', { error: error.message });
+          });
 
-    return () => {
-      newConnection.stop();
+        return () => {
+          newConnection.stop();
+        };
+      } catch (error) {
+        console.error('Failed to setup task progress hub connection:', error);
+      }
     };
+
+    setupConnection();
   }, [updateTask]);
 
   const getTask = useCallback((taskId: string): TaskProgress | undefined => {

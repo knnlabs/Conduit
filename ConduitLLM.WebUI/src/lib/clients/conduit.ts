@@ -1,5 +1,4 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reportError } from '@/lib/utils/logging';
 import { config, getAdminApiUrl } from '@/config';
@@ -25,58 +24,23 @@ export function createServerAdminClient(): ConduitAdminClient {
   });
 }
 
-// Client-side admin client configuration - uses user auth store
-export function createClientAdminClient(): ConduitAdminClient {
-  const { user } = useAuthStore.getState();
-  
-  if (!user?.masterKey) {
-    throw new Error('No master key available for admin client');
-  }
-
-  return new ConduitAdminClient({
-    adminApiUrl: config.api.public.adminUrl,
-    masterKey: user.masterKey,
-    options: {
-      timeout: config.api.timeout,
-    }
-  });
-}
-
-// Core client configuration - uses virtual key authentication
-export function createCoreClient(virtualKey?: string): ConduitCoreClient {
-  if (!virtualKey) {
-    throw new Error('Virtual key required for core client');
-  }
-
-  return new ConduitCoreClient({
-    baseURL: config.api.public.coreUrl,
-    apiKey: virtualKey,
-    timeout: config.api.timeout,
-  });
-}
+// Note: Client-side admin clients have been removed for security.
+// All API operations should go through server-side API routes.
 
 // Singleton instances for common usage
 let serverAdminClientInstance: ConduitAdminClient | null = null;
-let clientAdminClientInstance: ConduitAdminClient | null = null;
 
 // Server-side admin client getter (for API routes)
 export function getAdminClient(): ConduitAdminClient {
-  try {
-    // Check if we're in a server environment (API route)
-    if (typeof window === 'undefined') {
-      // Server-side: use environment variable
-      if (!serverAdminClientInstance) {
-        serverAdminClientInstance = createServerAdminClient();
-      }
-      return serverAdminClientInstance;
-    } else {
-      // Client-side: use user auth store
-      clientAdminClientInstance = createClientAdminClient();
-      return clientAdminClientInstance;
+  // Check if we're in a server environment (API route)
+  if (typeof window === 'undefined') {
+    // Server-side: use environment variable
+    if (!serverAdminClientInstance) {
+      serverAdminClientInstance = createServerAdminClient();
     }
-  } catch (error) {
-    console.error('Failed to create admin client:', error);
-    throw error;
+    return serverAdminClientInstance;
+  } else {
+    throw new Error('Admin client cannot be created on the client side. Use server-side API routes instead.');
   }
 }
 
@@ -87,19 +51,8 @@ export function canCreateAdminClient(): boolean {
     return !!config.auth.masterKey;
   }
   
-  // On client-side, check user auth
-  const { user } = useAuthStore.getState();
-  return !!(user?.masterKey && user.isAuthenticated);
-}
-
-// Legacy function for backward compatibility
-export function createAdminClient(): ConduitAdminClient {
-  console.warn('createAdminClient() is deprecated. Use createServerAdminClient() or createClientAdminClient() explicitly.');
-  return getAdminClient();
-}
-
-export function canCreateCoreClient(virtualKey?: string): boolean {
-  return !!virtualKey;
+  // On client-side, always false
+  return false;
 }
 
 // Error handling helpers

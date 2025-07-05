@@ -7,8 +7,8 @@ function validateEnvironment() {
   const required = {
     CONDUIT_MASTER_KEY: process.env.CONDUIT_MASTER_KEY,
     // Use internal URLs for server-side API calls
-    CONDUIT_ADMIN_API_BASE_URL: process.env.CONDUIT_ADMIN_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL,
-    CONDUIT_API_BASE_URL: process.env.CONDUIT_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL,
+    CONDUIT_ADMIN_API_BASE_URL: process.env.CONDUIT_ADMIN_API_BASE_URL,
+    CONDUIT_API_BASE_URL: process.env.CONDUIT_API_BASE_URL,
   };
 
   const missing = Object.entries(required)
@@ -136,26 +136,8 @@ export function getServerCoreClient(virtualKey: string, config?: Partial<SDKConf
   return client;
 }
 
-// Create a Core client for browser usage with SignalR
-export function createBrowserCoreClient(virtualKey: string, config?: Partial<SDKConfig>): ConduitCoreClient {
-  const baseUrl = process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL;
-  
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_CONDUIT_CORE_API_URL environment variable not configured');
-  }
-
-  const finalConfig = { ...defaultSDKConfig, ...config };
-
-  return new ConduitCoreClient({
-    baseURL: baseUrl,
-    apiKey: virtualKey,
-    timeout: finalConfig.timeout,
-    maxRetries: finalConfig.retries,
-    // TODO: SDK does not yet support:
-    // - retryDelay
-    // - signalR configuration
-  });
-}
+// Note: createBrowserCoreClient has been removed as browser clients should not be created directly.
+// Use server-side API endpoints instead for all operations.
 
 // Invalidate cached clients (useful for configuration changes)
 export function invalidateClientCache(type: 'admin' | 'core' | 'all', virtualKey?: string) {

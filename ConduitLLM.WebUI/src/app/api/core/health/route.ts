@@ -34,7 +34,7 @@ export const GET = withSDKAuth(
 
     } catch (error: unknown) {
       // If we can't reach the Admin API, try a direct health check as fallback
-      const coreApiUrl = process.env.CONDUIT_API_BASE_URL || process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL;
+      const coreApiUrl = process.env.CONDUIT_API_BASE_URL;
       
       if (coreApiUrl) {
         try {

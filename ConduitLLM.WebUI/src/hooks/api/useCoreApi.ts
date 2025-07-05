@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { BackendErrorHandler, type BackendError } from '@/lib/errors/BackendErrorHandler';
-import { createCoreClient } from '@/lib/clients/conduit';
 import { apiFetch } from '@/lib/utils/fetch-wrapper';
 import type { ChatCompletionRequest, ImageGenerationRequest, ImageGenerationResponse } from '@knn_labs/conduit-core-client';
 
@@ -30,13 +29,21 @@ export function useChatCompletion() {
   return useMutation({
     mutationFn: async ({ virtualKey, ...body }: { virtualKey: string } & ChatCompletionRequest) => {
       try {
-        const client = createCoreClient(virtualKey);
-        // Handle the overloaded create method properly
-        if (body.stream === true) {
-          return await client.chat.completions.create({ ...body, stream: true });
-        } else {
-          return await client.chat.completions.create({ ...body, stream: false });
+        const response = await apiFetch('/api/core/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to create chat completion' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to create chat completion' };
+          throw BackendErrorHandler.classifyError(backendError);
         }
+
+        return response.json();
       } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }
@@ -64,12 +71,46 @@ export function useStreamingChatCompletion() {
       onChunk: (chunk: unknown) => void;
     } & ChatCompletionRequest) => {
       try {
-        const client = createCoreClient(virtualKey);
-        const stream = await client.chat.completions.create({ ...body, stream: true });
-        
-        // Handle the streaming response
-        for await (const chunk of stream) {
-          onChunk(chunk);
+        const response = await fetch('/api/core/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body, stream: true }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to create streaming chat completion' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to create streaming chat completion' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                onChunk(parsed);
+              } catch {
+                // Ignore parsing errors
+              }
+            }
+          }
         }
       } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
@@ -94,8 +135,21 @@ export function useImageGeneration() {
   return useMutation<ImageGenerationResponse, unknown, { virtualKey: string } & ImageGenerationRequest>({
     mutationFn: async ({ virtualKey, ...body }) => {
       try {
-        const client = createCoreClient(virtualKey);
-        return await client.images.generate(body);
+        const response = await apiFetch('/api/core/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ virtual_key: virtualKey, ...body }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Failed to generate image' }));
+          const backendError = { status: response.status, message: error.error || 'Failed to generate image' };
+          throw BackendErrorHandler.classifyError(backendError);
+        }
+
+        return response.json();
       } catch (error: unknown) {
         throw BackendErrorHandler.classifyError(error);
       }

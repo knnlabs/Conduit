@@ -24,7 +24,7 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
 
     // Server-side validation
     const adminClient = new ConduitAdminClient({
-      adminApiUrl: process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL!,
+      adminApiUrl: process.env.CONDUIT_ADMIN_API_BASE_URL!,
       masterKey: masterKey,
     });
 

@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiKeys } from './useAdminApi';
-import { createAdminClient as _createAdminClient } from '@/lib/clients/conduit';
 import { notifications } from '@mantine/notifications';
 
 export function useOverallMediaStats() {

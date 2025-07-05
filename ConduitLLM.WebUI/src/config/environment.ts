@@ -61,25 +61,16 @@ export const config = {
 
   // API Endpoints
   api: {
-    // Public URLs (accessible from browser)
-    public: {
-      adminUrl: getOptionalEnv('NEXT_PUBLIC_CONDUIT_ADMIN_API_URL', 'http://localhost:5002'),
-      coreUrl: getOptionalEnv('NEXT_PUBLIC_CONDUIT_CORE_API_URL', 'http://localhost:5000'),
-    },
     // Server-side URLs (for internal Docker networking)
     server: isServer ? {
-      adminUrl: getOptionalEnv('CONDUIT_ADMIN_API_BASE_URL', 
-        getOptionalEnv('NEXT_PUBLIC_CONDUIT_ADMIN_API_URL', 'http://localhost:5002')),
-      coreUrl: getOptionalEnv('CONDUIT_API_BASE_URL',
-        getOptionalEnv('NEXT_PUBLIC_CONDUIT_CORE_API_URL', 'http://localhost:5000')),
+      adminUrl: getOptionalEnv('CONDUIT_ADMIN_API_BASE_URL', 'http://localhost:5002'),
+      coreUrl: getOptionalEnv('CONDUIT_API_BASE_URL', 'http://localhost:5000'),
     } : undefined,
-    // External URLs for SignalR (browser-accessible)
-    external: {
-      adminUrl: getOptionalEnv('CONDUIT_ADMIN_API_EXTERNAL_URL',
-        getOptionalEnv('NEXT_PUBLIC_CONDUIT_ADMIN_API_URL', 'http://localhost:5002')),
-      coreUrl: getOptionalEnv('CONDUIT_API_EXTERNAL_URL',
-        getOptionalEnv('NEXT_PUBLIC_CONDUIT_CORE_API_URL', 'http://localhost:5000')),
-    },
+    // External URLs for SignalR (browser-accessible, server-side only)
+    external: isServer ? {
+      adminUrl: getOptionalEnv('CONDUIT_ADMIN_API_EXTERNAL_URL', 'http://localhost:5002'),
+      coreUrl: getOptionalEnv('CONDUIT_API_EXTERNAL_URL', 'http://localhost:5000'),
+    } : undefined,
     // API configuration
     timeout: getNumberEnv('API_TIMEOUT', 30000),
     retryAttempts: getNumberEnv('API_RETRY_ATTEMPTS', 3),
@@ -156,11 +147,13 @@ export function validateEnvironment(): void {
   // Production validations
   if (config.env.isProduction) {
     // Ensure proper URLs in production
-    if (config.api.public.adminUrl.includes('localhost') || config.api.public.adminUrl.includes('127.0.0.1')) {
-      errors.push('NEXT_PUBLIC_CONDUIT_ADMIN_API_URL must not use localhost in production');
-    }
-    if (config.api.public.coreUrl.includes('localhost') || config.api.public.coreUrl.includes('127.0.0.1')) {
-      errors.push('NEXT_PUBLIC_CONDUIT_CORE_API_URL must not use localhost in production');
+    if (isServer && config.api.server) {
+      if (config.api.server.adminUrl.includes('localhost') || config.api.server.adminUrl.includes('127.0.0.1')) {
+        errors.push('CONDUIT_ADMIN_API_BASE_URL must not use localhost in production');
+      }
+      if (config.api.server.coreUrl.includes('localhost') || config.api.server.coreUrl.includes('127.0.0.1')) {
+        errors.push('CONDUIT_API_BASE_URL must not use localhost in production');
+      }
     }
 
     // Debug mode should be off in production
@@ -178,24 +171,27 @@ export function validateEnvironment(): void {
  * Get the appropriate API URL based on context
  */
 export function getAdminApiUrl(): string {
-  if (isServer && config.api.server) {
-    return config.api.server.adminUrl;
+  if (!isServer) {
+    throw new Error('getAdminApiUrl can only be called on the server');
   }
-  return config.api.public.adminUrl;
+  return config.api.server!.adminUrl;
 }
 
 export function getCoreApiUrl(): string {
-  if (isServer && config.api.server) {
-    return config.api.server.coreUrl;
+  if (!isServer) {
+    throw new Error('getCoreApiUrl can only be called on the server');
   }
-  return config.api.public.coreUrl;
+  return config.api.server!.coreUrl;
 }
 
 /**
- * Get SignalR hub URLs
+ * Get SignalR hub URLs (server-side only)
  */
 export function getSignalRUrl(path: string): string {
-  const baseUrl = config.api.external.adminUrl;
+  if (!isServer) {
+    throw new Error('getSignalRUrl can only be called on the server');
+  }
+  const baseUrl = config.api.external!.adminUrl;
   return `${baseUrl}${path}`;
 }
 
