@@ -434,7 +434,7 @@ export default function MediaAssetsPage() {
                 </Text>
                 <Group justify="space-between">
                   <Text size="xs" c="dimmed">
-                    {formatters.duration(mediaAsset.createdAt)}
+                    {formatters.date(mediaAsset.createdAt)}
                   </Text>
                   <Group gap={4}>
                     <ActionIcon size="sm" variant="subtle" onClick={() => handleViewAsset(mediaAsset)}>

@@ -1,10 +1,8 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
-  Button,
   Stack,
   Group,
   Text,
@@ -20,7 +18,9 @@ import { useForm } from '@mantine/form';
 import { useUpdateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-// Removed unused notifications import
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
+import { formatters } from '@/lib/utils/formatters';
 
 interface ModelMapping {
   id: string;
@@ -62,7 +62,7 @@ const CAPABILITY_OPTIONS = [
 ];
 
 export function EditModelMappingModal({ opened, onClose, modelMapping }: EditModelMappingModalProps) {
-  const updateModelMapping = useUpdateModelMapping();
+  const updateModelMappingMutation = useUpdateModelMapping();
   const { data: providers } = useProviders();
   interface ProviderInfo {
     healthStatus: string;
@@ -70,6 +70,25 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
   }
   
   const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
+
+  // Create a mutation wrapper that handles the id
+  const mutation = {
+    ...updateModelMappingMutation,
+    mutate: (values: EditModelMappingForm, options?: Parameters<typeof updateModelMappingMutation.mutate>[1]) => {
+      if (!modelMapping) return;
+      updateModelMappingMutation.mutate({
+        id: modelMapping.id,
+        data: values,
+      }, options);
+    },
+    mutateAsync: async (values: EditModelMappingForm) => {
+      if (!modelMapping) throw new Error('No model mapping to update');
+      return updateModelMappingMutation.mutateAsync({
+        id: modelMapping.id,
+        data: values,
+      });
+    },
+  };
 
   const form = useForm<EditModelMappingForm>({
     initialValues: {
@@ -82,26 +101,16 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
     },
     validate: {
       internalModelName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Internal model name is required';
-        }
-        if (value.length < 3) {
-          return 'Model name must be at least 3 characters';
-        }
+        const requiredError = validators.required('Internal model name')(value);
+        if (requiredError) return requiredError;
+        
+        const minLengthError = validators.minLength('Model name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
         return null;
       },
-      providerModelName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Provider model name is required';
-        }
-        return null;
-      },
-      providerName: (value) => {
-        if (!value) {
-          return 'Provider is required';
-        }
-        return null;
-      },
+      providerModelName: validators.required('Provider model name'),
+      providerName: validators.required('Provider'),
       priority: (value) => {
         if (value < 0 || value > 1000) {
           return 'Priority must be between 0 and 1000';
@@ -139,45 +148,9 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
     }
   }, [modelMapping, providers, form]);
 
-  const handleSubmit = async (values: EditModelMappingForm) => {
-    if (!modelMapping) return;
-
-    try {
-      const payload = {
-        internalModelName: values.internalModelName.trim(),
-        providerModelName: values.providerModelName.trim(),
-        providerName: values.providerName,
-        isEnabled: values.isEnabled,
-        capabilities: values.capabilities,
-        priority: values.priority,
-      };
-
-      await updateModelMapping.mutateAsync({
-        id: modelMapping.id,
-        data: payload,
-      });
-      
-      onClose();
-    } catch (error: unknown) {
-      // Error is handled by the mutation hook
-      console.error('Update model mapping error:', error);
-    }
-  };
-
   const handleClose = () => {
-    form.reset();
     setSelectedProvider(null);
     onClose();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   if (!modelMapping) {
@@ -193,31 +166,43 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
   }) || [];
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
       onClose={handleClose}
       title="Edit Model Mapping"
       size="lg"
-      centered
+      form={form}
+      mutation={mutation}
+      entityType="Model mapping"
+      isEdit={true}
+      submitText="Save Changes"
+      initialValues={modelMapping ? {
+        internalModelName: modelMapping.internalModelName,
+        providerModelName: modelMapping.providerModelName,
+        providerName: modelMapping.providerName,
+        isEnabled: modelMapping.isEnabled,
+        capabilities: modelMapping.capabilities,
+        priority: modelMapping.priority,
+      } : undefined}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           {/* Mapping Info Card */}
           <Card withBorder>
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Created</Text>
-                <Text size="sm">{formatDate(modelMapping.createdAt)}</Text>
+                <Text size="sm">{formatters.date(modelMapping.createdAt)}</Text>
               </Group>
               {modelMapping.lastUsed && (
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Last Used</Text>
-                  <Text size="sm">{formatDate(modelMapping.lastUsed)}</Text>
+                  <Text size="sm">{formatters.date(modelMapping.lastUsed)}</Text>
                 </Group>
               )}
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Request Count</Text>
-                <Text size="sm">{modelMapping.requestCount.toLocaleString()}</Text>
+                <Text size="sm">{formatters.number(modelMapping.requestCount)}</Text>
               </Group>
             </Stack>
           </Card>
@@ -301,25 +286,8 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
               Changes to model mappings take effect immediately and will affect all incoming requests.
             </Text>
           </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button 
-              variant="subtle" 
-              onClick={handleClose}
-              disabled={updateModelMapping.isPending}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              loading={updateModelMapping.isPending}
-              disabled={!form.isValid()}
-            >
-              Save Changes
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

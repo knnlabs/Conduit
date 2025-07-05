@@ -390,7 +390,7 @@ export default function HealthMonitoringPage() {
 
                   <Group justify="space-between">
                     <Text size="sm" c="dimmed">Last Check</Text>
-                    <Text size="sm" fw={500}>{formatters.duration(new Date(service.lastCheck))}</Text>
+                    <Text size="sm" fw={500}>{formatters.date(service.lastCheck)}</Text>
                   </Group>
 
                   {/* Service-specific metrics */}
@@ -503,8 +503,8 @@ export default function HealthMonitoringPage() {
                   }
                 >
                   <Text c="dimmed" size="sm">
-                    {(incident as Incident).service || 'System'} • Started {formatters.duration(new Date(incident.startTime))}
-                    {incident.endTime && ` • Resolved ${formatters.duration(new Date(incident.endTime))}`}
+                    {(incident as Incident).service || 'System'} • Started {formatters.date(incident.startTime)}
+                    {incident.endTime && ` • Resolved ${formatters.date(incident.endTime)}`}
                   </Text>
                   <Text size="sm" mt={4}>{(incident as Incident).description || 'No description'}</Text>
                   <Text size="sm" c="dimmed" mt={4}>Impact: {(incident as Incident).impact || 'Unknown'}</Text>

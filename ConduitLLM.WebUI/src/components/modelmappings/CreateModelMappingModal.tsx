@@ -1,11 +1,9 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
   Button,
-  Stack,
   Group,
   Text,
   Select,
@@ -19,7 +17,8 @@ import { useForm } from '@mantine/form';
 import { useCreateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
-// Removed unused notifications import
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
 
 interface CreateModelMappingModalProps {
   opened: boolean;
@@ -97,29 +96,19 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     },
     validate: {
       internalModelName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Internal model name is required';
-        }
-        if (value.length < 3) {
-          return 'Model name must be at least 3 characters';
-        }
-        if (!/^[a-zA-Z0-9-_.]+$/.test(value)) {
+        const requiredError = validators.required('Internal model name')(value);
+        if (requiredError) return requiredError;
+        
+        const minLengthError = validators.minLength('Model name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
+        if (!/^[a-zA-Z0-9-_.]+$/.test(value!)) {
           return 'Model name can only contain letters, numbers, hyphens, dots, and underscores';
         }
         return null;
       },
-      providerModelName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Provider model name is required';
-        }
-        return null;
-      },
-      providerName: (value) => {
-        if (!value) {
-          return 'Provider is required';
-        }
-        return null;
-      },
+      providerModelName: validators.required('Provider model name'),
+      providerName: validators.required('Provider'),
       priority: (value) => {
         if (value < 0 || value > 1000) {
           return 'Priority must be between 0 and 1000';
@@ -147,30 +136,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     }
   }, [form.values.providerName, providers]);
 
-  const handleSubmit = async (values: CreateModelMappingForm) => {
-    try {
-      const payload = {
-        internalModelName: values.internalModelName.trim(),
-        providerModelName: values.providerModelName.trim(),
-        providerName: values.providerName,
-        isEnabled: values.isEnabled,
-        capabilities: values.capabilities,
-        priority: values.priority,
-      };
-
-      await createModelMapping.mutateAsync(payload);
-      
-      // Reset form and close modal on success
-      form.reset();
-      onClose();
-    } catch (error: unknown) {
-      // Error is handled by the mutation hook
-      console.error('Create model mapping error:', error);
-    }
-  };
-
   const handleClose = () => {
-    form.reset();
     setSelectedProvider(null);
     setShowPresets(true);
     onClose();
@@ -195,15 +161,18 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
   }) || [];
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
       onClose={handleClose}
       title="Create Model Mapping"
       size="lg"
-      centered
+      form={form}
+      mutation={createModelMapping}
+      entityType="Model mapping"
+      submitText="Create Mapping"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           {showPresets && MODEL_PRESETS.length > 0 && (
             <>
               <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
@@ -303,25 +272,8 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
               Multiple mappings can exist for the same internal model name with different priorities.
             </Text>
           </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button 
-              variant="subtle" 
-              onClick={handleClose}
-              disabled={createModelMapping.isPending}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              loading={createModelMapping.isPending}
-              disabled={!form.isValid()}
-            >
-              Create Mapping
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

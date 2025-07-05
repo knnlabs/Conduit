@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
   Button,
@@ -9,7 +8,6 @@ import {
   Group,
   Text,
   Textarea,
-  // Removed unused Select import
   PasswordInput,
   Alert,
   Divider,
@@ -19,8 +17,9 @@ import {
 import { useForm } from '@mantine/form';
 import { useUpdateProvider } from '@/hooks/api/useAdminApi';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
-// Removed unused notifications import
+import { useState } from 'react';
+import { FormModal } from '@/components/common/FormModal';
+import { validators } from '@/lib/utils/form-validators';
 
 interface Provider {
   id: string;
@@ -80,55 +79,17 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     },
     validate: {
       providerName: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Provider name is required';
-        }
-        if (value.length < 3) {
-          return 'Provider name must be at least 3 characters';
-        }
+        const requiredError = validators.required('Provider name')(value);
+        if (requiredError) return requiredError;
+        
+        const minLengthError = validators.minLength('Provider name', 3)(value);
+        if (minLengthError) return minLengthError;
+        
         return null;
       },
     },
   });
 
-  // Update form when provider changes
-  useEffect(() => {
-    if (provider) {
-      form.setValues({
-        providerName: provider.providerName,
-        description: provider.description || '',
-        apiKey: '', // Don't show existing API key for security
-        apiEndpoint: provider.apiEndpoint || '',
-        organizationId: provider.organizationId || '',
-        isEnabled: provider.isEnabled,
-      });
-    }
-  }, [provider, form]);
-
-  const handleSubmit = async (values: EditProviderForm) => {
-    if (!provider) return;
-
-    try {
-      const payload = {
-        providerName: values.providerName.trim(),
-        description: values.description?.trim() || undefined,
-        apiKey: values.apiKey?.trim() || undefined, // Only update if provided
-        apiEndpoint: values.apiEndpoint?.trim() || undefined,
-        organizationId: values.organizationId?.trim() || undefined,
-        isEnabled: values.isEnabled,
-      };
-
-      await updateProvider.mutateAsync({
-        id: provider.id,
-        data: payload,
-      });
-      
-      onClose();
-    } catch (error: unknown) {
-      // Error is handled by the mutation hook
-      console.error('Update provider error:', error);
-    }
-  };
 
   const handleTestConnection = async () => {
     if (!provider || !onTest) return;
@@ -138,27 +99,67 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     setTestingConnection(false);
   };
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
   if (!provider) {
     return null;
   }
 
+  // Create a mutation wrapper that handles the payload transformation
+  const mutation = {
+    ...updateProvider,
+    mutate: (values: EditProviderForm, options?: Parameters<typeof updateProvider.mutate>[1]) => {
+      const payload = {
+        providerName: values.providerName.trim(),
+        description: values.description?.trim() || undefined,
+        apiKey: values.apiKey?.trim() || undefined, // Only update if provided
+        apiEndpoint: values.apiEndpoint?.trim() || undefined,
+        organizationId: values.organizationId?.trim() || undefined,
+        isEnabled: values.isEnabled,
+      };
+      updateProvider.mutate({
+        id: provider.id,
+        data: payload,
+      }, options);
+    },
+    mutateAsync: async (values: EditProviderForm) => {
+      const payload = {
+        providerName: values.providerName.trim(),
+        description: values.description?.trim() || undefined,
+        apiKey: values.apiKey?.trim() || undefined, // Only update if provided
+        apiEndpoint: values.apiEndpoint?.trim() || undefined,
+        organizationId: values.organizationId?.trim() || undefined,
+        isEnabled: values.isEnabled,
+      };
+      return updateProvider.mutateAsync({
+        id: provider.id,
+        data: payload,
+      });
+    },
+  };
+
   const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerType);
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
-      onClose={handleClose}
+      onClose={onClose}
       title="Edit Provider"
       size="md"
-      centered
+      form={form}
+      mutation={mutation}
+      entityType="Provider"
+      isEdit={true}
+      submitText="Save Changes"
+      initialValues={{
+        providerName: provider.providerName,
+        description: provider.description || '',
+        apiKey: '', // Don't show existing API key for security
+        apiEndpoint: provider.apiEndpoint || '',
+        organizationId: provider.organizationId || '',
+        isEnabled: provider.isEnabled,
+      }}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           {/* Provider Info Card */}
           <Card withBorder>
             <Stack gap="xs">
@@ -247,7 +248,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             </Text>
           </Alert>
 
-          <Group justify="space-between" mt="md">
+          <Group justify="flex-start" mt="md">
             <Button 
               variant="light"
               onClick={handleTestConnection}
@@ -256,26 +257,9 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             >
               Test Connection
             </Button>
-            
-            <Group gap="sm">
-              <Button 
-                variant="subtle" 
-                onClick={handleClose}
-                disabled={updateProvider.isPending}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                loading={updateProvider.isPending}
-                disabled={!form.isValid()}
-              >
-                Save Changes
-              </Button>
-            </Group>
           </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

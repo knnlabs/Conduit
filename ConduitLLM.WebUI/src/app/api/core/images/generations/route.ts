@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { createCoreRoute } from '@/lib/utils/core-route-helpers';
 import { validateImageGenerationRequest } from '@/lib/utils/core-route-validators';
 import { withSDKErrorHandling } from '@/lib/errors/sdk-errors';
@@ -21,17 +20,10 @@ export const POST = createCoreRoute(
     // Generate image using SDK
     const result = await withSDKErrorHandling(
       async () => coreClient.images.generate({
-        prompt: imageRequest.prompt,
-        model: imageRequest.model,
-        n: imageRequest.n,
-        size: imageRequest.size,
-        quality: imageRequest.quality,
-        style: imageRequest.style,
-        response_format: imageRequest.response_format,
-        user: imageRequest.user,
+        ...imageRequest,
         // TODO: SDK does not yet support provider-specific parameters:
         // - aspectRatio, seed, steps, guidanceScale, negativePrompt
-      }),
+      } as never),
       'generate image'
     );
 
