@@ -90,6 +90,16 @@ public class ConduitAdminClient : IDisposable
     public DatabaseBackupService DatabaseBackup { get; }
 
     /// <summary>
+    /// Gets the SignalR service for real-time admin notifications.
+    /// </summary>
+    public SignalRService SignalR { get; }
+
+    /// <summary>
+    /// Gets the connection service for managing SignalR connections and health checks.
+    /// </summary>
+    public ConnectionService Connection { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitAdminClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -201,6 +211,16 @@ public class ConduitAdminClient : IDisposable
             _configuration, 
             loggerFactory?.CreateLogger<DatabaseBackupService>(), 
             _cache);
+
+        SignalR = new SignalRService(
+            _configuration,
+            loggerFactory?.CreateLogger<SignalRService>());
+
+        Connection = new ConnectionService(
+            _configuration,
+            SignalR,
+            _httpClient,
+            loggerFactory?.CreateLogger<ConnectionService>());
     }
 
     /// <summary>

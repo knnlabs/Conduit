@@ -24,6 +24,11 @@ public static class HttpHeaders
     /// Accept header name.
     /// </summary>
     public const string Accept = "Accept";
+
+    /// <summary>
+    /// X-Master-Key header name for admin authentication.
+    /// </summary>
+    public const string MasterKey = "X-Master-Key";
 }
 
 /// <summary>

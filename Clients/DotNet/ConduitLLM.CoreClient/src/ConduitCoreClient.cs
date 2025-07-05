@@ -77,6 +77,11 @@ public class ConduitCoreClient : BaseClient
     public ProviderModelsService ProviderModels { get; }
 
     /// <summary>
+    /// Gets the connection service for managing SignalR connections and health checks.
+    /// </summary>
+    public ConnectionService Connection { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -106,6 +111,7 @@ public class ConduitCoreClient : BaseClient
         ILogger<DiscoveryService>? discoveryLogger = null;
         ILogger<ProviderModelsService>? providerModelsLogger = null;
         ILogger<EmbeddingsService>? embeddingsLogger = null;
+        ILogger<ConnectionService>? connectionLogger = null;
         
         if (logger != null)
         {
@@ -123,6 +129,7 @@ public class ConduitCoreClient : BaseClient
             discoveryLogger = loggerFactory.CreateLogger<DiscoveryService>();
             providerModelsLogger = loggerFactory.CreateLogger<ProviderModelsService>();
             embeddingsLogger = loggerFactory.CreateLogger<EmbeddingsService>();
+            connectionLogger = loggerFactory.CreateLogger<ConnectionService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -138,6 +145,7 @@ public class ConduitCoreClient : BaseClient
         Discovery = new DiscoveryService(this, discoveryLogger);
         ProviderModels = new ProviderModelsService(this, providerModelsLogger);
         Embeddings = new EmbeddingsService(this, embeddingsLogger);
+        Connection = new ConnectionService(_configuration, SignalR, HttpClient, connectionLogger);
     }
 
     /// <summary>

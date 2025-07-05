@@ -62,6 +62,7 @@
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageReference Include="System.Text.Json" Version="9.0.5" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.5" />
   </ItemGroup>
 
   <ItemGroup>
