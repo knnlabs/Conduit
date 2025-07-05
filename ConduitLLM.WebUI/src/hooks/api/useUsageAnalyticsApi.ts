@@ -3,177 +3,33 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
-import { DateRange } from '@knn_labs/conduit-admin-client';
-import type { UsageMetricsDto } from '@/types/sdk-extensions';
+import { usageAnalyticsKeys } from '@/lib/queries/analytics-query-keys';
+import { 
+  convertTimeRangeToDateRange, 
+  getGroupByFromTimeRange,
+  getEndpointFromModel,
+  createExportFilename,
+  getPercentile
+} from '@/lib/utils/analytics-helpers';
+import type {
+  TimeRangeFilter,
+  UsageMetrics,
+  RequestVolumeData,
+  TokenUsageData,
+  ErrorAnalyticsData,
+  LatencyMetrics,
+  UserAnalytics,
+  EndpointUsage,
+  UsageMetricsDto,
+  ExportResponse,
+  BaseExportRequest,
+} from '@/types/analytics-types';
 
-// Query key factory for Usage Analytics API
-export const usageAnalyticsApiKeys = {
-  all: ['usage-analytics-api'] as const,
-  metrics: () => [...usageAnalyticsApiKeys.all, 'metrics'] as const,
-  requests: () => [...usageAnalyticsApiKeys.all, 'requests'] as const,
-  tokens: () => [...usageAnalyticsApiKeys.all, 'tokens'] as const,
-  errors: () => [...usageAnalyticsApiKeys.all, 'errors'] as const,
-  latency: () => [...usageAnalyticsApiKeys.all, 'latency'] as const,
-  users: () => [...usageAnalyticsApiKeys.all, 'users'] as const,
-  endpoints: () => [...usageAnalyticsApiKeys.all, 'endpoints'] as const,
-} as const;
-
-export interface UsageMetrics {
-  totalRequests: number;
-  totalTokens: number;
-  totalUsers: number;
-  averageLatency: number;
-  errorRate: number;
-  requestsPerSecond: number;
-  tokensPerRequest: number;
-  successRate: number;
-  uniqueVirtualKeys: number;
-  activeProviders: number;
-  requestsTrend: number; // percentage change
-  tokensTrend: number;
-  errorsTrend: number;
-  latencyTrend: number;
-}
-
-export interface RequestVolumeData {
-  timestamp: string;
-  requests: number;
-  successfulRequests: number;
-  failedRequests: number;
-  averageLatency: number;
-  tokensProcessed: number;
-}
-
-export interface TokenUsageData {
-  timestamp: string;
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  cost: number;
-  averageTokensPerRequest: number;
-}
-
-export interface ErrorAnalyticsData {
-  errorType: string;
-  count: number;
-  percentage: number;
-  lastOccurrence: string;
-  affectedEndpoints: string[];
-  examples: {
-    message: string;
-    timestamp: string;
-    virtualKey?: string;
-    provider?: string;
-  }[];
-}
-
-export interface LatencyMetrics {
-  endpoint: string;
-  averageLatency: number;
-  p50: number;
-  p90: number;
-  p95: number;
-  p99: number;
-  requestCount: number;
-  slowestRequests: {
-    latency: number;
-    timestamp: string;
-    virtualKey?: string;
-    model?: string;
-  }[];
-}
-
-export interface UserAnalytics {
-  virtualKeyId: string;
-  virtualKeyName: string;
-  totalRequests: number;
-  totalTokens: number;
-  totalCost: number;
-  averageLatency: number;
-  errorRate: number;
-  lastActivity: string;
-  topModels: string[];
-  topEndpoints: string[];
-  requestsOverTime: { timestamp: string; requests: number }[];
-}
-
-export interface EndpointUsage {
-  endpoint: string;
-  method: string;
-  totalRequests: number;
-  averageLatency: number;
-  errorRate: number;
-  successRate: number;
-  tokensPerRequest: number;
-  costPerRequest: number;
-  popularModels: string[];
-  requestsOverTime: { timestamp: string; requests: number }[];
-}
-
-export interface TimeRangeFilter {
-  range: '1h' | '24h' | '7d' | '30d' | '90d' | 'custom';
-  startDate?: string;
-  endDate?: string;
-}
-
-// Helper functions for SDK integration
-function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRange {
-  if (timeRange.range === 'custom' && timeRange.startDate && timeRange.endDate) {
-    return {
-      startDate: timeRange.startDate,
-      endDate: timeRange.endDate,
-    };
-  }
-  
-  const now = new Date();
-  let startDate: Date;
-  
-  switch (timeRange.range) {
-    case '1h':
-      startDate = new Date(now.getTime() - 60 * 60 * 1000);
-      break;
-    case '24h':
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case '7d':
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case '30d':
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '90d':
-      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  }
-  
-  return {
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
-  };
-}
-
-function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'day' | 'week' | 'month' {
-  switch (timeRange.range) {
-    case '1h':
-    case '24h':
-      return 'hour';
-    case '7d':
-      return 'day';
-    case '30d':
-      return 'day';
-    case '90d':
-      return 'week';
-    default:
-      return 'day';
-  }
-}
 
 // Usage Metrics Hook
 export function useUsageMetrics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.metrics(), timeRange],
+    queryKey: usageAnalyticsKeys.metrics(timeRange),
     queryFn: async (): Promise<UsageMetrics> => {
       try {
         const client = getAdminClient();
@@ -220,7 +76,7 @@ export function useUsageMetrics(timeRange: TimeRangeFilter) {
 // Request Volume Analytics
 export function useRequestVolumeAnalytics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.requests(), timeRange],
+    queryKey: usageAnalyticsKeys.requests(timeRange),
     queryFn: async (): Promise<RequestVolumeData[]> => {
       try {
         const client = getAdminClient();
@@ -254,7 +110,7 @@ export function useRequestVolumeAnalytics(timeRange: TimeRangeFilter) {
 // Token Usage Analytics
 export function useTokenUsageAnalytics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.tokens(), timeRange],
+    queryKey: usageAnalyticsKeys.tokens(timeRange),
     queryFn: async (): Promise<TokenUsageData[]> => {
       try {
         const client = getAdminClient();
@@ -293,7 +149,7 @@ export function useTokenUsageAnalytics(timeRange: TimeRangeFilter) {
 // Error Analytics
 export function useErrorAnalytics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.errors(), timeRange],
+    queryKey: usageAnalyticsKeys.errors(timeRange),
     queryFn: async (): Promise<ErrorAnalyticsData[]> => {
       try {
         const client = getAdminClient();
@@ -364,7 +220,7 @@ export function useErrorAnalytics(timeRange: TimeRangeFilter) {
 // Latency Metrics
 export function useLatencyMetrics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.latency(), timeRange],
+    queryKey: usageAnalyticsKeys.latency(timeRange),
     queryFn: async (): Promise<LatencyMetrics[]> => {
       try {
         const client = getAdminClient();
@@ -384,10 +240,7 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
         }>();
         
         response.items.forEach(log => {
-          const endpoint = `/v1/${log.model.includes('chat') ? 'chat/completions' : 
-                                log.model.includes('dall-e') ? 'images/generations' :
-                                log.model.includes('whisper') ? 'audio/transcriptions' :
-                                'chat/completions'}`;
+          const endpoint = getEndpointFromModel(log.model);
           
           const existing = endpointMetrics.get(endpoint) || {
             durations: [],
@@ -404,11 +257,7 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
           const sortedDurations = data.durations.sort((a, b) => a - b);
           const count = sortedDurations.length;
           
-          const getPercentile = (p: number) => {
-            if (count === 0) return 0;
-            const index = Math.floor((p / 100) * count);
-            return sortedDurations[Math.min(index, count - 1)];
-          };
+          const getPercentileValue = (p: number) => getPercentile(sortedDurations, p);
           
           const averageLatency = count > 0 ? sortedDurations.reduce((sum, d) => sum + d, 0) / count : 0;
           
@@ -426,10 +275,10 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
           return {
             endpoint,
             averageLatency: Math.round(averageLatency),
-            p50: Math.round(getPercentile(50)),
-            p90: Math.round(getPercentile(90)),
-            p95: Math.round(getPercentile(95)),
-            p99: Math.round(getPercentile(99)),
+            p50: Math.round(getPercentileValue(50)),
+            p90: Math.round(getPercentileValue(90)),
+            p95: Math.round(getPercentileValue(95)),
+            p99: Math.round(getPercentileValue(99)),
             requestCount: count,
             slowestRequests,
           };
@@ -449,7 +298,7 @@ export function useLatencyMetrics(timeRange: TimeRangeFilter) {
 // User Analytics
 export function useUserAnalytics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.users(), timeRange],
+    queryKey: usageAnalyticsKeys.users(timeRange),
     queryFn: async (): Promise<UserAnalytics[]> => {
       try {
         const client = getAdminClient();
@@ -539,7 +388,7 @@ export function useUserAnalytics(timeRange: TimeRangeFilter) {
 // Endpoint Usage Analytics
 export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...usageAnalyticsApiKeys.endpoints(), timeRange],
+    queryKey: usageAnalyticsKeys.endpoints(timeRange),
     queryFn: async (): Promise<EndpointUsage[]> => {
       try {
         const client = getAdminClient();
@@ -559,11 +408,7 @@ export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
         }>();
         
         response.items.forEach(log => {
-          const endpoint = `/v1/${log.model.includes('chat') ? 'chat/completions' : 
-                                log.model.includes('dall-e') ? 'images/generations' :
-                                log.model.includes('whisper') ? 'audio/transcriptions' :
-                                log.model.includes('tts') ? 'audio/speech' :
-                                'chat/completions'}`;
+          const endpoint = getEndpointFromModel(log.model);
           
           const existing = endpointData.get(endpoint) || {
             requests: [],
@@ -631,6 +476,10 @@ export function useEndpointUsageAnalytics(timeRange: TimeRangeFilter) {
 }
 
 // Export usage data
+interface UsageExportRequest extends BaseExportRequest {
+  type: 'metrics' | 'requests' | 'tokens' | 'errors' | 'latency' | 'users' | 'endpoints';
+}
+
 export function useExportUsageData() {
   const _queryClient = useQueryClient();
 
@@ -639,11 +488,7 @@ export function useExportUsageData() {
       type, 
       timeRange, 
       format = 'csv' 
-    }: { 
-      type: 'metrics' | 'requests' | 'tokens' | 'errors' | 'latency' | 'users' | 'endpoints';
-      timeRange: TimeRangeFilter;
-      format?: 'csv' | 'json' | 'xlsx';
-    }) => {
+    }: UsageExportRequest): Promise<ExportResponse> => {
       try {
         const client = getAdminClient();
         
@@ -661,8 +506,7 @@ export function useExportUsageData() {
         
         // Create download URL
         const url = URL.createObjectURL(blob);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `usage-${type}-${timestamp}.${format}`;
+        const filename = createExportFilename('usage', type, format);
         
         return {
           filename,

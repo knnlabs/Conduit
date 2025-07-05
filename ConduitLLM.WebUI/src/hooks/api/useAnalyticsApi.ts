@@ -3,135 +3,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminClient } from '@/lib/clients/conduit';
 import { reportError } from '@/lib/utils/logging';
-import { DateRange } from '@knn_labs/conduit-admin-client';
-import type { CostByModelResponse, CostByKeyResponse } from '@/types/sdk-extensions';
-
-// Query key factory for Analytics API
-export const analyticsApiKeys = {
-  all: ['analytics-api'] as const,
-  costs: () => [...analyticsApiKeys.all, 'costs'] as const,
-  usage: () => [...analyticsApiKeys.all, 'usage'] as const,
-  trends: () => [...analyticsApiKeys.all, 'trends'] as const,
-  providers: () => [...analyticsApiKeys.all, 'providers'] as const,
-  models: () => [...analyticsApiKeys.all, 'models'] as const,
-  virtualKeys: () => [...analyticsApiKeys.all, 'virtual-keys'] as const,
-} as const;
-
-export interface CostTrendData {
-  date: string;
-  spend: number;
-  requests: number;
-  tokens: number;
-  averageCostPerRequest: number;
-}
-
-export interface ProviderCostData {
-  provider: string;
-  spend: number;
-  requests: number;
-  percentage: number;
-  models: string[];
-  averageCost: number;
-}
-
-export interface ModelCostData {
-  model: string;
-  provider: string;
-  spend: number;
-  requests: number;
-  tokens: number;
-  averageCostPerRequest: number;
-  averageCostPerToken: number;
-}
-
-export interface VirtualKeyCostData {
-  keyId: string;
-  keyName: string;
-  spend: number;
-  budget: number;
-  requests: number;
-  usagePercentage: number;
-  isOverBudget: boolean;
-  lastActivity: string;
-  topModels: string[];
-}
-
-export interface CostSummary {
-  totalSpend: number;
-  totalBudget: number;
-  totalRequests: number;
-  totalTokens: number;
-  activeVirtualKeys: number;
-  averageCostPerRequest: number;
-  averageCostPerToken: number;
-  spendTrend: number; // percentage change from previous period
-  requestTrend: number;
-}
-
-export interface TimeRangeFilter {
-  range: '1h' | '24h' | '7d' | '30d' | '90d' | 'custom';
-  startDate?: string;
-  endDate?: string;
-}
-
-// Helper functions for SDK integration
-function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRange {
-  if (timeRange.range === 'custom' && timeRange.startDate && timeRange.endDate) {
-    return {
-      startDate: timeRange.startDate,
-      endDate: timeRange.endDate,
-    };
-  }
-  
-  const now = new Date();
-  let startDate: Date;
-  
-  switch (timeRange.range) {
-    case '1h':
-      startDate = new Date(now.getTime() - 60 * 60 * 1000);
-      break;
-    case '24h':
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case '7d':
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case '30d':
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '90d':
-      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  }
-  
-  return {
-    startDate: startDate.toISOString(),
-    endDate: now.toISOString(),
-  };
-}
-
-function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'day' | 'week' | 'month' {
-  switch (timeRange.range) {
-    case '1h':
-    case '24h':
-      return 'hour';
-    case '7d':
-      return 'day';
-    case '30d':
-      return 'day';
-    case '90d':
-      return 'week';
-    default:
-      return 'day';
-  }
-}
+import { costAnalyticsKeys } from '@/lib/queries/analytics-query-keys';
+import { 
+  convertTimeRangeToDateRange, 
+  getGroupByFromTimeRange,
+  getProviderFromModel,
+  createExportFilename
+} from '@/lib/utils/analytics-helpers';
+import type {
+  TimeRangeFilter,
+  CostTrendData,
+  ProviderCostData,
+  ModelCostData,
+  VirtualKeyCostData,
+  CostSummary,
+  CostByModelResponse,
+  CostByKeyResponse,
+  ExportResponse,
+  BaseExportRequest,
+} from '@/types/analytics-types';
 
 // Cost Analytics Hooks
 export function useCostSummary(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...analyticsApiKeys.costs(), 'summary', timeRange],
+    queryKey: costAnalyticsKeys.summary(timeRange),
     queryFn: async (): Promise<CostSummary> => {
       try {
         const client = getAdminClient();
@@ -171,7 +66,7 @@ export function useCostSummary(timeRange: TimeRangeFilter) {
 
 export function useCostTrends(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...analyticsApiKeys.trends(), timeRange],
+    queryKey: costAnalyticsKeys.trends(timeRange),
     queryFn: async (): Promise<CostTrendData[]> => {
       try {
         const client = getAdminClient();
@@ -203,7 +98,7 @@ export function useCostTrends(timeRange: TimeRangeFilter) {
 
 export function useProviderCosts(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...analyticsApiKeys.providers(), timeRange],
+    queryKey: costAnalyticsKeys.providers(timeRange),
     queryFn: async (): Promise<ProviderCostData[]> => {
       try {
         const client = getAdminClient();
@@ -255,7 +150,7 @@ export function useProviderCosts(timeRange: TimeRangeFilter) {
 
 export function useModelCosts(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...analyticsApiKeys.models(), timeRange],
+    queryKey: costAnalyticsKeys.models(timeRange),
     queryFn: async (): Promise<ModelCostData[]> => {
       try {
         const client = getAdminClient();
@@ -271,15 +166,7 @@ export function useModelCosts(timeRange: TimeRangeFilter) {
           const averageCostPerRequest = model.totalRequests > 0 ? model.totalCost / model.totalRequests : 0;
           
           // Determine provider from model name
-          let provider = 'Unknown';
-          const modelLower = model.modelId.toLowerCase();
-          if (modelLower.includes('gpt') || modelLower.includes('dall-e') || modelLower.includes('whisper')) {
-            provider = modelLower.includes('azure') ? 'Azure OpenAI' : 'OpenAI';
-          } else if (modelLower.includes('claude')) {
-            provider = 'Anthropic';
-          } else if (modelLower.includes('minimax')) {
-            provider = 'MiniMax';
-          }
+          const provider = getProviderFromModel(model.modelId);
           
           return {
             model: model.modelId,
@@ -305,7 +192,7 @@ export function useModelCosts(timeRange: TimeRangeFilter) {
 
 export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
   return useQuery({
-    queryKey: [...analyticsApiKeys.virtualKeys(), timeRange],
+    queryKey: costAnalyticsKeys.virtualKeys(timeRange),
     queryFn: async (): Promise<VirtualKeyCostData[]> => {
       try {
         const client = getAdminClient();
@@ -361,6 +248,10 @@ export function useVirtualKeyCosts(timeRange: TimeRangeFilter) {
 }
 
 // Export cost data
+interface CostExportRequest extends BaseExportRequest {
+  type: 'summary' | 'trends' | 'providers' | 'models' | 'virtual-keys';
+}
+
 export function useExportCostData() {
   const _queryClient = useQueryClient();
 
@@ -369,11 +260,7 @@ export function useExportCostData() {
       type, 
       timeRange, 
       format = 'csv' 
-    }: { 
-      type: 'summary' | 'trends' | 'providers' | 'models' | 'virtual-keys';
-      timeRange: TimeRangeFilter;
-      format?: 'csv' | 'json' | 'xlsx';
-    }) => {
+    }: CostExportRequest): Promise<ExportResponse> => {
       try {
         const client = getAdminClient();
         
@@ -391,8 +278,7 @@ export function useExportCostData() {
         
         // Create download URL
         const url = URL.createObjectURL(blob);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `cost-${type}-${timestamp}.${format}`;
+        const filename = createExportFilename('cost', type, format);
         
         return {
           filename,
@@ -411,7 +297,7 @@ export function useExportCostData() {
 // Real-time cost alerts
 export function useCostAlerts() {
   return useQuery({
-    queryKey: [...analyticsApiKeys.all, 'alerts'],
+    queryKey: costAnalyticsKeys.alerts(),
     queryFn: async () => {
       try {
         const client = getAdminClient();
