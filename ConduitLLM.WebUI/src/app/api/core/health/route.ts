@@ -3,11 +3,11 @@ import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 
 export const GET = withSDKAuth(
-  async (_request, { auth }) => {
+  async (_request, context) => {
     try {
       // Use Admin SDK to get system health which includes Core API status
       const healthData = await withSDKErrorHandling(
-        async () => auth.adminClient!.system.getHealth(),
+        async () => context.adminClient!.system.getHealth(),
         'get system health'
       );
 
@@ -72,10 +72,10 @@ export const GET = withSDKAuth(
 
 // Support for HEAD requests (lightweight health check)
 export const HEAD = withSDKAuth(
-  async (_request, { auth }) => {
+  async (_request, context) => {
     try {
       // Quick health check using Admin SDK
-      const healthData = await auth.adminClient!.system.getHealth();
+      const healthData = await context.adminClient!.system.getHealth();
       const isHealthy = healthData.status === 'healthy';
 
       return new Response(null, { 

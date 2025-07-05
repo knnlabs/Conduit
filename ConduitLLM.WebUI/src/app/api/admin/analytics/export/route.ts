@@ -6,7 +6,7 @@ const VALID_EXPORT_TYPES = ['usage', 'cost', 'virtual-keys', 'request-logs', 'pr
 const VALID_FORMATS = ['csv', 'json', 'excel'];
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     let body: { type?: string; format?: string; filters?: Record<string, unknown> };
     try {
       body = await request.json();
@@ -30,7 +30,7 @@ export const POST = withSDKAuth(
 
       // Export analytics data using SDK
       const blob = await withSDKErrorHandling(
-        async () => auth.adminClient!.analytics.exportAnalytics(
+        async () => context.adminClient!.analytics.exportAnalytics(
           {
             startDate: (filters?.startDate as string) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
             endDate: (filters?.endDate as string) || new Date().toISOString(),

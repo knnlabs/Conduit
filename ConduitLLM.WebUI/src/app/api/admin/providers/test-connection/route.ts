@@ -3,14 +3,14 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
       // Test connection with provider configuration
       // This tests a configuration before saving it
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.testConnection({
+        async () => context.adminClient!.providers.testConnection({
           providerName: body.providerType || body.providerName,
           apiKey: body.apiKey,
           apiEndpoint: body.apiUrl || body.apiEndpoint,

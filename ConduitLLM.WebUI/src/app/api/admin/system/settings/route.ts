@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS = {
 };
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       const category = params.get('category');
@@ -41,7 +41,7 @@ export const GET = withSDKAuth(
         async () => {
           if (category) {
             // Get settings by category
-            const categorySettings = await auth.adminClient!.settings.getSettingsByCategory(category);
+            const categorySettings = await context.adminClient!.settings.getSettingsByCategory(category);
             // Convert array to object format
             const settingsObj: Record<string, unknown> = {};
             categorySettings.forEach((setting: SettingItem) => {
@@ -51,7 +51,7 @@ export const GET = withSDKAuth(
           }
           
           // Get all global settings
-          const allSettings = await auth.adminClient!.settings.getGlobalSettings();
+          const allSettings = await context.adminClient!.settings.getGlobalSettings();
           // Convert array to object format grouped by category
           const settingsObj: Record<string, Record<string, unknown>> = {};
           allSettings.forEach((setting: SettingItem) => {
@@ -88,7 +88,7 @@ export const GET = withSDKAuth(
 );
 
 export const PUT = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -101,7 +101,7 @@ export const PUT = withSDKAuth(
           if (body.category && body.settings) {
             for (const [key, value] of Object.entries(body.settings)) {
               updatePromises.push(
-                auth.adminClient!.settings.updateGlobalSetting(key, {
+                context.adminClient!.settings.updateGlobalSetting(key, {
                   value: String(value),
                   category: body.category
                 })
@@ -112,7 +112,7 @@ export const PUT = withSDKAuth(
             for (const [key, value] of Object.entries(body)) {
               if (key !== 'category' && key !== 'settings') {
                 updatePromises.push(
-                  auth.adminClient!.settings.updateGlobalSetting(key, {
+                  context.adminClient!.settings.updateGlobalSetting(key, {
                     value: String(value)
                   })
                 );
@@ -141,7 +141,7 @@ export const PUT = withSDKAuth(
 
 // Additional endpoint for specific setting categories
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -149,7 +149,7 @@ export const POST = withSDKAuth(
       const result = await withSDKErrorHandling(
         async () => {
           // Use setSetting method which is available in the SDK
-          await auth.adminClient!.settings.setSetting(
+          await context.adminClient!.settings.setSetting(
             body.key,
             String(body.value),
             {

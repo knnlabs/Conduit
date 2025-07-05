@@ -9,6 +9,12 @@ export interface SDKSessionData {
   masterKeyHash?: string;  // For admin operations
   virtualKey?: string;      // For core operations
   permissions?: string[];   // Future: granular permissions
+  roles?: string[];         // User roles
+  user?: {                  // User information
+    id: string;
+    email?: string;
+    name?: string;
+  };
 }
 
 // Validation result with SDK client context
@@ -18,6 +24,25 @@ export interface SDKAuthResult {
   session?: SDKSessionData;
   adminClient?: ReturnType<typeof getServerAdminClient>;
   coreClient?: ReturnType<typeof getServerCoreClient>;
+}
+
+// Enhanced authentication context
+export interface SDKAuthContext {
+  adminClient?: ReturnType<typeof getServerAdminClient>;
+  coreClient?: ReturnType<typeof getServerCoreClient>;
+  request: NextRequest;
+  session: SDKSessionData;
+  user?: SDKSessionData['user'];
+}
+
+// Authentication options
+export interface SDKAuthOptions {
+  requireAdmin?: boolean;           // Require admin access
+  requireCore?: boolean;            // Require core client access
+  requireVirtualKey?: boolean;      // Require virtual key
+  requireSpecificRole?: string[];   // Require specific roles
+  requirePermissions?: string[];    // Require specific permissions
+  allowServiceAccounts?: boolean;   // Allow service account access
 }
 
 // Extract session data from request
@@ -262,8 +287,117 @@ export function createSDKSession(options: {
   };
 }
 
-// Middleware helper for route handlers
-export function withSDKAuth(
+// Check if user has required roles
+async function checkUserRole(session: SDKSessionData, requiredRoles: string[]): Promise<boolean> {
+  if (!session.roles || session.roles.length === 0) {
+    return false;
+  }
+  return requiredRoles.some(role => session.roles?.includes(role));
+}
+
+// Check if user has required permissions
+async function checkUserPermissions(session: SDKSessionData, requiredPermissions: string[]): Promise<boolean> {
+  if (!session.permissions || session.permissions.length === 0) {
+    return false;
+  }
+  return requiredPermissions.every(permission => session.permissions?.includes(permission));
+}
+
+// Create unauthorized response
+export function createUnauthorizedResponse(error?: string): Response {
+  return new Response(
+    JSON.stringify({ error: error || 'Unauthorized' }),
+    { 
+      status: 401, 
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+// Create forbidden response
+export function createForbiddenResponse(error?: string): Response {
+  return new Response(
+    JSON.stringify({ error: error || 'Forbidden' }),
+    { 
+      status: 403, 
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+// Enhanced middleware helper for route handlers
+export function withSDKAuth<T extends SDKAuthOptions = SDKAuthOptions>(
+  handler: (
+    request: NextRequest,
+    context: SDKAuthContext
+  ) => Promise<Response>,
+  options?: T
+) {
+  return async (request: NextRequest): Promise<Response> => {
+    try {
+      // 1. Validate session based on requirements
+      const auth = await validateSDKSession(request, {
+        requireAdmin: options?.requireAdmin,
+        requireCore: options?.requireCore,
+        requireVirtualKey: options?.requireVirtualKey,
+      });
+      
+      if (!auth.isValid) {
+        return createUnauthorizedResponse(auth.error);
+      }
+
+      if (!auth.session) {
+        return createUnauthorizedResponse('Invalid session');
+      }
+
+      // 2. Check role requirements
+      if (options?.requireSpecificRole && options.requireSpecificRole.length > 0) {
+        const hasRole = await checkUserRole(auth.session, options.requireSpecificRole);
+        if (!hasRole) {
+          return createForbiddenResponse('Insufficient role permissions');
+        }
+      }
+
+      // 3. Check permission requirements
+      if (options?.requirePermissions && options.requirePermissions.length > 0) {
+        const hasPermissions = await checkUserPermissions(auth.session, options.requirePermissions);
+        if (!hasPermissions) {
+          return createForbiddenResponse('Insufficient permissions');
+        }
+      }
+
+      // 4. Check service account restrictions
+      if (options?.allowServiceAccounts === false && auth.session.user?.id?.startsWith('service_')) {
+        return createForbiddenResponse('Service accounts not allowed');
+      }
+
+      // 5. Create context object
+      const context: SDKAuthContext = {
+        adminClient: auth.adminClient,
+        coreClient: auth.coreClient,
+        request,
+        session: auth.session,
+        user: auth.session.user,
+      };
+
+      // 6. Call handler with context
+      return await handler(request, context);
+
+    } catch (error) {
+      logger.error('Authentication middleware error', { error });
+      return new Response(
+        JSON.stringify({ error: 'Internal authentication error' }),
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+  };
+}
+
+// Legacy compatibility wrapper - maps old API to new API
+export function withSDKAuthLegacy(
   handler: (
     request: NextRequest,
     context: { auth: SDKAuthResult }
@@ -274,19 +408,17 @@ export function withSDKAuth(
     requireVirtualKey?: boolean;
   }
 ) {
-  return async (request: NextRequest) => {
-    const auth = await validateSDKSession(request, options);
-    
-    if (!auth.isValid) {
-      return new Response(
-        JSON.stringify({ error: auth.error || 'Unauthorized' }),
-        { 
-          status: 401, 
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    return handler(request, { auth });
-  };
+  return withSDKAuth(
+    async (request, context) => {
+      // Map new context to legacy format
+      const legacyAuth: SDKAuthResult = {
+        isValid: true,
+        session: context.session,
+        adminClient: context.adminClient,
+        coreClient: context.coreClient,
+      };
+      return handler(request, { auth: legacyAuth });
+    },
+    options
+  );
 }

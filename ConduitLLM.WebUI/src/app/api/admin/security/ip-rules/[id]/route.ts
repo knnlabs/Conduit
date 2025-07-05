@@ -3,13 +3,13 @@ import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       
       // Get IP rule details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.getById(Number(id)),
+        async () => adminClient!.ipFilters.getById(Number(id)),
         `get IP rule ${id}`
       );
 
@@ -22,14 +22,14 @@ export const GET = createDynamicRouteHandler<{ id: string }>(
 );
 
 export const PUT = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       const body = await request.json();
       
       // Update IP rule - build update data with required id field
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.update(Number(id), {
+        async () => adminClient!.ipFilters.update(Number(id), {
           id: Number(id),
           ...(body.ipAddress !== undefined && { ipAddressOrCidr: body.ipAddress }),
           ...(body.action !== undefined && { filterType: body.action === 'allow' ? 'whitelist' : 'blacklist' }),
@@ -54,13 +54,13 @@ export const PUT = createDynamicRouteHandler<{ id: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ id: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { id } = params;
       
       // Delete IP rule
       await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.deleteById(Number(id)),
+        async () => adminClient!.ipFilters.deleteById(Number(id)),
         `delete IP rule ${id}`
       );
 

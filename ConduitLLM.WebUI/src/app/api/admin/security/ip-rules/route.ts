@@ -5,13 +5,13 @@ import { transformSDKResponse, transformPaginatedResponse } from '@/lib/utils/sd
 import { parseQueryParams, validateRequiredFields, createValidationError } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       
       // Get IP rules with filtering
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.list({
+        async () => context.adminClient!.ipFilters.list({
           pageNumber: params.page,
           pageSize: params.pageSize,
           filterType: params.get('type') === 'Allow' ? 'whitelist' : params.get('type') === 'Deny' ? 'blacklist' : undefined,
@@ -47,7 +47,7 @@ export const GET = withSDKAuth(
 );
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -70,7 +70,7 @@ export const POST = withSDKAuth(
 
       // Create IP rule
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.ipFilters.create({
+        async () => context.adminClient!.ipFilters.create({
           name: body.name || `IP Rule for ${body.ipAddress}`,
           ipAddressOrCidr: body.ipAddress,
           filterType: body.action === 'allow' ? 'whitelist' : 'blacklist',
@@ -96,7 +96,7 @@ export const POST = withSDKAuth(
 
 // Bulk operations endpoint
 export const PUT = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       const { operation, rules } = body;
@@ -122,11 +122,11 @@ export const PUT = withSDKAuth(
         rules.map(async (ruleId) => {
           switch (operation) {
             case 'enable':
-              return auth.adminClient!.ipFilters.enableFilter(ruleId);
+              return context.adminClient!.ipFilters.enableFilter(ruleId);
             case 'disable':
-              return auth.adminClient!.ipFilters.disableFilter(ruleId);
+              return context.adminClient!.ipFilters.disableFilter(ruleId);
             case 'delete':
-              return auth.adminClient!.ipFilters.deleteById(ruleId);
+              return context.adminClient!.ipFilters.deleteById(ruleId);
             default:
               throw new Error('Invalid operation');
           }

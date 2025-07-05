@@ -21,17 +21,17 @@ interface Provider {
 }
 
 export const GET = withSDKAuth(
-  async (_request, { auth }) => {
+  async (_request, context) => {
     try {
       // Get router configuration from SDK
       const routerConfig = await withSDKErrorHandling(
-        async () => auth.adminClient!.settings.getRouterConfiguration(),
+        async () => context.adminClient!.settings.getRouterConfiguration(),
         'get router configuration'
       );
 
       // Get model mappings to build routing rules
       const modelMappings = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.list({
+        async () => context.adminClient!.modelMappings.list({
           pageNumber: 1,
           pageSize: 100,
           isEnabled: true,
@@ -41,7 +41,7 @@ export const GET = withSDKAuth(
 
       // Get providers for load balancing info
       const providers = await withSDKErrorHandling(
-        async () => auth.adminClient!.providers.list({
+        async () => context.adminClient!.providers.list({
           pageNumber: 1,
           pageSize: 100,
         }),
@@ -115,7 +115,7 @@ export const GET = withSDKAuth(
       let metricsData;
       try {
         metricsData = await withSDKErrorHandling(
-          async () => auth.adminClient!.metrics.getAllMetrics(),
+          async () => context.adminClient!.metrics.getAllMetrics(),
           'get system metrics'
         );
       } catch (_error) {
@@ -169,7 +169,7 @@ export const GET = withSDKAuth(
 );
 
 export const PUT = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -218,7 +218,7 @@ export const PUT = withSDKAuth(
       
       // Update router configuration
       await withSDKErrorHandling(
-        async () => auth.adminClient!.settings.updateRouterConfiguration(updateRequest),
+        async () => context.adminClient!.settings.updateRouterConfiguration(updateRequest),
         'update router configuration'
       );
       

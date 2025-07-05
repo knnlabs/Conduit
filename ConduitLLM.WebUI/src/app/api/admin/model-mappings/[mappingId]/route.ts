@@ -3,13 +3,13 @@ import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
 
 export const GET = createDynamicRouteHandler<{ mappingId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { mappingId } = params;
       
       // Get model mapping details
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.getById(Number(mappingId)),
+        async () => adminClient!.modelMappings.getById(Number(mappingId)),
         `get model mapping ${mappingId}`
       );
 
@@ -22,7 +22,7 @@ export const GET = createDynamicRouteHandler<{ mappingId: string }>(
 );
 
 export const PUT = createDynamicRouteHandler<{ mappingId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { mappingId } = params;
       const body = await request.json();
@@ -40,7 +40,7 @@ export const PUT = createDynamicRouteHandler<{ mappingId: string }>(
       if (body.capabilities !== undefined) updateData.capabilities = body.capabilities;
       
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.update(Number(mappingId), updateData),
+        async () => adminClient!.modelMappings.update(Number(mappingId), updateData),
         `update model mapping ${mappingId}`
       );
 
@@ -58,13 +58,13 @@ export const PUT = createDynamicRouteHandler<{ mappingId: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ mappingId: string }>(
-  async (request, { params, auth }) => {
+  async (request, { params, adminClient }) => {
     try {
       const { mappingId } = params;
       
       // Delete model mapping
       await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.deleteById(Number(mappingId)),
+        async () => adminClient!.modelMappings.deleteById(Number(mappingId)),
         `delete model mapping ${mappingId}`
       );
 

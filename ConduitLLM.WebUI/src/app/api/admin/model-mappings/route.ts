@@ -4,13 +4,13 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { parseQueryParams, validateRequiredFields, createValidationError } from '@/lib/utils/route-helpers';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const params = parseQueryParams(request);
       
       // List model mappings with filtering
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.list({
+        async () => context.adminClient!.modelMappings.list({
           pageNumber: params.page,
           pageSize: params.pageSize,
           modelId: params.get('modelName') || undefined,
@@ -34,7 +34,7 @@ export const GET = withSDKAuth(
 );
 
 export const POST = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       const body = await request.json();
       
@@ -49,7 +49,7 @@ export const POST = withSDKAuth(
       
       // Create model mapping
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.create({
+        async () => context.adminClient!.modelMappings.create({
           modelId: body.modelName,
           providerId: body.providerId,
           providerModelId: body.providerModelName || body.modelName,

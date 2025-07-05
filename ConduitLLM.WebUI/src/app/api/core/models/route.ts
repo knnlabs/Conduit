@@ -4,11 +4,11 @@ import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-er
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 
 export const GET = withSDKAuth(
-  async (request, { auth }) => {
+  async (request, context) => {
     try {
       // Use the admin client to get available models from model mappings
       const result = await withSDKErrorHandling(
-        async () => auth.adminClient!.modelMappings.list({
+        async () => context.adminClient!.modelMappings.list({
           isEnabled: true, // Only get enabled models
         }),
         'list available models'
