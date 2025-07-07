@@ -24,10 +24,10 @@ import { ENDPOINTS } from '../constants';
  * Service for managing audio provider configurations, cost settings, and usage analytics
  */
 export class AudioConfigurationService extends BaseApiClient {
-  private static readonly PROVIDERS_ENDPOINT = '/api/admin/audio/providers';
-  private static readonly COSTS_ENDPOINT = '/api/admin/audio/costs';
-  private static readonly USAGE_ENDPOINT = '/api/admin/audio/usage';
-  private static readonly SESSIONS_ENDPOINT = '/api/admin/audio/sessions';
+  private static readonly PROVIDERS_ENDPOINT = '/admin/audio/providers';
+  private static readonly COSTS_ENDPOINT = '/admin/audio/costs';
+  private static readonly USAGE_ENDPOINT = '/admin/audio/usage';
+  private static readonly SESSIONS_ENDPOINT = '/admin/audio/sessions';
 
   // #region Provider Configuration
 

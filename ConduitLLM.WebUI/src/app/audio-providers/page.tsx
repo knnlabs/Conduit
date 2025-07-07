@@ -142,15 +142,39 @@ function useAudioProviders() {
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to fetch audio providers');
+          let errorMessage = 'Failed to fetch audio providers';
+          try {
+            const errorData = await response.json();
+            if (typeof errorData === 'object' && errorData !== null) {
+              if ('error' in errorData) {
+                errorMessage = typeof errorData.error === 'string' 
+                  ? errorData.error 
+                  : (typeof errorData.error === 'object' && errorData.error !== null && 'message' in errorData.error)
+                    ? String(errorData.error.message)
+                    : errorMessage;
+              }
+            }
+          } catch {
+            // If we can't parse the error response, use the default message
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
+        
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          console.error('Audio providers response is not an array:', data);
+          return [];
+        }
+        
         return data.map(transformAudioProvider);
       } catch (error: unknown) {
         reportError(error, 'Failed to fetch audio providers');
-        throw new Error(error instanceof Error ? error.message : 'Failed to fetch audio providers');
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('Failed to fetch audio providers');
       }
     },
     staleTime: 30 * 1000, // 30 seconds
