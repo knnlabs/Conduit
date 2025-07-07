@@ -781,7 +781,7 @@ export function useTestProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await apiFetch(`/api/admin/providers/${providerId}/test`, {
+      const response = await apiFetch(`/api/admin/providers-test/${providerId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
