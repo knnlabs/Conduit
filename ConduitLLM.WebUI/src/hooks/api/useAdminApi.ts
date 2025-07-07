@@ -793,12 +793,22 @@ export function useTestProvider() {
         throw new Error(error.error || 'Failed to test provider');
       }
 
-      return response.json();
+      const result = await response.json();
+      
+      // Extract the actual data from the transformed response
+      const testResult = result.data || result;
+      
+      // Check if the test actually succeeded
+      if (!testResult.success) {
+        throw new Error(testResult.message || testResult.errorDetails || 'Connection test failed');
+      }
+      
+      return testResult;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       notifications.show({
         title: 'Connection Test Successful',
-        message: 'Provider is responding correctly',
+        message: data.message || 'Provider is responding correctly',
         color: 'green',
       });
       
@@ -810,6 +820,7 @@ export function useTestProvider() {
         title: 'Connection Test Failed',
         message: error.message || 'Failed to connect to provider',
         color: 'red',
+        autoClose: false, // Keep error visible
       });
     },
   });
