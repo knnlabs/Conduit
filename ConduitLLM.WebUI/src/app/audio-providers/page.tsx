@@ -38,7 +38,7 @@ import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminClient } from '@/lib/clients/conduit';
+import { apiFetch } from '@/lib/utils/fetch-wrapper';
 import { reportError } from '@/lib/utils/logging';
 
 // Audio provider types
@@ -134,9 +134,20 @@ function useAudioProviders() {
     queryKey: ['audio-providers'],
     queryFn: async (): Promise<AudioProvider[]> => {
       try {
-        const client = getAdminClient();
-        const response = await client.audioConfiguration.getProviders();
-        return response.map(transformAudioProvider);
+        const response = await apiFetch('/api/admin/audio-configuration', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to fetch audio providers');
+        }
+
+        const data = await response.json();
+        return data.map(transformAudioProvider);
       } catch (error: unknown) {
         reportError(error, 'Failed to fetch audio providers');
         throw new Error(error instanceof Error ? error.message : 'Failed to fetch audio providers');
@@ -165,8 +176,6 @@ function useCreateAudioProvider() {
       advancedConfig: string;
     }) => {
       try {
-        const client = getAdminClient();
-        
         const supportedOperations: string[] = [];
         if (data.capabilities.transcription) supportedOperations.push('transcription');
         if (data.capabilities.textToSpeech) supportedOperations.push('text-to-speech');
@@ -195,8 +204,21 @@ function useCreateAudioProvider() {
           settings,
         };
         
-        const response = await client.audioConfiguration.createProvider(request);
-        return transformAudioProvider(response);
+        const response = await apiFetch('/api/admin/audio-configuration', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create audio provider');
+        }
+
+        const responseData = await response.json();
+        return transformAudioProvider(responseData);
       } catch (error: unknown) {
         reportError(error, 'Failed to create audio provider');
         throw new Error(error instanceof Error ? error.message : 'Failed to create audio provider');
@@ -228,8 +250,6 @@ function useUpdateAudioProvider() {
       advancedConfig: string;
     }) => {
       try {
-        const client = getAdminClient();
-        
         const supportedOperations: string[] = [];
         if (data.capabilities.transcription) supportedOperations.push('transcription');
         if (data.capabilities.textToSpeech) supportedOperations.push('text-to-speech');
@@ -258,8 +278,21 @@ function useUpdateAudioProvider() {
           settings,
         };
         
-        const response = await client.audioConfiguration.updateProvider(data.id, request);
-        return transformAudioProvider(response);
+        const response = await apiFetch(`/api/admin/audio-configuration/${data.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update audio provider');
+        }
+
+        const responseData = await response.json();
+        return transformAudioProvider(responseData);
       } catch (error: unknown) {
         reportError(error, 'Failed to update audio provider');
         throw new Error(error instanceof Error ? error.message : 'Failed to update audio provider');
@@ -277,8 +310,17 @@ function useDeleteAudioProvider() {
   return useMutation({
     mutationFn: async (providerId: string) => {
       try {
-        const client = getAdminClient();
-        await client.audioConfiguration.deleteProvider(providerId);
+        const response = await apiFetch(`/api/admin/audio-configuration/${providerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to delete audio provider');
+        }
       } catch (error: unknown) {
         reportError(error, 'Failed to delete audio provider');
         throw new Error(error instanceof Error ? error.message : 'Failed to delete audio provider');
@@ -294,8 +336,19 @@ function useTestAudioProvider() {
   return useMutation({
     mutationFn: async (providerId: string) => {
       try {
-        const client = getAdminClient();
-        return await client.audioConfiguration.testProvider(providerId);
+        const response = await apiFetch(`/api/admin/audio-configuration/${providerId}/test`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to test audio provider');
+        }
+
+        return response.json();
       } catch (error: unknown) {
         reportError(error, 'Failed to test audio provider');
         throw new Error(error instanceof Error ? error.message : 'Failed to test audio provider');

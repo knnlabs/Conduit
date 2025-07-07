@@ -56,19 +56,17 @@ export const PUT = createDynamicRouteHandler<{ providerId: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
-  async (_request, { params: _params }) => {
+  async (_request, { params, adminClient }) => {
     try {
-      // No need to extract providerId as it's not used
+      const { providerId } = params;
       
-      // Provider metadata cannot be deleted directly.
-      // To remove provider access, use provider credentials API instead.
-      return NextResponse.json(
-        { 
-          error: 'Provider metadata cannot be deleted directly',
-          message: 'Use provider credentials API to remove provider configurations' 
-        },
-        { status: 400 }
+      // Delete provider using the admin client
+      await withSDKErrorHandling(
+        async () => adminClient!.providers.deleteById(parseInt(providerId)),
+        'delete provider'
       );
+
+      return NextResponse.json({ success: true });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }

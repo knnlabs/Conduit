@@ -115,7 +115,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
     );
   }
 
-  const rows = virtualKeys?.map((key) => {
+  const rows = virtualKeys?.map((key: VirtualKey) => {
     const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
     const budgetUsageColor = key.maxBudget 
       ? badgeHelpers.getPercentageColor(budgetUsagePercentage, { danger: 90, warning: 75, good: 0 })

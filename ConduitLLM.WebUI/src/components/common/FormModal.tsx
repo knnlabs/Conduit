@@ -97,7 +97,6 @@ export function FormModal<TForm, TData = unknown, TError = unknown, TVariables =
             <Button 
               type="submit" 
               loading={mutation.isPending}
-              disabled={!form.isValid()}
             >
               {defaultSubmitText}
             </Button>

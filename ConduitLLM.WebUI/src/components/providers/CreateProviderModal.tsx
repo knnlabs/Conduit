@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
   Switch,
   Button,
@@ -11,12 +12,13 @@ import {
   PasswordInput,
   Alert,
   Divider,
+  Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
 import { useCreateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
-import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
-import { useState } from 'react';
-import { FormModal } from '@/components/common/FormModal';
+import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 
 interface CreateProviderModalProps {
@@ -51,6 +53,13 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
   const createProvider = useCreateProvider();
   const testProviderConnection = useTestProviderConnection();
   const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ 
+    success: boolean; 
+    message: string; 
+    errorDetails?: string;
+    responseTimeMs?: number;
+    modelsAvailable?: string[];
+  } | null>(null);
 
   const form = useForm<CreateProviderForm>({
     initialValues: {
@@ -119,74 +128,72 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     }
 
     const providerConfig = {
-      providerName: form.values.providerName.trim(),
-      providerType: form.values.providerType,
-      credentials: {
-        apiKey: form.values.apiKey.trim(),
-        apiEndpoint: form.values.apiEndpoint?.trim() || undefined,
-        organizationId: form.values.organizationId?.trim() || undefined,
-      },
+      providerName: form.values.providerType, // This should be the provider type (e.g., "openai"), not the user's name
+      apiKey: form.values.apiKey.trim(),
+      apiEndpoint: form.values.apiEndpoint?.trim() || undefined,
+      organizationId: form.values.organizationId?.trim() || undefined,
     };
 
     setTestingConnection(true);
+    setTestResult(null);
     try {
-      await testProviderConnection.mutateAsync(providerConfig);
-    } catch (_error: unknown) {
+      const result = await testProviderConnection.mutateAsync(providerConfig);
+      setTestResult(result);
+    } catch (error: unknown) {
       // Error notification is handled by the hook
+      // But we can also capture error details if available
+      if (error instanceof Error) {
+        setTestResult({
+          success: false,
+          message: error.message,
+          errorDetails: undefined
+        });
+      }
     } finally {
       setTestingConnection(false);
     }
   };
 
-  // Create a mutation wrapper that handles the payload transformation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mutation: any = {
-    ...createProvider,
-    mutate: (values: CreateProviderForm, options?: Parameters<typeof createProvider.mutate>[1]) => {
-      const payload = {
-        providerName: values.providerName.trim(),
-        providerType: values.providerType,
-        description: values.description?.trim() || undefined,
-        credentials: {
-          apiKey: values.apiKey.trim(),
-          apiEndpoint: values.apiEndpoint?.trim() || undefined,
-          organizationId: values.organizationId?.trim() || undefined,
-        },
-        isEnabled: values.isEnabled,
-      };
-      createProvider.mutate(payload, options);
-    },
-    mutateAsync: async (values: CreateProviderForm) => {
-      const payload = {
-        providerName: values.providerName.trim(),
-        providerType: values.providerType,
-        description: values.description?.trim() || undefined,
-        credentials: {
-          apiKey: values.apiKey.trim(),
-          apiEndpoint: values.apiEndpoint?.trim() || undefined,
-          organizationId: values.organizationId?.trim() || undefined,
-        },
-        isEnabled: values.isEnabled,
-      };
-      return createProvider.mutateAsync(payload);
-    },
-  };
-
   const selectedProviderInfo = getProviderInfo(form.values.providerType);
 
+  // Reset test result when form values change
+  useEffect(() => {
+    setTestResult(null);
+  }, [form.values.apiKey, form.values.providerType, form.values.apiEndpoint]);
+
   return (
-    <FormModal
-      opened={opened}
-      onClose={onClose}
-      title="Add Provider"
-      size="lg"
-      form={form}
-      mutation={mutation}
-      entityType="Provider"
-      submitText="Add Provider"
-    >
-      {(form) => (
-        <>
+    <Modal opened={opened} onClose={onClose} title="Add Provider" size="lg">
+      <form
+        onSubmit={form.onSubmit((values) => {
+          const payload = {
+            providerName: values.providerName.trim(),
+            apiKey: values.apiKey.trim(),
+            apiEndpoint: values.apiEndpoint?.trim() || undefined,
+            organizationId: values.organizationId?.trim() || undefined,
+            isEnabled: values.isEnabled,
+          };
+          
+          createProvider.mutate(payload, {
+            onSuccess: () => {
+              notifications.show({
+                title: 'Success',
+                message: 'Provider created successfully',
+                color: 'green',
+              });
+              onClose();
+              form.reset();
+            },
+            onError: (_error) => {
+              notifications.show({
+                title: 'Error',
+                message: 'Failed to create provider',
+                color: 'red',
+              });
+            },
+          });
+        })}
+      >
+        <Stack gap="md">
           <TextInput
             label="Provider Name"
             placeholder="Enter a name for this provider instance"
@@ -274,8 +281,38 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
               Test Connection
             </Button>
           </Group>
-        </>
-      )}
-    </FormModal>
+
+          {testResult && (
+            <Alert 
+              color={testResult.success ? 'green' : 'red'} 
+              variant="light"
+              icon={testResult.success ? <IconCircleCheck size={16} /> : <IconAlertCircle size={16} />}
+              mt="md"
+            >
+              <Text size="sm" fw={500}>{testResult.message}</Text>
+              {testResult.errorDetails && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  {testResult.errorDetails}
+                </Text>
+              )}
+              {testResult.success && testResult.responseTimeMs && (
+                <Text size="xs" c="dimmed" mt={4}>
+                  Response time: {testResult.responseTimeMs}ms
+                </Text>
+              )}
+            </Alert>
+          )}
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={createProvider.isPending}>
+              Add Provider
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }

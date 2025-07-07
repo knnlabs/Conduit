@@ -11,11 +11,11 @@ export const POST = withSDKAuth(
       // This tests a configuration before saving it
       const result = await withSDKErrorHandling(
         async () => context.adminClient!.providers.testConnection({
-          providerName: body.providerType || body.providerName,
+          providerName: body.providerName, // Now this will be the provider type from the form
           apiKey: body.apiKey,
-          apiEndpoint: body.apiUrl || body.apiEndpoint,
+          apiEndpoint: body.apiEndpoint,
           organizationId: body.organizationId,
-          additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
+          additionalConfig: body.additionalConfig,
         }),
         'test provider connection'
       );

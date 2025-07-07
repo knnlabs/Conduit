@@ -73,7 +73,7 @@ export default function AudioUsagePage() {
   // Virtual keys options
   const virtualKeys = [
     { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData || []).map((key) => ({
+    ...(virtualKeysData || []).map((key: { id: string; keyName?: string }) => ({
       value: key.id,
       label: key.keyName || key.id,
     })),
