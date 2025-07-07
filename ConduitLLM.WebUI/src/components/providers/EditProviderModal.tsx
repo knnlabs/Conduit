@@ -7,7 +7,6 @@ import {
   Stack,
   Group,
   Text,
-  Textarea,
   PasswordInput,
   Alert,
   Divider,
@@ -19,7 +18,6 @@ import { useUpdateProvider } from '@/hooks/api/useAdminApi';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import { useState } from 'react';
 import { FormModal } from '@/components/common/FormModal';
-import { validators } from '@/lib/utils/form-validators';
 
 interface Provider {
   id: string;
@@ -43,8 +41,6 @@ interface EditProviderModalProps {
 }
 
 interface EditProviderForm {
-  providerName: string;
-  description?: string;
   apiKey?: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -70,23 +66,13 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
 
   const form = useForm<EditProviderForm>({
     initialValues: {
-      providerName: '',
-      description: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
       isEnabled: true,
     },
     validate: {
-      providerName: (value) => {
-        const requiredError = validators.required('Provider name')(value);
-        if (requiredError) return requiredError;
-        
-        const minLengthError = validators.minLength('Provider name', 3)(value);
-        if (minLengthError) return minLengthError;
-        
-        return null;
-      },
+      // No validation needed - all fields are optional
     },
   });
 
@@ -109,8 +95,6 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     ...updateProvider,
     mutate: (values: EditProviderForm, options?: Parameters<typeof updateProvider.mutate>[1]) => {
       const payload = {
-        providerName: values.providerName.trim(),
-        description: values.description?.trim() || undefined,
         apiKey: values.apiKey?.trim() || undefined, // Only update if provided
         apiEndpoint: values.apiEndpoint?.trim() || undefined,
         organizationId: values.organizationId?.trim() || undefined,
@@ -123,8 +107,6 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     },
     mutateAsync: async (values: EditProviderForm) => {
       const payload = {
-        providerName: values.providerName.trim(),
-        description: values.description?.trim() || undefined,
         apiKey: values.apiKey?.trim() || undefined, // Only update if provided
         apiEndpoint: values.apiEndpoint?.trim() || undefined,
         organizationId: values.organizationId?.trim() || undefined,
@@ -137,7 +119,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     },
   };
 
-  const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerType);
+  const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerName);
 
   return (
     <FormModal
@@ -151,8 +133,6 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
       isEdit={true}
       submitText="Save Changes"
       initialValues={{
-        providerName: provider.providerName,
-        description: provider.description || '',
         apiKey: '', // Don't show existing API key for security
         apiEndpoint: provider.apiEndpoint || '',
         organizationId: provider.organizationId || '',
@@ -165,8 +145,8 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
           <Card withBorder>
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerType?.label || provider.providerType || 'Unknown'}</Badge>
+                <Text size="sm" c="dimmed">Provider</Text>
+                <Badge>{providerType?.label || provider.providerName || 'Unknown'}</Badge>
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Health Status</Text>
@@ -200,20 +180,6 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
 
           <Divider />
 
-          <TextInput
-            label="Provider Name"
-            placeholder="Enter a descriptive name for this provider"
-            required
-            {...form.getInputProps('providerName')}
-          />
-
-          <Textarea
-            label="Description"
-            placeholder="Optional description for this provider"
-            rows={3}
-            {...form.getInputProps('description')}
-          />
-
           <PasswordInput
             label="API Key"
             placeholder="Leave empty to keep existing key"
@@ -221,7 +187,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             {...form.getInputProps('apiKey')}
           />
 
-          {(provider.providerType === 'azure' || provider.providerType === 'custom') && (
+          {(provider.providerName === 'azure' || provider.providerName === 'custom') && (
             <TextInput
               label="API Endpoint"
               placeholder="Custom API endpoint URL"
@@ -229,7 +195,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             />
           )}
 
-          {provider.providerType === 'openai' && (
+          {provider.providerName === 'openai' && (
             <TextInput
               label="Organization ID"
               placeholder="Optional OpenAI organization ID"

@@ -34,20 +34,24 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
 );
 
 export const PUT = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params: _params }) => {
+  async (request, { params, adminClient }) => {
     try {
-      // No need to extract providerId as it's not used
-      await request.json();
+      const { providerId } = params;
+      const body = await request.json();
       
-      // Provider metadata cannot be updated directly.
-      // To manage provider settings, use provider credentials API instead.
-      return NextResponse.json(
-        { 
-          error: 'Provider metadata cannot be updated directly',
-          message: 'Use provider credentials API to manage provider configurations' 
-        },
-        { status: 400 }
+      // Convert string ID to number for the SDK
+      const numericId = parseInt(providerId, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid provider ID: must be a number');
+      }
+      
+      // Update provider using the admin client
+      await withSDKErrorHandling(
+        async () => adminClient!.providers.update(numericId, body),
+        'update provider'
       );
+
+      return NextResponse.json({ success: true });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }

@@ -263,7 +263,7 @@ namespace ConduitLLM.Admin.Services
                     // Create test credential using form values when provided, stored values as fallback
                     actualCredential = new ProviderCredential
                     {
-                        ProviderName = providerCredential.ProviderName,
+                        ProviderName = !string.IsNullOrEmpty(providerCredential.ProviderName) ? providerCredential.ProviderName : dbCredential.ProviderName,
                         ApiKey = !string.IsNullOrEmpty(providerCredential.ApiKey) ? providerCredential.ApiKey : dbCredential.ApiKey,
                         BaseUrl = !string.IsNullOrEmpty(providerCredential.ApiBase) ? providerCredential.ApiBase : dbCredential.BaseUrl,
                         IsEnabled = true
@@ -303,12 +303,12 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Special handling for providers that don't support GET requests
-                var providerNameLower = providerCredential.ProviderName.ToLowerInvariant();
+                var providerNameLower = actualCredential.ProviderName.ToLowerInvariant();
                 TimeSpan responseTime;
                 
-                if (providerNameLower == "minimax")
+                if (providerNameLower == "minimax" || providerNameLower == "anthropic")
                 {
-                    // MiniMax doesn't have a GET health check endpoint, skip to special handling
+                    // MiniMax and Anthropic don't have a GET health check endpoint, skip to special handling
                     result.Success = true;
                     responseTime = TimeSpan.Zero; // Will be updated after actual test
                 }
@@ -339,7 +339,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
-                    var providerName = providerCredential.ProviderName.ToLowerInvariant();
+                    var providerName = actualCredential.ProviderName.ToLowerInvariant();
 
                     switch (providerName)
                     {

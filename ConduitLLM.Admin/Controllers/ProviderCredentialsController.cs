@@ -260,15 +260,11 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var credential = await _providerCredentialService.GetProviderCredentialByIdAsync(id);
-
-                if (credential == null)
-                {
-                    _logger.LogWarning("Provider credential not found for connection test {ProviderId}", id);
-                    return NotFound(new { error = "Provider credential not found" });
-                }
-
-                var result = await _providerCredentialService.TestProviderConnectionAsync(credential);
+                // We need to fetch the credential without masking the API key for testing
+                // So we create a special DTO with the ID set for the service to fetch internally
+                var testCredential = new ProviderCredentialDto { Id = id };
+                
+                var result = await _providerCredentialService.TestProviderConnectionAsync(testCredential);
                 return Ok(result);
             }
             catch (Exception ex)

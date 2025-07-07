@@ -7,7 +7,6 @@ import {
   Button,
   Group,
   Text,
-  Textarea,
   Select,
   PasswordInput,
   Alert,
@@ -27,9 +26,7 @@ interface CreateProviderModalProps {
 }
 
 interface CreateProviderForm {
-  providerName: string;
   providerType: string;
-  description?: string;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -63,24 +60,13 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
 
   const form = useForm<CreateProviderForm>({
     initialValues: {
-      providerName: '',
       providerType: '',
-      description: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
       isEnabled: true,
     },
     validate: {
-      providerName: (value) => {
-        const requiredError = validators.required('Provider name')(value);
-        if (requiredError) return requiredError;
-        
-        const minLengthError = validators.minLength('Provider name', 3)(value);
-        if (minLengthError) return minLengthError;
-        
-        return null;
-      },
       providerType: validators.required('Provider type'),
       apiKey: validators.required('API key'),
       apiEndpoint: (value, values) => {
@@ -166,7 +152,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
       <form
         onSubmit={form.onSubmit((values) => {
           const payload = {
-            providerName: values.providerName.trim(),
+            providerName: values.providerType, // Use provider type as the provider name
             apiKey: values.apiKey.trim(),
             apiEndpoint: values.apiEndpoint?.trim() || undefined,
             organizationId: values.organizationId?.trim() || undefined,
@@ -194,13 +180,6 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
         })}
       >
         <Stack gap="md">
-          <TextInput
-            label="Provider Name"
-            placeholder="Enter a name for this provider instance"
-            required
-            {...form.getInputProps('providerName')}
-          />
-
           <Select
             label="Provider Type"
             placeholder="Select provider type"
@@ -226,13 +205,6 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
               )}
             </Alert>
           )}
-
-          <Textarea
-            label="Description"
-            placeholder="Optional description for this provider"
-            rows={2}
-            {...form.getInputProps('description')}
-          />
 
           <Divider label="Authentication" labelPosition="left" />
 
