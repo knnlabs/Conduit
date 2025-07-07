@@ -834,12 +834,23 @@ export function useTestProviderConnection() {
 
       const result = await response.json();
       
-      // Check if the test actually succeeded
-      if (!result.success) {
-        throw new Error(result.message || result.errorDetails || 'Connection test failed');
+      // Extract the actual data from the transformed response
+      const testResult = result.data || result;
+      
+      // Check if the test actually succeeded - handle both camelCase and PascalCase
+      if (!testResult.success && !testResult.Success) {
+        const message = testResult.message || testResult.Message || testResult.errorDetails || testResult.ErrorDetails || 'Connection test failed';
+        throw new Error(message);
       }
       
-      return result;
+      // Normalize the response to camelCase
+      return {
+        success: testResult.success || testResult.Success,
+        message: testResult.message || testResult.Message,
+        errorDetails: testResult.errorDetails || testResult.ErrorDetails,
+        providerName: testResult.providerName || testResult.ProviderName,
+        timestamp: testResult.timestamp || testResult.Timestamp,
+      };
     },
     onSuccess: (data) => {
       notifications.show({
