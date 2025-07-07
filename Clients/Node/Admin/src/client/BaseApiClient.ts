@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider, AxiosError, RequestConfigInfo, ResponseInfo } from './types';
 import { handleApiError } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
+import { transformPascalToCamel, transformCamelToPascal, isPascalCased } from '../utils/caseTransform';
 
 export abstract class BaseApiClient {
   protected readonly axios: AxiosInstance;
@@ -153,18 +154,29 @@ export abstract class BaseApiClient {
 
   protected async request<T>(config: RequestConfig & { method: string; url: string }): Promise<T> {
     try {
+      // Transform request data from camelCase to PascalCase for C# API
+      const transformedData = config.data ? transformCamelToPascal(config.data) : config.data;
+      
       const axiosConfig: AxiosRequestConfig = {
         method: config.method,
         url: config.url,
-        data: config.data,
+        data: transformedData,
         params: config.params,
         headers: config.headers,
         timeout: config.timeout,
         responseType: config.responseType,
       };
 
-      const response: AxiosResponse<T> = await this.axios.request(axiosConfig);
-      return response.data;
+      const response: AxiosResponse<any> = await this.axios.request(axiosConfig);
+      
+      // Transform response from PascalCase to camelCase if needed
+      const responseData = response.data;
+      if (responseData && typeof responseData === 'object' && isPascalCased(responseData)) {
+        this.logger?.debug('Transforming PascalCase response to camelCase', { url: config.url });
+        return transformPascalToCamel<T>(responseData);
+      }
+      
+      return responseData as T;
     } catch (error) {
       // Call onError callback if provided
       if (this.onError && error instanceof Error) {

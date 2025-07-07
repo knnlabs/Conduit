@@ -837,20 +837,12 @@ export function useTestProviderConnection() {
       // Extract the actual data from the transformed response
       const testResult = result.data || result;
       
-      // Check if the test actually succeeded - handle both camelCase and PascalCase
-      if (!testResult.success && !testResult.Success) {
-        const message = testResult.message || testResult.Message || testResult.errorDetails || testResult.ErrorDetails || 'Connection test failed';
-        throw new Error(message);
+      // Check if the test actually succeeded
+      if (!testResult.success) {
+        throw new Error(testResult.message || testResult.errorDetails || 'Connection test failed');
       }
       
-      // Normalize the response to camelCase
-      return {
-        success: testResult.success || testResult.Success,
-        message: testResult.message || testResult.Message,
-        errorDetails: testResult.errorDetails || testResult.ErrorDetails,
-        providerName: testResult.providerName || testResult.ProviderName,
-        timestamp: testResult.timestamp || testResult.Timestamp,
-      };
+      return testResult;
     },
     onSuccess: (data) => {
       notifications.show({
