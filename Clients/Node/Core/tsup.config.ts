@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: {
+    index: 'src/index.ts',
+    react: 'src/react/index.ts',
+  },
   format: ['cjs', 'esm'],
   dts: true,
   sourcemap: true,
@@ -12,4 +15,5 @@ export default defineConfig({
   target: 'es2020',
   outDir: 'dist',
   shims: true,
+  external: ['react', '@tanstack/react-query'],
 });
