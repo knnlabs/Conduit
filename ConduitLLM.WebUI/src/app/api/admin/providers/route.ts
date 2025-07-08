@@ -38,29 +38,42 @@ export const POST = withSDKAuth(
       const body = await request.json();
       
       // Create provider credential (not provider metadata)
+      const providerData: any = {
+        providerName: body.providerName,
+        apiKey: body.apiKey,
+        organizationId: body.organizationId,
+        additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
+        isEnabled: body.isEnabled ?? true,
+      };
+      
+      // Only add apiEndpoint if it has a value
+      const endpoint = body.apiUrl || body.apiEndpoint;
+      if (endpoint) {
+        providerData.apiEndpoint = endpoint;
+      }
+      
       const result = await withSDKErrorHandling(
-        async () => context.adminClient!.providers.create({
-          providerName: body.providerName,
-          apiKey: body.apiKey,
-          apiEndpoint: body.apiUrl || body.apiEndpoint,
-          organizationId: body.organizationId,
-          additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
-          isEnabled: body.isEnabled ?? true,
-        }),
+        async () => context.adminClient!.providers.create(providerData),
         'create provider credential'
       );
 
       // Test connection if requested
       if (body.testConnection) {
         try {
+          const testData: any = {
+            providerName: body.providerName,
+            apiKey: body.apiKey,
+            organizationId: body.organizationId,
+            additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
+          };
+          
+          // Only add apiEndpoint if it has a value
+          if (endpoint) {
+            testData.apiEndpoint = endpoint;
+          }
+          
           await withSDKErrorHandling(
-            async () => context.adminClient!.providers.testConnection({
-              providerName: body.providerName,
-              apiKey: body.apiKey,
-              apiEndpoint: body.apiUrl || body.apiEndpoint,
-              organizationId: body.organizationId,
-              additionalConfig: body.additionalSettings ? JSON.stringify(body.additionalSettings) : body.additionalConfig,
-            }),
+            async () => context.adminClient!.providers.testConnection(testData),
             'test provider connection'
           );
         } catch (testError) {

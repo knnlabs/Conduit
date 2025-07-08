@@ -796,7 +796,7 @@ export function useTestProvider() {
   
   return useMutation({
     mutationFn: async (providerId: string) => {
-      const response = await apiFetch(`/api/admin/providers-test/${providerId}`, {
+      const response = await apiFetch(`/api/providers-test/${providerId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -804,8 +804,17 @@ export function useTestProvider() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to test provider');
+        // Check if response is JSON or HTML
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to test provider');
+        } else {
+          // If HTML, it's likely a 404 or other error page
+          const text = await response.text();
+          console.error('Non-JSON response:', text.substring(0, 200));
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
       }
 
       const result = await response.json();

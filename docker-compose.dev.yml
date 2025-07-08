@@ -1,0 +1,21 @@
+# Development docker-compose with volume mounts for hot reloading
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  webui:
+    volumes:
+      # Mount source code for hot reloading
+      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
+      - ./Clients/Node/Admin:/app/Clients/Node/Admin
+      - ./Clients/Node/Core:/app/Clients/Node/Core
+      # Prevent node_modules from being overwritten
+      - /app/ConduitLLM.WebUI/node_modules
+      - /app/Clients/Node/Admin/node_modules
+      - /app/Clients/Node/Core/node_modules
+    environment:
+      # Enable Next.js development mode
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+      # Faster refresh
+      WATCHPACK_POLLING: true
+    command: npm run dev

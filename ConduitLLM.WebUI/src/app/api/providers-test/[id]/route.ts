@@ -1,38 +1,38 @@
 import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
-import { getServerAdminClient } from '@/lib/clients/server';
+import { withLogging } from '@/lib/utils/api-logger';
 
-export const POST = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params }) => {
+export const POST = withLogging('POST /api/providers-test/[id]', 
+  createDynamicRouteHandler<{ id: string }>(
+    async (request, { params, adminClient }) => {
     try {
-      const { providerId } = params;
+      const { id } = params;
       
       // Convert string ID to number for the SDK
-      const numericId = parseInt(providerId, 10);
+      const numericId = parseInt(id, 10);
       if (isNaN(numericId)) {
         throw new Error('Invalid provider ID: must be a number');
       }
       
-      const adminClient = getServerAdminClient();
-      
       const result = await withSDKErrorHandling(
         async () => {
-          return await adminClient.providers.testConnectionById(numericId);
+          return await adminClient!.providers.testConnectionById(numericId);
         },
-        `test provider connection ${providerId}`
+        `test provider connection ${id}`
       );
 
       return transformSDKResponse(result, {
         meta: {
           tested: true,
-          providerId,
+          providerId: id,
           timestamp: new Date().toISOString(),
         }
       });
     } catch (error) {
       return mapSDKErrorToResponse(error);
     }
-  },
-  { requireAdmin: true }
+    },
+    { requireAdmin: true }
+  )
 );

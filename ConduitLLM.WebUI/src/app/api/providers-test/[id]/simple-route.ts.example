@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/auth/simple-auth';
+import { getServerAdminClient } from '@/lib/clients/server';
+
+/**
+ * Example of how simple this route could be without all the abstraction layers
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  try {
+    const { id } = await params;
+    const numericId = parseInt(id, 10);
+    
+    if (isNaN(numericId)) {
+      return NextResponse.json(
+        { error: 'Invalid provider ID' }, 
+        { status: 400 }
+      );
+    }
+    
+    const adminClient = getServerAdminClient();
+    const result = await adminClient.providers.testConnectionById(numericId);
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Provider test error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Test failed' },
+      { status: 500 }
+    );
+  }
+});

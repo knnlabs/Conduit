@@ -24,7 +24,18 @@ export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('conduit_session')
   
   if (!sessionCookie) {
-    // Redirect to login page
+    // For API routes, return 401 JSON response
+    if (pathname.startsWith('/api/')) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
+    
+    // For other routes, redirect to login page
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
@@ -36,6 +47,19 @@ export function middleware(request: NextRequest) {
     
     // Check if session is expired
     if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+      // For API routes, return 401
+      if (pathname.startsWith('/api/')) {
+        const response = new NextResponse(
+          JSON.stringify({ error: 'Session expired' }),
+          { 
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+        response.cookies.delete('conduit_session')
+        return response
+      }
+      
       // Clear expired cookie and redirect to login
       const response = NextResponse.redirect(new URL('/login', request.url))
       response.cookies.delete('conduit_session')
@@ -44,12 +68,35 @@ export function middleware(request: NextRequest) {
     
     // Check if user is authenticated
     if (!session.isAuthenticated) {
+      // For API routes, return 401
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Not authenticated' }),
+          { 
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
     
     return NextResponse.next()
   } catch {
-    // Invalid session cookie, redirect to login
+    // Invalid session cookie
+    if (pathname.startsWith('/api/')) {
+      const response = new NextResponse(
+        JSON.stringify({ error: 'Invalid session' }),
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+      response.cookies.delete('conduit_session')
+      return response
+    }
+    
+    // Redirect to login for non-API routes
     const response = NextResponse.redirect(new URL('/login', request.url))
     response.cookies.delete('conduit_session')
     return response
