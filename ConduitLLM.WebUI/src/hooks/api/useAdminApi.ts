@@ -392,22 +392,19 @@ export function useModelMappings() {
 
       const responseData = await response.json();
       
+      // If there's an error in the response, throw it
+      if (responseData && responseData.error) {
+        throw new Error(responseData.error.message || responseData.error || 'Failed to fetch model mappings');
+      }
+      
       // Just return the data as-is from the API
-      // No more mapping bullshit
+      // The SDK returns ModelProviderMappingDto[] directly
       if (Array.isArray(responseData)) {
         return responseData as ModelProviderMappingDto[];
       }
       
-      // Handle wrapped responses
-      if (responseData && responseData.data && Array.isArray(responseData.data)) {
-        return responseData.data as ModelProviderMappingDto[];
-      }
-      
-      if (responseData && responseData.items && Array.isArray(responseData.items)) {
-        return responseData.items as ModelProviderMappingDto[];
-      }
-      
       console.error('Unexpected response format:', responseData);
+      // Return empty array instead of throwing to prevent UI crashes
       return [];
     },
     staleTime: 30 * 1000,
@@ -940,25 +937,33 @@ export function useProviderModels(providerId: string | undefined) {
         }
 
         const data = await response.json();
-        console.log('Provider models response:', data);
         
-        // Validate the response structure
-        if (!data || typeof data !== 'object') {
-          console.error('Invalid provider models response:', data);
-          throw new Error('Invalid response format from provider models API');
+        // If there's an error in the response, return empty models
+        if (data && data.error) {
+          console.warn('Provider models API returned error:', data.error);
+          return {
+            provider: providerId,
+            models: [],
+            source: 'none' as const,
+            error: data.error.message || data.error || 'Failed to fetch provider models',
+          };
         }
         
-        // Ensure models is always an array
-        if (!Array.isArray(data.models)) {
-          console.warn('Provider models response missing models array, setting to empty:', data);
-          data.models = [];
+        // Validate the response has the expected structure
+        if (!data || typeof data !== 'object' || !Array.isArray(data.models)) {
+          console.error('Invalid provider models response structure:', data);
+          return {
+            provider: providerId,
+            models: [],
+            source: 'none' as const,
+            error: 'Invalid response format',
+          };
         }
         
         return data;
       } catch (error) {
         console.error('Provider models fetch error:', error);
-        // Return a valid response structure even on error
-        // This prevents the UI from crashing
+        // Don't throw - return empty models to prevent UI crash
         return {
           provider: providerId,
           models: [],

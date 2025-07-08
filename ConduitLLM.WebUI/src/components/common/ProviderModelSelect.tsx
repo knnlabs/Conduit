@@ -46,62 +46,27 @@ export function ProviderModelSelect({
   const refreshMutation = useRefreshProviderModels(providerId);
   const [searchValue, setSearchValue] = useState(value);
 
-  // DEBUG LOGGING
-  console.log('ProviderModelSelect DEBUG:', {
-    providerId,
-    value,
-    modelsData,
-    isLoading,
-    loadError,
-    'modelsData type': typeof modelsData,
-    'modelsData.models': modelsData?.models,
-    'is models array': Array.isArray(modelsData?.models),
-  });
-
   // Transform models to options
   const modelOptions = useMemo<ModelOption[]>(() => {
-    try {
-      // When providerId is undefined, modelsData will be undefined (query is disabled)
-      if (!providerId || !modelsData) {
-        console.log('No providerId or modelsData:', { providerId, modelsData });
-        return [];
-      }
-      
-      // Ensure models is an array - handle case where API returns models: undefined
-      // modelsData.models might be undefined if there's an error
-      const models = modelsData.models;
-      console.log('Extracting models:', { models, 'is array': Array.isArray(models), error: modelsData.error });
-      
-      // If there's an error or models is not an array, return empty array
-      if (!models || !Array.isArray(models)) {
-        if (modelsData.error) {
-          console.warn('Error loading models:', modelsData.error);
-        } else {
-          console.warn('Models is not an array!', { models, modelsData });
-        }
-        return [];
-      }
-
-      const result = models.map((model, index) => {
-        console.log(`Processing model ${index}:`, model);
-        if (!model) {
-          console.error(`Model at index ${index} is null/undefined`);
-          return null;
-        }
-        return {
-          value: model.id || `unknown-${index}`,
-          label: model.name || model.id || `Unknown Model ${index}`,
-          capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
-          group: model.owned_by,
-        };
-      }).filter(Boolean) as ModelOption[];
-      
-      console.log('Processed model options:', result);
-      return result;
-    } catch (err) {
-      console.error('ERROR in modelOptions useMemo:', err);
+    // When providerId is undefined, modelsData will be undefined (query is disabled)
+    if (!providerId || !modelsData) {
       return [];
     }
+    
+    // Ensure models is an array - handle case where API returns models: undefined
+    const models = modelsData.models;
+    
+    // If there's an error or models is not an array, return empty array
+    if (!models || !Array.isArray(models)) {
+      return [];
+    }
+
+    return models.map((model) => ({
+      value: model.id || '',
+      label: model.name || model.id || 'Unknown Model',
+      capabilities: Array.isArray(model.capabilities) ? model.capabilities : [],
+      group: model.owned_by,
+    })).filter(model => model.value);
   }, [modelsData, providerId]);
 
   // Include the current value if it's not in the list (for custom models)

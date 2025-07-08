@@ -3,13 +3,15 @@ export class ConduitError extends Error {
   public details?: unknown;
   public endpoint?: string;
   public method?: string;
+  public code?: string;
 
   constructor(
     message: string,
     statusCode?: number,
     details?: unknown,
     endpoint?: string,
-    method?: string
+    method?: string,
+    code?: string
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -17,6 +19,7 @@ export class ConduitError extends Error {
     this.details = details;
     this.endpoint = endpoint;
     this.method = method;
+    this.code = code;
     Object.setPrototypeOf(this, new.target.prototype);
   }
 
@@ -28,6 +31,7 @@ export class ConduitError extends Error {
       details: this.details,
       endpoint: this.endpoint,
       method: this.method,
+      code: this.code,
     };
   }
 }
