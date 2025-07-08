@@ -42,7 +42,7 @@ export class ModelCostService extends BaseApiClient {
     try {
       createCostSchema.parse(modelCost);
     } catch (error) {
-      throw new ValidationError('Invalid model cost request', error);
+      throw new ValidationError('Invalid model cost request', { validationError: error });
     }
 
     const response = await this.post<ModelCost>(
@@ -144,7 +144,7 @@ export class ModelCostService extends BaseApiClient {
     try {
       calculateCostSchema.parse({ modelId, inputTokens, outputTokens });
     } catch (error) {
-      throw new ValidationError('Invalid cost calculation request', error);
+      throw new ValidationError('Invalid cost calculation request', { validationError: error });
     }
 
     // Get active cost for the model

@@ -1,26 +1,37 @@
 export class ConduitError extends Error {
-  public statusCode?: number;
+  public statusCode: number;
+  public code: string;
+  public context?: Record<string, unknown>;
   public details?: unknown;
   public endpoint?: string;
   public method?: string;
-  public code?: string;
 
   constructor(
     message: string,
-    statusCode?: number,
-    details?: unknown,
-    endpoint?: string,
-    method?: string,
-    code?: string
+    statusCode: number = 500,
+    code: string = 'INTERNAL_ERROR',
+    context?: Record<string, unknown>
   ) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;
-    this.details = details;
-    this.endpoint = endpoint;
-    this.method = method;
     this.code = code;
+    this.context = context;
+    
+    // Preserve additional context from the old constructor pattern
+    if (context) {
+      this.details = context.details;
+      this.endpoint = context.endpoint as string | undefined;
+      this.method = context.method as string | undefined;
+    }
+    
+    // Ensure proper prototype chain for instanceof checks
     Object.setPrototypeOf(this, new.target.prototype);
+    
+    // Capture stack trace for better debugging
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 
   toJSON() {
@@ -28,79 +39,147 @@ export class ConduitError extends Error {
       name: this.name,
       message: this.message,
       statusCode: this.statusCode,
+      code: this.code,
+      context: this.context,
       details: this.details,
       endpoint: this.endpoint,
       method: this.method,
-      code: this.code,
+      timestamp: new Date().toISOString(),
     };
   }
-}
-
-export class AuthenticationError extends ConduitError {
-  constructor(message = 'Authentication failed', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 401, details, endpoint, method);
+  
+  // Helper method for Next.js serialization
+  toSerializable() {
+    return {
+      isConduitError: true,
+      ...this.toJSON(),
+    };
+  }
+  
+  // Static method to reconstruct from serialized error
+  static fromSerializable(data: any): ConduitError {
+    if (!data || !data.isConduitError) {
+      throw new Error('Invalid serialized ConduitError');
+    }
+    
+    const error = new ConduitError(
+      data.message,
+      data.statusCode,
+      data.code,
+      data.context
+    );
+    
+    // Restore additional properties
+    if (data.details !== undefined) error.details = data.details;
+    if (data.endpoint !== undefined) error.endpoint = data.endpoint;
+    if (data.method !== undefined) error.method = data.method;
+    
+    return error;
   }
 }
 
+export class AuthError extends ConduitError {
+  constructor(message = 'Authentication failed', context?: Record<string, unknown>) {
+    super(message, 401, 'AUTH_ERROR', context);
+  }
+}
+
+// Alias for backward compatibility
+export class AuthenticationError extends AuthError {}
+
 export class AuthorizationError extends ConduitError {
-  constructor(message = 'Access forbidden', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 403, details, endpoint, method);
+  constructor(message = 'Access forbidden', context?: Record<string, unknown>) {
+    super(message, 403, 'AUTHORIZATION_ERROR', context);
   }
 }
 
 export class ValidationError extends ConduitError {
-  constructor(message = 'Validation failed', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 400, details, endpoint, method);
+  public field?: string;
+  
+  constructor(message = 'Validation failed', context?: Record<string, unknown>) {
+    super(message, 400, 'VALIDATION_ERROR', context);
+    this.field = context?.field as string | undefined;
   }
 }
 
 export class NotFoundError extends ConduitError {
-  constructor(message = 'Resource not found', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 404, details, endpoint, method);
+  constructor(message = 'Resource not found', context?: Record<string, unknown>) {
+    super(message, 404, 'NOT_FOUND', context);
   }
 }
 
 export class ConflictError extends ConduitError {
-  constructor(message = 'Resource conflict', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 409, details, endpoint, method);
+  constructor(message = 'Resource conflict', context?: Record<string, unknown>) {
+    super(message, 409, 'CONFLICT_ERROR', context);
   }
 }
 
 export class RateLimitError extends ConduitError {
   public retryAfter?: number;
 
-  constructor(message = 'Rate limit exceeded', retryAfter?: number, details?: unknown, endpoint?: string, method?: string) {
-    super(message, 429, details, endpoint, method);
+  constructor(message = 'Rate limit exceeded', retryAfter?: number, context?: Record<string, unknown>) {
+    super(message, 429, 'RATE_LIMIT_ERROR', { ...context, retryAfter });
     this.retryAfter = retryAfter;
   }
 }
 
 export class ServerError extends ConduitError {
-  constructor(message = 'Internal server error', details?: unknown, endpoint?: string, method?: string) {
-    super(message, 500, details, endpoint, method);
+  constructor(message = 'Internal server error', context?: Record<string, unknown>) {
+    super(message, 500, 'SERVER_ERROR', context);
   }
 }
 
 export class NetworkError extends ConduitError {
-  constructor(message = 'Network error', details?: unknown) {
-    super(message, undefined, details);
+  constructor(message = 'Network error', context?: Record<string, unknown>) {
+    super(message, 0, 'NETWORK_ERROR', context);
   }
 }
 
 export class TimeoutError extends ConduitError {
-  constructor(message = 'Request timeout', details?: unknown) {
-    super(message, 408, details);
+  constructor(message = 'Request timeout', context?: Record<string, unknown>) {
+    super(message, 408, 'TIMEOUT_ERROR', context);
   }
 }
 
 export class NotImplementedError extends ConduitError {
-  constructor(message: string, details?: unknown) {
-    super(message, 501, details);
+  constructor(message: string, context?: Record<string, unknown>) {
+    super(message, 501, 'NOT_IMPLEMENTED', context);
   }
 }
 
+// Type guards
 export function isConduitError(error: unknown): error is ConduitError {
   return error instanceof ConduitError;
+}
+
+export function isAuthError(error: unknown): error is AuthError {
+  return error instanceof AuthError || error instanceof AuthenticationError;
+}
+
+export function isValidationError(error: unknown): error is ValidationError {
+  return error instanceof ValidationError;
+}
+
+export function isNotFoundError(error: unknown): error is NotFoundError {
+  return error instanceof NotFoundError;
+}
+
+export function isRateLimitError(error: unknown): error is RateLimitError {
+  return error instanceof RateLimitError;
+}
+
+export function isNetworkError(error: unknown): error is NetworkError {
+  return error instanceof NetworkError;
+}
+
+// Helper to check if an error is serialized ConduitError
+export function isSerializedConduitError(data: unknown): data is ReturnType<ConduitError['toSerializable']> {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'isConduitError' in data &&
+    (data as any).isConduitError === true
+  );
 }
 
 // Type guard for axios-like errors
@@ -118,8 +197,8 @@ function isAxiosError(error: unknown): error is {
   );
 }
 
-// Type guard for network errors
-function isNetworkError(error: unknown): error is {
+// Type guard for network errors (axios-specific)
+function isAxiosNetworkError(error: unknown): error is {
   request: unknown;
   message: string;
   code?: string;
@@ -145,65 +224,119 @@ function isErrorLike(error: unknown): error is {
 }
 
 export function handleApiError(error: unknown, endpoint?: string, method?: string): never {
+  const context: Record<string, unknown> = {
+    endpoint,
+    method,
+  };
+
   if (isAxiosError(error)) {
     const { status, data } = error.response;
-    const errorData = data as any; // We need to handle data as any since it can be anything
+    const errorData = data as any;
     const baseMessage = errorData?.error || errorData?.message || error.message;
-    const details = errorData?.details || data;
     
     // Enhanced error messages with endpoint information
     const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
     const enhancedMessage = `${baseMessage}${endpointInfo}`;
+    
+    // Add details to context
+    context.details = errorData?.details || data;
 
     switch (status) {
       case 400:
-        throw new ValidationError(enhancedMessage, details, endpoint, method);
+        throw new ValidationError(enhancedMessage, context);
       case 401:
-        throw new AuthenticationError(enhancedMessage, details, endpoint, method);
+        throw new AuthError(enhancedMessage, context);
       case 403:
-        throw new AuthorizationError(enhancedMessage, details, endpoint, method);
+        throw new AuthorizationError(enhancedMessage, context);
       case 404:
-        throw new NotFoundError(enhancedMessage, details, endpoint, method);
+        throw new NotFoundError(enhancedMessage, context);
       case 409:
-        throw new ConflictError(enhancedMessage, details, endpoint, method);
+        throw new ConflictError(enhancedMessage, context);
       case 429: {
         const retryAfterHeader = error.response.headers['retry-after'];
         const retryAfter = typeof retryAfterHeader === 'string' ? parseInt(retryAfterHeader, 10) : undefined;
-        throw new RateLimitError(enhancedMessage, retryAfter, details, endpoint, method);
+        throw new RateLimitError(enhancedMessage, retryAfter, context);
       }
       case 500:
       case 502:
       case 503:
       case 504:
-        throw new ServerError(enhancedMessage, details, endpoint, method);
+        throw new ServerError(enhancedMessage, context);
       default:
-        throw new ConduitError(enhancedMessage, status, details, endpoint, method);
+        throw new ConduitError(enhancedMessage, status, `HTTP_${status}`, context);
     }
-  } else if (isNetworkError(error)) {
+  } else if (isAxiosNetworkError(error)) {
     const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
+    context.code = error.code;
+    
     if (error.code === 'ECONNABORTED') {
-      throw new TimeoutError(`Request timeout${endpointInfo}`, { endpoint, method });
+      throw new TimeoutError(`Request timeout${endpointInfo}`, context);
     }
-    throw new NetworkError(`Network error: No response received${endpointInfo}`, {
-      code: error.code,
-      endpoint,
-      method,
-    });
+    throw new NetworkError(`Network error: No response received${endpointInfo}`, context);
   } else if (isErrorLike(error)) {
-    throw new ConduitError(
-      error.message,
-      undefined,
-      { originalError: error },
-      endpoint,
-      method
-    );
+    context.originalError = error;
+    throw new ConduitError(error.message, 500, 'UNKNOWN_ERROR', context);
   } else {
-    throw new ConduitError(
-      'Unknown error',
-      undefined,
-      { originalError: error },
-      endpoint,
-      method
-    );
+    context.originalError = error;
+    throw new ConduitError('Unknown error', 500, 'UNKNOWN_ERROR', context);
   }
+}
+
+// Next.js-specific utilities for error serialization across server/client boundaries
+export function serializeError(error: unknown): Record<string, any> {
+  if (isConduitError(error)) {
+    return error.toSerializable();
+  }
+  
+  if (error instanceof Error) {
+    return {
+      isError: true,
+      name: error.name,
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    };
+  }
+  
+  return {
+    isError: true,
+    message: String(error),
+  };
+}
+
+export function deserializeError(data: unknown): Error {
+  if (isSerializedConduitError(data)) {
+    return ConduitError.fromSerializable(data);
+  }
+  
+  if (typeof data === 'object' && data !== null && 'isError' in data) {
+    const errorData = data as any;
+    const error = new Error(errorData.message);
+    if (errorData.name) error.name = errorData.name;
+    if (errorData.stack) error.stack = errorData.stack;
+    return error;
+  }
+  
+  return new Error('Unknown error');
+}
+
+// Helper for Next.js error boundaries
+export function getErrorMessage(error: unknown): string {
+  if (isConduitError(error)) {
+    return error.message;
+  }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  return 'An unexpected error occurred';
+}
+
+// Helper for Next.js error pages
+export function getErrorStatusCode(error: unknown): number {
+  if (isConduitError(error)) {
+    return error.statusCode;
+  }
+  
+  return 500;
 }

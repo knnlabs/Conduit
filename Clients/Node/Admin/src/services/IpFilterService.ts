@@ -42,7 +42,7 @@ export class IpFilterService extends BaseApiClient {
     try {
       createFilterSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid IP filter request', error);
+      throw new ValidationError('Invalid IP filter request', { validationError: error });
     }
 
     const response = await this.post<IpFilterDto>(
@@ -125,7 +125,7 @@ export class IpFilterService extends BaseApiClient {
     try {
       ipCheckSchema.parse({ ipAddress });
     } catch (error) {
-      throw new ValidationError('Invalid IP check request', error);
+      throw new ValidationError('Invalid IP check request', { validationError: error });
     }
 
     return this.get<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK(ipAddress));
@@ -230,7 +230,7 @@ export class IpFilterService extends BaseApiClient {
     try {
       temporarySchema.parse(rule);
     } catch (error) {
-      throw new ValidationError('Invalid temporary IP filter request', error);
+      throw new ValidationError('Invalid temporary IP filter request', { validationError: error });
     }
 
     const response = await this.post<IpFilterDto>(

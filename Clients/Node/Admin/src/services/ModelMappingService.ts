@@ -37,7 +37,7 @@ export class ModelMappingService extends BaseApiClient {
     try {
       createMappingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid model mapping request', error);
+      throw new ValidationError('Invalid model mapping request', { validationError: error });
     }
 
     const response = await this.post<ModelProviderMappingDto>(
@@ -93,7 +93,7 @@ export class ModelMappingService extends BaseApiClient {
     try {
       updateMappingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid model mapping update request', error);
+      throw new ValidationError('Invalid model mapping update request', { validationError: error });
     }
 
     await this.put(ENDPOINTS.MODEL_MAPPINGS.BY_ID(id), request);
@@ -154,7 +154,7 @@ export class ModelMappingService extends BaseApiClient {
       try {
         createMappingSchema.parse(mapping);
       } catch (error) {
-        throw new ValidationError(`Invalid mapping at index ${index}`, error);
+        throw new ValidationError(`Invalid mapping at index ${index}`, { validationError: error, index });
       }
     });
 

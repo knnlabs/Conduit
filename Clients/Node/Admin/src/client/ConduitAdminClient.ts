@@ -71,7 +71,10 @@ export class ConduitAdminClient {
     try {
       configSchema.parse(config);
     } catch (error) {
-      throw new ValidationError('Invalid Conduit client configuration', error);
+      throw new ValidationError('Invalid Conduit client configuration', { 
+        validationError: error,
+        config 
+      });
     }
 
     this.config = config;

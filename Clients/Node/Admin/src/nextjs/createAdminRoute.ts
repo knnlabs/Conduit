@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConduitAdminClient } from '../client/ConduitAdminClient';
-import { ConduitError } from '../utils/errors';
+import { ConduitError, serializeError, isConduitError } from '../utils/errors';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -30,34 +30,24 @@ function isServerEnvironment(): boolean {
 }
 
 function mapErrorToResponse(error: unknown): NextResponse {
-  if (error instanceof ConduitError) {
+  const serialized = serializeError(error);
+  
+  if (isConduitError(error)) {
     return NextResponse.json(
-      {
-        error: error.message,
-        code: error.code,
-        details: error.details,
-        timestamp: new Date().toISOString(),
-      },
+      serialized,
       { status: error.statusCode }
     );
   }
 
-  if (error instanceof Error) {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    return NextResponse.json(
-      {
-        error: isDevelopment ? error.message : 'Internal server error',
-        details: isDevelopment ? { stack: error.stack } : undefined,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
-
+  // For non-Conduit errors, return a generic 500 error
+  const isDevelopment = process.env.NODE_ENV === 'development';
   return NextResponse.json(
     {
-      error: 'An unexpected error occurred',
+      ...serialized,
+      error: serialized.message || 'Internal server error',
+      statusCode: 500,
       timestamp: new Date().toISOString(),
+      details: isDevelopment ? serialized : undefined,
     },
     { status: 500 }
   );
@@ -86,7 +76,10 @@ async function parseRequestBody(request: NextRequest): Promise<any> {
     
     return await request.text();
   } catch (error) {
-    throw new ConduitError('Invalid request body', 400, { error: 'Invalid request body' }, undefined, undefined, 'INVALID_REQUEST_BODY');
+    throw new ConduitError('Invalid request body', 400, 'INVALID_REQUEST_BODY', { 
+      details: { error: 'Invalid request body' },
+      originalError: error 
+    });
   }
 }
 

@@ -63,7 +63,10 @@ export class SecurityService extends BaseApiClient {
     if (params) {
       const parsed = securityEventFiltersSchema.safeParse(params);
       if (!parsed.success) {
-        throw new ValidationError('Invalid security event filters', parsed.error.errors);
+        throw new ValidationError('Invalid security event filters', { 
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
     }
 
@@ -92,7 +95,10 @@ export class SecurityService extends BaseApiClient {
   async reportEvent(event: CreateSecurityEventDto): Promise<SecurityEvent> {
     const parsed = createSecurityEventSchema.safeParse(event);
     if (!parsed.success) {
-      throw new ValidationError('Invalid security event data', parsed.error.errors);
+      throw new ValidationError('Invalid security event data', { 
+        validationErrors: parsed.error.errors,
+        issues: parsed.error.format()
+      });
     }
 
     const result = await this.post<SecurityEvent>(ENDPOINTS.SECURITY.REPORT_EVENT, parsed.data);
@@ -110,7 +116,10 @@ export class SecurityService extends BaseApiClient {
     if (filters) {
       const parsed = securityEventFiltersSchema.safeParse(filters);
       if (!parsed.success) {
-        throw new ValidationError('Invalid security event filters', parsed.error.errors);
+        throw new ValidationError('Invalid security event filters', { 
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
     }
 
@@ -141,7 +150,10 @@ export class SecurityService extends BaseApiClient {
     if (params) {
       const parsed = threatFiltersSchema.safeParse(params);
       if (!parsed.success) {
-        throw new ValidationError('Invalid threat filters', parsed.error.errors);
+        throw new ValidationError('Invalid threat filters', { 
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
     }
 

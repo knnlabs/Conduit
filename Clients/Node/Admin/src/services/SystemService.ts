@@ -71,7 +71,7 @@ export class SystemService extends BaseApiClient {
       try {
         createBackupSchema.parse(request);
       } catch (error) {
-        throw new ValidationError('Invalid backup request', error);
+        throw new ValidationError('Invalid backup request', { validationError: error });
       }
     }
 
@@ -102,7 +102,7 @@ export class SystemService extends BaseApiClient {
     try {
       restoreBackupSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid restore request', error);
+      throw new ValidationError('Invalid restore request', { validationError: error });
     }
 
     return this.post<BackupRestoreResult>(

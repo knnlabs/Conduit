@@ -69,7 +69,7 @@ export class SettingsService extends BaseApiClient {
     try {
       createSettingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid global setting request', error);
+      throw new ValidationError('Invalid global setting request', { validationError: error });
     }
 
     const response = await this.post<GlobalSettingDto>(
@@ -116,7 +116,7 @@ export class SettingsService extends BaseApiClient {
     try {
       audioConfigSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid audio configuration request', error);
+      throw new ValidationError('Invalid audio configuration request', { validationError: error });
     }
 
     const response = await this.post<AudioConfigurationDto>(

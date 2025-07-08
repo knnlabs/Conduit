@@ -36,7 +36,7 @@ export class VirtualKeyService extends BaseApiClient {
     try {
       createVirtualKeySchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid virtual key request', error);
+      throw new ValidationError('Invalid virtual key request', { validationError: error });
     }
 
     const response = await this.post<CreateVirtualKeyResponse>(

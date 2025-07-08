@@ -97,7 +97,10 @@ export class ConfigurationService extends SettingsService {
     update: async (config: UpdateRoutingConfigDto): Promise<RoutingConfiguration> => {
       const parsed = updateRoutingSchema.safeParse(config);
       if (!parsed.success) {
-        throw new ValidationError('Invalid routing configuration', parsed.error.errors);
+        throw new ValidationError('Invalid routing configuration', {
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
 
       const response = await this.put<RoutingConfiguration>(
@@ -153,7 +156,10 @@ export class ConfigurationService extends SettingsService {
     update: async (config: UpdateCachingConfigDto): Promise<CachingConfiguration> => {
       const parsed = updateCachingSchema.safeParse(config);
       if (!parsed.success) {
-        throw new ValidationError('Invalid caching configuration', parsed.error.errors);
+        throw new ValidationError('Invalid caching configuration', {
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
 
       const response = await this.put<CachingConfiguration>(
@@ -182,7 +188,10 @@ export class ConfigurationService extends SettingsService {
     createPolicy: async (policy: CreateCachePolicyDto): Promise<CachePolicy> => {
       const parsed = createCachePolicySchema.safeParse(policy);
       if (!parsed.success) {
-        throw new ValidationError('Invalid cache policy', parsed.error.errors);
+        throw new ValidationError('Invalid cache policy', {
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
       }
 
       const response = await this.post<CachePolicy>(

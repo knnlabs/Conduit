@@ -46,7 +46,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-summary', dateRange);
@@ -64,7 +64,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { ...dateRange, groupBy };
@@ -83,7 +83,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-by-model', dateRange);
@@ -104,7 +104,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-by-key', dateRange);
@@ -164,7 +164,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('usage-metrics', dateRange);
@@ -179,7 +179,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { modelId, ...dateRange };
@@ -195,7 +195,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { keyId, ...dateRange };

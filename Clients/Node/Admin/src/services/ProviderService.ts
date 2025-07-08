@@ -43,7 +43,7 @@ export class ProviderService extends BaseApiClient {
     try {
       createProviderSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid provider credential request', error);
+      throw new ValidationError('Invalid provider credential request', { validationError: error });
     }
 
     const response = await this.post<ProviderCredentialDto>(
@@ -145,7 +145,7 @@ export class ProviderService extends BaseApiClient {
     try {
       updateHealthConfigSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid health configuration request', error);
+      throw new ValidationError('Invalid health configuration request', { validationError: error });
     }
 
     await this.put(ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerName), request);

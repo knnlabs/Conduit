@@ -4,9 +4,10 @@ import type { ClientConfig, RequestOptions, RetryConfig, RequestConfig, Response
 import type { ErrorResponse } from '../models/common';
 import { 
   ConduitError, 
-  AuthenticationError, 
+  AuthError, 
   RateLimitError, 
-  NetworkError 
+  NetworkError,
+  createErrorFromResponse
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 
@@ -197,33 +198,45 @@ export abstract class BaseClient {
     if (error instanceof AxiosError) {
       const status = error.response?.status;
       const data = error.response?.data as unknown;
+      const context: Record<string, unknown> = {
+        url: error.config?.url,
+        method: error.config?.method,
+        axiosCode: error.code,
+      };
 
       if (data && this.isErrorResponse(data)) {
         const errorData = data;
+        context.errorResponse = errorData;
+        
         if (status === 401) {
-          resultError = new AuthenticationError(errorData.error.message);
+          resultError = new AuthError(errorData.error.message, context);
         } else if (status === 429) {
           const retryAfter = error.response?.headers['retry-after'] as string | undefined;
           resultError = new RateLimitError(
             errorData.error.message,
-            retryAfter ? parseInt(retryAfter, 10) : undefined
+            retryAfter ? parseInt(retryAfter, 10) : undefined,
+            context
           );
         } else {
-          resultError = ConduitError.fromErrorResponse(errorData, status);
+          resultError = createErrorFromResponse(errorData, status);
         }
       } else if (!error.response) {
-        resultError = new NetworkError(error.message || 'Network request failed');
+        context.code = error.code;
+        resultError = new NetworkError(error.message || 'Network request failed', context);
       } else {
         resultError = new ConduitError(
           error.message || 'Request failed',
-          status,
-          error.code
+          status || 500,
+          error.code || 'REQUEST_FAILED',
+          context
         );
       }
     } else if (error instanceof Error) {
       resultError = error;
     } else {
-      resultError = new ConduitError('An unknown error occurred');
+      resultError = new ConduitError('An unknown error occurred', 500, 'UNKNOWN_ERROR', {
+        originalError: error
+      });
     }
     
     // Call onError callback if provided
