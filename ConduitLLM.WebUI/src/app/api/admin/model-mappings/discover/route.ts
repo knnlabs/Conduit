@@ -32,7 +32,7 @@ export const POST = withSDKAuth(
               );
               
               // Transform the models to the expected format
-              const models = modelsResponse.data.map(model => ({
+              const models = modelsResponse.map(model => ({
                 modelId: model.id,
                 modelName: model.id,
                 capabilities: determineCapabilities(model.id),

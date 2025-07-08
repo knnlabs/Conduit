@@ -49,7 +49,7 @@ export class ProviderModelsService extends BaseApiClient {
       forceRefresh?: boolean;
       virtualKey?: string;
     }
-  ): Promise<ProviderModelsResponse> {
+  ): Promise<ProviderModel[]> {
     const params: Record<string, any> = {};
     
     if (options?.forceRefresh) {
@@ -61,11 +61,12 @@ export class ProviderModelsService extends BaseApiClient {
     }
 
     const cacheKey = this.getCacheKey('provider-models', providerId, params);
-    return this.withCache(
+    const response = await this.withCache(
       cacheKey,
       () => super.get<ProviderModelsResponse>(ENDPOINTS.PROVIDER_MODELS.BY_PROVIDER(providerId), params),
       CACHE_TTL.MEDIUM
     );
+    return response.data;
   }
 
   /**
@@ -87,13 +88,14 @@ export class ProviderModelsService extends BaseApiClient {
    * @param providerId The provider identifier
    * @returns Promise resolving to cached provider models response
    */
-  async getCachedProviderModels(providerId: string): Promise<ProviderModelsResponse> {
+  async getCachedProviderModels(providerId: string): Promise<ProviderModel[]> {
     const cacheKey = this.getCacheKey('cached-provider-models', providerId);
-    return this.withCache(
+    const response = await this.withCache(
       cacheKey,
       () => super.get<ProviderModelsResponse>(ENDPOINTS.PROVIDER_MODELS.CACHED(providerId)),
       CACHE_TTL.LONG
     );
+    return response.data;
   }
 
   /**
@@ -105,7 +107,7 @@ export class ProviderModelsService extends BaseApiClient {
   async refreshProviderModels(
     providerId: string,
     virtualKey?: string
-  ): Promise<ProviderModelsResponse> {
+  ): Promise<ProviderModel[]> {
     const params: Record<string, any> = {};
     if (virtualKey) {
       params.virtualKey = virtualKey;
@@ -118,7 +120,7 @@ export class ProviderModelsService extends BaseApiClient {
     
     // Invalidate cache after refresh
     await this.invalidateCache();
-    return response;
+    return response.data;
   }
 
   /**
