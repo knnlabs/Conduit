@@ -6,7 +6,7 @@ import {
   VideoGenerationStartedEvent,
   VideoGenerationProgressEvent,
   VideoGenerationCompletedEvent,
-  TaskFailedEvent
+  VideoGenerationFailedEvent
 } from '../models/signalr';
 
 /**
@@ -26,7 +26,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
   onVideoGenerationStarted?: (event: VideoGenerationStartedEvent) => Promise<void>;
   onVideoGenerationProgress?: (event: VideoGenerationProgressEvent) => Promise<void>;
   onVideoGenerationCompleted?: (event: VideoGenerationCompletedEvent) => Promise<void>;
-  onVideoGenerationFailed?: (event: TaskFailedEvent) => Promise<void>;
+  onVideoGenerationFailed?: (event: VideoGenerationFailedEvent) => Promise<void>;
 
   /**
    * Configures the hub-specific event handlers.
@@ -35,7 +35,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     connection.on('VideoGenerationStarted', async (taskId: string, prompt: string, estimatedSeconds: number) => {
       console.debug(`Video generation started: ${taskId}, Estimated: ${estimatedSeconds}s`);
       if (this.onVideoGenerationStarted) {
-        await this.onVideoGenerationStarted({ taskId, prompt, estimatedSeconds });
+        await this.onVideoGenerationStarted({ eventType: 'VideoGenerationStarted', taskId, prompt, estimatedSeconds });
       }
     });
 
@@ -49,6 +49,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       console.debug(`Video generation progress: ${taskId}, Progress: ${progress}%`);
       if (this.onVideoGenerationProgress) {
         await this.onVideoGenerationProgress({ 
+          eventType: 'VideoGenerationProgress',
           taskId, 
           progress, 
           currentFrame, 
@@ -66,14 +67,14 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     ) => {
       console.debug(`Video generation completed: ${taskId}, Duration: ${duration}s`);
       if (this.onVideoGenerationCompleted) {
-        await this.onVideoGenerationCompleted({ taskId, videoUrl, duration, metadata });
+        await this.onVideoGenerationCompleted({ eventType: 'VideoGenerationCompleted', taskId, videoUrl, duration, metadata });
       }
     });
 
     connection.on('VideoGenerationFailed', async (taskId: string, error: string, isRetryable: boolean) => {
       console.debug(`Video generation failed: ${taskId}, Error: ${error}`);
       if (this.onVideoGenerationFailed) {
-        await this.onVideoGenerationFailed({ taskId, error, isRetryable });
+        await this.onVideoGenerationFailed({ eventType: 'VideoGenerationFailed', taskId, error, isRetryable, errorCode: undefined });
       }
     });
   }

@@ -6,7 +6,7 @@ import {
   ImageGenerationStartedEvent,
   ImageGenerationProgressEvent,
   ImageGenerationCompletedEvent,
-  TaskFailedEvent
+  ImageGenerationFailedEvent
 } from '../models/signalr';
 
 /**
@@ -26,7 +26,7 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
   onImageGenerationStarted?: (event: ImageGenerationStartedEvent) => Promise<void>;
   onImageGenerationProgress?: (event: ImageGenerationProgressEvent) => Promise<void>;
   onImageGenerationCompleted?: (event: ImageGenerationCompletedEvent) => Promise<void>;
-  onImageGenerationFailed?: (event: TaskFailedEvent) => Promise<void>;
+  onImageGenerationFailed?: (event: ImageGenerationFailedEvent) => Promise<void>;
 
   /**
    * Configures the hub-specific event handlers.
@@ -35,28 +35,28 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
     connection.on('ImageGenerationStarted', async (taskId: string, prompt: string, model: string) => {
       console.debug(`Image generation started: ${taskId}, Model: ${model}`);
       if (this.onImageGenerationStarted) {
-        await this.onImageGenerationStarted({ taskId, prompt, model });
+        await this.onImageGenerationStarted({ eventType: 'ImageGenerationStarted', taskId, prompt, model });
       }
     });
 
     connection.on('ImageGenerationProgress', async (taskId: string, progress: number, stage?: string) => {
       console.debug(`Image generation progress: ${taskId}, Progress: ${progress}%, Stage: ${stage}`);
       if (this.onImageGenerationProgress) {
-        await this.onImageGenerationProgress({ taskId, progress, stage });
+        await this.onImageGenerationProgress({ eventType: 'ImageGenerationProgress', taskId, progress, stage });
       }
     });
 
     connection.on('ImageGenerationCompleted', async (taskId: string, imageUrl: string, metadata: any) => {
       console.debug(`Image generation completed: ${taskId}`);
       if (this.onImageGenerationCompleted) {
-        await this.onImageGenerationCompleted({ taskId, imageUrl, metadata });
+        await this.onImageGenerationCompleted({ eventType: 'ImageGenerationCompleted', taskId, imageUrl, metadata });
       }
     });
 
     connection.on('ImageGenerationFailed', async (taskId: string, error: string, isRetryable: boolean) => {
       console.debug(`Image generation failed: ${taskId}, Error: ${error}`);
       if (this.onImageGenerationFailed) {
-        await this.onImageGenerationFailed({ taskId, error, isRetryable });
+        await this.onImageGenerationFailed({ eventType: 'ImageGenerationFailed', taskId, error, isRetryable, errorCode: undefined });
       }
     });
   }

@@ -36,3 +36,24 @@ export type {
   EmbeddingRequest,
   EmbeddingResponse,
 } from '../models/embeddings';
+
+// SignalR event types
+export type {
+  TaskEvent,
+  TaskStartedEvent,
+  TaskProgressEvent,
+  TaskCompletedEvent,
+  TaskFailedEvent,
+  TaskCancelledEvent,
+  TaskTimedOutEvent,
+  VideoGenerationEvent,
+  VideoGenerationStartedEvent,
+  VideoGenerationProgressEvent,
+  VideoGenerationCompletedEvent,
+  VideoGenerationFailedEvent,
+  ImageGenerationEvent,
+  ImageGenerationStartedEvent,
+  ImageGenerationProgressEvent,
+  ImageGenerationCompletedEvent,
+  ImageGenerationFailedEvent,
+} from '../models/signalr';

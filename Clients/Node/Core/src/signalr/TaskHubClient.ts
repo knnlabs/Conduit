@@ -39,42 +39,42 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
     connection.on('TaskStarted', async (taskId: string, taskType: string, metadata: any) => {
       console.debug(`Task started: ${taskId}, Type: ${taskType}`);
       if (this.onTaskStarted) {
-        await this.onTaskStarted({ taskId, taskType, metadata });
+        await this.onTaskStarted({ eventType: 'TaskStarted', taskId, taskType, metadata });
       }
     });
 
     connection.on('TaskProgress', async (taskId: string, progress: number, message?: string) => {
       console.debug(`Task progress: ${taskId}, Progress: ${progress}%`);
       if (this.onTaskProgress) {
-        await this.onTaskProgress({ taskId, progress, message });
+        await this.onTaskProgress({ eventType: 'TaskProgress', taskId, progress, message });
       }
     });
 
     connection.on('TaskCompleted', async (taskId: string, result: any) => {
       console.debug(`Task completed: ${taskId}`);
       if (this.onTaskCompleted) {
-        await this.onTaskCompleted({ taskId, result });
+        await this.onTaskCompleted({ eventType: 'TaskCompleted', taskId, result });
       }
     });
 
     connection.on('TaskFailed', async (taskId: string, error: string, isRetryable: boolean) => {
       console.debug(`Task failed: ${taskId}, Error: ${error}, Retryable: ${isRetryable}`);
       if (this.onTaskFailed) {
-        await this.onTaskFailed({ taskId, error, isRetryable });
+        await this.onTaskFailed({ eventType: 'TaskFailed', taskId, error, isRetryable });
       }
     });
 
     connection.on('TaskCancelled', async (taskId: string, reason?: string) => {
       console.debug(`Task cancelled: ${taskId}, Reason: ${reason}`);
       if (this.onTaskCancelled) {
-        await this.onTaskCancelled({ taskId, reason });
+        await this.onTaskCancelled({ eventType: 'TaskCancelled', taskId, reason });
       }
     });
 
     connection.on('TaskTimedOut', async (taskId: string, timeoutSeconds: number) => {
       console.debug(`Task timed out: ${taskId}, Timeout: ${timeoutSeconds}s`);
       if (this.onTaskTimedOut) {
-        await this.onTaskTimedOut({ taskId, timeoutSeconds });
+        await this.onTaskTimedOut({ eventType: 'TaskTimedOut', taskId, timeoutSeconds });
       }
     });
   }

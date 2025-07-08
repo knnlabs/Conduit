@@ -110,6 +110,7 @@ export interface IImageGenerationHubServer {
  * Task started event data.
  */
 export interface TaskStartedEvent {
+  eventType: 'TaskStarted';
   taskId: string;
   taskType: string;
   metadata: Record<string, unknown>;
@@ -119,6 +120,7 @@ export interface TaskStartedEvent {
  * Task progress event data.
  */
 export interface TaskProgressEvent {
+  eventType: 'TaskProgress';
   taskId: string;
   progress: number;
   message?: string;
@@ -128,6 +130,7 @@ export interface TaskProgressEvent {
  * Task completed event data.
  */
 export interface TaskCompletedEvent {
+  eventType: 'TaskCompleted';
   taskId: string;
   result: Record<string, unknown>;
 }
@@ -136,6 +139,7 @@ export interface TaskCompletedEvent {
  * Task failed event data.
  */
 export interface TaskFailedEvent {
+  eventType: 'TaskFailed';
   taskId: string;
   error: string;
   isRetryable: boolean;
@@ -145,6 +149,7 @@ export interface TaskFailedEvent {
  * Task cancelled event data.
  */
 export interface TaskCancelledEvent {
+  eventType: 'TaskCancelled';
   taskId: string;
   reason?: string;
 }
@@ -153,6 +158,7 @@ export interface TaskCancelledEvent {
  * Task timed out event data.
  */
 export interface TaskTimedOutEvent {
+  eventType: 'TaskTimedOut';
   taskId: string;
   timeoutSeconds: number;
 }
@@ -161,6 +167,7 @@ export interface TaskTimedOutEvent {
  * Video generation started event data.
  */
 export interface VideoGenerationStartedEvent {
+  eventType: 'VideoGenerationStarted';
   taskId: string;
   prompt: string;
   estimatedSeconds: number;
@@ -170,6 +177,7 @@ export interface VideoGenerationStartedEvent {
  * Video generation progress event data.
  */
 export interface VideoGenerationProgressEvent {
+  eventType: 'VideoGenerationProgress';
   taskId: string;
   progress: number;
   currentFrame?: number;
@@ -181,6 +189,7 @@ export interface VideoGenerationProgressEvent {
  * Video generation completed event data.
  */
 export interface VideoGenerationCompletedEvent {
+  eventType: 'VideoGenerationCompleted';
   taskId: string;
   videoUrl: string;
   duration: number;
@@ -191,6 +200,7 @@ export interface VideoGenerationCompletedEvent {
  * Image generation started event data.
  */
 export interface ImageGenerationStartedEvent {
+  eventType: 'ImageGenerationStarted';
   taskId: string;
   prompt: string;
   model: string;
@@ -200,6 +210,7 @@ export interface ImageGenerationStartedEvent {
  * Image generation progress event data.
  */
 export interface ImageGenerationProgressEvent {
+  eventType: 'ImageGenerationProgress';
   taskId: string;
   progress: number;
   stage?: string;
@@ -209,7 +220,59 @@ export interface ImageGenerationProgressEvent {
  * Image generation completed event data.
  */
 export interface ImageGenerationCompletedEvent {
+  eventType: 'ImageGenerationCompleted';
   taskId: string;
   imageUrl: string;
   metadata: Record<string, unknown>;
 }
+
+/**
+ * Video generation failed event data.
+ */
+export interface VideoGenerationFailedEvent {
+  eventType: 'VideoGenerationFailed';
+  taskId: string;
+  error: string;
+  errorCode?: string;
+  isRetryable: boolean;
+}
+
+/**
+ * Image generation failed event data.
+ */
+export interface ImageGenerationFailedEvent {
+  eventType: 'ImageGenerationFailed';
+  taskId: string;
+  error: string;
+  errorCode?: string;
+  isRetryable: boolean;
+}
+
+/**
+ * Union type for all task events.
+ */
+export type TaskEvent = 
+  | TaskStartedEvent
+  | TaskProgressEvent
+  | TaskCompletedEvent
+  | TaskFailedEvent
+  | TaskCancelledEvent
+  | TaskTimedOutEvent;
+
+/**
+ * Union type for all video generation events.
+ */
+export type VideoGenerationEvent = 
+  | VideoGenerationStartedEvent
+  | VideoGenerationProgressEvent
+  | VideoGenerationCompletedEvent
+  | VideoGenerationFailedEvent;
+
+/**
+ * Union type for all image generation events.
+ */
+export type ImageGenerationEvent = 
+  | ImageGenerationStartedEvent
+  | ImageGenerationProgressEvent
+  | ImageGenerationCompletedEvent
+  | ImageGenerationFailedEvent;
