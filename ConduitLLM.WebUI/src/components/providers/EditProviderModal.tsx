@@ -14,9 +14,9 @@ import {
   Card,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateProvider } from '@/hooks/api/useAdminApi';
+import { useUpdateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FormModal } from '@/components/common/FormModal';
 
 interface Provider {
@@ -62,6 +62,7 @@ const PROVIDER_TYPES = [
 
 export function EditProviderModal({ opened, onClose, provider, onTest }: EditProviderModalProps) {
   const updateProvider = useUpdateProvider();
+  const testProviderConnection = useTestProviderConnection();
   const [testingConnection, setTestingConnection] = useState(false);
 
   const form = useForm<EditProviderForm>({
@@ -77,12 +78,33 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
   });
 
 
+  // Memoize initial values to prevent unnecessary re-renders
+  // Must be called before any conditional returns to satisfy React hooks rules
+  const initialValues = useMemo(() => ({
+    apiKey: '', // Don't show existing API key for security
+    apiEndpoint: provider?.apiEndpoint || '',
+    organizationId: provider?.organizationId || '',
+    isEnabled: provider?.isEnabled ?? true,
+  }), [provider?.apiEndpoint, provider?.organizationId, provider?.isEnabled]);
+
   const handleTestConnection = async () => {
-    if (!provider || !onTest) return;
+    if (!provider) return;
     
     setTestingConnection(true);
-    await onTest(provider);
-    setTestingConnection(false);
+    try {
+      // Test with the current form values (if provided) or existing provider values
+      await testProviderConnection.mutateAsync({
+        providerName: provider.providerName,
+        apiKey: form.values.apiKey || undefined, // Only send if user entered a new key
+        apiEndpoint: form.values.apiEndpoint || provider.apiEndpoint || undefined,
+        organizationId: form.values.organizationId || provider.organizationId || undefined,
+        isEnabled: form.values.isEnabled,
+      });
+    } catch (error) {
+      // Error is already handled by the hook's onError
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   if (!provider) {
@@ -95,11 +117,13 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     ...updateProvider,
     mutate: (values: EditProviderForm, options?: Parameters<typeof updateProvider.mutate>[1]) => {
       const payload = {
-        apiKey: values.apiKey?.trim() || undefined, // Only update if provided
-        apiEndpoint: values.apiEndpoint?.trim() || undefined,
-        organizationId: values.organizationId?.trim() || undefined,
+        id: parseInt(provider.id), // Include ID in payload as required by API
+        apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined, // Only update if provided
+        apiEndpoint: values.apiEndpoint?.trim() ? values.apiEndpoint.trim() : undefined,
+        organizationId: values.organizationId?.trim() ? values.organizationId.trim() : undefined,
         isEnabled: values.isEnabled,
       };
+      console.log('Updating provider with payload:', payload);
       updateProvider.mutate({
         id: provider.id,
         data: payload,
@@ -107,9 +131,10 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
     },
     mutateAsync: async (values: EditProviderForm) => {
       const payload = {
-        apiKey: values.apiKey?.trim() || undefined, // Only update if provided
-        apiEndpoint: values.apiEndpoint?.trim() || undefined,
-        organizationId: values.organizationId?.trim() || undefined,
+        id: parseInt(provider.id), // Include ID in payload as required by API
+        apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined, // Only update if provided
+        apiEndpoint: values.apiEndpoint?.trim() ? values.apiEndpoint.trim() : undefined,
+        organizationId: values.organizationId?.trim() ? values.organizationId.trim() : undefined,
         isEnabled: values.isEnabled,
       };
       return updateProvider.mutateAsync({
@@ -132,12 +157,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
       entityType="Provider"
       isEdit={true}
       submitText="Save Changes"
-      initialValues={{
-        apiKey: '', // Don't show existing API key for security
-        apiEndpoint: provider.apiEndpoint || '',
-        organizationId: provider.organizationId || '',
-        isEnabled: provider.isEnabled,
-      }}
+      initialValues={initialValues}
     >
       {(form) => (
         <>
@@ -220,7 +240,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
               variant="light"
               onClick={handleTestConnection}
               loading={testingConnection}
-              disabled={updateProvider.isPending || !onTest}
+              disabled={updateProvider.isPending || testProviderConnection.isPending}
             >
               Test Connection
             </Button>

@@ -56,7 +56,8 @@ export function FormModal<TForm, TData = unknown, TError = unknown, TVariables =
     } else if (opened) {
       form.reset();
     }
-  }, [opened, initialValues, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]); // Only run when modal opens/closes, not when form changes
 
   // Handle form submission
   const handleSubmit = (values: TForm) => {
