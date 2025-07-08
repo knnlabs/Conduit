@@ -45,7 +45,8 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
   const deleteModelMapping = useDeleteModelMapping();
   
   // Use provided data or default to fetched data
-  const modelMappings = data || defaultMappings;
+  // Ensure modelMappings is always an array
+  const modelMappings = Array.isArray(data) ? data : Array.isArray(defaultMappings) ? defaultMappings : [];
 
   const handleDelete = (mapping: ModelProviderMappingDto) => {
     modals.openConfirmModal({
@@ -106,7 +107,7 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
     );
   }
 
-  const rows = modelMappings?.map((mapping: ModelProviderMappingDto) => (
+  const rows = modelMappings.map((mapping: ModelProviderMappingDto) => (
     <Table.Tr key={mapping.id}>
       <Table.Td>
         <Stack gap={4}>
@@ -270,7 +271,7 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
           </Table>
         </Table.ScrollContainer>
 
-        {modelMappings && modelMappings.length === 0 && (
+        {modelMappings.length === 0 && (
           <Box p="xl" style={{ textAlign: 'center' }}>
             <Text c="dimmed">No model mappings configured. Add your first mapping to start routing requests.</Text>
           </Box>

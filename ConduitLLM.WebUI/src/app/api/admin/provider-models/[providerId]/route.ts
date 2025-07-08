@@ -89,7 +89,14 @@ export const GET = createDynamicRouteHandler<{ providerId: string }>(
         }, { status: 200 }); // Still return 200 but with models from fallback
       }
     } catch (error) {
-      return mapSDKErrorToResponse(error);
+      // Always return the expected format even on error
+      console.error('Provider models route error:', error);
+      return NextResponse.json({
+        provider: params.providerId,
+        models: [],
+        source: 'none' as const,
+        error: error instanceof Error ? error.message : 'Failed to load provider models',
+      }, { status: 200 }); // Return 200 with empty models so UI can handle gracefully
     }
   },
   { requireAdmin: true }

@@ -68,11 +68,17 @@ export function ProviderModelSelect({
       }
       
       // Ensure models is an array - handle case where API returns models: undefined
+      // modelsData.models might be undefined if there's an error
       const models = modelsData.models;
-      console.log('Extracting models:', { models, 'is array': Array.isArray(models) });
+      console.log('Extracting models:', { models, 'is array': Array.isArray(models), error: modelsData.error });
       
+      // If there's an error or models is not an array, return empty array
       if (!models || !Array.isArray(models)) {
-        console.warn('Models is not an array!', { models, modelsData });
+        if (modelsData.error) {
+          console.warn('Error loading models:', modelsData.error);
+        } else {
+          console.warn('Models is not an array!', { models, modelsData });
+        }
         return [];
       }
 
