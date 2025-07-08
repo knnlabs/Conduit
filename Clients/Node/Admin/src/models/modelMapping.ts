@@ -187,18 +187,36 @@ export interface ModelMappingSuggestion {
 export interface DiscoveredModel {
   /** The model ID */
   modelId: string;
-  /** The provider-specific model ID */
-  providerModelId: string;
+  /** The provider name */
+  provider: string;
   /** The model display name */
   displayName: string;
-  /** The model description */
-  description?: string;
   /** The discovered capabilities */
-  capabilities?: ModelCapabilities;
-  /** The confidence score for this discovery (0-1) */
-  confidence: number;
-  /** Whether this model is recommended for mapping */
-  isRecommended: boolean;
+  capabilities: {
+    chat?: boolean;
+    chatStream?: boolean;
+    embeddings?: boolean;
+    imageGeneration?: boolean;
+    vision?: boolean;
+    videoGeneration?: boolean;
+    videoUnderstanding?: boolean;
+    functionCalling?: boolean;
+    toolUse?: boolean;
+    jsonMode?: boolean;
+    maxTokens?: number;
+    maxOutputTokens?: number;
+    supportedImageSizes?: string[] | null;
+    supportedVideoResolutions?: string[] | null;
+    maxVideoDurationSeconds?: number | null;
+  };
+  /** Model metadata */
+  metadata?: {
+    original_model_id?: string;
+    inferred?: boolean;
+    [key: string]: unknown;
+  };
+  /** When the model was last verified */
+  lastVerified?: string;
 }
 
 /** Represents model capabilities discovered during model discovery */

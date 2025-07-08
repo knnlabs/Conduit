@@ -107,6 +107,7 @@ export default function RequestLogsPage() {
       }, 5000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [autoRefresh, refetch]);
 
   const handleExport = () => {

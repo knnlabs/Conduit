@@ -41,24 +41,12 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-// Define ModelMapping interface to match components
-interface ModelMapping {
-  id: string;
-  internalModelName: string;
-  providerModelName: string;
-  providerName: string;
-  isEnabled: boolean;
-  capabilities: string[];
-  priority: number;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-}
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 export default function ModelMappingsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedMapping, setSelectedMapping] = useState<ModelMapping | null>(null);
+  const [selectedMapping, setSelectedMapping] = useState<ModelProviderMappingDto | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { data: modelMappings, isLoading, error, refetch } = useModelMappings();
@@ -66,7 +54,7 @@ export default function ModelMappingsPage() {
   const bulkDiscoverModelMappings = useBulkDiscoverModelMappings();
 
   const handleEdit = (mapping: unknown) => {
-    setSelectedMapping(mapping as ModelMapping);
+    setSelectedMapping(mapping as ModelProviderMappingDto);
     openEditModal();
   };
 
@@ -97,17 +85,32 @@ export default function ModelMappingsPage() {
       return;
     }
 
-    const exportData = filteredMappings.map((mapping: unknown) => ({
-      internalModel: (mapping as { internalModelName: string }).internalModelName,
-      providerModel: (mapping as { providerModelName: string }).providerModelName,
-      provider: (mapping as { providerName: string }).providerName,
-      status: (mapping as { isEnabled: boolean }).isEnabled ? 'Active' : 'Disabled',
-      priority: (mapping as { priority: number }).priority,
-      capabilities: (mapping as { capabilities?: string[] }).capabilities?.join('; ') || '',
-      requestCount: (mapping as { requestCount?: number }).requestCount || 0,
-      createdAt: formatDateForExport((mapping as { createdAt: string }).createdAt),
-      lastUsed: formatDateForExport((mapping as { lastUsed?: string }).lastUsed),
-    }));
+    const exportData = [];
+    const mappingsToExport = filteredMappings || [];
+    for (let i = 0; i < mappingsToExport.length; i++) {
+      const mapping = mappingsToExport[i] as ModelProviderMappingDto;
+      
+      // Build capabilities array from boolean flags
+      const capabilities = [];
+      if (mapping.supportsVision) capabilities.push('vision');
+      if (mapping.supportsImageGeneration) capabilities.push('image_generation');
+      if (mapping.supportsAudioTranscription) capabilities.push('audio_transcription');
+      if (mapping.supportsTextToSpeech) capabilities.push('text_to_speech');
+      if (mapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
+      if (mapping.supportsFunctionCalling) capabilities.push('function_calling');
+      if (mapping.supportsStreaming) capabilities.push('streaming');
+      
+      exportData.push({
+        internalModel: mapping.modelId || '',
+        providerModel: mapping.providerModelId || '',
+        provider: mapping.providerId || '',
+        status: mapping.isEnabled ? 'Active' : 'Disabled',
+        priority: mapping.priority || 0,
+        capabilities: capabilities.join('; '),
+        createdAt: formatDateForExport(mapping.createdAt || ''),
+        lastUsed: formatDateForExport(mapping.updatedAt || ''),
+      });
+    }
 
     exportToCSV(
       exportData,
@@ -119,7 +122,6 @@ export default function ModelMappingsPage() {
         { key: 'status', label: 'Status' },
         { key: 'priority', label: 'Priority' },
         { key: 'capabilities', label: 'Capabilities' },
-        { key: 'requestCount', label: 'Request Count' },
         { key: 'createdAt', label: 'Created At' },
         { key: 'lastUsed', label: 'Last Used' },
       ]
@@ -156,18 +158,45 @@ export default function ModelMappingsPage() {
 
   // Filter mappings based on active tab and search query
   const getFilteredMappings = () => {
+    console.log('getFilteredMappings called', {
+      modelMappings,
+      'modelMappings type': typeof modelMappings,
+      'is array': Array.isArray(modelMappings),
+      'length': modelMappings?.length,
+      'first item': modelMappings?.[0],
+    });
+    
     if (!modelMappings) return [];
+    
+    // Validate modelMappings is an array
+    if (!Array.isArray(modelMappings)) {
+      console.error('modelMappings is not an array:', modelMappings);
+      return [];
+    }
     
     // First apply search filter
     let filtered = modelMappings;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = modelMappings.filter((m: unknown) => 
-        (m as { internalModelName: string }).internalModelName.toLowerCase().includes(query) ||
-        (m as { providerModelName: string }).providerModelName.toLowerCase().includes(query) ||
-        (m as { providerName: string }).providerName.toLowerCase().includes(query) ||
-        (m as { capabilities?: string[] }).capabilities?.some((cap: string) => cap.toLowerCase().includes(query))
-      );
+      filtered = modelMappings.filter((m: unknown) => {
+        const mapping = m as ModelProviderMappingDto;
+        
+        // Check basic string properties
+        if (mapping.modelId.toLowerCase().includes(query) ||
+            mapping.providerModelId.toLowerCase().includes(query) ||
+            mapping.providerId.toLowerCase().includes(query)) {
+          return true;
+        }
+        
+        // Check capability boolean flags
+        if (query === 'vision' && mapping.supportsVision) return true;
+        if (query === 'image' && mapping.supportsImageGeneration) return true;
+        if (query === 'audio' && (mapping.supportsAudioTranscription || mapping.supportsTextToSpeech || mapping.supportsRealtimeAudio)) return true;
+        if (query === 'function' && mapping.supportsFunctionCalling) return true;
+        if (query === 'streaming' && mapping.supportsStreaming) return true;
+        
+        return false;
+      });
     }
     
     // Then apply tab filter
@@ -197,12 +226,26 @@ export default function ModelMappingsPage() {
   } = usePaginatedData(filteredMappings);
 
   // Calculate statistics based on filtered data (not paginated)
-  const stats = filteredMappings ? {
+  const stats = filteredMappings && Array.isArray(filteredMappings) && filteredMappings.length > 0 ? {
     totalMappings: filteredMappings.length,
     activeMappings: filteredMappings.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled).length,
-    uniqueProviders: new Set(filteredMappings.map((m: unknown) => (m as { providerName: string }).providerName)).size,
-    totalRequests: filteredMappings.reduce((sum: number, m: unknown) => sum + ((m as { requestCount?: number }).requestCount || 0), 0),
-  } : null;
+    uniqueProviders: (() => {
+      const providers = new Set();
+      for (let i = 0; i < filteredMappings.length; i++) {
+        const mapping = filteredMappings[i] as ModelProviderMappingDto;
+        if (mapping && mapping.providerId) {
+          providers.add(mapping.providerId);
+        }
+      }
+      return providers.size;
+    })(),
+    totalRequests: 0, // Not available in SDK type
+  } : {
+    totalMappings: 0,
+    activeMappings: 0,
+    uniqueProviders: 0,
+    totalRequests: 0,
+  };
 
   const statCards = stats ? [
     {
@@ -309,23 +352,32 @@ export default function ModelMappingsPage() {
 
       {/* Statistics Cards */}
       <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
+        {(() => {
+          const cards = [];
+          if (statCards && Array.isArray(statCards)) {
+            for (let i = 0; i < statCards.length; i++) {
+              const stat = statCards[i];
+              cards.push(
+                <Card key={stat.title} p="md" withBorder>
+                  <Group justify="space-between">
+                    <div>
+                      <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+                        {stat.title}
+                      </Text>
+                      <Text fw={700} size="xl">
+                        {stat.value}
+                      </Text>
+                    </div>
+                    <ThemeIcon size="lg" variant="light" color={stat.color}>
+                      <stat.icon size={20} />
+                    </ThemeIcon>
+                  </Group>
+                </Card>
+              );
+            }
+          }
+          return cards;
+        })()}
       </SimpleGrid>
 
       {/* System Status Overview */}
@@ -443,35 +495,45 @@ export default function ModelMappingsPage() {
               <div style={{ position: 'relative' }}>
                 <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
                 {/* Group mappings by provider */}
-                {filteredMappings.length > 0 ? (
+                {filteredMappings && filteredMappings.length > 0 ? (
                   <Stack gap="md">
-                    {Object.entries(
-                      filteredMappings.reduce((acc: Record<string, unknown[]>, mapping: unknown) => {
-                        const providerName = (mapping as { providerName: string }).providerName;
-                        if (!acc[providerName]) {
-                          acc[providerName] = [];
+                    {(() => {
+                      // Group mappings by provider
+                      const groupedMappings: Record<string, unknown[]> = {};
+                      for (let i = 0; i < filteredMappings.length; i++) {
+                        const mapping = filteredMappings[i] as ModelProviderMappingDto;
+                        const providerId = mapping.providerId || 'Unknown';
+                        if (!groupedMappings[providerId]) {
+                          groupedMappings[providerId] = [];
                         }
-                        acc[providerName].push(mapping);
-                        return acc;
-                      }, {})
-                    ).map(([provider, mappings]) => {
-                      const typedMappings = mappings as unknown[];
-                      return (
-                      <div key={provider}>
-                        <Group gap="xs" mb="xs">
-                          <Badge variant="dot" size="lg">{provider}</Badge>
-                          <Text size="sm" c="dimmed">
-                            {typedMappings.length} mapping{typedMappings.length !== 1 ? 's' : ''}
-                          </Text>
-                        </Group>
-                        <ModelMappingsTable 
-                          onEdit={handleEdit} 
-                          onTest={handleTest} 
-                          data={typedMappings as never}
-                          showProvider={false}
-                        />
-                      </div>
-                    );})}
+                        groupedMappings[providerId].push(mapping);
+                      }
+                      
+                      // Create components for each provider group
+                      const providerGroups = [];
+                      const providers = Object.keys(groupedMappings);
+                      for (let i = 0; i < providers.length; i++) {
+                        const provider = providers[i];
+                        const mappings = groupedMappings[provider];
+                        providerGroups.push(
+                          <div key={provider}>
+                            <Group gap="xs" mb="xs">
+                              <Badge variant="dot" size="lg">{provider}</Badge>
+                              <Text size="sm" c="dimmed">
+                                {mappings.length} mapping{mappings.length !== 1 ? 's' : ''}
+                              </Text>
+                            </Group>
+                            <ModelMappingsTable 
+                              onEdit={handleEdit} 
+                              onTest={handleTest} 
+                              data={mappings as never}
+                              showProvider={false}
+                            />
+                          </div>
+                        );
+                      }
+                      return providerGroups;
+                    })()}
                   </Stack>
                 ) : (
                   <Text c="dimmed" ta="center" py="xl">
@@ -491,11 +553,13 @@ export default function ModelMappingsPage() {
       />
 
       {/* Edit Model Mapping Modal */}
-      <EditModelMappingModal
-        opened={editModalOpened}
-        onClose={closeEditModal}
-        modelMapping={selectedMapping}
-      />
+      {editModalOpened && selectedMapping && (
+        <EditModelMappingModal
+          opened={editModalOpened}
+          onClose={closeEditModal}
+          modelMapping={selectedMapping}
+        />
+      )}
     </Stack>
   );
 }

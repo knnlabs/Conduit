@@ -7,7 +7,7 @@ import { IpFilterService } from '../services/IpFilterService';
 import { ModelCostService } from '../services/ModelCostService';
 import { AnalyticsService } from '../services/AnalyticsService';
 import { SystemService } from '../services/SystemService';
-import { DiscoveryService } from '../services/DiscoveryService';
+// DiscoveryService removed - discovery is handled by Admin API model mapping endpoints
 import { ProviderModelsService } from '../services/ProviderModelsService';
 import { AudioConfigurationService } from '../services/AudioConfigurationService';
 import { MetricsService } from '../services/MetricsService';
@@ -52,7 +52,7 @@ export class ConduitAdminClient {
   public readonly modelCosts: ModelCostService;
   public readonly analytics: AnalyticsService;
   public readonly system: SystemService;
-  public readonly discovery: DiscoveryService;
+  // discovery removed - use modelMappings.discoverProviderModels() instead
   public readonly providerModels: ProviderModelsService;
   public readonly audioConfiguration: AudioConfigurationService;
   public readonly metrics: MetricsService;
@@ -98,7 +98,7 @@ export class ConduitAdminClient {
     this.modelCosts = new ModelCostService(baseConfig);
     this.analytics = new AnalyticsService(baseConfig);
     this.system = new SystemService(baseConfig);
-    this.discovery = new DiscoveryService(baseConfig);
+    // discovery service removed - use modelMappings for discovery
     this.providerModels = new ProviderModelsService(baseConfig);
     this.audioConfiguration = new AudioConfigurationService(baseConfig);
     this.metrics = new MetricsService(baseConfig);

@@ -33,7 +33,7 @@ export const PUT = createDynamicRouteHandler<{ providerId: string }>(
 );
 
 export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, adminClient }) => {
+  async (_request, { params, adminClient }) => {
     try {
       const { providerId } = params;
       

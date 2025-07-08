@@ -70,6 +70,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
       }, 2000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [updatedKeys]);
 
   const handleCopyKey = (keyHash: string) => {

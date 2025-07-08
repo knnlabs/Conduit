@@ -34,9 +34,9 @@ export const POST = withSDKAuth(
           {
             startDate: (filters?.startDate as string) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
             endDate: (filters?.endDate as string) || new Date().toISOString(),
-            virtualKeyIds: filters?.virtualKeyId ? [Number(filters?.virtualKeyId)] : undefined,
-            models: filters?.modelName ? [filters?.modelName as string] : undefined,
-            providers: filters?.providerId ? [filters?.providerId as string] : undefined,
+            virtualKeyIds: filters?.virtualKeyId ? [Number(filters?.virtualKeyId)] : [],
+            models: filters?.modelName ? [filters?.modelName as string] : [],
+            providers: filters?.providerId ? [filters?.providerId as string] : [],
             groupBy: filters?.groupBy as "hour" | "day" | "week" | "month" | undefined,
             includeMetadata: (filters?.includeMetadata as boolean) ?? true,
           },

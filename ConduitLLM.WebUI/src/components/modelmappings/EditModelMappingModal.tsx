@@ -22,23 +22,12 @@ import { FormModal } from '@/components/common/FormModal';
 import { validators } from '@/lib/utils/form-validators';
 import { formatters } from '@/lib/utils/formatters';
 
-interface ModelMapping {
-  id: string;
-  internalModelName: string;
-  providerModelName: string;
-  providerName: string;
-  isEnabled: boolean;
-  capabilities: string[];
-  priority: number;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-}
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface EditModelMappingModalProps {
   opened: boolean;
   onClose: () => void;
-  modelMapping: ModelMapping | null;
+  modelMapping: ModelProviderMappingDto | null;
 }
 
 interface EditModelMappingForm {
@@ -78,7 +67,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
     mutate: (values: EditModelMappingForm, options?: Parameters<typeof updateModelMappingMutation.mutate>[1]) => {
       if (!modelMapping) return;
       updateModelMappingMutation.mutate({
-        id: modelMapping.id,
+        id: modelMapping.id.toString(),
         data: {
           ...values,
           capabilities: values.capabilities.join(','),
@@ -89,7 +78,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
     mutateAsync: async (values: EditModelMappingForm) => {
       if (!modelMapping) throw new Error('No model mapping to update');
       return updateModelMappingMutation.mutateAsync({
-        id: modelMapping.id,
+        id: modelMapping.id.toString(),
         data: {
           ...values,
           capabilities: values.capabilities.join(','),
@@ -138,17 +127,27 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
   // Update form when model mapping changes
   useEffect(() => {
     if (modelMapping) {
+      // Build capabilities array from boolean flags
+      const capabilities = [];
+      if (modelMapping.supportsVision) capabilities.push('vision');
+      if (modelMapping.supportsImageGeneration) capabilities.push('image_generation');
+      if (modelMapping.supportsAudioTranscription) capabilities.push('audio_transcription');
+      if (modelMapping.supportsTextToSpeech) capabilities.push('text_to_speech');
+      if (modelMapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
+      if (modelMapping.supportsFunctionCalling) capabilities.push('function_calling');
+      if (modelMapping.supportsStreaming) capabilities.push('streaming');
+      
       form.setValues({
-        internalModelName: modelMapping.internalModelName,
-        providerModelName: modelMapping.providerModelName,
-        providerName: modelMapping.providerName,
+        internalModelName: modelMapping.modelId,
+        providerModelName: modelMapping.providerModelId,
+        providerName: modelMapping.providerId,
         isEnabled: modelMapping.isEnabled,
-        capabilities: modelMapping.capabilities,
+        capabilities: capabilities,
         priority: modelMapping.priority,
       });
       
       // Find and set the selected provider
-      const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === modelMapping.providerName);
+      const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === modelMapping.providerId);
       if (provider && typeof provider === 'object' && 'healthStatus' in provider && 'modelsAvailable' in provider) {
         setSelectedProvider(provider as ProviderInfo);
       } else {
@@ -185,14 +184,7 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
       entityType="Model mapping"
       isEdit={true}
       submitText="Save Changes"
-      initialValues={modelMapping ? {
-        internalModelName: modelMapping.internalModelName,
-        providerModelName: modelMapping.providerModelName,
-        providerName: modelMapping.providerName,
-        isEnabled: modelMapping.isEnabled,
-        capabilities: modelMapping.capabilities,
-        priority: modelMapping.priority,
-      } : undefined}
+      initialValues={undefined}
     >
       {(form) => (
         <>
@@ -203,16 +195,12 @@ export function EditModelMappingModal({ opened, onClose, modelMapping }: EditMod
                 <Text size="sm" c="dimmed">Created</Text>
                 <Text size="sm">{formatters.date(modelMapping.createdAt)}</Text>
               </Group>
-              {modelMapping.lastUsed && (
+              {modelMapping.updatedAt && (
                 <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Last Used</Text>
-                  <Text size="sm">{formatters.date(modelMapping.lastUsed)}</Text>
+                  <Text size="sm" c="dimmed">Last Updated</Text>
+                  <Text size="sm">{formatters.date(modelMapping.updatedAt)}</Text>
                 </Group>
               )}
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Request Count</Text>
-                <Text size="sm">{formatters.number(modelMapping.requestCount)}</Text>
-              </Group>
             </Stack>
           </Card>
 

@@ -50,16 +50,22 @@ curl -X POST http://localhost:5000/v1/images/generations \
   }'
 ```
 
-### Via Discovery API:
+### Via Admin API Discovery:
 ```bash
-# Check if model supports image generation
-curl http://localhost:5000/v1/discovery/models/minimax-image/capabilities/ImageGeneration \
-  -H "Authorization: Bearer YOUR_API_KEY"
+# Discover MiniMax models (requires master key authentication)
+curl http://localhost:8080/api/modelprovidermapping/discover/provider/minimax \
+  -H "X-API-Key: YOUR_MASTER_KEY"
 
-# Get all MiniMax models
-curl http://localhost:5000/v1/discovery/providers/minimax/models \
-  -H "Authorization: Bearer YOUR_API_KEY"
+# Check specific model capabilities
+curl http://localhost:8080/api/modelprovidermapping/discover/model/minimax/minimax-image \
+  -H "X-API-Key: YOUR_MASTER_KEY"
+
+# Test if a model supports a specific capability
+curl http://localhost:8080/api/modelprovidermapping/discover/capability/minimax-image/ImageGeneration \
+  -H "X-API-Key: YOUR_MASTER_KEY"
 ```
+
+> **Note**: Model discovery is an administrative task performed through the Admin API using master key authentication. Core API focuses on serving requests with pre-configured model mappings.
 
 ## Video Generation Models (Future)
 

@@ -39,7 +39,7 @@ export const POST = withSDKAuth(
       const body = await request.json();
       
       // Validate required fields
-      const validation = validateRequiredFields(body, ['modelName', 'providerId']);
+      const validation = validateRequiredFields(body, ['modelId', 'providerId', 'providerModelId']);
       if (!validation.isValid) {
         return createValidationError(
           'Missing required fields',
@@ -47,16 +47,9 @@ export const POST = withSDKAuth(
         );
       }
       
-      // Create model mapping
+      // Create model mapping directly with the SDK DTO structure
       const result = await withSDKErrorHandling(
-        async () => context.adminClient!.modelMappings.create({
-          modelId: body.modelName,
-          providerId: body.providerId,
-          providerModelId: body.providerModelName || body.modelName,
-          priority: body.priority ?? 100,
-          isEnabled: body.isEnabled ?? true,
-          metadata: body.metadata ? JSON.stringify(body.metadata) : undefined,
-        }),
+        async () => context.adminClient!.modelMappings.create(body),
         'create model mapping'
       );
 

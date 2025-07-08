@@ -37,17 +37,20 @@ export default function Error({
             </Text>
           </div>
 
-          {process.env.NODE_ENV === 'development' && (
-            <Code block p="md" style={{ width: '100%', textAlign: 'left' }}>
-              {error.message}
-              {error.stack && (
-                <>
-                  {'\n\n'}
-                  {error.stack}
-                </>
-              )}
-            </Code>
-          )}
+          {/* ALWAYS SHOW ERROR DETAILS */}
+          <Code block p="md" style={{ width: '100%', textAlign: 'left', maxHeight: '400px', overflow: 'auto' }}>
+            ERROR MESSAGE: {error.message}
+            {error.stack && (
+              <>
+                {'\n\n'}
+                STACK TRACE:
+                {'\n'}
+                {error.stack}
+              </>
+            )}
+            {'\n\n'}
+            ERROR OBJECT: {JSON.stringify(error, null, 2)}
+          </Code>
 
           <Group>
             <Button

@@ -81,7 +81,7 @@ export function useCostTrends(timeRange: TimeRangeFilter) {
         
         // Transform SDK response to UI format
         const costTrends: CostTrendData[] = response.periods.map(period => ({
-          date: period.startDate.split('T')[0], // Extract date part
+          date: period.startDate?.split('T')[0] || '', // Extract date part
           spend: period.totalCost,
           requests: period.requestCount,
           tokens: period.inputTokens + period.outputTokens,
@@ -123,7 +123,7 @@ export function useProviderCosts(timeRange: TimeRangeFilter) {
               const modelLower = model.modelId.toLowerCase();
               const providerLower = provider.providerName.toLowerCase();
               return modelLower.includes(providerLower) || 
-                     providerLower.includes(modelLower.split('-')[0]) ||
+                     providerLower.includes(modelLower.split('-')[0] || '') ||
                      (providerLower.includes('openai') && (modelLower.includes('gpt') || modelLower.includes('dall-e'))) ||
                      (providerLower.includes('anthropic') && modelLower.includes('claude')) ||
                      (providerLower.includes('azure') && modelLower.includes('azure'));

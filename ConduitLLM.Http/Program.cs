@@ -384,72 +384,10 @@ builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookCircuitBreaker>(s
         counterResetDuration: TimeSpan.FromMinutes(15));
 });
 
-// Register enhanced model discovery providers
-// Configure HttpClients for each discovery provider
-builder.Services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-});
-
-builder.Services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-});
-
-// Register discovery providers as concrete implementations first
-builder.Services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
-{
-    var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
-    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
-    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-    
-    // Get API key from provider credentials
-    try
-    {
-        var credential = credentialService.GetCredentialByProviderNameAsync("openrouter").GetAwaiter().GetResult();
-        var apiKey = credential?.ApiKey;
-        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
-    }
-    catch
-    {
-        // If we can't get credentials, still register the provider (it will fall back to patterns)
-        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
-    }
-});
-
-builder.Services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
-{
-    var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
-    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
-    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-    
-    // Get API key from provider credentials
-    try
-    {
-        var credential = credentialService.GetCredentialByProviderNameAsync("anthropic").GetAwaiter().GetResult();
-        var apiKey = credential?.ApiKey;
-        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
-    }
-    catch
-    {
-        // If we can't get credentials, still register the provider (it will fall back to patterns)
-        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
-    }
-});
-
-// Register the providers as IModelDiscoveryProvider interfaces
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
-
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
+// Discovery providers moved to Admin API - Core API should not handle discovery
 
 // Virtual Key service registration will be done after Redis configuration
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
+// Discovery service moved to Admin API - Core API should not handle discovery
 
 // Register cache service based on configuration
 builder.Services.AddCacheService(builder.Configuration);

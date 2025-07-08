@@ -31,23 +31,12 @@ import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
 import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
-interface ModelMapping {
-  id: string;
-  internalModelName: string;
-  providerModelName: string;
-  providerName: string;
-  isEnabled: boolean;
-  capabilities: string[];
-  priority: number;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-}
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface ModelMappingsTableProps {
-  onEdit?: (mapping: ModelMapping) => void;
-  onTest?: (mapping: ModelMapping) => void;
-  data?: ModelMapping[];
+  onEdit?: (mapping: ModelProviderMappingDto) => void;
+  onTest?: (mapping: ModelProviderMappingDto) => void;
+  data?: ModelProviderMappingDto[];
   showProvider?: boolean;
 }
 
@@ -58,24 +47,24 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
   // Use provided data or default to fetched data
   const modelMappings = data || defaultMappings;
 
-  const handleDelete = (mapping: ModelMapping) => {
+  const handleDelete = (mapping: ModelProviderMappingDto) => {
     modals.openConfirmModal({
       title: 'Delete Model Mapping',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the mapping for &quot;{mapping.internalModelName}&quot;? 
+          Are you sure you want to delete the mapping for &quot;{mapping.modelId}&quot;? 
           This will prevent routing requests to this model configuration.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
-        await deleteModelMapping.mutateAsync(mapping.id);
+        await deleteModelMapping.mutateAsync(mapping.id.toString());
       },
     });
   };
 
-  const handleTestLocal = (mapping: ModelMapping) => {
+  const handleTestLocal = (mapping: ModelProviderMappingDto) => {
     if (onTest) {
       onTest(mapping);
     }
@@ -117,17 +106,17 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
     );
   }
 
-  const rows = modelMappings?.map((mapping: ModelMapping) => (
+  const rows = modelMappings?.map((mapping: ModelProviderMappingDto) => (
     <Table.Tr key={mapping.id}>
       <Table.Td>
         <Stack gap={4}>
           <Group gap="xs">
-            <Code>{mapping.internalModelName}</Code>
+            <Code>{mapping.modelId}</Code>
             <IconArrowRight size={12} style={{ color: 'var(--mantine-color-dimmed)' }} />
-            <Text size="sm" c="dimmed">{mapping.providerModelName}</Text>
+            <Text size="sm" c="dimmed">{mapping.providerModelId}</Text>
           </Group>
           <Text size="xs" c="dimmed">
-            via {mapping.providerName}
+            via {mapping.providerId}
           </Text>
         </Stack>
       </Table.Td>
@@ -149,33 +138,54 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
 
       <Table.Td>
         <Group gap={4}>
-          {mapping.capabilities.slice(0, 3).map((capability) => (
-            <Badge 
-              key={capability}
-              size="xs" 
-              variant="dot" 
-              color={getCapabilityColor(capability)}
-            >
-              {capability}
-            </Badge>
-          ))}
-          {mapping.capabilities.length > 3 && (
-            <Tooltip label={mapping.capabilities.slice(3).join(', ')}>
-              <Badge size="xs" variant="light" color="gray">
-                +{mapping.capabilities.length - 3}
-              </Badge>
-            </Tooltip>
-          )}
+          {(() => {
+            // Build capabilities array from boolean flags
+            const capabilities = [];
+            if (mapping.supportsVision) capabilities.push('vision');
+            if (mapping.supportsImageGeneration) capabilities.push('image_generation');
+            if (mapping.supportsAudioTranscription) capabilities.push('audio_transcription');
+            if (mapping.supportsTextToSpeech) capabilities.push('text_to_speech');
+            if (mapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
+            if (mapping.supportsFunctionCalling) capabilities.push('function_calling');
+            if (mapping.supportsStreaming) capabilities.push('streaming');
+            
+            const badges = [];
+            for (let i = 0; i < Math.min(3, capabilities.length); i++) {
+              const capability = capabilities[i];
+              badges.push(
+                <Badge 
+                  key={capability}
+                  size="xs" 
+                  variant="dot" 
+                  color={getCapabilityColor(capability)}
+                >
+                  {capability}
+                </Badge>
+              );
+            }
+            
+            if (capabilities.length > 3) {
+              badges.push(
+                <Tooltip key="more" label={capabilities.slice(3).join(', ')}>
+                  <Badge size="xs" variant="light" color="gray">
+                    +{capabilities.length - 3}
+                  </Badge>
+                </Tooltip>
+              );
+            }
+            
+            return badges;
+          })()}
         </Group>
       </Table.Td>
 
       <Table.Td>
-        <Text size="sm">{formatters.number(mapping.requestCount)}</Text>
+        <Text size="sm">-</Text>
       </Table.Td>
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {formatters.date(mapping.lastUsed)}
+          {formatters.date(mapping.updatedAt)}
         </Text>
       </Table.Td>
 

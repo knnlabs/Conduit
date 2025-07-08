@@ -57,7 +57,7 @@ export function createStreamingResponse(
     transformer?: (chunk: unknown) => string;
   } = {}
 ): Response {
-  const { headers = {}, transformer = (chunk) => JSON.stringify(chunk) + '\n' } = options;
+  const { headers = {}, transformer = (chunk) => `${JSON.stringify(chunk)}\n` } = options;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({

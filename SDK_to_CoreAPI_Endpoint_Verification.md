@@ -49,13 +49,13 @@ This report compares all endpoints defined in the SDK (`ApiEndpoints.cs`) with t
 
 The Core API has several endpoints not defined in the SDK:
 
-1. **Discovery Endpoints** (`DiscoveryController`)
-   - `/v1/discovery/models`
-   - `/v1/discovery/providers/{provider}/models`
-   - `/v1/discovery/models/{model}/capabilities/{capability}`
-   - `/v1/discovery/bulk/capabilities`
-   - `/v1/discovery/bulk/models`
-   - `/v1/discovery/refresh`
+1. **Discovery Endpoints** (MOVED TO ADMIN API)
+   - Discovery functionality has been moved to Admin API for proper separation of concerns
+   - Discovery is an administrative task, not a runtime operation
+   - Use Admin API endpoints:
+     - `/api/modelprovidermapping/discover/provider/{providerName}`
+     - `/api/modelprovidermapping/discover/model/{providerName}/{modelId}`
+     - `/api/modelprovidermapping/discover/capability/{modelAlias}/{capability}`
 
 2. **Media Endpoints** (`MediaController`)
    - `/v1/media/{storageKey}`

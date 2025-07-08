@@ -1,279 +1,257 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
-  Switch,
-  Button,
-  Group,
-  Text,
   Select,
   NumberInput,
+  Switch,
   MultiSelect,
+  Button,
+  Stack,
+  Group,
   Alert,
-  Divider,
-  Badge,
+  Text,
+  Loader,
+  Center,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { useCreateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
-import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
-import { FormModal } from '@/components/common/FormModal';
-import { validators } from '@/lib/utils/form-validators';
+import { ProviderModelSelect } from '@/components/common/ProviderModelSelect';
+import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
   opened: boolean;
   onClose: () => void;
 }
 
-interface CreateModelMappingForm {
-  internalModelName: string;
-  providerModelName: string;
-  providerName: string;
+interface FormValues {
+  modelId: string;
+  providerId: string;
+  providerModelId: string;
+  priority: number;
   isEnabled: boolean;
   capabilities: string[];
-  priority: number;
 }
 
 const CAPABILITY_OPTIONS = [
-  { value: 'chat', label: 'Chat Completion' },
-  { value: 'embedding', label: 'Embeddings' },
-  { value: 'function_calling', label: 'Function Calling' },
   { value: 'vision', label: 'Vision/Image Understanding' },
-  { value: 'json_mode', label: 'JSON Mode' },
+  { value: 'function_calling', label: 'Function Calling' },
   { value: 'streaming', label: 'Streaming' },
-  { value: 'code_generation', label: 'Code Generation' },
-  { value: 'reasoning', label: 'Advanced Reasoning' },
-];
-
-// Common model presets for quick setup
-const MODEL_PRESETS = [
-  { 
-    internal: 'gpt-4', 
-    provider: 'gpt-4-0125-preview',
-    capabilities: ['chat', 'function_calling', 'vision', 'json_mode', 'streaming', 'code_generation', 'reasoning']
-  },
-  { 
-    internal: 'gpt-3.5-turbo', 
-    provider: 'gpt-3.5-turbo-0125',
-    capabilities: ['chat', 'function_calling', 'json_mode', 'streaming']
-  },
-  { 
-    internal: 'claude-3-opus', 
-    provider: 'claude-3-opus-20240229',
-    capabilities: ['chat', 'vision', 'streaming', 'code_generation', 'reasoning']
-  },
-  { 
-    internal: 'claude-3-sonnet', 
-    provider: 'claude-3-sonnet-20240229',
-    capabilities: ['chat', 'vision', 'streaming', 'code_generation']
-  },
-  { 
-    internal: 'gemini-pro', 
-    provider: 'gemini-1.5-pro',
-    capabilities: ['chat', 'function_calling', 'vision', 'streaming', 'reasoning']
-  },
+  { value: 'image_generation', label: 'Image Generation' },
+  { value: 'audio_transcription', label: 'Audio Transcription' },
+  { value: 'text_to_speech', label: 'Text to Speech' },
+  { value: 'realtime_audio', label: 'Realtime Audio' },
 ];
 
 export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingModalProps) {
-  const createModelMapping = useCreateModelMapping();
-  const { data: providers } = useProviders();
-  interface ProviderInfo {
-    healthStatus: string;
-    modelsAvailable: number;
-  }
-  
-  const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
-  const [showPresets, setShowPresets] = useState(true);
+  const { data: providers, isLoading: providersLoading, error: providersError } = useProviders();
+  const createMutation = useCreateModelMapping();
 
-  const form = useForm<CreateModelMappingForm>({
+  const form = useForm<FormValues>({
     initialValues: {
-      internalModelName: '',
-      providerModelName: '',
-      providerName: '',
-      isEnabled: true,
-      capabilities: ['chat'],
+      modelId: '',
+      providerId: '',
+      providerModelId: '',
       priority: 100,
+      isEnabled: true,
+      capabilities: ['streaming'],
     },
     validate: {
-      internalModelName: (value) => {
-        const requiredError = validators.required('Internal model name')(value);
-        if (requiredError) return requiredError;
-        
-        const minLengthError = validators.minLength('Model name', 3)(value);
-        if (minLengthError) return minLengthError;
-        
-        if (!/^[a-zA-Z0-9-_.]+$/.test(value!)) {
+      modelId: (value) => {
+        if (!value) return 'Internal model name is required';
+        if (value.length < 3) return 'Model name must be at least 3 characters';
+        if (!/^[a-zA-Z0-9-_.]+$/.test(value)) {
           return 'Model name can only contain letters, numbers, hyphens, dots, and underscores';
         }
         return null;
       },
-      providerModelName: validators.required('Provider model name'),
-      providerName: validators.required('Provider'),
+      providerId: (value) => !value ? 'Provider is required' : null,
+      providerModelId: (value) => !value ? 'Provider model name is required' : null,
       priority: (value) => {
-        if (value < 0 || value > 1000) {
-          return 'Priority must be between 0 and 1000';
-        }
+        if (value < 0 || value > 1000) return 'Priority must be between 0 and 1000';
         return null;
       },
       capabilities: (value) => {
-        if (!value || value.length === 0) {
-          return 'At least one capability must be selected';
-        }
+        if (!value || value.length === 0) return 'At least one capability must be selected';
         return null;
       },
     },
   });
 
-  // Update selected provider info when provider changes
-  useEffect(() => {
-    if (form.values.providerName) {
-      const provider = providers?.find((p: unknown) => (p as { providerName: string }).providerName === form.values.providerName);
-      if (provider && typeof provider === 'object' && 'healthStatus' in provider && 'modelsAvailable' in provider) {
-        setSelectedProvider(provider as ProviderInfo);
-      } else {
-        setSelectedProvider(null);
-      }
+  const handleSubmit = async (values: FormValues) => {
+    // Ensure capabilities is always an array
+    const capabilities = Array.isArray(values.capabilities) ? values.capabilities : [];
+    
+    const mappingData: CreateModelProviderMappingDto = {
+      modelId: values.modelId.trim(),
+      providerId: values.providerId.trim(),
+      providerModelId: values.providerModelId.trim(),
+      priority: values.priority,
+      isEnabled: values.isEnabled,
+      supportsVision: capabilities.includes('vision'),
+      supportsFunctionCalling: capabilities.includes('function_calling'),
+      supportsStreaming: capabilities.includes('streaming'),
+      supportsImageGeneration: capabilities.includes('image_generation'),
+      supportsAudioTranscription: capabilities.includes('audio_transcription'),
+      supportsTextToSpeech: capabilities.includes('text_to_speech'),
+      supportsRealtimeAudio: capabilities.includes('realtime_audio'),
+      capabilities: capabilities.join(','),
+    };
+
+    try {
+      await createMutation.mutateAsync(mappingData);
+      form.reset();
+      onClose();
+    } catch (error) {
+      console.error('Failed to create model mapping:', error);
     }
-  }, [form.values.providerName, providers]);
+  };
 
   const handleClose = () => {
-    setSelectedProvider(null);
-    setShowPresets(true);
+    form.reset();
     onClose();
   };
 
-  const applyPreset = (preset: typeof MODEL_PRESETS[0]) => {
-    form.setValues({
-      internalModelName: preset.internal,
-      providerModelName: preset.provider,
-      capabilities: preset.capabilities,
-    });
-    setShowPresets(false);
-  };
+  // SIMPLIFIED: Just show loading/error states, don't try to map undefined data
+  if (providersLoading) {
+    return (
+      <Modal opened={opened} onClose={handleClose} title="Create Model Mapping" size="lg">
+        <Center py="xl">
+          <Loader size="sm" />
+        </Center>
+      </Modal>
+    );
+  }
 
-  const providerOptions = providers?.map((p: unknown) => {
-    const provider = p as { providerName: string; isEnabled: boolean };
-    return {
-      value: provider.providerName,
-      label: provider.providerName,
-      disabled: !provider.isEnabled,
-    };
-  }) || [];
+  if (providersError) {
+    return (
+      <Modal opened={opened} onClose={handleClose} title="Create Model Mapping" size="lg">
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
+          Failed to load providers. Please try again.
+        </Alert>
+      </Modal>
+    );
+  }
+
+  // FIXED: Ensure providers is an array before trying to map
+  console.log('CreateModelMappingModal providers data:', {
+    providers,
+    type: typeof providers,
+    isArray: Array.isArray(providers),
+  });
+  
+  const providerOptions = Array.isArray(providers) 
+    ? providers.map((provider) => {
+        console.log('Processing provider:', provider);
+        return {
+          value: provider.providerName,
+          label: provider.providerName,
+          disabled: !provider.isEnabled,
+        };
+      })
+    : [];
 
   return (
-    <FormModal
+    <Modal
       opened={opened}
       onClose={handleClose}
       title="Create Model Mapping"
       size="lg"
-      form={form}
-      mutation={createModelMapping}
-      entityType="Model mapping"
-      submitText="Create Mapping"
     >
-      {(form) => (
-        <>
-          {showPresets && MODEL_PRESETS.length > 0 && (
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
+          {providerOptions.length === 0 ? (
+            <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light">
+              <Text size="sm">
+                No providers configured. Please configure at least one provider first.
+              </Text>
+            </Alert>
+          ) : (
             <>
-              <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-                <Text size="sm" fw={500} mb="xs">Quick Setup - Popular Models</Text>
-                <Group gap="xs">
-                  {MODEL_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.internal}
-                      size="xs"
-                      variant="light"
-                      onClick={() => applyPreset(preset)}
-                    >
-                      {preset.internal}
-                    </Button>
-                  ))}
-                </Group>
+              <Select
+                label="Provider"
+                placeholder="Select provider"
+                description="The provider that will handle requests for this model"
+                required
+                data={providerOptions}
+                searchable
+                {...form.getInputProps('providerId')}
+              />
+
+              <ProviderModelSelect
+                providerId={form.values.providerId}
+                value={form.values.providerModelId}
+                onChange={(value) => form.setFieldValue('providerModelId', value)}
+                onCapabilitiesDetected={(detectedCapabilities) => {
+                  // Only update capabilities if user hasn't manually selected any
+                  if (form.values.capabilities.length === 1 && form.values.capabilities[0] === 'streaming') {
+                    form.setFieldValue('capabilities', detectedCapabilities);
+                  }
+                }}
+                label="Provider Model Name"
+                placeholder="Select or type a model name"
+                description="The actual model name used by the provider"
+                required
+                error={form.errors.providerModelId as string | undefined}
+              />
+
+              <TextInput
+                label="Internal Model Name"
+                placeholder="e.g., gpt-4, claude-3-opus"
+                description="The name clients will use to request this model"
+                required
+                {...form.getInputProps('modelId')}
+              />
+
+              <MultiSelect
+                label="Capabilities"
+                placeholder="Select model capabilities"
+                description="Features this model supports"
+                required
+                data={CAPABILITY_OPTIONS}
+                {...form.getInputProps('capabilities')}
+              />
+
+              <NumberInput
+                label="Priority"
+                placeholder="100"
+                description="Higher priority mappings are used first (0-1000)"
+                min={0}
+                max={1000}
+                {...form.getInputProps('priority')}
+              />
+
+              <Switch
+                label="Enable mapping"
+                description="Whether this mapping should be active immediately"
+                {...form.getInputProps('isEnabled', { type: 'checkbox' })}
+              />
+
+              <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+                <Text size="sm">
+                  Model mappings route requests from a standardized model name to specific provider implementations.
+                  Multiple mappings can exist for the same model with different priorities.
+                </Text>
               </Alert>
-              <Divider label="Or configure manually" labelPosition="center" />
             </>
           )}
 
-          <TextInput
-            label="Internal Model Name"
-            placeholder="e.g., gpt-4, claude-3-opus"
-            description="The name clients will use to request this model"
-            required
-            {...form.getInputProps('internalModelName')}
-          />
-
-          <Select
-            label="Provider"
-            placeholder="Select provider"
-            description="The provider that will handle requests for this model"
-            required
-            data={providerOptions}
-            searchable
-            {...form.getInputProps('providerName')}
-          />
-
-          {selectedProvider && (
-            <Alert 
-              icon={<IconInfoCircle size={16} />} 
-              color={selectedProvider.healthStatus === 'healthy' ? 'green' : 'orange'} 
-              variant="light"
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={createMutation.isPending}
+              disabled={providerOptions.length === 0}
             >
-              <Group gap="xs">
-                <Text size="sm">
-                  Provider Status:
-                </Text>
-                <Badge size="sm" variant="light" color={
-                  selectedProvider.healthStatus === 'healthy' ? 'green' : 'red'
-                }>
-                  {selectedProvider.healthStatus}
-                </Badge>
-                <Text size="sm" c="dimmed">
-                  • {selectedProvider.modelsAvailable} models available
-                </Text>
-              </Group>
-            </Alert>
-          )}
-
-          <TextInput
-            label="Provider Model Name"
-            placeholder="e.g., gpt-4-0125-preview, claude-3-opus-20240229"
-            description="The actual model name used by the provider"
-            required
-            {...form.getInputProps('providerModelName')}
-          />
-
-          <MultiSelect
-            label="Capabilities"
-            placeholder="Select model capabilities"
-            description="Features this model supports"
-            required
-            data={CAPABILITY_OPTIONS}
-            {...form.getInputProps('capabilities')}
-          />
-
-          <NumberInput
-            label="Priority"
-            placeholder="100"
-            description="Higher priority mappings are used first (0-1000)"
-            min={0}
-            max={1000}
-            {...form.getInputProps('priority')}
-          />
-
-          <Switch
-            label="Enable mapping"
-            description="Whether this mapping should be active immediately"
-            {...form.getInputProps('isEnabled', { type: 'checkbox' })}
-          />
-
-          <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light">
-            <Text size="sm">
-              Model mappings allow you to route requests from a standardized model name to specific provider implementations.
-              Multiple mappings can exist for the same internal model name with different priorities.
-            </Text>
-          </Alert>
-        </>
-      )}
-    </FormModal>
+              Create Mapping
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }

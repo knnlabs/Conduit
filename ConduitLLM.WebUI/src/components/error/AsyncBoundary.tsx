@@ -35,7 +35,7 @@ export function AsyncBoundary({
   onError 
 }: AsyncBoundaryProps) {
   return (
-    <ErrorBoundary fallback={fallback} onError={onError}>
+    <ErrorBoundary fallback={fallback}>
       <Suspense fallback={<LoadingFallback message={loadingMessage} />}>
         {children}
       </Suspense>

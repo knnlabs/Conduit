@@ -194,15 +194,7 @@ export const ENDPOINTS = {
     ROUTER: '/api/router-configuration',
   },
 
-  // Discovery (note: these endpoints don't use /api prefix)
-  DISCOVERY: {
-    MODELS: '/v1/discovery/models',
-    PROVIDER_MODELS: (provider: string) => `/v1/discovery/providers/${provider}/models`,
-    MODEL_CAPABILITY: (model: string, capability: string) => `/v1/discovery/models/${model}/capabilities/${capability}`,
-    BULK_CAPABILITIES: '/v1/discovery/bulk/capabilities',
-    BULK_MODELS: '/v1/discovery/bulk/models',
-    REFRESH: '/v1/discovery/refresh',
-  },
+  // Discovery moved to MODEL_MAPPINGS endpoints in Admin API
 
   // Security
   SECURITY: {

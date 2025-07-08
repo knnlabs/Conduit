@@ -45,17 +45,17 @@ export const POST = withSDKAuth(
                 status: 'success' as const,
               };
             } catch (error) {
-              // If provider models fails, try using discovery service
+              // If provider models fails, try using model mapping discovery
               try {
                 const discoveryModels = await withSDKErrorHandling(
-                  async () => context.adminClient!.discovery.getProviderModels(provider.providerName.toLowerCase()),
+                  async () => context.adminClient!.modelMappings.discoverProviderModels(provider.providerName),
                   `discover models for ${provider.providerName}`
                 );
                 
-                const models = discoveryModels.models?.map(model => ({
-                  modelId: model.name,
-                  modelName: model.name,
-                  capabilities: model.capabilities || determineCapabilities(model.name),
+                const models = discoveryModels?.map(model => ({
+                  modelId: model.modelId,
+                  modelName: model.displayName || model.modelId,
+                  capabilities: extractCapabilities(model.capabilities),
                 })) || [];
                 
                 return {
@@ -95,6 +95,42 @@ export const POST = withSDKAuth(
   },
   { requireAdmin: true }
 );
+
+// Helper function to extract capabilities from a ModelCapabilities object
+function extractCapabilities(capabilities?: {
+  chat?: boolean;
+  chatStream?: boolean;
+  embeddings?: boolean;
+  imageGeneration?: boolean;
+  vision?: boolean;
+  videoGeneration?: boolean;
+  videoUnderstanding?: boolean;
+  functionCalling?: boolean;
+  toolUse?: boolean;
+  jsonMode?: boolean;
+  [key: string]: unknown;
+}): string[] {
+  const result: string[] = [];
+  
+  if (!capabilities) {
+    return ['chat']; // Default capability
+  }
+  
+  // Map boolean capabilities to string array (using new structure)
+  if (capabilities.chat) result.push('chat', 'completion');
+  if (capabilities.chatStream) result.push('streaming');
+  if (capabilities.vision) result.push('vision');
+  if (capabilities.functionCalling || capabilities.toolUse) result.push('function-calling');
+  if (capabilities.imageGeneration) result.push('image-generation');
+  if (capabilities.embeddings) result.push('embeddings');
+  
+  // Default to chat if no capabilities detected
+  if (result.length === 0) {
+    result.push('chat');
+  }
+  
+  return result;
+}
 
 // Helper function to determine capabilities based on model name
 function determineCapabilities(modelId: string): string[] {

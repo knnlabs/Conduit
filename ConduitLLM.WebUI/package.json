@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "lint:fix": "next lint --fix",
+    "prepare": "cd .. && husky install ConduitLLM.WebUI/.husky",
+    "pre-commit": "lint-staged"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -52,6 +55,20 @@
   "author": "KNN Labs",
   "license": "ISC",
   "devDependencies": {
-    "eslint-config-next": "^15.3.5"
+    "eslint-config-next": "^15.3.5",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "tsc --noEmit"
+    ],
+    "*.{js,jsx}": [
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }

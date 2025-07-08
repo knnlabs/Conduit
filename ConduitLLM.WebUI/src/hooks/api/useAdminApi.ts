@@ -23,6 +23,7 @@ export const adminApiKeys = {
   virtualKey: (id: string) => [...adminApiKeys.virtualKeys(), id] as const,
   providers: () => [...adminApiKeys.all, 'providers'] as const,
   provider: (id: string) => [...adminApiKeys.providers(), id] as const,
+  providerModels: (id: string) => [...adminApiKeys.provider(id), 'models'] as const,
   modelMappings: () => [...adminApiKeys.all, 'model-mappings'] as const,
   systemInfo: () => [...adminApiKeys.all, 'system-info'] as const,
   systemSettings: () => [...adminApiKeys.all, 'system-settings'] as const,
@@ -230,7 +231,15 @@ export function useProviders() {
         throw new Error(error.error || 'Failed to fetch providers');
       }
 
-      const providers: ProviderCredentialDto[] = await response.json();
+      const responseData = await response.json();
+      console.log('useProviders response data:', {
+        responseData,
+        type: typeof responseData,
+        isArray: Array.isArray(responseData),
+      });
+      
+      // Ensure providers is always an array
+      const providers = Array.isArray(responseData) ? responseData : [];
       
       // Transform the data to match the expected Provider interface
       // Since the SDK doesn't provide health status and models count,
@@ -381,19 +390,25 @@ export function useModelMappings() {
         throw new Error(error.error || 'Failed to fetch model mappings');
       }
 
-      const mappings: ModelProviderMappingDto[] = await response.json();
-      // Transform the data to match expected interface
-      return mappings.map((mapping: ModelProviderMappingDto) => ({
-        ...mapping,
-        id: mapping.id.toString(), // Convert number to string
-        internalModelName: mapping.modelId,
-        providerModelName: mapping.providerModelId,
-        providerName: mapping.providerId,
-        capabilities: [], // Default empty for now
-        priority: mapping.priority || 100,
-        createdAt: new Date().toISOString(), // Default for now
-        requestCount: 0, // Default for now
-      }));
+      const responseData = await response.json();
+      
+      // Just return the data as-is from the API
+      // No more mapping bullshit
+      if (Array.isArray(responseData)) {
+        return responseData as ModelProviderMappingDto[];
+      }
+      
+      // Handle wrapped responses
+      if (responseData && responseData.data && Array.isArray(responseData.data)) {
+        return responseData.data as ModelProviderMappingDto[];
+      }
+      
+      if (responseData && responseData.items && Array.isArray(responseData.items)) {
+        return responseData.items as ModelProviderMappingDto[];
+      }
+      
+      console.error('Unexpected response format:', responseData);
+      return [];
     },
     staleTime: 30 * 1000,
   });
@@ -868,6 +883,102 @@ export function useTestProviderConnection() {
         message: error.message || 'Please check your configuration',
         color: 'red',
         autoClose: false, // Keep error visible
+      });
+    },
+  });
+}
+// Provider Models API
+export interface ProviderModel {
+  id: string;
+  name: string;
+  capabilities: string[];
+  created?: number;
+  owned_by?: string;
+}
+
+export interface ProviderModelsResponse {
+  provider: string;
+  models: ProviderModel[];
+  source: 'provider-api' | 'discovery-api' | 'none';
+  cached?: boolean;
+  error?: string;
+}
+
+export function useProviderModels(providerId: string | undefined) {
+  return useQuery<ProviderModelsResponse>({
+    queryKey: providerId ? adminApiKeys.providerModels(providerId) : ['no-provider'],
+    queryFn: async () => {
+      if (!providerId) {
+        return {
+          provider: '',
+          models: [],
+          source: 'none' as const,
+        };
+      }
+
+      try {
+        const response = await apiFetch(`/api/admin/provider-models/${providerId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Provider models fetch error:', error);
+          throw new Error(error.error || 'Failed to fetch provider models');
+        }
+
+        return response.json();
+      } catch (error) {
+        console.error('Provider models fetch error:', error);
+        throw error;
+      }
+    },
+    enabled: !!providerId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useRefreshProviderModels(providerId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!providerId) {
+        throw new Error('No provider selected');
+      }
+
+      const response = await apiFetch(`/api/admin/provider-models/${providerId}?forceRefresh=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to refresh provider models');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (providerId) {
+        queryClient.setQueryData(adminApiKeys.providerModels(providerId), data);
+      }
+      notifications.show({
+        title: 'Models Refreshed',
+        message: `Found ${data.models.length} models`,
+        color: 'green',
+      });
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Refresh Failed',
+        message: error.message || 'Failed to refresh provider models',
+        color: 'red',
       });
     },
   });

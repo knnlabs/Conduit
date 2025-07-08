@@ -53,7 +53,10 @@ export function GlobalTaskMonitor({ virtualKey }: GlobalTaskMonitorProps) {
 
     activeTasks.forEach(task => {
       if (task.type in stats) {
-        (stats as Record<string, number>)[task.type]++;
+        const statValue = (stats as Record<string, number>)[task.type];
+        if (statValue !== undefined) {
+          (stats as Record<string, number>)[task.type] = statValue + 1;
+        }
       }
     });
 
@@ -155,7 +158,7 @@ export function GlobalTaskMonitor({ virtualKey }: GlobalTaskMonitorProps) {
               </Grid>
               
               {/* Show progress for the most recent active task */}
-              {activeTasks.length > 0 && (
+              {activeTasks.length > 0 && activeTasks[0] && (
                 <div>
                   <Text size="xs" c="dimmed" mb="xs">
                     Most recent: {activeTasks[0].type.replace('_', ' ')} generation

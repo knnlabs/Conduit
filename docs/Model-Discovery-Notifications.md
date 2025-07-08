@@ -1,5 +1,7 @@
 # Model Discovery Notifications
 
+> **Note**: Model discovery is performed by the Admin API. The Core API provides real-time notifications when models are discovered but does not perform discovery itself. This maintains proper separation of concerns where Admin API handles configuration and Core API handles runtime operations.
+
 ## Overview
 
 Model Discovery Notifications provide real-time updates when LLM providers add new models, change capabilities, update pricing, or deprecate models. This feature helps administrators and developers stay informed about changes in the AI landscape without manually checking provider documentation.

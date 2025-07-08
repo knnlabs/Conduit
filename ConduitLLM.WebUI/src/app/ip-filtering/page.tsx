@@ -98,7 +98,7 @@ export default function IpFilteringPage() {
       ipAddress: (value) => {
         if (!value) return 'IP address is required';
         const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        if (!ipRegex.test(value.split('/')[0])) return 'Invalid IP address format';
+        if (!ipRegex.test(value.split('/')[0] || '')) return 'Invalid IP address format';
         return null;
       },
       reason: (value) => (!value ? 'Reason is required' : null),

@@ -4,7 +4,7 @@ export { ConduitAdminClient } from './client/ConduitAdminClient';
 // Types
 export * from './client/types';
 export * from './models/common';
-export * from './models/discovery';
+// discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/settings';
@@ -49,7 +49,7 @@ export { IpFilterService } from './services/IpFilterService';
 export { ModelCostService } from './services/ModelCostService';
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
-export { DiscoveryService } from './services/DiscoveryService';
+// DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
 export { AudioConfigurationService } from './services/AudioConfigurationService';
 export { MetricsService } from './services/MetricsService';
 export { ProviderHealthService } from './services/ProviderHealthService';
