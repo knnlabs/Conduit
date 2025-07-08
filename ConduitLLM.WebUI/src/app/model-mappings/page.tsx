@@ -422,7 +422,7 @@ export default function ModelMappingsPage() {
             </Group>
             <Text size="sm" c="dimmed">
               {stats && `${stats.totalMappings} mapping${stats.totalMappings !== 1 ? 's' : ''} configured`}
-              {searchQuery && modelMappings && ` (${modelMappings.length} total)`}
+              {searchQuery && Array.isArray(modelMappings) && ` (${modelMappings.length} total)`}
             </Text>
           </Group>
         </Card.Section>
@@ -441,10 +441,10 @@ export default function ModelMappingsPage() {
           <Tabs value={activeTab} onChange={setActiveTab} variant="pills" p="md" pt={0}>
             <Tabs.List>
               <Tabs.Tab value="all">
-                All Mappings ({modelMappings?.length || 0})
+                All Mappings ({Array.isArray(modelMappings) ? modelMappings.length : 0})
               </Tabs.Tab>
               <Tabs.Tab value="active">
-                Active Only ({modelMappings?.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled).length || 0})
+                Active Only ({Array.isArray(modelMappings) ? modelMappings.filter((m: unknown) => (m as { isEnabled: boolean }).isEnabled).length : 0})
               </Tabs.Tab>
               <Tabs.Tab value="by-provider">
                 By Provider

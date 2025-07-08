@@ -939,10 +939,32 @@ export function useProviderModels(providerId: string | undefined) {
           throw new Error(error.error || 'Failed to fetch provider models');
         }
 
-        return response.json();
+        const data = await response.json();
+        console.log('Provider models response:', data);
+        
+        // Validate the response structure
+        if (!data || typeof data !== 'object') {
+          console.error('Invalid provider models response:', data);
+          throw new Error('Invalid response format from provider models API');
+        }
+        
+        // Ensure models is always an array
+        if (!Array.isArray(data.models)) {
+          console.warn('Provider models response missing models array, setting to empty:', data);
+          data.models = [];
+        }
+        
+        return data;
       } catch (error) {
         console.error('Provider models fetch error:', error);
-        throw error;
+        // Return a valid response structure even on error
+        // This prevents the UI from crashing
+        return {
+          provider: providerId,
+          models: [],
+          source: 'none' as const,
+          error: error instanceof Error ? error.message : 'Failed to fetch provider models',
+        };
       }
     },
     enabled: !!providerId,

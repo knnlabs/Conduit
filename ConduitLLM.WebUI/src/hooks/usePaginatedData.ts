@@ -14,7 +14,7 @@ export function usePaginatedData<T>(
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
   const paginatedData = useMemo(() => {
-    if (!data) return [];
+    if (!data || !Array.isArray(data)) return [];
     
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
@@ -22,7 +22,7 @@ export function usePaginatedData<T>(
     return data.slice(start, end);
   }, [data, page, pageSize]);
 
-  const totalItems = data?.length || 0;
+  const totalItems = Array.isArray(data) ? data.length : 0;
   const totalPages = Math.ceil(totalItems / pageSize);
 
   // Reset to first page if current page is out of bounds
