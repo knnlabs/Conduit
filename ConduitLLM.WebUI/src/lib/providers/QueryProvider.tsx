@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { ConduitProviders } from './ConduitProviders';
 
 interface QueryProviderProps {
   children: React.ReactNode;
@@ -32,7 +33,9 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <ConduitProviders queryClient={queryClient}>
+        {children}
+      </ConduitProviders>
     </QueryClientProvider>
   );
 }
