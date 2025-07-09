@@ -8,7 +8,7 @@ export interface UseBackupsOptions extends Omit<UseQueryOptions<BackupInfo[], Er
 export function useBackups(options?: UseBackupsOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<BackupInfo[], Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.backups.list(),
     queryFn: () => adminClient.databaseBackup.getBackups(),
     staleTime: 30000, // 30 seconds

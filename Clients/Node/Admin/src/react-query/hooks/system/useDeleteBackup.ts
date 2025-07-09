@@ -8,7 +8,7 @@ export function useDeleteBackup(options?: UseDeleteBackupOptions) {
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, string>({
+  return useMutation({
     mutationFn: (backupId: string) => adminClient.databaseBackup.deleteBackup(backupId),
     onSuccess: (data: void, backupId: string, context: unknown) => {
       // Invalidate the backups list

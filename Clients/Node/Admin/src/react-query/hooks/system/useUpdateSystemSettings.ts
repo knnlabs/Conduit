@@ -47,7 +47,7 @@ export function useUpdateSystemSetting(
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<GlobalSettingDto, Error, UpdateSettingVariables>({
+  return useMutation({
     mutationFn: ({ key, request }: UpdateSettingVariables) => adminClient.settings.updateGlobalSetting(key, request),
     onSuccess: (data: GlobalSettingDto, variables: UpdateSettingVariables) => {
       // Invalidate all settings queries
@@ -93,7 +93,7 @@ export function useCreateSystemSetting(
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<GlobalSettingDto, Error, CreateSettingVariables>({
+  return useMutation({
     mutationFn: ({ request }: CreateSettingVariables) => adminClient.settings.createGlobalSetting(request),
     onSuccess: (data: GlobalSettingDto) => {
       // Invalidate all settings queries
@@ -130,7 +130,7 @@ export function useDeleteSystemSetting(
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, string>({
+  return useMutation({
     mutationFn: (key: string) => adminClient.settings.deleteGlobalSetting(key),
     onSuccess: (_data: void, key: string) => {
       // Invalidate all settings queries
@@ -170,7 +170,7 @@ export function useSetSystemSetting(
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, SetSettingVariables>({
+  return useMutation({
     mutationFn: async ({ key, value, description, category, isSecret }: SetSettingVariables) => {
       await adminClient.settings.setSetting(key, value, { description, category, isSecret });
     },
@@ -214,7 +214,7 @@ export function useUpdateSystemSettings(
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, SetSettingVariables[]>({
+  return useMutation({
     mutationFn: async (settings: SetSettingVariables[]) => {
       // Update each setting sequentially
       for (const setting of settings) {

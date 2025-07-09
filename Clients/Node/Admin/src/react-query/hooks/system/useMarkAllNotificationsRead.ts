@@ -8,7 +8,7 @@ export function useMarkAllNotificationsRead(options?: UseMarkAllNotificationsRea
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<number, Error, void>({
+  return useMutation({
     mutationFn: () => adminClient.notifications.markAllAsRead(),
     onSuccess: (data: number, variables: void, context: unknown) => {
       // Invalidate all notification-related queries

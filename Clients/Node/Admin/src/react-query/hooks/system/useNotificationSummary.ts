@@ -8,7 +8,7 @@ export interface UseNotificationSummaryOptions extends Omit<UseQueryOptions<Noti
 export function useNotificationSummary(options?: UseNotificationSummaryOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<NotificationSummary, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.notifications.summary(),
     queryFn: () => adminClient.notifications.getNotificationSummary(),
     staleTime: 5000, // 5 seconds for summary

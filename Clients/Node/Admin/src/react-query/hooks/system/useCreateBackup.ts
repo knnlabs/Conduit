@@ -9,7 +9,7 @@ export function useCreateBackup(options?: UseCreateBackupOptions) {
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<BackupResult, Error, BackupOptions | undefined>({
+  return useMutation({
     mutationFn: (createOptions: BackupOptions | undefined) => adminClient.databaseBackup.createBackup(createOptions),
     onSuccess: (data: BackupResult, variables: BackupOptions | undefined, context: unknown) => {
       // Invalidate the backups list to refresh with the new backup

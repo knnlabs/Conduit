@@ -33,7 +33,7 @@ export function useSystemSettings(options?: UseSystemSettingsOptions) {
   const { adminClient } = useConduitAdmin();
   const { filters, ...queryOptions } = options || {};
   
-  return useQuery<GlobalSettingDto[], Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.settings(filters),
     queryFn: () => adminClient.settings.getGlobalSettings(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes default
@@ -59,7 +59,7 @@ export function useSystemSetting(
 ) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<GlobalSettingDto | null, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.setting(key),
     queryFn: () => adminClient.settings.getGlobalSetting(key),
     enabled: !!key,
@@ -86,7 +86,7 @@ export function useSystemSettingsByCategory(
 ) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<GlobalSettingDto[], Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.settingsByCategory(category),
     queryFn: () => adminClient.settings.getSettingsByCategory(category),
     enabled: !!category,

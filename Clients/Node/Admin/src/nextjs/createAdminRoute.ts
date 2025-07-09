@@ -26,7 +26,7 @@ interface AdminRouteOptions {
 }
 
 function isServerEnvironment(): boolean {
-  return typeof (globalThis as any).window === 'undefined';
+  return typeof (global as any).window === 'undefined';
 }
 
 function mapErrorToResponse(error: unknown): NextResponse {

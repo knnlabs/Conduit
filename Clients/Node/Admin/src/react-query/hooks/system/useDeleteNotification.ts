@@ -8,7 +8,7 @@ export function useDeleteNotification(options?: UseDeleteNotificationOptions) {
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<void, Error, number>({
+  return useMutation({
     mutationFn: (notificationId: number) => adminClient.notifications.deleteNotification(notificationId),
     onSuccess: (data: void, notificationId: number, context: unknown) => {
       // Invalidate notifications list and summary

@@ -9,7 +9,7 @@ export function useRestoreBackup(options?: UseRestoreBackupOptions) {
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
   
-  return useMutation<RestoreResult, Error, { backupId: string; options?: RestoreOptions }>({
+  return useMutation({
     mutationFn: ({ backupId, options: restoreOptions }: { backupId: string; options?: RestoreOptions }) => 
       adminClient.databaseBackup.restoreBackup(backupId, restoreOptions),
     onSuccess: (data: RestoreResult, variables: { backupId: string; options?: RestoreOptions }, context: unknown) => {

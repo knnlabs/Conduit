@@ -11,7 +11,7 @@ export function useNotifications(options?: UseNotificationsOptions) {
   const { adminClient } = useConduitAdmin();
   const { filters, ...queryOptions } = options || {};
   
-  return useQuery<NotificationDto[], Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.notifications.list(filters),
     queryFn: () => filters 
       ? adminClient.notifications.getFilteredNotifications(filters)

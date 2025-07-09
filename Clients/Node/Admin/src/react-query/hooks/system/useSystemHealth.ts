@@ -8,7 +8,7 @@ export interface UseSystemHealthOptions extends Omit<UseQueryOptions<HealthStatu
 export function useSystemHealth(options?: UseSystemHealthOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<HealthStatusDto, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.health(),
     queryFn: () => adminClient.system.getHealth(),
     staleTime: 10000, // 10 seconds for health checks

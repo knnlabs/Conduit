@@ -8,7 +8,7 @@ export interface UseFeatureAvailabilityOptions extends Omit<UseQueryOptions<Feat
 export function useFeatureAvailability(options?: UseFeatureAvailabilityOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<FeatureAvailability, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.featureAvailability(),
     queryFn: () => adminClient.system.getFeatureAvailability(),
     staleTime: 60000, // 1 minute

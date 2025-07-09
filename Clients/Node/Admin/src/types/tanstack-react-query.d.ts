@@ -15,10 +15,12 @@ declare module '@tanstack/react-query' {
   
   export const QueryClientProvider: any;
   
-  export function useQuery<TData = unknown, TError = unknown>(options: any): any;
-  export function useMutation<TData = unknown, TError = unknown, TVariables = unknown>(options: any): any;
+  export function useQuery(options: any): any;
+  export function useMutation(options: any): any;
   export function useQueryClient(): QueryClient;
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export type UseQueryOptions<TData = unknown, TError = unknown> = any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export type UseMutationOptions<TData = unknown, TError = unknown, TVariables = unknown> = any;
 }

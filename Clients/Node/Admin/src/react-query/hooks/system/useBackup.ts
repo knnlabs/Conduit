@@ -8,7 +8,7 @@ export interface UseBackupOptions extends Omit<UseQueryOptions<BackupInfo, Error
 export function useBackup(backupId: string, options?: UseBackupOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<BackupInfo, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.backups.detail(backupId),
     queryFn: () => adminClient.databaseBackup.getBackupInfo(backupId),
     enabled: !!backupId,

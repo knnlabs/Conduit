@@ -8,7 +8,7 @@ export interface UseSystemInfoOptions extends Omit<UseQueryOptions<SystemInfoDto
 export function useSystemInfo(options?: UseSystemInfoOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery<SystemInfoDto, Error>({
+  return useQuery({
     queryKey: adminQueryKeys.system.info(),
     queryFn: () => adminClient.system.getSystemInfo(),
     staleTime: 30000, // 30 seconds
