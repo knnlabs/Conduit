@@ -5,6 +5,7 @@ const AUTH_REMEMBER_KEY = 'conduit-remember';
 
 export interface StoredAuth {
   masterKey: string;
+  virtualKey?: string;
   isAuthenticated: boolean;
   loginTime: string;
   rememberMe: boolean;
@@ -12,6 +13,7 @@ export interface StoredAuth {
 
 interface EncryptedStoredAuth {
   encryptedMasterKey: string;
+  virtualKey?: string;
   isAuthenticated: boolean;
   loginTime: string;
   rememberMe: boolean;
@@ -30,6 +32,7 @@ export const authStorage = {
         const encryptedMasterKey = await EncryptionService.encrypt(auth.masterKey);
         const encryptedAuth: EncryptedStoredAuth = {
           encryptedMasterKey,
+          virtualKey: auth.virtualKey,
           isAuthenticated: auth.isAuthenticated,
           loginTime: auth.loginTime,
           rememberMe: auth.rememberMe,
@@ -75,6 +78,7 @@ export const authStorage = {
           const decryptedMasterKey = await EncryptionService.decrypt(parsedData.encryptedMasterKey);
           auth = {
             masterKey: decryptedMasterKey,
+            virtualKey: parsedData.virtualKey,
             isAuthenticated: parsedData.isAuthenticated,
             loginTime: parsedData.loginTime,
             rememberMe: parsedData.rememberMe,

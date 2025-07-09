@@ -1,10 +1,15 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
-export async function validateMasterKey(masterKey: string): Promise<boolean> {
+export interface ValidateMasterKeyResult {
+  isValid: boolean;
+  virtualKey?: string;
+}
+
+export async function validateMasterKey(masterKey: string): Promise<ValidateMasterKeyResult> {
   try {
     if (!masterKey || masterKey.trim().length === 0) {
-      return false;
+      return { isValid: false };
     }
 
     // If running on the client side, validate against the API endpoint
@@ -19,7 +24,15 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
         }),
       });
       
-      return response.ok;
+      if (response.ok) {
+        const data = await response.json();
+        return { 
+          isValid: true, 
+          virtualKey: data.virtualKey 
+        };
+      }
+      
+      return { isValid: false };
     }
 
     // Server-side validation
@@ -32,7 +45,8 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
     // Using system info as a lightweight validation endpoint
     await adminClient.system.getSystemInfo();
     
-    return true;
+    // For server-side, we don't have virtual key yet
+    return { isValid: true };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.warn('Master key validation failed:', errorMessage);
@@ -40,12 +54,12 @@ export async function validateMasterKey(masterKey: string): Promise<boolean> {
     // Check if it's an authentication error
     const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
     if (status === 401 || status === 403) {
-      return false;
+      return { isValid: false };
     }
     
     // For other errors (network, etc), we'll assume the key might be valid
     // This prevents network issues from blocking login
-    return false;
+    return { isValid: false };
   }
 }
 

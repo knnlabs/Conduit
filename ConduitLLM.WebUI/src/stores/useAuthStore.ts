@@ -20,9 +20,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       // Validate the master key with the admin API
-      const isValid = await validateMasterKey(sanitizedKey);
+      const validationResult = await validateMasterKey(sanitizedKey);
       
-      if (!isValid) {
+      if (!validationResult.isValid) {
         set({ error: 'Invalid master key', isLoading: false });
         return false;
       }
@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Create user object
       const user: AuthUser = {
         masterKey: sanitizedKey,
+        virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: new Date(),
       };
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Save to storage
       const storedAuth: StoredAuth = {
         masterKey: sanitizedKey,
+        virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: user.loginTime.toISOString(),
         rememberMe,
@@ -72,6 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       const user: AuthUser = {
         masterKey: stored.masterKey,
+        virtualKey: stored.virtualKey,
         isAuthenticated: true,
         loginTime: new Date(stored.loginTime),
       };

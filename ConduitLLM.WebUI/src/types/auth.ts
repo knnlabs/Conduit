@@ -1,5 +1,6 @@
 export interface AuthUser {
   masterKey: string;
+  virtualKey?: string;
   isAuthenticated: boolean;
   loginTime: Date;
 }
