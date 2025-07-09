@@ -22,6 +22,22 @@ import {
   useCreateModelMapping as useSDKCreateModelMapping,
   useUpdateModelMapping as useSDKUpdateModelMapping,
   useDeleteModelMapping as useSDKDeleteModelMapping,
+  
+  // Analytics hooks
+  useCostSummary as useSDKCostSummary,
+  useCostByPeriod as useSDKCostByPeriod,
+  useCostByModel as useSDKCostByModel,
+  useCostByKey as useSDKCostByKey,
+  useRequestLogs as useSDKRequestLogs,
+  useRequestLog as useSDKRequestLog,
+  useSearchLogs as useSDKSearchLogs,
+  useUsageMetrics as useSDKUsageMetrics,
+  useModelUsage as useSDKModelUsage,
+  useKeyUsage as useSDKKeyUsage,
+  useExportAnalytics as useSDKExportAnalytics,
+  useExportUsageAnalytics as useSDKExportUsageAnalytics,
+  useExportCostAnalytics as useSDKExportCostAnalytics,
+  useExportRequestLogs as useSDKExportRequestLogs,
 } from '@knn_labs/conduit-admin-client/react-query';
 
 // Re-export the SDK hooks with WebUI-specific wrappers if needed
@@ -91,6 +107,63 @@ export function useDeleteModelMapping() {
   return useSDKDeleteModelMapping();
 }
 
+// Analytics hooks
+export function useCostSummary(dateRange: any) {
+  return useSDKCostSummary(dateRange);
+}
+
+export function useCostByPeriod(params: any) {
+  return useSDKCostByPeriod(params);
+}
+
+export function useCostByModel(dateRange: any) {
+  return useSDKCostByModel(dateRange);
+}
+
+export function useCostByKey(dateRange: any) {
+  return useSDKCostByKey(dateRange);
+}
+
+export function useRequestLogs(filters?: any) {
+  return useSDKRequestLogs(filters);
+}
+
+export function useRequestLog(id: string) {
+  return useSDKRequestLog(id);
+}
+
+export function useSearchLogs(query: string, filters?: any) {
+  return useSDKSearchLogs({ query, filters });
+}
+
+export function useUsageMetrics(dateRange: any) {
+  return useSDKUsageMetrics(dateRange);
+}
+
+export function useModelUsage(modelId: string, dateRange: any) {
+  return useSDKModelUsage({ modelId, dateRange });
+}
+
+export function useKeyUsage(keyId: number, dateRange: any) {
+  return useSDKKeyUsage({ keyId, dateRange });
+}
+
+export function useExportAnalytics(params: any) {
+  return useSDKExportAnalytics(params);
+}
+
+export function useExportUsageAnalytics() {
+  return useSDKExportUsageAnalytics();
+}
+
+export function useExportCostAnalytics() {
+  return useSDKExportCostAnalytics();
+}
+
+export function useExportRequestLogs() {
+  return useSDKExportRequestLogs();
+}
+
 // Re-export types for convenience
 export type {
   ProviderCredentialDto,
@@ -102,6 +175,10 @@ export type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
+  CostSummaryDto,
+  CostByPeriodDto,
+  RequestLogDto,
+  UsageMetricsDto,
 } from '@knn_labs/conduit-admin-client';
 
 // Additional custom hooks that are not in SDK yet

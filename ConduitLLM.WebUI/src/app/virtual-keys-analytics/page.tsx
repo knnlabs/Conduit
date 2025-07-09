@@ -73,11 +73,11 @@ export default function VirtualKeysAnalyticsPage() {
   
   const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeysOverview();
   const { data: selectedKeyUsage } = useVirtualKeyUsageMetrics(selectedKey?.keyId || '', timeRange);
-  const { data: selectedKeyBudget } = useVirtualKeyBudgetAnalytics(selectedKey?.keyId || '', timeRangeValue);
+  const { data: selectedKeyBudget } = useVirtualKeyBudgetAnalytics(selectedKey?.keyId || '', timeRange);
   const { data: selectedKeyPerformance } = useVirtualKeyPerformanceMetrics(selectedKey?.keyId || '', timeRange);
   const { data: selectedKeySecurity } = useVirtualKeySecurityMetrics(selectedKey?.keyId || '', timeRange);
   const { data: _selectedKeyTrends } = useVirtualKeyTrends(selectedKey?.keyId || '', timeRange);
-  const { data: leaderboard } = useVirtualKeysLeaderboard(timeRangeValue);
+  const { data: leaderboard } = useVirtualKeysLeaderboard(timeRange);
   const exportData = useExportVirtualKeysData();
 
   const isLoading = keysLoading;
@@ -196,11 +196,11 @@ export default function VirtualKeysAnalyticsPage() {
   };
 
   const totalKeys = virtualKeys?.length || 0;
-  const activeKeys = virtualKeys?.filter(k => k.status === 'active').length || 0;
-  const totalRequests = virtualKeys?.reduce((sum, k) => sum + k.totalRequests, 0) || 0;
-  const totalCost = virtualKeys?.reduce((sum, k) => sum + k.totalCost, 0) || 0;
-  const averageLatency = (virtualKeys?.reduce((sum, k) => sum + k.averageLatency, 0) || 0) / (virtualKeys?.length || 1) || 0;
-  const averageErrorRate = (virtualKeys?.reduce((sum, k) => sum + k.errorRate, 0) || 0) / (virtualKeys?.length || 1) || 0;
+  const activeKeys = virtualKeys?.filter((k: any) => k.status === 'active').length || 0;
+  const totalRequests = virtualKeys?.reduce((sum: number, k: any) => sum + k.totalRequests, 0) || 0;
+  const totalCost = virtualKeys?.reduce((sum: number, k: any) => sum + k.totalCost, 0) || 0;
+  const averageLatency = (virtualKeys?.reduce((sum: number, k: any) => sum + k.averageLatency, 0) || 0) / (virtualKeys?.length || 1) || 0;
+  const averageErrorRate = (virtualKeys?.reduce((sum: number, k: any) => sum + k.errorRate, 0) || 0) / (virtualKeys?.length || 1) || 0;
 
   const overviewCards = [
     {
@@ -315,7 +315,7 @@ export default function VirtualKeysAnalyticsPage() {
               <LoadingOverlay visible={keysLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Stack gap="md">
-                {virtualKeys?.map((key) => {
+                {virtualKeys?.map((key: any) => {
                   const StatusIcon = getStatusIcon(key.status);
                   const RequestsTrendIcon = getTrendIcon(key.trends.requests);
                   const CostTrendIcon = getTrendIcon(key.trends.cost);
@@ -482,7 +482,7 @@ export default function VirtualKeysAnalyticsPage() {
                         
                         <Group gap="xs" ml="md">
                           <Text size="xs" c="dimmed">Top Models:</Text>
-                          {key.models.slice(0, 3).map((model) => (
+                          {key.models.slice(0, 3).map((model: any) => (
                             <Badge key={model.name} size="xs" variant="light">
                               {model.name}
                             </Badge>
@@ -617,7 +617,7 @@ export default function VirtualKeysAnalyticsPage() {
                   {selectedKeyBudget.alerts.length > 0 && (
                     <Alert icon={<IconAlertCircle size={16} />} color="orange" title="Budget Alerts">
                       <Stack gap="xs">
-                        {selectedKeyBudget.alerts.map((alert) => (
+                        {selectedKeyBudget.alerts.map((alert: any) => (
                           <Text key={alert.id} size="sm">{alert.message}</Text>
                         ))}
                       </Stack>
@@ -650,7 +650,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="md">
-                          {selectedKeyBudget.recommendations.map((rec, index) => (
+                          {selectedKeyBudget.recommendations.map((rec: any, index: number) => (
                             <Alert
                               key={index}
                               icon={<IconTarget size={16} />}
@@ -862,10 +862,10 @@ export default function VirtualKeysAnalyticsPage() {
                     </Button>
                   </Group>
 
-                  {selectedKeySecurity.accessPatterns.suspiciousActivity.length > 0 && (
+                  {selectedKeySecurity?.accessPatterns?.suspiciousActivity?.length > 0 && (
                     <Alert icon={<IconAlertCircle size={16} />} color="red" title="Security Alerts">
                       <Stack gap="xs">
-                        {selectedKeySecurity.accessPatterns.suspiciousActivity.map((activity) => (
+                        {selectedKeySecurity?.accessPatterns?.suspiciousActivity?.map((activity: any) => (
                           <Group key={activity.id} justify="space-between">
                             <Text size="sm">{activity.description}</Text>
                             <Badge color="red" variant="light">
@@ -880,25 +880,25 @@ export default function VirtualKeysAnalyticsPage() {
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Unique IPs</Text>
-                      <Text fw={600} size="xl">{selectedKeySecurity.accessPatterns.uniqueIPs}</Text>
+                      <Text fw={600} size="xl">{selectedKeySecurity?.accessPatterns?.uniqueIPs || 0}</Text>
                     </Card>
                     
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Valid Requests</Text>
-                      <Text fw={600} size="xl">{formatNumber(selectedKeySecurity.authentication.validRequests)}</Text>
+                      <Text fw={600} size="xl">{formatNumber(selectedKeySecurity?.authentication?.validRequests || 0)}</Text>
                     </Card>
                     
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Rate Limit Violations</Text>
-                      <Text fw={600} size="xl" c={selectedKeySecurity.rateLimiting.violations > 0 ? 'red' : 'green'}>
-                        {selectedKeySecurity.rateLimiting.violations}
+                      <Text fw={600} size="xl" c={selectedKeySecurity?.rateLimiting?.violations > 0 ? 'red' : 'green'}>
+                        {selectedKeySecurity?.rateLimiting?.violations || 0}
                       </Text>
                     </Card>
                     
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Invalid Attempts</Text>
-                      <Text fw={600} size="xl" c={selectedKeySecurity.authentication.invalidRequests > 0 ? 'red' : 'green'}>
-                        {selectedKeySecurity.authentication.invalidRequests}
+                      <Text fw={600} size="xl" c={selectedKeySecurity?.authentication?.invalidRequests > 0 ? 'red' : 'green'}>
+                        {selectedKeySecurity?.authentication?.invalidRequests || 0}
                       </Text>
                     </Card>
                   </SimpleGrid>
@@ -919,7 +919,7 @@ export default function VirtualKeysAnalyticsPage() {
                           </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
-                          {selectedKeySecurity.accessPatterns.requestsByIP.map((ip) => (
+                          {selectedKeySecurity?.accessPatterns?.requestsByIP?.map((ip: any) => (
                             <Table.Tr key={ip.ip}>
                               <Table.Td>
                                 <Code>{ip.ip}</Code>
@@ -952,7 +952,7 @@ export default function VirtualKeysAnalyticsPage() {
                         <div>
                           <Text size="sm" c="dimmed" mb="xs">Data Regions</Text>
                           <Group gap="xs">
-                            {selectedKeySecurity.compliance.dataRegions.map((region) => (
+                            {selectedKeySecurity?.compliance?.dataRegions?.map((region: any) => (
                               <Badge key={region} variant="light">
                                 {region}
                               </Badge>
@@ -1025,7 +1025,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.topByRequests.map((key, index) => (
+                          {leaderboard?.categories?.topByRequests?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
@@ -1057,7 +1057,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.topByCost.map((key, index) => (
+                          {leaderboard?.categories?.topByCost?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
@@ -1089,7 +1089,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.mostEfficient.map((key, index) => (
+                          {leaderboard?.categories?.mostEfficient?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
@@ -1118,7 +1118,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.fastestResponse.map((key, index) => (
+                          {leaderboard?.categories?.fastestResponse?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
@@ -1150,7 +1150,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.mostReliable.map((key, index) => (
+                          {leaderboard?.categories?.mostReliable?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
@@ -1179,7 +1179,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard.categories.topByTokens.map((key, index) => (
+                          {leaderboard?.categories?.topByTokens?.map((key: any, index: number) => (
                             <Group key={key.keyId} justify="space-between">
                               <Group gap="xs">
                                 <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>

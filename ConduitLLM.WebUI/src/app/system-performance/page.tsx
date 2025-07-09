@@ -38,9 +38,10 @@ import {
 } from '@/hooks/api/useProviderHealthApi';
 import { 
   useCostSummary,
-  useCostTrends
+  useCostByPeriod
 } from '@/hooks/api/useAnalyticsApi';
-import type { TimeRangeFilter } from '@/types/analytics-types';
+import { convertTimeRangeToDateRange } from '@/lib/utils/analytics-helpers';
+import type { DateRange } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 
@@ -48,16 +49,17 @@ export default function SystemPerformancePage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
   const [selectedTab, setSelectedTab] = useState('overview');
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
+  const timeRange = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
+  const dateRange: DateRange = convertTimeRangeToDateRange(timeRange);
   
   // Provider health data
   const { data: providerHealth, isLoading: providerHealthLoading, refetch: refetchProviderHealth } = useProviderHealth();
   
   // Cost analytics data
-  const { data: costSummary, isLoading: costSummaryLoading } = useCostSummary(timeRange);
-  const { data: costTrends, isLoading: costTrendsLoading } = useCostTrends(timeRange);
+  const { data: costSummary, isLoading: costSummaryLoading } = useCostSummary(dateRange);
+  const { data: costByPeriod, isLoading: costByPeriodLoading } = useCostByPeriod({ dateRange, groupBy: 'day' });
 
-  const isLoading = providerHealthLoading || costSummaryLoading;
+  const isLoading = providerHealthLoading || costSummaryLoading || costByPeriodLoading;
 
   const handleRefresh = () => {
     refetchProviderHealth();
@@ -131,14 +133,14 @@ export default function SystemPerformancePage() {
     },
     {
       title: 'Total Requests',
-      value: formatNumber(costSummary?.totalRequests || 0),
+      value: formatNumber(costSummary?.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0) || 0),
       icon: IconChartLine,
       color: 'blue',
       description: `Last ${timeRangeValue}`,
     },
     {
       title: 'Total Cost',
-      value: formatCurrency(costSummary?.totalSpend || 0),
+      value: formatCurrency(costSummary?.totalCost || 0),
       icon: IconCurrencyDollar,
       color: 'green',
       description: `Last ${timeRangeValue}`,
@@ -302,20 +304,20 @@ export default function SystemPerformancePage() {
                     <Stack gap="md">
                       <div>
                         <Text size="xs" c="dimmed" mb={4}>Total Spend</Text>
-                        <Text size="xl" fw={700}>{formatCurrency(costSummary?.totalSpend || 0)}</Text>
+                        <Text size="xl" fw={700}>{formatCurrency(costSummary?.totalCost || 0)}</Text>
                         <Text size="xs" c="dimmed">Last {timeRangeValue}</Text>
                       </div>
                       
                       <SimpleGrid cols={2} spacing="md">
                         <div>
                           <Text size="xs" c="dimmed" mb={4}>Requests</Text>
-                          <Text fw={500}>{formatNumber(costSummary?.totalRequests || 0)}</Text>
+                          <Text fw={500}>{formatNumber(costSummary?.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0) || 0)}</Text>
                         </div>
                         <div>
                           <Text size="xs" c="dimmed" mb={4}>Avg Cost/Request</Text>
                           <Text fw={500}>
-                            {costSummary?.totalRequests ? 
-                              formatCurrency((costSummary.totalSpend || 0) / costSummary.totalRequests) : 
+                            {costSummary?.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0) ? 
+                              formatCurrency((costSummary.totalCost || 0) / costSummary.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0)) : 
                               '$0.00'
                             }
                           </Text>
@@ -332,12 +334,12 @@ export default function SystemPerformancePage() {
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" mt="lg">
                 {/* TODO: Add health history chart */}
                 
-                {costTrends && (
+                {costByPeriod && (
                   <CostChart
-                    data={costTrends.map(trend => ({
-                      date: trend.date,
-                      value: trend.spend,
-                      name: trend.date
+                    data={costByPeriod.periods.map((period: any) => ({
+                      date: period.startDate,
+                      value: period.totalCost,
+                      name: new Date(period.startDate).toLocaleDateString()
                     })) as ChartDataItem[]}
                     title="Daily Cost Trend"
                     type="bar"
@@ -435,7 +437,7 @@ export default function SystemPerformancePage() {
 
           <Tabs.Panel value="costs" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={costTrendsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={costByPeriodLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Stack gap="lg">
                 {/* Cost by Model */}
@@ -443,13 +445,13 @@ export default function SystemPerformancePage() {
 
                 {/* Cost Charts */}
                 <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                  {costTrends && (
+                  {costByPeriod && (
                     <>
                       <CostChart
-                        data={costTrends.map(trend => ({
-                          date: trend.date,
-                          value: trend.spend,
-                          name: trend.date
+                        data={costByPeriod.periods.map((period: any) => ({
+                          date: period.startDate,
+                          value: period.totalCost,
+                          name: new Date(period.startDate).toLocaleDateString()
                         })) as ChartDataItem[]}
                         title="Cost Trend"
                         type="line"
@@ -460,10 +462,10 @@ export default function SystemPerformancePage() {
                       />
                       
                       <CostChart
-                        data={costTrends.map(trend => ({
-                          date: trend.date,
-                          value: trend.requests,
-                          name: trend.date
+                        data={costByPeriod.periods.map((period: any) => ({
+                          date: period.startDate,
+                          value: period.requestCount,
+                          name: new Date(period.startDate).toLocaleDateString()
                         })) as ChartDataItem[]}
                         title="Request Volume"
                         type="bar"

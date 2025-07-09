@@ -37,10 +37,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { useRequestLogs, useExportRequestLogs, type RequestLog as ApiRequestLog } from '@/hooks/api/useRequestLogsApi';
-
-// Use RequestLog from API hook
-type RequestLog = ApiRequestLog;
+import { useRequestLogs, useExportRequestLogs, type RequestLog } from '@/hooks/api/useRequestLogsApi';
 
 interface RequestLogFilters {
   search: string;
@@ -77,14 +74,14 @@ export default function RequestLogsPage() {
 
   // Convert filters to API format
   const apiFilters = {
-    page: currentPage,
+    pageNumber: currentPage,
     pageSize: 20,
-    method: filters.method || undefined,
-    status: filters.statusCode || undefined,
-    virtualKeyId: filters.virtualKey || undefined,
+    status: filters.statusCode as 'success' | 'error' | 'timeout' | undefined,
+    virtualKeyId: filters.virtualKey ? parseInt(filters.virtualKey, 10) : undefined,
     startDate: filters.dateFrom ? filters.dateFrom.toISOString() : undefined,
     endDate: filters.dateTo ? filters.dateTo.toISOString() : undefined,
-    endpoint: filters.search || undefined,
+    minResponseTime: filters.minResponseTime || undefined,
+    maxResponseTime: filters.maxResponseTime || undefined,
   };
 
   // Use the API hook
@@ -126,11 +123,17 @@ export default function RequestLogsPage() {
     });
   };
 
-  const getStatusColor = (statusCode: number) => {
-    if (statusCode >= 200 && statusCode < 300) return 'green';
-    if (statusCode >= 300 && statusCode < 400) return 'blue';
-    if (statusCode >= 400 && statusCode < 500) return 'orange';
-    return 'red';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'green';
+      case 'error':
+        return 'red';
+      case 'timeout':
+        return 'orange';
+      default:
+        return 'gray';
+    }
   };
 
   const getResponseTimeColor = (responseTime: number) => {
@@ -247,17 +250,12 @@ export default function RequestLogsPage() {
               onChange={(value) => setFilters({ ...filters, method: value || '' })}
             />
             <Select
-              placeholder="Status Code"
+              placeholder="Status"
               data={[
                 { value: '', label: 'All Status' },
-                { value: '200', label: '200 Success' },
-                { value: '201', label: '201 Created' },
-                { value: '400', label: '400 Bad Request' },
-                { value: '401', label: '401 Unauthorized' },
-                { value: '403', label: '403 Forbidden' },
-                { value: '404', label: '404 Not Found' },
-                { value: '429', label: '429 Rate Limited' },
-                { value: '500', label: '500 Server Error' },
+                { value: 'success', label: 'Success' },
+                { value: 'error', label: 'Error' },
+                { value: 'timeout', label: 'Timeout' },
               ]}
               value={filters.statusCode}
               onChange={(value) => setFilters({ ...filters, statusCode: value || '' })}
@@ -351,20 +349,20 @@ export default function RequestLogsPage() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Timestamp</Table.Th>
-                  <Table.Th>Method</Table.Th>
-                  <Table.Th>Endpoint</Table.Th>
+                  <Table.Th>Type</Table.Th>
+                  <Table.Th>Model</Table.Th>
                   <Table.Th>Status</Table.Th>
-                  <Table.Th>Response Time</Table.Th>
+                  <Table.Th>Duration</Table.Th>
                   <Table.Th>Virtual Key</Table.Th>
                   <Table.Th>Provider</Table.Th>
                   <Table.Th>IP Address</Table.Th>
-                  <Table.Th>Size</Table.Th>
+                  <Table.Th>Tokens</Table.Th>
                   <Table.Th>Cost</Table.Th>
                   <Table.Th>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {logs.map((log) => (
+                {logs.map((log: RequestLog) => (
                   <Table.Tr key={log.id}>
                     <Table.Td>
                       <Text size="xs">
@@ -373,22 +371,22 @@ export default function RequestLogsPage() {
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" size="sm">
-                        {log.method}
+                        POST
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" style={{ maxWidth: 200 }} truncate>
-                        {log.endpoint}
+                        {log.model || 'N/A'}
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={getStatusColor(log.statusCode)} variant="light">
-                        {log.statusCode}
+                      <Badge color={getStatusColor(log.status)} variant="light">
+                        {log.status}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={getResponseTimeColor(log.responseTime)} variant="light">
-                        {log.responseTime}ms
+                      <Badge color={getResponseTimeColor(log.duration)} variant="light">
+                        {log.duration}ms
                       </Badge>
                     </Table.Td>
                     <Table.Td>
@@ -397,14 +395,14 @@ export default function RequestLogsPage() {
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{log.model?.split('/')[0] || 'N/A'}</Text>
+                      <Text size="sm">{log.provider || 'N/A'}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">{log.ipAddress}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="xs">
-                        {formatFileSize(log.requestSize)} / {formatFileSize(log.responseSize)}
+                        {log.inputTokens} / {log.outputTokens} tokens
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -482,24 +480,24 @@ export default function RequestLogsPage() {
                     </Text>
                   </div>
                   <div>
-                    <Text size="sm" fw={500}>Method & Endpoint</Text>
+                    <Text size="sm" fw={500}>Model</Text>
                     <Text size="sm" c="dimmed">
-                      {selectedLog.method} {selectedLog.endpoint}
+                      {selectedLog.model}
                     </Text>
                   </div>
                 </Group>
 
                 <Group grow>
                   <div>
-                    <Text size="sm" fw={500}>Status Code</Text>
-                    <Badge color={getStatusColor(selectedLog.statusCode)}>
-                      {selectedLog.statusCode}
+                    <Text size="sm" fw={500}>Status</Text>
+                    <Badge color={getStatusColor(selectedLog.status)}>
+                      {selectedLog.status}
                     </Badge>
                   </div>
                   <div>
-                    <Text size="sm" fw={500}>Response Time</Text>
-                    <Badge color={getResponseTimeColor(selectedLog.responseTime)}>
-                      {selectedLog.responseTime}ms
+                    <Text size="sm" fw={500}>Duration</Text>
+                    <Badge color={getResponseTimeColor(selectedLog.duration)}>
+                      {selectedLog.duration}ms
                     </Badge>
                   </div>
                 </Group>
@@ -534,15 +532,15 @@ export default function RequestLogsPage() {
 
                 <Group grow>
                   <div>
-                    <Text size="sm" fw={500}>Request Size</Text>
+                    <Text size="sm" fw={500}>Input Tokens</Text>
                     <Text size="sm" c="dimmed">
-                      {formatFileSize(selectedLog.requestSize)}
+                      {selectedLog.inputTokens}
                     </Text>
                   </div>
                   <div>
-                    <Text size="sm" fw={500}>Response Size</Text>
+                    <Text size="sm" fw={500}>Output Tokens</Text>
                     <Text size="sm" c="dimmed">
-                      {formatFileSize(selectedLog.responseSize)}
+                      {selectedLog.outputTokens}
                     </Text>
                   </div>
                 </Group>
@@ -556,19 +554,19 @@ export default function RequestLogsPage() {
                   </div>
                 )}
                 
-                {selectedLog.tokensUsed && (
+                {(selectedLog.inputTokens || selectedLog.outputTokens) && (
                   <div>
-                    <Text size="sm" fw={500}>Tokens Used</Text>
+                    <Text size="sm" fw={500}>Total Tokens</Text>
                     <Text size="sm" c="dimmed">
-                      {selectedLog.tokensUsed.toLocaleString()}
+                      {(selectedLog.inputTokens + selectedLog.outputTokens).toLocaleString()}
                     </Text>
                   </div>
                 )}
 
-                {selectedLog.error && (
+                {selectedLog.errorMessage && (
                   <Alert icon={<IconAlertCircle size={16} />} color="red">
                     <Text fw={500}>Error</Text>
-                    <Text size="sm">{selectedLog.error}</Text>
+                    <Text size="sm">{selectedLog.errorMessage}</Text>
                   </Alert>
                 )}
               </Stack>
@@ -591,7 +589,7 @@ export default function RequestLogsPage() {
                 <div>
                   <Text size="sm" fw={500} mb="xs">Request Body</Text>
                   <Code block>
-                    {selectedLog.method === 'POST' ? 
+                    {true ? 
                       JSON.stringify({
                         model: selectedLog.model,
                         messages: [
@@ -614,7 +612,7 @@ export default function RequestLogsPage() {
                   <Code block>
                     {JSON.stringify({
                       'Content-Type': 'application/json',
-                      'X-Response-Time': `${selectedLog.responseTime}ms`,
+                      'X-Response-Time': `${selectedLog.duration}ms`,
                       'X-Model': selectedLog.model,
                       'X-Request-ID': selectedLog.id,
                     }, null, 2)}
@@ -624,12 +622,12 @@ export default function RequestLogsPage() {
                 <div>
                   <Text size="sm" fw={500} mb="xs">Response Body</Text>
                   <Code block>
-                    {selectedLog.statusCode >= 400 ? 
+                    {selectedLog.status === 'error' ? 
                       JSON.stringify({
                         error: {
-                          message: selectedLog.error || 'Request failed',
+                          message: selectedLog.errorMessage || 'Request failed',
                           type: 'api_error',
-                          code: selectedLog.statusCode
+                          code: selectedLog.status
                         }
                       }, null, 2) :
                       JSON.stringify({

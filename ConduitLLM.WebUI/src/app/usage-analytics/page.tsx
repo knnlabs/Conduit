@@ -407,7 +407,7 @@ export default function UsageAnalyticsPage() {
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
-                        {(errorAnalytics || []).map((error) => (
+                        {(errorAnalytics || []).map((error: any) => (
                           <Table.Tr key={error.errorType}>
                             <Table.Td>
                               <Text fw={500}>{error.errorType}</Text>
@@ -465,7 +465,7 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(latencyMetrics || []).map((metric) => (
+                      {(latencyMetrics || []).map((metric: any) => (
                         <Table.Tr key={metric.endpoint}>
                           <Table.Td>
                             <Text fw={500} size="sm">{metric.endpoint}</Text>
@@ -521,7 +521,7 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(userAnalytics || []).map((user) => (
+                      {(userAnalytics || []).map((user: any) => (
                         <Table.Tr key={user.virtualKeyId}>
                           <Table.Td>
                             <Text fw={500}>{user.virtualKeyName}</Text>
@@ -544,7 +544,7 @@ export default function UsageAnalyticsPage() {
                           </Table.Td>
                           <Table.Td>
                             <Group gap="xs">
-                              {user.topModels.slice(0, 2).map((model) => (
+                              {user.topModels.slice(0, 2).map((model: any) => (
                                 <Badge key={model} size="xs" variant="light">
                                   {model}
                                 </Badge>
@@ -602,7 +602,7 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(endpointUsage || []).map((endpoint) => (
+                      {(endpointUsage || []).map((endpoint: any) => (
                         <Table.Tr key={endpoint.endpoint}>
                           <Table.Td>
                             <Stack gap="xs">
@@ -632,7 +632,7 @@ export default function UsageAnalyticsPage() {
                           <Table.Td>{formatters.currency(endpoint.costPerRequest, { precision: 4 })}</Table.Td>
                           <Table.Td>
                             <Group gap="xs">
-                              {endpoint.popularModels.slice(0, 2).map((model) => (
+                              {endpoint.popularModels.slice(0, 2).map((model: any) => (
                                 <Badge key={model} size="xs" variant="light">
                                   {model}
                                 </Badge>
