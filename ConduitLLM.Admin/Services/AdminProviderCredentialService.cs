@@ -303,7 +303,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Special handling for providers that don't support GET requests
-                var providerNameLower = actualCredential.ProviderName.ToLowerInvariant();
+                var providerNameLower = actualCredential.ProviderName?.ToLowerInvariant();
                 TimeSpan responseTime;
                 
                 if (providerNameLower == "minimax" || providerNameLower == "anthropic")
@@ -339,7 +339,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
-                    var providerName = actualCredential.ProviderName.ToLowerInvariant();
+                    var providerName = actualCredential.ProviderName?.ToLowerInvariant();
 
                     switch (providerName)
                     {
