@@ -2,14 +2,35 @@
 
 Next.js-based web interface for the Conduit LLM Platform, built with React, TypeScript, and Mantine.
 
+## Architecture Overview
+
+The WebUI uses SDK React Query hooks directly for all API operations:
+
+### Client-Side SDK Usage
+- **Core SDK**: Used for LLM operations (chat, images, video, audio) with virtual key authentication
+- **Admin SDK**: Used for admin operations (providers, keys, settings) with master key authentication
+
+### Authentication Flow
+1. Admin logs in with `CONDUIT_WEBUI_AUTH_KEY`
+2. Server creates/retrieves WebUI virtual key automatically
+3. Virtual key passed to client for Core SDK operations
+4. All API calls made directly from browser using SDK hooks
+
+### Key Benefits
+- 🚀 **Direct SDK Usage**: No proxy layer, reduced latency
+- 🔄 **React Query Integration**: Built-in caching, optimistic updates
+- 🔐 **Secure Authentication**: Virtual keys for client-side operations
+- 📦 **Simplified Codebase**: Less code to maintain
+
 ## Features
 
 - 🚀 **Next.js 15** with App Router and TypeScript
 - 🎨 **Mantine UI** component library with custom theme
-- 🔗 **Conduit SDK Integration** for Core and Admin APIs
+- 🔗 **Direct SDK Integration** with React Query hooks
 - ⚡ **Real-time Updates** via SignalR
 - 📊 **State Management** with Zustand and React Query
 - 🎯 **Type Safety** throughout the application
+- 🔐 **Automatic Virtual Key Management** for secure API access
 
 ## Quick Start
 
@@ -40,7 +61,8 @@ Next.js-based web interface for the Conduit LLM Platform, built with React, Type
 |----------|-------------|---------|
 | `NEXT_PUBLIC_CONDUIT_ADMIN_API_URL` | Admin API endpoint | `http://localhost:5002` |
 | `NEXT_PUBLIC_CONDUIT_CORE_API_URL` | Core API endpoint | `http://localhost:5000` |
-| `CONDUIT_MASTER_KEY` | Master key for authentication | `alpha` |
+| `CONDUIT_MASTER_KEY` | Master key for Admin SDK operations | `alpha` |
+| `CONDUIT_WEBUI_AUTH_KEY` | Authentication key for WebUI login | Required |
 | `NEXT_PUBLIC_ENABLE_REAL_TIME_UPDATES` | Enable SignalR features | `true` |
 
 ## Project Structure
@@ -83,22 +105,51 @@ src/
 2. Add navigation links in the layout components
 3. Implement API integration using Conduit SDKs
 
-### Using Conduit SDKs
+### Using SDK React Query Hooks
+
+The WebUI now uses SDK React Query hooks directly in components:
 
 ```typescript
-import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
-import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+// Using Core SDK hooks
+import { useChatCompletion, useImageGeneration } from '@knn_labs/conduit-core-client/react-query';
 
-// Admin operations
-const adminClient = ConduitAdminClient.fromEnvironment({
-  masterKey: process.env.CONDUIT_MASTER_KEY
-});
+function ChatComponent() {
+  const { mutate: sendMessage } = useChatCompletion();
+  
+  const handleSend = (messages) => {
+    sendMessage({ messages });
+  };
+}
 
-// Core operations
-const coreClient = new ConduitCoreClient({
-  baseUrl: process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL,
-  virtualKey: userVirtualKey
-});
+// Using Admin SDK hooks
+import { useProviders, useCreateProvider } from '@knn_labs/conduit-admin-client/react-query';
+
+function ProvidersPage() {
+  const { data: providers } = useProviders();
+  const { mutate: createProvider } = useCreateProvider();
+}
+```
+
+### Provider Setup
+
+SDK providers are configured in the app layout:
+
+```typescript
+// lib/providers/ConduitProviders.tsx
+import { ConduitProvider } from '@knn_labs/conduit-core-client/react-query';
+import { ConduitAdminProvider } from '@knn_labs/conduit-admin-client/react-query';
+
+export function ConduitProviders({ children }) {
+  const { virtualKey } = useAuthStore();
+  
+  return (
+    <ConduitProvider virtualKey={virtualKey} baseUrl={coreApiUrl}>
+      <ConduitAdminProvider authKey={masterKey} baseUrl={adminApiUrl}>
+        {children}
+      </ConduitAdminProvider>
+    </ConduitProvider>
+  );
+}
 ```
 
 ### Real-time Features
