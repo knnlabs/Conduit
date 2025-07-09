@@ -30,9 +30,11 @@ import {
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
-import { CreateVirtualKeyModal } from '@/components/virtualkeys/CreateVirtualKeyModal';
-import { EditVirtualKeyModal } from '@/components/virtualkeys/EditVirtualKeyModal';
-import { ViewVirtualKeyModal } from '@/components/virtualkeys/ViewVirtualKeyModal';
+import { 
+  LazyCreateVirtualKeyModal as CreateVirtualKeyModal,
+  LazyEditVirtualKeyModal as EditVirtualKeyModal,
+  LazyViewVirtualKeyModal as ViewVirtualKeyModal
+} from '@/components/lazy/LazyModals';
 import { useVirtualKeys } from '@/hooks/useConduitAdmin';
 import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport } from '@/lib/utils/export';
 import { notifications } from '@mantine/notifications';

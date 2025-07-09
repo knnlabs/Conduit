@@ -19,8 +19,8 @@ export const POST = withSDKAuth(
       // For each provider, get available models using the SDK
       const discoveryResults = await Promise.all(
         providers
-          .filter(p => !body.providerIds || body.providerIds.includes(p.providerName))
-          .map(async (provider) => {
+          .filter((p: any) => !body.providerIds || body.providerIds.includes(p.providerName))
+          .map(async (provider: any) => {
             try {
               // Get available models from the provider using the SDK
               const modelsResponse = await withSDKErrorHandling(
@@ -32,7 +32,7 @@ export const POST = withSDKAuth(
               );
               
               // Transform the models to the expected format
-              const models = modelsResponse.map(model => ({
+              const models = modelsResponse.map((model: any) => ({
                 modelId: model.id,
                 modelName: model.id,
                 capabilities: determineCapabilities(model.id),
@@ -52,7 +52,7 @@ export const POST = withSDKAuth(
                   `discover models for ${provider.providerName}`
                 );
                 
-                const models = discoveryModels?.map(model => ({
+                const models = discoveryModels?.map((model: any) => ({
                   modelId: model.modelId,
                   modelName: model.displayName || model.modelId,
                   capabilities: extractCapabilities(model.capabilities),

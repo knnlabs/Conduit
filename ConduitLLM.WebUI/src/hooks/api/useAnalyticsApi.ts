@@ -10,6 +10,15 @@ import {
   getProviderFromModel,
   createExportFilename
 } from '@/lib/utils/analytics-helpers';
+import type { DateRange } from '../../../../Clients/Node/Admin/src/models/common';
+import type {
+  CostSummaryDto,
+  CostByPeriodDto,
+  CostByModelDto,
+  CostByKeyDto,
+  CostByProviderDto,
+} from '../../../../Clients/Node/Admin/src/models/analytics';
+import type { PaginatedResponse } from '../../../../Clients/Node/Admin/src/models/common';
 import type {
   TimeRangeFilter,
   CostTrendData,

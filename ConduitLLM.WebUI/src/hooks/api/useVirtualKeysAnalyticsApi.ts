@@ -10,6 +10,17 @@ import {
   calculateTrend,
   getPercentile
 } from '@/lib/utils/analytics-helpers';
+import type { DateRange } from '../../../../Clients/Node/Admin/src/models/common';
+import type {
+  CostSummaryDto,
+  CostByPeriodDto,
+  CostByKeyDto,
+  CostByModelDto,
+  KeyUsageDto,
+} from '../../../../Clients/Node/Admin/src/models/analytics';
+import type { PaginatedResponse } from '../../../../Clients/Node/Admin/src/models/common';
+import type { VirtualKeyDto } from '../../../../Clients/Node/Admin/src/models/virtualKey';
+import type { ExportResponseDto } from '../../../../Clients/Node/Admin/src/models/analyticsExport';
 import type {
   TimeRangeFilter,
   VirtualKeyOverview,
@@ -19,7 +30,6 @@ import type {
   VirtualKeySecurityMetrics,
   VirtualKeyTrends,
   VirtualKeyLeaderboard,
-  VirtualKeyDto,
   ExportResponse,
   BaseExportRequest,
 } from '@/types/analytics-types';

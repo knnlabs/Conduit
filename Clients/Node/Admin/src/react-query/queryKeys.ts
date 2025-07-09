@@ -15,9 +15,30 @@ export const adminQueryKeys = {
   modelMapping: (id: string) => [...adminQueryKeys.modelMappings(), id] as const,
   
   // Analytics
-  analytics: () => [...adminQueryKeys.all, 'analytics'] as const,
-  analyticsUsage: () => [...adminQueryKeys.analytics(), 'usage'] as const,
-  analyticsExports: () => [...adminQueryKeys.analytics(), 'exports'] as const,
+  analytics: {
+    all: () => [...adminQueryKeys.all, 'analytics'] as const,
+    costSummary: (dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'cost-summary', dateRange] as const,
+    costByPeriod: (params: any) => 
+      [...adminQueryKeys.analytics.all(), 'cost-by-period', params] as const,
+    costByModel: (dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'cost-by-model', dateRange] as const,
+    costByKey: (dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'cost-by-key', dateRange] as const,
+    requestLogs: (filters?: any) => 
+      [...adminQueryKeys.analytics.all(), 'request-logs', filters] as const,
+    requestLog: (id: string) => 
+      [...adminQueryKeys.analytics.all(), 'request-log', id] as const,
+    searchLogs: (query: string, filters?: any) => 
+      [...adminQueryKeys.analytics.all(), 'search-logs', query, filters] as const,
+    usageMetrics: (dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'usage-metrics', dateRange] as const,
+    modelUsage: (modelId: string, dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'model-usage', modelId, dateRange] as const,
+    keyUsage: (keyId: number, dateRange: any) => 
+      [...adminQueryKeys.analytics.all(), 'key-usage', keyId, dateRange] as const,
+    exports: () => [...adminQueryKeys.analytics.all(), 'exports'] as const,
+  },
   
   // System
   system: () => [...adminQueryKeys.all, 'system'] as const,

@@ -11,6 +11,15 @@ import {
   createExportFilename,
   getPercentile
 } from '@/lib/utils/analytics-helpers';
+import type { DateRange } from '../../../../Clients/Node/Admin/src/models/common';
+import type {
+  CostSummaryDto,
+  CostByPeriodDto,
+  UsageMetricsDto,
+  KeyUsageDto,
+} from '../../../../Clients/Node/Admin/src/models/analytics';
+import type { PaginatedResponse } from '../../../../Clients/Node/Admin/src/models/common';
+import type { ExportResponseDto } from '../../../../Clients/Node/Admin/src/models/analyticsExport';
 import type {
   TimeRangeFilter,
   UsageMetrics,
@@ -20,7 +29,6 @@ import type {
   LatencyMetrics,
   UserAnalytics,
   EndpointUsage,
-  UsageMetricsDto,
   ExportResponse,
   BaseExportRequest,
 } from '@/types/analytics-types';
