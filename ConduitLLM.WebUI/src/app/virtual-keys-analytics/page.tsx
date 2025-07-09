@@ -47,38 +47,59 @@ import {
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { 
-  useVirtualKeysOverview,
-  useVirtualKeyUsageMetrics,
-  useVirtualKeyBudgetAnalytics,
-  useVirtualKeyPerformanceMetrics,
-  useVirtualKeySecurityMetrics,
-  useVirtualKeyTrends,
-  useVirtualKeysLeaderboard,
-  useExportVirtualKeysData
-} from '@/hooks/api/useVirtualKeysAnalyticsApi';
-import type { TimeRangeFilter, VirtualKeyOverview } from '@/types/analytics-types';
+  useVirtualKeys,
+  useKeyUsage,
+  useCostByKey,
+  useExportCostAnalytics
+} from '@/hooks/useConduitAdmin';
+import type { DateRange, VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 
 export default function VirtualKeysAnalyticsPage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [selectedKey, setSelectedKey] = useState<VirtualKeyOverview | null>(null);
+  const [selectedKey, setSelectedKey] = useState<VirtualKeyDto | null>(null);
   const [detailsOpened, { open: openDetails, close: closeDetails }] = useDisclosure(false);
   const [budgetOpened, { open: openBudget, close: closeBudget }] = useDisclosure(false);
   const [performanceOpened, { open: openPerformance, close: closePerformance }] = useDisclosure(false);
   const [securityOpened, { open: openSecurity, close: closeSecurity }] = useDisclosure(false);
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as TimeRangeFilter['range'] };
+  // Convert time range to DateRange for SDK
+  const getDateRange = (): DateRange => {
+    const now = new Date();
+    const start = new Date();
+    
+    switch (timeRangeValue) {
+      case '1h':
+        start.setHours(now.getHours() - 1);
+        break;
+      case '24h':
+        start.setDate(now.getDate() - 1);
+        break;
+      case '7d':
+        start.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        start.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        start.setDate(now.getDate() - 90);
+        break;
+    }
+    
+    return {
+      startDate: start.toISOString(),
+      endDate: now.toISOString()
+    };
+  };
   
-  const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeysOverview();
-  const { data: selectedKeyUsage } = useVirtualKeyUsageMetrics(selectedKey?.keyId || '', timeRange);
-  const { data: selectedKeyBudget } = useVirtualKeyBudgetAnalytics(selectedKey?.keyId || '', timeRange);
-  const { data: selectedKeyPerformance } = useVirtualKeyPerformanceMetrics(selectedKey?.keyId || '', timeRange);
-  const { data: selectedKeySecurity } = useVirtualKeySecurityMetrics(selectedKey?.keyId || '', timeRange);
-  const { data: _selectedKeyTrends } = useVirtualKeyTrends(selectedKey?.keyId || '', timeRange);
-  const { data: leaderboard } = useVirtualKeysLeaderboard(timeRange);
-  const exportData = useExportVirtualKeysData();
+  const dateRange = getDateRange();
+  
+  const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeys();
+  const { data: selectedKeyUsage } = useKeyUsage(selectedKey?.id || 0, dateRange);
+  const { data: costByKey } = useCostByKey(dateRange);
+  const exportData = useExportCostAnalytics();
 
   const isLoading = keysLoading;
 
@@ -94,10 +115,12 @@ export default function VirtualKeysAnalyticsPage() {
       });
       
       const result = await exportData.mutateAsync({ 
-        type, 
-        keyId: selectedKey?.keyId,
-        timeRange,
-        format: 'csv'
+        type: 'cost',
+        filters: {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          virtualKeyIds: selectedKey ? [selectedKey.id] : undefined
+        }
       });
       
       notifications.update({
@@ -146,24 +169,12 @@ export default function VirtualKeysAnalyticsPage() {
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
-  const getStatusColor = (status: VirtualKeyOverview['status']) => {
-    switch (status) {
-      case 'active': return 'green';
-      case 'suspended': return 'red';
-      case 'expired': return 'gray';
-      case 'rate_limited': return 'orange';
-      default: return 'gray';
-    }
+  const getStatusColor = (isEnabled: boolean) => {
+    return isEnabled ? 'green' : 'red';
   };
 
-  const getStatusIcon = (status: VirtualKeyOverview['status']) => {
-    switch (status) {
-      case 'active': return IconCheck;
-      case 'suspended': return IconBan;
-      case 'expired': return IconClock;
-      case 'rate_limited': return IconBolt;
-      default: return IconX;
-    }
+  const getStatusIcon = (isEnabled: boolean) => {
+    return isEnabled ? IconCheck : IconBan;
   };
 
   const getTrendIcon = (trend: number) => {
@@ -177,7 +188,7 @@ export default function VirtualKeysAnalyticsPage() {
     return trend > 0 ? 'green' : 'red';
   };
 
-  const openKeyDetails = (key: VirtualKeyOverview, tab: 'usage' | 'budget' | 'performance' | 'security' = 'usage') => {
+  const openKeyDetails = (key: VirtualKeyDto, tab: 'usage' | 'budget' | 'performance' | 'security' = 'usage') => {
     setSelectedKey(key);
     switch (tab) {
       case 'usage':
@@ -196,11 +207,11 @@ export default function VirtualKeysAnalyticsPage() {
   };
 
   const totalKeys = virtualKeys?.length || 0;
-  const activeKeys = virtualKeys?.filter((k: any) => k.status === 'active').length || 0;
-  const totalRequests = virtualKeys?.reduce((sum: number, k: any) => sum + k.totalRequests, 0) || 0;
-  const totalCost = virtualKeys?.reduce((sum: number, k: any) => sum + k.totalCost, 0) || 0;
-  const averageLatency = (virtualKeys?.reduce((sum: number, k: any) => sum + k.averageLatency, 0) || 0) / (virtualKeys?.length || 1) || 0;
-  const averageErrorRate = (virtualKeys?.reduce((sum: number, k: any) => sum + k.errorRate, 0) || 0) / (virtualKeys?.length || 1) || 0;
+  const activeKeys = virtualKeys?.filter((k: VirtualKeyDto) => k.isEnabled).length || 0;
+  const totalRequests = costByKey?.costByKey?.reduce((sum: number, k: any) => sum + k.requestCount, 0) || 0;
+  const totalCost = costByKey?.costByKey?.reduce((sum: number, k: any) => sum + k.cost, 0) || 0;
+  const averageLatency = 0; // Not available in SDK
+  const averageErrorRate = 0; // Not available in SDK
 
   const overviewCards = [
     {
@@ -315,26 +326,24 @@ export default function VirtualKeysAnalyticsPage() {
               <LoadingOverlay visible={keysLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Stack gap="md">
-                {virtualKeys?.map((key: any) => {
-                  const StatusIcon = getStatusIcon(key.status);
-                  const RequestsTrendIcon = getTrendIcon(key.trends.requests);
-                  const CostTrendIcon = getTrendIcon(key.trends.cost);
-                  const LatencyTrendIcon = getTrendIcon(key.trends.latency);
+                {virtualKeys?.map((key: VirtualKeyDto) => {
+                  const keyStats = costByKey?.costByKey?.find((k: any) => k.keyId === key.id);
+                  const StatusIcon = getStatusIcon(key.isEnabled);
                   
                   return (
-                    <Card key={key.keyId} withBorder p="md">
+                    <Card key={key.id} withBorder p="md">
                       <Group justify="space-between" mb="md">
                         <Group gap="md">
-                          <ThemeIcon size="lg" color={getStatusColor(key.status)} variant="light">
+                          <ThemeIcon size="lg" color={getStatusColor(key.isEnabled)} variant="light">
                             <StatusIcon size={20} />
                           </ThemeIcon>
                           <div>
                             <Text fw={600} size="lg">{key.keyName}</Text>
                             <Group gap="xs">
-                              <Badge color={getStatusColor(key.status)} variant="light">
-                                {key.status}
+                              <Badge color={getStatusColor(key.isEnabled)} variant="light">
+                                {key.isEnabled ? 'active' : 'inactive'}
                               </Badge>
-                              <Code>{key.keyHash}</Code>
+                              <Code>{key.keyPrefix || 'N/A'}...</Code>
                               <Text size="sm" c="dimmed">
                                 Created: {new Date(key.createdAt).toLocaleDateString()}
                               </Text>
@@ -381,119 +390,7 @@ export default function VirtualKeysAnalyticsPage() {
                         </Group>
                       </Group>
 
-                      <SimpleGrid cols={{ base: 2, sm: 4, md: 6 }} spacing="md" mb="md">
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Total Requests</Text>
-                          <Group gap="xs">
-                            <Text fw={500}>{formatNumber(key.totalRequests)}</Text>
-                            <Group gap={2}>
-                              <RequestsTrendIcon 
-                                size={12} 
-                                color={getTrendColor(key.trends.requests)} 
-                              />
-                              <Text 
-                                size="xs" 
-                                c={getTrendColor(key.trends.requests)}
-                              >
-                                {key.trends.requests > 0 ? '+' : ''}{key.trends.requests.toFixed(1)}%
-                              </Text>
-                            </Group>
-                          </Group>
-                        </div>
-                        
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Total Cost</Text>
-                          <Group gap="xs">
-                            <Text fw={500}>{formatCurrency(key.totalCost)}</Text>
-                            <Group gap={2}>
-                              <CostTrendIcon 
-                                size={12} 
-                                color={getTrendColor(key.trends.cost, true)} 
-                              />
-                              <Text 
-                                size="xs" 
-                                c={getTrendColor(key.trends.cost, true)}
-                              >
-                                {key.trends.cost > 0 ? '+' : ''}{key.trends.cost.toFixed(1)}%
-                              </Text>
-                            </Group>
-                          </Group>
-                        </div>
-                        
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Avg Latency</Text>
-                          <Group gap="xs">
-                            <Text fw={500}>{formatLatency(key.averageLatency)}</Text>
-                            <Group gap={2}>
-                              <LatencyTrendIcon 
-                                size={12} 
-                                color={getTrendColor(key.trends.latency, true)} 
-                              />
-                              <Text 
-                                size="xs" 
-                                c={getTrendColor(key.trends.latency, true)}
-                              >
-                                {key.trends.latency > 0 ? '+' : ''}{key.trends.latency.toFixed(1)}%
-                              </Text>
-                            </Group>
-                          </Group>
-                        </div>
-                        
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Error Rate</Text>
-                          <Text fw={500} c={key.errorRate > 2 ? 'red' : 'green'}>
-                            {key.errorRate.toFixed(1)}%
-                          </Text>
-                        </div>
-                        
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Today</Text>
-                          <Stack gap={2}>
-                            <Text size="sm">{formatNumber(key.requestsToday)} requests</Text>
-                            <Text size="sm">{formatCurrency(key.costToday)}</Text>
-                          </Stack>
-                        </div>
-                        
-                        <div>
-                          <Text size="xs" c="dimmed" mb={4}>Last Used</Text>
-                          <Text size="sm">
-                            {new Date(key.lastUsed).toLocaleString()}
-                          </Text>
-                        </div>
-                      </SimpleGrid>
 
-                      <Group justify="space-between" align="flex-end">
-                        <div style={{ flex: 1 }}>
-                          <Group justify="space-between" mb="xs">
-                            <Text size="sm">Budget Usage</Text>
-                            <Text size="sm">
-                              {formatCurrency(key.budget.used)} / {formatCurrency(key.budget.limit)}
-                            </Text>
-                          </Group>
-                          <Progress
-                            value={key.budget.percentage}
-                            color={
-                              key.budget.percentage >= 90 ? 'red' :
-                              key.budget.percentage >= 75 ? 'orange' : 'green'
-                            }
-                            size="lg"
-                          />
-                        </div>
-                        
-                        <Group gap="xs" ml="md">
-                          <Text size="xs" c="dimmed">Top Models:</Text>
-                          {key.models.slice(0, 3).map((model: any) => (
-                            <Badge key={model.name} size="xs" variant="light">
-                              {model.name}
-                            </Badge>
-                          ))}
-                          {key.models.length > 3 && (
-                            <Badge size="xs" variant="light" color="gray">
-                              +{key.models.length - 3}
-                            </Badge>
-                          )}
-                        </Group>
-                      </Group>
                     </Card>
                   );
                 })}
@@ -578,7 +475,7 @@ export default function VirtualKeysAnalyticsPage() {
                     <Text c="dimmed">Select a virtual key from the overview tab to view budget analysis</Text>
                   </Stack>
                 </Center>
-              ) : selectedKeyBudget ? (
+              ) : selectedKeyUsage ? (
                 <Stack gap="lg">
                   <Group justify="space-between">
                     <div>
@@ -598,26 +495,26 @@ export default function VirtualKeysAnalyticsPage() {
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Budget Limit</Text>
-                      <Text fw={600} size="xl">{formatCurrency(selectedKeyBudget.budget.limit)}</Text>
+                      <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.budget.limit)}</Text>
                     </Card>
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Spent</Text>
-                      <Text fw={600} size="xl">{formatCurrency(selectedKeyBudget.budget.spent)}</Text>
+                      <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.budget.spent)}</Text>
                     </Card>
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Remaining</Text>
-                      <Text fw={600} size="xl">{formatCurrency(selectedKeyBudget.budget.remaining)}</Text>
+                      <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.budget.remaining)}</Text>
                     </Card>
                     <Card withBorder>
                       <Text size="sm" c="dimmed" mb="xs">Burn Rate</Text>
-                      <Text fw={600} size="xl">{formatCurrency(selectedKeyBudget.budget.burnRate)}/day</Text>
+                      <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.budget.burnRate)}/day</Text>
                     </Card>
                   </SimpleGrid>
 
-                  {selectedKeyBudget.alerts.length > 0 && (
+                  {selectedKeyUsage.alerts.length > 0 && (
                     <Alert icon={<IconAlertCircle size={16} />} color="orange" title="Budget Alerts">
                       <Stack gap="xs">
-                        {selectedKeyBudget.alerts.map((alert: any) => (
+                        {selectedKeyUsage.alerts.map((alert: any) => (
                           <Text key={alert.id} size="sm">{alert.message}</Text>
                         ))}
                       </Stack>
@@ -626,7 +523,7 @@ export default function VirtualKeysAnalyticsPage() {
 
                   <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                     <CostChart
-                      data={selectedKeyBudget.spendHistory}
+                      data={selectedKeyUsage.spendHistory}
                       title="Daily Spend History"
                       type="line"
                       valueKey="dailySpend"
@@ -635,7 +532,7 @@ export default function VirtualKeysAnalyticsPage() {
                     />
 
                     <CostChart
-                      data={selectedKeyBudget.spendByModel}
+                      data={selectedKeyUsage.spendByModel}
                       title="Spend by Model"
                       type="pie"
                       valueKey="cost"
@@ -643,14 +540,14 @@ export default function VirtualKeysAnalyticsPage() {
                     />
                   </SimpleGrid>
 
-                  {selectedKeyBudget.recommendations.length > 0 && (
+                  {selectedKeyUsage.recommendations.length > 0 && (
                     <Card withBorder>
                       <Card.Section p="md" withBorder>
                         <Text fw={600}>Cost Optimization Recommendations</Text>
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="md">
-                          {selectedKeyBudget.recommendations.map((rec: any, index: number) => (
+                          {selectedKeyUsage.recommendations.map((rec: any, index: number) => (
                             <Alert
                               key={index}
                               icon={<IconTarget size={16} />}
@@ -690,148 +587,13 @@ export default function VirtualKeysAnalyticsPage() {
                     <Text c="dimmed">Select a virtual key from the overview tab to view performance metrics</Text>
                   </Stack>
                 </Center>
-              ) : selectedKeyPerformance ? (
-                <Stack gap="lg">
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={600} size="lg">{selectedKey.keyName} - Performance Metrics</Text>
-                      <Text size="sm" c="dimmed">Latency, throughput, and reliability analysis</Text>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      leftSection={<IconDownload size={14} />}
-                      onClick={() => handleExport('performance')}
-                    >
-                      Export Performance Data
-                    </Button>
-                  </Group>
-
-                  <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Avg Latency</Text>
-                      <Text fw={600} size="xl">{formatLatency(selectedKeyPerformance.latency.average)}</Text>
-                      <Group gap={4} mt={4}>
-                        <ThemeIcon
-                          size="xs"
-                          variant="light"
-                          color={getTrendColor(selectedKeyPerformance.latency.trend, true)}
-                        >
-                          {selectedKeyPerformance.latency.trend > 0 ? 
-                            <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />}
-                        </ThemeIcon>
-                        <Text size="xs" c={getTrendColor(selectedKeyPerformance.latency.trend, true)}>
-                          {selectedKeyPerformance.latency.trend > 0 ? '+' : ''}{selectedKeyPerformance.latency.trend.toFixed(1)}%
-                        </Text>
-                      </Group>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Throughput</Text>
-                      <Text fw={600} size="xl">{selectedKeyPerformance.throughput.requestsPerSecond.toFixed(1)} RPS</Text>
-                      <Group gap={4} mt={4}>
-                        <ThemeIcon
-                          size="xs"
-                          variant="light"
-                          color={getTrendColor(selectedKeyPerformance.throughput.trend)}
-                        >
-                          {selectedKeyPerformance.throughput.trend > 0 ? 
-                            <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />}
-                        </ThemeIcon>
-                        <Text size="xs" c={getTrendColor(selectedKeyPerformance.throughput.trend)}>
-                          {selectedKeyPerformance.throughput.trend > 0 ? '+' : ''}{selectedKeyPerformance.throughput.trend.toFixed(1)}%
-                        </Text>
-                      </Group>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Success Rate</Text>
-                      <Text fw={600} size="xl">{selectedKeyPerformance.reliability.successRate.toFixed(1)}%</Text>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Uptime</Text>
-                      <Text fw={600} size="xl">{selectedKeyPerformance.reliability.uptime.toFixed(1)}%</Text>
-                    </Card>
-                  </SimpleGrid>
-
-                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Request Quota Usage</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Center>
-                          <RingProgress
-                            size={180}
-                            thickness={12}
-                            sections={[
-                              { 
-                                value: selectedKeyPerformance.quotaUsage.requestQuota.percentage, 
-                                color: selectedKeyPerformance.quotaUsage.requestQuota.percentage > 80 ? 'red' : 'blue' 
-                              }
-                            ]}
-                            label={
-                              <Text size="xs" ta="center">
-                                <Text size="lg" fw={700}>
-                                  {selectedKeyPerformance.quotaUsage.requestQuota.percentage.toFixed(1)}%
-                                </Text>
-                                <br />
-                                {formatNumber(selectedKeyPerformance.quotaUsage.requestQuota.used)} / {formatNumber(selectedKeyPerformance.quotaUsage.requestQuota.limit)}
-                              </Text>
-                            }
-                          />
-                        </Center>
-                        <Text size="xs" c="dimmed" ta="center" mt="md">
-                          Resets: {new Date(selectedKeyPerformance.quotaUsage.requestQuota.resetsAt).toLocaleString()}
-                        </Text>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Text fw={600}>Token Quota Usage</Text>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Center>
-                          <RingProgress
-                            size={180}
-                            thickness={12}
-                            sections={[
-                              { 
-                                value: selectedKeyPerformance.quotaUsage.tokenQuota.percentage, 
-                                color: selectedKeyPerformance.quotaUsage.tokenQuota.percentage > 80 ? 'red' : 'green' 
-                              }
-                            ]}
-                            label={
-                              <Text size="xs" ta="center">
-                                <Text size="lg" fw={700}>
-                                  {selectedKeyPerformance.quotaUsage.tokenQuota.percentage.toFixed(1)}%
-                                </Text>
-                                <br />
-                                {formatNumber(selectedKeyPerformance.quotaUsage.tokenQuota.used)} / {formatNumber(selectedKeyPerformance.quotaUsage.tokenQuota.limit)}
-                              </Text>
-                            }
-                          />
-                        </Center>
-                        <Text size="xs" c="dimmed" ta="center" mt="md">
-                          Resets: {new Date(selectedKeyPerformance.quotaUsage.tokenQuota.resetsAt).toLocaleString()}
-                        </Text>
-                      </Card.Section>
-                    </Card>
-                  </SimpleGrid>
-
-                  <CostChart
-                    data={selectedKeyPerformance.performanceHistory}
-                    title="Performance Over Time"
-                    type="line"
-                    valueKey="avgLatency"
-                    nameKey="timestamp"
-                    timeKey="timestamp"
-                  />
-                </Stack>
               ) : (
-                <LoadingOverlay visible overlayProps={{ radius: 'sm', blur: 2 }} />
+                <Center py="xl">
+                  <Stack align="center" gap="md">
+                    <IconBolt size={48} color="var(--mantine-color-gray-5)" />
+                    <Text c="dimmed">Performance metrics not available in SDK</Text>
+                  </Stack>
+                </Center>
               )}
             </div>
           </Tabs.Panel>
@@ -845,160 +607,22 @@ export default function VirtualKeysAnalyticsPage() {
                     <Text c="dimmed">Select a virtual key from the overview tab to view security analysis</Text>
                   </Stack>
                 </Center>
-              ) : selectedKeySecurity ? (
-                <Stack gap="lg">
-                  <Group justify="space-between">
-                    <div>
-                      <Text fw={600} size="lg">{selectedKey.keyName} - Security Analysis</Text>
-                      <Text size="sm" c="dimmed">Access patterns, security metrics, and compliance status</Text>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      leftSection={<IconDownload size={14} />}
-                      onClick={() => handleExport('security')}
-                    >
-                      Export Security Data
-                    </Button>
-                  </Group>
-
-                  {selectedKeySecurity?.accessPatterns?.suspiciousActivity?.length > 0 && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="red" title="Security Alerts">
-                      <Stack gap="xs">
-                        {selectedKeySecurity?.accessPatterns?.suspiciousActivity?.map((activity: any) => (
-                          <Group key={activity.id} justify="space-between">
-                            <Text size="sm">{activity.description}</Text>
-                            <Badge color="red" variant="light">
-                              {activity.severity}
-                            </Badge>
-                          </Group>
-                        ))}
-                      </Stack>
-                    </Alert>
-                  )}
-
-                  <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Unique IPs</Text>
-                      <Text fw={600} size="xl">{selectedKeySecurity?.accessPatterns?.uniqueIPs || 0}</Text>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Valid Requests</Text>
-                      <Text fw={600} size="xl">{formatNumber(selectedKeySecurity?.authentication?.validRequests || 0)}</Text>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Rate Limit Violations</Text>
-                      <Text fw={600} size="xl" c={selectedKeySecurity?.rateLimiting?.violations > 0 ? 'red' : 'green'}>
-                        {selectedKeySecurity?.rateLimiting?.violations || 0}
-                      </Text>
-                    </Card>
-                    
-                    <Card withBorder>
-                      <Text size="sm" c="dimmed" mb="xs">Invalid Attempts</Text>
-                      <Text fw={600} size="xl" c={selectedKeySecurity?.authentication?.invalidRequests > 0 ? 'red' : 'green'}>
-                        {selectedKeySecurity?.authentication?.invalidRequests || 0}
-                      </Text>
-                    </Card>
-                  </SimpleGrid>
-
-                  <Card withBorder>
-                    <Card.Section p="md" withBorder>
-                      <Text fw={600}>Access by IP Address</Text>
-                    </Card.Section>
-                    <Card.Section>
-                      <Table>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>IP Address</Table.Th>
-                            <Table.Th>Country</Table.Th>
-                            <Table.Th>Requests</Table.Th>
-                            <Table.Th>Last Seen</Table.Th>
-                            <Table.Th>Status</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {selectedKeySecurity?.accessPatterns?.requestsByIP?.map((ip: any) => (
-                            <Table.Tr key={ip.ip}>
-                              <Table.Td>
-                                <Code>{ip.ip}</Code>
-                              </Table.Td>
-                              <Table.Td>{ip.country || 'Unknown'}</Table.Td>
-                              <Table.Td>{formatNumber(ip.requests)}</Table.Td>
-                              <Table.Td>
-                                <Text size="sm" c="dimmed">
-                                  {new Date(ip.lastSeen).toLocaleString()}
-                                </Text>
-                              </Table.Td>
-                              <Table.Td>
-                                <Badge color={ip.flagged ? 'red' : 'green'} variant="light">
-                                  {ip.flagged ? 'Flagged' : 'Normal'}
-                                </Badge>
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Card.Section>
-                  </Card>
-
-                  <Card withBorder>
-                    <Card.Section p="md" withBorder>
-                      <Text fw={600}>Compliance Status</Text>
-                    </Card.Section>
-                    <Card.Section p="md">
-                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                        <div>
-                          <Text size="sm" c="dimmed" mb="xs">Data Regions</Text>
-                          <Group gap="xs">
-                            {selectedKeySecurity?.compliance?.dataRegions?.map((region: any) => (
-                              <Badge key={region} variant="light">
-                                {region}
-                              </Badge>
-                            ))}
-                          </Group>
-                        </div>
-                        
-                        <div>
-                          <Text size="sm" c="dimmed" mb="xs">Retention Policy</Text>
-                          <Text fw={500}>{selectedKeySecurity.compliance.retentionPolicy}</Text>
-                        </div>
-                        
-                        <div>
-                          <Text size="sm" c="dimmed" mb="xs">Encryption</Text>
-                          <Badge 
-                            color={selectedKeySecurity.compliance.encryptionStatus === 'enabled' ? 'green' : 'red'} 
-                            variant="light"
-                          >
-                            {selectedKeySecurity.compliance.encryptionStatus}
-                          </Badge>
-                        </div>
-                        
-                        <div>
-                          <Text size="sm" c="dimmed" mb="xs">Audit Logs</Text>
-                          <Badge 
-                            color={selectedKeySecurity.compliance.auditLogsEnabled ? 'green' : 'red'} 
-                            variant="light"
-                          >
-                            {selectedKeySecurity.compliance.auditLogsEnabled ? 'Enabled' : 'Disabled'}
-                          </Badge>
-                        </div>
-                      </SimpleGrid>
-                    </Card.Section>
-                  </Card>
-                </Stack>
               ) : (
-                <LoadingOverlay visible overlayProps={{ radius: 'sm', blur: 2 }} />
+                <Center py="xl">
+                  <Stack align="center" gap="md">
+                    <IconShield size={48} color="var(--mantine-color-gray-5)" />
+                    <Text c="dimmed">Security metrics not available in SDK</Text>
+                  </Stack>
+                </Center>
               )}
             </div>
           </Tabs.Panel>
 
           <Tabs.Panel value="leaderboard" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={!leaderboard} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={!costByKey} overlayProps={{ radius: 'sm', blur: 2 }} />
               
-              {leaderboard && (
+              {costByKey && (
                 <Stack gap="lg">
                   <Group justify="space-between">
                     <div>
@@ -1015,67 +639,35 @@ export default function VirtualKeysAnalyticsPage() {
                     </Button>
                   </Group>
 
-                  <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="lg">
+                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                     <Card withBorder>
                       <Card.Section p="md" withBorder>
                         <Group gap="xs">
                           <IconTrophy size={20} color="var(--mantine-color-yellow-6)" />
-                          <Text fw={600}>Top by Requests</Text>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="sm">
-                          {leaderboard?.categories?.topByRequests?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
-                              </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{formatNumber(key.requests)}</Text>
-                                <Text 
-                                  size="xs" 
-                                  c={getTrendColor(key.change)}
-                                >
-                                  {key.change > 0 ? '+' : ''}{key.change.toFixed(1)}%
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group gap="xs">
-                          <IconCreditCard size={20} color="var(--mantine-color-green-6)" />
                           <Text fw={600}>Top by Cost</Text>
                         </Group>
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard?.categories?.topByCost?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
+                          {costByKey.costByKey
+                            ?.sort((a: any, b: any) => b.cost - a.cost)
+                            ?.slice(0, 5)
+                            ?.map((key: any, index: number) => (
+                              <Group key={key.keyId} justify="space-between">
+                                <Group gap="xs">
+                                  <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
+                                    #{index + 1}
+                                  </Text>
+                                  <Text size="sm">{key.keyName}</Text>
+                                </Group>
+                                <Stack gap={0} align="flex-end">
+                                  <Text size="sm" fw={500}>{formatCurrency(key.cost)}</Text>
+                                  <Text size="xs" c="dimmed">
+                                    {formatNumber(key.requestCount)} requests
+                                  </Text>
+                                </Stack>
                               </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{formatCurrency(key.cost)}</Text>
-                                <Text 
-                                  size="xs" 
-                                  c={getTrendColor(key.change, true)}
-                                >
-                                  {key.change > 0 ? '+' : ''}{key.change.toFixed(1)}%
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
+                            ))}
                         </Stack>
                       </Card.Section>
                     </Card>
@@ -1083,121 +675,31 @@ export default function VirtualKeysAnalyticsPage() {
                     <Card withBorder>
                       <Card.Section p="md" withBorder>
                         <Group gap="xs">
-                          <IconFlame size={20} color="var(--mantine-color-red-6)" />
-                          <Text fw={600}>Most Efficient</Text>
+                          <IconActivity size={20} color="var(--mantine-color-blue-6)" />
+                          <Text fw={600}>Top by Requests</Text>
                         </Group>
                       </Card.Section>
                       <Card.Section p="md">
                         <Stack gap="sm">
-                          {leaderboard?.categories?.mostEfficient?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
+                          {costByKey.costByKey
+                            ?.sort((a: any, b: any) => b.requestCount - a.requestCount)
+                            ?.slice(0, 5)
+                            ?.map((key: any, index: number) => (
+                              <Group key={key.keyId} justify="space-between">
+                                <Group gap="xs">
+                                  <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
+                                    #{index + 1}
+                                  </Text>
+                                  <Text size="sm">{key.keyName}</Text>
+                                </Group>
+                                <Stack gap={0} align="flex-end">
+                                  <Text size="sm" fw={500}>{formatNumber(key.requestCount)}</Text>
+                                  <Text size="xs" c="dimmed">
+                                    {formatCurrency(key.cost)}
+                                  </Text>
+                                </Stack>
                               </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{formatCurrency(key.costPerRequest)}</Text>
-                                <Text size="xs" c="blue">
-                                  {key.efficiency.toFixed(1)}% efficient
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group gap="xs">
-                          <IconBolt size={20} color="var(--mantine-color-purple-6)" />
-                          <Text fw={600}>Fastest Response</Text>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="sm">
-                          {leaderboard?.categories?.fastestResponse?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
-                              </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{formatLatency(key.avgLatency)}</Text>
-                                <Text 
-                                  size="xs" 
-                                  c={getTrendColor(key.improvement, true)}
-                                >
-                                  {key.improvement > 0 ? '+' : ''}{key.improvement.toFixed(1)}%
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group gap="xs">
-                          <IconHeartHandshake size={20} color="var(--mantine-color-teal-6)" />
-                          <Text fw={600}>Most Reliable</Text>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="sm">
-                          {leaderboard?.categories?.mostReliable?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
-                              </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{key.successRate.toFixed(1)}%</Text>
-                                <Text size="xs" c="teal">
-                                  {key.uptime.toFixed(1)}% uptime
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Card.Section>
-                    </Card>
-
-                    <Card withBorder>
-                      <Card.Section p="md" withBorder>
-                        <Group gap="xs">
-                          <IconChartLine size={20} color="var(--mantine-color-blue-6)" />
-                          <Text fw={600}>Top by Tokens</Text>
-                        </Group>
-                      </Card.Section>
-                      <Card.Section p="md">
-                        <Stack gap="sm">
-                          {leaderboard?.categories?.topByTokens?.map((key: any, index: number) => (
-                            <Group key={key.keyId} justify="space-between">
-                              <Group gap="xs">
-                                <Text fw={500} c={index === 0 ? 'yellow' : index === 1 ? 'gray' : index === 2 ? 'orange' : undefined}>
-                                  #{index + 1}
-                                </Text>
-                                <Text size="sm">{key.keyName}</Text>
-                              </Group>
-                              <Stack gap={0} align="flex-end">
-                                <Text size="sm" fw={500}>{formatNumber(key.tokens)}</Text>
-                                <Text 
-                                  size="xs" 
-                                  c={getTrendColor(key.change)}
-                                >
-                                  {key.change > 0 ? '+' : ''}{key.change.toFixed(1)}%
-                                </Text>
-                              </Stack>
-                            </Group>
-                          ))}
+                            ))}
                         </Stack>
                       </Card.Section>
                     </Card>
@@ -1221,10 +723,10 @@ export default function VirtualKeysAnalyticsPage() {
             <Group justify="space-between">
               <div>
                 <Text fw={600} size="lg">{selectedKey.keyName}</Text>
-                <Code>{selectedKey.keyHash}</Code>
+                <Code>{selectedKey.keyPrefix || 'N/A'}...</Code>
               </div>
-              <Badge color={getStatusColor(selectedKey.status)} variant="light">
-                {selectedKey.status}
+              <Badge color={getStatusColor(selectedKey.isEnabled)} variant="light">
+                {selectedKey.isEnabled ? 'Active' : 'Inactive'}
               </Badge>
             </Group>
             
@@ -1257,38 +759,31 @@ export default function VirtualKeysAnalyticsPage() {
         title="Budget Analysis"
         size="xl"
       >
-        {selectedKey && selectedKeyBudget && (
+        {selectedKey && selectedKeyUsage && (
           <Stack gap="md">
             <Group justify="space-between">
               <div>
                 <Text fw={600} size="lg">{selectedKey.keyName}</Text>
-                <Code>{selectedKey.keyHash}</Code>
+                <Code>{selectedKey.keyPrefix || 'N/A'}...</Code>
               </div>
               <Badge 
-                color={selectedKeyBudget.budget.spent / selectedKeyBudget.budget.limit > 0.9 ? 'red' : 'green'} 
+                color={selectedKeyUsage.budgetUsed > 90 ? 'red' : 'green'} 
                 variant="light"
               >
-                {((selectedKeyBudget.budget.spent / selectedKeyBudget.budget.limit) * 100).toFixed(1)}% used
+                {selectedKeyUsage.budgetUsed.toFixed(1)}% used
               </Badge>
             </Group>
             
             <SimpleGrid cols={2} spacing="lg">
-              <CostChart
-                data={selectedKeyBudget.spendHistory}
-                title="Daily Spend"
-                type="line"
-                valueKey="dailySpend"
-                nameKey="date"
-                timeKey="date"
-              />
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Budget Remaining</Text>
+                <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.budgetRemaining)}</Text>
+              </Card>
               
-              <CostChart
-                data={selectedKeyBudget.spendByModel}
-                title="Spend by Model"
-                type="pie"
-                valueKey="cost"
-                nameKey="modelName"
-              />
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Average Cost per Request</Text>
+                <Text fw={600} size="xl">{formatCurrency(selectedKeyUsage.averageCostPerRequest)}</Text>
+              </Card>
             </SimpleGrid>
           </Stack>
         )}
@@ -1301,61 +796,24 @@ export default function VirtualKeysAnalyticsPage() {
         title="Performance Metrics"
         size="xl"
       >
-        {selectedKey && selectedKeyPerformance && (
+        {selectedKey && (
           <Stack gap="md">
             <Group justify="space-between">
               <div>
                 <Text fw={600} size="lg">{selectedKey.keyName}</Text>
-                <Code>{selectedKey.keyHash}</Code>
+                <Code>{selectedKey.keyPrefix || 'N/A'}...</Code>
               </div>
               <Badge color="purple" variant="light">
-                {selectedKeyPerformance.reliability.successRate.toFixed(1)}% success rate
+                Performance metrics not available
               </Badge>
             </Group>
             
-            <SimpleGrid cols={2} spacing="lg">
-              <Card withBorder>
-                <Text size="sm" c="dimmed" mb="xs">Request Quota</Text>
-                <Center>
-                  <RingProgress
-                    size={120}
-                    thickness={8}
-                    sections={[
-                      { 
-                        value: selectedKeyPerformance.quotaUsage.requestQuota.percentage, 
-                        color: selectedKeyPerformance.quotaUsage.requestQuota.percentage > 80 ? 'red' : 'blue' 
-                      }
-                    ]}
-                    label={
-                      <Text size="xs" ta="center">
-                        {selectedKeyPerformance.quotaUsage.requestQuota.percentage.toFixed(1)}%
-                      </Text>
-                    }
-                  />
-                </Center>
-              </Card>
-              
-              <Card withBorder>
-                <Text size="sm" c="dimmed" mb="xs">Token Quota</Text>
-                <Center>
-                  <RingProgress
-                    size={120}
-                    thickness={8}
-                    sections={[
-                      { 
-                        value: selectedKeyPerformance.quotaUsage.tokenQuota.percentage, 
-                        color: selectedKeyPerformance.quotaUsage.tokenQuota.percentage > 80 ? 'red' : 'green' 
-                      }
-                    ]}
-                    label={
-                      <Text size="xs" ta="center">
-                        {selectedKeyPerformance.quotaUsage.tokenQuota.percentage.toFixed(1)}%
-                      </Text>
-                    }
-                  />
-                </Center>
-              </Card>
-            </SimpleGrid>
+            <Center py="xl">
+              <Stack align="center" gap="md">
+                <IconBolt size={48} color="var(--mantine-color-gray-5)" />
+                <Text c="dimmed">Performance metrics not available in SDK</Text>
+              </Stack>
+            </Center>
           </Stack>
         )}
       </Modal>
@@ -1367,34 +825,27 @@ export default function VirtualKeysAnalyticsPage() {
         title="Security Analysis"
         size="xl"
       >
-        {selectedKey && selectedKeySecurity && (
+        {selectedKey && (
           <Stack gap="md">
             <Group justify="space-between">
               <div>
                 <Text fw={600} size="lg">{selectedKey.keyName}</Text>
-                <Code>{selectedKey.keyHash}</Code>
+                <Code>{selectedKey.keyPrefix || 'N/A'}...</Code>
               </div>
               <Badge 
-                color={selectedKeySecurity.accessPatterns.suspiciousActivity.length > 0 ? 'red' : 'green'} 
+                color="gray" 
                 variant="light"
               >
-                {selectedKeySecurity.accessPatterns.suspiciousActivity.length} alerts
+                Security metrics not available
               </Badge>
             </Group>
             
-            <SimpleGrid cols={2} spacing="lg">
-              <Card withBorder>
-                <Text size="sm" c="dimmed" mb="xs">Unique IPs</Text>
-                <Text fw={600} size="xl">{selectedKeySecurity.accessPatterns.uniqueIPs}</Text>
-              </Card>
-              
-              <Card withBorder>
-                <Text size="sm" c="dimmed" mb="xs">Rate Limit Violations</Text>
-                <Text fw={600} size="xl" c={selectedKeySecurity.rateLimiting.violations > 0 ? 'red' : 'green'}>
-                  {selectedKeySecurity.rateLimiting.violations}
-                </Text>
-              </Card>
-            </SimpleGrid>
+            <Center py="xl">
+              <Stack align="center" gap="md">
+                <IconShield size={48} color="var(--mantine-color-gray-5)" />
+                <Text c="dimmed">Security metrics not available in SDK</Text>
+              </Stack>
+            </Center>
           </Stack>
         )}
       </Modal>

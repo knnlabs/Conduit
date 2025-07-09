@@ -36,15 +36,12 @@ import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { 
   useUsageMetrics,
-  useRequestVolumeAnalytics,
-  useTokenUsageAnalytics,
-  useErrorAnalytics,
-  useLatencyMetrics,
-  useUserAnalytics,
-  useEndpointUsageAnalytics,
-  useExportUsageData
-} from '@/hooks/api/useUsageAnalyticsApi';
-import type { TimeRangeFilter } from '@/types/analytics-types';
+  useModelUsage,
+  useKeyUsage,
+  useExportUsageAnalytics,
+  useCostByKey
+} from '@/hooks/useConduitAdmin';
+import type { DateRange } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 import { formatters } from '@/lib/utils/formatters';
@@ -65,18 +62,64 @@ export default function UsageAnalyticsPage() {
   
   const [selectedEndpoint, setSelectedEndpoint] = useState<EndpointDetails | null>(null);
   
-  const timeRange: TimeRangeFilter = { range: timeRangeValue as '1h' | '24h' | '7d' | '30d' | '90d' | 'custom' };
+  // Convert time range to DateRange for SDK
+  const getDateRange = (): DateRange => {
+    const now = new Date();
+    const start = new Date();
+    
+    switch (timeRangeValue) {
+      case '1h':
+        start.setHours(now.getHours() - 1);
+        break;
+      case '24h':
+        start.setDate(now.getDate() - 1);
+        break;
+      case '7d':
+        start.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        start.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        start.setDate(now.getDate() - 90);
+        break;
+    }
+    
+    return {
+      startDate: start.toISOString(),
+      endDate: now.toISOString()
+    };
+  };
   
-  const { data: usageMetrics, isLoading: metricsLoading } = useUsageMetrics(timeRange);
-  const { data: requestVolume, isLoading: requestsLoading } = useRequestVolumeAnalytics(timeRange);
-  const { data: tokenUsage, isLoading: tokensLoading } = useTokenUsageAnalytics(timeRange);
-  const { data: errorAnalytics, isLoading: errorsLoading } = useErrorAnalytics(timeRange);
-  const { data: latencyMetrics, isLoading: latencyLoading } = useLatencyMetrics(timeRange);
-  const { data: userAnalytics, isLoading: usersLoading } = useUserAnalytics(timeRange);
-  const { data: endpointUsage, isLoading: endpointsLoading } = useEndpointUsageAnalytics(timeRange);
-  const exportUsageData = useExportUsageData();
+  const dateRange = getDateRange();
+  
+  const { data: usageMetrics, isLoading: metricsLoading } = useUsageMetrics(dateRange);
+  const { data: costByKey, isLoading: keyUsageLoading } = useCostByKey(dateRange);
+  const exportUsageData = useExportUsageAnalytics();
+  
+  // Derive additional data from the main metrics
+  const requestVolume = usageMetrics ? {
+    totalRequests: usageMetrics.totalRequests,
+    successfulRequests: usageMetrics.successfulRequests,
+    failedRequests: usageMetrics.failedRequests,
+    requestsPerMinute: usageMetrics.requestsPerMinute
+  } : null;
+  
+  const errorAnalytics = usageMetrics ? {
+    errorRate: usageMetrics.errorRate,
+    totalErrors: usageMetrics.failedRequests
+  } : null;
+  
+  const latencyMetrics = usageMetrics ? {
+    averageLatency: usageMetrics.averageLatency,
+    p95Latency: usageMetrics.p95Latency,
+    p99Latency: usageMetrics.p99Latency
+  } : null;
+  
+  const userAnalytics = costByKey?.costByKey;
+  
+  const isLoading = metricsLoading || keyUsageLoading;
 
-  const isLoading = metricsLoading;
 
   const handleExport = async (type: 'metrics' | 'requests' | 'tokens' | 'errors' | 'latency' | 'users' | 'endpoints') => {
     try {
@@ -89,7 +132,13 @@ export default function UsageAnalyticsPage() {
         autoClose: false,
       });
       
-      const result = await exportUsageData.mutateAsync({ type, timeRange });
+      const result = await exportUsageData.mutateAsync({ 
+        type: 'usage', 
+        filters: { 
+          startDate: dateRange.startDate, 
+          endDate: dateRange.endDate 
+        }
+      });
       
       notifications.update({
         id: 'export-start',
@@ -152,20 +201,16 @@ export default function UsageAnalyticsPage() {
       value: formatters.number(usageMetrics.totalRequests),
       icon: IconActivity,
       color: 'blue',
-      trend: usageMetrics.requestsTrend > 0 ? `+${usageMetrics.requestsTrend.toFixed(1)}%` : `${usageMetrics.requestsTrend.toFixed(1)}%`,
-      trendUp: usageMetrics.requestsTrend > 0,
     },
     {
-      title: 'Total Tokens',
-      value: formatters.number(usageMetrics.totalTokens),
+      title: 'Requests/Min',
+      value: formatters.number(usageMetrics.requestsPerMinute),
       icon: IconChartLine,
       color: 'green',
-      trend: usageMetrics.tokensTrend > 0 ? `+${usageMetrics.tokensTrend.toFixed(1)}%` : `${usageMetrics.tokensTrend.toFixed(1)}%`,
-      trendUp: usageMetrics.tokensTrend > 0,
     },
     {
-      title: 'Active Users',
-      value: usageMetrics.totalUsers,
+      title: 'Active Keys',
+      value: usageMetrics.uniqueKeys,
       icon: IconUsers,
       color: 'purple',
     },
@@ -174,22 +219,18 @@ export default function UsageAnalyticsPage() {
       value: formatters.responseTime(usageMetrics.averageLatency),
       icon: IconClock,
       color: 'orange',
-      trend: usageMetrics.latencyTrend > 0 ? `+${usageMetrics.latencyTrend.toFixed(1)}%` : `${usageMetrics.latencyTrend.toFixed(1)}%`,
-      trendUp: usageMetrics.latencyTrend > 0,
     },
     {
       title: 'Error Rate',
       value: `${usageMetrics.errorRate.toFixed(1)}%`,
       icon: IconBugReport,
       color: getStatusColor(usageMetrics.errorRate, 'error'),
-      trend: usageMetrics.errorsTrend > 0 ? `+${usageMetrics.errorsTrend.toFixed(1)}%` : `${usageMetrics.errorsTrend.toFixed(1)}%`,
-      trendUp: usageMetrics.errorsTrend > 0,
     },
     {
       title: 'Success Rate',
-      value: `${usageMetrics.successRate.toFixed(1)}%`,
+      value: `${((1 - usageMetrics.errorRate / 100) * 100).toFixed(1)}%`,
       icon: IconServer,
-      color: getStatusColor(usageMetrics.successRate, 'success'),
+      color: getStatusColor((1 - usageMetrics.errorRate / 100) * 100, 'success'),
     },
   ] : [];
 
@@ -246,20 +287,6 @@ export default function UsageAnalyticsPage() {
             <Text fw={700} size="xl">
               {stat.value}
             </Text>
-            {stat.trend && (
-              <Group gap={4} mt={4}>
-                <ThemeIcon
-                  size="xs"
-                  variant="light"
-                  color={stat.trendUp ? 'green' : 'red'}
-                >
-                  {stat.trendUp ? <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />}
-                </ThemeIcon>
-                <Text size="xs" c={stat.trendUp ? 'green' : 'red'}>
-                  {stat.trend} from last period
-                </Text>
-              </Group>
-            )}
           </Card>
         ))}
       </SimpleGrid>
@@ -279,7 +306,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="overview" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={requestsLoading || tokensLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
@@ -294,7 +321,7 @@ export default function UsageAnalyticsPage() {
                 />
                 
                 <CostChart
-                  data={(tokenUsage || []) as unknown as ChartDataItem[]}
+                  data={[]}
                   title="Token Usage Over Time"
                   type="line"
                   valueKey="totalTokens"
@@ -309,7 +336,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="requests" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={requestsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
@@ -339,11 +366,11 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="tokens" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={tokensLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
-                  data={(tokenUsage || []) as unknown as ChartDataItem[]}
+                  data={[]}
                   title="Input vs Output Tokens"
                   type="line"
                   valueKey="inputTokens"
@@ -354,7 +381,7 @@ export default function UsageAnalyticsPage() {
                 />
                 
                 <CostChart
-                  data={(tokenUsage || []) as unknown as ChartDataItem[]}
+                  data={[]}
                   title="Tokens per Request"
                   type="line"
                   valueKey="averageTokensPerRequest"
@@ -369,7 +396,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="errors" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={errorsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
                 <CostChart
@@ -407,24 +434,24 @@ export default function UsageAnalyticsPage() {
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
-                        {(errorAnalytics || []).map((error: any) => (
-                          <Table.Tr key={error.errorType}>
+                        {errorAnalytics && (
+                          <Table.Tr>
                             <Table.Td>
-                              <Text fw={500}>{error.errorType}</Text>
+                              <Text fw={500}>Total Errors</Text>
                             </Table.Td>
                             <Table.Td>
                               <Badge variant="light" color="red">
-                                {formatters.number(error.count)}
+                                {formatters.number(errorAnalytics.totalErrors)}
                               </Badge>
                             </Table.Td>
-                            <Table.Td>{error.percentage.toFixed(1)}%</Table.Td>
+                            <Table.Td>{errorAnalytics.errorRate.toFixed(1)}%</Table.Td>
                             <Table.Td>
                               <Text size="sm" c="dimmed">
-                                {new Date(error.lastOccurrence).toLocaleString()}
+                                Current period
                               </Text>
                             </Table.Td>
                           </Table.Tr>
-                        ))}
+                        )}
                       </Table.Tbody>
                     </Table>
                   </Card.Section>
@@ -435,7 +462,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="latency" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={latencyLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Card withBorder>
                 <Card.Section p="md" withBorder>
@@ -465,23 +492,23 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(latencyMetrics || []).map((metric: any) => (
-                        <Table.Tr key={metric.endpoint}>
+                      {latencyMetrics && (
+                        <Table.Tr>
                           <Table.Td>
-                            <Text fw={500} size="sm">{metric.endpoint}</Text>
+                            <Text fw={500} size="sm">Overall</Text>
                           </Table.Td>
-                          <Table.Td>{formatters.responseTime(metric.averageLatency)}</Table.Td>
-                          <Table.Td>{formatters.responseTime(metric.p50)}</Table.Td>
-                          <Table.Td>{formatters.responseTime(metric.p90)}</Table.Td>
-                          <Table.Td>{formatters.responseTime(metric.p95)}</Table.Td>
-                          <Table.Td>{formatters.responseTime(metric.p99)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(latencyMetrics.averageLatency)}</Table.Td>
+                          <Table.Td>-</Table.Td>
+                          <Table.Td>-</Table.Td>
+                          <Table.Td>{formatters.responseTime(latencyMetrics.p95Latency)}</Table.Td>
+                          <Table.Td>{formatters.responseTime(latencyMetrics.p99Latency)}</Table.Td>
                           <Table.Td>
                             <Badge variant="light">
-                              {formatters.number(metric.requestCount)}
+                              {formatters.number(usageMetrics?.totalRequests || 0)}
                             </Badge>
                           </Table.Td>
                         </Table.Tr>
-                      ))}
+                      )}
                     </Table.Tbody>
                   </Table>
                 </Card.Section>
@@ -491,7 +518,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="users" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={usersLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={keyUsageLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Card withBorder>
                 <Card.Section p="md" withBorder>
@@ -572,7 +599,7 @@ export default function UsageAnalyticsPage() {
 
           <Tabs.Panel value="endpoints" pt="md">
             <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={endpointsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
               <Card withBorder>
                 <Card.Section p="md" withBorder>
@@ -602,61 +629,13 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {(endpointUsage || []).map((endpoint: any) => (
-                        <Table.Tr key={endpoint.endpoint}>
-                          <Table.Td>
-                            <Stack gap="xs">
-                              <Text fw={500} size="sm">{endpoint.endpoint}</Text>
-                              <Badge size="xs" color="gray" variant="light">
-                                {endpoint.method}
-                              </Badge>
-                            </Stack>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge variant="light">
-                              {formatters.number(endpoint.totalRequests)}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>{formatters.responseTime(endpoint.averageLatency)}</Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <Text size="sm">{endpoint.successRate.toFixed(1)}%</Text>
-                              <Progress
-                                value={endpoint.successRate}
-                                size="sm"
-                                w={60}
-                                color={getStatusColor(endpoint.successRate, 'success')}
-                              />
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>{formatters.currency(endpoint.costPerRequest, { precision: 4 })}</Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              {endpoint.popularModels.slice(0, 2).map((model: any) => (
-                                <Badge key={model} size="xs" variant="light">
-                                  {model}
-                                </Badge>
-                              ))}
-                              {endpoint.popularModels.length > 2 && (
-                                <Badge size="xs" variant="light" color="gray">
-                                  +{endpoint.popularModels.length - 2}
-                                </Badge>
-                              )}
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Tooltip label="View details">
-                              <ActionIcon
-                                size="sm"
-                                variant="light"
-                                onClick={() => openEndpointDetails(endpoint)}
-                              >
-                                <IconEye size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
+                      <Table.Tr>
+                        <Table.Td colSpan={7}>
+                          <Text size="sm" c="dimmed" ta="center">
+                            Endpoint-specific analytics not available in SDK
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
                     </Table.Tbody>
                   </Table>
                 </Card.Section>
