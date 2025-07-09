@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
 import { getWebUIVirtualKey, ensureWebUIVirtualKey } from '@/utils/virtualKeyManagement';
+import { virtualKeyRateLimiter } from '@/lib/middleware/rateLimiter';
 
 /**
  * GET /api/auth/virtual-key
@@ -11,6 +12,27 @@ import { getWebUIVirtualKey, ensureWebUIVirtualKey } from '@/utils/virtualKeyMan
 export const GET = withSDKAuth(
   async (request: NextRequest, context) => {
     try {
+      // Apply rate limiting
+      const rateLimit = await virtualKeyRateLimiter(request);
+      
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { 
+            error: 'Too many requests',
+            retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+          },
+          { 
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': '5',
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': new Date(rateLimit.resetTime).toISOString(),
+              'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString()
+            }
+          }
+        );
+      }
+      
       const { adminClient } = context;
       
       if (!adminClient) {
@@ -30,10 +52,17 @@ export const GET = withSDKAuth(
         virtualKey = result.key;
       }
       
-      return NextResponse.json({ 
+      const response = NextResponse.json({ 
         virtualKey,
         source: 'server'
       });
+      
+      // Add rate limit headers
+      response.headers.set('X-RateLimit-Limit', '5');
+      response.headers.set('X-RateLimit-Remaining', rateLimit.remaining.toString());
+      response.headers.set('X-RateLimit-Reset', new Date(rateLimit.resetTime).toISOString());
+      
+      return response;
       
     } catch (error) {
       console.error('Failed to retrieve virtual key:', error);

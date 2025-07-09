@@ -3,12 +3,45 @@ import type { NextRequest } from 'next/server'
 
 const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout']
 
+// Security headers to apply to all responses
+const securityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
+  // Helper function to add security headers to response
+  const addSecurityHeaders = (response: NextResponse) => {
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    
+    // Add CSP header for production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set(
+        'Content-Security-Policy',
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https: blob:; " +
+        "font-src 'self' data:; " +
+        "connect-src 'self' ws: wss: https:; " +
+        "frame-ancestors 'none';"
+      );
+    }
+    
+    return response;
+  };
+  
   // Allow public paths
   if (publicPaths.some(path => pathname.startsWith(path))) {
-    return NextResponse.next()
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
   }
   
   // Allow static assets and Next.js internals
@@ -17,7 +50,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.includes('.')
   ) {
-    return NextResponse.next()
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
   }
   
   // Check for authentication cookie
@@ -26,19 +60,21 @@ export function middleware(request: NextRequest) {
   if (!sessionCookie) {
     // For API routes, return 401 JSON response
     if (pathname.startsWith('/api/')) {
-      return new NextResponse(
+      const response = new NextResponse(
         JSON.stringify({ error: 'Unauthorized' }),
         { 
           status: 401,
           headers: { 'Content-Type': 'application/json' }
         }
-      )
+      );
+      return addSecurityHeaders(response);
     }
     
     // For other routes, redirect to login page
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('from', pathname)
-    return NextResponse.redirect(loginUrl)
+    const response = NextResponse.redirect(loginUrl);
+    return addSecurityHeaders(response);
   }
   
   try {
@@ -57,7 +93,7 @@ export function middleware(request: NextRequest) {
           }
         )
         response.cookies.delete('conduit_session')
-        return response
+        return addSecurityHeaders(response);
       }
       
       // Clear expired cookie and redirect to login
@@ -78,10 +114,12 @@ export function middleware(request: NextRequest) {
           }
         )
       }
-      return NextResponse.redirect(new URL('/login', request.url))
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      return addSecurityHeaders(response);
     }
     
-    return NextResponse.next()
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
   } catch {
     // Invalid session cookie
     if (pathname.startsWith('/api/')) {
@@ -99,7 +137,7 @@ export function middleware(request: NextRequest) {
     // Redirect to login for non-API routes
     const response = NextResponse.redirect(new URL('/login', request.url))
     response.cookies.delete('conduit_session')
-    return response
+    return addSecurityHeaders(response);
   }
 }
 

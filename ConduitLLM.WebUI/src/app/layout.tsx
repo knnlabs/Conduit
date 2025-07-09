@@ -8,6 +8,7 @@ import { AppWrapper } from '@/components/layout/AppWrapper';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ErrorHandlerInitializer } from '@/components/error/ErrorHandlerInitializer';
 import { EnvironmentValidator } from '@/components/core/EnvironmentValidator';
+import { SessionRefreshProvider } from '@/lib/providers/SessionRefreshProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,13 +36,15 @@ export default function RootLayout({
           <ThemeProvider>
             <MantineProvider>
               <AuthProvider>
-                <ErrorBoundary>
-                  <ErrorHandlerInitializer />
-                  <EnvironmentValidator />
-                  <AppWrapper>
-                    {children}
-                  </AppWrapper>
-                </ErrorBoundary>
+                <SessionRefreshProvider>
+                  <ErrorBoundary>
+                    <ErrorHandlerInitializer />
+                    <EnvironmentValidator />
+                    <AppWrapper>
+                      {children}
+                    </AppWrapper>
+                  </ErrorBoundary>
+                </SessionRefreshProvider>
               </AuthProvider>
             </MantineProvider>
           </ThemeProvider>
