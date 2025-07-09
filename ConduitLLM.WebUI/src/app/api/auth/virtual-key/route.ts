@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth } from '@/lib/auth/sdk-auth';
-import { getWebUIVirtualKey, ensureWebUIVirtualKey } from '@/utils/virtualKeyManagement';
 import { virtualKeyRateLimiter } from '@/lib/middleware/rateLimiter';
 
 /**
@@ -42,15 +41,8 @@ export const GET = withSDKAuth(
         );
       }
       
-      // Try to get existing virtual key
-      let virtualKey = await getWebUIVirtualKey(adminClient);
-      
-      if (!virtualKey) {
-        // Key doesn't exist, create a new one
-        console.log('WebUI virtual key not found, creating new one');
-        const result = await ensureWebUIVirtualKey(adminClient);
-        virtualKey = result.key;
-      }
+      // Get or create WebUI virtual key using Admin SDK
+      const virtualKey = await adminClient.system.getWebUIVirtualKey();
       
       const response = NextResponse.json({ 
         virtualKey,

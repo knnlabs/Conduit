@@ -173,6 +173,15 @@ export class ConduitAdminClient {
     return { ...this.config };
   }
 
+  /**
+   * Convenience method to get or create the WebUI virtual key.
+   * This key is stored unencrypted in GlobalSettings for WebUI/TUI access.
+   * @returns The actual (unhashed) virtual key value
+   */
+  async getWebUIVirtualKey(): Promise<string> {
+    return this.system.getWebUIVirtualKey();
+  }
+
   private normalizeUrl(url: string): string {
     // Remove trailing slash
     const normalized = url.endsWith('/') ? url.slice(0, -1) : url;

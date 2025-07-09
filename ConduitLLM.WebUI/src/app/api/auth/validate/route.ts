@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAdminClient } from '@/lib/clients/server';
-import { ensureWebUIVirtualKey } from '@/utils/virtualKeyManagement';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,20 +37,14 @@ export async function POST(request: NextRequest) {
     const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
-    // After successful auth, ensure virtual key exists
+    // After successful auth, get WebUI virtual key from Admin SDK
     let virtualKey: string | undefined;
     try {
       const adminClient = getServerAdminClient();
-      const keyResult = await ensureWebUIVirtualKey(adminClient);
-      virtualKey = keyResult.key;
-      
-      if (keyResult.isNew) {
-        console.log('Created new WebUI virtual key');
-      }
+      virtualKey = await adminClient.system.getWebUIVirtualKey();
     } catch (error) {
-      console.error('Failed to ensure WebUI virtual key:', error);
-      // Don't fail authentication if virtual key creation fails
-      // The key can be created later when needed
+      console.error('Failed to get WebUI virtual key:', error);
+      // Don't fail authentication if virtual key retrieval fails
     }
 
     const response = NextResponse.json({

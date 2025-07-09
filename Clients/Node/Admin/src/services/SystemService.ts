@@ -1,5 +1,5 @@
 import { BaseApiClient } from '../client/BaseApiClient';
-import { ENDPOINTS, CACHE_TTL } from '../constants';
+import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
 import {
   SystemInfoDto,
   HealthStatusDto,
@@ -19,6 +19,10 @@ import {
 import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
+import { VirtualKeyService } from './VirtualKeyService';
+import { SettingsService } from './SettingsService';
+// Get SDK version from package.json at build time
+const SDK_VERSION = process.env.npm_package_version || '1.0.0';
 
 const createBackupSchema = z.object({
   description: z.string().max(500).optional(),
@@ -246,6 +250,61 @@ export class SystemService extends BaseApiClient {
       () => super.get<FeatureAvailability>('/api/systeminfo/features'),
       CACHE_TTL.MEDIUM
     );
+  }
+
+  /**
+   * Gets or creates the special WebUI virtual key.
+   * This key is stored unencrypted in GlobalSettings for WebUI/TUI access.
+   * @returns The actual (unhashed) virtual key value
+   */
+  async getWebUIVirtualKey(): Promise<string> {
+    // Use the same config as the current service instance
+    const baseConfig = {
+      baseUrl: (this.axios.defaults.baseURL || '').replace('/api', ''),
+      masterKey: this.axios.defaults.headers[HTTP_HEADERS.X_API_KEY] as string,
+      logger: this.logger,
+      cache: this.cache,
+      retries: this.retryConfig,
+    };
+    
+    const settingsService = new SettingsService(baseConfig);
+    
+    try {
+      // First try to get existing key from GlobalSettings
+      const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey');
+      if (setting?.value) {
+        return setting.value;
+      }
+    } catch (error) {
+      // Key doesn't exist, we'll create it
+      this.logger?.debug('WebUI virtual key not found in GlobalSettings, creating new one');
+    }
+
+    // Create metadata
+    const metadata = {
+      visibility: 'hidden',
+      created: new Date().toISOString(),
+      originator: `Admin SDK ${SDK_VERSION}`
+    };
+
+    // Create the virtual key via VirtualKeyService
+    const virtualKeyService = new VirtualKeyService(baseConfig);
+    const response = await virtualKeyService.create({
+      keyName: 'WebUI Internal Key',
+      metadata: JSON.stringify(metadata)
+    });
+    
+    // Store the unhashed key in GlobalSettings
+    await settingsService.createGlobalSetting({
+      key: 'WebUI_VirtualKey',
+      value: response.virtualKey,
+      isSecret: true,
+      category: 'WebUI',
+      description: 'Virtual key for WebUI Core API access'
+    });
+    
+    this.logger?.info('Created new WebUI virtual key');
+    return response.virtualKey;
   }
 
   private async invalidateCache(): Promise<void> {

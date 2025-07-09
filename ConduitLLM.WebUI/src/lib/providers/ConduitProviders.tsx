@@ -19,16 +19,18 @@ export function ConduitProviders({ children, queryClient }: ConduitProvidersProp
     return user?.virtualKey || '';
   }, [user?.virtualKey]);
 
-  // Use the master key from auth store for Admin SDK
-  const masterKey = useMemo(() => {
-    return user?.masterKey || '';
-  }, [user?.masterKey]);
+  // For Admin SDK, we need to use the virtual key as well since the master key
+  // should only exist on the server. The Admin SDK will use the virtual key
+  // for authentication in the browser context.
+  const adminAuthKey = useMemo(() => {
+    return user?.virtualKey || '';
+  }, [user?.virtualKey]);
 
   // API URLs from environment
   const coreApiUrl = process.env.NEXT_PUBLIC_CORE_API_URL || 'http://localhost:5001';
   const adminApiUrl = process.env.NEXT_PUBLIC_ADMIN_API_URL || 'http://localhost:5001';
 
-  if (!virtualKey || !masterKey) {
+  if (!virtualKey || !adminAuthKey) {
     // If no keys, just render children without providers
     // This allows the login page to render
     return <>{children}</>;
@@ -41,7 +43,7 @@ export function ConduitProviders({ children, queryClient }: ConduitProvidersProp
       queryClient={queryClient}
     >
       <ConduitAdminProvider
-        authKey={masterKey}
+        authKey={adminAuthKey}
         baseUrl={adminApiUrl}
         queryClient={queryClient}
       >
