@@ -33,7 +33,7 @@ import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
 import { CreateVirtualKeyModal } from '@/components/virtualkeys/CreateVirtualKeyModal';
 import { EditVirtualKeyModal } from '@/components/virtualkeys/EditVirtualKeyModal';
 import { ViewVirtualKeyModal } from '@/components/virtualkeys/ViewVirtualKeyModal';
-import { useVirtualKeys } from '@/hooks/api/useAdminApi';
+import { useVirtualKeys } from '@/hooks/useConduitAdmin';
 import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport } from '@/lib/utils/export';
 import { notifications } from '@mantine/notifications';
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';

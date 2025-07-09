@@ -35,7 +35,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { ModelMappingsTable } from '@/components/modelmappings/ModelMappingsTable';
 import { CreateModelMappingModal } from '@/components/modelmappings/CreateModelMappingModal';
 import { EditModelMappingModal } from '@/components/modelmappings/EditModelMappingModal';
-import { useModelMappings, useTestModelMapping, useBulkDiscoverModelMappings } from '@/hooks/api/useAdminApi';
+import { useModelMappings, useTestModelMapping, useBulkDiscoverModelMappings } from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';

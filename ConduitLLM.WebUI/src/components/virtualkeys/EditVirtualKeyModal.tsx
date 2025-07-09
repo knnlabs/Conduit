@@ -10,7 +10,7 @@ import {
   Alert,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateVirtualKey } from '@/hooks/api/useAdminApi';
+import { useUpdateVirtualKey } from '@/hooks/useConduitAdmin';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { FormModal } from '@/components/common/FormModal';
 import { validators } from '@/lib/utils/form-validators';

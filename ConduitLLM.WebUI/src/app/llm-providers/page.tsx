@@ -34,7 +34,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
 import { CreateProviderModal } from '@/components/providers/CreateProviderModal';
 import { EditProviderModal } from '@/components/providers/EditProviderModal';
-import { useProviders, useTestProvider } from '@/hooks/api/useAdminApi';
+import { useProviders, useTestProvider } from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';

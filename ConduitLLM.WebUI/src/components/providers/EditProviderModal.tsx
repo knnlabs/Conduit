@@ -14,7 +14,7 @@ import {
   Card,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
+import { useUpdateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import { useState, useMemo } from 'react';
 import { FormModal } from '@/components/common/FormModal';

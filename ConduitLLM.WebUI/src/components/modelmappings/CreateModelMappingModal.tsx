@@ -17,7 +17,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { useCreateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
+import { useCreateModelMapping, useProviders } from '@/hooks/useConduitAdmin';
 import { ProviderModelSelect } from '@/components/common/ProviderModelSelect';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 

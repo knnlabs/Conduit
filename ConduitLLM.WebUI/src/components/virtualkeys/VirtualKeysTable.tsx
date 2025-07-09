@@ -26,7 +26,7 @@ import {
   IconAlertCircle,
   // Removed unused IconActivity import
 } from '@tabler/icons-react';
-import { useVirtualKeys, useDeleteVirtualKey } from '@/hooks/api/useAdminApi';
+import { useVirtualKeys, useDeleteVirtualKey } from '@/hooks/useConduitAdmin';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { useConnectionStore } from '@/stores/useConnectionStore';

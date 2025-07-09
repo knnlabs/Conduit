@@ -15,7 +15,7 @@ import {
   Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateModelMapping, useProviders } from '@/hooks/api/useAdminApi';
+import { useUpdateModelMapping, useProviders } from '@/hooks/useConduitAdmin';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { FormModal } from '@/components/common/FormModal';

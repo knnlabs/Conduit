@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useCreateProvider, useTestProviderConnection } from '@/hooks/api/useAdminApi';
+import { useCreateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
@@ -169,7 +169,7 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
               onClose();
               form.reset();
             },
-            onError: (_error) => {
+            onError: (_error: unknown) => {
               notifications.show({
                 title: 'Error',
                 message: 'Failed to create provider',

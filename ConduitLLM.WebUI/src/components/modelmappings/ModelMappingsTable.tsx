@@ -25,7 +25,7 @@ import {
   IconArrowRight,
   IconRefresh,
 } from '@tabler/icons-react';
-import { useModelMappings, useDeleteModelMapping } from '@/hooks/api/useAdminApi';
+import { useModelMappings, useDeleteModelMapping } from '@/hooks/useConduitAdmin';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';

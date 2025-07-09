@@ -13,7 +13,7 @@ import {
   Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useCreateVirtualKey } from '@/hooks/api/useAdminApi';
+import { useCreateVirtualKey } from '@/hooks/useConduitAdmin';
 import { useAvailableModels } from '@/hooks/useConduitCore';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';

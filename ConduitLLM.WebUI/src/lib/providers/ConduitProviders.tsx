@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { ConduitProvider } from '@knn_labs/conduit-core-client/react-query';
+import { ConduitAdminProvider } from '@knn_labs/conduit-admin-client/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -14,26 +15,38 @@ export function ConduitProviders({ children, queryClient }: ConduitProvidersProp
   const user = useAuthStore((state) => state.user);
   
   // Use the virtual key from auth store for Core SDK
-  const apiKey = useMemo(() => {
+  const virtualKey = useMemo(() => {
     return user?.virtualKey || '';
   }, [user?.virtualKey]);
 
-  // Core API URL from environment
-  const baseURL = process.env.NEXT_PUBLIC_CORE_API_URL || 'http://localhost:5001';
+  // Use the master key from auth store for Admin SDK
+  const masterKey = useMemo(() => {
+    return user?.masterKey || '';
+  }, [user?.masterKey]);
 
-  if (!apiKey) {
-    // If no API key, just render children without provider
+  // API URLs from environment
+  const coreApiUrl = process.env.NEXT_PUBLIC_CORE_API_URL || 'http://localhost:5001';
+  const adminApiUrl = process.env.NEXT_PUBLIC_ADMIN_API_URL || 'http://localhost:5001';
+
+  if (!virtualKey || !masterKey) {
+    // If no keys, just render children without providers
     // This allows the login page to render
     return <>{children}</>;
   }
 
   return (
     <ConduitProvider
-      virtualKey={apiKey}
-      baseUrl={baseURL}
+      virtualKey={virtualKey}
+      baseUrl={coreApiUrl}
       queryClient={queryClient}
     >
-      {children}
+      <ConduitAdminProvider
+        authKey={masterKey}
+        baseUrl={adminApiUrl}
+        queryClient={queryClient}
+      >
+        {children}
+      </ConduitAdminProvider>
     </ConduitProvider>
   );
 }

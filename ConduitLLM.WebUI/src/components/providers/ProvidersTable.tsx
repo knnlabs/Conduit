@@ -27,7 +27,7 @@ import {
   IconCircleX,
   IconClock,
 } from '@tabler/icons-react';
-import { useProviders, useDeleteProvider } from '@/hooks/api/useAdminApi';
+import { useProviders, useDeleteProvider } from '@/hooks/useConduitAdmin';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
