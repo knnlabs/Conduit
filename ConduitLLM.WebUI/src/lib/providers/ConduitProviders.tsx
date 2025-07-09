@@ -1,18 +1,39 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { ConduitProvider } from '@knn_labs/conduit-core-client/react-query';
 import type { QueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 interface ConduitProvidersProps {
   children: React.ReactNode;
   queryClient: QueryClient;
 }
 
-// NOTE: SDK React Query providers are temporarily disabled due to module resolution issues
-// The SDKs need to be properly published to npm or the build system needs to be configured
-// to handle local file dependencies with peer dependencies correctly
-export function ConduitProviders({ children }: ConduitProvidersProps) {
-  // For now, just pass through children
-  // TODO: Re-enable SDK providers once module resolution is fixed
-  return <>{children}</>;
+export function ConduitProviders({ children, queryClient }: ConduitProvidersProps) {
+  const user = useAuthStore((state) => state.user);
+  
+  // Use the virtual key from auth store for Core SDK
+  const apiKey = useMemo(() => {
+    return user?.virtualKey || '';
+  }, [user?.virtualKey]);
+
+  // Core API URL from environment
+  const baseURL = process.env.NEXT_PUBLIC_CORE_API_URL || 'http://localhost:5001';
+
+  if (!apiKey) {
+    // If no API key, just render children without provider
+    // This allows the login page to render
+    return <>{children}</>;
+  }
+
+  return (
+    <ConduitProvider
+      virtualKey={apiKey}
+      baseUrl={baseURL}
+      queryClient={queryClient}
+    >
+      {children}
+    </ConduitProvider>
+  );
 }

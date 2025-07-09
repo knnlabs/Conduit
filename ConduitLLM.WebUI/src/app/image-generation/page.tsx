@@ -30,7 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { useImageGeneration, useAvailableModels } from '@/hooks/api/useCoreApi';
+import { useImageGeneration, useAvailableModels } from '@/hooks/useConduitCore';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
@@ -86,17 +86,15 @@ export default function ImageGenerationPage() {
 
     try {
       const request = {
-        virtualKey: selectedVirtualKey,
         prompt: prompt.trim(),
         model: selectedModel,
-        size,
+        size: size as '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792',
         quality: quality as 'standard' | 'hd',
         n: numberOfImages,
-        ...(selectedModel === 'dall-e-3' && { style }),
+        ...(selectedModel === 'dall-e-3' && { style: style as 'vivid' | 'natural' }),
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response = await imageGeneration.mutateAsync(request as any);
+      const response = await imageGeneration.mutateAsync(request);
 
       interface ImageGenerationResponse {
         data?: Array<{ url?: string; b64_json?: string }>;

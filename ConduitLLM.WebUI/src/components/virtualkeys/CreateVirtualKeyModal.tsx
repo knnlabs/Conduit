@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useCreateVirtualKey } from '@/hooks/api/useAdminApi';
-import { useAvailableModels } from '@/hooks/api/useCoreApi';
+import { useAvailableModels } from '@/hooks/useConduitCore';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { FormModal } from '@/components/common/FormModal';
@@ -97,11 +97,10 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
   };
 
   // Get available models for selection
-  const modelOptions = availableModels?.models?.map((model: unknown) => {
-    const m = model as { id: string; provider: string };
+  const modelOptions = availableModels?.map((model) => {
     return {
-      value: m.id,
-      label: `${m.id} (${m.provider})`,
+      value: model.id,
+      label: model.id,
     };
   }) || [];
 

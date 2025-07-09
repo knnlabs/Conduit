@@ -35,7 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { useAudioTranscription, useAudioSpeech, useAvailableModels } from '@/hooks/api/useCoreApi';
+import { useAudioTranscription, useAudioSpeech, useAvailableModels, type TranscriptionModel, type TextToSpeechModel, type Voice } from '@/hooks/useConduitCore';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
@@ -114,9 +114,12 @@ export default function AudioProcessingPage() {
 
     try {
       const request = {
-        virtualKey: selectedVirtualKey,
-        file: audioFile,
-        model: transcriptionModel,
+        file: {
+          data: audioFile,
+          filename: audioFile.name,
+          contentType: audioFile.type,
+        },
+        model: transcriptionModel as TranscriptionModel,
         language: language || undefined,
         response_format: responseFormat as 'json' | 'text' | 'srt' | 'vtt' | 'verbose_json',
         temperature: temperature || undefined,
@@ -127,7 +130,7 @@ export default function AudioProcessingPage() {
       const result: TranscriptionResult = {
         id: `trans_${Date.now()}`,
         fileName: audioFile.name,
-        text: typeof response === 'string' ? response : String((response as Record<string, unknown>).text || 'No transcription generated'),
+        text: response.text || 'No transcription generated',
         model: transcriptionModel,
         language: language || undefined,
         createdAt: new Date(),
@@ -190,10 +193,9 @@ export default function AudioProcessingPage() {
 
     try {
       const request = {
-        virtualKey: selectedVirtualKey,
-        model: speechModel,
+        model: speechModel as TextToSpeechModel,
         input: speechText.trim(),
-        voice,
+        voice: voice as Voice,
         response_format: speechFormat as 'mp3' | 'opus' | 'aac' | 'flac',
         speed,
       };
@@ -201,7 +203,8 @@ export default function AudioProcessingPage() {
       const response = await speech.mutateAsync(request);
 
       // Convert response to audio URL
-      const audioUrl = URL.createObjectURL(response);
+      const audioBlob = new Blob([response.audio], { type: `audio/${response.format}` });
+      const audioUrl = URL.createObjectURL(audioBlob);
 
       const result: SpeechResult = {
         id: `speech_${Date.now()}`,

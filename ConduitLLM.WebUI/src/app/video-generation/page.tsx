@@ -32,7 +32,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useRef } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { useVideoGeneration, useAvailableModels } from '@/hooks/api/useCoreApi';
+import { useVideoGeneration, useAvailableModels } from '@/hooks/useConduitCore';
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
@@ -98,8 +98,7 @@ export default function VideoGenerationPage() {
     }
 
     try {
-      const request: VideoGenerationRequest = {
-        virtualKey: selectedVirtualKey,
+      const request = {
         prompt: prompt.trim(),
         model: selectedModel,
         size,

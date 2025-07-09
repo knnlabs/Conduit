@@ -1,5 +1,6 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { useConnectionStore } from '@/stores/useConnectionStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { debugLog } from '@/lib/utils/logging';
 
 export interface SignalRConfig {
@@ -33,26 +34,33 @@ export class SignalRManager {
       }
     }
 
-    // Get session token for authentication
-    const getSessionToken = async (): Promise<string> => {
+    // Get virtual key for authentication
+    const getVirtualKey = async (): Promise<string> => {
+      // First try to get from auth store
+      const authState = useAuthStore.getState();
+      if (authState.user?.virtualKey) {
+        return authState.user.virtualKey;
+      }
+      
+      // Fallback to API call
       try {
-        const response = await fetch('/api/auth/session-token', {
+        const response = await fetch('/api/auth/virtual-key', {
           method: 'GET',
           credentials: 'include',
         });
         if (response.ok) {
           const data = await response.json();
-          return data.token || '';
+          return data.virtualKey || '';
         }
       } catch (error) {
-        console.warn('Failed to get session token for SignalR:', error);
+        console.warn('Failed to get virtual key for SignalR:', error);
       }
       return '';
     };
 
     const builder = new HubConnectionBuilder()
       .withUrl(`${this.config.baseUrl}${hubPath}`, {
-        accessTokenFactory: getSessionToken,
+        accessTokenFactory: getVirtualKey,
       });
       
     if (this.config.automaticReconnect) {

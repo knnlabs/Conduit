@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { ChatMessage } from '@/hooks/api/useCoreApi';
+import type { ChatCompletionRequest } from '@knn_labs/conduit-core-client';
+
+type ChatMessage = ChatCompletionRequest['messages'][0];
 
 export interface ChatConversation {
   id: string;
@@ -115,7 +117,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               ...conv, 
               messages: [...conv.messages, message],
               updatedAt: new Date(),
-              title: conv.messages.length === 0 && message.role === 'user' 
+              title: conv.messages.length === 0 && message.role === 'user' && message.content
                 ? message.content.slice(0, 50) + (message.content.length > 50 ? '...' : '')
                 : conv.title
             }

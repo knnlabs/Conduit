@@ -35,7 +35,9 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useChatStore } from '@/stores/useChatStore';
-import { useChatCompletion, useStreamingChatCompletion, useAvailableModels, ChatMessage } from '@/hooks/api/useCoreApi';
+import { useChatCompletion, useStreamingChatCompletion, useAvailableModels } from '@/hooks/useConduitCore';
+import type { ChatCompletionRequest, ChatCompletionMessage } from '@knn_labs/conduit-core-client';
+type ChatMessage = ChatCompletionMessage;
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
@@ -138,55 +140,32 @@ export default function ChatPage() {
 
     try {
       if (useStreaming) {
-        // Add placeholder assistant message for streaming
+        // TODO: Streaming is not yet properly implemented in the SDK
+        // For now, fall back to non-streaming
+        notifications.show({
+          title: 'Streaming Unavailable',
+          message: 'Streaming is temporarily unavailable. Using standard completion instead.',
+          color: 'yellow',
+        });
+      }
+      
+      // Always use standard completion for now
+      // Standard completion request
+      const response = await chatCompletion.mutateAsync({
+        model: selectedModel,
+        messages: apiMessages,
+        temperature: parameters.temperature,
+        top_p: parameters.top_p,
+        max_tokens: parameters.max_tokens,
+      });
+
+      // Add assistant response
+      if ('choices' in response && response.choices && response.choices.length > 0) {
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: '',
+          content: response.choices[0].message?.content || 'No response generated',
         };
         addMessage(conversationId, assistantMessage);
-        setStreaming(true);
-
-        // Start streaming completion
-        await streamingCompletion.mutateAsync({
-          virtualKey: selectedVirtualKey,
-          model: selectedModel,
-          messages: apiMessages,
-          temperature: parameters.temperature,
-          top_p: parameters.top_p,
-          max_tokens: parameters.max_tokens,
-          onChunk: (chunk: unknown) => {
-            // Handle OpenAI streaming format
-            if (typeof chunk === 'object' && chunk !== null && 'choices' in chunk) {
-              const chunkData = chunk as { choices: Array<{ delta?: { content?: string } }> };
-              const content = chunkData.choices?.[0]?.delta?.content;
-              if (content) {
-                updateStreamingMessage(content);
-              }
-            }
-          },
-        });
-        
-        // Streaming completed successfully, finalize the message
-        setStreaming(false);
-      } else {
-        // Standard completion request
-        const response = await chatCompletion.mutateAsync({
-          virtualKey: selectedVirtualKey,
-          model: selectedModel,
-          messages: apiMessages,
-          temperature: parameters.temperature,
-          top_p: parameters.top_p,
-          max_tokens: parameters.max_tokens,
-        });
-
-        // Add assistant response
-        if ('choices' in response && response.choices && response.choices.length > 0) {
-          const assistantMessage: ChatMessage = {
-            role: 'assistant',
-            content: response.choices[0].message?.content || 'No response generated',
-          };
-          addMessage(conversationId, assistantMessage);
-        }
       }
 
       safeLog('Chat completion successful', { 
@@ -465,7 +444,7 @@ export default function ChatPage() {
                         <ActionIcon
                           size="xs"
                           variant="subtle"
-                          onClick={() => copyToClipboard(displayContent)}
+                          onClick={() => copyToClipboard(displayContent || '')}
                           disabled={isStreamingThisMessage && !displayContent}
                         >
                           <IconCopy size={12} />
