@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import { useSystemHealth } from '@/hooks/useConduitAdmin';
 import { BackendErrorHandler, BackendErrorType } from '@/lib/errors/BackendErrorHandler';
 
 export interface BackendHealthStatus {
@@ -26,72 +26,23 @@ export function useBackendHealth() {
     lastChecked: new Date(),
   });
 
-  const { data: adminHealth, error: adminError, isLoading: adminLoading } = useQuery({
-    queryKey: ['backend-health', 'admin'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/admin/system/health', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for authentication
-        });
+  // Use SDK's system health hook
+  const { data: systemHealth, error: healthError, isLoading: healthLoading, refetch } = useSystemHealth();
 
-        if (!response.ok) {
-          throw new Error(`Admin API health check failed: ${response.status}`);
-        }
+  // For now, we'll assume Admin API health is the same as system health
+  // and Core API health is based on provider checks
+  const adminHealth = systemHealth;
+  const adminError = healthError;
+  const adminLoading = healthLoading;
 
-        return await response.json();
-      } catch (error: unknown) {
-        const classifiedError = BackendErrorHandler.classifyError(error);
-        throw classifiedError;
-      }
-    },
-    refetchInterval: 30000, // Check every 30 seconds
-    retry: (failureCount, error: unknown) => {
-      // Don't retry if it's an authentication error
-      if ((error as { type?: BackendErrorType })?.type === BackendErrorType.AUTHENTICATION_FAILED) {
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-
-  const { data: coreHealth, error: coreError, isLoading: coreLoading } = useQuery({
-    queryKey: ['backend-health', 'core'],
-    queryFn: async () => {
-      try {
-        // For Core API, we'll check through a simple proxy endpoint
-        const response = await fetch('/api/core/health', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Include cookies for authentication
-        });
-
-        if (!response.ok) {
-          throw new Error(`Core API health check failed: ${response.status}`);
-        }
-
-        return await response.json();
-      } catch (error: unknown) {
-        const classifiedError = BackendErrorHandler.classifyError(error);
-        throw classifiedError;
-      }
-    },
-    refetchInterval: 30000, // Check every 30 seconds
-    retry: (failureCount, error: unknown) => {
-      // Don't retry if it's an authentication error
-      if ((error as { type?: BackendErrorType })?.type === BackendErrorType.AUTHENTICATION_FAILED) {
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
+  // Extract Core API status from provider checks in system health
+  const coreHealth = systemHealth?.checks?.providers ? {
+    status: systemHealth.checks.providers.status === 'healthy' ? 'Healthy' : 
+            systemHealth.checks.providers.status === 'degraded' ? 'Degraded' : 'Unhealthy',
+    checks: [systemHealth.checks.providers]
+  } : null;
+  const coreError = systemHealth?.checks?.providers?.error ? new Error(systemHealth.checks.providers.error) : null;
+  const coreLoading = healthLoading;
 
   useEffect(() => {
     // Extract message and checks from Core API health response
@@ -170,8 +121,6 @@ export function useBackendHealth() {
     isUnavailable,
     adminError,
     coreError,
-    refetch: () => {
-      // Force refetch both health checks
-    },
+    refetch,
   };
 }

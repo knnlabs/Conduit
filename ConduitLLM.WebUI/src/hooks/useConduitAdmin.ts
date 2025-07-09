@@ -38,6 +38,29 @@ import {
   useExportUsageAnalytics as useSDKExportUsageAnalytics,
   useExportCostAnalytics as useSDKExportCostAnalytics,
   useExportRequestLogs as useSDKExportRequestLogs,
+  
+  // System hooks
+  useSystemInfo as useSDKSystemInfo,
+  useSystemHealth as useSDKSystemHealth,
+  useFeatureAvailability as useSDKFeatureAvailability,
+  useBackups as useSDKBackups,
+  useBackup as useSDKBackup,
+  useCreateBackup as useSDKCreateBackup,
+  useRestoreBackup as useSDKRestoreBackup,
+  useDeleteBackup as useSDKDeleteBackup,
+  useNotifications as useSDKNotifications,
+  useNotificationSummary as useSDKNotificationSummary,
+  useMarkNotificationRead as useSDKMarkNotificationRead,
+  useMarkAllNotificationsRead as useSDKMarkAllNotificationsRead,
+  useDeleteNotification as useSDKDeleteNotification,
+  useSystemSettings as useSDKSystemSettings,
+  useSystemSetting as useSDKSystemSetting,
+  useSystemSettingsByCategory as useSDKSystemSettingsByCategory,
+  useUpdateSystemSetting as useSDKUpdateSystemSetting,
+  useCreateSystemSetting as useSDKCreateSystemSetting,
+  useDeleteSystemSetting as useSDKDeleteSystemSetting,
+  useSetSystemSetting as useSDKSetSystemSetting,
+  useUpdateSystemSettings as useSDKUpdateSystemSettings,
 } from '@knn_labs/conduit-admin-client/react-query';
 
 // Re-export the SDK hooks with WebUI-specific wrappers if needed
@@ -164,6 +187,92 @@ export function useExportRequestLogs() {
   return useSDKExportRequestLogs();
 }
 
+// System hooks
+export function useSystemInfo() {
+  return useSDKSystemInfo();
+}
+
+export function useSystemHealth() {
+  return useSDKSystemHealth();
+}
+
+export function useFeatureAvailability() {
+  return useSDKFeatureAvailability();
+}
+
+export function useBackups(filters?: any) {
+  return useSDKBackups(filters);
+}
+
+export function useBackup(backupId: string) {
+  return useSDKBackup(backupId);
+}
+
+export function useCreateBackup() {
+  return useSDKCreateBackup();
+}
+
+export function useRestoreBackup() {
+  return useSDKRestoreBackup();
+}
+
+export function useDeleteBackup() {
+  return useSDKDeleteBackup();
+}
+
+export function useNotifications(filters?: any) {
+  return useSDKNotifications(filters);
+}
+
+export function useNotificationSummary() {
+  return useSDKNotificationSummary();
+}
+
+export function useMarkNotificationRead() {
+  return useSDKMarkNotificationRead();
+}
+
+export function useMarkAllNotificationsRead() {
+  return useSDKMarkAllNotificationsRead();
+}
+
+export function useDeleteNotification() {
+  return useSDKDeleteNotification();
+}
+
+// System Settings hooks
+export function useSystemSettings(options?: any) {
+  return useSDKSystemSettings(options);
+}
+
+export function useSystemSetting(key: string, options?: any) {
+  return useSDKSystemSetting(key, options);
+}
+
+export function useSystemSettingsByCategory(category: string, options?: any) {
+  return useSDKSystemSettingsByCategory(category, options);
+}
+
+export function useUpdateSystemSetting(options?: any) {
+  return useSDKUpdateSystemSetting(options);
+}
+
+export function useCreateSystemSetting(options?: any) {
+  return useSDKCreateSystemSetting(options);
+}
+
+export function useDeleteSystemSetting(options?: any) {
+  return useSDKDeleteSystemSetting(options);
+}
+
+export function useSetSystemSetting(options?: any) {
+  return useSDKSetSystemSetting(options);
+}
+
+export function useUpdateSystemSettings(options?: any) {
+  return useSDKUpdateSystemSettings(options);
+}
+
 // Re-export types for convenience
 export type {
   ProviderCredentialDto,
@@ -179,7 +288,32 @@ export type {
   CostByPeriodDto,
   RequestLogDto,
   UsageMetricsDto,
+  GlobalSettingDto,
+  CreateGlobalSettingDto,
+  UpdateGlobalSettingDto,
 } from '@knn_labs/conduit-admin-client';
 
 // Additional custom hooks that are not in SDK yet
 export { useTestProvider, useTestProviderConnection, useTestModelMapping, useBulkDiscoverModelMappings } from '@/hooks/api/useAdminApi';
+
+// Re-export provider health hooks from the custom hooks file
+// These hooks use the SDK internally but provide component-specific interfaces
+export {
+  useProviderHealthOverview,
+  useProviderStatus,
+  useProviderMetrics,
+  useProviderIncidents,
+  useProviderUptime,
+  useProviderLatency,
+  useProviderAlerts,
+  useAcknowledgeAlert,
+  useTriggerHealthCheck,
+  useProviderHealth,
+  type ProviderHealth,
+  type ProviderStatus,
+  type ProviderMetrics,
+  type ProviderIncident,
+  type ProviderUptimeData,
+  type ProviderLatencyData,
+  type ProviderAlert,
+} from '@/hooks/api/useProviderHealthApi';

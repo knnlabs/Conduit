@@ -35,11 +35,9 @@ import {
 import { useState } from 'react';
 import { 
   useProviderHealth,
-} from '@/hooks/api/useProviderHealthApi';
-import { 
   useCostSummary,
   useCostByPeriod
-} from '@/hooks/api/useAnalyticsApi';
+} from '@/hooks/useConduitAdmin';
 import { convertTimeRangeToDateRange } from '@/lib/utils/analytics-helpers';
 import type { DateRange } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';

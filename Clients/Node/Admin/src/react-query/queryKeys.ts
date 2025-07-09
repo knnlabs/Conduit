@@ -45,7 +45,9 @@ export const adminQueryKeys = {
     all: () => [...adminQueryKeys.all, 'system'] as const,
     info: () => [...adminQueryKeys.system.all(), 'info'] as const,
     health: () => [...adminQueryKeys.system.all(), 'health'] as const,
-    settings: () => [...adminQueryKeys.system.all(), 'settings'] as const,
+    settings: (filters?: any) => [...adminQueryKeys.system.all(), 'settings', filters] as const,
+    setting: (key: string) => [...adminQueryKeys.system.all(), 'settings', 'key', key] as const,
+    settingsByCategory: (category: string) => [...adminQueryKeys.system.all(), 'settings', 'category', category] as const,
     featureAvailability: () => [...adminQueryKeys.system.all(), 'features'] as const,
     backups: {
       all: () => [...adminQueryKeys.system.all(), 'backups'] as const,

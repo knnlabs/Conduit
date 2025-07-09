@@ -43,7 +43,8 @@ import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatters } from '@/lib/utils/formatters';
-import { useServiceHealth, useIncidents, useHealthHistory } from '@/hooks/api/useHealthApi';
+import { useSystemHealth } from '@/hooks/useConduitAdmin';
+// TODO: useIncidents and useHealthHistory need to be implemented in SDK
 
 // Type definitions
 interface ServiceMetrics {
@@ -103,14 +104,35 @@ export default function HealthMonitoringPage() {
   const [_refreshInterval, _setRefreshInterval] = useState(30);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '24h' | '7d'>('24h');
 
-  // Fetch data using the health API hooks
-  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useServiceHealth();
-  const { data: incidentsData, isLoading: incidentsLoading } = useIncidents();
-  const { data: historyData, isLoading: _historyLoading } = useHealthHistory(
-    selectedTimeRange === '1h' ? 1 : selectedTimeRange === '24h' ? 24 : 168
-  );
+  // Fetch data using the SDK hooks
+  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
+  
+  // TODO: Replace with SDK hooks when available
+  const incidentsData = { incidents: [] };
+  const incidentsLoading = false;
+  const historyData = { history: [] };
+  const _historyLoading = false;
 
-  const services = healthData?.services || [];
+  // Transform SDK health data to component format
+  const services = healthData?.checks ? Object.entries(healthData.checks).map(([name, check]) => {
+    const checkData = check as { status: string; duration?: number };
+    return {
+      id: name,
+      name: name,
+      status: checkData.status as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
+      uptime: 99.9, // TODO: Get from actual metrics
+      responseTime: checkData.duration || 0,
+      lastCheck: healthData.timestamp,
+      type: 'api' as const,
+      metrics: {},
+      checks: [{
+        status: checkData.status === 'healthy' ? 'pass' : checkData.status === 'degraded' ? 'warn' : 'fail' as 'pass' | 'warn' | 'fail',
+        name: name,
+        duration: checkData.duration || 0
+      }]
+    };
+  }) : [];
+  
   const incidents = incidentsData?.incidents || [];
 
   // Calculate summary statistics
@@ -118,11 +140,10 @@ export default function HealthMonitoringPage() {
   const degradedServices = services.filter(s => s.status === 'degraded').length;
   const unhealthyServices = services.filter(s => s.status === 'unhealthy').length;
   const overallUptime = services.reduce((sum, s) => {
-    const uptime = typeof s.uptime === 'number' ? s.uptime : 
-                   typeof s.uptime === 'object' && s.uptime.days ? s.uptime.days * 24 * 60 * 60 * 1000 : 0;
+    const uptime = typeof s.uptime === 'number' ? s.uptime : 0;
     return sum + uptime;
   }, 0) / services.length;
-  const activeIncidents = incidents.filter(i => i.status === 'active').length;
+  const activeIncidents = incidents.filter((i: any) => i.status === 'active').length;
 
   // Auto-refresh effect
   useEffect(() => {
@@ -261,7 +282,7 @@ export default function HealthMonitoringPage() {
                   {activeIncidents}
                 </Text>
                 <Text size="xs" c="dimmed" mt={4}>
-                  {incidents.filter(i => i.status === 'resolved').length} resolved today
+                  {incidents.filter((i: any) => i.status === 'resolved').length} resolved today
                 </Text>
               </div>
               <ThemeIcon size="xl" radius="md" variant="light" color={activeIncidents > 0 ? 'orange' : 'green'}>
@@ -474,7 +495,7 @@ export default function HealthMonitoringPage() {
             <Text fw={600} mb="md">Incident History</Text>
             <LoadingOverlay visible={incidentsLoading} />
             <Timeline active={-1} bulletSize={24} lineWidth={2}>
-              {incidents.map((incident) => (
+              {incidents.map((incident: any) => (
                 <Timeline.Item
                   key={incident.id}
                   bullet={

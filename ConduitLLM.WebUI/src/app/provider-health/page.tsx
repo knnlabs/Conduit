@@ -50,8 +50,8 @@ import {
   useProviderAlerts,
   useAcknowledgeAlert,
   useTriggerHealthCheck,
-  ProviderHealth
-} from '@/hooks/api/useProviderHealthApi';
+  type ProviderHealth
+} from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 

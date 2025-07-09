@@ -22,7 +22,13 @@ import {
 import { useState, useEffect } from 'react';
 import { useForm } from '@mantine/form';
 import { SettingsCard, SettingRow } from '@/components/configuration/SettingsCard';
-import { useSystemInfo, useSystemSettings, useUpdateSystemSettings } from '@/hooks/api/useAdminApi';
+import { 
+  useSystemInfo,
+  useSystemSettings,
+  useSetSystemSetting,
+  useUpdateSystemSettings,
+  type GlobalSettingDto
+} from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 
 interface SystemSettings {
@@ -55,9 +61,10 @@ interface SystemSettings {
 
 export default function ConfigurationPage() {
   const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
-  const { data: systemSettings, isLoading: settingsLoading } = useSystemSettings();
-  const updateSystemSettings = useUpdateSystemSettings();
-  const [_isLoading, _setIsLoading] = useState(false);
+  const { data: systemSettingsData, isLoading: settingsLoading } = useSystemSettings();
+  const setSetting = useSetSystemSetting();
+  const updateSettings = useUpdateSystemSettings();
+  
   const [editingSection, setEditingSection] = useState<string | null>(null);
 
   const form = useForm<SystemSettings>({
@@ -83,22 +90,91 @@ export default function ConfigurationPage() {
 
   // Update form when settings are loaded
   useEffect(() => {
-    if (systemSettings) {
-      form.setValues(systemSettings);
-    }
-  }, [systemSettings, form]);
-
-  const handleSaveSection = async (_section: string) => {
-    try {
-      // Convert form values to Record<string, string>
-      const settings: Record<string, string> = {};
-      Object.entries(form.values).forEach(([key, value]) => {
-        settings[key] = String(value);
+    if (systemSettingsData) {
+      // Convert settings array to form values
+      const settingsMap: Partial<SystemSettings> = {};
+      systemSettingsData.forEach((setting: GlobalSettingDto) => {
+        switch (setting.key) {
+          case 'SystemName': settingsMap.systemName = setting.value; break;
+          case 'Description': settingsMap.description = setting.value; break;
+          case 'EnableLogging': settingsMap.enableLogging = setting.value === 'true'; break;
+          case 'LogLevel': settingsMap.logLevel = setting.value; break;
+          case 'MaxConcurrentRequests': settingsMap.maxConcurrentRequests = parseInt(setting.value, 10); break;
+          case 'RequestTimeoutSeconds': settingsMap.requestTimeoutSeconds = parseInt(setting.value, 10); break;
+          case 'CacheTimeoutMinutes': settingsMap.cacheTimeoutMinutes = parseInt(setting.value, 10); break;
+          case 'EnableRateLimiting': settingsMap.enableRateLimiting = setting.value === 'true'; break;
+          case 'MaxRequestsPerMinute': settingsMap.maxRequestsPerMinute = parseInt(setting.value, 10); break;
+          case 'RateLimitWindowSeconds': settingsMap.rateLimitWindowSeconds = parseInt(setting.value, 10); break;
+          case 'EnableIpFiltering': settingsMap.enableIpFiltering = setting.value === 'true'; break;
+          case 'EnableRequestValidation': settingsMap.enableRequestValidation = setting.value === 'true'; break;
+          case 'MaxFailedAttempts': settingsMap.maxFailedAttempts = parseInt(setting.value, 10); break;
+          case 'EnablePerformanceTracking': settingsMap.enablePerformanceTracking = setting.value === 'true'; break;
+          case 'EnableHealthChecks': settingsMap.enableHealthChecks = setting.value === 'true'; break;
+          case 'HealthCheckIntervalMinutes': settingsMap.healthCheckIntervalMinutes = parseInt(setting.value, 10); break;
+        }
       });
-      await updateSystemSettings.mutateAsync(settings);
+      form.setValues(prev => ({ ...prev, ...settingsMap }));
+    }
+  }, [systemSettingsData, form]);
+
+  const handleSaveSection = async (section: string) => {
+    try {
+      // Convert form values to settings array for batch update
+      const settingsToUpdate: Array<{ key: string; value: string; category?: string }> = [];
+      
+      const getCategory = (key: string): string => {
+        if (['systemName', 'description', 'enableLogging', 'logLevel'].includes(key)) return 'General';
+        if (['maxConcurrentRequests', 'requestTimeoutSeconds', 'cacheTimeoutMinutes'].includes(key)) return 'Performance';
+        if (['enableRateLimiting', 'maxRequestsPerMinute', 'rateLimitWindowSeconds'].includes(key)) return 'Security';
+        if (['enableIpFiltering', 'enableRequestValidation', 'maxFailedAttempts'].includes(key)) return 'Security';
+        if (['enablePerformanceTracking', 'enableHealthChecks', 'healthCheckIntervalMinutes'].includes(key)) return 'Monitoring';
+        return 'General';
+      };
+
+      // Map form field names to setting keys
+      const fieldMapping: Record<string, string> = {
+        systemName: 'SystemName',
+        description: 'Description',
+        enableLogging: 'EnableLogging',
+        logLevel: 'LogLevel',
+        maxConcurrentRequests: 'MaxConcurrentRequests',
+        requestTimeoutSeconds: 'RequestTimeoutSeconds',
+        cacheTimeoutMinutes: 'CacheTimeoutMinutes',
+        enableRateLimiting: 'EnableRateLimiting',
+        maxRequestsPerMinute: 'MaxRequestsPerMinute',
+        rateLimitWindowSeconds: 'RateLimitWindowSeconds',
+        enableIpFiltering: 'EnableIpFiltering',
+        enableRequestValidation: 'EnableRequestValidation',
+        maxFailedAttempts: 'MaxFailedAttempts',
+        enablePerformanceTracking: 'EnablePerformanceTracking',
+        enableHealthChecks: 'EnableHealthChecks',
+        healthCheckIntervalMinutes: 'HealthCheckIntervalMinutes',
+      };
+
+      Object.entries(form.values).forEach(([key, value]) => {
+        const settingKey = fieldMapping[key];
+        if (settingKey) {
+          settingsToUpdate.push({
+            key: settingKey,
+            value: String(value),
+            category: getCategory(key),
+          });
+        }
+      });
+
+      await updateSettings.mutateAsync(settingsToUpdate);
       setEditingSection(null);
-    } catch (_error) {
-      // Error notification is handled by the mutation hook
+      notifications.show({
+        title: 'Settings Updated',
+        message: `${section} settings have been updated successfully`,
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Update Failed',
+        message: error instanceof Error ? error.message : 'Failed to update settings',
+        color: 'red',
+      });
     }
   };
 
@@ -139,7 +215,7 @@ export default function ConfigurationPage() {
           <Button
             leftSection={<IconDeviceFloppy size={16} />}
             disabled={!form.isDirty()}
-            loading={updateSystemSettings.isPending}
+            loading={updateSettings.isPending}
             onClick={() => handleSaveSection('All')}
           >
             Save All Changes

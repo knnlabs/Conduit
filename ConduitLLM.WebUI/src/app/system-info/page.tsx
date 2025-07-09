@@ -29,7 +29,7 @@ import {
   IconCloud,
   IconDeviceDesktop,
 } from '@tabler/icons-react';
-import { useSystemInfo, useSystemHealth } from '@/hooks/api/useAdminApi';
+import { useSystemInfo, useSystemHealth } from '@/hooks/useConduitAdmin';
 import { useProviderHealth } from '@/hooks/api/useProviderHealthApi';
 import { notifications } from '@mantine/notifications';
 
