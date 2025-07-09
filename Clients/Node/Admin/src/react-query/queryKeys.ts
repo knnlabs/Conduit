@@ -41,10 +41,23 @@ export const adminQueryKeys = {
   },
   
   // System
-  system: () => [...adminQueryKeys.all, 'system'] as const,
-  systemInfo: () => [...adminQueryKeys.system(), 'info'] as const,
-  systemHealth: () => [...adminQueryKeys.system(), 'health'] as const,
-  systemSettings: () => [...adminQueryKeys.system(), 'settings'] as const,
+  system: {
+    all: () => [...adminQueryKeys.all, 'system'] as const,
+    info: () => [...adminQueryKeys.system.all(), 'info'] as const,
+    health: () => [...adminQueryKeys.system.all(), 'health'] as const,
+    settings: () => [...adminQueryKeys.system.all(), 'settings'] as const,
+    featureAvailability: () => [...adminQueryKeys.system.all(), 'features'] as const,
+    backups: {
+      all: () => [...adminQueryKeys.system.all(), 'backups'] as const,
+      list: () => [...adminQueryKeys.system.backups.all(), 'list'] as const,
+      detail: (id: string) => [...adminQueryKeys.system.backups.all(), id] as const,
+    },
+    notifications: {
+      all: () => [...adminQueryKeys.system.all(), 'notifications'] as const,
+      list: (filters?: any) => [...adminQueryKeys.system.notifications.all(), 'list', filters] as const,
+      summary: () => [...adminQueryKeys.system.notifications.all(), 'summary'] as const,
+    },
+  },
   
   // Configuration
   configuration: () => [...adminQueryKeys.all, 'configuration'] as const,
