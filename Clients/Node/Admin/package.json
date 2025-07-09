@@ -15,6 +15,11 @@
       "types": "./dist/nextjs.d.ts",
       "import": "./dist/nextjs.mjs",
       "require": "./dist/nextjs.js"
+    },
+    "./react-query": {
+      "types": "./dist/react-query.d.ts",
+      "import": "./dist/react-query.mjs",
+      "require": "./dist/react-query.js"
     }
   },
   "scripts": {
@@ -50,7 +55,20 @@
   "author": "Conduit Team",
   "license": "MIT",
   "peerDependencies": {
-    "next": ">=13.0.0"
+    "@tanstack/react-query": ">=5.0.0",
+    "next": ">=13.0.0",
+    "react": ">=17.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@microsoft/signalr": "^8.0.7",
@@ -60,6 +78,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
+    "@types/react": "^19.1.8",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
