@@ -148,6 +148,87 @@ export function generateRequestId(): string {
 }
 
 /**
+ * API request/response logger for API routes
+ */
+export class ApiLogger {
+  private routeName: string;
+  private startTime: number;
+
+  constructor(routeName: string) {
+    this.routeName = routeName;
+    this.startTime = Date.now();
+  }
+
+  logRequest(request: Request, body?: any) {
+    if (process.env.NODE_ENV === 'development') {
+      safeLog(`API REQUEST: ${this.routeName}`, {
+        method: request.method,
+        url: request.url,
+        headers: Object.fromEntries((request as any).headers?.entries?.() || []),
+        body: body
+      });
+    }
+  }
+
+  logResponse(status: number, body?: any) {
+    if (process.env.NODE_ENV === 'development') {
+      const duration = Date.now() - this.startTime;
+      safeLog(`API RESPONSE: ${this.routeName}`, {
+        status,
+        duration: `${duration}ms`,
+        body
+      });
+    }
+  }
+
+  logError(error: any) {
+    const duration = Date.now() - this.startTime;
+    safeError(`API ERROR: ${this.routeName}`, {
+      duration: `${duration}ms`,
+      error: error?.message || error,
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    });
+  }
+}
+
+/**
+ * Middleware wrapper that logs all requests/responses
+ */
+export function withLogging(routeName: string, handler: Function) {
+  return async (...args: any[]) => {
+    const logger = new ApiLogger(routeName);
+    const request = args[0] as Request;
+    
+    try {
+      // Log request
+      let body;
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        try {
+          body = await request.clone().json();
+        } catch {
+          // Not JSON body, ignore
+        }
+      }
+      logger.logRequest(request, body);
+      
+      // Execute handler
+      const response = await handler(...args);
+      
+      // Log response
+      if (response instanceof Response) {
+        const responseBody = await response.clone().json().catch(() => null);
+        logger.logResponse(response.status, responseBody);
+      }
+      
+      return response;
+    } catch (error) {
+      logger.logError(error);
+      throw error;
+    }
+  };
+}
+
+/**
  * Logger object that provides a consistent logging interface
  */
 export const logger = {

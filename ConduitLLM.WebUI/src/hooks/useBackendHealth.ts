@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSystemHealth } from '@/hooks/useConduitAdmin';
-import { BackendErrorHandler, BackendErrorType } from '@/lib/errors/BackendErrorHandler';
+import { ErrorClassifier, ErrorType } from '@/lib/errors/unified-error-handler';
 
 export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
@@ -79,16 +79,16 @@ export function useBackendHealth() {
     }
 
     if (error) {
-      const classifiedError = BackendErrorHandler.classifyError(error);
+      const classifiedError = ErrorClassifier.classifyError(error);
       
-      switch (classifiedError.type) {
-        case BackendErrorType.CONNECTION_FAILED:
-        case BackendErrorType.SERVICE_UNAVAILABLE:
-        case BackendErrorType.TIMEOUT:
+      switch (classifiedError.errorContext.type) {
+        case ErrorType.CONNECTION_FAILED:
+        case ErrorType.SERVICE_UNAVAILABLE:
+        case ErrorType.TIMEOUT:
           return 'unavailable';
         
-        case BackendErrorType.RATE_LIMITED:
-        case BackendErrorType.INTERNAL_ERROR:
+        case ErrorType.RATE_LIMITED:
+        case ErrorType.INTERNAL_ERROR:
           return 'degraded';
         
         default:

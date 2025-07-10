@@ -1,7 +1,7 @@
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/unified-error-handler';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
-import { withLogging } from '@/lib/utils/api-logger';
+import { withLogging } from '@/lib/utils/logging';
 
 export const POST = withLogging('POST /api/providers-test/[id]', 
   createDynamicRouteHandler<{ id: string }>(

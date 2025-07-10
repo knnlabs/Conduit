@@ -19,7 +19,7 @@ import { useConnectionStore } from '@/stores/useConnectionStore';
 import { useState, useEffect } from 'react';
 import { BaseTable, type ColumnDef, type ActionDef, type DeleteConfirmation } from '@/components/common/BaseTable';
 import { useTableData, tableFormatters } from '@/hooks/useTableData';
-import { badgeHelpers } from '@/lib/utils/badge-helpers';
+import { badgeHelpers } from '@/lib/utils/ui-helpers';
 import { StatusIndicator } from '@/components/common/StatusIndicator';
 
 interface VirtualKey {

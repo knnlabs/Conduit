@@ -17,7 +17,7 @@ import {
 import { useModelMappings, useDeleteModelMapping } from '@/hooks/useConduitAdmin';
 import { BaseTable, type ColumnDef, type ActionDef, type DeleteConfirmation } from '@/components/common/BaseTable';
 import { useTableData, tableFormatters } from '@/hooks/useTableData';
-import { badgeHelpers } from '@/lib/utils/badge-helpers';
+import { badgeHelpers } from '@/lib/utils/ui-helpers';
 
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 

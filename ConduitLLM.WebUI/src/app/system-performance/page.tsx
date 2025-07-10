@@ -38,7 +38,7 @@ import {
   useCostSummary,
   useCostByPeriod
 } from '@/hooks/useConduitAdmin';
-import { convertTimeRangeToDateRange } from '@/lib/utils/analytics-helpers';
+import { convertTimeRangeToDateRange } from '@/lib/utils/ui-helpers';
 import type { DateRange } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';

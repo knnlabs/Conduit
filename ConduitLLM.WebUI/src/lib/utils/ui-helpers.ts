@@ -3,9 +3,189 @@
 import type { TimeRangeFilter, DateRange } from '@/types/analytics-types';
 
 /**
+ * Combined UI utility functions for analytics, badges, and formatting
+ * Consolidates analytics-helpers.ts and badge-helpers.ts
+ */
+
+// ===== BADGE & STATUS UTILITIES =====
+
+export type StatusType = 'enabled' | 'health' | 'connection' | 'progress' | 'priority';
+export type ColorTheme = 'green' | 'red' | 'yellow' | 'blue' | 'gray' | 'orange' | 'purple';
+
+export interface StatusConfig {
+  color: ColorTheme;
+  label: string;
+  icon?: string;
+}
+
+/**
+ * Badge and status color utilities with comprehensive theming
+ */
+export const badgeHelpers = {
+  /**
+   * Get standardized color for boolean status
+   */
+  getStatusColor: (
+    enabled: boolean | null | undefined,
+    type: StatusType = 'enabled'
+  ): ColorTheme => {
+    if (enabled === null || enabled === undefined) return 'gray';
+    
+    switch (type) {
+      case 'enabled':
+      case 'connection':
+        return enabled ? 'green' : 'red';
+      case 'health':
+        return enabled ? 'green' : 'red';
+      default:
+        return enabled ? 'green' : 'red';
+    }
+  },
+
+  /**
+   * Get color for health status with multiple states
+   */
+  getHealthColor: (health: string | null | undefined): ColorTheme => {
+    if (!health) return 'gray';
+    
+    const normalizedHealth = health.toLowerCase();
+    switch (normalizedHealth) {
+      case 'healthy':
+      case 'online':
+      case 'connected':
+      case 'active':
+        return 'green';
+      case 'degraded':
+      case 'warning':
+      case 'slow':
+        return 'yellow';
+      case 'unhealthy':
+      case 'offline':
+      case 'disconnected':
+      case 'failed':
+      case 'error':
+        return 'red';
+      case 'pending':
+      case 'loading':
+      case 'connecting':
+        return 'blue';
+      case 'maintenance':
+      case 'paused':
+        return 'orange';
+      default:
+        return 'gray';
+    }
+  },
+
+  /**
+   * Get color based on percentage thresholds
+   */
+  getPercentageColor: (
+    percentage: number | null | undefined,
+    thresholds: { danger?: number; warning?: number; good?: number } = {}
+  ): ColorTheme => {
+    if (percentage === null || percentage === undefined || isNaN(percentage)) {
+      return 'gray';
+    }
+
+    const { danger = 90, warning = 70, good = 50 } = thresholds;
+
+    if (percentage >= danger) return 'red';
+    if (percentage >= warning) return 'yellow';
+    if (percentage >= good) return 'orange';
+    return 'green';
+  },
+
+  /**
+   * Get color for priority levels
+   */
+  getPriorityColor: (priority: string | number | null | undefined): ColorTheme => {
+    if (priority === null || priority === undefined) return 'gray';
+    
+    const normalizedPriority = typeof priority === 'string' 
+      ? priority.toLowerCase() 
+      : priority;
+
+    switch (normalizedPriority) {
+      case 'critical':
+      case 'high':
+      case 1:
+        return 'red';
+      case 'medium':
+      case 'moderate':
+      case 2:
+        return 'yellow';
+      case 'low':
+      case 3:
+        return 'blue';
+      case 'none':
+      case 'info':
+      case 4:
+        return 'gray';
+      default:
+        return 'gray';
+    }
+  },
+
+  /**
+   * Format status text with consistent conventions
+   */
+  formatStatus: (
+    enabled: boolean | null | undefined,
+    options: {
+      activeText?: string;
+      inactiveText?: string;
+      unknownText?: string;
+      capitalize?: boolean;
+    } = {}
+  ): string => {
+    const {
+      activeText = 'Active',
+      inactiveText = 'Inactive',
+      unknownText = 'Unknown',
+      capitalize = true
+    } = options;
+
+    let text: string;
+    if (enabled === true) text = activeText;
+    else if (enabled === false) text = inactiveText;
+    else text = unknownText;
+
+    return capitalize ? text : text.toLowerCase();
+  },
+
+  /**
+   * Get complete status configuration
+   */
+  getStatusConfig: (
+    status: boolean | string | null | undefined,
+    type: StatusType = 'enabled'
+  ): StatusConfig => {
+    if (typeof status === 'boolean') {
+      return {
+        color: badgeHelpers.getStatusColor(status, type),
+        label: badgeHelpers.formatStatus(status)
+      };
+    }
+
+    if (typeof status === 'string') {
+      return {
+        color: badgeHelpers.getHealthColor(status),
+        label: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+      };
+    }
+
+    return {
+      color: 'gray',
+      label: 'Unknown'
+    };
+  }
+};
+
+// ===== ANALYTICS & FORMATTING UTILITIES =====
+
+/**
  * Convert a TimeRangeFilter to a DateRange for SDK usage
- * @param timeRange The time range filter to convert
- * @returns DateRange object with startDate and endDate as ISO strings
  */
 export function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRange {
   if (timeRange.range === 'custom' && timeRange.startDate && timeRange.endDate) {
@@ -46,8 +226,6 @@ export function convertTimeRangeToDateRange(timeRange: TimeRangeFilter): DateRan
 
 /**
  * Get the appropriate groupBy value for analytics based on time range
- * @param timeRange The time range filter
- * @returns Grouping period for analytics
  */
 export function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'day' | 'week' | 'month' {
   switch (timeRange.range) {
@@ -67,9 +245,6 @@ export function getGroupByFromTimeRange(timeRange: TimeRangeFilter): 'hour' | 'd
 
 /**
  * Calculate percentage change between two values
- * @param current Current value
- * @param previous Previous value
- * @returns Percentage change rounded to 1 decimal place
  */
 export function calculatePercentageChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
@@ -78,10 +253,6 @@ export function calculatePercentageChange(current: number, previous: number): nu
 
 /**
  * Determine trend direction based on current and previous values
- * @param current Current value
- * @param previous Previous value
- * @param threshold Percentage threshold for determining stability (default 5%)
- * @returns Trend direction
  */
 export function calculateTrend(current: number, previous: number, threshold = 0.05): 'up' | 'down' | 'stable' {
   const change = Math.abs(current - previous);
@@ -92,9 +263,6 @@ export function calculateTrend(current: number, previous: number, threshold = 0.
 
 /**
  * Format a number as currency
- * @param value The value to format
- * @param decimals Number of decimal places (default 2)
- * @returns Formatted currency string
  */
 export function formatCurrency(value: number, decimals = 2): string {
   return new Intl.NumberFormat('en-US', {
@@ -107,9 +275,6 @@ export function formatCurrency(value: number, decimals = 2): string {
 
 /**
  * Format a large number with abbreviations (K, M, B)
- * @param value The value to format
- * @param decimals Number of decimal places (default 1)
- * @returns Formatted string with abbreviation
  */
 export function formatLargeNumber(value: number, decimals = 1): string {
   if (value < 1000) return value.toString();
@@ -120,9 +285,6 @@ export function formatLargeNumber(value: number, decimals = 1): string {
 
 /**
  * Calculate percentile from sorted array
- * @param sortedArray Sorted array of numbers
- * @param percentile Percentile to calculate (0-100)
- * @returns Value at the given percentile
  */
 export function getPercentile(sortedArray: number[], percentile: number): number {
   if (sortedArray.length === 0) return 0;
@@ -132,9 +294,6 @@ export function getPercentile(sortedArray: number[], percentile: number): number
 
 /**
  * Group request logs by time period
- * @param logs Array of log entries with timestamps
- * @param groupBy Grouping period
- * @returns Map of grouped data by time period
  */
 export function groupByTimePeriod<T extends { timestamp: string }>(
   logs: T[],
@@ -178,8 +337,6 @@ export function groupByTimePeriod<T extends { timestamp: string }>(
 
 /**
  * Determine provider from model name
- * @param modelName The model name
- * @returns Provider name
  */
 export function getProviderFromModel(modelName: string): string {
   const modelLower = modelName.toLowerCase();
@@ -199,8 +356,6 @@ export function getProviderFromModel(modelName: string): string {
 
 /**
  * Get endpoint type from model name
- * @param modelName The model name
- * @returns Endpoint path
  */
 export function getEndpointFromModel(modelName: string): string {
   const modelLower = modelName.toLowerCase();
@@ -222,10 +377,6 @@ export function getEndpointFromModel(modelName: string): string {
 
 /**
  * Create export filename with timestamp
- * @param prefix File prefix (e.g., 'cost', 'usage')
- * @param type Export type (e.g., 'summary', 'trends')
- * @param format File format (e.g., 'csv', 'json')
- * @returns Formatted filename
  */
 export function createExportFilename(prefix: string, type: string, format: string): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -234,8 +385,6 @@ export function createExportFilename(prefix: string, type: string, format: strin
 
 /**
  * Calculate time range in hours
- * @param timeRange The time range filter
- * @returns Number of hours in the time range
  */
 export function getTimeRangeHours(timeRange: TimeRangeFilter): number {
   switch (timeRange.range) {

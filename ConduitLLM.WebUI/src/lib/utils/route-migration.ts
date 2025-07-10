@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSDKAuth, SDKAuthContext } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
+import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/unified-error-handler';
 import { getServerAdminClient } from '@/lib/clients/server';
 
 type TransformFunction<T> = (data: T) => unknown;

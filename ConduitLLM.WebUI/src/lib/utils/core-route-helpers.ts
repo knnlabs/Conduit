@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCoreSession, extractVirtualKey } from '@/lib/auth/sdk-auth';
-import { mapSDKErrorToResponse } from '@/lib/errors/sdk-errors';
+import { mapSDKErrorToResponse } from '@/lib/errors/unified-error-handler';
 import { transformSDKResponse } from '@/lib/utils/sdk-transforms';
 import { generateRequestId, safeError, debugLog } from '@/lib/utils/logging';
 

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { badgeHelpers } from '@/lib/utils/badge-helpers';
+import { badgeHelpers } from '@/lib/utils/ui-helpers';
 import { useConnectionStore } from '@/stores/useConnectionStore';
 
 export type SystemStatusType = 

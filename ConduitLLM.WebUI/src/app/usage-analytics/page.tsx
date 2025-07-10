@@ -45,7 +45,7 @@ import type { DateRange } from '@knn_labs/conduit-admin-client';
 import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 import { formatters } from '@/lib/utils/formatters';
-import { badgeHelpers } from '@/lib/utils/badge-helpers';
+import { badgeHelpers } from '@/lib/utils/ui-helpers';
 import { BaseTable, type ColumnDef } from '@/components/common/BaseTable';
 
 export default function UsageAnalyticsPage() {
