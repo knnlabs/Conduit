@@ -47,7 +47,8 @@ export function ConduitAdminProvider({
       new ConduitAdminClient({
         masterKey: authKey,
         adminApiUrl: baseUrl,
-        ...config,
+        conduitApiUrl: config?.conduitApiUrl,
+        options: config?.options,
       }),
     [authKey, baseUrl, config]
   );

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout']
+const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout', '/api/health']
+
+// Paths that require authentication but should not have session parsing
+// (SSE endpoints need special handling)
+const streamingPaths = ['/api/admin/events/stream']
 
 // Security headers to apply to all responses
 const securityHeaders = {

@@ -45,12 +45,14 @@ export function requireAuth(request: NextRequest): { isValid: boolean; response?
 /**
  * Even simpler wrapper for route handlers
  */
-export function withAuth(handler: (request: NextRequest) => Promise<Response>) {
-  return async (request: NextRequest): Promise<Response> => {
+export function withAuth<T extends any[]>(
+  handler: (request: NextRequest, ...args: T) => Promise<Response>
+) {
+  return async (request: NextRequest, ...args: T): Promise<Response> => {
     const auth = requireAuth(request);
     if (!auth.isValid) {
       return auth.response!;
     }
-    return handler(request);
+    return handler(request, ...args);
   };
 }

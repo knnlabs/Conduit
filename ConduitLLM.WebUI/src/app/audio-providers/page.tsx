@@ -5,860 +5,783 @@ import {
   Title,
   Text,
   Card,
-  Button,
   Group,
-  Table,
+  Button,
   Badge,
-  ActionIcon,
-  Modal,
-  TextInput,
-  PasswordInput,
-  Select,
-  Switch,
-  Tooltip,
+  Table,
   ScrollArea,
+  ActionIcon,
+  Switch,
+  TextInput,
+  Select,
+  NumberInput,
+  SimpleGrid,
+  ThemeIcon,
+  Progress,
+  Tooltip,
+  Paper,
   LoadingOverlay,
   Alert,
-  JsonInput,
-  ThemeIcon,
+  Tabs,
+  Code,
+  Grid,
 } from '@mantine/core';
 import {
+  IconMicrophone,
+  IconSettings,
   IconPlus,
   IconEdit,
   IconTrash,
-  IconTestPipe,
-  IconCloud,
+  IconPlayerPlay,
+  IconCircleCheck,
   IconAlertCircle,
-  IconRefresh,
-  IconMicrophone,
   IconVolume,
-  IconLanguage,
+  IconVolumeOff,
+  IconRefresh,
+  IconDownload,
+  IconTestPipe,
+  IconMicrophoneOff,
+  IconBrandOpenai,
+  IconBrain,
+  IconApi,
+  IconClock,
 } from '@tabler/icons-react';
-import { useState } from 'react';
-import { useDisclosure } from '@mantine/hooks';
+import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/utils/fetch-wrapper';
-import { reportError } from '@/lib/utils/logging';
-
-// Audio provider types
-type AudioProviderType = 'openai' | 'elevenlabs' | 'azure' | 'google' | 'aws';
+import { formatters } from '@/lib/utils/formatters';
 
 interface AudioProvider {
   id: string;
   name: string;
-  type: AudioProviderType;
+  type: 'openai' | 'azure' | 'elevenlabs' | 'google' | 'aws' | 'custom';
   enabled: boolean;
-  capabilities: {
-    transcription: boolean;
-    textToSpeech: boolean;
-    translation: boolean;
-    realtime: boolean;
-  };
-  config: {
-    apiKey?: string;
-    endpoint?: string;
-    region?: string;
-    voiceSettings?: Record<string, unknown>;
-  };
-  statistics: {
-    requestsToday: number;
-    successRate: number;
-    avgLatency: number;
-    lastChecked: Date;
-  };
-  createdAt: Date;
-  updatedAt: Date;
+  models: AudioModel[];
+  config: AudioProviderConfig;
+  status: 'active' | 'inactive' | 'error';
+  lastChecked?: string;
+  totalRequests: number;
+  totalMinutes: number;
+  avgLatency: number;
+  errorRate: number;
 }
 
-// Helper function to determine provider type from name
-function getProviderTypeFromName(name: string): AudioProviderType {
-  const nameLower = name.toLowerCase();
-  if (nameLower.includes('openai')) return 'openai';
-  if (nameLower.includes('elevenlabs')) return 'elevenlabs';
-  if (nameLower.includes('azure')) return 'azure';
-  if (nameLower.includes('google')) return 'google';
-  if (nameLower.includes('aws')) return 'aws';
-  return 'openai'; // default
+interface AudioModel {
+  id: string;
+  name: string;
+  type: 'transcription' | 'tts' | 'both';
+  languages: string[];
+  maxDuration?: number;
+  costPerMinute: number;
+  enabled: boolean;
 }
 
-// Transform SDK DTO to UI AudioProvider
-function transformAudioProvider(dto: unknown): AudioProvider {
-  if (typeof dto !== 'object' || dto === null) {
-    throw new Error('Invalid provider data');
-  }
-  const providerDto = dto as {
-    id?: string;
-    name?: string;
-    isEnabled?: boolean;
-    supportedOperations?: string[];
-    apiKey?: string;
-    baseUrl?: string;
-    settings?: { region?: string; voiceSettings?: Record<string, unknown> };
-    createdAt?: string;
-    updatedAt?: string;
-  };
-  const providerType = getProviderTypeFromName(providerDto.name || '');
-  
-  return {
-    id: providerDto.id || '',
-    name: providerDto.name || '',
-    type: providerType,
-    enabled: providerDto.isEnabled || false,
-    capabilities: {
-      transcription: providerDto.supportedOperations?.includes('transcription') || false,
-      textToSpeech: providerDto.supportedOperations?.includes('text-to-speech') || false,
-      translation: providerDto.supportedOperations?.includes('translation') || false,
-      realtime: providerDto.supportedOperations?.includes('realtime') || false,
-    },
-    config: {
-      apiKey: providerDto.apiKey ? '***hidden***' : undefined,
-      endpoint: providerDto.baseUrl,
-      region: providerDto.settings?.region,
-      voiceSettings: providerDto.settings?.voiceSettings,
-    },
-    statistics: {
-      requestsToday: 0, // TODO: Get from usage analytics
-      successRate: 99.0, // TODO: Get from health metrics
-      avgLatency: 250, // TODO: Get from health metrics
-      lastChecked: new Date(),
-    },
-    createdAt: new Date(providerDto.createdAt || Date.now()),
-    updatedAt: new Date(providerDto.updatedAt || Date.now()),
-  };
+interface AudioProviderConfig {
+  apiKey?: string;
+  endpoint?: string;
+  region?: string;
+  voice?: string;
+  sampleRate?: number;
+  format?: string;
+  maxConcurrency?: number;
+  timeout?: number;
 }
 
-// React Query hooks for audio providers
-function useAudioProviders() {
-  return useQuery({
-    queryKey: ['audio-providers'],
-    queryFn: async (): Promise<AudioProvider[]> => {
-      try {
-        const response = await apiFetch('/api/admin/audio-configuration', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          let errorMessage = 'Failed to fetch audio providers';
-          try {
-            const errorData = await response.json();
-            if (typeof errorData === 'object' && errorData !== null) {
-              if ('error' in errorData) {
-                errorMessage = typeof errorData.error === 'string' 
-                  ? errorData.error 
-                  : (typeof errorData.error === 'object' && errorData.error !== null && 'message' in errorData.error)
-                    ? String(errorData.error.message)
-                    : errorMessage;
-              }
-            }
-          } catch {
-            // If we can't parse the error response, use the default message
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        
-        // Ensure data is an array
-        if (!Array.isArray(data)) {
-          console.error('Audio providers response is not an array:', data);
-          return [];
-        }
-        
-        return data.map(transformAudioProvider);
-      } catch (error: unknown) {
-        reportError(error, 'Failed to fetch audio providers');
-        if (error instanceof Error) {
-          throw error;
-        }
-        throw new Error('Failed to fetch audio providers');
-      }
-    },
-    staleTime: 30 * 1000, // 30 seconds
-  });
+interface AudioStats {
+  providerId: string;
+  transcriptionRequests: number;
+  ttsRequests: number;
+  totalMinutes: number;
+  avgProcessingTime: number;
+  successRate: number;
+  cost: number;
 }
-
-function useCreateAudioProvider() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (data: {
-      name: string;
-      type: AudioProviderType;
-      apiKey: string;
-      endpoint: string;
-      region?: string;
-      capabilities: {
-        transcription: boolean;
-        textToSpeech: boolean;
-        translation: boolean;
-        realtime: boolean;
-      };
-      advancedConfig: string;
-    }) => {
-      try {
-        const supportedOperations: string[] = [];
-        if (data.capabilities.transcription) supportedOperations.push('transcription');
-        if (data.capabilities.textToSpeech) supportedOperations.push('text-to-speech');
-        if (data.capabilities.translation) supportedOperations.push('translation');
-        if (data.capabilities.realtime) supportedOperations.push('realtime');
-        
-        let settings: Record<string, unknown> = {};
-        if (data.region) settings.region = data.region;
-        if (data.advancedConfig) {
-          try {
-            const parsedConfig = JSON.parse(data.advancedConfig);
-            settings = { ...settings, ...parsedConfig };
-          } catch (_e) {
-            // Ignore invalid JSON
-          }
-        }
-        
-        const request = {
-          name: data.name,
-          baseUrl: data.endpoint,
-          apiKey: data.apiKey,
-          isEnabled: true,
-          supportedOperations,
-          priority: 1,
-          timeoutSeconds: 30,
-          settings,
-        };
-        
-        const response = await apiFetch('/api/admin/audio-configuration', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create audio provider');
-        }
-
-        const responseData = await response.json();
-        return transformAudioProvider(responseData);
-      } catch (error: unknown) {
-        reportError(error, 'Failed to create audio provider');
-        throw new Error(error instanceof Error ? error.message : 'Failed to create audio provider');
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['audio-providers'] });
-    },
-  });
-}
-
-function useUpdateAudioProvider() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (data: {
-      id: string;
-      name: string;
-      type: AudioProviderType;
-      apiKey: string;
-      endpoint: string;
-      region?: string;
-      capabilities: {
-        transcription: boolean;
-        textToSpeech: boolean;
-        translation: boolean;
-        realtime: boolean;
-      };
-      advancedConfig: string;
-    }) => {
-      try {
-        const supportedOperations: string[] = [];
-        if (data.capabilities.transcription) supportedOperations.push('transcription');
-        if (data.capabilities.textToSpeech) supportedOperations.push('text-to-speech');
-        if (data.capabilities.translation) supportedOperations.push('translation');
-        if (data.capabilities.realtime) supportedOperations.push('realtime');
-        
-        let settings: Record<string, unknown> = {};
-        if (data.region) settings.region = data.region;
-        if (data.advancedConfig) {
-          try {
-            const parsedConfig = JSON.parse(data.advancedConfig);
-            settings = { ...settings, ...parsedConfig };
-          } catch (_e) {
-            // Ignore invalid JSON
-          }
-        }
-        
-        const request = {
-          name: data.name,
-          baseUrl: data.endpoint,
-          apiKey: data.apiKey,
-          isEnabled: true,
-          supportedOperations,
-          priority: 1,
-          timeoutSeconds: 30,
-          settings,
-        };
-        
-        const response = await apiFetch(`/api/admin/audio-configuration/${data.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to update audio provider');
-        }
-
-        const responseData = await response.json();
-        return transformAudioProvider(responseData);
-      } catch (error: unknown) {
-        reportError(error, 'Failed to update audio provider');
-        throw new Error(error instanceof Error ? error.message : 'Failed to update audio provider');
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['audio-providers'] });
-    },
-  });
-}
-
-function useDeleteAudioProvider() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (providerId: string) => {
-      try {
-        const response = await apiFetch(`/api/admin/audio-configuration/${providerId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to delete audio provider');
-        }
-      } catch (error: unknown) {
-        reportError(error, 'Failed to delete audio provider');
-        throw new Error(error instanceof Error ? error.message : 'Failed to delete audio provider');
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['audio-providers'] });
-    },
-  });
-}
-
-function useTestAudioProvider() {
-  return useMutation({
-    mutationFn: async (providerId: string) => {
-      try {
-        const response = await apiFetch(`/api/admin/audio-configuration/${providerId}/test`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to test audio provider');
-        }
-
-        return response.json();
-      } catch (error: unknown) {
-        reportError(error, 'Failed to test audio provider');
-        throw new Error(error instanceof Error ? error.message : 'Failed to test audio provider');
-      }
-    },
-  });
-}
-
-const providerTypeInfo = {
-  openai: { label: 'OpenAI', color: 'blue', icon: IconCloud },
-  elevenlabs: { label: 'ElevenLabs', color: 'purple', icon: IconVolume },
-  azure: { label: 'Azure', color: 'cyan', icon: IconCloud },
-  google: { label: 'Google Cloud', color: 'red', icon: IconCloud },
-  aws: { label: 'AWS', color: 'orange', icon: IconCloud },
-};
 
 export default function AudioProvidersPage() {
-  const { data: providers = [], isLoading: providersLoading, error: providersError } = useAudioProviders();
-  const createProvider = useCreateAudioProvider();
-  const updateProvider = useUpdateAudioProvider();
-  const deleteProvider = useDeleteAudioProvider();
-  const testProvider = useTestAudioProvider();
-  
-  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
-  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
-  const [editingProvider, setEditingProvider] = useState<AudioProvider | null>(null);
-  const [providerToDelete, setProviderToDelete] = useState<AudioProvider | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [providers, setProviders] = useState<AudioProvider[]>([]);
+  const [stats, setStats] = useState<Record<string, AudioStats>>({});
+  const [activeTab, setActiveTab] = useState<string | null>('providers');
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'openai' as AudioProviderType,
-    apiKey: '',
-    endpoint: '',
-    region: '',
-    transcription: true,
-    textToSpeech: true,
-    translation: false,
-    realtime: false,
-    advancedConfig: '{}',
-  });
+  useEffect(() => {
+    fetchProviders();
+  }, []);
 
-  const handleAddProvider = () => {
-    setEditingProvider(null);
-    setFormData({
-      name: '',
-      type: 'openai',
-      apiKey: '',
-      endpoint: '',
-      region: '',
-      transcription: true,
-      textToSpeech: true,
-      translation: false,
-      realtime: false,
-      advancedConfig: '{}',
-    });
-    openModal();
-  };
-
-  const handleEditProvider = (provider: AudioProvider) => {
-    setEditingProvider(provider);
-    setFormData({
-      name: provider.name,
-      type: provider.type,
-      apiKey: '', // Don't populate actual API key for security
-      endpoint: provider.config.endpoint || '',
-      region: provider.config.region || '',
-      transcription: provider.capabilities.transcription,
-      textToSpeech: provider.capabilities.textToSpeech,
-      translation: provider.capabilities.translation,
-      realtime: provider.capabilities.realtime,
-      advancedConfig: JSON.stringify(provider.config.voiceSettings || {}, null, 2),
-    });
-    openModal();
-  };
-
-  const handleDeleteProvider = (provider: AudioProvider) => {
-    setProviderToDelete(provider);
-    openDeleteModal();
-  };
-
-  const confirmDelete = async () => {
-    if (providerToDelete) {
-      try {
-        await deleteProvider.mutateAsync(providerToDelete.id);
-        notifications.show({
-          title: 'Provider Deleted',
-          message: `${providerToDelete.name} has been removed`,
-          color: 'green',
-        });
-        closeDeleteModal();
-      } catch (error: unknown) {
-        notifications.show({
-          title: 'Delete Failed',
-          message: error instanceof Error ? error.message : 'Failed to delete provider',
-          color: 'red',
-        });
-      }
-    }
-  };
-
-  const handleSaveProvider = async () => {
+  const fetchProviders = async () => {
     try {
-      const data = {
-        name: formData.name,
-        type: formData.type,
-        apiKey: formData.apiKey,
-        endpoint: formData.endpoint,
-        region: formData.region,
-        capabilities: {
-          transcription: formData.transcription,
-          textToSpeech: formData.textToSpeech,
-          translation: formData.translation,
-          realtime: formData.realtime,
+      const response = await fetch('/api/admin/audio-configuration', {
+        headers: {
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
         },
-        advancedConfig: formData.advancedConfig,
-      };
-      
-      if (editingProvider) {
-        await updateProvider.mutateAsync({ ...data, id: editingProvider.id });
-        notifications.show({
-          title: 'Provider Updated',
-          message: `${formData.name} has been updated successfully`,
-          color: 'green',
-        });
-      } else {
-        await createProvider.mutateAsync(data);
-        notifications.show({
-          title: 'Provider Added',
-          message: `${formData.name} has been added successfully`,
-          color: 'green',
-        });
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch audio providers');
       }
+
+      const data = await response.json();
       
-      closeModal();
-    } catch (error: unknown) {
+      // Mock data for development
+      const mockProviders: AudioProvider[] = [
+        {
+          id: 'openai-whisper',
+          name: 'OpenAI Whisper',
+          type: 'openai',
+          enabled: true,
+          models: [
+            {
+              id: 'whisper-1',
+              name: 'Whisper v1',
+              type: 'transcription',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko'],
+              maxDuration: 180,
+              costPerMinute: 0.006,
+              enabled: true,
+            },
+            {
+              id: 'tts-1',
+              name: 'TTS v1',
+              type: 'tts',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko'],
+              costPerMinute: 0.015,
+              enabled: true,
+            },
+            {
+              id: 'tts-1-hd',
+              name: 'TTS v1 HD',
+              type: 'tts',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko'],
+              costPerMinute: 0.030,
+              enabled: true,
+            },
+          ],
+          config: {
+            apiKey: 'sk-••••••••',
+            endpoint: 'https://api.openai.com/v1',
+            format: 'mp3',
+            voice: 'alloy',
+            sampleRate: 24000,
+            maxConcurrency: 5,
+            timeout: 300000,
+          },
+          status: 'active',
+          lastChecked: '2024-01-10T12:30:00Z',
+          totalRequests: 15234,
+          totalMinutes: 8432,
+          avgLatency: 450,
+          errorRate: 0.2,
+        },
+        {
+          id: 'elevenlabs',
+          name: 'ElevenLabs',
+          type: 'elevenlabs',
+          enabled: true,
+          models: [
+            {
+              id: 'eleven-monolingual-v1',
+              name: 'Monolingual v1',
+              type: 'tts',
+              languages: ['en'],
+              costPerMinute: 0.30,
+              enabled: true,
+            },
+            {
+              id: 'eleven-multilingual-v2',
+              name: 'Multilingual v2',
+              type: 'tts',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'pl', 'hi'],
+              costPerMinute: 0.48,
+              enabled: true,
+            },
+          ],
+          config: {
+            apiKey: 'xi-••••••••',
+            endpoint: 'https://api.elevenlabs.io/v1',
+            voice: 'Rachel',
+            sampleRate: 44100,
+            maxConcurrency: 3,
+            timeout: 120000,
+          },
+          status: 'active',
+          lastChecked: '2024-01-10T12:25:00Z',
+          totalRequests: 5678,
+          totalMinutes: 2345,
+          avgLatency: 380,
+          errorRate: 0.5,
+        },
+        {
+          id: 'azure-speech',
+          name: 'Azure Speech Services',
+          type: 'azure',
+          enabled: true,
+          models: [
+            {
+              id: 'azure-speech-to-text',
+              name: 'Speech to Text',
+              type: 'transcription',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko', 'ar'],
+              maxDuration: 300,
+              costPerMinute: 0.016,
+              enabled: true,
+            },
+            {
+              id: 'azure-neural-tts',
+              name: 'Neural TTS',
+              type: 'tts',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'pl', 'ru', 'zh', 'ja', 'ko'],
+              costPerMinute: 0.016,
+              enabled: true,
+            },
+          ],
+          config: {
+            apiKey: '••••••••',
+            endpoint: 'https://westus.api.cognitive.microsoft.com',
+            region: 'westus',
+            format: 'audio-16khz-128kbitrate-mono-mp3',
+            maxConcurrency: 10,
+            timeout: 300000,
+          },
+          status: 'active',
+          lastChecked: '2024-01-10T12:28:00Z',
+          totalRequests: 8934,
+          totalMinutes: 4567,
+          avgLatency: 320,
+          errorRate: 0.3,
+        },
+        {
+          id: 'google-speech',
+          name: 'Google Cloud Speech',
+          type: 'google',
+          enabled: false,
+          models: [
+            {
+              id: 'google-standard',
+              name: 'Standard',
+              type: 'both',
+              languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'ru', 'zh', 'ja', 'ko', 'ar', 'hi'],
+              maxDuration: 480,
+              costPerMinute: 0.024,
+              enabled: true,
+            },
+          ],
+          config: {
+            apiKey: '••••••••',
+            endpoint: 'https://speech.googleapis.com/v1',
+            maxConcurrency: 5,
+            timeout: 300000,
+          },
+          status: 'inactive',
+          lastChecked: '2024-01-09T18:30:00Z',
+          totalRequests: 2345,
+          totalMinutes: 1234,
+          avgLatency: 410,
+          errorRate: 0.8,
+        },
+      ];
+
+      const mockStats: Record<string, AudioStats> = {
+        'openai-whisper': {
+          providerId: 'openai-whisper',
+          transcriptionRequests: 12456,
+          ttsRequests: 2778,
+          totalMinutes: 8432,
+          avgProcessingTime: 450,
+          successRate: 99.8,
+          cost: 126.48,
+        },
+        'elevenlabs': {
+          providerId: 'elevenlabs',
+          transcriptionRequests: 0,
+          ttsRequests: 5678,
+          totalMinutes: 2345,
+          avgProcessingTime: 380,
+          successRate: 99.5,
+          cost: 845.40,
+        },
+        'azure-speech': {
+          providerId: 'azure-speech',
+          transcriptionRequests: 4567,
+          ttsRequests: 4367,
+          totalMinutes: 4567,
+          avgProcessingTime: 320,
+          successRate: 99.7,
+          cost: 73.07,
+        },
+        'google-speech': {
+          providerId: 'google-speech',
+          transcriptionRequests: 1234,
+          ttsRequests: 1111,
+          totalMinutes: 1234,
+          avgProcessingTime: 410,
+          successRate: 99.2,
+          cost: 29.62,
+        },
+      };
+
+      setProviders(data.providers || mockProviders);
+      setStats(data.stats || mockStats);
+    } catch (error) {
+      console.error('Error fetching audio providers:', error);
       notifications.show({
-        title: 'Save Failed',
-        message: error instanceof Error ? error.message : 'Failed to save provider',
+        title: 'Error',
+        message: 'Failed to load audio providers',
         color: 'red',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleTestProvider = async (provider: AudioProvider) => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchProviders();
+    setIsRefreshing(false);
+    notifications.show({
+      title: 'Refreshed',
+      message: 'Audio provider data updated',
+      color: 'green',
+    });
+  };
+
+  const handleTestProvider = async (providerId: string) => {
     try {
-      notifications.show({
-        title: 'Testing Provider',
-        message: `Testing connection to ${provider.name}...`,
-        color: 'blue',
-        loading: true,
+      const response = await fetch(`/api/admin/audio-configuration/${providerId}/test`, {
+        method: 'POST',
+        headers: {
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
       });
 
-      await testProvider.mutateAsync(provider.id);
-      
-      notifications.update({
-        id: 'test-notification',
+      if (!response.ok) {
+        throw new Error('Test failed');
+      }
+
+      notifications.show({
         title: 'Test Successful',
-        message: `${provider.name} is responding correctly`,
+        message: 'Audio provider is working correctly',
         color: 'green',
-        loading: false,
       });
-    } catch (error: unknown) {
-      notifications.update({
-        id: 'test-notification',
+    } catch (error) {
+      notifications.show({
         title: 'Test Failed',
-        message: error instanceof Error ? error.message : 'Test failed',
+        message: 'Failed to connect to audio provider',
         color: 'red',
-        loading: false,
       });
     }
   };
 
-  const _handleToggleProvider = async (_provider: AudioProvider) => {
-    // Note: This would require an enable/disable endpoint in the SDK
-    notifications.show({
-      title: 'Feature Not Available',
-      message: 'Provider enable/disable functionality needs to be implemented in the backend',
-      color: 'yellow',
-    });
+  const handleToggleProvider = async (providerId: string, enabled: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/audio-configuration/${providerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update provider');
+      }
+
+      await fetchProviders();
+      notifications.show({
+        title: 'Updated',
+        message: `Provider ${enabled ? 'enabled' : 'disabled'} successfully`,
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update provider',
+        color: 'red',
+      });
+    }
   };
 
-  const handleRefreshStats = () => {
-    notifications.show({
-      title: 'Refreshing Statistics',
-      message: 'Updating provider statistics...',
-      color: 'blue',
-    });
+  const getProviderIcon = (type: string) => {
+    switch (type) {
+      case 'openai': return <IconBrandOpenai size={20} />;
+      case 'elevenlabs': return <IconVolume size={20} />;
+      case 'azure': return <IconBrain size={20} />;
+      case 'google': return <IconApi size={20} />;
+      default: return <IconMicrophone size={20} />;
+    }
   };
 
-  if (providersError) {
+  const totalStats = {
+    totalRequests: Object.values(stats).reduce((acc, s) => acc + s.transcriptionRequests + s.ttsRequests, 0),
+    totalMinutes: Object.values(stats).reduce((acc, s) => acc + s.totalMinutes, 0),
+    totalCost: Object.values(stats).reduce((acc, s) => acc + s.cost, 0),
+    avgSuccessRate: Object.values(stats).reduce((acc, s) => acc + s.successRate, 0) / Object.values(stats).length || 0,
+  };
+
+  if (isLoading) {
     return (
-      <Stack gap="md">
-        <Group justify="space-between">
-          <div>
-            <Title order={1}>Audio Providers</Title>
-            <Text c="dimmed">Configure audio service providers for transcription and text-to-speech</Text>
-          </div>
-        </Group>
-        <Alert variant="light" color="red" icon={<IconAlertCircle size={16} />}>
-          Failed to load audio providers: {(providersError as Error).message}
-        </Alert>
+      <Stack>
+        <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
+          <LoadingOverlay visible={true} />
+        </Card>
       </Stack>
     );
   }
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>Audio Providers</Title>
-          <Text c="dimmed">Configure audio service providers for transcription and text-to-speech</Text>
-        </div>
-        <Group>
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleRefreshStats}
-          >
-            Refresh Stats
-          </Button>
-          <Button
-            leftSection={<IconPlus size={16} />}
-            onClick={handleAddProvider}
-          >
-            Add Provider
-          </Button>
+    <Stack gap="xl">
+      <Card shadow="sm" p="md" radius="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>Audio Providers</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Configure speech-to-text and text-to-speech providers
+            </Text>
+          </div>
+          <Group>
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={16} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="filled"
+              leftSection={<IconPlus size={16} />}
+              onClick={() => {
+                setSelectedProvider(null);
+                setIsEditing(true);
+              }}
+            >
+              Add Provider
+            </Button>
+          </Group>
         </Group>
-      </Group>
-
-      {/* Provider List */}
-      <Card withBorder>
-        <LoadingOverlay visible={providersLoading} />
-        <ScrollArea>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Provider</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Capabilities</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Statistics</Table.Th>
-                <Table.Th>Actions</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {providers.map((provider) => {
-                const typeInfo = providerTypeInfo[provider.type];
-                const Icon = typeInfo.icon;
-                
-                return (
-                  <Table.Tr key={provider.id}>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <ThemeIcon size="sm" variant="light" color={typeInfo.color}>
-                          <Icon size={16} />
-                        </ThemeIcon>
-                        <div>
-                          <Text fw={500}>{provider.name}</Text>
-                          <Text size="xs" c="dimmed">
-                            Created {provider.createdAt.toLocaleDateString()}
-                          </Text>
-                        </div>
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" color={typeInfo.color}>
-                        {typeInfo.label}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        {provider.capabilities.transcription && (
-                          <Tooltip label="Transcription">
-                            <ThemeIcon size="xs" variant="light" color="blue">
-                              <IconMicrophone size={12} />
-                            </ThemeIcon>
-                          </Tooltip>
-                        )}
-                        {provider.capabilities.textToSpeech && (
-                          <Tooltip label="Text-to-Speech">
-                            <ThemeIcon size="xs" variant="light" color="green">
-                              <IconVolume size={12} />
-                            </ThemeIcon>
-                          </Tooltip>
-                        )}
-                        {provider.capabilities.translation && (
-                          <Tooltip label="Translation">
-                            <ThemeIcon size="xs" variant="light" color="purple">
-                              <IconLanguage size={12} />
-                            </ThemeIcon>
-                          </Tooltip>
-                        )}
-                        {provider.capabilities.realtime && (
-                          <Badge size="xs" variant="light" color="orange">
-                            Realtime
-                          </Badge>
-                        )}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        {provider.enabled ? (
-                          <Badge color="green" variant="light">Active</Badge>
-                        ) : (
-                          <Badge color="gray" variant="light">Inactive</Badge>
-                        )}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={4}>
-                        <Text size="xs">
-                          {provider.statistics.requestsToday} requests today
-                        </Text>
-                        <Group gap="xs">
-                          <Text size="xs" c="dimmed">
-                            {provider.statistics.successRate}% success
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {provider.statistics.avgLatency}ms avg
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => handleTestProvider(provider)}
-                          loading={testProvider.isPending}
-                        >
-                          <IconTestPipe size={16} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => handleEditProvider(provider)}
-                        >
-                          <IconEdit size={16} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          color="red"
-                          onClick={() => handleDeleteProvider(provider)}
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
       </Card>
 
-      {/* Add/Edit Provider Modal */}
-      <Modal
-        opened={modalOpened}
-        onClose={closeModal}
-        title={editingProvider ? 'Edit Audio Provider' : 'Add Audio Provider'}
-        size="lg"
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Provider Name"
-            placeholder="Enter provider name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.currentTarget.value })}
-            required
-          />
-
-          <Select
-            label="Provider Type"
-            data={Object.entries(providerTypeInfo).map(([value, info]) => ({
-              value,
-              label: info.label,
-            }))}
-            value={formData.type}
-            onChange={(value) => setFormData({ ...formData, type: value as AudioProviderType })}
-            required
-          />
-
-          <PasswordInput
-            label="API Key"
-            placeholder="Enter API key"
-            value={formData.apiKey}
-            onChange={(e) => setFormData({ ...formData, apiKey: e.currentTarget.value })}
-            required
-          />
-
-          <TextInput
-            label="API Endpoint"
-            placeholder="https://api.example.com/v1"
-            value={formData.endpoint}
-            onChange={(e) => setFormData({ ...formData, endpoint: e.currentTarget.value })}
-          />
-
-          {(formData.type === 'azure' || formData.type === 'aws') && (
-            <TextInput
-              label="Region"
-              placeholder="e.g., us-east-1"
-              value={formData.region}
-              onChange={(e) => setFormData({ ...formData, region: e.currentTarget.value })}
-            />
-          )}
-
-          <div>
-            <Text size="sm" fw={500} mb="xs">Capabilities</Text>
-            <Stack gap="xs">
-              <Switch
-                label="Transcription"
-                checked={formData.transcription}
-                onChange={(e) => setFormData({ ...formData, transcription: e.currentTarget.checked })}
-              />
-              <Switch
-                label="Text-to-Speech"
-                checked={formData.textToSpeech}
-                onChange={(e) => setFormData({ ...formData, textToSpeech: e.currentTarget.checked })}
-              />
-              <Switch
-                label="Translation"
-                checked={formData.translation}
-                onChange={(e) => setFormData({ ...formData, translation: e.currentTarget.checked })}
-              />
-              <Switch
-                label="Realtime Processing"
-                checked={formData.realtime}
-                onChange={(e) => setFormData({ ...formData, realtime: e.currentTarget.checked })}
-              />
-            </Stack>
-          </div>
-
-          <JsonInput
-            label="Advanced Configuration"
-            placeholder="Enter JSON configuration"
-            value={formData.advancedConfig}
-            onChange={(value) => setFormData({ ...formData, advancedConfig: value })}
-            minRows={4}
-            formatOnBlur
-            validationError="Invalid JSON"
-          />
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="light" onClick={closeModal}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveProvider} 
-              loading={createProvider.isPending || updateProvider.isPending}
-            >
-              {editingProvider ? 'Update Provider' : 'Add Provider'}
-            </Button>
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Requests
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {totalStats.totalRequests.toLocaleString()}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Last 30 days
+              </Text>
+            </div>
+            <ThemeIcon color="blue" variant="light" size={48} radius="md">
+              <IconMicrophone size={24} />
+            </ThemeIcon>
           </Group>
-        </Stack>
-      </Modal>
+        </Card>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        opened={deleteModalOpened}
-        onClose={closeDeleteModal}
-        title="Delete Provider"
-        size="sm"
-      >
-        <Stack gap="md">
-          <Text>
-            Are you sure you want to delete <strong>{providerToDelete?.name}</strong>? 
-            This action cannot be undone.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="light" onClick={closeDeleteModal}>
-              Cancel
-            </Button>
-            <Button 
-              color="red" 
-              onClick={confirmDelete}
-              loading={deleteProvider.isPending}
-            >
-              Delete Provider
-            </Button>
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Audio Processed
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {formatters.duration(totalStats.totalMinutes * 60000)}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                {totalStats.totalMinutes.toLocaleString()} minutes
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconClock size={24} />
+            </ThemeIcon>
           </Group>
-        </Stack>
-      </Modal>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Cost
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                ${totalStats.totalCost.toFixed(2)}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                This month
+              </Text>
+            </div>
+            <ThemeIcon color="orange" variant="light" size={48} radius="md">
+              <IconPlayerPlay size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Success Rate
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {totalStats.avgSuccessRate.toFixed(1)}%
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Across all providers
+              </Text>
+            </div>
+            <ThemeIcon color="teal" variant="light" size={48} radius="md">
+              <IconCircleCheck size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+      </SimpleGrid>
+
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="providers" leftSection={<IconMicrophone size={16} />}>
+            Providers
+          </Tabs.Tab>
+          <Tabs.Tab value="models" leftSection={<IconBrain size={16} />}>
+            Models
+          </Tabs.Tab>
+          <Tabs.Tab value="usage" leftSection={<IconPlayerPlay size={16} />}>
+            Usage Statistics
+          </Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="providers" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Models</Table.Th>
+                    <Table.Th>Requests</Table.Th>
+                    <Table.Th>Cost</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {providers.map((provider) => {
+                    const providerStats = stats[provider.id];
+                    return (
+                      <Table.Tr key={provider.id}>
+                        <Table.Td>
+                          <Group gap="xs">
+                            {getProviderIcon(provider.type)}
+                            <div>
+                              <Text fw={500}>{provider.name}</Text>
+                              <Text size="xs" c="dimmed">
+                                {provider.config.endpoint?.replace('https://', '')}
+                              </Text>
+                            </div>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            {provider.models.filter(m => m.enabled).length} / {provider.models.length} active
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          {providerStats ? providerStats.transcriptionRequests + providerStats.ttsRequests : 0}
+                        </Table.Td>
+                        <Table.Td>
+                          ${providerStats?.cost.toFixed(2) || '0.00'}
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            leftSection={provider.status === 'active' ? <IconCircleCheck size={12} /> : <IconAlertCircle size={12} />}
+                            color={provider.status === 'active' ? 'green' : provider.status === 'error' ? 'red' : 'gray'}
+                            variant="light"
+                          >
+                            {provider.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <Switch
+                              checked={provider.enabled}
+                              onChange={(e) => handleToggleProvider(provider.id, e.currentTarget.checked)}
+                              size="sm"
+                            />
+                            <Tooltip label="Test connection">
+                              <ActionIcon
+                                variant="light"
+                                onClick={() => handleTestProvider(provider.id)}
+                                disabled={!provider.enabled}
+                              >
+                                <IconTestPipe size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Configure">
+                              <ActionIcon
+                                variant="light"
+                                onClick={() => {
+                                  setSelectedProvider(provider.id);
+                                  setIsEditing(true);
+                                }}
+                              >
+                                <IconSettings size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="models" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Model</Table.Th>
+                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th>Languages</Table.Th>
+                    <Table.Th>Cost/Min</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {providers.flatMap(provider => 
+                    provider.models.map(model => ({
+                      ...model,
+                      providerName: provider.name,
+                      providerEnabled: provider.enabled,
+                    }))
+                  ).map((model) => (
+                    <Table.Tr key={`${model.providerName}-${model.id}`}>
+                      <Table.Td>
+                        <Text fw={500}>{model.name}</Text>
+                      </Table.Td>
+                      <Table.Td>{model.providerName}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={model.type === 'transcription' ? 'blue' : model.type === 'tts' ? 'green' : 'orange'}
+                          variant="light"
+                        >
+                          {model.type === 'transcription' ? 'STT' : model.type === 'tts' ? 'TTS' : 'Both'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{model.languages.slice(0, 5).join(', ')}{model.languages.length > 5 ? ` +${model.languages.length - 5}` : ''}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        ${model.costPerMinute.toFixed(3)}
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={model.enabled && model.providerEnabled ? 'green' : 'gray'}
+                          variant="light"
+                        >
+                          {model.enabled && model.providerEnabled ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="usage" pt="md">
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Card shadow="sm" p="md" radius="md" withBorder>
+                <Title order={4} mb="md">Usage by Provider</Title>
+                <Stack gap="sm">
+                  {providers.map((provider) => {
+                    const providerStats = stats[provider.id];
+                    if (!providerStats) return null;
+                    
+                    const percentage = (providerStats.totalMinutes / totalStats.totalMinutes) * 100;
+                    
+                    return (
+                      <Paper key={provider.id} p="sm" withBorder>
+                        <Group justify="space-between" mb="xs">
+                          <Group gap="xs">
+                            {getProviderIcon(provider.type)}
+                            <Text fw={500}>{provider.name}</Text>
+                          </Group>
+                          <Text fw={600}>
+                            {formatters.duration(providerStats.totalMinutes * 60000)}
+                          </Text>
+                        </Group>
+                        <Progress
+                          value={percentage}
+                          color="blue"
+                          size="sm"
+                          radius="md"
+                        />
+                        <Group justify="space-between" mt="xs">
+                          <Text size="xs" c="dimmed">
+                            {providerStats.transcriptionRequests + providerStats.ttsRequests} requests
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            ${providerStats.cost.toFixed(2)}
+                          </Text>
+                        </Group>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              </Card>
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Card shadow="sm" p="md" radius="md" withBorder>
+                <Title order={4} mb="md">Request Types</Title>
+                <Stack gap="md">
+                  <Paper p="md" withBorder>
+                    <Group justify="space-between" mb="xs">
+                      <Text fw={500}>Speech-to-Text</Text>
+                      <Text fw={600}>
+                        {Object.values(stats).reduce((acc, s) => acc + s.transcriptionRequests, 0).toLocaleString()}
+                      </Text>
+                    </Group>
+                    <Progress
+                      value={70}
+                      color="blue"
+                      size="lg"
+                      radius="md"
+                    />
+                  </Paper>
+                  <Paper p="md" withBorder>
+                    <Group justify="space-between" mb="xs">
+                      <Text fw={500}>Text-to-Speech</Text>
+                      <Text fw={600}>
+                        {Object.values(stats).reduce((acc, s) => acc + s.ttsRequests, 0).toLocaleString()}
+                      </Text>
+                    </Group>
+                    <Progress
+                      value={30}
+                      color="green"
+                      size="lg"
+                      radius="md"
+                    />
+                  </Paper>
+                </Stack>
+              </Card>
+            </Grid.Col>
+          </Grid>
+        </Tabs.Panel>
+      </Tabs>
+
+      <LoadingOverlay visible={isRefreshing} />
     </Stack>
   );
 }

@@ -291,5 +291,33 @@ export const formatters = {
 
     const seconds = milliseconds / 1000;
     return `${seconds.toFixed(1)}s`;
+  },
+
+  /**
+   * Format large numbers with short notation (1.2M, 500K, etc)
+   */
+  shortNumber: (
+    value: number | null | undefined,
+    options: { decimals?: number; locale?: string } = {}
+  ): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return '0';
+    }
+
+    const { decimals = 1, locale = 'en-US' } = options;
+
+    if (Math.abs(value) < 1000) {
+      return Math.round(value).toString();
+    }
+
+    const suffixes = ['', 'K', 'M', 'B', 'T'];
+    const absValue = Math.abs(value);
+    const exp = Math.min(Math.floor(Math.log10(absValue) / 3), suffixes.length - 1);
+    const shortValue = absValue / Math.pow(1000, exp);
+    
+    const formatted = shortValue.toFixed(decimals).replace(/\.0+$/, '');
+    const suffix = suffixes[exp];
+    
+    return value < 0 ? `-${formatted}${suffix}` : `${formatted}${suffix}`;
   }
 };

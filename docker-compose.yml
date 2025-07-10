@@ -148,7 +148,7 @@ services:
       PORT: 3000
       # Public environment variables (accessible in browser)
       NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
-      NEXT_PUBLIC_CONDUIT_ADMIN_API_URL: http://localhost:5002
+      # Admin API is accessed through proxy routes, not directly
       # Server-side environment variables
       CONDUIT_MASTER_KEY: alpha
       CONDUIT_API_BASE_URL: http://api:8080
@@ -167,7 +167,7 @@ services:
       - "3000:3000"
     restart: on-failure
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/core/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
       interval: 30s
       timeout: 3s
       retries: 3

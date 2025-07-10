@@ -5,155 +5,254 @@ import {
   Title,
   Text,
   Card,
-  Grid,
   Group,
   Button,
+  Badge,
+  ThemeIcon,
+  Paper,
+  SimpleGrid,
+  Progress,
   Switch,
   NumberInput,
   Select,
-  Badge,
-  ThemeIcon,
-  Progress,
-  Alert,
-  ScrollArea,
   Table,
+  ScrollArea,
+  LoadingOverlay,
+  Alert,
   ActionIcon,
   Tooltip,
-  TextInput,
-  MultiSelect,
-  JsonInput,
+  Code,
   Tabs,
-  PasswordInput,
-  LoadingOverlay,
 } from '@mantine/core';
 import {
-  IconSettings,
   IconDatabase,
   IconRefresh,
   IconTrash,
-  IconInfoCircle,
+  IconSettings,
+  IconServer2,
+  IconClock,
+  IconActivity,
+  IconAlertCircle,
+  IconCircleCheck,
   IconChartBar,
+  IconCpu,
   IconBolt,
-  IconKey,
-  IconNetwork,
-  IconDeviceFloppy,
-  IconFilter,
-  IconPlus,
-  IconEdit,
-  IconCheck,
+  IconInfoCircle,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatters } from '@/lib/utils/formatters';
-import { 
-  useCachingConfig, 
-  useUpdateCachingConfig,
-  useClearCache,
-} from '@/hooks/api/useConfigurationApi';
 
+interface CacheConfig {
+  id: string;
+  name: string;
+  type: 'redis' | 'memory' | 'distributed';
+  enabled: boolean;
+  ttl: number;
+  maxSize: number;
+  evictionPolicy: 'lru' | 'lfu' | 'ttl' | 'random';
+  compression: boolean;
+  persistent: boolean;
+}
+
+interface CacheStats {
+  hits: number;
+  misses: number;
+  evictions: number;
+  size: number;
+  entries: number;
+  hitRate: number;
+  avgLatency: number;
+}
+
+interface CacheEntry {
+  key: string;
+  size: number;
+  ttl: number;
+  hits: number;
+  lastAccessed: string;
+  expires: string;
+}
 
 export default function CachingSettingsPage() {
-  const [activeTab, setActiveTab] = useState<string | null>('policies');
-  
-  // Fetch data using the caching API hooks
-  const { data: cachingData, isLoading: cachingLoading, refetch: refetchCaching } = useCachingConfig();
-  const updateConfigMutation = useUpdateCachingConfig();
-  const clearCacheMutation = useClearCache();
-  
-  // Extract data with defaults
-  const policies = cachingData?.cachePolicies || [];
-  const cacheRegions = cachingData?.cacheRegions || [];
-  const statistics = cachingData?.statistics || {
-    totalHits: 0,
-    totalMisses: 0,
-    hitRate: 0,
-    avgResponseTime: { withCache: 0, withoutCache: 0 },
-    memoryUsage: { current: '0MB', peak: '0MB', limit: '0MB' },
-    topCachedItems: [],
-  };
-  const configuration = cachingData?.configuration || {
-    defaultTTL: 3600,
-    maxMemorySize: '2GB',
-    evictionPolicy: 'lru',
-    compressionEnabled: true,
-    redisConnectionString: null,
-  };
-  
-  const [globalSettings, setGlobalSettings] = useState({
-    enabled: true,
-    defaultTTL: configuration.defaultTTL,
-    maxMemory: 2048,
-    evictionPolicy: configuration.evictionPolicy,
-    compressionThreshold: 1024,
-    enableMetrics: true,
-    enableLogging: true,
-  });
-  
-  const [redisSettings, setRedisSettings] = useState({
-    enabled: !!configuration.redisConnectionString,
-    host: 'localhost',
-    port: 6379,
-    password: '',
-    database: 0,
-    cluster: false,
-    sentinels: '',
-    connectionPool: 10,
-    timeout: 5000,
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>('configuration');
+  const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
+  const [cacheStats, setCacheStats] = useState<Record<string, CacheStats>>({});
+  const [selectedCache, setSelectedCache] = useState<string>('provider-responses');
 
-  const overallHitRate = statistics.hitRate;
-  const totalCacheSize = policies.reduce((sum, p) => sum + (p.maxSize || 0), 0);
-  const totalEntries = statistics.topCachedItems.length;
+  useEffect(() => {
+    fetchCacheData();
+  }, []);
 
-  const handleSaveSettings = async () => {
+  const fetchCacheData = async () => {
     try {
-      await updateConfigMutation.mutateAsync({
-        defaultTTLSeconds: globalSettings.defaultTTL,
-        maxMemorySize: `${globalSettings.maxMemory}MB`,
-        evictionPolicy: globalSettings.evictionPolicy,
-        enableCompression: true,
-        clearAllCaches: false,
+      const response = await fetch('/api/config/caching', {
+        headers: {
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
       });
-      notifications.show({
-        title: 'Settings Saved',
-        message: 'Cache configuration has been updated successfully',
-        color: 'green',
-      });
-    } catch (_error) {
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch cache configuration');
+      }
+
+      const data = await response.json();
+      
+      // Mock data for development
+      const mockConfigs: CacheConfig[] = [
+        {
+          id: 'provider-responses',
+          name: 'Provider Responses',
+          type: 'redis',
+          enabled: true,
+          ttl: 3600,
+          maxSize: 1024,
+          evictionPolicy: 'lru',
+          compression: true,
+          persistent: true,
+        },
+        {
+          id: 'embeddings',
+          name: 'Embeddings Cache',
+          type: 'redis',
+          enabled: true,
+          ttl: 86400,
+          maxSize: 2048,
+          evictionPolicy: 'lfu',
+          compression: true,
+          persistent: true,
+        },
+        {
+          id: 'model-metadata',
+          name: 'Model Metadata',
+          type: 'memory',
+          enabled: true,
+          ttl: 600,
+          maxSize: 256,
+          evictionPolicy: 'ttl',
+          compression: false,
+          persistent: false,
+        },
+        {
+          id: 'rate-limits',
+          name: 'Rate Limit Counters',
+          type: 'memory',
+          enabled: true,
+          ttl: 60,
+          maxSize: 128,
+          evictionPolicy: 'ttl',
+          compression: false,
+          persistent: false,
+        },
+        {
+          id: 'auth-tokens',
+          name: 'Auth Token Cache',
+          type: 'distributed',
+          enabled: true,
+          ttl: 1800,
+          maxSize: 512,
+          evictionPolicy: 'ttl',
+          compression: false,
+          persistent: true,
+        },
+      ];
+
+      const mockStats: Record<string, CacheStats> = {
+        'provider-responses': {
+          hits: 45678,
+          misses: 12345,
+          evictions: 890,
+          size: 768,
+          entries: 3456,
+          hitRate: 78.7,
+          avgLatency: 0.45,
+        },
+        'embeddings': {
+          hits: 23456,
+          misses: 5678,
+          evictions: 234,
+          size: 1536,
+          entries: 1890,
+          hitRate: 80.5,
+          avgLatency: 0.38,
+        },
+        'model-metadata': {
+          hits: 98765,
+          misses: 8765,
+          evictions: 1234,
+          size: 128,
+          entries: 234,
+          hitRate: 91.8,
+          avgLatency: 0.12,
+        },
+        'rate-limits': {
+          hits: 234567,
+          misses: 12345,
+          evictions: 4567,
+          size: 64,
+          entries: 890,
+          hitRate: 95.0,
+          avgLatency: 0.08,
+        },
+        'auth-tokens': {
+          hits: 56789,
+          misses: 6789,
+          evictions: 456,
+          size: 256,
+          entries: 678,
+          hitRate: 89.3,
+          avgLatency: 0.22,
+        },
+      };
+
+      setCacheConfigs(data.configs || mockConfigs);
+      setCacheStats(data.stats || mockStats);
+    } catch (error) {
+      console.error('Error fetching cache data:', error);
       notifications.show({
         title: 'Error',
-        message: 'Failed to save cache configuration',
+        message: 'Failed to load cache configuration',
         color: 'red',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleClearCache = async (policyId?: string) => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchCacheData();
+    setIsRefreshing(false);
+    notifications.show({
+      title: 'Refreshed',
+      message: 'Cache data updated',
+      color: 'green',
+    });
+  };
+
+  const handleClearCache = async (cacheId: string) => {
     try {
-      if (policyId) {
-        await clearCacheMutation.mutateAsync(policyId);
-        const policy = policies.find(p => p.id === policyId);
-        notifications.show({
-          title: 'Cache Cleared',
-          message: `Cache cleared for ${policy?.name}`,
-          color: 'orange',
-        });
-      } else {
-        await updateConfigMutation.mutateAsync({
-          defaultTTLSeconds: globalSettings.defaultTTL,
-          maxMemorySize: `${globalSettings.maxMemory}MB`,
-          evictionPolicy: globalSettings.evictionPolicy,
-          enableCompression: true,
-          clearAllCaches: true,
-        });
-        notifications.show({
-          title: 'Cache Cleared',
-          message: 'All caches have been cleared',
-          color: 'orange',
-        });
+      const response = await fetch(`/api/config/caching/${cacheId}/clear`, {
+        method: 'POST',
+        headers: {
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear cache');
       }
-    } catch (_error) {
+
+      notifications.show({
+        title: 'Cache Cleared',
+        message: `${cacheId} cache has been cleared`,
+        color: 'green',
+      });
+
+      await fetchCacheData();
+    } catch (error) {
       notifications.show({
         title: 'Error',
         message: 'Failed to clear cache',
@@ -162,637 +261,461 @@ export default function CachingSettingsPage() {
     }
   };
 
-  const handleTogglePolicy = (_policyId: string) => {
-    // TODO: Implement policy toggle via API when endpoint is available
-    notifications.show({
-      title: 'Policy Updated',
-      message: 'Cache policy status has been toggled',
-      color: 'blue',
-    });
+  const handleConfigUpdate = async (cacheId: string, updates: Partial<CacheConfig>) => {
+    try {
+      const response = await fetch('/api/config/caching', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
+        body: JSON.stringify({ cacheId, updates }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update cache configuration');
+      }
+
+      notifications.show({
+        title: 'Configuration Updated',
+        message: 'Cache settings have been updated',
+        color: 'green',
+      });
+
+      await fetchCacheData();
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update cache configuration',
+        color: 'red',
+      });
+    }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'green';
-      case 'warning': return 'yellow';
-      case 'error': return 'red';
+  // Mock cache entries for detail view
+  const mockCacheEntries: CacheEntry[] = [
+    {
+      key: 'openai:gpt-4:chat:abc123',
+      size: 2048,
+      ttl: 3542,
+      hits: 234,
+      lastAccessed: '2024-01-10T12:30:00Z',
+      expires: '2024-01-10T13:30:00Z',
+    },
+    {
+      key: 'anthropic:claude-3:complete:def456',
+      size: 1536,
+      ttl: 2890,
+      hits: 189,
+      lastAccessed: '2024-01-10T12:28:00Z',
+      expires: '2024-01-10T13:15:00Z',
+    },
+    {
+      key: 'embeddings:text-embedding-ada-002:xyz789',
+      size: 4096,
+      ttl: 85234,
+      hits: 567,
+      lastAccessed: '2024-01-10T12:25:00Z',
+      expires: '2024-01-11T12:00:00Z',
+    },
+  ];
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'redis': return 'red';
+      case 'memory': return 'blue';
+      case 'distributed': return 'green';
       default: return 'gray';
     }
   };
 
+  const getEvictionPolicyLabel = (policy: string) => {
+    switch (policy) {
+      case 'lru': return 'Least Recently Used';
+      case 'lfu': return 'Least Frequently Used';
+      case 'ttl': return 'Time To Live';
+      case 'random': return 'Random';
+      default: return policy;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Stack>
+        <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
+          <LoadingOverlay visible={true} />
+        </Card>
+      </Stack>
+    );
+  }
+
+  const selectedConfig = cacheConfigs.find(c => c.id === selectedCache);
+  const selectedStats = selectedCache ? cacheStats[selectedCache] : null;
+
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>Caching Settings</Title>
-          <Text c="dimmed">Configure caching strategies and performance optimization</Text>
-        </div>
-        <Group>
+    <Stack gap="xl">
+      <Card shadow="sm" p="md" radius="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>Caching Settings</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Configure and monitor caching behavior
+            </Text>
+          </div>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={() => handleClearCache()}
+            onClick={handleRefresh}
+            loading={isRefreshing}
           >
-            Clear All Caches
-          </Button>
-          <Button
-            leftSection={<IconDeviceFloppy size={16} />}
-            onClick={handleSaveSettings}
-          >
-            Save Changes
+            Refresh
           </Button>
         </Group>
-      </Group>
-
-      {/* Cache Statistics Overview */}
-      <Grid>
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Hit Rate
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.percentage(overallHitRate)}
-                </Text>
-                <Progress value={overallHitRate} size="sm" mt={8} color="green" />
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="green">
-                <IconBolt size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Total Cache Size
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.fileSize(totalCacheSize)}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  of {formatters.fileSize(globalSettings.maxMemory * 1024 * 1024)}
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="blue">
-                <IconDatabase size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Cached Entries
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.number(totalEntries)}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Across all policies
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="orange">
-                <IconKey size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Active Policies
-                </Text>
-                <Text size="xl" fw={700}>
-                  {policies.filter(p => p.enabled).length} / {policies.length}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Policies enabled
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="purple">
-                <IconSettings size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-      </Grid>
-
-      {/* Cache Performance Chart */}
-      <Card withBorder>
-        <Text fw={600} mb="md">Cache Performance (Last 12 Hours)</Text>
-        <LoadingOverlay visible={cachingLoading} />
-        <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={statistics.topCachedItems.map((item, index) => ({
-            time: `${index}:00`,
-            hits: item.hits,
-            misses: Math.floor(item.hits * 0.2),
-            hitRate: statistics.hitRate,
-            size: parseInt(item.size),
-          }))}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <RechartsTooltip />
-            <Legend />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="hits"
-              stroke="#10b981"
-              name="Cache Hits"
-              strokeWidth={2}
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="misses"
-              stroke="#ef4444"
-              name="Cache Misses"
-              strokeWidth={2}
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="hitRate"
-              stroke="#3b82f6"
-              name="Hit Rate %"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-            />
-          </LineChart>
-        </ResponsiveContainer>
       </Card>
 
-      {/* Tabbed Configuration */}
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Hit Rate
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                85.4%
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Across all caches
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconChartBar size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Memory Usage
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                2.8GB
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Of 4GB allocated
+              </Text>
+            </div>
+            <ThemeIcon color="blue" variant="light" size={48} radius="md">
+              <IconCpu size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Avg Latency
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                0.28ms
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Cache response time
+              </Text>
+            </div>
+            <ThemeIcon color="teal" variant="light" size={48} radius="md">
+              <IconBolt size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Active Caches
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {cacheConfigs.filter(c => c.enabled).length} / {cacheConfigs.length}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Caches enabled
+              </Text>
+            </div>
+            <ThemeIcon color="orange" variant="light" size={48} radius="md">
+              <IconDatabase size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+      </SimpleGrid>
+
       <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
-          <Tabs.Tab value="policies" leftSection={<IconFilter size={16} />}>
-            Cache Policies
+          <Tabs.Tab value="configuration" leftSection={<IconSettings size={16} />}>
+            Configuration
           </Tabs.Tab>
-          <Tabs.Tab value="global" leftSection={<IconSettings size={16} />}>
-            Global Settings
+          <Tabs.Tab value="statistics" leftSection={<IconActivity size={16} />}>
+            Statistics
           </Tabs.Tab>
-          <Tabs.Tab value="redis" leftSection={<IconDatabase size={16} />}>
-            Redis Configuration
-          </Tabs.Tab>
-          <Tabs.Tab value="regions" leftSection={<IconNetwork size={16} />}>
-            Regional Caches
+          <Tabs.Tab value="details" leftSection={<IconDatabase size={16} />}>
+            Cache Details
           </Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="policies" pt="md">
-          {/* Cache Policies */}
-          <Stack gap="md">
-            {policies.map((policy) => (
-              <Card key={policy.id} withBorder>
-                <Group justify="space-between" mb="md">
-                  <Group>
-                    <Switch
-                      checked={policy.enabled}
-                      onChange={() => handleTogglePolicy(policy.id)}
-                    />
-                    <div>
-                      <Text fw={500}>{policy.name}</Text>
-                      <Badge variant="light" size="sm">
-                        {policy.type === 'memory' ? 'In-Memory' : policy.type === 'redis' ? 'Redis' : 'Hybrid'}
-                      </Badge>
-                    </div>
-                  </Group>
-                  <Group gap="xs">
-                    <Tooltip label="Edit Policy">
-                      <ActionIcon variant="subtle" size="sm">
-                        <IconEdit size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="Clear Cache">
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        color="orange"
-                        onClick={() => handleClearCache(policy.id)}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Group>
-                </Group>
-
-                <Grid>
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Stack gap="sm">
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">TTL</Text>
-                        <Text size="sm" fw={500}>{formatters.duration(policy.ttl * 1000)}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Type</Text>
-                        <Text size="sm" fw={500}>{policy.type}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Max Size</Text>
-                        <Text size="sm" fw={500}>{formatters.fileSize(policy.maxSize)}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Strategy</Text>
-                        <Badge size="xs" variant="light">{policy.strategy}</Badge>
-                      </Group>
-                    </Stack>
-                  </Grid.Col>
-
-                  <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Stack gap="sm">
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Enabled</Text>
-                        <Badge variant="light" color={policy.enabled ? 'green' : 'gray'}>
-                          {policy.enabled ? 'Active' : 'Inactive'}
+        <Tabs.Panel value="configuration" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Cache Configuration</Title>
+            <Stack gap="md">
+              {cacheConfigs.map((config) => {
+                const stats = cacheStats[config.id];
+                return (
+                  <Paper key={config.id} p="md" withBorder>
+                    <Group justify="space-between" mb="md">
+                      <Group>
+                        <Text fw={600}>{config.name}</Text>
+                        <Badge color={getTypeColor(config.type)} variant="light">
+                          {config.type}
+                        </Badge>
+                        <Badge
+                          color={config.enabled ? 'green' : 'gray'}
+                          variant="light"
+                          leftSection={config.enabled ? <IconCircleCheck size={12} /> : null}
+                        >
+                          {config.enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
                       </Group>
-                      <Group justify="space-between">
-                        <Text size="sm" c="dimmed">Description</Text>
-                        <Text size="sm" fw={500}>{policy.description || 'No description'}</Text>
+                      <Group gap="xs">
+                        <Tooltip label="Clear all entries">
+                          <ActionIcon
+                            variant="light"
+                            color="red"
+                            onClick={() => handleClearCache(config.id)}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Tooltip>
                       </Group>
-                    </Stack>
-                  </Grid.Col>
-                </Grid>
+                    </Group>
 
-              </Card>
-            ))}
+                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
+                      <div>
+                        <Text size="xs" c="dimmed">TTL (seconds)</Text>
+                        <NumberInput
+                          value={config.ttl}
+                          onChange={(value) => handleConfigUpdate(config.id, { ttl: Number(value) })}
+                          min={0}
+                          size="xs"
+                          mt={4}
+                        />
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Max Size (MB)</Text>
+                        <NumberInput
+                          value={config.maxSize}
+                          onChange={(value) => handleConfigUpdate(config.id, { maxSize: Number(value) })}
+                          min={0}
+                          size="xs"
+                          mt={4}
+                        />
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Eviction Policy</Text>
+                        <Select
+                          value={config.evictionPolicy}
+                          onChange={(value) => handleConfigUpdate(config.id, { evictionPolicy: value as any })}
+                          data={[
+                            { value: 'lru', label: 'LRU' },
+                            { value: 'lfu', label: 'LFU' },
+                            { value: 'ttl', label: 'TTL' },
+                            { value: 'random', label: 'Random' },
+                          ]}
+                          size="xs"
+                          mt={4}
+                        />
+                      </div>
+                    </SimpleGrid>
 
-            <Button
-              variant="light"
-              leftSection={<IconPlus size={16} />}
-              onClick={() => {
-                notifications.show({
-                  title: 'Add Cache Policy',
-                  message: 'Opening policy configuration...',
-                  color: 'blue',
-                });
-              }}
-            >
-              Add New Policy
-            </Button>
-          </Stack>
-        </Tabs.Panel>
+                    <Group gap="lg" mt="md">
+                      <Switch
+                        label="Enabled"
+                        checked={config.enabled}
+                        onChange={(e) => handleConfigUpdate(config.id, { enabled: e.currentTarget.checked })}
+                        size="sm"
+                      />
+                      <Switch
+                        label="Compression"
+                        checked={config.compression}
+                        onChange={(e) => handleConfigUpdate(config.id, { compression: e.currentTarget.checked })}
+                        size="sm"
+                      />
+                      <Switch
+                        label="Persistent"
+                        checked={config.persistent}
+                        onChange={(e) => handleConfigUpdate(config.id, { persistent: e.currentTarget.checked })}
+                        size="sm"
+                      />
+                    </Group>
 
-        <Tabs.Panel value="global" pt="md">
-          {/* Global Cache Settings */}
-          <Card withBorder>
-            <Group justify="space-between" mb="md">
-              <Text fw={600}>Global Cache Configuration</Text>
-              <Button
-                variant="light"
-                size="sm"
-                leftSection={<IconRefresh size={16} />}
-                onClick={() => refetchCaching()}
-              >
-                Refresh
-              </Button>
-            </Group>
-            <Grid>
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <Switch
-                    label="Enable Caching"
-                    description="Master switch for all caching functionality"
-                    checked={globalSettings.enabled}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, enabled: e.currentTarget.checked })}
-                  />
-
-                  <NumberInput
-                    label="Default TTL"
-                    description="Default time-to-live for cached items"
-                    value={globalSettings.defaultTTL}
-                    onChange={(value) => setGlobalSettings({ ...globalSettings, defaultTTL: Number(value) })}
-                    min={60}
-                    max={86400}
-                    suffix=" seconds"
-                  />
-
-                  <NumberInput
-                    label="Max Memory"
-                    description="Maximum memory allocation for all caches"
-                    value={globalSettings.maxMemory}
-                    onChange={(value) => setGlobalSettings({ ...globalSettings, maxMemory: Number(value) })}
-                    min={128}
-                    max={16384}
-                    suffix=" MB"
-                  />
-
-                  <Select
-                    label="Eviction Policy"
-                    description="Strategy for removing items when cache is full"
-                    value={globalSettings.evictionPolicy}
-                    onChange={(value) => setGlobalSettings({ ...globalSettings, evictionPolicy: value || 'lru' })}
-                    data={[
-                      { value: 'lru', label: 'Least Recently Used (LRU)' },
-                      { value: 'lfu', label: 'Least Frequently Used (LFU)' },
-                      { value: 'ttl', label: 'Time To Live (TTL)' },
-                      { value: 'random', label: 'Random Eviction' },
-                    ]}
-                  />
-                </Stack>
-              </Grid.Col>
-
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <NumberInput
-                    label="Compression Threshold"
-                    description="Minimum size before compression is applied"
-                    value={globalSettings.compressionThreshold}
-                    onChange={(value) => setGlobalSettings({ ...globalSettings, compressionThreshold: Number(value) })}
-                    min={256}
-                    max={10240}
-                    suffix=" bytes"
-                  />
-
-                  <Switch
-                    label="Enable Metrics Collection"
-                    description="Collect detailed cache performance metrics"
-                    checked={globalSettings.enableMetrics}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, enableMetrics: e.currentTarget.checked })}
-                  />
-
-                  <Switch
-                    label="Enable Debug Logging"
-                    description="Log cache operations for debugging"
-                    checked={globalSettings.enableLogging}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, enableLogging: e.currentTarget.checked })}
-                  />
-
-                  <MultiSelect
-                    label="Cache Headers"
-                    description="HTTP headers to consider for cache keys"
-                    data={[
-                      'accept',
-                      'accept-encoding',
-                      'accept-language',
-                      'authorization',
-                      'content-type',
-                      'user-agent',
-                    ]}
-                    defaultValue={['accept', 'content-type']}
-                  />
-                </Stack>
-              </Grid.Col>
-            </Grid>
-          </Card>
-
-          {/* Cache Warmup Settings */}
-          <Card withBorder mt="md">
-            <Text fw={600} mb="md">Cache Warmup Configuration</Text>
-            <Stack gap="md">
-              <Switch
-                label="Enable Cache Warmup"
-                description="Pre-populate cache with frequently accessed data"
-                defaultChecked
-              />
-              
-              <JsonInput
-                label="Warmup Endpoints"
-                description="List of endpoints to warm up on startup"
-                placeholder='["/v1/models", "/v1/chat/completions"]'
-                minRows={4}
-                formatOnBlur
-                validationError="Invalid JSON"
-              />
-
-              <NumberInput
-                label="Warmup Interval"
-                description="How often to refresh warmed cache entries"
-                defaultValue={3600}
-                min={300}
-                max={86400}
-                suffix=" seconds"
-              />
+                    {stats && (
+                      <Group gap="xs" mt="md">
+                        <Text size="xs" c="dimmed">
+                          Size: {stats.size}MB / {config.maxSize}MB
+                        </Text>
+                        <Text size="xs" c="dimmed">•</Text>
+                        <Text size="xs" c="dimmed">
+                          Entries: {stats.entries.toLocaleString()}
+                        </Text>
+                        <Text size="xs" c="dimmed">•</Text>
+                        <Text size="xs" c="dimmed">
+                          Hit Rate: {stats.hitRate}%
+                        </Text>
+                      </Group>
+                    )}
+                  </Paper>
+                );
+              })}
             </Stack>
           </Card>
         </Tabs.Panel>
 
-        <Tabs.Panel value="redis" pt="md">
-          {/* Redis Configuration */}
-          <Card withBorder>
-            <Text fw={600} mb="md">Redis Connection Settings</Text>
-            <Grid>
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <Switch
-                    label="Enable Redis Cache"
-                    description="Use Redis for distributed caching"
-                    checked={redisSettings.enabled}
-                    onChange={(e) => setRedisSettings({ ...redisSettings, enabled: e.currentTarget.checked })}
-                  />
-
-                  <TextInput
-                    label="Host"
-                    placeholder="localhost"
-                    value={redisSettings.host}
-                    onChange={(e) => setRedisSettings({ ...redisSettings, host: e.currentTarget.value })}
-                  />
-
-                  <NumberInput
-                    label="Port"
-                    value={redisSettings.port}
-                    onChange={(value) => setRedisSettings({ ...redisSettings, port: Number(value) })}
-                    min={1}
-                    max={65535}
-                  />
-
-                  <PasswordInput
-                    label="Password"
-                    placeholder="Optional"
-                    value={redisSettings.password}
-                    onChange={(e) => setRedisSettings({ ...redisSettings, password: e.currentTarget.value })}
-                  />
-
-                  <NumberInput
-                    label="Database"
-                    value={redisSettings.database}
-                    onChange={(value) => setRedisSettings({ ...redisSettings, database: Number(value) })}
-                    min={0}
-                    max={15}
-                  />
-                </Stack>
-              </Grid.Col>
-
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <Switch
-                    label="Cluster Mode"
-                    description="Connect to Redis Cluster"
-                    checked={redisSettings.cluster}
-                    onChange={(e) => setRedisSettings({ ...redisSettings, cluster: e.currentTarget.checked })}
-                  />
-
-                  <TextInput
-                    label="Sentinel Hosts"
-                    placeholder="sentinel1:26379,sentinel2:26379"
-                    value={redisSettings.sentinels}
-                    onChange={(e) => setRedisSettings({ ...redisSettings, sentinels: e.currentTarget.value })}
-                    disabled={!redisSettings.cluster}
-                  />
-
-                  <NumberInput
-                    label="Connection Pool Size"
-                    value={redisSettings.connectionPool}
-                    onChange={(value) => setRedisSettings({ ...redisSettings, connectionPool: Number(value) })}
-                    min={1}
-                    max={100}
-                  />
-
-                  <NumberInput
-                    label="Connection Timeout"
-                    value={redisSettings.timeout}
-                    onChange={(value) => setRedisSettings({ ...redisSettings, timeout: Number(value) })}
-                    min={1000}
-                    max={30000}
-                    suffix=" ms"
-                  />
-
-                  <Button
-                    variant="light"
-                    leftSection={<IconCheck size={16} />}
-                    onClick={() => {
-                      notifications.show({
-                        title: 'Testing Connection',
-                        message: 'Connecting to Redis...',
-                        color: 'blue',
-                        loading: true,
-                      });
-                    }}
-                  >
-                    Test Connection
-                  </Button>
-                </Stack>
-              </Grid.Col>
-            </Grid>
-          </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="regions" pt="md">
-          {/* Regional Cache Distribution */}
-          <Card withBorder>
-            <LoadingOverlay visible={cachingLoading} />
-            <Group justify="space-between" mb="md">
-              <Text fw={600}>Regional Cache Nodes</Text>
-              <Badge variant="light">
-                {cacheRegions.length} regions active
-              </Badge>
-            </Group>
+        <Tabs.Panel value="statistics" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Cache Performance Statistics</Title>
             <ScrollArea>
-              <Table striped highlightOnHover>
+              <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Region</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Nodes</Table.Th>
-                    <Table.Th>Memory Usage</Table.Th>
+                    <Table.Th>Cache</Table.Th>
+                    <Table.Th>Hits</Table.Th>
+                    <Table.Th>Misses</Table.Th>
                     <Table.Th>Hit Rate</Table.Th>
-                    <Table.Th>Items</Table.Th>
-                    <Table.Th>Actions</Table.Th>
+                    <Table.Th>Evictions</Table.Th>
+                    <Table.Th>Size</Table.Th>
+                    <Table.Th>Avg Latency</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {cacheRegions.map((region) => (
-                    <Table.Tr key={region.id}>
-                      <Table.Td fw={500}>{region.name}</Table.Td>
-                      <Table.Td>
-                        <Badge variant="light" color={getStatusColor(region.status)}>
-                          {region.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>{region.nodes}</Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Text size="sm">{((parseInt(region.metrics?.size || '0MB') / 1024 / 1024) || 0).toFixed(1)}MB</Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Text size="sm">{(region.metrics?.hitRate || 0).toFixed(1)}%</Text>
-                          <Progress value={region.metrics?.hitRate || 0} size="sm" w={60} color={(region.metrics?.hitRate || 0) > 70 ? 'green' : 'orange'} />
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>{formatters.number(region.metrics?.items || 0)}</Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Tooltip label="Clear Region Cache">
-                            <ActionIcon
-                              variant="subtle"
-                              size="sm"
-                              color="orange"
-                              onClick={() => handleClearCache()}
-                            >
-                              <IconTrash size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="View Details">
-                            <ActionIcon variant="subtle" size="sm">
-                              <IconChartBar size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  {cacheConfigs.map((config) => {
+                    const stats = cacheStats[config.id];
+                    if (!stats) return null;
+                    
+                    return (
+                      <Table.Tr key={config.id}>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <Text fw={500}>{config.name}</Text>
+                            <Badge size="xs" color={getTypeColor(config.type)} variant="light">
+                              {config.type}
+                            </Badge>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>{stats.hits.toLocaleString()}</Table.Td>
+                        <Table.Td>{stats.misses.toLocaleString()}</Table.Td>
+                        <Table.Td>
+                          <Badge
+                            color={stats.hitRate > 80 ? 'green' : stats.hitRate > 60 ? 'yellow' : 'red'}
+                            variant="light"
+                          >
+                            {stats.hitRate}%
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>{stats.evictions.toLocaleString()}</Table.Td>
+                        <Table.Td>
+                          <Group gap={4}>
+                            <Text size="sm">{stats.size}MB</Text>
+                            <Progress
+                              value={(stats.size / config.maxSize) * 100}
+                              size="xs"
+                              w={50}
+                              color={stats.size / config.maxSize > 0.9 ? 'red' : 'blue'}
+                            />
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge
+                            color={stats.avgLatency < 0.5 ? 'green' : stats.avgLatency < 1 ? 'yellow' : 'red'}
+                            variant="light"
+                          >
+                            {stats.avgLatency}ms
+                          </Badge>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
                 </Table.Tbody>
               </Table>
             </ScrollArea>
           </Card>
+        </Tabs.Panel>
 
-          {/* Regional Performance */}
-          <Card withBorder mt="md">
-            <Text fw={600} mb="md">Regional Performance Distribution</Text>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={cacheRegions.map(region => ({
-                name: region.name,
-                hitRate: region.metrics?.hitRate || 0,
-                items: region.metrics?.items || 0,
-                evictionRate: region.metrics?.evictionRate || 0,
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip />
-                <Legend />
-                <Bar dataKey="hitRate" fill="#3b82f6" name="Hit Rate %" />
-                <Bar dataKey="items" fill="#10b981" name="Items" />
-              </BarChart>
-            </ResponsiveContainer>
+        <Tabs.Panel value="details" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Group justify="space-between" mb="md">
+              <Title order={4}>Cache Entries</Title>
+              <Select
+                value={selectedCache}
+                onChange={(value) => setSelectedCache(value || 'provider-responses')}
+                data={cacheConfigs.map(c => ({ value: c.id, label: c.name }))}
+                w={250}
+              />
+            </Group>
+            
+            {selectedConfig && selectedStats && (
+              <Stack gap="md">
+                <Alert
+                  icon={<IconInfoCircle size={16} />}
+                  title="Cache Information"
+                  color="blue"
+                >
+                  <Text size="sm">
+                    Type: <Code>{selectedConfig.type}</Code> • 
+                    Policy: <Code>{getEvictionPolicyLabel(selectedConfig.evictionPolicy)}</Code> • 
+                    Entries: <Code>{selectedStats.entries}</Code> • 
+                    Size: <Code>{selectedStats.size}MB / {selectedConfig.maxSize}MB</Code>
+                  </Text>
+                </Alert>
+
+                <ScrollArea>
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Key</Table.Th>
+                        <Table.Th>Size</Table.Th>
+                        <Table.Th>TTL</Table.Th>
+                        <Table.Th>Hits</Table.Th>
+                        <Table.Th>Last Accessed</Table.Th>
+                        <Table.Th>Expires</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {mockCacheEntries.map((entry) => (
+                        <Table.Tr key={entry.key}>
+                          <Table.Td>
+                            <Code>{entry.key}</Code>
+                          </Table.Td>
+                          <Table.Td>{formatters.fileSize(entry.size)}</Table.Td>
+                          <Table.Td>{formatters.duration(entry.ttl * 1000)}</Table.Td>
+                          <Table.Td>{entry.hits}</Table.Td>
+                          <Table.Td>
+                            <Text size="xs">{formatters.date(entry.lastAccessed, { relativeDays: 7 })}</Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="xs">{formatters.date(entry.expires, { relativeDays: 7 })}</Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </ScrollArea>
+              </Stack>
+            )}
           </Card>
         </Tabs.Panel>
       </Tabs>
 
-      {/* Cache Best Practices Alert */}
-      <Alert
-        icon={<IconInfoCircle size={16} />}
-        title="Caching Best Practices"
-        color="blue"
-      >
-        <Text size="sm">
-          • Set appropriate TTL values based on data volatility
-          <br />
-          • Monitor hit rates and adjust cache sizes accordingly
-          <br />
-          • Use cache warming for frequently accessed endpoints
-          <br />
-          • Implement proper cache invalidation strategies
-          <br />
-          • Consider regional distribution for global applications
-        </Text>
-      </Alert>
+      <LoadingOverlay visible={isRefreshing} />
     </Stack>
   );
 }

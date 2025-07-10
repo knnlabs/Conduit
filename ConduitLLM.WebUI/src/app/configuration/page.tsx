@@ -6,482 +6,347 @@ import {
   Text,
   Group,
   Button,
-  Switch,
-  NumberInput,
+  Card,
   TextInput,
-  Select,
-  Textarea,
   Alert,
   LoadingOverlay,
+  Badge,
+  ActionIcon,
+  Grid,
+  Paper,
+  ThemeIcon,
+  Divider,
 } from '@mantine/core';
 import {
-  IconDeviceFloppy,
   IconRefresh,
   IconInfoCircle,
+  IconSettings,
+  IconEdit,
+  IconCheck,
+  IconX,
+  IconServer,
+  IconClock,
+  IconShield,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
-import { useForm } from '@mantine/form';
-import { SettingsCard, SettingRow } from '@/components/configuration/SettingsCard';
-import { 
-  useSystemInfo,
-  useSystemSettings,
-  useSetSystemSetting,
-  useUpdateSystemSettings,
-  type GlobalSettingDto
-} from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 
-interface SystemSettings {
-  // General Settings
-  systemName: string;
-  description: string;
-  enableLogging: boolean;
-  logLevel: string;
-  
-  // Performance Settings
-  maxConcurrentRequests: number;
-  requestTimeoutSeconds: number;
-  cacheTimeoutMinutes: number;
-  
-  // Rate Limiting
-  enableRateLimiting: boolean;
-  maxRequestsPerMinute: number;
-  rateLimitWindowSeconds: number;
-  
-  // Security Settings
-  enableIpFiltering: boolean;
-  enableRequestValidation: boolean;
-  maxFailedAttempts: number;
-  
-  // Monitoring
-  enablePerformanceTracking: boolean;
-  enableHealthChecks: boolean;
-  healthCheckIntervalMinutes: number;
+interface SystemInfo {
+  version?: string;
+  environment?: string;
+  uptime?: string;
+  nodeVersion?: string;
+  platform?: string;
+  totalMemory?: string;
+  freeMemory?: string;
+}
+
+interface GlobalSetting {
+  id?: number;
+  key: string;
+  value: string;
+  category?: string;
+  description?: string;
+  lastModified?: string;
 }
 
 export default function ConfigurationPage() {
-  const { data: systemInfo, isLoading: systemLoading } = useSystemInfo();
-  const { data: systemSettingsData, isLoading: settingsLoading } = useSystemSettings();
-  const setSetting = useSetSystemSetting();
-  const updateSettings = useUpdateSystemSettings();
-  
-  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [settings, setSettings] = useState<GlobalSetting[]>([]);
+  const [systemLoading, setSystemLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
 
-  const form = useForm<SystemSettings>({
-    initialValues: {
-      systemName: 'Conduit LLM Platform',
-      description: 'Unified LLM API Gateway and Management Platform',
-      enableLogging: true,
-      logLevel: 'Information',
-      maxConcurrentRequests: 100,
-      requestTimeoutSeconds: 30,
-      cacheTimeoutMinutes: 30,
-      enableRateLimiting: false,
-      maxRequestsPerMinute: 1000,
-      rateLimitWindowSeconds: 60,
-      enableIpFiltering: false,
-      enableRequestValidation: true,
-      maxFailedAttempts: 5,
-      enablePerformanceTracking: true,
-      enableHealthChecks: true,
-      healthCheckIntervalMinutes: 5,
-    },
-  });
-
-  // Update form when settings are loaded
+  // Fetch data on mount
   useEffect(() => {
-    if (systemSettingsData) {
-      // Convert settings array to form values
-      const settingsMap: Partial<SystemSettings> = {};
-      systemSettingsData.forEach((setting: GlobalSettingDto) => {
-        switch (setting.key) {
-          case 'SystemName': settingsMap.systemName = setting.value; break;
-          case 'Description': settingsMap.description = setting.value; break;
-          case 'EnableLogging': settingsMap.enableLogging = setting.value === 'true'; break;
-          case 'LogLevel': settingsMap.logLevel = setting.value; break;
-          case 'MaxConcurrentRequests': settingsMap.maxConcurrentRequests = parseInt(setting.value, 10); break;
-          case 'RequestTimeoutSeconds': settingsMap.requestTimeoutSeconds = parseInt(setting.value, 10); break;
-          case 'CacheTimeoutMinutes': settingsMap.cacheTimeoutMinutes = parseInt(setting.value, 10); break;
-          case 'EnableRateLimiting': settingsMap.enableRateLimiting = setting.value === 'true'; break;
-          case 'MaxRequestsPerMinute': settingsMap.maxRequestsPerMinute = parseInt(setting.value, 10); break;
-          case 'RateLimitWindowSeconds': settingsMap.rateLimitWindowSeconds = parseInt(setting.value, 10); break;
-          case 'EnableIpFiltering': settingsMap.enableIpFiltering = setting.value === 'true'; break;
-          case 'EnableRequestValidation': settingsMap.enableRequestValidation = setting.value === 'true'; break;
-          case 'MaxFailedAttempts': settingsMap.maxFailedAttempts = parseInt(setting.value, 10); break;
-          case 'EnablePerformanceTracking': settingsMap.enablePerformanceTracking = setting.value === 'true'; break;
-          case 'EnableHealthChecks': settingsMap.enableHealthChecks = setting.value === 'true'; break;
-          case 'HealthCheckIntervalMinutes': settingsMap.healthCheckIntervalMinutes = parseInt(setting.value, 10); break;
-        }
-      });
-      form.setValues(prev => ({ ...prev, ...settingsMap }));
-    }
-  }, [systemSettingsData, form]);
+    fetchSystemInfo();
+    fetchSettings();
+  }, []);
 
-  const handleSaveSection = async (section: string) => {
+  const fetchSystemInfo = async () => {
     try {
-      // Convert form values to settings array for batch update
-      const settingsToUpdate: Array<{ key: string; value: string; category?: string }> = [];
-      
-      const getCategory = (key: string): string => {
-        if (['systemName', 'description', 'enableLogging', 'logLevel'].includes(key)) return 'General';
-        if (['maxConcurrentRequests', 'requestTimeoutSeconds', 'cacheTimeoutMinutes'].includes(key)) return 'Performance';
-        if (['enableRateLimiting', 'maxRequestsPerMinute', 'rateLimitWindowSeconds'].includes(key)) return 'Security';
-        if (['enableIpFiltering', 'enableRequestValidation', 'maxFailedAttempts'].includes(key)) return 'Security';
-        if (['enablePerformanceTracking', 'enableHealthChecks', 'healthCheckIntervalMinutes'].includes(key)) return 'Monitoring';
-        return 'General';
-      };
+      setSystemLoading(true);
+      const response = await fetch('/api/settings/system-info');
+      if (!response.ok) {
+        throw new Error('Failed to fetch system info');
+      }
+      const data = await response.json();
+      setSystemInfo(data);
+    } catch (err) {
+      console.error('Error fetching system info:', err);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load system information',
+        color: 'red',
+      });
+    } finally {
+      setSystemLoading(false);
+    }
+  };
 
-      // Map form field names to setting keys
-      const fieldMapping: Record<string, string> = {
-        systemName: 'SystemName',
-        description: 'Description',
-        enableLogging: 'EnableLogging',
-        logLevel: 'LogLevel',
-        maxConcurrentRequests: 'MaxConcurrentRequests',
-        requestTimeoutSeconds: 'RequestTimeoutSeconds',
-        cacheTimeoutMinutes: 'CacheTimeoutMinutes',
-        enableRateLimiting: 'EnableRateLimiting',
-        maxRequestsPerMinute: 'MaxRequestsPerMinute',
-        rateLimitWindowSeconds: 'RateLimitWindowSeconds',
-        enableIpFiltering: 'EnableIpFiltering',
-        enableRequestValidation: 'EnableRequestValidation',
-        maxFailedAttempts: 'MaxFailedAttempts',
-        enablePerformanceTracking: 'EnablePerformanceTracking',
-        enableHealthChecks: 'EnableHealthChecks',
-        healthCheckIntervalMinutes: 'HealthCheckIntervalMinutes',
-      };
+  const fetchSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+      const data = await response.json();
+      setSettings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load settings',
+        color: 'red',
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
 
-      Object.entries(form.values).forEach(([key, value]) => {
-        const settingKey = fieldMapping[key];
-        if (settingKey) {
-          settingsToUpdate.push({
-            key: settingKey,
-            value: String(value),
-            category: getCategory(key),
-          });
-        }
+  const handleEdit = (setting: GlobalSetting) => {
+    setEditingKey(setting.key);
+    setEditValue(setting.value);
+  };
+
+  const handleSave = async (key: string) => {
+    try {
+      const response = await fetch(`/api/settings/${key}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ value: editValue }),
       });
 
-      await updateSettings.mutateAsync(settingsToUpdate);
-      setEditingSection(null);
+      if (!response.ok) {
+        throw new Error('Failed to update setting');
+      }
+
       notifications.show({
-        title: 'Settings Updated',
-        message: `${section} settings have been updated successfully`,
+        title: 'Success',
+        message: `Setting "${key}" updated successfully`,
         color: 'green',
       });
+
+      // Update local state
+      setSettings(prev => 
+        prev.map(s => s.key === key ? { ...s, value: editValue } : s)
+      );
+      setEditingKey(null);
+      setEditValue('');
     } catch (error) {
       notifications.show({
-        title: 'Update Failed',
-        message: error instanceof Error ? error.message : 'Failed to update settings',
+        title: 'Error',
+        message: `Failed to update setting: ${error instanceof Error ? error.message : 'Unknown error'}`,
         color: 'red',
       });
     }
   };
 
-  const handleResetDefaults = () => {
-    form.reset();
-    notifications.show({
-      title: 'Settings Reset',
-      message: 'All settings have been reset to default values',
-      color: 'blue',
-    });
+  const handleCancel = () => {
+    setEditingKey(null);
+    setEditValue('');
   };
 
-  const logLevelOptions = [
-    { value: 'Trace', label: 'Trace' },
-    { value: 'Debug', label: 'Debug' },
-    { value: 'Information', label: 'Information' },
-    { value: 'Warning', label: 'Warning' },
-    { value: 'Error', label: 'Error' },
-    { value: 'Critical', label: 'Critical' },
-  ];
+  const groupedSettings = settings.reduce((acc, setting) => {
+    const category = setting.category || 'General';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(setting);
+    return acc;
+  }, {} as Record<string, GlobalSetting[]>);
+
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'security':
+        return <IconShield size={20} />;
+      case 'performance':
+        return <IconClock size={20} />;
+      case 'system':
+        return <IconServer size={20} />;
+      default:
+        return <IconSettings size={20} />;
+    }
+  };
 
   return (
     <Stack gap="xl">
       <Group justify="space-between">
         <div>
           <Title order={1}>System Configuration</Title>
-          <Text c="dimmed">Configure system-wide settings and preferences</Text>
+          <Text c="dimmed">Manage system-wide settings and view system information</Text>
         </div>
-
-        <Group>
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleResetDefaults}
-          >
-            Reset to Defaults
-          </Button>
-          <Button
-            leftSection={<IconDeviceFloppy size={16} />}
-            disabled={!form.isDirty()}
-            loading={updateSettings.isPending}
-            onClick={() => handleSaveSection('All')}
-          >
-            Save All Changes
-          </Button>
-        </Group>
+        <Button
+          variant="light"
+          leftSection={<IconRefresh size={16} />}
+          onClick={() => {
+            fetchSystemInfo();
+            fetchSettings();
+          }}
+          loading={systemLoading || settingsLoading}
+        >
+          Refresh
+        </Button>
       </Group>
 
-      {systemInfo && (
-        <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-          <Text size="sm">
-            <strong>System Version:</strong> {systemInfo.version || 'Unknown'} | 
-            <strong> Environment:</strong> {systemInfo.environment || 'Production'} | 
-            <strong> Uptime:</strong> {systemInfo.uptime || 'Unknown'}
-          </Text>
-        </Alert>
-      )}
+      {/* System Information */}
+      <Card withBorder>
+        <Card.Section withBorder inheritPadding py="xs">
+          <Group justify="space-between">
+            <Group gap="xs">
+              <ThemeIcon size="sm" variant="light" color="blue">
+                <IconInfoCircle size={16} />
+              </ThemeIcon>
+              <Text fw={500}>System Information</Text>
+            </Group>
+          </Group>
+        </Card.Section>
 
+        <Card.Section inheritPadding py="md">
+          <LoadingOverlay visible={systemLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+          {systemInfo && (
+            <Grid>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Version</Text>
+                  <Text size="lg" fw={500}>{systemInfo.version || 'Unknown'}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Environment</Text>
+                  <Text size="lg" fw={500}>{systemInfo.environment || 'Production'}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Uptime</Text>
+                  <Text size="lg" fw={500}>{systemInfo.uptime || 'Unknown'}</Text>
+                </Paper>
+              </Grid.Col>
+              {systemInfo.platform && (
+                <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                  <Paper p="md" withBorder>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Platform</Text>
+                    <Text size="lg" fw={500}>{systemInfo.platform}</Text>
+                  </Paper>
+                </Grid.Col>
+              )}
+              {systemInfo.nodeVersion && (
+                <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                  <Paper p="md" withBorder>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Node Version</Text>
+                    <Text size="lg" fw={500}>{systemInfo.nodeVersion}</Text>
+                  </Paper>
+                </Grid.Col>
+              )}
+            </Grid>
+          )}
+        </Card.Section>
+      </Card>
+
+      {/* Settings */}
       <div style={{ position: 'relative' }}>
-        <LoadingOverlay visible={systemLoading || settingsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+        <LoadingOverlay visible={settingsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+        
+        {Object.keys(groupedSettings).length === 0 && !settingsLoading ? (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              No settings are currently available. Settings will appear here once they are configured in the system.
+            </Text>
+          </Alert>
+        ) : (
+          <Stack gap="lg">
+            {Object.entries(groupedSettings).map(([category, categorySettings]) => (
+              <Card key={category} withBorder>
+                <Card.Section withBorder inheritPadding py="xs">
+                  <Group gap="xs">
+                    <ThemeIcon size="sm" variant="light">
+                      {getCategoryIcon(category)}
+                    </ThemeIcon>
+                    <Text fw={500}>{category} Settings</Text>
+                    <Badge size="sm" variant="light">
+                      {categorySettings.length} {categorySettings.length === 1 ? 'setting' : 'settings'}
+                    </Badge>
+                  </Group>
+                </Card.Section>
 
-        <Stack gap="lg">
-          {/* General Settings */}
-          <SettingsCard
-            title="General Settings"
-            description="Basic system configuration and identification"
-            category="General"
-            isEditing={editingSection === 'general'}
-            onToggleEdit={() => setEditingSection(editingSection === 'general' ? null : 'general')}
-            onSave={() => handleSaveSection('General')}
-            isDirty={form.isDirty()}
-          >
-            <Stack gap="md">
-              <SettingRow
-                label="System Name"
-                description="Display name for this Conduit instance"
-                required
-              >
-                <TextInput
-                  {...form.getInputProps('systemName')}
-                  disabled={editingSection !== 'general'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Description"
-                description="Optional description of this system"
-              >
-                <Textarea
-                  rows={2}
-                  {...form.getInputProps('description')}
-                  disabled={editingSection !== 'general'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Enable Logging"
-                description="Enable system-wide logging"
-              >
-                <Switch
-                  {...form.getInputProps('enableLogging', { type: 'checkbox' })}
-                  disabled={editingSection !== 'general'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Log Level"
-                description="Minimum log level to record"
-              >
-                <Select
-                  data={logLevelOptions}
-                  {...form.getInputProps('logLevel')}
-                  disabled={editingSection !== 'general' || !form.values.enableLogging}
-                />
-              </SettingRow>
-            </Stack>
-          </SettingsCard>
-
-          {/* Performance Settings */}
-          <SettingsCard
-            title="Performance Settings"
-            description="Configure system performance and resource limits"
-            category="Performance"
-            isEditing={editingSection === 'performance'}
-            onToggleEdit={() => setEditingSection(editingSection === 'performance' ? null : 'performance')}
-            onSave={() => handleSaveSection('Performance')}
-            isDirty={form.isDirty()}
-          >
-            <Stack gap="md">
-              <SettingRow
-                label="Max Concurrent Requests"
-                description="Maximum number of simultaneous requests"
-                required
-              >
-                <NumberInput
-                  min={1}
-                  max={1000}
-                  {...form.getInputProps('maxConcurrentRequests')}
-                  disabled={editingSection !== 'performance'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Request Timeout (seconds)"
-                description="Default timeout for API requests"
-                required
-              >
-                <NumberInput
-                  min={5}
-                  max={300}
-                  {...form.getInputProps('requestTimeoutSeconds')}
-                  disabled={editingSection !== 'performance'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Cache Timeout (minutes)"
-                description="How long to cache responses"
-                required
-              >
-                <NumberInput
-                  min={1}
-                  max={1440}
-                  {...form.getInputProps('cacheTimeoutMinutes')}
-                  disabled={editingSection !== 'performance'}
-                />
-              </SettingRow>
-            </Stack>
-          </SettingsCard>
-
-          {/* Rate Limiting Settings */}
-          <SettingsCard
-            title="Rate Limiting"
-            description="Configure request rate limiting and throttling"
-            category="Security"
-            isEditing={editingSection === 'rateLimit'}
-            onToggleEdit={() => setEditingSection(editingSection === 'rateLimit' ? null : 'rateLimit')}
-            onSave={() => handleSaveSection('Rate Limiting')}
-            isDirty={form.isDirty()}
-          >
-            <Stack gap="md">
-              <SettingRow
-                label="Enable Rate Limiting"
-                description="Enable request rate limiting"
-              >
-                <Switch
-                  {...form.getInputProps('enableRateLimiting', { type: 'checkbox' })}
-                  disabled={editingSection !== 'rateLimit'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Max Requests per Minute"
-                description="Maximum requests allowed per minute per client"
-              >
-                <NumberInput
-                  min={1}
-                  max={10000}
-                  {...form.getInputProps('maxRequestsPerMinute')}
-                  disabled={editingSection !== 'rateLimit' || !form.values.enableRateLimiting}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Rate Limit Window (seconds)"
-                description="Time window for rate limit calculations"
-              >
-                <NumberInput
-                  min={1}
-                  max={3600}
-                  {...form.getInputProps('rateLimitWindowSeconds')}
-                  disabled={editingSection !== 'rateLimit' || !form.values.enableRateLimiting}
-                />
-              </SettingRow>
-            </Stack>
-          </SettingsCard>
-
-          {/* Security Settings */}
-          <SettingsCard
-            title="Security Settings"
-            description="Configure security and access control features"
-            category="Security"
-            isEditing={editingSection === 'security'}
-            onToggleEdit={() => setEditingSection(editingSection === 'security' ? null : 'security')}
-            onSave={() => handleSaveSection('Security')}
-            isDirty={form.isDirty()}
-          >
-            <Stack gap="md">
-              <SettingRow
-                label="Enable IP Filtering"
-                description="Enable IP-based access control"
-              >
-                <Switch
-                  {...form.getInputProps('enableIpFiltering', { type: 'checkbox' })}
-                  disabled={editingSection !== 'security'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Enable Request Validation"
-                description="Validate incoming requests"
-              >
-                <Switch
-                  {...form.getInputProps('enableRequestValidation', { type: 'checkbox' })}
-                  disabled={editingSection !== 'security'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Max Failed Attempts"
-                description="Maximum failed login attempts before blocking"
-              >
-                <NumberInput
-                  min={1}
-                  max={100}
-                  {...form.getInputProps('maxFailedAttempts')}
-                  disabled={editingSection !== 'security'}
-                />
-              </SettingRow>
-            </Stack>
-          </SettingsCard>
-
-          {/* Monitoring Settings */}
-          <SettingsCard
-            title="Monitoring & Health Checks"
-            description="Configure system monitoring and health check settings"
-            category="Monitoring"
-            isEditing={editingSection === 'monitoring'}
-            onToggleEdit={() => setEditingSection(editingSection === 'monitoring' ? null : 'monitoring')}
-            onSave={() => handleSaveSection('Monitoring')}
-            isDirty={form.isDirty()}
-          >
-            <Stack gap="md">
-              <SettingRow
-                label="Enable Performance Tracking"
-                description="Track and log performance metrics"
-              >
-                <Switch
-                  {...form.getInputProps('enablePerformanceTracking', { type: 'checkbox' })}
-                  disabled={editingSection !== 'monitoring'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Enable Health Checks"
-                description="Perform automated health checks"
-              >
-                <Switch
-                  {...form.getInputProps('enableHealthChecks', { type: 'checkbox' })}
-                  disabled={editingSection !== 'monitoring'}
-                />
-              </SettingRow>
-
-              <SettingRow
-                label="Health Check Interval (minutes)"
-                description="How often to perform health checks"
-              >
-                <NumberInput
-                  min={1}
-                  max={60}
-                  {...form.getInputProps('healthCheckIntervalMinutes')}
-                  disabled={editingSection !== 'monitoring' || !form.values.enableHealthChecks}
-                />
-              </SettingRow>
-            </Stack>
-          </SettingsCard>
-        </Stack>
+                <Card.Section inheritPadding py="md">
+                  <Stack gap="md">
+                    {categorySettings.map((setting, index) => (
+                      <div key={setting.key}>
+                        {index > 0 && <Divider my="xs" />}
+                        <Group justify="space-between" align="flex-start">
+                          <div style={{ flex: 1 }}>
+                            <Text fw={500} size="sm">{setting.key}</Text>
+                            {setting.description && (
+                              <Text size="xs" c="dimmed" mt={2}>
+                                {setting.description}
+                              </Text>
+                            )}
+                            {editingKey === setting.key ? (
+                              <Group mt="xs" gap="xs">
+                                <TextInput
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.currentTarget.value)}
+                                  size="xs"
+                                  style={{ flex: 1 }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleSave(setting.key);
+                                    } else if (e.key === 'Escape') {
+                                      handleCancel();
+                                    }
+                                  }}
+                                />
+                                <ActionIcon
+                                  color="green"
+                                  variant="filled"
+                                  size="sm"
+                                  onClick={() => handleSave(setting.key)}
+                                  title="Save"
+                                >
+                                  <IconCheck size={14} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  color="red"
+                                  variant="light"
+                                  size="sm"
+                                  onClick={handleCancel}
+                                  title="Cancel"
+                                >
+                                  <IconX size={14} />
+                                </ActionIcon>
+                              </Group>
+                            ) : (
+                              <Group mt="xs" gap="xs" align="center">
+                                <Badge variant="light" size="lg">
+                                  {setting.value}
+                                </Badge>
+                                <ActionIcon
+                                  variant="subtle"
+                                  size="sm"
+                                  onClick={() => handleEdit(setting)}
+                                  title="Edit"
+                                >
+                                  <IconEdit size={14} />
+                                </ActionIcon>
+                              </Group>
+                            )}
+                          </div>
+                        </Group>
+                      </div>
+                    ))}
+                  </Stack>
+                </Card.Section>
+              </Card>
+            ))}
+          </Stack>
+        )}
       </div>
     </Stack>
   );

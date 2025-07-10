@@ -1,14 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { MainLayout } from './MainLayout';
-import { useNavigationStateHub } from '@/hooks/signalr/useNavigationStateHub';
-import { useSpendTracking } from '@/hooks/signalr/useSpendTracking';
-import { useVirtualKeyHub } from '@/hooks/signalr/useVirtualKeyHub';
-import { useProviderHub } from '@/hooks/signalr/useProviderHub';
-import { useModelMappingHub } from '@/hooks/signalr/useModelMappingHub';
-import { setupGlobalErrorHandlers } from '@/lib/utils/global-error-handler';
 
 interface AppWrapperProps {
   children: React.ReactNode;
@@ -21,13 +14,6 @@ interface AuthenticatedLayoutProps {
 const PUBLIC_ROUTES = ['/login'];
 
 function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
-  // Connect to real-time hubs for live updates
-  useNavigationStateHub();
-  useSpendTracking();
-  useVirtualKeyHub();
-  useProviderHub();
-  useModelMappingHub();
-
   return (
     <MainLayout>
       {children}
@@ -37,11 +23,6 @@ function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
 export function AppWrapper({ children }: AppWrapperProps) {
   const pathname = usePathname();
-  
-  // Setup global error handlers on mount
-  useEffect(() => {
-    setupGlobalErrorHandlers();
-  }, []);
   
   // Check if this is a public route
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);

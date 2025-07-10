@@ -29,15 +29,13 @@ import {
   IconJson,
   IconSearch,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
 import { CreateProviderModal } from '@/components/providers/CreateProviderModal';
 import { EditProviderModal } from '@/components/providers/EditProviderModal';
-import { useProviders, useTestProvider } from '@/hooks/useConduitAdmin';
 import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
-import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 
@@ -48,11 +46,9 @@ interface Provider {
   isEnabled: boolean;
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  modelsAvailable: number;
   createdAt: string;
-  apiEndpoint?: string;
-  description?: string;
-  organizationId?: string;
+  endpoint?: string;
+  models?: string[];
 }
 
 export default function ProvidersPage() {
@@ -60,20 +56,101 @@ export default function ProvidersPage() {
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: providers, isLoading, error, refetch } = useProviders();
-  const testProvider = useTestProvider();
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [testingProviders, setTestingProviders] = useState<Set<string>>(new Set());
+
+  // Fetch providers on mount
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  const fetchProviders = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/providers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch providers');
+      }
+      const data = await response.json();
+      setProviders(data);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestProvider = async (providerId: string) => {
+    setTestingProviders(prev => new Set(prev).add(providerId));
+    try {
+      const response = await fetch(`/api/providers/${providerId}/test`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to test provider');
+      }
+      const result = await response.json();
+      
+      notifications.show({
+        title: result.isSuccessful ? 'Connection Successful' : 'Connection Failed',
+        message: result.message || (result.isSuccessful ? 'Provider is working correctly' : 'Failed to connect to provider'),
+        color: result.isSuccessful ? 'green' : 'red',
+      });
+      
+      // Refresh providers to get updated health status
+      await fetchProviders();
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to test provider connection',
+        color: 'red',
+      });
+    } finally {
+      setTestingProviders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(providerId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDelete = async (providerId: string) => {
+    try {
+      const response = await fetch(`/api/providers/${providerId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete provider');
+      }
+      notifications.show({
+        title: 'Success',
+        message: 'Provider deleted successfully',
+        color: 'green',
+      });
+      fetchProviders();
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to delete provider',
+        color: 'red',
+      });
+    }
+  };
 
   // Filter providers based on search query
-  const filteredProviders = (providers as Provider[] | undefined)?.filter((provider) => {
+  const filteredProviders = providers.filter((provider) => {
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
     return (
       provider.providerName.toLowerCase().includes(query) ||
+      provider.id.toLowerCase().includes(query) ||
       (provider.providerType && provider.providerType.toLowerCase().includes(query)) ||
-      (provider.description && provider.description.toLowerCase().includes(query))
+      (provider.endpoint && provider.endpoint.toLowerCase().includes(query))
     );
-  }) || [];
+  });
 
   // Use pagination hook
   const {
@@ -83,36 +160,22 @@ export default function ProvidersPage() {
     totalItems,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaginatedData(filteredProviders, { defaultPageSize: 10 });
+  } = usePaginatedData(filteredProviders);
 
-  // Calculate statistics based on filtered data (not paginated)
-  const stats = filteredProviders ? {
+  const stats = {
     totalProviders: filteredProviders.length,
-    enabledProviders: filteredProviders.filter((p) => p.isEnabled).length,
+    activeProviders: filteredProviders.filter((p) => p.isEnabled).length,
     healthyProviders: filteredProviders.filter((p) => p.healthStatus === 'healthy').length,
-    totalModels: filteredProviders.reduce((sum: number, p) => sum + (p.modelsAvailable || 0), 0),
-  } : null;
+    unhealthyProviders: filteredProviders.filter((p) => p.healthStatus === 'unhealthy').length,
+  };
 
   const handleEdit = (provider: Provider) => {
     setSelectedProvider(provider);
     openEditModal();
   };
 
-  const handleTest = async (provider: Provider) => {
-    await testProvider.mutateAsync(provider.id);
-  };
-
-  const handleRefreshAll = () => {
-    refetch();
-    notifications.show({
-      title: 'Refreshing Providers',
-      message: 'Updating provider status and model lists...',
-      color: 'blue',
-    });
-  };
-
   const handleExportCSV = () => {
-    if (!filteredProviders || filteredProviders.length === 0) {
+    if (filteredProviders.length === 0) {
       notifications.show({
         title: 'No data to export',
         message: 'There are no providers to export',
@@ -123,13 +186,13 @@ export default function ProvidersPage() {
 
     const exportData = filteredProviders.map((provider) => ({
       name: provider.providerName,
-      type: provider.providerType || 'Unknown',
+      type: provider.providerType || '',
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
-      healthStatus: provider.healthStatus || 'Unknown',
-      modelsAvailable: provider.modelsAvailable || 0,
+      health: provider.healthStatus,
+      endpoint: provider.endpoint || '',
+      models: provider.models?.join('; ') || '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
       createdAt: formatDateForExport(provider.createdAt),
-      description: provider.description || '',
     }));
 
     exportToCSV(
@@ -139,11 +202,11 @@ export default function ProvidersPage() {
         { key: 'name', label: 'Provider Name' },
         { key: 'type', label: 'Type' },
         { key: 'status', label: 'Status' },
-        { key: 'healthStatus', label: 'Health' },
-        { key: 'modelsAvailable', label: 'Models' },
+        { key: 'health', label: 'Health' },
+        { key: 'endpoint', label: 'Endpoint' },
+        { key: 'models', label: 'Models' },
         { key: 'lastHealthCheck', label: 'Last Health Check' },
         { key: 'createdAt', label: 'Created At' },
-        { key: 'description', label: 'Description' },
       ]
     );
 
@@ -155,7 +218,7 @@ export default function ProvidersPage() {
   };
 
   const handleExportJSON = () => {
-    if (!filteredProviders || filteredProviders.length === 0) {
+    if (filteredProviders.length === 0) {
       notifications.show({
         title: 'No data to export',
         message: 'There are no providers to export',
@@ -164,15 +227,8 @@ export default function ProvidersPage() {
       return;
     }
 
-    // Export with sensitive data removed
-    const sanitizedProviders = filteredProviders.map((provider) => ({
-      ...provider,
-      credentials: undefined,
-      apiKey: undefined,
-    }));
-
     exportToJSON(
-      sanitizedProviders,
+      filteredProviders,
       `providers-${new Date().toISOString().split('T')[0]}`
     );
 
@@ -183,7 +239,7 @@ export default function ProvidersPage() {
     });
   };
 
-  const statCards = stats ? [
+  const statCards = [
     {
       title: 'Total Providers',
       value: stats.totalProviders,
@@ -191,8 +247,8 @@ export default function ProvidersPage() {
       color: 'blue',
     },
     {
-      title: 'Enabled',
-      value: stats.enabledProviders,
+      title: 'Active',
+      value: stats.activeProviders,
       icon: IconCircleCheck,
       color: 'green',
     },
@@ -203,19 +259,19 @@ export default function ProvidersPage() {
       color: 'teal',
     },
     {
-      title: 'Models Available',
-      value: stats.totalModels,
-      icon: IconServer,
-      color: 'purple',
+      title: 'Unhealthy',
+      value: stats.unhealthyProviders,
+      icon: IconCircleX,
+      color: 'red',
     },
-  ] : [];
+  ];
 
   if (error) {
     return (
       <Stack gap="xl">
         <div>
           <Title order={1}>LLM Providers</Title>
-          <Text c="dimmed">Configure and manage LLM provider integrations</Text>
+          <Text c="dimmed">Manage provider configurations and connections</Text>
         </div>
         
         <Alert 
@@ -223,7 +279,7 @@ export default function ProvidersPage() {
           title="Error loading providers"
           color="red"
         >
-          {error.message || 'Failed to load providers. Please try again.'}
+          {error.message}
         </Alert>
       </Stack>
     );
@@ -234,10 +290,19 @@ export default function ProvidersPage() {
       <Group justify="space-between">
         <div>
           <Title order={1}>LLM Providers</Title>
-          <Text c="dimmed">Configure and manage LLM provider integrations</Text>
+          <Text c="dimmed">Manage provider configurations and connections</Text>
         </div>
 
         <Group>
+          <Button
+            variant="light"
+            leftSection={<IconRefresh size={16} />}
+            onClick={fetchProviders}
+            loading={isLoading}
+          >
+            Refresh
+          </Button>
+
           <Menu shadow="md" width={200}>
             <Menu.Target>
               <Button variant="light" leftSection={<IconDownload size={16} />}>
@@ -260,15 +325,7 @@ export default function ProvidersPage() {
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
-          
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleRefreshAll}
-            loading={isLoading}
-          >
-            Refresh All
-          </Button>
+
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={openCreateModal}
@@ -299,61 +356,13 @@ export default function ProvidersPage() {
         ))}
       </SimpleGrid>
 
-      {/* Health Status Overview */}
-      {stats && stats.totalProviders > 0 && (
-        <Card>
-          <Card.Section p="md" withBorder>
-            <Text fw={600}>System Health Overview</Text>
-          </Card.Section>
-          <Card.Section p="md">
-            <Group>
-              <Group gap="xs">
-                <ThemeIcon size="sm" color="green" variant="light">
-                  <IconCircleCheck size={14} />
-                </ThemeIcon>
-                <Text size="sm">
-                  {stats.healthyProviders} Healthy
-                </Text>
-              </Group>
-              
-              <Group gap="xs">
-                <ThemeIcon size="sm" color="red" variant="light">
-                  <IconCircleX size={14} />
-                </ThemeIcon>
-                <Text size="sm">
-                  {stats.totalProviders - stats.healthyProviders} Issues
-                </Text>
-              </Group>
-              
-              <Group gap="xs">
-                <ThemeIcon size="sm" color="orange" variant="light">
-                  <IconClock size={14} />
-                </ThemeIcon>
-                <Text size="sm">
-                  {stats.totalModels} Models
-                </Text>
-              </Group>
-
-              {stats.enabledProviders !== stats.totalProviders && (
-                <Badge color="orange" variant="light">
-                  {stats.totalProviders - stats.enabledProviders} Disabled
-                </Badge>
-              )}
-            </Group>
-          </Card.Section>
-        </Card>
-      )}
-
       {/* Providers Table */}
       <Card>
         <Card.Section p="md" withBorder>
           <Group justify="space-between">
-            <Group>
-              <Text fw={600}>Configured Providers</Text>
-              <RealTimeStatus />
-            </Group>
+            <Text fw={600}>Configured Providers</Text>
             <Text size="sm" c="dimmed">
-              {stats && `${stats.totalProviders} provider${stats.totalProviders !== 1 ? 's' : ''} total`}
+              {stats.totalProviders} provider{stats.totalProviders !== 1 ? 's' : ''} total
               {searchQuery && providers && ` (${providers.length} total)`}
             </Text>
           </Group>
@@ -361,7 +370,7 @@ export default function ProvidersPage() {
 
         <Card.Section p="md">
           <TextInput
-            placeholder="Search by name, type, or description..."
+            placeholder="Search by name, type, endpoint..."
             leftSection={<IconSearch size={16} />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.currentTarget.value)}
@@ -371,7 +380,13 @@ export default function ProvidersPage() {
 
         <Card.Section p="md" pt={0} style={{ position: 'relative' }}>
           <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-          <ProvidersTable onEdit={handleEdit} onTest={handleTest} data={paginatedData} />
+          <ProvidersTable 
+            data={paginatedData}
+            onEdit={handleEdit}
+            onTest={handleTestProvider}
+            onDelete={handleDelete}
+            testingProviders={testingProviders}
+          />
           {filteredProviders.length > 0 && (
             <TablePagination
               total={totalItems}
@@ -388,6 +403,7 @@ export default function ProvidersPage() {
       <CreateProviderModal
         opened={createModalOpened}
         onClose={closeCreateModal}
+        onSuccess={fetchProviders}
       />
 
       {/* Edit Provider Modal */}
@@ -395,7 +411,7 @@ export default function ProvidersPage() {
         opened={editModalOpened}
         onClose={closeEditModal}
         provider={selectedProvider}
-        onTest={handleTest}
+        onSuccess={fetchProviders}
       />
     </Stack>
   );

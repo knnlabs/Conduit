@@ -1,9 +1,22 @@
-import { createLegacyToSDKMigration } from '@/lib/utils/route-migration';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/simple-auth';
+import { getServerAdminClient } from '@/lib/server/adminClient';
 
-export const GET = createLegacyToSDKMigration(
-  async (client) => client.system.getSystemInfo(),
-  { 
-    requireAdmin: true,
-    errorContext: 'fetch system info'
+export async function GET(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (!auth.isValid) {
+    return auth.response!;
   }
-);
+
+  try {
+    const adminClient = getServerAdminClient();
+    const systemInfo = await adminClient.system.getSystemInfo();
+    return NextResponse.json(systemInfo);
+  } catch (error) {
+    console.error('Failed to get system info:', error);
+    return NextResponse.json(
+      { error: 'Failed to get system info' },
+      { status: 500 }
+    );
+  }
+}

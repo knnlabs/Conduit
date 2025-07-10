@@ -1,52 +1,19 @@
-import { NextResponse } from 'next/server';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
+import { NextRequest, NextResponse } from 'next/server';
 
-export const PUT = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, adminClient }) => {
-    try {
-      const { providerId } = params;
+export async function PUT(_request: NextRequest) {
+  return NextResponse.json(
+    { 
+      message: 'Audio configuration is part of Operations features and will be available soon'
+    },
+    { status: 501 }
+  );
+}
 
-      const body = await request.json();
-      
-      // Update audio provider
-      const result = await withSDKErrorHandling(
-        async () => adminClient!.audioConfiguration.updateProvider(providerId, {
-          name: body.name,
-          baseUrl: body.baseUrl || body.endpoint,
-          apiKey: body.apiKey,
-          isEnabled: body.isEnabled,
-          supportedOperations: body.supportedOperations,
-          priority: body.priority,
-          timeoutSeconds: body.timeoutSeconds,
-          settings: body.settings,
-        }),
-        'update audio provider'
-      );
-
-      return NextResponse.json(result);
-    } catch (error) {
-      return mapSDKErrorToResponse(error);
-    }
-  },
-  { requireAdmin: true }
-);
-
-export const DELETE = createDynamicRouteHandler<{ providerId: string }>(
-  async (_request, { params, adminClient }) => {
-    try {
-      const { providerId } = params;
-      
-      // Delete audio provider
-      await withSDKErrorHandling(
-        async () => adminClient!.audioConfiguration.deleteProvider(providerId),
-        'delete audio provider'
-      );
-
-      return NextResponse.json({ success: true });
-    } catch (error) {
-      return mapSDKErrorToResponse(error);
-    }
-  },
-  { requireAdmin: true }
-);
+export async function DELETE(_request: NextRequest) {
+  return NextResponse.json(
+    { 
+      message: 'Audio configuration is part of Operations features and will be available soon'
+    },
+    { status: 501 }
+  );
+}

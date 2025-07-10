@@ -4,785 +4,784 @@ import {
   Stack,
   Title,
   Text,
+  Card,
   Group,
   Button,
-  Card,
-  Select,
-  Textarea,
-  Grid,
   Badge,
+  SimpleGrid,
+  ThemeIcon,
+  Progress,
+  Paper,
+  Switch,
+  NumberInput,
+  Select,
+  Slider,
+  LoadingOverlay,
+  Alert,
+  Tabs,
+  Table,
+  ScrollArea,
   ActionIcon,
   Tooltip,
-  Modal,
-  Alert,
-  FileInput,
-  ScrollArea,
-  Tabs,
-  NumberInput,
+  Code,
+  Divider,
 } from '@mantine/core';
 import {
-  IconMicrophone,
+  IconWaveSine,
   IconSettings,
+  IconRefresh,
   IconDownload,
-  IconTrash,
-  IconUpload,
+  IconMicrophone,
   IconVolume,
-  IconFileText,
-  IconCopy,
+  IconActivity,
+  IconClock,
+  IconBolt,
+  IconFilter,
+  IconAdjustments,
+  IconFileMusic,
+  IconCircleCheck,
   IconAlertCircle,
+  IconInfoCircle,
   IconPlayerPlay,
   IconPlayerPause,
+  IconTestPipe,
 } from '@tabler/icons-react';
-import { useState, useRef } from 'react';
-import { useDisclosure } from '@mantine/hooks';
-import { useAudioTranscription, useAudioSpeech, useAvailableModels, type TranscriptionModel, type TextToSpeechModel, type Voice } from '@/hooks/useConduitCore';
-import { useVirtualKeys } from '@/hooks/api/useAdminApi';
+import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { safeLog } from '@/lib/utils/logging';
-import TaskProgressPanel from '@/components/realtime/TaskProgressPanel';
+import { formatters } from '@/lib/utils/formatters';
 
-interface TranscriptionResult {
+interface ProcessingConfig {
   id: string;
-  fileName: string;
-  text: string;
-  model: string;
-  language?: string;
-  duration?: number;
-  createdAt: Date;
+  name: string;
+  category: 'transcription' | 'synthesis' | 'general';
+  enabled: boolean;
+  settings: Record<string, any>;
 }
 
-interface SpeechResult {
+interface ProcessingQueue {
   id: string;
-  text: string;
-  audioUrl: string;
+  type: 'transcription' | 'synthesis';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  inputFile?: string;
+  outputFile?: string;
+  duration?: number;
+  progress: number;
+  provider: string;
   model: string;
-  voice: string;
-  format: string;
-  speed: number;
-  createdAt: Date;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+}
+
+interface ProcessingStats {
+  totalProcessed: number;
+  totalDuration: number;
+  avgProcessingTime: number;
+  successRate: number;
+  queueLength: number;
+  activeJobs: number;
+}
+
+interface AudioFormat {
+  id: string;
+  name: string;
+  mimeType: string;
+  extension: string;
+  supported: boolean;
+  bitrate?: number;
+  sampleRate?: number;
+  channels?: number;
 }
 
 export default function AudioProcessingPage() {
-  const [activeTab, setActiveTab] = useState<string | null>('transcription');
-  const [selectedVirtualKey, setSelectedVirtualKey] = useState('');
-  
-  // Transcription state
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [transcriptionModel, setTranscriptionModel] = useState('whisper-1');
-  const [language, setLanguage] = useState('');
-  const [responseFormat, setResponseFormat] = useState('json');
-  const [temperature, setTemperature] = useState(0);
-  const [transcriptionResults, setTranscriptionResults] = useState<TranscriptionResult[]>([]);
-  
-  // Speech state
-  const [speechText, setSpeechText] = useState('');
-  const [speechModel, setSpeechModel] = useState('tts-1');
-  const [voice, setVoice] = useState('alloy');
-  const [speechFormat, setSpeechFormat] = useState('mp3');
-  const [speed, setSpeed] = useState(1.0);
-  const [speechResults, setSpeechResults] = useState<SpeechResult[]>([]);
-  
-  const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
-  const [isPlaying, setIsPlaying] = useState<string | null>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>('settings');
+  const [processingConfigs, setProcessingConfigs] = useState<ProcessingConfig[]>([]);
+  const [processingQueue, setProcessingQueue] = useState<ProcessingQueue[]>([]);
+  const [stats, setStats] = useState<ProcessingStats | null>(null);
 
-  const { data: virtualKeys, isLoading: keysLoading } = useVirtualKeys();
-  const { data: models, isLoading: modelsLoading } = useAvailableModels();
-  const transcription = useAudioTranscription();
-  const speech = useAudioSpeech();
+  useEffect(() => {
+    fetchProcessingData();
+    const interval = setInterval(fetchProcessingData, 5000); // Refresh queue every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-  // Filter models for audio processing
-  const audioModels = models?.filter((model: unknown) => 
-    typeof model === 'object' && model !== null && 'id' in model &&
-    typeof (model as { id: string }).id === 'string' && (
-      (model as { id: string }).id.includes('whisper') || 
-      (model as { id: string }).id.includes('tts') ||
-      (model as { id: string }).id.includes('audio') ||
-      (model as { id: string }).id.includes('speech')
-    )
-  ) || [];
-
-  const handleTranscribeAudio = async () => {
-    if (!audioFile || !selectedVirtualKey) {
-      notifications.show({
-        title: 'File Required',
-        message: 'Please select an audio file and virtual key',
-        color: 'orange',
-      });
-      return;
-    }
-
+  const fetchProcessingData = async () => {
     try {
-      const request = {
-        file: {
-          data: audioFile,
-          filename: audioFile.name,
-          contentType: audioFile.type,
+      // Mock data for development
+      const mockConfigs: ProcessingConfig[] = [
+        {
+          id: 'noise-reduction',
+          name: 'Noise Reduction',
+          category: 'general',
+          enabled: true,
+          settings: {
+            algorithm: 'spectral_subtraction',
+            threshold: 0.3,
+            sensitivity: 0.8,
+            preserveVoice: true,
+          },
         },
-        model: transcriptionModel as TranscriptionModel,
-        language: language || undefined,
-        response_format: responseFormat as 'json' | 'text' | 'srt' | 'vtt' | 'verbose_json',
-        temperature: temperature || undefined,
+        {
+          id: 'voice-enhancement',
+          name: 'Voice Enhancement',
+          category: 'general',
+          enabled: true,
+          settings: {
+            clarity: 0.7,
+            warmth: 0.5,
+            bassBoost: 0.2,
+            trebleBoost: 0.3,
+          },
+        },
+        {
+          id: 'auto-transcription',
+          name: 'Automatic Transcription',
+          category: 'transcription',
+          enabled: true,
+          settings: {
+            language: 'auto',
+            punctuation: true,
+            profanityFilter: false,
+            speakerDiarization: true,
+            maxSpeakers: 5,
+            confidence: 0.8,
+          },
+        },
+        {
+          id: 'tts-preprocessing',
+          name: 'TTS Preprocessing',
+          category: 'synthesis',
+          enabled: true,
+          settings: {
+            normalizeText: true,
+            expandAbbreviations: true,
+            handleNumbers: 'spoken',
+            emotionDetection: true,
+            ssmlSupport: true,
+          },
+        },
+        {
+          id: 'format-conversion',
+          name: 'Format Conversion',
+          category: 'general',
+          enabled: true,
+          settings: {
+            outputFormat: 'mp3',
+            bitrate: 192,
+            sampleRate: 44100,
+            channels: 'stereo',
+            compression: 0.8,
+          },
+        },
+      ];
+
+      const mockQueue: ProcessingQueue[] = [
+        {
+          id: 'job-1',
+          type: 'transcription',
+          status: 'processing',
+          inputFile: 'meeting-recording.mp3',
+          duration: 3600,
+          progress: 65,
+          provider: 'OpenAI',
+          model: 'whisper-1',
+          createdAt: '2024-01-10T12:20:00Z',
+          startedAt: '2024-01-10T12:21:00Z',
+        },
+        {
+          id: 'job-2',
+          type: 'synthesis',
+          status: 'processing',
+          outputFile: 'announcement-audio.mp3',
+          progress: 45,
+          provider: 'ElevenLabs',
+          model: 'eleven-multilingual-v2',
+          createdAt: '2024-01-10T12:25:00Z',
+          startedAt: '2024-01-10T12:26:00Z',
+        },
+        {
+          id: 'job-3',
+          type: 'transcription',
+          status: 'pending',
+          inputFile: 'podcast-episode.wav',
+          duration: 5400,
+          progress: 0,
+          provider: 'Azure',
+          model: 'speech-to-text',
+          createdAt: '2024-01-10T12:28:00Z',
+        },
+        {
+          id: 'job-4',
+          type: 'synthesis',
+          status: 'completed',
+          outputFile: 'welcome-message.mp3',
+          duration: 15,
+          progress: 100,
+          provider: 'OpenAI',
+          model: 'tts-1-hd',
+          createdAt: '2024-01-10T12:15:00Z',
+          startedAt: '2024-01-10T12:15:30Z',
+          completedAt: '2024-01-10T12:16:00Z',
+        },
+        {
+          id: 'job-5',
+          type: 'transcription',
+          status: 'failed',
+          inputFile: 'corrupted-audio.mp3',
+          progress: 0,
+          provider: 'Google',
+          model: 'speech-to-text',
+          createdAt: '2024-01-10T12:10:00Z',
+          startedAt: '2024-01-10T12:10:30Z',
+          error: 'Invalid audio format',
+        },
+      ];
+
+      const mockStats: ProcessingStats = {
+        totalProcessed: 1234,
+        totalDuration: 432000, // seconds
+        avgProcessingTime: 45, // seconds
+        successRate: 96.5,
+        queueLength: mockQueue.filter(j => j.status === 'pending').length,
+        activeJobs: mockQueue.filter(j => j.status === 'processing').length,
       };
 
-      const response = await transcription.mutateAsync(request);
-
-      const result: TranscriptionResult = {
-        id: `trans_${Date.now()}`,
-        fileName: audioFile.name,
-        text: response.text || 'No transcription generated',
-        model: transcriptionModel,
-        language: language || undefined,
-        createdAt: new Date(),
-      };
-
-      setTranscriptionResults(prev => [result, ...prev]);
-      setAudioFile(null);
-
-      safeLog('Audio transcription successful', {
-        model: transcriptionModel,
-        fileName: audioFile.name,
-        textLength: result.text.length,
-      });
-    } catch (error: unknown) {
-      safeLog('Audio transcription failed', { error: error instanceof Error ? error.message : String(error) });
-    }
-  };
-
-  const handleTaskCompleted = (task: unknown) => {
-    if (typeof task !== 'object' || task === null) return;
-    const taskObj = task as { type?: string; status?: string; result?: unknown; taskId?: string; startedAt?: string };
-    if (taskObj.type === 'audio_transcription' && taskObj.status === 'completed' && taskObj.result) {
-      const resultObj = taskObj.result as { fileName?: string; text?: string; model?: string; language?: string };
-      const result: TranscriptionResult = {
-        id: taskObj.taskId || '',
-        fileName: resultObj.fileName || 'Unknown file',
-        text: resultObj.text || 'No transcription generated',
-        model: resultObj.model || transcriptionModel,
-        language: resultObj.language,
-        createdAt: new Date(taskObj.startedAt || Date.now()),
-      };
-      
-      setTranscriptionResults(prev => [result, ...prev]);
-    } else if (taskObj.type === 'audio_speech' && taskObj.status === 'completed' && taskObj.result) {
-      const resultObj = taskObj.result as { text?: string; audioUrl?: string; url?: string; model?: string; voice?: string; format?: string; speed?: number };
-      const result: SpeechResult = {
-        id: taskObj.taskId || '',
-        text: resultObj.text || 'Generated speech',
-        audioUrl: resultObj.audioUrl || resultObj.url || '',
-        model: resultObj.model || speechModel,
-        voice: resultObj.voice || voice,
-        format: resultObj.format || speechFormat,
-        speed: resultObj.speed || speed,
-        createdAt: new Date(taskObj.startedAt || Date.now()),
-      };
-      
-      setSpeechResults(prev => [result, ...prev]);
-    }
-  };
-
-  const handleTextToSpeech = async () => {
-    if (!speechText.trim() || !selectedVirtualKey) {
+      setProcessingConfigs(mockConfigs);
+      setProcessingQueue(mockQueue);
+      setStats(mockStats);
+    } catch (error) {
+      console.error('Error fetching processing data:', error);
       notifications.show({
-        title: 'Text Required',
-        message: 'Please enter text and select a virtual key',
-        color: 'orange',
-      });
-      return;
-    }
-
-    try {
-      const request = {
-        model: speechModel as TextToSpeechModel,
-        input: speechText.trim(),
-        voice: voice as Voice,
-        response_format: speechFormat as 'mp3' | 'opus' | 'aac' | 'flac',
-        speed,
-      };
-
-      const response = await speech.mutateAsync(request);
-
-      // Convert response to audio URL
-      const audioBlob = new Blob([response.audio], { type: `audio/${response.format}` });
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const result: SpeechResult = {
-        id: `speech_${Date.now()}`,
-        text: speechText.trim(),
-        audioUrl,
-        model: speechModel,
-        voice,
-        format: speechFormat,
-        speed,
-        createdAt: new Date(),
-      };
-
-      setSpeechResults(prev => [result, ...prev]);
-      setSpeechText('');
-
-      safeLog('Text-to-speech successful', {
-        model: speechModel,
-        voice,
-        textLength: speechText.trim().length,
-      });
-    } catch (error: unknown) {
-      safeLog('Text-to-speech failed', { error: error instanceof Error ? error.message : String(error) });
-    }
-  };
-
-  const handlePlayAudio = (audioUrl: string, id: string) => {
-    if (audioPlayerRef.current) {
-      if (isPlaying === id) {
-        audioPlayerRef.current.pause();
-        setIsPlaying(null);
-      } else {
-        audioPlayerRef.current.src = audioUrl;
-        audioPlayerRef.current.play();
-        setIsPlaying(id);
-        
-        audioPlayerRef.current.onended = () => {
-          setIsPlaying(null);
-        };
-      }
-    }
-  };
-
-  const handleDownloadAudio = async (audioUrl: string, fileName: string) => {
-    try {
-      const response = await fetch(audioUrl);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      notifications.show({
-        title: 'Downloaded',
-        message: 'Audio file downloaded successfully',
-        color: 'green',
-      });
-    } catch (_error) {
-      notifications.show({
-        title: 'Download Failed',
-        message: 'Failed to download audio file',
+        title: 'Error',
+        message: 'Failed to load processing configuration',
         color: 'red',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      notifications.show({
-        title: 'Copied',
-        message: 'Text copied to clipboard',
-        color: 'green',
-      });
-    } catch (_error) {
-      notifications.show({
-        title: 'Copy Failed',
-        message: 'Failed to copy text',
-        color: 'red',
-      });
-    }
-  };
-
-  const handleDeleteResult = (id: string, type: 'transcription' | 'speech') => {
-    if (type === 'transcription') {
-      setTranscriptionResults(prev => prev.filter(result => result.id !== id));
-    } else {
-      setSpeechResults(prev => prev.filter(result => result.id !== id));
-    }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchProcessingData();
+    setIsRefreshing(false);
     notifications.show({
-      title: 'Deleted',
-      message: 'Result removed successfully',
-      color: 'blue',
+      title: 'Refreshed',
+      message: 'Processing data updated',
+      color: 'green',
     });
   };
 
-  const getLanguageOptions = () => [
-    { value: '', label: 'Auto-detect' },
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'it', label: 'Italian' },
-    { value: 'pt', label: 'Portuguese' },
-    { value: 'ru', label: 'Russian' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'ko', label: 'Korean' },
-    { value: 'zh', label: 'Chinese' },
+  const handleConfigUpdate = async (configId: string, updates: Partial<ProcessingConfig>) => {
+    try {
+      // In production, this would call the API
+      setProcessingConfigs(prev => 
+        prev.map(config => 
+          config.id === configId ? { ...config, ...updates } : config
+        )
+      );
+      
+      notifications.show({
+        title: 'Updated',
+        message: 'Processing configuration updated',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update configuration',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleCancelJob = async (jobId: string) => {
+    try {
+      // In production, this would call the API
+      setProcessingQueue(prev => prev.filter(job => job.id !== jobId));
+      
+      notifications.show({
+        title: 'Cancelled',
+        message: 'Processing job cancelled',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to cancel job',
+        color: 'red',
+      });
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'green';
+      case 'processing': return 'blue';
+      case 'pending': return 'gray';
+      case 'failed': return 'red';
+      default: return 'gray';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <IconCircleCheck size={16} />;
+      case 'processing': return <IconActivity size={16} />;
+      case 'pending': return <IconClock size={16} />;
+      case 'failed': return <IconAlertCircle size={16} />;
+      default: return null;
+    }
+  };
+
+  const supportedFormats: AudioFormat[] = [
+    { id: 'mp3', name: 'MP3', mimeType: 'audio/mpeg', extension: 'mp3', supported: true, bitrate: 192, sampleRate: 44100, channels: 2 },
+    { id: 'wav', name: 'WAV', mimeType: 'audio/wav', extension: 'wav', supported: true, bitrate: 1411, sampleRate: 44100, channels: 2 },
+    { id: 'flac', name: 'FLAC', mimeType: 'audio/flac', extension: 'flac', supported: true, bitrate: 900, sampleRate: 48000, channels: 2 },
+    { id: 'ogg', name: 'OGG Vorbis', mimeType: 'audio/ogg', extension: 'ogg', supported: true, bitrate: 160, sampleRate: 44100, channels: 2 },
+    { id: 'm4a', name: 'M4A/AAC', mimeType: 'audio/mp4', extension: 'm4a', supported: true, bitrate: 256, sampleRate: 44100, channels: 2 },
+    { id: 'webm', name: 'WebM', mimeType: 'audio/webm', extension: 'webm', supported: true, bitrate: 128, sampleRate: 48000, channels: 2 },
   ];
 
-  const getVoiceOptions = () => [
-    { value: 'alloy', label: 'Alloy' },
-    { value: 'echo', label: 'Echo' },
-    { value: 'fable', label: 'Fable' },
-    { value: 'onyx', label: 'Onyx' },
-    { value: 'nova', label: 'Nova' },
-    { value: 'shimmer', label: 'Shimmer' },
-  ];
+  if (isLoading) {
+    return (
+      <Stack>
+        <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
+          <LoadingOverlay visible={true} />
+        </Card>
+      </Stack>
+    );
+  }
 
   return (
-    <Stack gap="md">
-      <audio ref={audioPlayerRef} style={{ display: 'none' }} />
-      
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>Audio Processing</Title>
-          <Text c="dimmed">Transcribe audio to text and convert text to speech</Text>
-        </div>
-
-        <Group>
+    <Stack gap="xl">
+      <Card shadow="sm" p="md" radius="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>Audio Processing</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Configure audio processing pipelines and monitor jobs
+            </Text>
+          </div>
           <Button
             variant="light"
-            leftSection={<IconSettings size={16} />}
-            onClick={openSettings}
+            leftSection={<IconRefresh size={16} />}
+            onClick={handleRefresh}
+            loading={isRefreshing}
           >
-            Settings
+            Refresh
           </Button>
         </Group>
-      </Group>
+      </Card>
+
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Processed
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.totalProcessed.toLocaleString() || 0}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Audio files
+              </Text>
+            </div>
+            <ThemeIcon color="blue" variant="light" size={48} radius="md">
+              <IconFileMusic size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Processing Time
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.avgProcessingTime || 0}s
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Average per file
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconBolt size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Success Rate
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.successRate || 0}%
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Last 7 days
+              </Text>
+            </div>
+            <ThemeIcon color="teal" variant="light" size={48} radius="md">
+              <IconCircleCheck size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Active Jobs
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.activeJobs || 0} / {(stats?.activeJobs || 0) + (stats?.queueLength || 0)}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Processing / Total
+              </Text>
+            </div>
+            <ThemeIcon color="orange" variant="light" size={48} radius="md">
+              <IconActivity size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+      </SimpleGrid>
 
       <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
-          <Tabs.Tab value="transcription" leftSection={<IconFileText size={16} />}>
-            Speech to Text
+          <Tabs.Tab value="settings" leftSection={<IconSettings size={16} />}>
+            Processing Settings
           </Tabs.Tab>
-          <Tabs.Tab value="speech" leftSection={<IconVolume size={16} />}>
-            Text to Speech
+          <Tabs.Tab value="queue" leftSection={<IconActivity size={16} />}>
+            Processing Queue
+          </Tabs.Tab>
+          <Tabs.Tab value="formats" leftSection={<IconWaveSine size={16} />}>
+            Audio Formats
           </Tabs.Tab>
         </Tabs.List>
 
-        {/* Speech to Text Tab */}
-        <Tabs.Panel value="transcription">
-          {/* Real-time Task Progress */}
-          {selectedVirtualKey && (
-            <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
-              <TaskProgressPanel 
-                virtualKey={selectedVirtualKey}
-                taskType="audio_transcription"
-                onTaskCompleted={handleTaskCompleted}
-                maxHeight={150}
-              />
-            </div>
-          )}
-          
-          <Grid mt="md">
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Card withBorder h="fit-content">
-                <Stack gap="md">
-                  <Group justify="space-between">
-                    <Text fw={600} size="lg">Upload Audio</Text>
-                    <Badge variant="light">Transcription</Badge>
+        <Tabs.Panel value="settings" pt="md">
+          <Stack gap="md">
+            {processingConfigs.map((config) => (
+              <Card key={config.id} shadow="sm" p="md" radius="md" withBorder>
+                <Group justify="space-between" mb="md">
+                  <Group>
+                    <Text fw={600}>{config.name}</Text>
+                    <Badge color="blue" variant="light">
+                      {config.category}
+                    </Badge>
                   </Group>
-
-                  {!selectedVirtualKey && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="orange">
-                      Please select a virtual key in settings to start transcribing.
-                    </Alert>
-                  )}
-
-                  <FileInput
-                    label="Audio File"
-                    placeholder="Select audio file"
-                    value={audioFile}
-                    onChange={setAudioFile}
-                    accept="audio/*"
-                    leftSection={<IconUpload size={16} />}
+                  <Switch
+                    checked={config.enabled}
+                    onChange={(e) => handleConfigUpdate(config.id, { enabled: e.currentTarget.checked })}
                   />
+                </Group>
 
-                  <Group grow>
+                {config.id === 'noise-reduction' && (
+                  <Stack gap="sm">
                     <Select
-                      label="Model"
-                      data={audioModels
-                        .filter((model: unknown) => 
-                          typeof model === 'object' && model !== null && 'id' in model &&
-                          typeof (model as { id: string }).id === 'string' &&
-                          (model as { id: string }).id.includes('whisper')
-                        )
-                        .map((model: unknown) => ({
-                          value: (model as { id: string }).id,
-                          label: (model as { id: string }).id,
-                        }))}
-                      value={transcriptionModel}
-                      onChange={(value) => setTranscriptionModel(value || 'whisper-1')}
-                      disabled={!selectedVirtualKey || modelsLoading}
-                    />
-
-                    <Select
-                      label="Language"
-                      data={getLanguageOptions()}
-                      value={language}
-                      onChange={(value) => setLanguage(value || '')}
-                    />
-                  </Group>
-
-                  <Group grow>
-                    <Select
-                      label="Response Format"
+                      label="Algorithm"
+                      value={config.settings.algorithm}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, algorithm: value } 
+                      })}
                       data={[
-                        { value: 'json', label: 'JSON' },
-                        { value: 'text', label: 'Text' },
-                        { value: 'srt', label: 'SRT' },
-                        { value: 'vtt', label: 'VTT' },
-                        { value: 'verbose_json', label: 'Verbose JSON' },
+                        { value: 'spectral_subtraction', label: 'Spectral Subtraction' },
+                        { value: 'wiener_filter', label: 'Wiener Filter' },
+                        { value: 'ai_enhanced', label: 'AI Enhanced' },
                       ]}
-                      value={responseFormat}
-                      onChange={(value) => setResponseFormat(value || 'json')}
+                      size="sm"
                     />
+                    <div>
+                      <Text size="sm" mb={4}>Noise Threshold</Text>
+                      <Slider
+                        value={config.settings.threshold}
+                        onChange={(value) => handleConfigUpdate(config.id, { 
+                          settings: { ...config.settings, threshold: value } 
+                        })}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        marks={[
+                          { value: 0, label: 'Low' },
+                          { value: 0.5, label: 'Medium' },
+                          { value: 1, label: 'High' },
+                        ]}
+                      />
+                    </div>
+                    <Switch
+                      label="Preserve Voice"
+                      checked={config.settings.preserveVoice}
+                      onChange={(e) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, preserveVoice: e.currentTarget.checked } 
+                      })}
+                      size="sm"
+                    />
+                  </Stack>
+                )}
 
+                {config.id === 'auto-transcription' && (
+                  <Stack gap="sm">
+                    <Select
+                      label="Language Detection"
+                      value={config.settings.language}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, language: value } 
+                      })}
+                      data={[
+                        { value: 'auto', label: 'Auto-detect' },
+                        { value: 'en', label: 'English' },
+                        { value: 'es', label: 'Spanish' },
+                        { value: 'fr', label: 'French' },
+                        { value: 'de', label: 'German' },
+                        { value: 'zh', label: 'Chinese' },
+                        { value: 'ja', label: 'Japanese' },
+                      ]}
+                      size="sm"
+                    />
+                    <Group grow>
+                      <Switch
+                        label="Punctuation"
+                        checked={config.settings.punctuation}
+                        onChange={(e) => handleConfigUpdate(config.id, { 
+                          settings: { ...config.settings, punctuation: e.currentTarget.checked } 
+                        })}
+                        size="sm"
+                      />
+                      <Switch
+                        label="Speaker Diarization"
+                        checked={config.settings.speakerDiarization}
+                        onChange={(e) => handleConfigUpdate(config.id, { 
+                          settings: { ...config.settings, speakerDiarization: e.currentTarget.checked } 
+                        })}
+                        size="sm"
+                      />
+                    </Group>
                     <NumberInput
-                      label="Temperature"
-                      description="0 = deterministic, 1 = creative"
-                      value={temperature}
-                      onChange={(value) => setTemperature(value as number)}
-                      min={0}
-                      max={1}
-                      step={0.1}
-                      decimalScale={1}
+                      label="Max Speakers"
+                      value={config.settings.maxSpeakers}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, maxSpeakers: value } 
+                      })}
+                      min={1}
+                      max={10}
+                      size="sm"
                     />
-                  </Group>
+                  </Stack>
+                )}
 
-                  <Button
-                    leftSection={<IconMicrophone size={16} />}
-                    onClick={handleTranscribeAudio}
-                    disabled={!audioFile || !selectedVirtualKey}
-                    loading={transcription.isPending}
-                    size="lg"
-                  >
-                    Transcribe Audio
-                  </Button>
-                </Stack>
-              </Card>
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Card withBorder h="600px">
-                <Stack gap="md" h="100%">
-                  <Group justify="space-between">
-                    <Text fw={600} size="lg">Transcription Results</Text>
-                    <Badge variant="light">{transcriptionResults.length} results</Badge>
-                  </Group>
-
-                  <ScrollArea flex={1}>
-                    {transcriptionResults.length === 0 ? (
-                      <Alert icon={<IconMicrophone size={16} />} variant="light">
-                        <Text>No transcriptions yet. Upload an audio file to get started!</Text>
-                      </Alert>
-                    ) : (
-                      <Stack gap="md">
-                        {transcriptionResults.map((result) => (
-                          <Card key={result.id} withBorder p="md">
-                            <Stack gap="sm">
-                              <Group justify="space-between">
-                                <Text fw={500} size="sm" truncate>
-                                  {result.fileName}
-                                </Text>
-                                <Group gap="xs">
-                                  <Tooltip label="Copy text">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      onClick={() => copyToClipboard(result.text)}
-                                    >
-                                      <IconCopy size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                  <Tooltip label="Delete">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      color="red"
-                                      onClick={() => handleDeleteResult(result.id, 'transcription')}
-                                    >
-                                      <IconTrash size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                </Group>
-                              </Group>
-
-                              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                                {result.text}
-                              </Text>
-
-                              <Group gap="xs">
-                                <Badge size="xs" variant="light">
-                                  {result.model}
-                                </Badge>
-                                {result.language && (
-                                  <Badge size="xs" variant="light">
-                                    {result.language}
-                                  </Badge>
-                                )}
-                                <Text size="xs" c="dimmed">
-                                  {result.createdAt.toLocaleString()}
-                                </Text>
-                              </Group>
-                            </Stack>
-                          </Card>
-                        ))}
-                      </Stack>
-                    )}
-                  </ScrollArea>
-                </Stack>
-              </Card>
-            </Grid.Col>
-          </Grid>
-        </Tabs.Panel>
-
-        {/* Text to Speech Tab */}
-        <Tabs.Panel value="speech">
-          {/* Real-time Task Progress */}
-          {selectedVirtualKey && (
-            <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
-              <TaskProgressPanel 
-                virtualKey={selectedVirtualKey}
-                taskType="audio_speech"
-                onTaskCompleted={handleTaskCompleted}
-                maxHeight={150}
-              />
-            </div>
-          )}
-          
-          <Grid mt="md">
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Card withBorder h="fit-content">
-                <Stack gap="md">
-                  <Group justify="space-between">
-                    <Text fw={600} size="lg">Generate Speech</Text>
-                    <Badge variant="light">Text-to-Speech</Badge>
-                  </Group>
-
-                  {!selectedVirtualKey && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="orange">
-                      Please select a virtual key in settings to start generating speech.
-                    </Alert>
-                  )}
-
-                  <Textarea
-                    label="Text"
-                    placeholder="Enter text to convert to speech..."
-                    value={speechText}
-                    onChange={(event) => setSpeechText(event.currentTarget.value)}
-                    minRows={3}
-                    maxRows={6}
-                    required
-                  />
-
-                  <Group grow>
+                {config.id === 'format-conversion' && (
+                  <SimpleGrid cols={2} spacing="sm">
                     <Select
-                      label="Model"
-                      data={audioModels
-                        .filter((model: unknown) => 
-                          typeof model === 'object' && model !== null && 'id' in model &&
-                          typeof (model as { id: string }).id === 'string' &&
-                          (model as { id: string }).id.includes('tts')
-                        )
-                        .map((model: unknown) => ({
-                          value: (model as { id: string }).id,
-                          label: (model as { id: string }).id,
-                        }))}
-                      value={speechModel}
-                      onChange={(value) => setSpeechModel(value || 'tts-1')}
-                      disabled={!selectedVirtualKey || modelsLoading}
-                    />
-
-                    <Select
-                      label="Voice"
-                      data={getVoiceOptions()}
-                      value={voice}
-                      onChange={(value) => setVoice(value || 'alloy')}
-                    />
-                  </Group>
-
-                  <Group grow>
-                    <Select
-                      label="Format"
+                      label="Output Format"
+                      value={config.settings.outputFormat}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, outputFormat: value } 
+                      })}
                       data={[
                         { value: 'mp3', label: 'MP3' },
-                        { value: 'opus', label: 'Opus' },
-                        { value: 'aac', label: 'AAC' },
+                        { value: 'wav', label: 'WAV' },
                         { value: 'flac', label: 'FLAC' },
+                        { value: 'ogg', label: 'OGG' },
+                        { value: 'm4a', label: 'M4A' },
                       ]}
-                      value={speechFormat}
-                      onChange={(value) => setSpeechFormat(value || 'mp3')}
+                      size="sm"
                     />
-
                     <NumberInput
-                      label="Speed"
-                      description="0.25 to 4.0"
-                      value={speed}
-                      onChange={(value) => setSpeed(value as number)}
-                      min={0.25}
-                      max={4.0}
-                      step={0.25}
-                      decimalScale={2}
+                      label="Bitrate (kbps)"
+                      value={config.settings.bitrate}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, bitrate: value } 
+                      })}
+                      min={64}
+                      max={320}
+                      step={32}
+                      size="sm"
                     />
-                  </Group>
-
-                  <Button
-                    leftSection={<IconVolume size={16} />}
-                    onClick={handleTextToSpeech}
-                    disabled={!speechText.trim() || !selectedVirtualKey}
-                    loading={speech.isPending}
-                    size="lg"
-                  >
-                    Generate Speech
-                  </Button>
-                </Stack>
+                    <Select
+                      label="Sample Rate"
+                      value={String(config.settings.sampleRate)}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, sampleRate: Number(value) } 
+                      })}
+                      data={[
+                        { value: '22050', label: '22.05 kHz' },
+                        { value: '44100', label: '44.1 kHz' },
+                        { value: '48000', label: '48 kHz' },
+                        { value: '96000', label: '96 kHz' },
+                      ]}
+                      size="sm"
+                    />
+                    <Select
+                      label="Channels"
+                      value={config.settings.channels}
+                      onChange={(value) => handleConfigUpdate(config.id, { 
+                        settings: { ...config.settings, channels: value } 
+                      })}
+                      data={[
+                        { value: 'mono', label: 'Mono' },
+                        { value: 'stereo', label: 'Stereo' },
+                      ]}
+                      size="sm"
+                    />
+                  </SimpleGrid>
+                )}
               </Card>
-            </Grid.Col>
+            ))}
+          </Stack>
+        </Tabs.Panel>
 
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Card withBorder h="600px">
-                <Stack gap="md" h="100%">
-                  <Group justify="space-between">
-                    <Text fw={600} size="lg">Generated Speech</Text>
-                    <Badge variant="light">{speechResults.length} results</Badge>
-                  </Group>
+        <Tabs.Panel value="queue" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>File</Table.Th>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Progress</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Duration</Table.Th>
+                    <Table.Th>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {processingQueue.map((job) => (
+                    <Table.Tr key={job.id}>
+                      <Table.Td>
+                        <Text size="sm" fw={500}>
+                          {job.inputFile || job.outputFile || 'Unknown'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={job.type === 'transcription' ? 'blue' : 'green'}
+                          variant="light"
+                        >
+                          {job.type === 'transcription' ? 'STT' : 'TTS'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{job.provider} - {job.model}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Progress
+                            value={job.progress}
+                            size="sm"
+                            w={100}
+                            color={getStatusColor(job.status)}
+                          />
+                          <Text size="xs">{job.progress}%</Text>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          leftSection={getStatusIcon(job.status)}
+                          color={getStatusColor(job.status)}
+                          variant="light"
+                        >
+                          {job.status}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">
+                          {job.duration ? formatters.duration(job.duration * 1000) : '-'}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {(job.status === 'pending' || job.status === 'processing') && (
+                          <Tooltip label="Cancel job">
+                            <ActionIcon
+                              variant="light"
+                              color="red"
+                              onClick={() => handleCancelJob(job.id)}
+                            >
+                              <IconPlayerPause size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
 
-                  <ScrollArea flex={1}>
-                    {speechResults.length === 0 ? (
-                      <Alert icon={<IconVolume size={16} />} variant="light">
-                        <Text>No speech generated yet. Enter text above to get started!</Text>
-                      </Alert>
-                    ) : (
-                      <Stack gap="md">
-                        {speechResults.map((result) => (
-                          <Card key={result.id} withBorder p="md">
-                            <Stack gap="sm">
-                              <Group justify="space-between">
-                                <Text fw={500} size="sm">
-                                  Generated Audio
-                                </Text>
-                                <Group gap="xs">
-                                  <Tooltip label={isPlaying === result.id ? "Pause" : "Play"}>
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      onClick={() => handlePlayAudio(result.audioUrl, result.id)}
-                                    >
-                                      {isPlaying === result.id ? (
-                                        <IconPlayerPause size={14} />
-                                      ) : (
-                                        <IconPlayerPlay size={14} />
-                                      )}
-                                    </ActionIcon>
-                                  </Tooltip>
-                                  <Tooltip label="Download">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      onClick={() => 
-                                        handleDownloadAudio(
-                                          result.audioUrl, 
-                                          `speech-${result.id}.${result.format}`
-                                        )
-                                      }
-                                    >
-                                      <IconDownload size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                  <Tooltip label="Copy text">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      onClick={() => copyToClipboard(result.text)}
-                                    >
-                                      <IconCopy size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                  <Tooltip label="Delete">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      color="red"
-                                      onClick={() => handleDeleteResult(result.id, 'speech')}
-                                    >
-                                      <IconTrash size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                </Group>
-                              </Group>
+        <Tabs.Panel value="formats" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Supported Audio Formats</Title>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Format</Table.Th>
+                    <Table.Th>MIME Type</Table.Th>
+                    <Table.Th>Extension</Table.Th>
+                    <Table.Th>Bitrate</Table.Th>
+                    <Table.Th>Sample Rate</Table.Th>
+                    <Table.Th>Channels</Table.Th>
+                    <Table.Th>Support</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {supportedFormats.map((format) => (
+                    <Table.Tr key={format.id}>
+                      <Table.Td>
+                        <Text fw={500}>{format.name}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Code>{format.mimeType}</Code>
+                      </Table.Td>
+                      <Table.Td>
+                        <Code>.{format.extension}</Code>
+                      </Table.Td>
+                      <Table.Td>{format.bitrate} kbps</Table.Td>
+                      <Table.Td>{(format.sampleRate || 0) / 1000} kHz</Table.Td>
+                      <Table.Td>{format.channels === 2 ? 'Stereo' : 'Mono'}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={format.supported ? 'green' : 'gray'}
+                          variant="light"
+                        >
+                          {format.supported ? 'Supported' : 'Not Supported'}
+                        </Badge>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
 
-                              <Text size="sm" lineClamp={3}>
-                                {result.text}
-                              </Text>
+            <Divider my="md" />
 
-                              <Group gap="xs">
-                                <Badge size="xs" variant="light">
-                                  {result.model}
-                                </Badge>
-                                <Badge size="xs" variant="light">
-                                  {result.voice}
-                                </Badge>
-                                <Badge size="xs" variant="light">
-                                  {result.format.toUpperCase()}
-                                </Badge>
-                                <Badge size="xs" variant="light">
-                                  {result.speed}x
-                                </Badge>
-                                <Text size="xs" c="dimmed">
-                                  {result.createdAt.toLocaleString()}
-                                </Text>
-                              </Group>
-                            </Stack>
-                          </Card>
-                        ))}
-                      </Stack>
-                    )}
-                  </ScrollArea>
-                </Stack>
-              </Card>
-            </Grid.Col>
-          </Grid>
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              title="Audio Processing Information"
+              color="blue"
+            >
+              <Text size="sm">
+                All audio files are automatically normalized and optimized during processing. 
+                Large files are chunked for efficient processing. Maximum file size: 1GB. 
+                Maximum duration: 4 hours for transcription, 30 minutes for synthesis.
+              </Text>
+            </Alert>
+          </Card>
         </Tabs.Panel>
       </Tabs>
 
-      {/* Settings Modal */}
-      <Modal
-        opened={settingsOpened}
-        onClose={closeSettings}
-        title="Audio Processing Settings"
-        size="md"
-      >
-        <Stack gap="md">
-          <Select
-            label="Virtual Key"
-            placeholder="Select a virtual key"
-            data={virtualKeys?.map((key: unknown) => {
-              if (typeof key === 'object' && key !== null && 'id' in key && 'keyName' in key) {
-                return {
-                  value: (key as { id: string }).id,
-                  label: (key as { keyName: string }).keyName,
-                };
-              }
-              return { value: '', label: 'Invalid key' };
-            }) || []}
-            value={selectedVirtualKey}
-            onChange={(value) => setSelectedVirtualKey(value || '')}
-            disabled={keysLoading}
-          />
-
-          <Alert icon={<IconAlertCircle size={16} />} variant="light">
-            <Text size="sm">
-              Audio processing operations consume virtual key credits. Transcription costs vary by duration, 
-              and speech generation costs vary by text length.
-            </Text>
-          </Alert>
-
-          <Group justify="flex-end">
-            <Button onClick={closeSettings}>
-              Done
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <LoadingOverlay visible={isRefreshing} />
     </Stack>
   );
 }

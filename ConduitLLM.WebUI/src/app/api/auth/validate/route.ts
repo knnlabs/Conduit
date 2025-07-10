@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAdminClient } from '@/lib/clients/server';
+import { getServerAdminClient } from '@/lib/server/adminClient';
 
 export async function POST(request: NextRequest) {
   try {

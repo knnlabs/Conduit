@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { lazyLoadComponent } from '@/lib/utils/lazyLoad';
+import { withSuspense } from '@/lib/utils/lazyLoad';
 import { Skeleton } from '@mantine/core';
 
 // Create skeleton loaders for charts
@@ -8,25 +8,17 @@ const ChartSkeleton = () => (
 );
 
 // Lazy load individual chart components
-export const LazyLineChart = lazyLoadComponent(
-  () => import('recharts').then(mod => ({ default: mod.LineChart })),
-  <ChartSkeleton />
-);
+const LineChartLazy = lazy(() => import('recharts').then(mod => ({ default: mod.LineChart })));
+export const LazyLineChart = withSuspense(LineChartLazy, <ChartSkeleton />);
 
-export const LazyAreaChart = lazyLoadComponent(
-  () => import('recharts').then(mod => ({ default: mod.AreaChart })),
-  <ChartSkeleton />
-);
+const AreaChartLazy = lazy(() => import('recharts').then(mod => ({ default: mod.AreaChart })));
+export const LazyAreaChart = withSuspense(AreaChartLazy, <ChartSkeleton />);
 
-export const LazyBarChart = lazyLoadComponent(
-  () => import('recharts').then(mod => ({ default: mod.BarChart })),
-  <ChartSkeleton />
-);
+const BarChartLazy = lazy(() => import('recharts').then(mod => ({ default: mod.BarChart })));
+export const LazyBarChart = withSuspense(BarChartLazy, <ChartSkeleton />);
 
-export const LazyPieChart = lazyLoadComponent(
-  () => import('recharts').then(mod => ({ default: mod.PieChart })),
-  <ChartSkeleton />
-);
+const PieChartLazy = lazy(() => import('recharts').then(mod => ({ default: mod.PieChart })));
+export const LazyPieChart = withSuspense(PieChartLazy, <ChartSkeleton />);
 
 // Export other recharts components needed
 export { 

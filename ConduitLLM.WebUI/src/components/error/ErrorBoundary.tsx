@@ -1,8 +1,8 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Alert, Button, Code, Paper, Stack, Text, Title } from '@mantine/core';
-import { IconAlertTriangle } from '@tabler/icons-react';
+import { Alert, Button, Code, Container, Stack, Text } from '@mantine/core';
+import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 
 interface Props {
   children: ReactNode;
@@ -12,8 +12,6 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
-  errorCount: number;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -22,8 +20,6 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null,
-      errorCount: 0,
     };
   }
 
@@ -31,44 +27,18 @@ export class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
-      errorCount: 0,
     };
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error details to console with full context
-    console.error('ErrorBoundary caught an error:', {
-      error: {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        cause: (error as any).cause,
-      },
-      errorInfo: {
-        componentStack: errorInfo.componentStack,
-      },
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-    });
-
-    this.setState((prevState) => ({
-      error,
-      errorInfo,
-      errorCount: prevState.errorCount + 1,
-    }));
-
-    // You could also send this to an error reporting service
-    // sendToErrorReportingService(error, errorInfo);
+    // Log error details to console
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   handleReset = () => {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null,
-      errorCount: 0,
     });
   };
 
@@ -78,68 +48,40 @@ export class ErrorBoundary extends Component<Props, State> {
         return <>{this.props.fallback}</>;
       }
 
-      const { error, errorInfo, errorCount } = this.state;
+      const { error } = this.state;
 
       return (
-        <Paper p="xl" m="md" withBorder>
-          <Stack gap="md">
+        <Container size="sm" py="xl">
+          <Stack gap="lg" align="center" ta="center">
             <Alert
               icon={<IconAlertTriangle size={24} />}
-              title="Application Error"
+              title="Something went wrong"
               color="red"
-              variant="filled"
+              variant="light"
+              styles={{ root: { width: '100%' } }}
             >
-              <Text size="sm">
-                An unexpected error occurred. The error details below can help diagnose the issue.
-              </Text>
+              <Stack gap="sm">
+                <Text size="sm">
+                  An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
+                </Text>
+                {process.env.NODE_ENV === 'development' && error && (
+                  <Code block color="red" style={{ textAlign: 'left', fontSize: '0.8rem' }}>
+                    {error.message}
+                    {error.stack && '\n\n' + error.stack}
+                  </Code>
+                )}
+              </Stack>
             </Alert>
 
-            <Stack gap="xs">
-              <Title order={4}>Error Details</Title>
-              <Code block style={{ maxHeight: '200px', overflow: 'auto' }}>
-                {error?.toString() || 'Unknown error'}
-              </Code>
-            </Stack>
-
-            {error?.stack && (
-              <Stack gap="xs">
-                <Title order={4}>Stack Trace</Title>
-                <Code block style={{ maxHeight: '300px', overflow: 'auto' }}>
-                  {error.stack}
-                </Code>
-              </Stack>
-            )}
-
-            {errorInfo?.componentStack && (
-              <Stack gap="xs">
-                <Title order={4}>Component Stack</Title>
-                <Code block style={{ maxHeight: '200px', overflow: 'auto' }}>
-                  {errorInfo.componentStack}
-                </Code>
-              </Stack>
-            )}
-
-            <Stack gap="xs">
-              <Title order={4}>Debug Information</Title>
-              <Code block>
-                {JSON.stringify(
-                  {
-                    errorCount,
-                    timestamp: new Date().toISOString(),
-                    url: window.location.href,
-                    userAgent: navigator.userAgent,
-                  },
-                  null,
-                  2
-                )}
-              </Code>
-            </Stack>
-
-            <Button onClick={this.handleReset} variant="filled">
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              onClick={this.handleReset}
+              variant="light"
+            >
               Try Again
             </Button>
           </Stack>
-        </Paper>
+        </Container>
       );
     }
 

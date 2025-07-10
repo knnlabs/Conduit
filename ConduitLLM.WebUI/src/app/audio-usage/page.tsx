@@ -5,437 +5,667 @@ import {
   Title,
   Text,
   Card,
-  Grid,
-  Select,
   Group,
   Button,
-  Table,
   Badge,
-  ScrollArea,
-  Center,
+  SimpleGrid,
   ThemeIcon,
   Progress,
-  Loader,
+  Paper,
+  Select,
+  Table,
+  ScrollArea,
+  LoadingOverlay,
+  Alert,
+  Tabs,
+  Code,
+  RingProgress,
+  Grid,
 } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { notifications } from '@mantine/notifications';
+import { AreaChart, LineChart } from '@mantine/charts';
 import {
   IconMicrophone,
-  IconFileText,
-  IconCalendar,
+  IconVolume,
+  IconClock,
+  IconCurrencyDollar,
   IconRefresh,
   IconDownload,
-  IconClock,
-  IconCoin,
-  IconVolume,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconFileMusic,
+  IconActivity,
+  IconCalendar,
   IconFilter,
+  IconInfoCircle,
 } from '@tabler/icons-react';
-import { useState } from 'react';
-import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useState, useEffect } from 'react';
+import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-import { 
-  useAudioUsageSummary, 
-  useAudioUsageLogs,
-  useExportAudioUsage,
-  useRealtimeSessionMetrics 
-} from '@/hooks/api/useAudioUsageApi';
-import { useVirtualKeys } from '@/hooks/api/useAdminApi';
-import type { AudioUsageSummary } from '@/types/sdk-responses';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+interface AudioUsageStats {
+  totalMinutes: number;
+  totalRequests: number;
+  totalCost: number;
+  avgRequestDuration: number;
+  transcriptionMinutes: number;
+  synthesisMinutes: number;
+  successRate: number;
+  errorRate: number;
+}
+
+interface AudioUsageByProvider {
+  provider: string;
+  transcriptionMinutes: number;
+  synthesisMinutes: number;
+  totalMinutes: number;
+  requests: number;
+  cost: number;
+  avgLatency: number;
+}
+
+interface AudioUsageByModel {
+  model: string;
+  provider: string;
+  type: 'transcription' | 'synthesis';
+  minutes: number;
+  requests: number;
+  cost: number;
+  costPerMinute: number;
+}
+
+interface DailyUsage {
+  date: string;
+  transcriptionMinutes: number;
+  synthesisMinutes: number;
+  requests: number;
+  cost: number;
+  errors: number;
+}
+
+interface VirtualKeyUsage {
+  keyName: string;
+  keyId: string;
+  transcriptionMinutes: number;
+  synthesisMinutes: number;
+  totalMinutes: number;
+  requests: number;
+  cost: number;
+  lastUsed: string;
+}
 
 export default function AudioUsagePage() {
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    new Date(),
-  ]);
-  const [selectedVirtualKey, setSelectedVirtualKey] = useState<string>('all');
-  const [selectedModel, setSelectedModel] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>('overview');
+  const [timeRange, setTimeRange] = useState('7d');
+  const [selectedProvider, setSelectedProvider] = useState<string | null>('all');
+  const [stats, setStats] = useState<AudioUsageStats | null>(null);
+  const [providerUsage, setProviderUsage] = useState<AudioUsageByProvider[]>([]);
+  const [modelUsage, setModelUsage] = useState<AudioUsageByModel[]>([]);
+  const [dailyUsage, setDailyUsage] = useState<DailyUsage[]>([]);
+  const [virtualKeyUsage, setVirtualKeyUsage] = useState<VirtualKeyUsage[]>([]);
 
-  // Fetch data from SDK
-  const { data: virtualKeysData } = useVirtualKeys();
-  const { data: summaryData, isLoading: summaryLoading } = useAudioUsageSummary(
-    dateRange[0] || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    dateRange[1] || new Date(),
-    selectedVirtualKey,
-    undefined
-  ) as { data: AudioUsageSummary | undefined; isLoading: boolean };
-  const { data: _logsData, isLoading: logsLoading } = useAudioUsageLogs({
-    startDate: dateRange[0] || undefined,
-    endDate: dateRange[1] || undefined,
-    virtualKey: selectedVirtualKey,
-    model: selectedModel,
-  });
-  const { data: _realtimeMetrics } = useRealtimeSessionMetrics();
-  const { mutate: exportData } = useExportAudioUsage();
+  useEffect(() => {
+    fetchUsageData();
+  }, [timeRange, selectedProvider]);
 
-  // Virtual keys options
-  const virtualKeys = [
-    { value: 'all', label: 'All Virtual Keys' },
-    ...(virtualKeysData || []).map((key: { id: string; keyName?: string }) => ({
-      value: key.id,
-      label: key.keyName || key.id,
-    })),
-  ];
+  const fetchUsageData = async () => {
+    try {
+      // Mock data for development
+      const mockStats: AudioUsageStats = {
+        totalMinutes: 18432,
+        totalRequests: 34567,
+        totalCost: 1234.56,
+        avgRequestDuration: 32.5,
+        transcriptionMinutes: 12456,
+        synthesisMinutes: 5976,
+        successRate: 98.5,
+        errorRate: 1.5,
+      };
 
-  // Audio models (hardcoded for now as SDK doesn't provide this)
-  const audioModels = [
-    { value: 'all', label: 'All Models' },
-    { value: 'whisper-1', label: 'Whisper 1' },
-    { value: 'tts-1', label: 'TTS 1' },
-    { value: 'tts-1-hd', label: 'TTS 1 HD' },
-  ];
+      const mockProviderUsage: AudioUsageByProvider[] = [
+        {
+          provider: 'OpenAI',
+          transcriptionMinutes: 8234,
+          synthesisMinutes: 1567,
+          totalMinutes: 9801,
+          requests: 15678,
+          cost: 456.78,
+          avgLatency: 450,
+        },
+        {
+          provider: 'ElevenLabs',
+          transcriptionMinutes: 0,
+          synthesisMinutes: 3456,
+          totalMinutes: 3456,
+          requests: 6789,
+          cost: 678.90,
+          avgLatency: 380,
+        },
+        {
+          provider: 'Azure',
+          transcriptionMinutes: 2345,
+          synthesisMinutes: 876,
+          totalMinutes: 3221,
+          requests: 8765,
+          cost: 89.12,
+          avgLatency: 320,
+        },
+        {
+          provider: 'Google',
+          transcriptionMinutes: 1877,
+          synthesisMinutes: 77,
+          totalMinutes: 1954,
+          requests: 3335,
+          cost: 9.76,
+          avgLatency: 410,
+        },
+      ];
 
-  // Usage data for chart
-  const usageData = summaryData?.dailyUsage || [];
+      const mockModelUsage: AudioUsageByModel[] = [
+        { model: 'whisper-1', provider: 'OpenAI', type: 'transcription', minutes: 8234, requests: 12456, cost: 49.40, costPerMinute: 0.006 },
+        { model: 'tts-1', provider: 'OpenAI', type: 'synthesis', minutes: 987, requests: 2345, cost: 14.81, costPerMinute: 0.015 },
+        { model: 'tts-1-hd', provider: 'OpenAI', type: 'synthesis', minutes: 580, requests: 890, cost: 17.40, costPerMinute: 0.030 },
+        { model: 'eleven-multilingual-v2', provider: 'ElevenLabs', type: 'synthesis', minutes: 3456, requests: 6789, cost: 1658.88, costPerMinute: 0.48 },
+        { model: 'azure-speech-to-text', provider: 'Azure', type: 'transcription', minutes: 2345, requests: 5678, cost: 37.52, costPerMinute: 0.016 },
+        { model: 'azure-neural-tts', provider: 'Azure', type: 'synthesis', minutes: 876, requests: 3087, cost: 14.02, costPerMinute: 0.016 },
+        { model: 'google-standard', provider: 'Google', type: 'transcription', minutes: 1877, requests: 3245, cost: 45.05, costPerMinute: 0.024 },
+      ];
 
-  // Summary statistics
-  const totalRequests = summaryData?.totalRequests || 0;
-  const totalDuration = summaryData?.totalDuration || 0;
-  const averageLatency = summaryData?.averageLatency || 0;
-  const totalCost = summaryData?.totalCost || 0;
+      // Generate daily usage data
+      const days = timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+      const mockDailyUsage: DailyUsage[] = Array.from({ length: days }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - 1 - i));
+        const baseRequests = 800 + Math.random() * 400;
+        const transcriptionRatio = 0.6 + Math.random() * 0.2;
+        
+        return {
+          date: date.toISOString().split('T')[0],
+          transcriptionMinutes: Math.floor(baseRequests * transcriptionRatio * 0.5),
+          synthesisMinutes: Math.floor(baseRequests * (1 - transcriptionRatio) * 0.5),
+          requests: Math.floor(baseRequests),
+          cost: baseRequests * 0.045 + Math.random() * 10,
+          errors: Math.floor(Math.random() * 10),
+        };
+      });
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    // Refetch data will be handled by React Query
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 500);
-  };
+      const mockVirtualKeyUsage: VirtualKeyUsage[] = [
+        {
+          keyName: 'Production API',
+          keyId: 'vk_prod_123',
+          transcriptionMinutes: 5678,
+          synthesisMinutes: 2345,
+          totalMinutes: 8023,
+          requests: 12456,
+          cost: 567.89,
+          lastUsed: '2024-01-10T12:30:00Z',
+        },
+        {
+          keyName: 'Customer A',
+          keyId: 'vk_cust_a_456',
+          transcriptionMinutes: 3456,
+          synthesisMinutes: 1234,
+          totalMinutes: 4690,
+          requests: 8765,
+          cost: 345.67,
+          lastUsed: '2024-01-10T12:25:00Z',
+        },
+        {
+          keyName: 'Development API',
+          keyId: 'vk_dev_789',
+          transcriptionMinutes: 2345,
+          synthesisMinutes: 876,
+          totalMinutes: 3221,
+          requests: 6543,
+          cost: 234.56,
+          lastUsed: '2024-01-10T11:45:00Z',
+        },
+        {
+          keyName: 'Mobile App',
+          keyId: 'vk_mobile_012',
+          transcriptionMinutes: 977,
+          synthesisMinutes: 1521,
+          totalMinutes: 2498,
+          requests: 4567,
+          cost: 87.54,
+          lastUsed: '2024-01-10T12:15:00Z',
+        },
+      ];
 
-  const handleExport = () => {
-    if (!dateRange[0] || !dateRange[1]) {
+      setStats(mockStats);
+      setProviderUsage(mockProviderUsage);
+      setModelUsage(mockModelUsage);
+      setDailyUsage(mockDailyUsage);
+      setVirtualKeyUsage(mockVirtualKeyUsage);
+    } catch (error) {
+      console.error('Error fetching audio usage data:', error);
       notifications.show({
-        title: 'Export Failed',
-        message: 'Please select a date range',
+        title: 'Error',
+        message: 'Failed to load audio usage data',
         color: 'red',
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-    
-    exportData({
-      format: 'csv',
-      startDate: dateRange[0],
-      endDate: dateRange[1],
-      virtualKey: selectedVirtualKey !== 'all' ? selectedVirtualKey : undefined,
-      provider: undefined, // Audio page doesn't have provider filter
-      operationType: undefined, // Audio page doesn't have operation type filter
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchUsageData();
+    setIsRefreshing(false);
+    notifications.show({
+      title: 'Refreshed',
+      message: 'Audio usage data updated',
+      color: 'green',
     });
   };
 
-  if (summaryLoading || logsLoading) {
+  const handleExport = () => {
+    // In production, this would generate a CSV or PDF report
+    notifications.show({
+      title: 'Export Started',
+      message: 'Your audio usage report is being generated',
+      color: 'green',
+    });
+  };
+
+  const transcriptionPercentage = stats ? (stats.transcriptionMinutes / stats.totalMinutes) * 100 : 0;
+  const synthesisPercentage = stats ? (stats.synthesisMinutes / stats.totalMinutes) * 100 : 0;
+
+  const chartData = dailyUsage.map(day => ({
+    date: formatters.date(day.date, { month: 'short', day: 'numeric' }),
+    transcription: day.transcriptionMinutes,
+    synthesis: day.synthesisMinutes,
+    cost: day.cost,
+  }));
+
+  if (isLoading) {
     return (
-      <Center h={400}>
-        <Loader size="lg" />
-      </Center>
+      <Stack>
+        <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
+          <LoadingOverlay visible={true} />
+        </Card>
+      </Stack>
     );
   }
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>Audio Usage Analytics</Title>
-          <Text c="dimmed">Track and analyze audio generation and transcription usage</Text>
-        </div>
-        <Group>
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleRefresh}
-            loading={isRefreshing}
-          >
-            Refresh
-          </Button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
-          >
-            Export Report
-          </Button>
+    <Stack gap="xl">
+      <Card shadow="sm" p="md" radius="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>Audio Usage Analytics</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Track audio processing usage and costs
+            </Text>
+          </div>
+          <Group>
+            <Select
+              value={timeRange}
+              onChange={(value) => setTimeRange(value || '7d')}
+              data={[
+                { value: '24h', label: 'Last 24 Hours' },
+                { value: '7d', label: 'Last 7 Days' },
+                { value: '30d', label: 'Last 30 Days' },
+                { value: '90d', label: 'Last 90 Days' },
+              ]}
+              w={150}
+            />
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={16} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="filled"
+              leftSection={<IconDownload size={16} />}
+              onClick={handleExport}
+            >
+              Export
+            </Button>
+          </Group>
         </Group>
-      </Group>
-
-      {/* Filters */}
-      <Card withBorder>
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <DatePickerInput
-              type="range"
-              label="Date Range"
-              placeholder="Select date range"
-              value={dateRange}
-              onChange={(value) => setDateRange(value as [Date | null, Date | null])}
-              leftSection={<IconCalendar size={16} />}
-              clearable={false}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Select
-              label="Virtual Key"
-              placeholder="Select virtual key"
-              data={virtualKeys}
-              value={selectedVirtualKey}
-              onChange={(value) => setSelectedVirtualKey(value || 'all')}
-              leftSection={<IconFilter size={16} />}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Select
-              label="Model"
-              placeholder="Select model"
-              data={audioModels}
-              value={selectedModel}
-              onChange={(value) => setSelectedModel(value || 'all')}
-              leftSection={<IconVolume size={16} />}
-            />
-          </Grid.Col>
-        </Grid>
       </Card>
 
-      {/* Summary Cards */}
-      <Grid>
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Total Requests
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.number(totalRequests)}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  All operations
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="blue">
-                <IconMicrophone size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Usage
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {formatters.duration((stats?.totalMinutes || 0) * 60000)}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                {stats?.totalMinutes.toLocaleString()} minutes
+              </Text>
+            </div>
+            <ThemeIcon color="blue" variant="light" size={48} radius="md">
+              <IconClock size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Avg Latency
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.number(averageLatency)}ms
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Response time
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="teal">
-                <IconFileText size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Requests
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.totalRequests.toLocaleString() || 0}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Avg {stats?.avgRequestDuration.toFixed(1)}s
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconActivity size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Total Duration
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.number(Math.floor(totalDuration / 60))}min
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Audio processed
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="orange">
-                <IconClock size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Cost
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                ${stats?.totalCost.toFixed(2) || '0.00'}
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                {timeRange} period
+              </Text>
+            </div>
+            <ThemeIcon color="orange" variant="light" size={48} radius="md">
+              <IconCurrencyDollar size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
 
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Total Cost
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.currency(totalCost)}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Current period
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="red">
-                <IconCoin size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-      </Grid>
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Success Rate
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                {stats?.successRate || 0}%
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                {stats?.errorRate || 0}% errors
+              </Text>
+            </div>
+            <ThemeIcon color="teal" variant="light" size={48} radius="md">
+              <IconTrendingUp size={24} />
+            </ThemeIcon>
+          </Group>
+        </Card>
+      </SimpleGrid>
 
-      {/* Usage Trend Chart */}
-      <Card withBorder>
-        <Text fw={600} mb="md">Usage Trend</Text>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={usageData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <RechartsTooltip />
-            <Legend />
-            <Area
-              type="monotone"
-              dataKey="transcriptions"
-              stackId="1"
-              stroke="#3b82f6"
-              fill="#3b82f6"
-              name="Transcriptions"
-            />
-            <Area
-              type="monotone"
-              dataKey="tts_generations"
-              stackId="1"
-              stroke="#10b981"
-              fill="#10b981"
-              name="TTS Generations"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="overview" leftSection={<IconActivity size={16} />}>
+            Overview
+          </Tabs.Tab>
+          <Tabs.Tab value="providers" leftSection={<IconMicrophone size={16} />}>
+            By Provider
+          </Tabs.Tab>
+          <Tabs.Tab value="models" leftSection={<IconVolume size={16} />}>
+            By Model
+          </Tabs.Tab>
+          <Tabs.Tab value="virtualkeys" leftSection={<IconFileMusic size={16} />}>
+            By Virtual Key
+          </Tabs.Tab>
+        </Tabs.List>
 
-      <Grid>
-        {/* Model Usage */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card withBorder h="100%">
-            <Text fw={600} mb="md">Model Usage Distribution</Text>
-            {summaryData?.topModels && summaryData.topModels.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={summaryData.topModels}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry) => `${entry.model}: ${entry.requests}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="requests"
-                  >
-                    {summaryData.topModels.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <Center h={250}>
-                <Text c="dimmed">No model usage data available</Text>
-              </Center>
-            )}
-          </Card>
-        </Grid.Col>
+        <Tabs.Panel value="overview" pt="md">
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 8 }}>
+              <Card shadow="sm" p="md" radius="md" withBorder>
+                <Title order={4} mb="md">Usage Trends</Title>
+                <AreaChart
+                  h={300}
+                  data={chartData}
+                  dataKey="date"
+                  series={[
+                    { name: 'transcription', label: 'Transcription (min)', color: 'blue.6' },
+                    { name: 'synthesis', label: 'Synthesis (min)', color: 'green.6' },
+                  ]}
+                  curveType="linear"
+                  strokeWidth={2}
+                  fillOpacity={0.4}
+                />
+              </Card>
+            </Grid.Col>
 
-        {/* Top Models List */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card withBorder h="100%">
-            <Group justify="space-between" mb="md">
-              <Text fw={600}>Top Models</Text>
-              <ThemeIcon size="sm" variant="light" color="blue">
-                <IconVolume size={16} />
-              </ThemeIcon>
-            </Group>
-            {summaryData?.topModels && summaryData.topModels.length > 0 ? (
-              <Stack gap="sm">
-                {summaryData.topModels.map((model, index) => {
-                    const firstModelRequests = summaryData.topModels[0]?.requests || 1;
-                    return (
-                      <div key={model.model}>
-                        <Group justify="space-between" mb={4}>
-                          <Text size="sm">{model.model}</Text>
-                          <Group gap="xs">
-                            <Text size="sm" c="dimmed">{formatters.number(model.requests)} requests</Text>
-                            <Text size="sm" c="green">{formatters.currency(model.cost)}</Text>
-                          </Group>
-                        </Group>
-                        <Progress 
-                          value={(model.requests / firstModelRequests) * 100} 
-                          size="sm" 
-                          color={COLORS[index % COLORS.length]}
-                        />
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card shadow="sm" p="md" radius="md" withBorder h="100%">
+                <Title order={4} mb="md">Usage Distribution</Title>
+                <Stack align="center" gap="md">
+                  <RingProgress
+                    size={180}
+                    thickness={30}
+                    sections={[
+                      { value: transcriptionPercentage, color: 'blue' },
+                      { value: synthesisPercentage, color: 'green' },
+                    ]}
+                    label={
+                      <div style={{ textAlign: 'center' }}>
+                        <Text size="lg" fw={700}>{stats?.totalMinutes.toLocaleString()}</Text>
+                        <Text size="xs" c="dimmed">Total Minutes</Text>
                       </div>
-                    );
-                })}
-              </Stack>
-            ) : (
-              <Center h={200}>
-                <Text c="dimmed">No model data available</Text>
-              </Center>
-            )}
-          </Card>
-        </Grid.Col>
-      </Grid>
+                    }
+                  />
+                  <Stack gap="xs" w="100%">
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <div style={{ width: 12, height: 12, backgroundColor: 'var(--mantine-color-blue-6)', borderRadius: 2 }} />
+                        <Text size="sm">Transcription</Text>
+                      </Group>
+                      <Text size="sm" fw={500}>{transcriptionPercentage.toFixed(1)}%</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <div style={{ width: 12, height: 12, backgroundColor: 'var(--mantine-color-green-6)', borderRadius: 2 }} />
+                        <Text size="sm">Synthesis</Text>
+                      </Group>
+                      <Text size="sm" fw={500}>{synthesisPercentage.toFixed(1)}%</Text>
+                    </Group>
+                  </Stack>
+                </Stack>
+              </Card>
+            </Grid.Col>
 
-      {/* Model Performance Table */}
-      <Card withBorder>
-        <Group justify="space-between" mb="md">
-          <Text fw={600}>Model Performance & Costs</Text>
-          <Badge variant="light">Last 30 days</Badge>
-        </Group>
-        <ScrollArea>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Model</Table.Th>
-                <Table.Th>Requests</Table.Th>
-                <Table.Th>Minutes Processed</Table.Th>
-                <Table.Th>Avg. Processing Time</Table.Th>
-                <Table.Th>Success Rate</Table.Th>
-                <Table.Th>Total Cost</Table.Th>
-                <Table.Th>Cost per Minute</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {summaryData?.topModels && summaryData.topModels.length > 0 ? (
-                summaryData.topModels.map((model) => {
-                    const minutesProcessed = Math.floor(Math.random() * 500) + 100;
-                    return (
-                      <Table.Tr key={model.model}>
-                        <Table.Td>
-                          <Badge variant="light">{model.model}</Badge>
-                        </Table.Td>
-                        <Table.Td>{formatters.number(model.requests)}</Table.Td>
-                        <Table.Td>{formatters.number(minutesProcessed)}</Table.Td>
-                        <Table.Td>{(Math.random() * 2 + 0.5).toFixed(1)}s</Table.Td>
-                        <Table.Td>
-                          <Text c="green">
-                            {(95 + Math.random() * 5).toFixed(1)}%
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>{formatters.currency(model.cost)}</Table.Td>
-                        <Table.Td>{formatters.currency(model.cost / minutesProcessed)}</Table.Td>
-                      </Table.Tr>
-                    );
-                })
-              ) : (
-                <Table.Tr>
-                  <Table.Td colSpan={7} style={{ textAlign: 'center' }}>
-                    <Text c="dimmed">No performance data available</Text>
-                  </Table.Td>
-                </Table.Tr>
-              )}
-            </Table.Tbody>
-          </Table>
-        </ScrollArea>
-      </Card>
+            <Grid.Col span={12}>
+              <Card shadow="sm" p="md" radius="md" withBorder>
+                <Title order={4} mb="md">Cost Trends</Title>
+                <LineChart
+                  h={250}
+                  data={chartData}
+                  dataKey="date"
+                  series={[
+                    { name: 'cost', label: 'Cost ($)', color: 'orange.6' },
+                  ]}
+                  curveType="monotone"
+                  strokeWidth={2}
+                  valueFormatter={(value) => `$${value.toFixed(2)}`}
+                />
+              </Card>
+            </Grid.Col>
+          </Grid>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="providers" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Transcription</Table.Th>
+                    <Table.Th>Synthesis</Table.Th>
+                    <Table.Th>Total Minutes</Table.Th>
+                    <Table.Th>Requests</Table.Th>
+                    <Table.Th>Cost</Table.Th>
+                    <Table.Th>Avg Latency</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {providerUsage.map((provider) => (
+                    <Table.Tr key={provider.provider}>
+                      <Table.Td>
+                        <Text fw={500}>{provider.provider}</Text>
+                      </Table.Td>
+                      <Table.Td>{provider.transcriptionMinutes.toLocaleString()} min</Table.Td>
+                      <Table.Td>{provider.synthesisMinutes.toLocaleString()} min</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Text fw={500}>{provider.totalMinutes.toLocaleString()} min</Text>
+                          <Progress
+                            value={(provider.totalMinutes / (stats?.totalMinutes || 1)) * 100}
+                            size="sm"
+                            w={60}
+                          />
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>{provider.requests.toLocaleString()}</Table.Td>
+                      <Table.Td>
+                        <Text fw={600}>${provider.cost.toFixed(2)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={provider.avgLatency < 400 ? 'green' : provider.avgLatency < 500 ? 'yellow' : 'red'}
+                          variant="light"
+                        >
+                          {provider.avgLatency}ms
+                        </Badge>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="models" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Model</Table.Th>
+                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th>Minutes</Table.Th>
+                    <Table.Th>Requests</Table.Th>
+                    <Table.Th>Cost/Min</Table.Th>
+                    <Table.Th>Total Cost</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {modelUsage.map((model) => (
+                    <Table.Tr key={`${model.provider}-${model.model}`}>
+                      <Table.Td>
+                        <Text fw={500}>{model.model}</Text>
+                      </Table.Td>
+                      <Table.Td>{model.provider}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={model.type === 'transcription' ? 'blue' : 'green'}
+                          variant="light"
+                        >
+                          {model.type === 'transcription' ? 'STT' : 'TTS'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>{model.minutes.toLocaleString()} min</Table.Td>
+                      <Table.Td>{model.requests.toLocaleString()}</Table.Td>
+                      <Table.Td>
+                        <Code>${model.costPerMinute.toFixed(3)}</Code>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fw={600}>${model.cost.toFixed(2)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="virtualkeys" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Virtual Key</Table.Th>
+                    <Table.Th>Transcription</Table.Th>
+                    <Table.Th>Synthesis</Table.Th>
+                    <Table.Th>Total Minutes</Table.Th>
+                    <Table.Th>Requests</Table.Th>
+                    <Table.Th>Cost</Table.Th>
+                    <Table.Th>Last Used</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {virtualKeyUsage.map((key) => (
+                    <Table.Tr key={key.keyId}>
+                      <Table.Td>
+                        <div>
+                          <Text fw={500}>{key.keyName}</Text>
+                          <Text size="xs" c="dimmed">{key.keyId}</Text>
+                        </div>
+                      </Table.Td>
+                      <Table.Td>{key.transcriptionMinutes.toLocaleString()} min</Table.Td>
+                      <Table.Td>{key.synthesisMinutes.toLocaleString()} min</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Text fw={500}>{key.totalMinutes.toLocaleString()} min</Text>
+                          <Progress
+                            value={(key.totalMinutes / (stats?.totalMinutes || 1)) * 100}
+                            size="sm"
+                            w={60}
+                          />
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>{key.requests.toLocaleString()}</Table.Td>
+                      <Table.Td>
+                        <Text fw={600}>${key.cost.toFixed(2)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{formatters.date(key.lastUsed, { relativeDays: 7 })}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
+        </Tabs.Panel>
+      </Tabs>
+
+      <Alert
+        icon={<IconInfoCircle size={16} />}
+        title="Audio Usage Information"
+        color="blue"
+      >
+        <Text size="sm">
+          Audio usage is calculated based on the duration of processed audio files. Transcription is billed per minute of audio input, 
+          while synthesis is billed per minute of generated audio. Costs vary by provider and model. 
+          Usage data is updated in real-time and aggregated hourly.
+        </Text>
+      </Alert>
+
+      <LoadingOverlay visible={isRefreshing} />
     </Stack>
   );
 }

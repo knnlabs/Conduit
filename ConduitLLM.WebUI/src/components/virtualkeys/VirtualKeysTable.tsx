@@ -26,11 +26,8 @@ import {
   IconAlertCircle,
   // Removed unused IconActivity import
 } from '@tabler/icons-react';
-import { useVirtualKeys, useDeleteVirtualKey } from '@/hooks/useConduitAdmin';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { useConnectionStore } from '@/stores/useConnectionStore';
-import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
 import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
@@ -50,28 +47,11 @@ interface VirtualKeysTableProps {
   onEdit?: (key: VirtualKey) => void;
   onView?: (key: VirtualKey) => void;
   data?: VirtualKey[];
+  onDelete?: (keyId: string) => void;
 }
 
-export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps) {
-  const { data: defaultKeys, isLoading, error } = useVirtualKeys();
-  const deleteVirtualKey = useDeleteVirtualKey();
-  const { status } = useConnectionStore();
-  const _signalRStatus = status.signalR;
-  const [updatedKeys, setUpdatedKeys] = useState<Set<string>>(new Set());
-  
-  // Use provided data or default to fetched data
-  const virtualKeys = data || defaultKeys;
-
-  // Show update indicator when keys are updated via SignalR
-  useEffect(() => {
-    if (updatedKeys.size > 0) {
-      const timer = setTimeout(() => {
-        setUpdatedKeys(new Set());
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [updatedKeys]);
+export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeysTableProps) {
+  const virtualKeys = data || [];
 
   const handleCopyKey = (keyHash: string) => {
     navigator.clipboard.writeText(keyHash);
@@ -93,7 +73,7 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => deleteVirtualKey.mutate(key.id),
+      onConfirm: () => onDelete?.(key.id),
     });
   };
 
@@ -104,17 +84,6 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
   };
 
 
-  if (error) {
-    return (
-      <Alert 
-        icon={<IconAlertCircle size={16} />} 
-        title="Error loading virtual keys"
-        color="red"
-      >
-        {error instanceof Error ? error.message : 'Failed to load virtual keys. Please try again.'}
-      </Alert>
-    );
-  }
 
   const rows = virtualKeys?.map((key: VirtualKey) => {
     const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
@@ -256,8 +225,6 @@ export function VirtualKeysTable({ onEdit, onView, data }: VirtualKeysTableProps
   return (
     <Paper withBorder radius="md">
       <Box pos="relative">
-        <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-        
         <Table.ScrollContainer minWidth={800}>
           <Table verticalSpacing="sm" horizontalSpacing="md">
             <Table.Thead>

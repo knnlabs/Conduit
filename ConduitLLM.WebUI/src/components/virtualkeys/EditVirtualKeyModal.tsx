@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
   NumberInput,
   Switch,
@@ -8,12 +9,14 @@ import {
   Text,
   Textarea,
   Alert,
+  Button,
+  Group,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateVirtualKey } from '@/hooks/useConduitAdmin';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { FormModal } from '@/components/common/FormModal';
 import { validators } from '@/lib/utils/form-validators';
+import { notifications } from '@mantine/notifications';
+import { useState, useEffect } from 'react';
 
 interface VirtualKey {
   id: string;
@@ -33,6 +36,7 @@ interface EditVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
   virtualKey: VirtualKey | null;
+  onSuccess?: () => void;
 }
 
 interface EditVirtualKeyForm {
@@ -43,8 +47,8 @@ interface EditVirtualKeyForm {
   allowedModels: string[];
 }
 
-export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtualKeyModalProps) {
-  const updateVirtualKey = useUpdateVirtualKey();
+export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: EditVirtualKeyModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<EditVirtualKeyForm>({
     initialValues: {
@@ -71,114 +75,132 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey }: EditVirtual
     },
   });
 
-  if (!virtualKey) {
-    return null;
-  }
-
-  // Create a mutation wrapper that handles the payload transformation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mutation: any = {
-    ...updateVirtualKey,
-    mutate: (values: EditVirtualKeyForm, options?: Parameters<typeof updateVirtualKey.mutate>[1]) => {
-      const payload = {
-        keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-      };
-      updateVirtualKey.mutate({
-        id: virtualKey.id,
-        data: payload,
-      }, options);
-    },
-    mutateAsync: async (values: EditVirtualKeyForm) => {
-      const payload = {
-        keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-      };
-      return updateVirtualKey.mutateAsync({
-        id: virtualKey.id,
-        data: payload,
-      });
-    },
-  };
-
-  return (
-    <FormModal
-      opened={opened}
-      onClose={onClose}
-      title="Edit Virtual Key"
-      size="md"
-      form={form}
-      mutation={mutation}
-      entityType="Virtual Key"
-      isEdit={true}
-      submitText="Save Changes"
-      initialValues={{
+  // Update form when virtualKey changes
+  useEffect(() => {
+    if (virtualKey) {
+      form.setValues({
         keyName: virtualKey.keyName,
         description: virtualKey.description || '',
         maxBudget: virtualKey.maxBudget,
         isEnabled: virtualKey.isEnabled,
         allowedModels: virtualKey.allowedModels || [],
-      }}
+      });
+    }
+  }, [virtualKey]);
+
+  const handleSubmit = async (values: EditVirtualKeyForm) => {
+    if (!virtualKey) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        id: parseInt(virtualKey.id, 10),
+        keyName: values.keyName.trim(),
+        description: values.description?.trim() || undefined,
+        maxBudget: values.maxBudget || undefined,
+        isEnabled: values.isEnabled,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+      };
+
+      const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update virtual key');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: `Virtual key "${values.keyName}" updated successfully`,
+        color: 'green',
+      });
+
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to update virtual key',
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!virtualKey) {
+    return null;
+  }
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Edit Virtual Key"
+      size="lg"
     >
-      {(form) => (
-        <>
-          <TextInput
-            label="Key Name"
-            placeholder="Enter a descriptive name for this key"
-            required
-            {...form.getInputProps('keyName')}
-          />
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
+        <Alert icon={<IconAlertCircle size={16} />} color="blue">
+          <Text size="sm" fw={500}>Key Hash</Text>
+          <Text size="xs" style={{ fontFamily: 'monospace' }}>
+            {virtualKey.keyHash}
+          </Text>
+        </Alert>
 
-          <Textarea
-            label="Description"
-            placeholder="Optional description for this key"
-            rows={3}
-            {...form.getInputProps('description')}
-          />
+        <TextInput
+          label="Key Name"
+          placeholder="Enter a unique name for this key"
+          required
+          {...form.getInputProps('keyName')}
+        />
 
-          <NumberInput
-            label="Budget Limit (USD)"
-            placeholder="Optional spending limit"
-            min={0}
-            step={0.01}
-            decimalScale={4}
-            fixedDecimalScale={false}
-            thousandSeparator=","
-            {...form.getInputProps('maxBudget')}
-          />
+        <Textarea
+          label="Description"
+          placeholder="Optional description for this key"
+          rows={3}
+          {...form.getInputProps('description')}
+        />
 
-          <Switch
-            label="Enable key"
-            description="Whether this key should be active and able to make requests"
-            {...form.getInputProps('isEnabled', { type: 'checkbox' })}
-          />
+        <Switch
+          label="Enabled"
+          description="Whether this key can be used for API requests"
+          {...form.getInputProps('isEnabled', { type: 'checkbox' })}
+        />
 
-          <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
-            <Stack gap="xs">
-              <Text size="sm">
-                <strong>Key Hash:</strong> {virtualKey.keyHash}
-              </Text>
-              <Text size="sm">
-                <strong>Current Spend:</strong> ${virtualKey.currentSpend.toFixed(2)}
-              </Text>
-              <Text size="sm">
-                <strong>Total Requests:</strong> {virtualKey.requestCount.toLocaleString()}
-              </Text>
-              {virtualKey.lastUsed && (
-                <Text size="sm">
-                  <strong>Last Used:</strong> {new Date(virtualKey.lastUsed).toLocaleString()}
-                </Text>
-              )}
-            </Stack>
-          </Alert>
-        </>
-      )}
-    </FormModal>
+        <NumberInput
+          label="Maximum Budget"
+          description="Maximum amount this key can spend (in USD)"
+          placeholder="No limit"
+          min={0}
+          step={10}
+          decimalScale={2}
+          prefix="$"
+          {...form.getInputProps('maxBudget')}
+        />
+
+        <Alert icon={<IconAlertCircle size={16} />} color="gray">
+          <Text size="sm">
+            Current spend: ${virtualKey.currentSpend.toFixed(2)} | 
+            Requests: {virtualKey.requestCount.toLocaleString()}
+          </Text>
+        </Alert>
+        
+        <Group justify="flex-end" mt="md">
+          <Button variant="subtle" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={isSubmitting}>
+            Save Changes
+          </Button>
+        </Group>
+      </Stack>
+      </form>
+    </Modal>
   );
 }

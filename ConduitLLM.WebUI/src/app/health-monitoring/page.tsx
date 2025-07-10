@@ -4,630 +4,386 @@ import {
   Stack,
   Title,
   Text,
-  Card,
-  Grid,
   Group,
   Button,
+  Card,
   Badge,
+  Grid,
+  Paper,
   ThemeIcon,
   Progress,
   Timeline,
   Alert,
-  Switch,
-  Select,
-  NumberInput,
-  Tabs,
-  ActionIcon,
-  SimpleGrid,
-  LoadingOverlay,
 } from '@mantine/core';
 import {
-  IconHeartbeat,
+  IconRefresh,
+  IconCircleCheck,
+  IconCircleX,
+  IconAlertCircle,
   IconServer,
   IconDatabase,
+  IconNetwork,
   IconClock,
-  IconRefresh,
-  IconDownload,
-  IconCheck,
-  IconX,
-  IconAlertCircle,
   IconActivity,
-  IconApi,
-  IconMessage2,
-  IconCircle,
-  IconCloud,
-  IconTrendingDown,
-  IconBell,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatters } from '@/lib/utils/formatters';
-import { useSystemHealth } from '@/hooks/useConduitAdmin';
-// TODO: useIncidents and useHealthHistory need to be implemented in SDK
 
-// Type definitions
-interface ServiceMetrics {
-  cpu?: number;
-  memory?: number;
-  queueDepth?: number;
-}
-
-interface HealthCheck {
-  status: 'pass' | 'warn' | 'fail';
-  name: string;
-  duration: number;
-}
-
-interface Service {
+interface ProviderHealth {
+  id: string;
   name: string;
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  type?: string;
-  metrics?: ServiceMetrics;
-  checks?: HealthCheck[];
+  lastChecked: string;
+  responseTime: number;
+  uptime: number;
+  errorRate: number;
+  details?: {
+    lastError?: string;
+    consecutiveFailures?: number;
+    lastSuccessfulCheck?: string;
+  };
 }
 
-interface Incident {
-  startTime: string;
-  endTime?: string;
-  service?: string;
-  description?: string;
-  impact?: string;
+interface SystemHealth {
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  components: {
+    api: ComponentHealth;
+    database: ComponentHealth;
+    cache: ComponentHealth;
+    queue: ComponentHealth;
+  };
+  metrics: {
+    cpu: number;
+    memory: number;
+    disk: number;
+    activeConnections: number;
+  };
 }
 
-const serviceTypeIcons = {
-  api: IconApi,
-  database: IconDatabase,
-  cache: IconCircle,
-  queue: IconMessage2,
-  provider: IconCloud,
-  storage: IconServer,
-};
+interface ComponentHealth {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  message?: string;
+  lastChecked: string;
+}
 
-const statusColors = {
-  healthy: 'green',
-  degraded: 'yellow',
-  unhealthy: 'red',
-  unknown: 'gray',
-};
-
-const severityColors = {
-  low: 'blue',
-  medium: 'yellow',
-  high: 'orange',
-  critical: 'red',
-};
+interface HealthEvent {
+  id: string;
+  timestamp: string;
+  type: 'provider_down' | 'provider_up' | 'system_issue' | 'system_recovered';
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+}
 
 export default function HealthMonitoringPage() {
-  const [activeTab, setActiveTab] = useState<string | null>('overview');
+  const [providers, setProviders] = useState<ProviderHealth[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [healthEvents, setHealthEvents] = useState<HealthEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [_refreshInterval, _setRefreshInterval] = useState(30);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '24h' | '7d'>('24h');
 
-  // Fetch data using the SDK hooks
-  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  
-  // TODO: Replace with SDK hooks when available
-  const incidentsData = { incidents: [] };
-  const incidentsLoading = false;
-  const historyData = { history: [] };
-  const _historyLoading = false;
+  const fetchHealthData = useCallback(async () => {
+    try {
+      // Fetch provider health
+      const providersResponse = await fetch('/api/health/providers');
+      if (providersResponse.ok) {
+        const providersData = await providersResponse.json();
+        setProviders(providersData);
+      }
 
-  // Transform SDK health data to component format
-  const services = healthData?.checks ? Object.entries(healthData.checks).map(([name, check]) => {
-    const checkData = check as { status: string; duration?: number };
-    return {
-      id: name,
-      name: name,
-      status: checkData.status as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-      uptime: 99.9, // TODO: Get from actual metrics
-      responseTime: checkData.duration || 0,
-      lastCheck: healthData.timestamp,
-      type: 'api' as const,
-      metrics: {},
-      checks: [{
-        status: checkData.status === 'healthy' ? 'pass' : checkData.status === 'degraded' ? 'warn' : 'fail' as 'pass' | 'warn' | 'fail',
-        name: name,
-        duration: checkData.duration || 0
-      }]
-    };
-  }) : [];
-  
-  const incidents = incidentsData?.incidents || [];
+      // Fetch system health
+      const systemResponse = await fetch('/api/health/system');
+      if (systemResponse.ok) {
+        const systemData = await systemResponse.json();
+        setSystemHealth(systemData);
+      }
 
-  // Calculate summary statistics
-  const healthyServices = services.filter(s => s.status === 'healthy').length;
-  const degradedServices = services.filter(s => s.status === 'degraded').length;
-  const unhealthyServices = services.filter(s => s.status === 'unhealthy').length;
-  const overallUptime = services.reduce((sum, s) => {
-    const uptime = typeof s.uptime === 'number' ? s.uptime : 0;
-    return sum + uptime;
-  }, 0) / services.length;
-  const activeIncidents = incidents.filter((i: any) => i.status === 'active').length;
-
-  // Auto-refresh effect
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      refetchHealth();
-    }, _refreshInterval * 1000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, refetchHealth, _refreshInterval]);
-
-  const handleRefresh = () => {
-    refetchHealth();
-    notifications.show({
-      title: 'Refreshing Health Status',
-      message: 'Service health checks are being updated',
-      color: 'blue',
-    });
-  };
-
-  const handleExport = () => {
-    notifications.show({
-      title: 'Export Started',
-      message: 'Generating health status report...',
-      color: 'blue',
-    });
-  };
-
-  const handleTestService = (service: Service) => {
-    notifications.show({
-      title: 'Running Health Check',
-      message: `Testing ${service.name}...`,
-      color: 'blue',
-      loading: true,
-    });
-
-    // Refetch to get latest health status
-    setTimeout(() => {
-      refetchHealth();
+      // Fetch recent health events
+      const eventsResponse = await fetch('/api/health/events?limit=10');
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setHealthEvents(eventsData);
+      }
+    } catch (error) {
+      console.error('Error fetching health data:', error);
       notifications.show({
-        title: 'Health Check Complete',
-        message: `${service.name} is ${service.status}`,
-        color: statusColors[service.status as keyof typeof statusColors] || 'gray',
+        title: 'Error',
+        message: 'Failed to fetch health data',
+        color: 'red',
       });
-    }, 2000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealthData();
+
+    if (autoRefresh) {
+      const interval = setInterval(fetchHealthData, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [fetchHealthData, autoRefresh]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <IconCircleCheck size={20} color="var(--mantine-color-green-6)" />;
+      case 'degraded':
+        return <IconAlertCircle size={20} color="var(--mantine-color-yellow-6)" />;
+      case 'unhealthy':
+        return <IconCircleX size={20} color="var(--mantine-color-red-6)" />;
+      default:
+        return <IconAlertCircle size={20} color="var(--mantine-color-gray-6)" />;
+    }
   };
 
-  const getServiceIcon = (type: string) => {
-    const Icon = serviceTypeIcons[type as keyof typeof serviceTypeIcons] || IconServer;
-    return <Icon size={20} />;
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'healthy':
+        return 'green';
+      case 'degraded':
+        return 'yellow';
+      case 'unhealthy':
+        return 'red';
+      default:
+        return 'gray';
+    }
   };
+
+  const formatUptime = (uptime: number): string => {
+    if (uptime >= 99.9) return '99.9%';
+    return `${uptime.toFixed(1)}%`;
+  };
+
+  const getOverallHealth = (): { status: string; message: string } => {
+    const unhealthyProviders = providers.filter(p => p.status === 'unhealthy').length;
+    const degradedProviders = providers.filter(p => p.status === 'degraded').length;
+    
+    if (unhealthyProviders > 0) {
+      return {
+        status: 'unhealthy',
+        message: `${unhealthyProviders} provider${unhealthyProviders > 1 ? 's' : ''} down`,
+      };
+    }
+    
+    if (degradedProviders > 0 || systemHealth?.overall === 'degraded') {
+      return {
+        status: 'degraded',
+        message: 'Some services experiencing issues',
+      };
+    }
+    
+    if (systemHealth?.overall === 'unhealthy') {
+      return {
+        status: 'unhealthy',
+        message: 'System components unhealthy',
+      };
+    }
+    
+    return {
+      status: 'healthy',
+      message: 'All systems operational',
+    };
+  };
+
+  const overallHealth = getOverallHealth();
 
   return (
-    <Stack gap="md">
+    <Stack gap="xl">
       <Group justify="space-between">
         <div>
           <Title order={1}>Health Monitoring</Title>
-          <Text c="dimmed">Real-time system health and availability monitoring</Text>
+          <Text c="dimmed">Monitor system and provider health status</Text>
         </div>
         <Group>
-          <Group gap="xs">
-            <Switch
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.currentTarget.checked)}
-              label={`Auto-refresh (${_refreshInterval}s)`}
-            />
-          </Group>
+          <Button
+            variant={autoRefresh ? 'filled' : 'light'}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            leftSection={<IconClock size={16} />}
+          >
+            Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
+          </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={handleRefresh}
-            loading={healthLoading}
+            onClick={fetchHealthData}
+            loading={isLoading}
           >
             Refresh
-          </Button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
-          >
-            Export Report
           </Button>
         </Group>
       </Group>
 
-      {/* Health Overview Cards */}
-      <Grid>
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md" h={140}>
-            <Group justify="space-between" h="100%">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Overall Health
-                </Text>
-                <Text size="xl" fw={700} c={unhealthyServices > 0 ? 'red' : degradedServices > 0 ? 'yellow' : 'green'}>
-                  {unhealthyServices > 0 ? 'Issues Detected' : degradedServices > 0 ? 'Degraded' : 'All Systems Go'}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  {healthyServices} healthy, {degradedServices} degraded, {unhealthyServices} unhealthy
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color={unhealthyServices > 0 ? 'red' : degradedServices > 0 ? 'yellow' : 'green'}>
-                <IconHeartbeat size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md" h={140}>
-            <Group justify="space-between" h="100%">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  System Uptime
-                </Text>
-                <Text size="xl" fw={700}>
-                  {formatters.percentage(overallUptime)}
-                </Text>
-                <Progress value={overallUptime} size="sm" mt={8} color="green" />
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="blue">
-                <IconClock size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md" h={140}>
-            <Group justify="space-between" h="100%">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Active Incidents
-                </Text>
-                <Text size="xl" fw={700} c={activeIncidents > 0 ? 'orange' : 'green'}>
-                  {activeIncidents}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  {incidents.filter((i: any) => i.status === 'resolved').length} resolved today
-                </Text>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color={activeIncidents > 0 ? 'orange' : 'green'}>
-                <IconAlertCircle size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder p="md" h={140}>
-            <Group justify="space-between" h="100%">
-              <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                  Avg Response Time
-                </Text>
-                <Text size="xl" fw={700}>
-                  {Math.round(services.reduce((sum, s) => sum + s.responseTime, 0) / services.length)}ms
-                </Text>
-                <Group gap={4} mt={4}>
-                  <IconTrendingDown size={14} color="var(--mantine-color-green-6)" />
-                  <Text size="xs" c="green">12% faster</Text>
-                </Group>
-              </div>
-              <ThemeIcon size="xl" radius="md" variant="light" color="purple">
-                <IconActivity size={24} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        </Grid.Col>
-      </Grid>
-
-      {/* Health Timeline Chart */}
-      <Card withBorder>
-        <Group justify="space-between" mb="md">
-          <Text fw={600}>System Health Timeline</Text>
-          <Select
-            value={selectedTimeRange}
-            onChange={(value) => setSelectedTimeRange(value as '1h' | '24h' | '7d')}
-            data={[
-              { value: '1h', label: 'Last Hour' },
-              { value: '24h', label: 'Last 24 Hours' },
-              { value: '7d', label: 'Last 7 Days' },
-            ]}
-            w={150}
-          />
+      {/* Overall Status */}
+      <Alert
+        icon={getStatusIcon(overallHealth.status)}
+        title="System Status"
+        color={getStatusColor(overallHealth.status)}
+        variant="light"
+      >
+        <Group justify="space-between">
+          <Text size="sm" fw={500}>
+            {overallHealth.message}
+          </Text>
+          <Text size="xs" c="dimmed">
+            Last updated: {new Date().toLocaleTimeString()}
+          </Text>
         </Group>
-        {historyData?.history && historyData.history.length > 0 && (
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={historyData.history}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={(value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              />
-              <YAxis />
-              <RechartsTooltip 
-                labelFormatter={(value) => new Date(value).toLocaleString()}
-              />
-              <Legend />
-              <Area type="monotone" dataKey="healthyServices" stackId="1" stroke="#10b981" fill="#10b981" name="Healthy" />
-              <Area type="monotone" dataKey="degradedServices" stackId="1" stroke="#f59e0b" fill="#f59e0b" name="Degraded" />
-              <Area type="monotone" dataKey="unhealthyServices" stackId="1" stroke="#ef4444" fill="#ef4444" name="Unhealthy" />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
+      </Alert>
+
+      {/* System Metrics */}
+      {systemHealth && (
+        <Grid>
+          <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
+            <Paper p="md" withBorder>
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" c="dimmed">CPU Usage</Text>
+                <ThemeIcon size="sm" variant="light">
+                  <IconActivity size={16} />
+                </ThemeIcon>
+              </Group>
+              <Text size="xl" fw={700}>{systemHealth.metrics.cpu}%</Text>
+              <Progress value={systemHealth.metrics.cpu} mt="xs" color={systemHealth.metrics.cpu > 80 ? 'red' : 'blue'} />
+            </Paper>
+          </Grid.Col>
+          
+          <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
+            <Paper p="md" withBorder>
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" c="dimmed">Memory Usage</Text>
+                <ThemeIcon size="sm" variant="light">
+                  <IconServer size={16} />
+                </ThemeIcon>
+              </Group>
+              <Text size="xl" fw={700}>{systemHealth.metrics.memory}%</Text>
+              <Progress value={systemHealth.metrics.memory} mt="xs" color={systemHealth.metrics.memory > 80 ? 'red' : 'blue'} />
+            </Paper>
+          </Grid.Col>
+          
+          <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
+            <Paper p="md" withBorder>
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" c="dimmed">Disk Usage</Text>
+                <ThemeIcon size="sm" variant="light">
+                  <IconDatabase size={16} />
+                </ThemeIcon>
+              </Group>
+              <Text size="xl" fw={700}>{systemHealth.metrics.disk}%</Text>
+              <Progress value={systemHealth.metrics.disk} mt="xs" color={systemHealth.metrics.disk > 80 ? 'red' : 'blue'} />
+            </Paper>
+          </Grid.Col>
+          
+          <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
+            <Paper p="md" withBorder>
+              <Group justify="space-between" mb="xs">
+                <Text size="sm" c="dimmed">Active Connections</Text>
+                <ThemeIcon size="sm" variant="light">
+                  <IconNetwork size={16} />
+                </ThemeIcon>
+              </Group>
+              <Text size="xl" fw={700}>{systemHealth.metrics.activeConnections}</Text>
+              <Text size="xs" c="dimmed" mt="xs">Currently active</Text>
+            </Paper>
+          </Grid.Col>
+        </Grid>
+      )}
+
+      {/* Provider Health */}
+      <Card withBorder>
+        <Card.Section withBorder inheritPadding py="xs">
+          <Text fw={500}>Provider Health Status</Text>
+        </Card.Section>
+        <Card.Section inheritPadding py="md">
+          <Stack gap="sm">
+            {providers.length === 0 ? (
+              <Text c="dimmed" ta="center" py="xl">
+                No providers configured
+              </Text>
+            ) : (
+              providers.map((provider) => (
+                <Paper key={provider.id} p="md" withBorder>
+                  <Group justify="space-between">
+                    <Group>
+                      {getStatusIcon(provider.status)}
+                      <div>
+                        <Text fw={500}>{provider.name}</Text>
+                        <Text size="xs" c="dimmed">
+                          Last checked: {new Date(provider.lastChecked).toLocaleTimeString()}
+                        </Text>
+                      </div>
+                    </Group>
+                    <Group gap="xl">
+                      <div>
+                        <Text size="xs" c="dimmed">Response Time</Text>
+                        <Text fw={500}>{provider.responseTime}ms</Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Uptime</Text>
+                        <Text fw={500}>{formatUptime(provider.uptime)}</Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Error Rate</Text>
+                        <Text fw={500} c={provider.errorRate > 5 ? 'red' : undefined}>
+                          {provider.errorRate.toFixed(1)}%
+                        </Text>
+                      </div>
+                      <Badge color={getStatusColor(provider.status)} variant="light">
+                        {provider.status}
+                      </Badge>
+                    </Group>
+                  </Group>
+                  {provider.details?.lastError && (
+                    <Alert mt="sm" color="red" variant="light" title="Last Error">
+                      <Text size="xs">{provider.details.lastError}</Text>
+                    </Alert>
+                  )}
+                </Paper>
+              ))
+            )}
+          </Stack>
+        </Card.Section>
       </Card>
 
-      {/* Tabbed Content */}
-      <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List>
-          <Tabs.Tab value="overview" leftSection={<IconHeartbeat size={16} />}>
-            Service Status
-          </Tabs.Tab>
-          <Tabs.Tab value="incidents" leftSection={<IconAlertCircle size={16} />}>
-            Incidents
-          </Tabs.Tab>
-          <Tabs.Tab value="alerts" leftSection={<IconBell size={16} />}>
-            Alert Configuration
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="overview" pt="md">
-          {/* Service Health Grid */}
-          <LoadingOverlay visible={healthLoading} />
-          <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
-            {services.map((service) => (
-              <Card key={service.id} withBorder>
-                <Group justify="space-between" mb="md">
-                  <Group>
-                    <ThemeIcon
-                      size="lg"
-                      variant="light"
-                      color={statusColors[service.status]}
-                    >
-                      {getServiceIcon((service as Service).type || 'api')}
-                    </ThemeIcon>
-                    <div>
-                      <Text fw={500}>{service.name}</Text>
-                      <Badge variant="light" color={statusColors[service.status]}>
-                        {service.status}
-                      </Badge>
-                    </div>
-                  </Group>
-                  <ActionIcon
-                    variant="subtle"
-                    onClick={() => handleTestService(service)}
-                  >
-                    <IconRefresh size={16} />
-                  </ActionIcon>
-                </Group>
-
-                <Stack gap="sm">
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">Uptime</Text>
-                    <Group gap="xs">
-                      <Text size="sm" fw={500}>{formatters.percentage(typeof service.uptime === 'number' ? service.uptime : 99.9)}</Text>
-                      <Progress value={typeof service.uptime === 'number' ? service.uptime : 99.9} size="sm" w={60} color="green" />
-                    </Group>
-                  </Group>
-
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">Response Time</Text>
-                    <Text size="sm" fw={500}>{service.responseTime}ms</Text>
-                  </Group>
-
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">Last Check</Text>
-                    <Text size="sm" fw={500}>{formatters.date(service.lastCheck)}</Text>
-                  </Group>
-
-                  {/* Service-specific metrics */}
-                  {(service as Service).metrics?.cpu !== undefined && (
-                    <Group justify="space-between">
-                      <Text size="sm" c="dimmed">CPU Usage</Text>
-                      <Group gap="xs">
-                        <Text size="sm" fw={500}>{(service as Service).metrics!.cpu}%</Text>
-                        <Progress
-                          value={(service as Service).metrics!.cpu!}
-                          size="sm"
-                          w={60}
-                          color={(service as Service).metrics!.cpu! > 80 ? 'red' : (service as Service).metrics!.cpu! > 60 ? 'yellow' : 'green'}
-                        />
-                      </Group>
-                    </Group>
-                  )}
-
-                  {(service as Service).metrics?.memory !== undefined && (
-                    <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Memory Usage</Text>
-                      <Group gap="xs">
-                        <Text size="sm" fw={500}>{(service as Service).metrics!.memory}%</Text>
-                        <Progress
-                          value={(service as Service).metrics!.memory!}
-                          size="sm"
-                          w={60}
-                          color={(service as Service).metrics!.memory! > 80 ? 'red' : (service as Service).metrics!.memory! > 60 ? 'yellow' : 'green'}
-                        />
-                      </Group>
-                    </Group>
-                  )}
-
-                  {(service as Service).metrics?.queueDepth !== undefined && (
-                    <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Queue Depth</Text>
-                      <Text size="sm" fw={500}>{formatters.number((service as Service).metrics!.queueDepth!)}</Text>
-                    </Group>
-                  )}
-
-                  {/* Health Checks */}
-                  <div>
-                    <Text size="sm" c="dimmed" mb="xs">Health Checks</Text>
-                    <Stack gap={4}>
-                      {((service as Service).checks || []).map((check: HealthCheck, index: number) => (
-                        <Group key={index} gap="xs">
-                          {check.status === 'pass' ? (
-                            <IconCheck size={14} color="var(--mantine-color-green-6)" />
-                          ) : check.status === 'warn' ? (
-                            <IconAlertCircle size={14} color="var(--mantine-color-yellow-6)" />
-                          ) : (
-                            <IconX size={14} color="var(--mantine-color-red-6)" />
-                          )}
-                          <Text size="xs">{check.name}</Text>
-                          <Text size="xs" c="dimmed">({check.duration}ms)</Text>
-                        </Group>
-                      ))}
-                    </Stack>
-                  </div>
-                </Stack>
-              </Card>
-            ))}
-          </SimpleGrid>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="incidents" pt="md">
-          {/* Active Incidents */}
-          {activeIncidents > 0 && (
-            <Alert
-              icon={<IconAlertCircle size={16} />}
-              title="Active Incidents"
-              color="orange"
-              mb="md"
-            >
-              There are currently {activeIncidents} active incidents affecting system performance.
-            </Alert>
-          )}
-
-          {/* Incidents Timeline */}
-          <Card withBorder>
-            <Text fw={600} mb="md">Incident History</Text>
-            <LoadingOverlay visible={incidentsLoading} />
-            <Timeline active={-1} bulletSize={24} lineWidth={2}>
-              {incidents.map((incident: any) => (
+      {/* Recent Events */}
+      <Card withBorder>
+        <Card.Section withBorder inheritPadding py="xs">
+          <Text fw={500}>Recent Health Events</Text>
+        </Card.Section>
+        <Card.Section inheritPadding py="md">
+          {healthEvents.length === 0 ? (
+            <Text c="dimmed" ta="center" py="xl">
+              No recent events
+            </Text>
+          ) : (
+            <Timeline bulletSize={20}>
+              {healthEvents.map((event) => (
                 <Timeline.Item
-                  key={incident.id}
+                  key={event.id}
                   bullet={
-                    <ThemeIcon
-                      size={24}
-                      variant="light"
-                      color={incident.status === 'resolved' ? 'green' : severityColors[incident.severity as keyof typeof severityColors] || 'gray'}
-                    >
-                      {incident.status === 'resolved' ? (
-                        <IconCheck size={16} />
-                      ) : (
-                        <IconAlertCircle size={16} />
-                      )}
-                    </ThemeIcon>
+                    event.severity === 'error' ? (
+                      <IconCircleX size={16} />
+                    ) : event.severity === 'warning' ? (
+                      <IconAlertCircle size={16} />
+                    ) : (
+                      <IconCircleCheck size={16} />
+                    )
                   }
-                  title={
-                    <Group gap="xs">
-                      <Text fw={500}>{incident.title}</Text>
-                      <Badge variant="light" color={severityColors[incident.severity as keyof typeof severityColors] || 'gray'}>
-                        {incident.severity}
-                      </Badge>
-                      <Badge variant="light" color={incident.status === 'resolved' ? 'green' : 'orange'}>
-                        {incident.status}
-                      </Badge>
-                    </Group>
+                  color={
+                    event.severity === 'error' ? 'red' : event.severity === 'warning' ? 'yellow' : 'green'
                   }
                 >
-                  <Text c="dimmed" size="sm">
-                    {(incident as Incident).service || 'System'} • Started {formatters.date(incident.startTime)}
-                    {incident.endTime && ` • Resolved ${formatters.date(incident.endTime)}`}
+                  <Text size="sm" fw={500}>
+                    {event.message}
                   </Text>
-                  <Text size="sm" mt={4}>{(incident as Incident).description || 'No description'}</Text>
-                  <Text size="sm" c="dimmed" mt={4}>Impact: {(incident as Incident).impact || 'Unknown'}</Text>
+                  <Text size="xs" c="dimmed">
+                    {new Date(event.timestamp).toLocaleString()}
+                  </Text>
                 </Timeline.Item>
               ))}
             </Timeline>
-          </Card>
-        </Tabs.Panel>
-
-        <Tabs.Panel value="alerts" pt="md">
-          {/* Alert Configuration */}
-          <Card withBorder>
-            <Text fw={600} mb="md">Alert Thresholds</Text>
-            <Grid>
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <NumberInput
-                    label="Service Downtime Alert"
-                    description="Alert when service is down for more than (seconds)"
-                    defaultValue={60}
-                    min={10}
-                    max={600}
-                    suffix=" seconds"
-                  />
-
-                  <NumberInput
-                    label="Response Time Alert"
-                    description="Alert when response time exceeds (milliseconds)"
-                    defaultValue={1000}
-                    min={100}
-                    max={10000}
-                    suffix=" ms"
-                  />
-
-                  <NumberInput
-                    label="Error Rate Alert"
-                    description="Alert when error rate exceeds (%)"
-                    defaultValue={5}
-                    min={0.1}
-                    max={100}
-                    step={0.1}
-                    suffix=" %"
-                  />
-
-                  <NumberInput
-                    label="CPU Usage Alert"
-                    description="Alert when CPU usage exceeds (%)"
-                    defaultValue={80}
-                    min={50}
-                    max={100}
-                    suffix=" %"
-                  />
-                </Stack>
-              </Grid.Col>
-
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Stack gap="md">
-                  <NumberInput
-                    label="Memory Usage Alert"
-                    description="Alert when memory usage exceeds (%)"
-                    defaultValue={85}
-                    min={50}
-                    max={100}
-                    suffix=" %"
-                  />
-
-                  <NumberInput
-                    label="Queue Depth Alert"
-                    description="Alert when queue depth exceeds"
-                    defaultValue={10000}
-                    min={100}
-                    max={100000}
-                  />
-
-                  <Select
-                    label="Alert Channel"
-                    description="Where to send health alerts"
-                    defaultValue="email"
-                    data={[
-                      { value: 'email', label: 'Email' },
-                      { value: 'slack', label: 'Slack' },
-                      { value: 'webhook', label: 'Webhook' },
-                      { value: 'sms', label: 'SMS' },
-                    ]}
-                  />
-
-                  <Switch
-                    label="Enable Auto-Recovery"
-                    description="Automatically attempt to restart unhealthy services"
-                    defaultChecked
-                  />
-                </Stack>
-              </Grid.Col>
-            </Grid>
-
-            <Group justify="flex-end" mt="xl">
-              <Button variant="light">Reset to Defaults</Button>
-              <Button leftSection={<IconCheck size={16} />}>Save Alert Settings</Button>
-            </Group>
-          </Card>
-        </Tabs.Panel>
-      </Tabs>
+          )}
+        </Card.Section>
+      </Card>
     </Stack>
   );
 }

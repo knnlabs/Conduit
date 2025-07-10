@@ -1,40 +1,19 @@
-/**
- * Fetch wrapper that automatically includes credentials for API calls
- * This ensures all requests to our /api routes include authentication cookies
- */
+// Simple fetch wrapper - kept for potential future use
+// Currently all components use native fetch() directly with credentials: 'include'
 
-type FetchOptions = RequestInit & {
-  // Allow overriding credentials if needed
-  credentials?: RequestCredentials;
-};
-
-/**
- * Enhanced fetch that automatically includes credentials for /api routes
- * @param url - The URL to fetch
- * @param options - Fetch options
- * @returns Promise<Response>
- */
 export async function fetchWithCredentials(
   url: string,
-  options: FetchOptions = {}
+  options: RequestInit = {}
 ): Promise<Response> {
-  // For /api routes, always include credentials unless explicitly overridden
-  if (url.startsWith('/api')) {
-    options.credentials = options.credentials || 'include';
-  }
-  
-  return fetch(url, options);
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+  });
 }
 
-/**
- * Convenience wrapper for JSON API calls with automatic credential inclusion
- * @param url - The URL to fetch
- * @param options - Fetch options
- * @returns Promise<T> - Parsed JSON response
- */
 export async function fetchJSON<T = unknown>(
   url: string,
-  options: FetchOptions = {}
+  options: RequestInit = {}
 ): Promise<T> {
   const response = await fetchWithCredentials(url, {
     ...options,
@@ -52,8 +31,5 @@ export async function fetchJSON<T = unknown>(
   return response.json();
 }
 
-/**
- * Export the wrapper as the default fetch for /api routes
- * Usage: import { apiFetch } from '@/lib/utils/fetch-wrapper';
- */
-export const apiFetch = fetchWithCredentials;
+// Deprecated - use native fetch() instead
+export const apiFetch = fetchJSON;

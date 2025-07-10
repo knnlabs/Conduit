@@ -17,13 +17,14 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { useCreateModelMapping, useProviders } from '@/hooks/useConduitAdmin';
+import { useState, useEffect } from 'react';
+import { notifications } from '@mantine/notifications';
 import { ProviderModelSelect } from '@/components/common/ProviderModelSelect';
-import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
   opened: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface FormValues {
@@ -33,6 +34,12 @@ interface FormValues {
   priority: number;
   isEnabled: boolean;
   capabilities: string[];
+}
+
+interface Provider {
+  id: number;
+  name: string;
+  providerType: string;
 }
 
 const CAPABILITY_OPTIONS = [
@@ -45,9 +52,11 @@ const CAPABILITY_OPTIONS = [
   { value: 'realtime_audio', label: 'Realtime Audio' },
 ];
 
-export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingModalProps) {
-  const { data: providers, isLoading: providersLoading, error: providersError } = useProviders();
-  const createMutation = useCreateModelMapping();
+export function CreateModelMappingModal({ opened, onClose, onSuccess }: CreateModelMappingModalProps) {
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
+  const [providersError, setProvidersError] = useState<Error | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -80,11 +89,32 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     },
   });
 
+  // Fetch providers on mount
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  const fetchProviders = async () => {
+    try {
+      setProvidersLoading(true);
+      const response = await fetch('/api/providers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch providers');
+      }
+      const data = await response.json();
+      setProviders(data);
+    } catch (err) {
+      setProvidersError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setProvidersLoading(false);
+    }
+  };
+
   const handleSubmit = async (values: FormValues) => {
     // Ensure capabilities is always an array
     const capabilities = Array.isArray(values.capabilities) ? values.capabilities : [];
     
-    const mappingData: CreateModelProviderMappingDto = {
+    const mappingData = {
       modelId: values.modelId.trim(),
       providerId: values.providerId.trim(),
       providerModelId: values.providerModelId.trim(),
@@ -101,11 +131,36 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     };
 
     try {
-      await createMutation.mutateAsync(mappingData);
+      setIsSubmitting(true);
+      const response = await fetch('/api/model-mappings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mappingData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create model mapping');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Model mapping created successfully',
+        color: 'green',
+      });
+
       form.reset();
       onClose();
+      onSuccess?.();
     } catch (error) {
-      console.error('Failed to create model mapping:', error);
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to create model mapping',
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -135,22 +190,12 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     );
   }
 
-  // FIXED: Ensure providers is an array before trying to map
-  console.log('CreateModelMappingModal providers data:', {
-    providers,
-    type: typeof providers,
-    isArray: Array.isArray(providers),
-  });
-  
   const providerOptions = Array.isArray(providers) 
-    ? providers.map((provider) => {
-        console.log('Processing provider:', provider);
-        return {
-          value: provider.providerName,
-          label: provider.providerName,
-          disabled: !provider.isEnabled,
-        };
-      })
+    ? providers.map((provider) => ({
+        value: String(provider.id),
+        label: provider.name,
+        disabled: false,
+      }))
     : [];
 
   return (
@@ -244,7 +289,7 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
             </Button>
             <Button
               type="submit"
-              loading={createMutation.isPending}
+              loading={isSubmitting}
               disabled={providerOptions.length === 0}
             >
               Create Mapping

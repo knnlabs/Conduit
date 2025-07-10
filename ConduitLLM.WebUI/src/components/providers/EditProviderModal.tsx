@@ -1,32 +1,33 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
   Switch,
   Button,
-  Stack,
   Group,
   Text,
   PasswordInput,
   Alert,
   Divider,
-  Badge,
+  Stack,
   Card,
+  Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useUpdateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
+import { notifications } from '@mantine/notifications';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
-import { useState, useMemo } from 'react';
-import { FormModal } from '@/components/common/FormModal';
+import { useState, useEffect } from 'react';
+import { validators } from '@/lib/utils/form-validators';
 
 interface Provider {
   id: string;
   providerName: string;
   providerType?: string;
   isEnabled: boolean;
-  healthStatus: 'healthy' | 'unhealthy' | 'unknown';
+  healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  modelsAvailable: number;
+  modelsAvailable?: number;
   createdAt: string;
   apiEndpoint?: string;
   description?: string;
@@ -37,10 +38,11 @@ interface EditProviderModalProps {
   opened: boolean;
   onClose: () => void;
   provider: Provider | null;
-  onTest?: (provider: Provider) => void;
+  onSuccess?: () => void;
 }
 
 interface EditProviderForm {
+  providerName: string;
   apiKey?: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -60,135 +62,138 @@ const PROVIDER_TYPES = [
   { value: 'custom', label: 'Custom Provider' },
 ];
 
-export function EditProviderModal({ opened, onClose, provider, onTest }: EditProviderModalProps) {
-  const updateProvider = useUpdateProvider();
-  const testProviderConnection = useTestProviderConnection();
-  const [testingConnection, setTestingConnection] = useState(false);
+export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<EditProviderForm>({
     initialValues: {
+      providerName: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
       isEnabled: true,
     },
     validate: {
-      // No validation needed - all fields are optional
+      providerName: validators.required('Provider name'),
+      apiEndpoint: (value) => {
+        if (value && !validators.url(value)) {
+          return 'Please enter a valid URL';
+        }
+        return null;
+      },
     },
   });
 
-
-  // Memoize initial values to prevent unnecessary re-renders
-  // Must be called before any conditional returns to satisfy React hooks rules
-  const initialValues = useMemo(() => ({
-    apiKey: '', // Don't show existing API key for security
-    apiEndpoint: provider?.apiEndpoint || '',
-    organizationId: provider?.organizationId || '',
-    isEnabled: provider?.isEnabled ?? true,
-  }), [provider?.apiEndpoint, provider?.organizationId, provider?.isEnabled]);
-
-  const handleTestConnection = async () => {
-    if (!provider) return;
-    
-    setTestingConnection(true);
-    try {
-      // Test with the current form values (if provided) or existing provider values
-      await testProviderConnection.mutateAsync({
+  // Update form when provider changes
+  useEffect(() => {
+    if (provider) {
+      form.setValues({
         providerName: provider.providerName,
-        apiKey: form.values.apiKey || undefined, // Only send if user entered a new key
-        apiEndpoint: form.values.apiEndpoint || provider.apiEndpoint || undefined,
-        organizationId: form.values.organizationId || provider.organizationId || undefined,
-        isEnabled: form.values.isEnabled,
+        apiKey: '', // Don't show existing key for security
+        apiEndpoint: provider.apiEndpoint || '',
+        organizationId: provider.organizationId || '',
+        isEnabled: provider.isEnabled,
       });
-    } catch (error) {
-      // Error is already handled by the hook's onError
-    } finally {
-      setTestingConnection(false);
     }
+  }, [provider]);
+
+  const handleSubmit = async (values: EditProviderForm) => {
+    if (!provider) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        id: parseInt(provider.id, 10),
+        providerName: values.providerName,
+        apiKey: values.apiKey || undefined, // Only send if changed
+        apiEndpoint: values.apiEndpoint || undefined,
+        organizationId: values.organizationId || undefined,
+        isEnabled: values.isEnabled,
+      };
+
+      const response = await fetch(`/api/providers/${provider.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update provider');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Provider updated successfully',
+        color: 'green',
+      });
+
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to update provider',
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    form.reset();
+    onClose();
   };
 
   if (!provider) {
     return null;
   }
 
-  // Create a mutation wrapper that handles the payload transformation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mutation: any = {
-    ...updateProvider,
-    mutate: (values: EditProviderForm, options?: Parameters<typeof updateProvider.mutate>[1]) => {
-      const payload = {
-        id: parseInt(provider.id), // Include ID in payload as required by API
-        apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined, // Only update if provided
-        apiEndpoint: values.apiEndpoint?.trim() ? values.apiEndpoint.trim() : undefined,
-        organizationId: values.organizationId?.trim() ? values.organizationId.trim() : undefined,
-        isEnabled: values.isEnabled,
-      };
-      console.log('Updating provider with payload:', payload);
-      updateProvider.mutate({
-        id: provider.id,
-        data: payload,
-      }, options);
-    },
-    mutateAsync: async (values: EditProviderForm) => {
-      const payload = {
-        id: parseInt(provider.id), // Include ID in payload as required by API
-        apiKey: values.apiKey?.trim() ? values.apiKey.trim() : undefined, // Only update if provided
-        apiEndpoint: values.apiEndpoint?.trim() ? values.apiEndpoint.trim() : undefined,
-        organizationId: values.organizationId?.trim() ? values.organizationId.trim() : undefined,
-        isEnabled: values.isEnabled,
-      };
-      return updateProvider.mutateAsync({
-        id: provider.id,
-        data: payload,
-      });
-    },
+  const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerType);
+  const getHealthIcon = (status?: string) => {
+    switch (status) {
+      case 'healthy':
+        return <IconCircleCheck size={16} color="var(--mantine-color-green-6)" />;
+      case 'unhealthy':
+        return <IconCircleX size={16} color="var(--mantine-color-red-6)" />;
+      default:
+        return null;
+    }
   };
 
-  const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerName);
-
   return (
-    <FormModal
-      opened={opened}
-      onClose={onClose}
-      title="Edit Provider"
-      size="md"
-      form={form}
-      mutation={mutation}
-      entityType="Provider"
-      isEdit={true}
-      submitText="Save Changes"
-      initialValues={initialValues}
-    >
-      {(form) => (
-        <>
+    <Modal opened={opened} onClose={handleClose} title="Edit Provider" size="lg">
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
           {/* Provider Info Card */}
           <Card withBorder>
             <Stack gap="xs">
               <Group justify="space-between">
-                <Text size="sm" c="dimmed">Provider</Text>
-                <Badge>{providerType?.label || provider.providerName || 'Unknown'}</Badge>
+                <Text size="sm" c="dimmed">Provider Type</Text>
+                <Badge>{providerType?.label || provider.providerType || 'Unknown'}</Badge>
               </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Health Status</Text>
-                <Group gap="xs">
-                  {provider.healthStatus === 'healthy' && (
-                    <IconCircleCheck size={16} color="var(--mantine-color-green-6)" />
-                  )}
-                  {provider.healthStatus === 'unhealthy' && (
-                    <IconCircleX size={16} color="var(--mantine-color-red-6)" />
-                  )}
-                  <Text size="sm" fw={500} c={
-                    provider.healthStatus === 'healthy' ? 'green' :
-                    provider.healthStatus === 'unhealthy' ? 'red' : 'gray'
-                  }>
-                    {provider.healthStatus}
-                  </Text>
+              {provider.healthStatus && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Health Status</Text>
+                  <Group gap="xs">
+                    {getHealthIcon(provider.healthStatus)}
+                    <Text size="sm" fw={500} c={
+                      provider.healthStatus === 'healthy' ? 'green' :
+                      provider.healthStatus === 'unhealthy' ? 'red' : 'gray'
+                    }>
+                      {provider.healthStatus}
+                    </Text>
+                  </Group>
                 </Group>
-              </Group>
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Models Available</Text>
-                <Text size="sm">{provider.modelsAvailable}</Text>
-              </Group>
+              )}
+              {provider.modelsAvailable !== undefined && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Models Available</Text>
+                  <Text size="sm">{provider.modelsAvailable}</Text>
+                </Group>
+              )}
               {provider.lastHealthCheck && (
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Last Health Check</Text>
@@ -200,6 +205,13 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
 
           <Divider />
 
+          <TextInput
+            label="Provider Name"
+            placeholder="Enter provider name"
+            required
+            {...form.getInputProps('providerName')}
+          />
+
           <PasswordInput
             label="API Key"
             placeholder="Leave empty to keep existing key"
@@ -207,7 +219,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             {...form.getInputProps('apiKey')}
           />
 
-          {(provider.providerName === 'azure' || provider.providerName === 'custom') && (
+          {(provider.providerType === 'azure' || provider.providerType === 'custom') && (
             <TextInput
               label="API Endpoint"
               placeholder="Custom API endpoint URL"
@@ -215,7 +227,7 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             />
           )}
 
-          {provider.providerName === 'openai' && (
+          {provider.providerType === 'openai' && (
             <TextInput
               label="Organization ID"
               placeholder="Optional OpenAI organization ID"
@@ -235,18 +247,18 @@ export function EditProviderModal({ opened, onClose, provider, onTest }: EditPro
             </Text>
           </Alert>
 
-          <Group justify="flex-start" mt="md">
-            <Button 
-              variant="light"
-              onClick={handleTestConnection}
-              loading={testingConnection}
-              disabled={updateProvider.isPending || testProviderConnection.isPending}
-            >
-              Test Connection
+          <Divider />
+
+          <Group justify="flex-end">
+            <Button variant="light" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={isSubmitting}>
+              Save Changes
             </Button>
           </Group>
-        </>
-      )}
-    </FormModal>
+        </Stack>
+      </form>
+    </Modal>
   );
 }

@@ -27,7 +27,7 @@ import {
   IconJson,
   IconSearch,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
 import { 
@@ -35,13 +35,10 @@ import {
   LazyEditVirtualKeyModal as EditVirtualKeyModal,
   LazyViewVirtualKeyModal as ViewVirtualKeyModal
 } from '@/components/lazy/LazyModals';
-import { useVirtualKeys } from '@/hooks/useConduitAdmin';
 import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport } from '@/lib/utils/export';
 import { notifications } from '@mantine/notifications';
-import { RealTimeStatus } from '@/components/realtime/RealTimeStatus';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import { QueryErrorBoundary } from '@/components/error/QueryErrorBoundary';
 
 interface VirtualKey {
   id: string;
@@ -66,10 +63,33 @@ export default function VirtualKeysPage() {
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
   const [selectedKey, setSelectedKey] = useState<VirtualKey | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: virtualKeys, isLoading, error } = useVirtualKeys();
+  const [virtualKeys, setVirtualKeys] = useState<VirtualKey[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Fetch virtual keys on mount
+  useEffect(() => {
+    fetchVirtualKeys();
+  }, []);
+
+  const fetchVirtualKeys = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/virtualkeys');
+      if (!response.ok) {
+        throw new Error('Failed to fetch virtual keys');
+      }
+      const data = await response.json();
+      setVirtualKeys(data);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter virtual keys based on search query
-  const filteredKeys = (virtualKeys as VirtualKey[] | undefined)?.filter((key) => {
+  const filteredKeys = virtualKeys.filter((key) => {
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
@@ -79,7 +99,7 @@ export default function VirtualKeysPage() {
       key.id.toLowerCase().includes(query) ||
       (key.description && key.description.toLowerCase().includes(query))
     );
-  }) || [];
+  });
 
   // Use pagination hook
   const {
@@ -107,6 +127,29 @@ export default function VirtualKeysPage() {
   const handleView = (key: VirtualKey) => {
     setSelectedKey(key);
     openViewModal();
+  };
+
+  const handleDelete = async (keyId: string) => {
+    try {
+      const response = await fetch(`/api/virtualkeys/${keyId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete virtual key');
+      }
+      notifications.show({
+        title: 'Success',
+        message: 'Virtual key deleted successfully',
+        color: 'green',
+      });
+      fetchVirtualKeys(); // Refresh the list
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to delete virtual key',
+        color: 'red',
+      });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -237,8 +280,7 @@ export default function VirtualKeysPage() {
   }
 
   return (
-    <QueryErrorBoundary>
-      <Stack gap="xl">
+    <Stack gap="xl">
         <Group justify="space-between">
           <div>
             <Title order={1}>Virtual Keys</Title>
@@ -303,10 +345,7 @@ export default function VirtualKeysPage() {
       <Card>
         <Card.Section p="md" withBorder>
           <Group justify="space-between">
-            <Group>
-              <Text fw={600}>Virtual Keys</Text>
-              <RealTimeStatus />
-            </Group>
+            <Text fw={600}>Virtual Keys</Text>
             <Text size="sm" c="dimmed">
               {stats && `${stats.totalKeys} key${stats.totalKeys !== 1 ? 's' : ''} total`}
               {searchQuery && virtualKeys && ` (${virtualKeys.length} total)`}
@@ -326,7 +365,7 @@ export default function VirtualKeysPage() {
 
         <Card.Section p="md" pt={0} style={{ position: 'relative' }}>
           <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-          <VirtualKeysTable onEdit={handleEdit} onView={handleView} data={paginatedData} />
+          <VirtualKeysTable onEdit={handleEdit} onView={handleView} data={paginatedData} onDelete={handleDelete} />
           {filteredKeys.length > 0 && (
             <TablePagination
               total={totalItems}
@@ -343,12 +382,14 @@ export default function VirtualKeysPage() {
       <CreateVirtualKeyModal
         opened={createModalOpened}
         onClose={closeCreateModal}
+        onSuccess={fetchVirtualKeys}
       />
 
       <EditVirtualKeyModal
         opened={editModalOpened}
         onClose={closeEditModal}
         virtualKey={selectedKey}
+        onSuccess={fetchVirtualKeys}
       />
 
       <ViewVirtualKeyModal
@@ -357,6 +398,5 @@ export default function VirtualKeysPage() {
         virtualKey={selectedKey}
       />
     </Stack>
-    </QueryErrorBoundary>
   );
 }

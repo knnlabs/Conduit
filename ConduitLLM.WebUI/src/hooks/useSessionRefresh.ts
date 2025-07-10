@@ -2,7 +2,6 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { apiFetch } from '@/lib/utils/fetch-wrapper';
 
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const REFRESH_BEFORE_EXPIRY = 60 * 60 * 1000; // Refresh 1 hour before expiry
@@ -15,8 +14,9 @@ export function useSessionRefresh() {
   
   const refreshSession = useCallback(async () => {
     try {
-      const response = await apiFetch('/api/auth/refresh', {
+      const response = await fetch('/api/auth/refresh', {
         method: 'POST',
+        credentials: 'include',
       });
       
       if (!response.ok) {

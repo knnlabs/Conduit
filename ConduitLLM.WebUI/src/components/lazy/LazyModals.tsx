@@ -1,4 +1,5 @@
-import { lazyLoadComponent } from '@/lib/utils/lazyLoad';
+import { lazy } from 'react';
+import { withSuspense } from '@/lib/utils/lazyLoad';
 import { Skeleton } from '@mantine/core';
 
 // Modal skeleton loader
@@ -7,45 +8,25 @@ const ModalSkeleton = () => (
 );
 
 // Virtual Key Modals
-export const LazyCreateVirtualKeyModal = lazyLoadComponent(
-  () => import('../virtualkeys/CreateVirtualKeyModal').then(mod => ({ default: mod.CreateVirtualKeyModal })),
-  <ModalSkeleton />
-);
+const CreateVirtualKeyModalLazy = lazy(() => import('../virtualkeys/CreateVirtualKeyModal').then(mod => ({ default: mod.CreateVirtualKeyModal })));
+export const LazyCreateVirtualKeyModal = withSuspense(CreateVirtualKeyModalLazy, <ModalSkeleton />);
 
-export const LazyEditVirtualKeyModal = lazyLoadComponent(
-  () => import('../virtualkeys/EditVirtualKeyModal').then(mod => ({ default: mod.EditVirtualKeyModal })),
-  <ModalSkeleton />
-);
+const EditVirtualKeyModalLazy = lazy(() => import('../virtualkeys/EditVirtualKeyModal').then(mod => ({ default: mod.EditVirtualKeyModal })));
+export const LazyEditVirtualKeyModal = withSuspense(EditVirtualKeyModalLazy, <ModalSkeleton />);
 
-export const LazyViewVirtualKeyModal = lazyLoadComponent(
-  () => import('../virtualkeys/ViewVirtualKeyModal').then(mod => ({ default: mod.ViewVirtualKeyModal })),
-  <ModalSkeleton />
-);
+const ViewVirtualKeyModalLazy = lazy(() => import('../virtualkeys/ViewVirtualKeyModal').then(mod => ({ default: mod.ViewVirtualKeyModal })));
+export const LazyViewVirtualKeyModal = withSuspense(ViewVirtualKeyModalLazy, <ModalSkeleton />);
 
 // Provider Modals
-export const LazyCreateProviderModal = lazyLoadComponent(
-  () => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })),
-  <ModalSkeleton />
-);
+const CreateProviderModalLazy = lazy(() => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })));
+export const LazyCreateProviderModal = withSuspense(CreateProviderModalLazy, <ModalSkeleton />);
 
-export const LazyEditProviderModal = lazyLoadComponent(
-  () => import('../providers/EditProviderModal').then(mod => ({ default: mod.EditProviderModal })),
-  <ModalSkeleton />
-);
+const EditProviderModalLazy = lazy(() => import('../providers/EditProviderModal').then(mod => ({ default: mod.EditProviderModal })));
+export const LazyEditProviderModal = withSuspense(EditProviderModalLazy, <ModalSkeleton />);
 
 // Model Mapping Modals
-export const LazyCreateModelMappingModal = lazyLoadComponent(
-  () => import('../modelmappings/CreateModelMappingModal').then(mod => ({ default: mod.CreateModelMappingModal })),
-  <ModalSkeleton />
-);
+const CreateModelMappingModalLazy = lazy(() => import('../modelmappings/CreateModelMappingModal').then(mod => ({ default: mod.CreateModelMappingModal })));
+export const LazyCreateModelMappingModal = withSuspense(CreateModelMappingModalLazy, <ModalSkeleton />);
 
-export const LazyEditModelMappingModal = lazyLoadComponent(
-  () => import('../modelmappings/EditModelMappingModal').then(mod => ({ default: mod.EditModelMappingModal })),
-  <ModalSkeleton />
-);
-
-// Security Modals
-export const LazyCreateSecurityEventModal = lazyLoadComponent(
-  () => import('../security/CreateSecurityEventModal').then(mod => ({ default: mod.CreateSecurityEventModal })),
-  <ModalSkeleton />
-);
+const EditModelMappingModalLazy = lazy(() => import('../modelmappings/EditModelMappingModal').then(mod => ({ default: mod.EditModelMappingModal })));
+export const LazyEditModelMappingModal = withSuspense(EditModelMappingModalLazy, <ModalSkeleton />);

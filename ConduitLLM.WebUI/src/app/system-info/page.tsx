@@ -4,75 +4,186 @@ import {
   Stack,
   Title,
   Text,
+  Card,
   Group,
   Button,
-  Card,
-  Badge,
   Table,
-  SimpleGrid,
+  Badge,
   ThemeIcon,
-  Tabs,
+  Paper,
+  SimpleGrid,
+  Progress,
+  Code,
   LoadingOverlay,
   Alert,
-  Accordion,
+  Tabs,
+  ScrollArea,
 } from '@mantine/core';
 import {
   IconServer,
+  IconCpu,
   IconDatabase,
+  IconBrandDocker,
   IconRefresh,
   IconDownload,
-  IconCheck,
-  IconAlertCircle,
-  IconInfoCircle,
-  IconChartBar,
-  IconSettings,
-  IconCloud,
-  IconDeviceDesktop,
+  IconCircleCheck,
+  IconAlertTriangle,
+  IconClock,
+  IconCpu2,
+  IconDeviceFloppy,
+  IconNetwork,
+  IconLock,
+  IconPackage,
+  IconBolt,
 } from '@tabler/icons-react';
-import { useSystemInfo, useSystemHealth } from '@/hooks/useConduitAdmin';
-import { useProviderHealth } from '@/hooks/api/useProviderHealthApi';
+import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
+import { formatters } from '@/lib/utils/formatters';
 
-// Types will come from the SDK responses
+interface SystemMetric {
+  name: string;
+  value: string | number;
+  unit?: string;
+  status: 'healthy' | 'warning' | 'critical';
+  description?: string;
+}
+
+interface ServiceInfo {
+  name: string;
+  version: string;
+  status: 'running' | 'stopped' | 'degraded';
+  uptime?: string;
+  port?: number;
+  memory?: string;
+  cpu?: string;
+}
+
+interface EnvironmentVariable {
+  key: string;
+  value: string;
+  source: 'env' | 'config' | 'default';
+  sensitive?: boolean;
+}
 
 export default function SystemInfoPage() {
-  const { data: systemInfo, isLoading: systemLoading, refetch: refetchSystemInfo } = useSystemInfo();
-  const { data: health, isLoading: healthLoading, refetch: refetchHealth } = useSystemHealth();
-  const { data: providerHealth, isLoading: providerHealthLoading } = useProviderHealth();
-  
-  const isLoading = systemLoading || healthLoading || providerHealthLoading;
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<string | null>('overview');
 
+  useEffect(() => {
+    fetchSystemInfo();
+  }, []);
 
-  const handleExportDiagnostics = () => {
-    notifications.show({
-      title: 'Export Started',
-      message: 'Generating system diagnostics report...',
-      color: 'blue',
-    });
-    
-    // TODO: Implement actual export functionality
-    setTimeout(() => {
-      notifications.show({
-        title: 'Export Complete',
-        message: 'System diagnostics report has been generated',
-        color: 'green',
+  const fetchSystemInfo = async () => {
+    try {
+      const response = await fetch('/api/settings/system-info', {
+        headers: {
+          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+        },
       });
-    }, 3000);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch system information');
+      }
+
+      const data = await response.json();
+      setSystemInfo(data);
+    } catch (error) {
+      console.error('Error fetching system info:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to load system information',
+        color: 'red',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchSystemInfo();
+    setIsRefreshing(false);
+    notifications.show({
+      title: 'Refreshed',
+      message: 'System information updated',
+      color: 'green',
+    });
+  };
+
+  const handleExport = () => {
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      system: systemInfo,
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `system-info-${new Date().toISOString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    notifications.show({
+      title: 'Exported',
+      message: 'System information exported successfully',
+      color: 'green',
+    });
+  };
+
+  // Mock data for development
+  const services: ServiceInfo[] = [
+    { name: 'Conduit Core API', version: '1.2.0', status: 'running', uptime: '30d 14h 23m', port: 8080, memory: '512MB', cpu: '2.3%' },
+    { name: 'Admin API', version: '1.2.0', status: 'running', uptime: '30d 14h 23m', port: 8081, memory: '256MB', cpu: '1.1%' },
+    { name: 'Redis Cache', version: '7.2.4', status: 'running', uptime: '45d 2h 15m', port: 6379, memory: '128MB', cpu: '0.5%' },
+    { name: 'PostgreSQL', version: '16.1', status: 'running', uptime: '45d 2h 15m', port: 5432, memory: '1.2GB', cpu: '3.7%' },
+    { name: 'RabbitMQ', version: '3.13.0', status: 'running', uptime: '30d 14h 23m', port: 5672, memory: '384MB', cpu: '1.8%' },
+  ];
+
+  const systemMetrics: SystemMetric[] = [
+    { name: 'CPU Usage', value: 45, unit: '%', status: 'healthy', description: '8 cores available' },
+    { name: 'Memory Usage', value: 62, unit: '%', status: 'warning', description: '19.8GB / 32GB used' },
+    { name: 'Disk Usage', value: 38, unit: '%', status: 'healthy', description: '152GB / 400GB used' },
+    { name: 'Network I/O', value: '125MB/s', status: 'healthy', description: 'Inbound: 75MB/s, Outbound: 50MB/s' },
+    { name: 'Open Connections', value: 2847, status: 'healthy', description: 'Max: 10,000' },
+    { name: 'Thread Pool', value: '85/100', status: 'warning', description: 'Active threads' },
+  ];
+
+  const environmentVars: EnvironmentVariable[] = [
+    { key: 'NODE_ENV', value: 'production', source: 'env' },
+    { key: 'CONDUIT_MASTER_KEY', value: '••••••••', source: 'env', sensitive: true },
+    { key: 'CONDUIT_WEBUI_AUTH_KEY', value: '••••••••', source: 'env', sensitive: true },
+    { key: 'DATABASE_URL', value: 'postgresql://...', source: 'env', sensitive: true },
+    { key: 'REDIS_URL', value: 'redis://localhost:6379', source: 'env' },
+    { key: 'RABBITMQ_URL', value: 'amqp://localhost:5672', source: 'env' },
+    { key: 'LOG_LEVEL', value: 'info', source: 'config' },
+    { key: 'MAX_REQUEST_SIZE', value: '10MB', source: 'config' },
+    { key: 'REQUEST_TIMEOUT', value: '30000', source: 'config' },
+    { key: 'RATE_LIMIT_WINDOW', value: '60000', source: 'default' },
+    { key: 'RATE_LIMIT_MAX_REQUESTS', value: '100', source: 'default' },
+  ];
+
+  const dependencies = [
+    { name: '@knn_labs/conduit-admin-client', version: '1.0.1-dev.20250709095716', status: 'latest' },
+    { name: '@mantine/core', version: '7.3.2', status: 'latest' },
+    { name: 'next', version: '14.0.4', status: 'outdated', latest: '14.1.0' },
+    { name: 'react', version: '18.2.0', status: 'latest' },
+    { name: 'typescript', version: '5.3.3', status: 'latest' },
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'running':
-      case 'connected':
       case 'healthy':
+      case 'latest':
         return 'green';
-      case 'warning':
       case 'degraded':
+      case 'warning':
+      case 'outdated':
         return 'yellow';
       case 'stopped':
-      case 'disconnected':
-      case 'error':
       case 'critical':
         return 'red';
       default:
@@ -80,418 +191,328 @@ export default function SystemInfoPage() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'running':
+      case 'healthy':
+      case 'latest':
+        return <IconCircleCheck size={16} />;
+      case 'degraded':
+      case 'warning':
+      case 'outdated':
+        return <IconAlertTriangle size={16} />;
+      default:
+        return <IconAlertTriangle size={16} />;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Stack>
+        <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
+          <LoadingOverlay visible={true} />
+        </Card>
+      </Stack>
+    );
+  }
 
   return (
     <Stack gap="xl">
-      <Group justify="space-between">
-        <div>
-          <Title order={1}>System Information</Title>
-          <Text c="dimmed">Monitor system configuration, health status, and provider connectivity</Text>
-        </div>
-
-        <Group>
-          <Button
-            variant="light"
-            leftSection={<IconRefresh size={16} />}
-            onClick={() => {
-              refetchSystemInfo();
-              refetchHealth();
-            }}
-            loading={isLoading}
-          >
-            Refresh
-          </Button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            onClick={handleExportDiagnostics}
-          >
-            Export Diagnostics
-          </Button>
-        </Group>
-      </Group>
-
-      {/* System Overview */}
-      {systemInfo && (
-        <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+      <Card shadow="sm" p="md" radius="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>System Information</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Runtime environment and service configuration
+            </Text>
+          </div>
           <Group>
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={16} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="filled"
+              leftSection={<IconDownload size={16} />}
+              onClick={handleExport}
+            >
+              Export
+            </Button>
+          </Group>
+        </Group>
+      </Card>
+
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
             <div>
-              <Text size="sm" fw={500}>Conduit LLM Platform</Text>
-              <Text size="xs" c="dimmed">
-                Version: {systemInfo.version || 'Unknown'} | 
-                Environment: {systemInfo.environment || 'Production'} | 
-                Uptime: {systemInfo.uptime || 'Unknown'}
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Platform
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                Docker
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Linux 5.15.0-91-generic
               </Text>
             </div>
-          </Group>
-        </Alert>
-      )}
-
-      {/* System Status Overview */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-        <Card p="md" withBorder>
-          <Group justify="space-between" mb="xs">
-            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-              System Health
-            </Text>
-            <ThemeIcon size="sm" variant="light" color={health ? getStatusColor(health.status) : 'gray'}>
-              <IconServer size={16} />
+            <ThemeIcon color="blue" variant="light" size={48} radius="md">
+              <IconBrandDocker size={24} />
             </ThemeIcon>
           </Group>
-          <Text fw={700} size="xl">
-            {health?.status?.toUpperCase() || 'UNKNOWN'}
-          </Text>
-          <Text size="xs" c="dimmed" mt="xs">
-            {health?.checks ? Object.keys(health.checks).length : 0} health checks
-          </Text>
         </Card>
 
-        <Card p="md" withBorder>
-          <Group justify="space-between" mb="xs">
-            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-              Active Providers
-            </Text>
-            <ThemeIcon size="sm" variant="light" color="blue">
-              <IconCloud size={16} />
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Node Version
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                v20.11.0
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                NPM 10.2.4
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconPackage size={24} />
             </ThemeIcon>
           </Group>
-          <Text fw={700} size="xl">
-            {providerHealth?.filter((p) => p.status === 'healthy').length || 0} / {providerHealth?.length || 0}
-          </Text>
-          <Text size="xs" c="dimmed" mt="xs">
-            Healthy providers
-          </Text>
         </Card>
 
-        <Card p="md" withBorder>
-          <Group justify="space-between" mb="xs">
-            <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-              Database Status
-            </Text>
-            <ThemeIcon size="sm" variant="light" color={systemInfo?.database?.isConnected ? 'green' : 'red'}>
-              <IconDatabase size={16} />
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                System Uptime
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                30d 14h
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                Since Dec 11, 2024
+              </Text>
+            </div>
+            <ThemeIcon color="teal" variant="light" size={48} radius="md">
+              <IconClock size={24} />
             </ThemeIcon>
           </Group>
-          <Text fw={700} size="xl">
-            {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
-          </Text>
-          <Text size="xs" c="dimmed" mt="xs">
-            {systemInfo?.database?.provider || 'Unknown provider'}
-          </Text>
+        </Card>
+
+        <Card padding="lg" radius="md" withBorder>
+          <Group justify="space-between">
+            <div>
+              <Text size="sm" c="dimmed" fw={600} tt="uppercase">
+                Total Services
+              </Text>
+              <Text size="xl" fw={700} mt={4}>
+                5 / 5
+              </Text>
+              <Text size="xs" c="dimmed" mt={4}>
+                All services healthy
+              </Text>
+            </div>
+            <ThemeIcon color="green" variant="light" size={48} radius="md">
+              <IconServer size={24} />
+            </ThemeIcon>
+          </Group>
         </Card>
       </SimpleGrid>
 
-      <Tabs defaultValue="services">
+      <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
-          <Tabs.Tab value="services" leftSection={<IconServer size={16} />}>
-            Services & Health
+          <Tabs.Tab value="overview" leftSection={<IconServer size={16} />}>
+            Overview
           </Tabs.Tab>
-          <Tabs.Tab value="configuration" leftSection={<IconSettings size={16} />}>
-            Configuration
+          <Tabs.Tab value="services" leftSection={<IconBolt size={16} />}>
+            Services
           </Tabs.Tab>
-          <Tabs.Tab value="environment" leftSection={<IconCloud size={16} />}>
+          <Tabs.Tab value="environment" leftSection={<IconLock size={16} />}>
             Environment
           </Tabs.Tab>
-          <Tabs.Tab value="diagnostics" leftSection={<IconChartBar size={16} />}>
-            Diagnostics
+          <Tabs.Tab value="dependencies" leftSection={<IconPackage size={16} />}>
+            Dependencies
           </Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="services" pt="md">
-          <div style={{ position: 'relative' }}>
-            <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-            
-            <Stack gap="lg">
-              {/* Services Status */}
-              <Card withBorder>
-                <Card.Section p="md" withBorder>
-                  <Group justify="space-between">
-                    <Text fw={600}>Service Health Status</Text>
-                    <Badge color={health ? getStatusColor(health.status) : 'gray'} variant="light">
-                      {health?.status?.toUpperCase() || 'UNKNOWN'}
-                    </Badge>
+        <Tabs.Panel value="overview" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">System Resources</Title>
+            <Stack gap="md">
+              {systemMetrics.map((metric) => (
+                <Paper key={metric.name} p="md" withBorder>
+                  <Group justify="space-between" mb="xs">
+                    <div>
+                      <Text fw={500}>{metric.name}</Text>
+                      {metric.description && (
+                        <Text size="xs" c="dimmed">{metric.description}</Text>
+                      )}
+                    </div>
+                    <Group gap="xs">
+                      <Badge
+                        leftSection={getStatusIcon(metric.status)}
+                        color={getStatusColor(metric.status)}
+                        variant="light"
+                      >
+                        {metric.status}
+                      </Badge>
+                      <Text fw={600}>
+                        {metric.value}{metric.unit}
+                      </Text>
+                    </Group>
                   </Group>
-                </Card.Section>
-                <Card.Section>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Component</Table.Th>
-                        <Table.Th>Status</Table.Th>
-                        <Table.Th>Response Time</Table.Th>
-                        <Table.Th>Details</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {health?.checks && Object.entries(health.checks).map(([name, check]: [string, unknown]) => {
-                        if (typeof check === 'object' && check !== null && 'status' in check) {
-                          const healthCheck = check as { status: string; description?: string; duration?: number; error?: string };
-                          return (
-                        <Table.Tr key={name}>
-                          <Table.Td>
-                            <Text fw={500}>{name}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                              {healthCheck.status?.toUpperCase() || 'UNKNOWN'}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">{healthCheck.duration ? `${healthCheck.duration}ms` : '-'}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm">{healthCheck.description || healthCheck.error || '-'}</Text>
-                          </Table.Td>
-                        </Table.Tr>
-                        );
-                        }
-                        return null;
-                      })}
-                    </Table.Tbody>
-                  </Table>
-                </Card.Section>
-              </Card>
-
-              {/* Provider Health Status */}
-              <Card withBorder>
-                <Card.Section p="md" withBorder>
-                  <Group justify="space-between">
-                    <Text fw={600}>Provider Health Status</Text>
-                    <Badge variant="light">
-                      {providerHealth?.length || 0} providers configured
-                    </Badge>
-                  </Group>
-                </Card.Section>
-                <Card.Section>
-                  {providerHealth && providerHealth.length > 0 ? (
-                    <Table>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Provider</Table.Th>
-                          <Table.Th>Status</Table.Th>
-                          <Table.Th>Response Time</Table.Th>
-                          <Table.Th>Last Check</Table.Th>
-                          <Table.Th>Uptime</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {providerHealth?.map((provider) => (
-                          <Table.Tr key={provider.providerId}>
-                            <Table.Td>
-                              <Text fw={500}>{provider.providerName}</Text>
-                            </Table.Td>
-                            <Table.Td>
-                              <Badge color={getStatusColor(provider.status)} variant="light" size="sm">
-                                {provider.status?.toUpperCase() || 'UNKNOWN'}
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm">{provider.responseTime ? `${provider.responseTime}ms` : '-'}</Text>
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm">
-                                {provider.lastChecked ? new Date(provider.lastChecked).toLocaleTimeString() : '-'}
-                              </Text>
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm">{provider.uptime ? `${provider.uptime.toFixed(1)}%` : '-'}</Text>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  ) : (
-                    <Card.Section p="md">
-                      <Text size="sm" c="dimmed" ta="center">No providers configured</Text>
-                    </Card.Section>
+                  {typeof metric.value === 'number' && metric.unit === '%' && (
+                    <Progress
+                      value={metric.value}
+                      color={getStatusColor(metric.status)}
+                      size="sm"
+                      radius="md"
+                    />
                   )}
-                </Card.Section>
-              </Card>
+                </Paper>
+              ))}
             </Stack>
-          </div>
+          </Card>
         </Tabs.Panel>
 
-        <Tabs.Panel value="configuration" pt="md">
-          <Card withBorder>
-            <Card.Section p="md" withBorder>
-              <Text fw={600}>System Configuration</Text>
-            </Card.Section>
-            <Card.Section p="md">
-              <Accordion variant="contained">
-                <Accordion.Item value="database">
-                  <Accordion.Control icon={<IconDatabase size={20} />}>
-                    Database Configuration
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap="xs">
-                      <Group justify="space-between">
-                        <Text size="sm">Provider</Text>
-                        <Text size="sm" c="dimmed">{systemInfo?.database?.provider || 'Unknown'}</Text>
-                      </Group>
-                      <Group justify="space-between">
-                        <Text size="sm">Status</Text>
-                        <Badge color={systemInfo?.database?.isConnected ? 'green' : 'red'} variant="light">
-                          {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+        <Tabs.Panel value="services" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Running Services</Title>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Service</Table.Th>
+                    <Table.Th>Version</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Uptime</Table.Th>
+                    <Table.Th>Port</Table.Th>
+                    <Table.Th>Resources</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {services.map((service) => (
+                    <Table.Tr key={service.name}>
+                      <Table.Td>
+                        <Text fw={500}>{service.name}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Code>{service.version}</Code>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          leftSection={getStatusIcon(service.status)}
+                          color={getStatusColor(service.status)}
+                          variant="light"
+                        >
+                          {service.status}
                         </Badge>
-                      </Group>
-                      {systemInfo?.database?.pendingMigrations && systemInfo.database.pendingMigrations.length > 0 && (
-                        <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
-                          {systemInfo.database.pendingMigrations.length} pending migrations
-                        </Alert>
-                      )}
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-
-                <Accordion.Item value="features">
-                  <Accordion.Control icon={<IconSettings size={20} />}>
-                    Enabled Features
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap="xs">
-                      {systemInfo?.features && Object.entries(systemInfo.features).map(([feature, enabled]) => (
-                        <Group key={feature} justify="space-between">
-                          <Text size="sm">{feature}</Text>
-                          <Badge color={enabled ? 'green' : 'gray'} variant="light">
-                            {enabled ? 'Enabled' : 'Disabled'}
-                          </Badge>
-                        </Group>
-                      ))}
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-              </Accordion>
-            </Card.Section>
+                      </Table.Td>
+                      <Table.Td>{service.uptime || '-'}</Table.Td>
+                      <Table.Td>{service.port || '-'}</Table.Td>
+                      <Table.Td>
+                        <Text size="sm">
+                          CPU: {service.cpu || '-'}, Mem: {service.memory || '-'}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
           </Card>
         </Tabs.Panel>
 
         <Tabs.Panel value="environment" pt="md">
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-            <Card withBorder>
-              <Card.Section p="md" withBorder>
-                <Group>
-                  <IconDeviceDesktop size={20} />
-                  <Text fw={600}>Runtime Environment</Text>
-                </Group>
-              </Card.Section>
-              <Card.Section p="md">
-                <Stack gap="xs">
-                  <Group justify="space-between">
-                    <Text size="sm">Operating System</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.os || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">.NET Runtime</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.dotnetVersion || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Architecture</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.architecture || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Memory Usage</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.runtime?.memoryUsage ? `${systemInfo.runtime.memoryUsage.toFixed(1)} MB` : 'Unknown'}</Text>
-                  </Group>
-                  {systemInfo?.runtime?.cpuUsage !== undefined && (
-                    <Group justify="space-between">
-                      <Text size="sm">CPU Usage</Text>
-                      <Text size="sm" c="dimmed">{systemInfo.runtime.cpuUsage.toFixed(1)}%</Text>
-                    </Group>
-                  )}
-                </Stack>
-              </Card.Section>
-            </Card>
-
-            <Card withBorder>
-              <Card.Section p="md" withBorder>
-                <Group>
-                  <IconCloud size={20} />
-                  <Text fw={600}>Application Info</Text>
-                </Group>
-              </Card.Section>
-              <Card.Section p="md">
-                <Stack gap="xs">
-                  <Group justify="space-between">
-                    <Text size="sm">Version</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.version || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Build Date</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.buildDate || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Environment</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.environment || 'Unknown'}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Uptime</Text>
-                    <Text size="sm" c="dimmed">{systemInfo?.uptime ? `${(systemInfo.uptime / 3600).toFixed(1)} hours` : 'Unknown'}</Text>
-                  </Group>
-                </Stack>
-              </Card.Section>
-            </Card>
-          </SimpleGrid>
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Environment Variables</Title>
+            <Alert
+              icon={<IconLock size={16} />}
+              title="Security Notice"
+              color="blue"
+              mb="md"
+            >
+              Sensitive values are masked for security. Edit configuration files directly to modify these values.
+            </Alert>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Variable</Table.Th>
+                    <Table.Th>Value</Table.Th>
+                    <Table.Th>Source</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {environmentVars.map((env) => (
+                    <Table.Tr key={env.key}>
+                      <Table.Td>
+                        <Code>{env.key}</Code>
+                      </Table.Td>
+                      <Table.Td>
+                        <Code c={env.sensitive ? 'dimmed' : undefined}>
+                          {env.value}
+                        </Code>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge variant="light" size="sm">
+                          {env.source}
+                        </Badge>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
         </Tabs.Panel>
 
-        <Tabs.Panel value="diagnostics" pt="md">
-          <Card withBorder>
-            <Card.Section p="md" withBorder>
-              <Text fw={600}>System Diagnostics</Text>
-            </Card.Section>
-            <Card.Section p="md">
-              <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-                <Stack gap="xs">
-                  <Text size="sm" fw={500}>Diagnostics Summary</Text>
-                  <Text size="sm" c="dimmed">
-                    System Time: {systemInfo?.systemTime || new Date().toISOString()}
-                  </Text>
-                  {health && (
-                    <Text size="sm" c="dimmed">
-                      Health Status: {health.status} (checked in {health.totalDuration}ms)
-                    </Text>
-                  )}
-                </Stack>
-              </Alert>
-
-              {health?.checks && Object.entries(health.checks).length > 0 && (
-                <Stack gap="md" mt="md">
-                  <Text fw={500}>Health Check Details</Text>
-                  {Object.entries(health.checks).map(([name, check]: [string, unknown]) => {
-                    if (typeof check === 'object' && check !== null && 'status' in check && 'description' in check) {
-                      const healthCheck = check as { status: string; description: string };
-                      return (
-                    <Card key={name} withBorder p="sm">
-                      <Group justify="space-between">
-                        <Group>
-                          <ThemeIcon color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                            {healthCheck.status === 'healthy' ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
-                          </ThemeIcon>
-                          <Text size="sm" fw={500}>{name}</Text>
-                        </Group>
-                        <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                          {healthCheck.status}
+        <Tabs.Panel value="dependencies" pt="md">
+          <Card shadow="sm" p="md" radius="md" withBorder>
+            <Title order={4} mb="md">Package Dependencies</Title>
+            <ScrollArea>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Package</Table.Th>
+                    <Table.Th>Current Version</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Latest Version</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {dependencies.map((dep) => (
+                    <Table.Tr key={dep.name}>
+                      <Table.Td>
+                        <Code>{dep.name}</Code>
+                      </Table.Td>
+                      <Table.Td>{dep.version}</Table.Td>
+                      <Table.Td>
+                        <Badge
+                          color={dep.status === 'latest' ? 'green' : 'yellow'}
+                          variant="light"
+                        >
+                          {dep.status}
                         </Badge>
-                      </Group>
-                      {healthCheck.description && (
-                        <Text size="xs" c="dimmed" mt="xs">
-                          {healthCheck.description}
-                        </Text>
-                      )}
-                      {(healthCheck as { error?: string }).error && (
-                        <Text size="xs" c="red" mt="xs">
-                          Error: {(healthCheck as { error?: string }).error}
-                        </Text>
-                      )}
-                    </Card>
-                    );
-                    }
-                    return null;
-                  })}
-                </Stack>
-              )}
-            </Card.Section>
+                      </Table.Td>
+                      <Table.Td>
+                        {dep.latest || dep.version}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
           </Card>
         </Tabs.Panel>
       </Tabs>
+
+      <LoadingOverlay visible={isRefreshing} />
     </Stack>
   );
 }

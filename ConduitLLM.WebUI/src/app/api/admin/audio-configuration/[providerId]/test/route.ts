@@ -1,22 +1,10 @@
-import { NextResponse } from 'next/server';
-import { mapSDKErrorToResponse, withSDKErrorHandling } from '@/lib/errors/sdk-errors';
-import { createDynamicRouteHandler } from '@/lib/utils/route-helpers';
+import { NextRequest, NextResponse } from "next/server";
 
-export const POST = createDynamicRouteHandler<{ providerId: string }>(
-  async (request, { params, adminClient }) => {
-    try {
-      const { providerId } = params;
-      
-      // Test audio provider connection
-      const result = await withSDKErrorHandling(
-        async () => adminClient!.audioConfiguration.testProvider(providerId),
-        'test audio provider'
-      );
-
-      return NextResponse.json(result);
-    } catch (error) {
-      return mapSDKErrorToResponse(error);
-    }
-  },
-  { requireAdmin: true }
-);
+export async function POST(_request: NextRequest) {
+  return NextResponse.json(
+    { 
+      message: "Audio configuration is part of Operations features and will be available soon"
+    },
+    { status: 501 }
+  );
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
   NumberInput,
   Switch,
@@ -11,18 +12,19 @@ import {
   MultiSelect,
   TagsInput,
   Divider,
+  Stack,
+  Group,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useCreateVirtualKey } from '@/hooks/useConduitAdmin';
-import { useAvailableModels } from '@/hooks/useConduitCore';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
-import { FormModal } from '@/components/common/FormModal';
 import { validators } from '@/lib/utils/form-validators';
+import { notifications } from '@mantine/notifications';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface CreateVirtualKeyForm {
@@ -49,10 +51,20 @@ const ENDPOINT_OPTIONS = [
   { value: '/v1/videos/generations', label: 'Video Generation' },
 ];
 
-export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModalProps) {
-  const createVirtualKey = useCreateVirtualKey();
-  const { data: availableModels } = useAvailableModels();
+// Common models - hardcoded for now since we removed SDK
+const MODEL_OPTIONS = [
+  { value: '*', label: 'All Models' },
+  { value: 'gpt-4', label: 'gpt-4' },
+  { value: 'gpt-4-turbo', label: 'gpt-4-turbo' },
+  { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
+  { value: 'claude-3-opus', label: 'claude-3-opus' },
+  { value: 'claude-3-sonnet', label: 'claude-3-sonnet' },
+  { value: 'claude-3-haiku', label: 'claude-3-haiku' },
+];
+
+export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirtualKeyModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CreateVirtualKeyForm>({
     initialValues: {
@@ -87,169 +99,175 @@ export function CreateVirtualKeyModal({ opened, onClose }: CreateVirtualKeyModal
     },
   });
 
-  const handleSuccess = () => {
-    setShowAdvanced(false);
+  const handleSubmit = async (values: CreateVirtualKeyForm) => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        keyName: values.keyName.trim(),
+        description: values.description?.trim() || undefined,
+        maxBudget: values.maxBudget || undefined,
+        rateLimitRpm: values.rateLimitPerMinute || undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+        metadata: values.metadata?.trim() ? values.metadata : undefined,
+      };
+
+      const response = await fetch('/api/virtualkeys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create virtual key');
+      }
+
+      const result = await response.json();
+      
+      notifications.show({
+        title: 'Success',
+        message: `Virtual key "${values.keyName}" created successfully`,
+        color: 'green',
+      });
+
+      form.reset();
+      setShowAdvanced(false);
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to create virtual key',
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setShowAdvanced(false);
+    form.reset();
     onClose();
   };
 
-  // Get available models for selection
-  const modelOptions = availableModels?.map((model) => {
-    return {
-      value: model.id,
-      label: model.id,
-    };
-  }) || [];
-
-  // Add option to allow all models
-  if (modelOptions.length > 0) {
-    modelOptions.unshift({ value: '*', label: 'All Models' });
-  }
-
-  // Create a mutation wrapper that handles the payload transformation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mutation: any = {
-    ...createVirtualKey,
-    mutate: (values: CreateVirtualKeyForm, options?: Parameters<typeof createVirtualKey.mutate>[1]) => {
-      const payload = {
-        keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        rateLimitRpm: values.rateLimitPerMinute || undefined,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        metadata: values.metadata?.trim() ? values.metadata : undefined, // SDK expects string not object
-      };
-      createVirtualKey.mutate(payload, options);
-    },
-    mutateAsync: async (values: CreateVirtualKeyForm) => {
-      const payload = {
-        keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        rateLimitRpm: values.rateLimitPerMinute || undefined,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        metadata: values.metadata?.trim() ? values.metadata : undefined, // SDK expects string not object
-      };
-      return createVirtualKey.mutateAsync(payload);
-    },
-  };
-
   return (
-    <FormModal
+    <Modal
       opened={opened}
       onClose={handleClose}
       title="Create Virtual Key"
       size="lg"
-      form={form}
-      mutation={mutation}
-      entityType="Virtual Key"
-      submitText="Create Virtual Key"
-      onSuccess={handleSuccess}
     >
-      {(form) => (
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
+      <TextInput
+        label="Key Name"
+        placeholder="Enter a unique name for this key"
+        required
+        {...form.getInputProps('keyName')}
+      />
+
+      <Textarea
+        label="Description"
+        placeholder="Optional description for this key"
+        rows={3}
+        {...form.getInputProps('description')}
+      />
+
+      <Switch
+        label="Enabled"
+        description="Whether this key can be used for API requests"
+        checked={form.values.isEnabled}
+        {...form.getInputProps('isEnabled')}
+      />
+
+      <NumberInput
+        label="Maximum Budget"
+        description="Maximum amount this key can spend (in USD)"
+        placeholder="No limit"
+        min={0}
+        step={10}
+        decimalScale={2}
+        prefix="$"
+        {...form.getInputProps('maxBudget')}
+      />
+
+      <Button
+        variant="subtle"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        mb="md"
+      >
+        {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
+      </Button>
+
+      {showAdvanced && (
         <>
-          <TextInput
-            label="Key Name"
-            placeholder="My API Key"
-            description="A descriptive name for this virtual key"
-            required
-            {...form.getInputProps('keyName')}
-          />
+          <Divider mb="md" />
 
-          <Textarea
-            label="Description"
-            placeholder="Optional description for this key"
-            rows={2}
-            {...form.getInputProps('description')}
+          <NumberInput
+            label="Rate Limit"
+            description="Maximum requests per minute"
+            placeholder="No limit"
+            min={1}
+            {...form.getInputProps('rateLimitPerMinute')}
           />
-
-          <Divider label="Access Control" labelPosition="left" />
 
           <MultiSelect
             label="Allowed Models"
-            placeholder="Select models this key can access"
-            description="Choose which models this key is allowed to use"
-            required
-            data={modelOptions}
+            description="Models this key can access"
+            data={MODEL_OPTIONS}
+            placeholder="Select models"
             searchable
+            clearable
+            required
             {...form.getInputProps('allowedModels')}
           />
 
           <MultiSelect
             label="Allowed Endpoints"
-            placeholder="Select allowed API endpoints"
-            description="Choose which API endpoints this key can access"
-            required
+            description="API endpoints this key can access"
             data={ENDPOINT_OPTIONS}
+            placeholder="Select endpoints"
+            searchable
+            clearable
+            required
             {...form.getInputProps('allowedEndpoints')}
           />
 
-          <Switch
-            label="Enable key"
-            description="Whether this key should be active immediately"
-            {...form.getInputProps('isEnabled', { type: 'checkbox' })}
+          <TagsInput
+            label="IP Whitelist"
+            description="IP addresses allowed to use this key"
+            placeholder="Enter IP addresses"
+            {...form.getInputProps('allowedIpAddresses')}
           />
 
-          <Divider label="Limits & Restrictions" labelPosition="left" />
-
-          <NumberInput
-            label="Budget Limit (USD)"
-            placeholder="No limit"
-            description="Maximum spend allowed for this key"
-            min={0}
-            step={0.01}
-            decimalScale={2}
-            prefix="$"
-            {...form.getInputProps('maxBudget')}
+          <Textarea
+            label="Metadata"
+            description="Additional metadata in JSON format"
+            placeholder='{"team": "engineering"}'
+            rows={3}
+            {...form.getInputProps('metadata')}
           />
 
-          <NumberInput
-            label="Rate Limit (requests/minute)"
-            placeholder="No limit"
-            description="Maximum requests per minute"
-            min={1}
-            max={10000}
-            {...form.getInputProps('rateLimitPerMinute')}
-          />
-
-          <Button
-            variant="subtle"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            size="xs"
-          >
-            {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
-          </Button>
-
-          {showAdvanced && (
-            <>
-              <TagsInput
-                label="Allowed IP Addresses"
-                placeholder="Enter IP address and press Enter"
-                description="Restrict key usage to specific IP addresses or CIDR ranges"
-                {...form.getInputProps('allowedIpAddresses')}
-              />
-
-              <Textarea
-                label="Metadata (JSON)"
-                placeholder='{"department": "engineering", "project": "chatbot"}'
-                description="Optional JSON metadata for this key"
-                rows={3}
-                {...form.getInputProps('metadata')}
-              />
-            </>
-          )}
-
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" mt="md">
             <Text size="sm">
-              The API key will be generated and displayed only once after creation. 
-              Make sure to copy and store it securely.
+              Advanced settings help you control access and usage. Leave empty for default values.
             </Text>
           </Alert>
         </>
       )}
-    </FormModal>
+      
+      <Group justify="flex-end" mt="md">
+        <Button variant="subtle" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={isSubmitting}>
+          Create Key
+        </Button>
+      </Group>
+      </Stack>
+      </form>
+    </Modal>
   );
 }
