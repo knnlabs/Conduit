@@ -19,6 +19,11 @@ import { notifications } from '@mantine/notifications';
 import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
+import { 
+  ProviderType, 
+  PROVIDER_DISPLAY_NAMES, 
+  PROVIDER_CONFIG_REQUIREMENTS 
+} from '@/lib/constants/providers';
 
 interface Provider {
   id: string;
@@ -49,18 +54,7 @@ interface EditProviderForm {
   isEnabled: boolean;
 }
 
-const PROVIDER_TYPES = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'azure', label: 'Azure OpenAI' },
-  { value: 'aws-bedrock', label: 'AWS Bedrock' },
-  { value: 'google', label: 'Google AI' },
-  { value: 'cohere', label: 'Cohere' },
-  { value: 'minimax', label: 'MiniMax' },
-  { value: 'replicate', label: 'Replicate' },
-  { value: 'huggingface', label: 'Hugging Face' },
-  { value: 'custom', label: 'Custom Provider' },
-];
+// Use provider display names from constants
 
 export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,9 +122,11 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
         message: 'Provider updated successfully',
         color: 'green',
       });
-
-      onSuccess?.();
+      
       onClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -151,7 +147,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     return null;
   }
 
-  const providerType = PROVIDER_TYPES.find(p => p.value === provider.providerType);
+  const providerDisplayName = provider.providerType 
+    ? PROVIDER_DISPLAY_NAMES[provider.providerType as ProviderType] 
+    : provider.providerType;
   const getHealthIcon = (status?: string) => {
     switch (status) {
       case 'healthy':
@@ -172,7 +170,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerType?.label || provider.providerType || 'Unknown'}</Badge>
+                <Badge>{providerDisplayName || provider.providerType || 'Unknown'}</Badge>
               </Group>
               {provider.healthStatus && (
                 <Group justify="space-between">
@@ -219,21 +217,30 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             {...form.getInputProps('apiKey')}
           />
 
-          {(provider.providerType === 'azure' || provider.providerType === 'custom') && (
-            <TextInput
-              label="API Endpoint"
-              placeholder="Custom API endpoint URL"
-              {...form.getInputProps('apiEndpoint')}
-            />
-          )}
+          {(() => {
+            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.providerType as ProviderType];
+            if (!config) return null;
 
-          {provider.providerType === 'openai' && (
-            <TextInput
-              label="Organization ID"
-              placeholder="Optional OpenAI organization ID"
-              {...form.getInputProps('organizationId')}
-            />
-          )}
+            return (
+              <>
+                {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
+                  <TextInput
+                    label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
+                    placeholder={config.requiresEndpoint ? "API endpoint URL" : "Custom API endpoint URL (optional)"}
+                    {...form.getInputProps('apiEndpoint')}
+                  />
+                )}
+
+                {config.requiresOrganizationId && (
+                  <TextInput
+                    label="Organization ID"
+                    placeholder={provider.providerType === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    {...form.getInputProps('organizationId')}
+                  />
+                )}
+              </>
+            );
+          })()}
 
           <Switch
             label="Enable provider"

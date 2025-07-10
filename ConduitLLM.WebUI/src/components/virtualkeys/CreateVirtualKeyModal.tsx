@@ -123,18 +123,16 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         throw new Error('Failed to create virtual key');
       }
 
-      const result = await response.json();
-      
       notifications.show({
         title: 'Success',
-        message: `Virtual key "${values.keyName}" created successfully`,
+        message: 'Virtual key created successfully',
         color: 'green',
       });
-
-      form.reset();
-      setShowAdvanced(false);
-      onSuccess?.();
-      onClose();
+      
+      handleClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       notifications.show({
         title: 'Error',

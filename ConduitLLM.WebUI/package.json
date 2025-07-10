@@ -16,6 +16,7 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
+    "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
     "@mantine/carousel": "^8.1.2",
     "@mantine/charts": "^8.1.2",
     "@mantine/code-highlight": "^8.1.2",

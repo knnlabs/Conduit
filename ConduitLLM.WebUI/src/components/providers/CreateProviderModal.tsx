@@ -16,6 +16,11 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState } from 'react';
+import { 
+  ProviderType, 
+  PROVIDER_CONFIG_REQUIREMENTS, 
+  getLLMProviderSelectOptions 
+} from '@/lib/constants/providers';
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -31,16 +36,8 @@ interface CreateProviderForm {
   isEnabled: boolean;
 }
 
-const PROVIDER_TYPES = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'google', label: 'Google' },
-  { value: 'minimax', label: 'MiniMax' },
-  { value: 'replicate', label: 'Replicate' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'perplexity', label: 'Perplexity' },
-  { value: 'elevenlabs', label: 'ElevenLabs' },
-];
+// Provider options are now generated from constants
+const PROVIDER_TYPES = getLLMProviderSelectOptions();
 
 export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,9 +99,11 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         message: 'Provider created successfully',
         color: 'green',
       });
-
+      
       handleClose();
-      onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -141,7 +140,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
 
       const result = await response.json();
       setTestResult({
-        success: response.ok,
+        success: response.ok && result.success,
         message: result.message || (response.ok ? 'Connection successful' : 'Connection failed'),
       });
     } catch (error) {
@@ -155,50 +154,26 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   };
 
   const getProviderHelp = (providerType: string) => {
-    switch (providerType) {
-      case 'openai':
-        return (
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            <Text size="sm">
-              Get your API key from <Text component="span" fw={600}>platform.openai.com/api-keys</Text>
-            </Text>
-          </Alert>
-        );
-      case 'anthropic':
-        return (
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            <Text size="sm">
-              Get your API key from <Text component="span" fw={600}>console.anthropic.com/account/keys</Text>
-            </Text>
-          </Alert>
-        );
-      case 'google':
-        return (
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            <Text size="sm">
-              Get your API key from <Text component="span" fw={600}>makersuite.google.com/app/apikey</Text>
-            </Text>
-          </Alert>
-        );
-      case 'minimax':
-        return (
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            <Text size="sm">
-              Contact MiniMax support for API access. You will need both API key and organization ID.
-            </Text>
-          </Alert>
-        );
-      case 'replicate':
-        return (
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            <Text size="sm">
-              Get your API token from <Text component="span" fw={600}>replicate.com/account/api-tokens</Text>
-            </Text>
-          </Alert>
-        );
-      default:
-        return null;
+    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
+    if (!config || !config.helpText) {
+      return null;
     }
+
+    return (
+      <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+        <Text size="sm">
+          {config.helpUrl ? (
+            <>
+              {config.helpText.split(config.helpUrl)[0]}
+              <Text component="span" fw={600}>{config.helpUrl}</Text>
+              {config.helpText.split(config.helpUrl)[1] || ''}
+            </>
+          ) : (
+            config.helpText
+          )}
+        </Text>
+      </Alert>
+    );
   };
 
   const providerHelp = getProviderHelp(form.values.providerType);
@@ -222,19 +197,32 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             {...form.getInputProps('apiKey')}
           />
 
-          {(form.values.providerType === 'minimax') && (
-            <TextInput
-              label="Organization ID"
-              placeholder="Enter organization ID"
-              {...form.getInputProps('organizationId')}
-            />
-          )}
+          {(() => {
+            const config = PROVIDER_CONFIG_REQUIREMENTS[form.values.providerType as ProviderType];
+            if (!config) return null;
 
-          <TextInput
-            label="Custom API Endpoint"
-            placeholder="https://api.example.com (optional)"
-            {...form.getInputProps('apiEndpoint')}
-          />
+            return (
+              <>
+                {config.requiresOrganizationId && (
+                  <TextInput
+                    label="Organization ID"
+                    placeholder="Enter organization ID"
+                    required={config.requiresOrganizationId}
+                    {...form.getInputProps('organizationId')}
+                  />
+                )}
+
+                {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
+                  <TextInput
+                    label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
+                    placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
+                    required={config.requiresEndpoint}
+                    {...form.getInputProps('apiEndpoint')}
+                  />
+                )}
+              </>
+            );
+          })()}
 
           {providerHelp}
 

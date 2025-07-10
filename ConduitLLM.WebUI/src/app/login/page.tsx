@@ -44,7 +44,7 @@ export default function LoginPage() {
     setError(null);
     
     try {
-      // First validate with the API to set the cookie
+      // Call the Next.js API route which uses the SDK
       const response = await fetch('/api/auth/validate', {
         method: 'POST',
         headers: {

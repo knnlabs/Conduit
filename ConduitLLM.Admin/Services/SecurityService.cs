@@ -114,7 +114,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public bool ValidateApiKey(string providedKey)
         {
-            var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+            var masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY") 
                            ?? _configuration["AdminApi:MasterKey"];
 
             return !string.IsNullOrEmpty(masterKey) && providedKey == masterKey;

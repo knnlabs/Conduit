@@ -23,6 +23,8 @@ import {
 import { Alert } from '@mantine/core';
 import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { getServerCoreClient } from '@/lib/server/coreClient';
+import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
 
 // Force dynamic rendering to ensure health check runs at request time
 export const dynamic = 'force-dynamic';
@@ -52,17 +54,17 @@ async function getHealthStatus() {
     const health = await adminClient.system.getHealth();
     
     // Extract provider status from health checks
-    const providerCheck = health.checks?.providers;
-    const isNoProvidersIssue = providerCheck?.status === 'degraded' && 
-      (providerCheck?.description?.toLowerCase().includes('no enabled providers') || 
-       providerCheck?.description?.toLowerCase().includes('no providers'));
+    const providerCheck = health.checks?.[HealthComponents.PROVIDERS];
+    const hasNoProviders = isNoProvidersIssue(providerCheck?.description);
+    
+    // Use the provider check status as the Core API status
+    // Since providers ARE the core functionality
+    const coreApiStatus = providerCheck ? mapHealthStatus(providerCheck.status) : 'unavailable';
     
     return {
-      adminApi: health.status === 'healthy' ? 'healthy' as const : 
-                health.status === 'degraded' ? 'degraded' as const : 'unavailable' as const,
-      coreApi: providerCheck?.status === 'healthy' ? 'healthy' as const :
-               providerCheck?.status === 'degraded' ? 'degraded' as const : 'unavailable' as const,
-      isNoProvidersIssue: isNoProvidersIssue || false,
+      adminApi: mapHealthStatus(health.status),
+      coreApi: coreApiStatus,
+      isNoProvidersIssue: hasNoProviders,
       coreApiMessage: providerCheck?.description,
       lastChecked: new Date().toISOString(),
     };

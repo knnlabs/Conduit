@@ -297,45 +297,34 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     {
         var health = new ComponentHealth
         {
-            Description = "LLM provider connectivity and status"
+            Description = "LLM provider configuration status"
         };
 
         try
         {
-            // Get all providers and filter for enabled ones
+            // Simple check: just see if we have enabled providers
             var allProviders = await _providerCredentialService.GetAllProviderCredentialsAsync();
             var enabledProviders = allProviders.Where(p => p.IsEnabled).ToList();
 
             if (!enabledProviders.Any())
             {
-                health.Status = "degraded";
-                health.Description = "No enabled providers configured";
-                return health;
-            }
-
-            // Get provider health statistics
-            var healthStats = await _providerHealthService.GetHealthStatisticsAsync(1); // Last hour
-
-            // Determine overall provider health status
-            if (healthStats.OnlineProviders == 0)
-            {
                 health.Status = "unhealthy";
-                health.Description = "All providers are offline";
+                health.Description = "No enabled providers configured";
             }
-            else if (healthStats.OfflineProviders > 0 || healthStats.UnknownProviders > 0)
+            else if (enabledProviders.Count == 1)
             {
                 health.Status = "degraded";
-                health.Description = $"{healthStats.OnlineProviders} of {healthStats.TotalProviders} providers online";
+                health.Description = $"1 provider configured ({enabledProviders[0].ProviderName})";
             }
             else
             {
                 health.Status = "healthy";
-                health.Description = "All providers are online";
+                health.Description = $"{enabledProviders.Count} providers configured";
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking provider health");
+            _logger.LogError(ex, "Error checking provider configuration");
             health.Status = "unhealthy";
             health.Error = ex.Message;
         }

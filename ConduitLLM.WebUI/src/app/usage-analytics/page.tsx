@@ -108,11 +108,11 @@ export default function UsageAnalyticsPage() {
       const data = await response.json();
       
       setMetrics(data.metrics);
-      setTimeSeriesData(data.timeSeries);
-      setProviderUsage(data.providerUsage);
-      setModelUsage(data.modelUsage);
-      setVirtualKeyUsage(data.virtualKeyUsage);
-      setEndpointUsage(data.endpointUsage);
+      setTimeSeriesData(data.timeSeries || []);
+      setProviderUsage(data.providerUsage || []);
+      setModelUsage(data.modelUsage || []);
+      setVirtualKeyUsage(data.virtualKeyUsage || []);
+      setEndpointUsage(data.endpointUsage || []);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {

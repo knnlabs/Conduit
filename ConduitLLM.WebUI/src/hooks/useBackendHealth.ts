@@ -28,11 +28,14 @@ export function useBackendHealth() {
     // Check health status
     const checkHealth = async () => {
       try {
-        const response = await fetch('/api/health');
+        const response = await fetch('/api/admin/system/health');
         if (response.ok) {
+          const health = await response.json();
+          // Determine status based on the health response
+          const isHealthy = health.status === 'healthy' || health.overallStatus === 'healthy';
           setHealthStatus({
-            adminApi: 'healthy',
-            coreApi: 'healthy',
+            adminApi: isHealthy ? 'healthy' : 'degraded',
+            coreApi: isHealthy ? 'healthy' : 'degraded',
             lastChecked: new Date(),
           });
         } else {

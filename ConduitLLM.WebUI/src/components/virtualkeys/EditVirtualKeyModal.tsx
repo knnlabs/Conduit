@@ -116,12 +116,14 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
 
       notifications.show({
         title: 'Success',
-        message: `Virtual key "${values.keyName}" updated successfully`,
+        message: 'Virtual key updated successfully',
         color: 'green',
       });
-
-      onSuccess?.();
+      
       onClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       notifications.show({
         title: 'Error',

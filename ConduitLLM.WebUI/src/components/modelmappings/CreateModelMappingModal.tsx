@@ -155,10 +155,11 @@ export function CreateModelMappingModal({ opened, onClose, onSuccess }: CreateMo
         message: 'Model mapping created successfully',
         color: 'green',
       });
-
-      form.reset();
-      onClose();
-      onSuccess?.();
+      
+      handleClose();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       notifications.show({
         title: 'Error',

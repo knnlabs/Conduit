@@ -13,6 +13,7 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
 
     // If running on the client side, validate against the API endpoint
     if (typeof window !== 'undefined') {
+      // Call the Next.js API route which uses the SDK
       const response = await fetch('/api/auth/validate', {
         method: 'POST',
         headers: {

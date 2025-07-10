@@ -15,7 +15,7 @@ export class HealthService {
 
   /**
    * Performs a liveness check to verify the API is responsive
-   * Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
+   * Note: Core API has dedicated health endpoints at root level (no /v1 prefix)
    * 
    * @returns Promise<HealthCheckResponse> Health check response indicating if the API is alive
    */
@@ -27,7 +27,7 @@ export class HealthService {
         timeout: 5000
       });
       
-      const response = await healthClient.get('/health');
+      const response = await healthClient.get('/health/live');
       return response.data as HealthCheckResponse;
     } catch (error) {
       return {
@@ -47,7 +47,7 @@ export class HealthService {
 
   /**
    * Performs a readiness check to verify the API and its dependencies are ready to serve requests
-   * Note: Core API only has a single /health endpoint at root level (no /v1 prefix)
+   * Note: Core API has dedicated health endpoints at root level (no /v1 prefix)
    * 
    * @returns Promise<HealthCheckResponse> Health check response indicating readiness status
    */
@@ -59,7 +59,7 @@ export class HealthService {
         timeout: 5000
       });
       
-      const response = await healthClient.get('/health');
+      const response = await healthClient.get('/health/ready');
       return response.data as HealthCheckResponse;
     } catch (error) {
       return {

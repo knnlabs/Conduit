@@ -40,51 +40,36 @@ interface HomePageClientProps {
 
 export function HomePageClient({ initialHealthData }: HomePageClientProps) {
   const router = useRouter();
-  const [healthData, setHealthData] = useState(initialHealthData);
+  const healthData = initialHealthData;
   const [signalRStatus, setSignalRStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
-
-  // Poll for health updates
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const response = await fetch('/api/health');
-        if (response.ok) {
-          const data = await response.json();
-          setHealthData(data);
-        }
-      } catch (error) {
-        console.error('Health check failed:', error);
-      }
-    };
-
-    // Check every 30 seconds
-    const interval = setInterval(checkHealth, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Check SSE connection status
   useEffect(() => {
-    const checkSSE = () => {
-      // Simple check for SSE connection
-      const eventSource = new EventSource('/api/admin/events/stream');
-      
-      eventSource.onopen = () => {
-        setSignalRStatus('connected');
-      };
-
-      eventSource.onerror = () => {
-        setSignalRStatus('disconnected');
-        eventSource.close();
-      };
-
-      setTimeout(() => {
-        eventSource.close();
-      }, 1000); // Quick check
-    };
-
-    checkSSE();
-    const interval = setInterval(checkSSE, 30000);
-    return () => clearInterval(interval);
+    // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
+    // const checkSSE = () => {
+    //   // Simple check for SSE connection
+    //   const eventSource = new EventSource('/api/admin/events/stream');
+    //   
+    //   eventSource.onopen = () => {
+    //     setSignalRStatus('connected');
+    //   };
+    //
+    //   eventSource.onerror = () => {
+    //     setSignalRStatus('disconnected');
+    //     eventSource.close();
+    //   };
+    //
+    //   setTimeout(() => {
+    //     eventSource.close();
+    //   }, 1000); // Quick check
+    // };
+    //
+    // checkSSE();
+    // const interval = setInterval(checkSSE, 30000);
+    // return () => clearInterval(interval);
+    
+    // Functionality broken - SDK not available for SSE
+    setSignalRStatus('disconnected');
   }, []);
 
   const quickAccessCards = [
