@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
   Button,
@@ -14,7 +13,12 @@ import {
   Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+<<<<<<< HEAD
 import { notifications } from '@mantine/notifications';
+=======
+import { useCreateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
+import { FormModal } from '@/components/common/FormModal';
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState } from 'react';
 import { validators } from '@/lib/utils/form-validators';
@@ -74,6 +78,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     },
   });
 
+<<<<<<< HEAD
   const handleSubmit = async (values: CreateProviderForm) => {
     setIsSubmitting(true);
     try {
@@ -85,6 +90,23 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         organizationId: values.organizationId || undefined,
         isEnabled: values.isEnabled,
       };
+=======
+  // Create mutation wrapper for payload transformation
+  const mutationWrapper = {
+    ...createProvider,
+    mutate: (values: CreateProviderForm, options?: any) => {
+      const payload = {
+        providerName: values.providerType, // Use provider type as the provider name
+        apiKey: values.apiKey.trim(),
+        apiEndpoint: values.apiEndpoint?.trim() || undefined,
+        organizationId: values.organizationId?.trim() || undefined,
+        isEnabled: values.isEnabled,
+      };
+      
+      createProvider.mutate(payload, options);
+    },
+  };
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
       const response = await fetch('/api/providers', {
         method: 'POST',
@@ -207,8 +229,21 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   const providerHelp = getProviderHelp(form.values.providerType);
 
   return (
+<<<<<<< HEAD
     <Modal opened={opened} onClose={handleClose} title="Add LLM Provider" size="lg">
       <form onSubmit={form.onSubmit(handleSubmit)}>
+=======
+    <FormModal
+      opened={opened}
+      onClose={onClose}
+      title="Add Provider"
+      form={form}
+      mutation={mutationWrapper}
+      entityType="provider"
+      submitText="Add Provider"
+    >
+      {(form) => (
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
         <Stack gap="md">
           <Select
             label="Provider Type"
@@ -261,6 +296,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
               <Text size="sm">{testResult.message}</Text>
             </Alert>
           )}
+<<<<<<< HEAD
 
           <Group justify="space-between">
             <Button
@@ -281,8 +317,10 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
               </Button>
             </Group>
           </Group>
+=======
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
         </Stack>
-      </form>
-    </Modal>
+      )}
+    </FormModal>
   );
 }

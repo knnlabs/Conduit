@@ -19,6 +19,7 @@ import {
   Tabs,
   ScrollArea,
 } from '@mantine/core';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 import {
   IconServer,
   IconCpu,
@@ -173,7 +174,7 @@ export default function SystemInfoPage() {
     { name: 'typescript', version: '5.3.3', status: 'latest' },
   ];
 
-  const getStatusColor = (status: string) => {
+  const mapToSystemStatus = (status: string) => {
     switch (status) {
       case 'running':
       case 'healthy':
@@ -185,9 +186,9 @@ export default function SystemInfoPage() {
         return 'yellow';
       case 'stopped':
       case 'critical':
-        return 'red';
+        return 'unhealthy';
       default:
-        return 'gray';
+        return 'unknown';
     }
   };
 

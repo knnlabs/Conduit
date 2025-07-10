@@ -31,6 +31,7 @@ import {
   IconApi,
   IconAlertCircle,
 } from '@tabler/icons-react';
+<<<<<<< HEAD
 import { useState, useEffect, useCallback } from 'react';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import { TableSkeleton } from '@/components/common/LoadingState';
@@ -60,6 +61,13 @@ interface RequestLog {
   requestBody?: any;
   responseBody?: any;
 }
+=======
+import { useState, useEffect } from 'react';
+import { useDisclosure } from '@mantine/hooks';
+import { useRequestLogs, useExportRequestLogs, type RequestLog } from '@/hooks/api/useRequestLogsApi';
+import { BaseTable, type ColumnDef } from '@/components/common/BaseTable';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
 interface RequestLogFilters {
   search?: string;
@@ -127,6 +135,7 @@ export default function RequestLogsPage() {
     fetchLogs();
   }, [fetchLogs]);
 
+<<<<<<< HEAD
   const getStatusColor = (statusCode: number): string => {
     if (statusCode >= 200 && statusCode < 300) return 'green';
     if (statusCode >= 300 && statusCode < 400) return 'blue';
@@ -143,6 +152,50 @@ export default function RequestLogsPage() {
       case 'DELETE': return 'red';
       default: return 'gray';
     }
+=======
+  const handleExport = () => {
+    // Convert filters for export
+    const exportFilters = {
+      method: filters.method || undefined,
+      status: filters.statusCode || undefined,
+      virtualKeyId: filters.virtualKey || undefined,
+      startDate: filters.dateFrom ? filters.dateFrom.toISOString() : undefined,
+      endDate: filters.dateTo ? filters.dateTo.toISOString() : undefined,
+    };
+
+    exportMutation.mutate({
+      format: 'csv',
+      filters: exportFilters,
+    });
+  };
+
+  // Convert response time to status for color coding
+  const getResponseTimeStatus = (responseTime: number): 'healthy' | 'warning' | 'unhealthy' => {
+    if (responseTime < 500) return 'healthy';
+    if (responseTime < 1000) return 'warning';
+    return 'unhealthy';
+  };
+  
+  // Convert request log status to SystemStatusType
+  const mapLogStatusToSystemStatus = (status: string): 'completed' | 'failed' | 'warning' => {
+    switch (status) {
+      case 'success':
+        return 'completed';
+      case 'error':
+        return 'failed';
+      case 'timeout':
+        return 'warning';
+      default:
+        return 'failed';
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 B';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
   };
 
   const handleExport = async () => {
@@ -283,6 +336,7 @@ export default function RequestLogsPage() {
       </Card>
 
       {/* Logs Table */}
+<<<<<<< HEAD
       <Card withBorder>
         <ScrollArea>
           {isLoading ? (
@@ -370,6 +424,162 @@ export default function RequestLogsPage() {
           </Card.Section>
         )}
       </Card>
+=======
+      <BaseTable
+        data={logs}
+        isLoading={isLoading}
+        error={error}
+        searchable
+        searchPlaceholder="Search logs by model, IP, virtual key..."
+        onRefresh={() => refetch()}
+        emptyMessage="No request logs found. Try adjusting your filters."
+        minWidth={1200}
+        pagination={{
+          page: currentPage,
+          pageSize: 20,
+          total: totalPages * 20, // Approximate total from API
+          onPageChange: setCurrentPage,
+          onPageSizeChange: (size) => {
+            // Could extend API to support dynamic page sizes
+            console.log('Page size change requested:', size);
+          },
+          pageSizeOptions: ['10', '20', '50']
+        }}
+        columns={[
+          {
+            key: 'timestamp',
+            label: 'Timestamp',
+            sortable: true,
+            sortType: 'date',
+            width: '140px',
+            render: (log) => (
+              <Text size="xs">
+                {new Date(log.timestamp).toLocaleString()}
+              </Text>
+            )
+          },
+          {
+            key: 'method',
+            label: 'Type',
+            width: '80px',
+            render: () => (
+              <Badge variant="light" size="sm">
+                POST
+              </Badge>
+            )
+          },
+          {
+            key: 'model',
+            label: 'Model',
+            sortable: true,
+            filterable: true,
+            width: '160px',
+            render: (log) => (
+              <Text size="sm" style={{ maxWidth: 150 }} truncate>
+                {log.model || 'N/A'}
+              </Text>
+            )
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            sortable: true,
+            filterable: true,
+            width: '100px',
+            render: (log) => (
+              <StatusIndicator
+                status={mapLogStatusToSystemStatus(log.status)}
+                variant="badge"
+                size="sm"
+              />
+            )
+          },
+          {
+            key: 'duration',
+            label: 'Duration',
+            sortable: true,
+            sortType: 'number',
+            width: '100px',
+            render: (log) => (
+              <StatusIndicator
+                status={getResponseTimeStatus(log.duration)}
+                variant="badge"
+                size="sm"
+                context={`${log.duration}ms`}
+              />
+            )
+          },
+          {
+            key: 'virtualKeyName',
+            label: 'Virtual Key',
+            sortable: true,
+            filterable: true,
+            width: '140px',
+            render: (log) => (
+              <Text size="sm" style={{ maxWidth: 120 }} truncate>
+                {log.virtualKeyName || 'N/A'}
+              </Text>
+            )
+          },
+          {
+            key: 'provider',
+            label: 'Provider',
+            sortable: true,
+            filterable: true,
+            width: '100px',
+            render: (log) => (
+              <Text size="sm">{log.provider || 'N/A'}</Text>
+            )
+          },
+          {
+            key: 'ipAddress',
+            label: 'IP Address',
+            sortable: true,
+            filterable: true,
+            width: '120px',
+            render: (log) => (
+              <Text size="sm">{log.ipAddress}</Text>
+            )
+          },
+          {
+            key: 'tokens',
+            label: 'Tokens',
+            sortable: true,
+            sortType: 'number',
+            accessor: (log) => log.inputTokens + log.outputTokens,
+            width: '120px',
+            render: (log) => (
+              <Text size="xs">
+                {log.inputTokens} / {log.outputTokens}
+              </Text>
+            )
+          },
+          {
+            key: 'cost',
+            label: 'Cost',
+            sortable: true,
+            sortType: 'currency',
+            width: '100px',
+            render: (log) => (
+              <Text size="sm">
+                {log.cost ? formatCurrency(log.cost) : 'N/A'}
+              </Text>
+            )
+          }
+        ] as ColumnDef<RequestLog>[]}
+        customActions={[
+          {
+            label: 'View Details',
+            icon: IconEye,
+            onClick: (log) => {
+              setSelectedLog(log);
+              openModal();
+            },
+            tooltip: 'View request details'
+          }
+        ]}
+      />
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
       {/* Log Details Modal */}
       <Modal
@@ -394,6 +604,7 @@ export default function RequestLogsPage() {
 
             <Tabs.Panel value="overview" pt="md">
               <Stack gap="md">
+<<<<<<< HEAD
                 <Paper withBorder p="md">
                   <Grid>
                     <Grid.Col span={6}>
@@ -480,6 +691,108 @@ export default function RequestLogsPage() {
                     )}
                   </Grid>
                 </Paper>
+=======
+                <Group grow>
+                  <div>
+                    <Text size="sm" fw={500}>Timestamp</Text>
+                    <Text size="sm" c="dimmed">
+                      {new Date(selectedLog.timestamp).toLocaleString()}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="sm" fw={500}>Model</Text>
+                    <Text size="sm" c="dimmed">
+                      {selectedLog.model}
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group grow>
+                  <div>
+                    <Text size="sm" fw={500}>Status</Text>
+                    <StatusIndicator
+                      status={mapLogStatusToSystemStatus(selectedLog.status)}
+                      variant="badge"
+                    />
+                  </div>
+                  <div>
+                    <Text size="sm" fw={500}>Duration</Text>
+                    <StatusIndicator
+                      status={getResponseTimeStatus(selectedLog.duration)}
+                      variant="badge"
+                      context={`${selectedLog.duration}ms`}
+                    />
+                  </div>
+                </Group>
+
+                <Group grow>
+                  <div>
+                    <Text size="sm" fw={500}>Virtual Key</Text>
+                    <Text size="sm" c="dimmed">
+                      {selectedLog.virtualKeyName || 'N/A'}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="sm" fw={500}>Model</Text>
+                    <Text size="sm" c="dimmed">
+                      {selectedLog.model || 'N/A'}
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group grow>
+                  <div>
+                    <Text size="sm" fw={500}>IP Address</Text>
+                    <Text size="sm" c="dimmed">{selectedLog.ipAddress}</Text>
+                  </div>
+                  <div>
+                    <Text size="sm" fw={500}>User Agent</Text>
+                    <Text size="sm" c="dimmed" style={{ maxWidth: 200 }} truncate>
+                      {selectedLog.userAgent || 'N/A'}
+                    </Text>
+                  </div>
+                </Group>
+
+                <Group grow>
+                  <div>
+                    <Text size="sm" fw={500}>Input Tokens</Text>
+                    <Text size="sm" c="dimmed">
+                      {selectedLog.inputTokens}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="sm" fw={500}>Output Tokens</Text>
+                    <Text size="sm" c="dimmed">
+                      {selectedLog.outputTokens}
+                    </Text>
+                  </div>
+                </Group>
+
+                {selectedLog.cost && (
+                  <div>
+                    <Text size="sm" fw={500}>Cost</Text>
+                    <Text size="sm" c="dimmed">
+                      {formatCurrency(selectedLog.cost)}
+                    </Text>
+                  </div>
+                )}
+                
+                {(selectedLog.inputTokens || selectedLog.outputTokens) && (
+                  <div>
+                    <Text size="sm" fw={500}>Total Tokens</Text>
+                    <Text size="sm" c="dimmed">
+                      {(selectedLog.inputTokens + selectedLog.outputTokens).toLocaleString()}
+                    </Text>
+                  </div>
+                )}
+
+                {selectedLog.errorMessage && (
+                  <Alert icon={<IconAlertCircle size={16} />} color="red">
+                    <Text fw={500}>Error</Text>
+                    <Text size="sm">{selectedLog.errorMessage}</Text>
+                  </Alert>
+                )}
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
               </Stack>
             </Tabs.Panel>
 

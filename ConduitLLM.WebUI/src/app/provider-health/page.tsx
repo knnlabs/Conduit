@@ -45,6 +45,7 @@ import {
   IconServer,
   IconAlertCircle,
 } from '@tabler/icons-react';
+<<<<<<< HEAD
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
 import { formatters } from '@/lib/utils/formatters';
@@ -110,6 +111,25 @@ interface ProviderMetrics {
   p99ResponseTime: number;
   availability: number;
 }
+=======
+import { useState } from 'react';
+import { useDisclosure } from '@mantine/hooks';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
+import { 
+  useProviderHealthOverview,
+  useProviderStatus,
+  useProviderMetrics,
+  useProviderIncidents,
+  useProviderUptime,
+  useProviderLatency,
+  useProviderAlerts,
+  useAcknowledgeAlert,
+  useTriggerHealthCheck,
+  type ProviderHealth
+} from '@/hooks/useConduitAdmin';
+import { notifications } from '@mantine/notifications';
+import { CostChart } from '@/components/charts/CostChart';
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
 export default function ProviderHealthPage() {
   const [timeRange, setTimeRange] = useState('24h');
@@ -148,6 +168,7 @@ export default function ProviderHealthPage() {
     }
   }, [fetchProviderHealth, autoRefresh]);
 
+<<<<<<< HEAD
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'healthy': return 'green';
@@ -158,6 +179,31 @@ export default function ProviderHealthPage() {
   };
 
   const getStatusIcon = (status: string) => {
+=======
+  // Convert provider status to SystemStatusType
+  const mapProviderStatusToSystemStatus = (status: ProviderHealth['status']) => {
+    switch (status) {
+      case 'healthy': return 'healthy';
+      case 'degraded': return 'degraded';
+      case 'down': return 'unhealthy';
+      case 'maintenance': return 'maintenance';
+      default: return 'unknown';
+    }
+  };
+  
+  const mapOverallStatusToSystemStatus = (status: string) => {
+    switch (status) {
+      case 'operational': return 'healthy';
+      case 'degraded': return 'degraded';
+      case 'outage': return 'unhealthy';
+      case 'maintenance': return 'maintenance';
+      default: return 'unknown';
+    }
+  };
+  
+  // Helper for card colors (keeping for backward compatibility with cards)
+  const getOverallStatusColor = (status: string) => {
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
     switch (status) {
       case 'healthy': return IconCircleCheck;
       case 'degraded': return IconAlertTriangle;
@@ -293,6 +339,7 @@ export default function ProviderHealthPage() {
         </Group>
       </Card>
 
+<<<<<<< HEAD
       {/* Provider Cards Grid */}
       <Grid>
         {isLoading ? (
@@ -312,6 +359,329 @@ export default function ProviderHealthPage() {
                   onClick={() => setSelectedProvider(provider)}
                 >
                   <Group justify="space-between" mb="md">
+=======
+      {/* Provider Health Overview */}
+      <Card>
+        <Tabs value={selectedTab} onChange={(value) => setSelectedTab(value || 'overview')}>
+          <Tabs.List>
+            <Tabs.Tab value="overview">Provider Status</Tabs.Tab>
+            <Tabs.Tab value="incidents">Incidents</Tabs.Tab>
+            <Tabs.Tab value="alerts">Alerts</Tabs.Tab>
+            <Tabs.Tab value="metrics">Metrics</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="overview" pt="md">
+            <div style={{ position: 'relative' }}>
+              <LoadingOverlay visible={providersLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              
+              <Stack gap="md">
+                {providers?.map((provider) => (
+                  <Card key={provider.providerId} withBorder p="md">
+                    <Grid>
+                      <Grid.Col span={{ base: 12, md: 8 }}>
+                        <Group justify="space-between" mb="md">
+                          <Group gap="md">
+                            <StatusIndicator
+                              status={mapProviderStatusToSystemStatus(provider.status)}
+                              variant="icon"
+                              size="lg"
+                            />
+                            <div>
+                              <Text fw={600} size="lg">{provider.providerName}</Text>
+                              <Group gap="xs">
+                                <StatusIndicator
+                                  status={mapProviderStatusToSystemStatus(provider.status)}
+                                  variant="badge"
+                                  size="sm"
+                                />
+                                <Text size="sm" c="dimmed">
+                                  {provider.region}
+                                </Text>
+                              </Group>
+                            </div>
+                          </Group>
+                          
+                          <Group gap="xs">
+                            <Tooltip label="View details">
+                              <ActionIcon
+                                variant="light"
+                                onClick={() => openProviderDetails(provider)}
+                              >
+                                <IconEye size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Trigger health check">
+                              <ActionIcon
+                                variant="light"
+                                onClick={() => triggerHealthCheck.mutateAsync(provider.providerId)}
+                                loading={triggerHealthCheck.isPending}
+                              >
+                                <IconRefresh size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Group>
+
+                        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Response Time</Text>
+                            <Text fw={500}>{formatLatency(provider.responseTime)}</Text>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Uptime</Text>
+                            <Text fw={500}>{formatUptime(provider.uptime)}</Text>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Error Rate</Text>
+                            <Text fw={500}>{provider.errorRate.toFixed(1)}%</Text>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Requests/min</Text>
+                            <Text fw={500}>{provider.requestsPerMinute.toLocaleString()}</Text>
+                          </div>
+                        </SimpleGrid>
+
+                        <Group gap="md" mt="md">
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Active Models</Text>
+                            <Badge variant="light">
+                              {provider.activeModels}/{provider.totalModels}
+                            </Badge>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Capabilities</Text>
+                            <Group gap="xs">
+                              {provider.capabilities.slice(0, 3).map((cap) => (
+                                <Badge key={cap} size="xs" variant="light">
+                                  {cap}
+                                </Badge>
+                              ))}
+                              {provider.capabilities.length > 3 && (
+                                <Badge size="xs" variant="light" color="gray">
+                                  +{provider.capabilities.length - 3}
+                                </Badge>
+                              )}
+                            </Group>
+                          </div>
+                        </Group>
+                      </Grid.Col>
+                      
+                      <Grid.Col span={{ base: 12, md: 4 }}>
+                        <Stack gap="md">
+                          <div>
+                            <Group justify="space-between" mb="xs">
+                              <Text size="sm">Uptime</Text>
+                              <Text size="sm">{formatUptime(provider.uptime)}</Text>
+                            </Group>
+                            <Progress
+                              value={provider.uptime}
+                              color={provider.uptime >= 99 ? 'green' : provider.uptime >= 95 ? 'orange' : 'red'}
+                              size="lg"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Group justify="space-between" mb="xs">
+                              <Text size="sm">Availability</Text>
+                              <Text size="sm">{formatUptime(provider.availability)}</Text>
+                            </Group>
+                            <Progress
+                              value={provider.availability}
+                              color={provider.availability >= 99 ? 'green' : provider.availability >= 95 ? 'orange' : 'red'}
+                              size="lg"
+                            />
+                          </div>
+
+                          {provider.issues.length > 0 && (
+                            <Alert icon={<IconAlertCircle size={16} />} color="orange">
+                              <Text size="sm">
+                                {provider.issues.length} active issue{provider.issues.length > 1 ? 's' : ''}
+                              </Text>
+                            </Alert>
+                          )}
+                        </Stack>
+                      </Grid.Col>
+                    </Grid>
+                  </Card>
+                ))}
+              </Stack>
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="incidents" pt="md">
+            <div style={{ position: 'relative' }}>
+              <LoadingOverlay visible={incidentsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              
+              <Stack gap="md">
+                {incidents?.length === 0 ? (
+                  <Alert icon={<IconCircleCheck size={16} />} color="green" variant="light">
+                    <Text>No active incidents. All providers are operating normally.</Text>
+                  </Alert>
+                ) : (
+                  incidents?.map((incident) => (
+                    <Card key={incident.id} withBorder p="md">
+                      <Group justify="space-between" mb="md">
+                        <Group gap="md">
+                          <Badge color={getSeverityColor(incident.severity)} variant="light">
+                            {incident.severity}
+                          </Badge>
+                          <div>
+                            <Text fw={600}>{incident.title}</Text>
+                            <Text size="sm" c="dimmed">
+                              {incident.providerName} • Started {new Date(incident.startTime).toLocaleString()}
+                            </Text>
+                          </div>
+                        </Group>
+                        
+                        <Group gap="xs">
+                          <Badge color={incident.status === 'resolved' ? 'green' : 'orange'} variant="light">
+                            {incident.status}
+                          </Badge>
+                          <ActionIcon
+                            variant="light"
+                            onClick={() => openIncidentDetails(incident)}
+                          >
+                            <IconEye size={16} />
+                          </ActionIcon>
+                        </Group>
+                      </Group>
+
+                      <Text size="sm" mb="md">
+                        {incident.description}
+                      </Text>
+
+                      <Group gap="md">
+                        <div>
+                          <Text size="xs" c="dimmed" mb={4}>Affected Models</Text>
+                          <Group gap="xs">
+                            {incident.affectedModels.slice(0, 3).map((model) => (
+                              <Badge key={model} size="xs" variant="light">
+                                {model}
+                              </Badge>
+                            ))}
+                            {incident.affectedModels.length > 3 && (
+                              <Badge size="xs" variant="light" color="gray">
+                                +{incident.affectedModels.length - 3}
+                              </Badge>
+                            )}
+                          </Group>
+                        </div>
+                        
+                        <div>
+                          <Text size="xs" c="dimmed" mb={4}>Impact</Text>
+                          <Text size="sm">
+                            {incident.impact.requestsAffected.toLocaleString()} requests, {incident.impact.usersAffected} users
+                          </Text>
+                        </div>
+                      </Group>
+                    </Card>
+                  ))
+                )}
+              </Stack>
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="alerts" pt="md">
+            <div style={{ position: 'relative' }}>
+              <LoadingOverlay visible={alertsLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
+              
+              <Stack gap="md">
+                {alerts?.length === 0 ? (
+                  <Alert icon={<IconCircleCheck size={16} />} color="green" variant="light">
+                    <Text>No active alerts. All providers are operating within normal parameters.</Text>
+                  </Alert>
+                ) : (
+                  alerts?.map((alert) => {
+                    const AlertIcon = getAlertTypeIcon(alert.type);
+                    return (
+                      <Card key={alert.id} withBorder p="md">
+                        <Group justify="space-between" mb="md">
+                          <Group gap="md">
+                            <ThemeIcon color={getSeverityColor(alert.severity)} variant="light">
+                              <AlertIcon size={16} />
+                            </ThemeIcon>
+                            <div>
+                              <Text fw={600}>{alert.title}</Text>
+                              <Text size="sm" c="dimmed">
+                                {alert.providerName} • {new Date(alert.timestamp).toLocaleString()}
+                              </Text>
+                            </div>
+                          </Group>
+                          
+                          <Group gap="xs">
+                            <Badge color={getSeverityColor(alert.severity)} variant="light">
+                              {alert.severity}
+                            </Badge>
+                            {alert.resolved ? (
+                              <Badge color="green" variant="light">
+                                Resolved
+                              </Badge>
+                            ) : alert.acknowledged ? (
+                              <Badge color="blue" variant="light">
+                                Acknowledged
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="xs"
+                                variant="light"
+                                onClick={() => handleAcknowledgeAlert(alert.id)}
+                                loading={acknowledgeAlert.isPending}
+                              >
+                                Acknowledge
+                              </Button>
+                            )}
+                          </Group>
+                        </Group>
+
+                        <Text size="sm" mb="md">
+                          {alert.message}
+                        </Text>
+
+                        <Group gap="md">
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Current Value</Text>
+                            <Text fw={500}>
+                              {alert.type === 'latency' ? formatLatency(alert.currentValue) : 
+                               alert.type === 'uptime' || alert.type === 'availability' ? formatUptime(alert.currentValue) :
+                               `${alert.currentValue.toFixed(1)}%`}
+                            </Text>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Threshold</Text>
+                            <Text fw={500}>
+                              {alert.type === 'latency' ? formatLatency(alert.threshold) : 
+                               alert.type === 'uptime' || alert.type === 'availability' ? formatUptime(alert.threshold) :
+                               `${alert.threshold.toFixed(1)}%`}
+                            </Text>
+                          </div>
+                          <div>
+                            <Text size="xs" c="dimmed" mb={4}>Duration</Text>
+                            <Text fw={500}>{alert.duration} min</Text>
+                          </div>
+                        </Group>
+                      </Card>
+                    );
+                  })
+                )}
+              </Stack>
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="metrics" pt="md">
+            <div style={{ position: 'relative' }}>
+              <LoadingOverlay visible={!selectedProvider} overlayProps={{ radius: 'sm', blur: 2 }} />
+              
+              {!selectedProvider ? (
+                <Center py="xl">
+                  <Stack align="center" gap="md">
+                    <IconChartLine size={48} color="var(--mantine-color-gray-5)" />
+                    <Text c="dimmed">Select a provider from the overview tab to view detailed metrics</Text>
+                  </Stack>
+                </Center>
+              ) : (
+                <Stack gap="lg">
+                  <Group justify="space-between">
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
                     <div>
                       <Group gap="xs">
                         <ThemeIcon 
@@ -449,6 +819,7 @@ export default function ProviderHealthPage() {
         size="xl"
       >
         {selectedProvider && (
+<<<<<<< HEAD
           <Tabs defaultValue="overview">
             <Tabs.List>
               <Tabs.Tab value="overview" leftSection={<IconInfoCircle size={16} />}>
@@ -471,6 +842,77 @@ export default function ProviderHealthPage() {
                   <Badge color={getStatusColor(selectedProvider.status)} size="lg">
                     {selectedProvider.status}
                   </Badge>
+=======
+          <Stack gap="md">
+            <Group justify="space-between">
+              <Group gap="md">
+                <StatusIndicator
+                  status={mapProviderStatusToSystemStatus(selectedProvider.status)}
+                  variant="icon"
+                  size="lg"
+                />
+                <div>
+                  <Text fw={600} size="lg">{selectedProvider.providerName}</Text>
+                  <StatusIndicator
+                    status={mapProviderStatusToSystemStatus(selectedProvider.status)}
+                    variant="badge"
+                    size="sm"
+                  />
+                </div>
+              </Group>
+              <Text size="sm" c="dimmed">
+                Last checked: {new Date(selectedProvider.lastChecked).toLocaleString()}
+              </Text>
+            </Group>
+            
+            <SimpleGrid cols={2} spacing="lg">
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Response Time</Text>
+                <Text fw={600} size="xl">{formatLatency(selectedProvider.responseTime)}</Text>
+              </Card>
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Uptime</Text>
+                <Text fw={600} size="xl">{formatUptime(selectedProvider.uptime)}</Text>
+              </Card>
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Error Rate</Text>
+                <Text fw={600} size="xl">{selectedProvider.errorRate.toFixed(1)}%</Text>
+              </Card>
+              <Card withBorder>
+                <Text size="sm" c="dimmed" mb="xs">Requests/min</Text>
+                <Text fw={600} size="xl">{selectedProvider.requestsPerMinute.toLocaleString()}</Text>
+              </Card>
+            </SimpleGrid>
+            
+            <div>
+              <Text fw={500} mb="xs">Capabilities</Text>
+              <Group gap="xs">
+                {selectedProvider.capabilities.map((capability) => (
+                  <Badge key={capability} variant="light">
+                    {capability}
+                  </Badge>
+                ))}
+              </Group>
+            </div>
+            
+            <div>
+              <Text fw={500} mb="xs">Configuration</Text>
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text size="sm">Endpoint:</Text>
+                  <Text size="sm" c="dimmed">{selectedProvider.endpoint}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm">Region:</Text>
+                  <Text size="sm" c="dimmed">{selectedProvider.region}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm">Version:</Text>
+                  <Text size="sm" c="dimmed">{selectedProvider.version || 'N/A'}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm">Models:</Text>
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
                   <Text size="sm" c="dimmed">
                     Last check: {formatters.date(selectedProvider.lastCheck)}
                   </Text>

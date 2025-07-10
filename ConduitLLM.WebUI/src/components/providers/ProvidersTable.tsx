@@ -1,30 +1,35 @@
 'use client';
 
 import {
-  Table,
   Group,
   Text,
-  ActionIcon,
   Badge,
+<<<<<<< HEAD
   Menu,
   rem,
   Box,
   Paper,
   Tooltip,
+=======
+  Indicator,
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
   Stack,
 } from '@mantine/core';
 import {
-  IconDots,
-  IconEdit,
-  IconTrash,
   IconTestPipe,
   IconRefresh,
   IconCircleCheck,
   IconCircleX,
   IconClock,
 } from '@tabler/icons-react';
+<<<<<<< HEAD
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
+=======
+import { useProviders, useDeleteProvider } from '@/hooks/useConduitAdmin';
+import { BaseTable, type ColumnDef, type ActionDef, type DeleteConfirmation } from '@/components/common/BaseTable';
+import { useTableData, tableFormatters } from '@/hooks/useTableData';
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 interface Provider {
@@ -49,6 +54,7 @@ interface ProvidersTableProps {
   testingProviders?: Set<string>;
 }
 
+<<<<<<< HEAD
 export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProviders }: ProvidersTableProps) {
   const providers = data || [];
 
@@ -68,6 +74,24 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
   };
 
   const getHealthIcon = (status: string) => {
+=======
+export function ProvidersTable({ onEdit, onTest, data }: ProvidersTableProps) {
+  const queryResult = useProviders();
+  const deleteProvider = useDeleteProvider();
+  
+  const { handleRefresh, handleDelete } = useTableData({
+    queryResult,
+    deleteMutation: deleteProvider,
+    refreshMessage: 'Provider list refreshed',
+    deleteSuccessMessage: 'Provider deleted successfully',
+    deleteErrorMessage: 'Failed to delete provider',
+  });
+
+  // Use provided data or default to fetched data
+  const providers = data || queryResult.data || [];
+
+  const getHealthStatusIcon = (status: string) => {
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
     switch (status) {
       case 'healthy':
         return <IconCircleCheck size={16} />;
@@ -78,6 +102,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     }
   };
 
+<<<<<<< HEAD
   const getHealthColor = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -237,5 +262,112 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
         )}
       </Box>
     </Paper>
+=======
+  const columns: ColumnDef<Provider>[] = [
+    {
+      key: 'provider',
+      label: 'Provider',
+      render: (provider) => (
+        <Stack gap={4}>
+          <Group gap="xs">
+            <Text fw={500}>{provider.providerName}</Text>
+            <Indicator 
+              color={badgeHelpers.getHealthColor(provider.healthStatus)} 
+              size={8}
+            />
+          </Group>
+          {provider.description && (
+            <Text size="xs" c="dimmed" lineClamp={1}>
+              {provider.description}
+            </Text>
+          )}
+        </Stack>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (provider) => (
+        <Badge 
+          color={badgeHelpers.getStatusColor(provider.isEnabled)} 
+          variant={provider.isEnabled ? 'light' : 'filled'}
+        >
+          {badgeHelpers.formatStatus(provider.isEnabled, { activeText: 'Enabled', inactiveText: 'Disabled' })}
+        </Badge>
+      ),
+    },
+    {
+      key: 'health',
+      label: 'Health',
+      render: (provider) => (
+        <Group gap="xs">
+          {getHealthStatusIcon(provider.healthStatus)}
+          <Text size="sm">{badgeHelpers.getStatusConfig(provider.healthStatus, 'health').label}</Text>
+        </Group>
+      ),
+    },
+    {
+      key: 'models',
+      label: 'Models',
+      render: (provider) => (
+        <Text size="sm">{provider.modelsAvailable}</Text>
+      ),
+    },
+    {
+      key: 'lastCheck',
+      label: 'Last Check',
+      render: (provider) => (
+        <Text size="sm" c="dimmed">
+          {provider.lastHealthCheck ? tableFormatters.date(provider.lastHealthCheck) : 'Never'}
+        </Text>
+      ),
+    },
+    {
+      key: 'created',
+      label: 'Created',
+      render: (provider) => (
+        <Text size="sm" c="dimmed">
+          {tableFormatters.date(provider.createdAt)}
+        </Text>
+      ),
+    },
+  ];
+
+  const customActions: ActionDef<Provider>[] = [
+    {
+      label: 'Test connection',
+      icon: IconTestPipe,
+      onClick: (provider) => onTest?.(provider),
+      color: 'blue',
+    },
+    {
+      label: 'Refresh models',
+      icon: IconRefresh,
+      onClick: () => handleRefresh(),
+      color: 'blue',
+    },
+  ];
+
+  const deleteConfirmation: DeleteConfirmation<Provider> = {
+    title: 'Delete Provider',
+    message: (provider) => 
+      `Are you sure you want to delete the provider "${provider.providerName}"? This action cannot be undone and will remove all associated model mappings.`,
+  };
+
+  return (
+    <BaseTable
+      data={providers}
+      isLoading={queryResult.isLoading}
+      error={queryResult.error}
+      columns={columns}
+      onEdit={onEdit}
+      onDelete={(provider) => handleDelete(provider.id)}
+      onRefresh={handleRefresh}
+      customActions={customActions}
+      deleteConfirmation={deleteConfirmation}
+      emptyMessage="No providers configured. Add your first provider to get started."
+      minWidth={800}
+    />
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
   );
 }

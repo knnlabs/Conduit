@@ -1,25 +1,33 @@
 'use client';
 
 import {
-  Table,
   Group,
   Text,
   ActionIcon,
   Badge,
+<<<<<<< HEAD
   Menu,
   rem,
   Box,
+=======
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
   Tooltip,
 } from '@mantine/core';
 import {
-  IconDots,
-  IconEdit,
-  IconTrash,
   IconTestPipe,
   IconArrowRight,
 } from '@tabler/icons-react';
+<<<<<<< HEAD
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
+=======
+import { useModelMappings, useDeleteModelMapping } from '@/hooks/useConduitAdmin';
+import { BaseTable, type ColumnDef, type ActionDef, type DeleteConfirmation } from '@/components/common/BaseTable';
+import { useTableData, tableFormatters } from '@/hooks/useTableData';
+import { badgeHelpers } from '@/lib/utils/badge-helpers';
+
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
 interface ModelMappingsTableProps {
   data: any[];
@@ -29,6 +37,7 @@ interface ModelMappingsTableProps {
   testingMappings?: Set<string>;
 }
 
+<<<<<<< HEAD
 export function ModelMappingsTable({ 
   data,
   onEdit,
@@ -76,6 +85,97 @@ export function ModelMappingsTable({
       </Table.Td>
 
       <Table.Td>
+=======
+export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showProvider = true }: ModelMappingsTableProps) {
+  const queryResult = useModelMappings();
+  const deleteModelMapping = useDeleteModelMapping();
+  
+  const { handleRefresh, handleDelete } = useTableData({
+    queryResult,
+    deleteMutation: deleteModelMapping,
+    refreshMessage: 'Model mappings refreshed',
+    deleteSuccessMessage: 'Model mapping deleted successfully',
+    deleteErrorMessage: 'Failed to delete model mapping',
+  });
+
+  // Use provided data or default to fetched data
+  const modelMappings = data || queryResult.data || [];
+
+  const getCapabilityColor = (capability: string) => {
+    const colors: Record<string, string> = {
+      'chat': 'blue',
+      'completion': 'green',
+      'embedding': 'purple',
+      'image': 'pink',
+      'video': 'red',
+      'audio': 'teal',
+      'function-calling': 'orange',
+      'streaming': 'cyan',
+    };
+    return colors[capability.toLowerCase()] || 'gray';
+  };
+
+  const renderCapabilities = (mapping: ModelProviderMappingDto) => {
+    // Build capabilities array from boolean flags
+    const capabilities = [];
+    if (mapping.supportsVision) capabilities.push('vision');
+    if (mapping.supportsImageGeneration) capabilities.push('image_generation');
+    if (mapping.supportsAudioTranscription) capabilities.push('audio_transcription');
+    if (mapping.supportsTextToSpeech) capabilities.push('text_to_speech');
+    if (mapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
+    if (mapping.supportsFunctionCalling) capabilities.push('function_calling');
+    if (mapping.supportsStreaming) capabilities.push('streaming');
+    
+    const badges = [];
+    for (let i = 0; i < Math.min(3, capabilities.length); i++) {
+      const capability = capabilities[i];
+      badges.push(
+        <Badge 
+          key={capability}
+          size="xs" 
+          variant="dot" 
+          color={getCapabilityColor(capability)}
+        >
+          {capability}
+        </Badge>
+      );
+    }
+    
+    if (capabilities.length > 3) {
+      badges.push(
+        <Tooltip key="more" label={capabilities.slice(3).join(', ')}>
+          <Badge size="xs" variant="light" color="gray">
+            +{capabilities.length - 3}
+          </Badge>
+        </Tooltip>
+      );
+    }
+    
+    return <Group gap={4}>{badges}</Group>;
+  };
+
+  const columns: ColumnDef<ModelProviderMappingDto>[] = [
+    {
+      key: 'mapping',
+      label: 'Model Mapping',
+      render: (mapping) => (
+        <Stack gap={4}>
+          <Group gap="xs">
+            <Code>{mapping.modelId}</Code>
+            <IconArrowRight size={12} style={{ color: 'var(--mantine-color-dimmed)' }} />
+            <Text size="sm" c="dimmed">{mapping.providerModelId}</Text>
+          </Group>
+          <Text size="xs" c="dimmed">
+            via {mapping.providerId}
+          </Text>
+        </Stack>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (mapping) => (
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
         <Badge 
           color={mapping.isEnabled ? 'green' : 'gray'} 
           variant="light"
@@ -83,6 +183,7 @@ export function ModelMappingsTable({
         >
           {mapping.isEnabled ? 'Enabled' : 'Disabled'}
         </Badge>
+<<<<<<< HEAD
       </Table.Td>
 
       <Table.Td>
@@ -156,5 +257,74 @@ export function ModelMappingsTable({
         <Table.Tbody>{rows}</Table.Tbody>
       </Table>
     </Box>
+=======
+      ),
+    },
+    {
+      key: 'priority',
+      label: 'Priority',
+      render: (mapping) => (
+        <Text size="sm" fw={500}>
+          {mapping.priority}
+        </Text>
+      ),
+    },
+    {
+      key: 'capabilities',
+      label: 'Capabilities',
+      render: renderCapabilities,
+    },
+    {
+      key: 'requests',
+      label: 'Requests',
+      render: () => <Text size="sm">-</Text>,
+    },
+    {
+      key: 'lastUsed',
+      label: 'Last Used',
+      render: (mapping) => (
+        <Text size="sm" c="dimmed">
+          {tableFormatters.date(mapping.updatedAt)}
+        </Text>
+      ),
+    },
+  ];
+
+  const customActions: ActionDef<ModelProviderMappingDto>[] = [
+    {
+      label: 'Test model',
+      icon: IconTestPipe,
+      onClick: (mapping) => onTest?.(mapping),
+      color: 'blue',
+    },
+    {
+      label: 'Refresh capabilities',
+      icon: IconRefresh,
+      onClick: () => handleRefresh(),
+      color: 'blue',
+    },
+  ];
+
+  const deleteConfirmation: DeleteConfirmation<ModelProviderMappingDto> = {
+    title: 'Delete Model Mapping',
+    message: (mapping) => 
+      `Are you sure you want to delete the mapping for "${mapping.modelId}"? This will prevent routing requests to this model configuration.`,
+  };
+
+  return (
+    <BaseTable
+      data={modelMappings}
+      isLoading={queryResult.isLoading}
+      error={queryResult.error}
+      columns={columns}
+      onEdit={onEdit}
+      onDelete={(mapping) => handleDelete(mapping.id.toString())}
+      onRefresh={handleRefresh}
+      customActions={customActions}
+      deleteConfirmation={deleteConfirmation}
+      emptyMessage="No model mappings configured. Add your first mapping to start routing requests."
+      minWidth={900}
+    />
+>>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
   );
 }
