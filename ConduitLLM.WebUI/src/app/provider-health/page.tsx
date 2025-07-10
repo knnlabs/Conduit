@@ -40,6 +40,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 import { 
   useProviderHealthOverview,
   useProviderStatus,
@@ -132,31 +133,28 @@ export default function ProviderHealthPage() {
     }
   };
 
-  const getStatusIcon = (status: ProviderHealth['status']) => {
+  // Convert provider status to SystemStatusType
+  const mapProviderStatusToSystemStatus = (status: ProviderHealth['status']) => {
     switch (status) {
-      case 'healthy':
-        return <IconCircleCheck color="var(--mantine-color-green-6)" />;
-      case 'degraded':
-        return <IconAlertTriangle color="var(--mantine-color-orange-6)" />;
-      case 'down':
-        return <IconCircleX color="var(--mantine-color-red-6)" />;
-      case 'maintenance':
-        return <IconClock color="var(--mantine-color-blue-6)" />;
-      default:
-        return <IconServer color="var(--mantine-color-gray-6)" />;
+      case 'healthy': return 'healthy';
+      case 'degraded': return 'degraded';
+      case 'down': return 'unhealthy';
+      case 'maintenance': return 'maintenance';
+      default: return 'unknown';
     }
   };
-
-  const getStatusColor = (status: ProviderHealth['status']) => {
+  
+  const mapOverallStatusToSystemStatus = (status: string) => {
     switch (status) {
-      case 'healthy': return 'green';
-      case 'degraded': return 'orange';
-      case 'down': return 'red';
-      case 'maintenance': return 'blue';
-      default: return 'gray';
+      case 'operational': return 'healthy';
+      case 'degraded': return 'degraded';
+      case 'outage': return 'unhealthy';
+      case 'maintenance': return 'maintenance';
+      default: return 'unknown';
     }
   };
-
+  
+  // Helper for card colors (keeping for backward compatibility with cards)
   const getOverallStatusColor = (status: string) => {
     switch (status) {
       case 'operational': return 'green';
@@ -348,13 +346,19 @@ export default function ProviderHealthPage() {
                       <Grid.Col span={{ base: 12, md: 8 }}>
                         <Group justify="space-between" mb="md">
                           <Group gap="md">
-                            {getStatusIcon(provider.status)}
+                            <StatusIndicator
+                              status={mapProviderStatusToSystemStatus(provider.status)}
+                              variant="icon"
+                              size="lg"
+                            />
                             <div>
                               <Text fw={600} size="lg">{provider.providerName}</Text>
                               <Group gap="xs">
-                                <Badge color={getStatusColor(provider.status)} variant="light">
-                                  {provider.status}
-                                </Badge>
+                                <StatusIndicator
+                                  status={mapProviderStatusToSystemStatus(provider.status)}
+                                  variant="badge"
+                                  size="sm"
+                                />
                                 <Text size="sm" c="dimmed">
                                   {provider.region}
                                 </Text>
@@ -722,12 +726,18 @@ export default function ProviderHealthPage() {
           <Stack gap="md">
             <Group justify="space-between">
               <Group gap="md">
-                {getStatusIcon(selectedProvider.status)}
+                <StatusIndicator
+                  status={mapProviderStatusToSystemStatus(selectedProvider.status)}
+                  variant="icon"
+                  size="lg"
+                />
                 <div>
                   <Text fw={600} size="lg">{selectedProvider.providerName}</Text>
-                  <Badge color={getStatusColor(selectedProvider.status)} variant="light">
-                    {selectedProvider.status}
-                  </Badge>
+                  <StatusIndicator
+                    status={mapProviderStatusToSystemStatus(selectedProvider.status)}
+                    variant="badge"
+                    size="sm"
+                  />
                 </div>
               </Group>
               <Text size="sm" c="dimmed">

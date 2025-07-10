@@ -1,15 +1,11 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Select,
   NumberInput,
   Switch,
   MultiSelect,
-  Button,
-  Stack,
-  Group,
   Alert,
   Text,
   Loader,
@@ -19,6 +15,7 @@ import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useCreateModelMapping, useProviders } from '@/hooks/useConduitAdmin';
 import { ProviderModelSelect } from '@/components/common/ProviderModelSelect';
+import { FormModal } from '@/components/common/FormModal';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
@@ -80,88 +77,93 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
     },
   });
 
-  const handleSubmit = async (values: FormValues) => {
-    // Ensure capabilities is always an array
-    const capabilities = Array.isArray(values.capabilities) ? values.capabilities : [];
-    
-    const mappingData: CreateModelProviderMappingDto = {
-      modelId: values.modelId.trim(),
-      providerId: values.providerId.trim(),
-      providerModelId: values.providerModelId.trim(),
-      priority: values.priority,
-      isEnabled: values.isEnabled,
-      supportsVision: capabilities.includes('vision'),
-      supportsFunctionCalling: capabilities.includes('function_calling'),
-      supportsStreaming: capabilities.includes('streaming'),
-      supportsImageGeneration: capabilities.includes('image_generation'),
-      supportsAudioTranscription: capabilities.includes('audio_transcription'),
-      supportsTextToSpeech: capabilities.includes('text_to_speech'),
-      supportsRealtimeAudio: capabilities.includes('realtime_audio'),
-      capabilities: capabilities.join(','),
-    };
+  // Create mutation wrapper for payload transformation
+  const mutationWrapper = {
+    ...createMutation,
+    mutate: (values: FormValues, options?: any) => {
+      // Ensure capabilities is always an array
+      const capabilities = Array.isArray(values.capabilities) ? values.capabilities : [];
+      
+      const mappingData: CreateModelProviderMappingDto = {
+        modelId: values.modelId.trim(),
+        providerId: values.providerId.trim(),
+        providerModelId: values.providerModelId.trim(),
+        priority: values.priority,
+        isEnabled: values.isEnabled,
+        supportsVision: capabilities.includes('vision'),
+        supportsFunctionCalling: capabilities.includes('function_calling'),
+        supportsStreaming: capabilities.includes('streaming'),
+        supportsImageGeneration: capabilities.includes('image_generation'),
+        supportsAudioTranscription: capabilities.includes('audio_transcription'),
+        supportsTextToSpeech: capabilities.includes('text_to_speech'),
+        supportsRealtimeAudio: capabilities.includes('realtime_audio'),
+        capabilities: capabilities.join(','),
+      };
 
-    try {
-      await createMutation.mutateAsync(mappingData);
-      form.reset();
-      onClose();
-    } catch (error) {
-      console.error('Failed to create model mapping:', error);
-    }
+      createMutation.mutate(mappingData, options);
+    },
   };
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  // SIMPLIFIED: Just show loading/error states, don't try to map undefined data
+  // Handle loading/error states with fallback modals
   if (providersLoading) {
     return (
-      <Modal opened={opened} onClose={handleClose} title="Create Model Mapping" size="lg">
-        <Center py="xl">
-          <Loader size="sm" />
-        </Center>
-      </Modal>
+      <FormModal
+        opened={opened}
+        onClose={onClose}
+        title="Create Model Mapping"
+        form={form}
+        mutation={mutationWrapper}
+        entityType="model mapping"
+      >
+        {() => (
+          <Center py="xl">
+            <Loader size="sm" />
+          </Center>
+        )}
+      </FormModal>
     );
   }
 
   if (providersError) {
     return (
-      <Modal opened={opened} onClose={handleClose} title="Create Model Mapping" size="lg">
-        <Alert icon={<IconAlertCircle size={16} />} color="red">
-          Failed to load providers. Please try again.
-        </Alert>
-      </Modal>
+      <FormModal
+        opened={opened}
+        onClose={onClose}
+        title="Create Model Mapping"
+        form={form}
+        mutation={mutationWrapper}
+        entityType="model mapping"
+      >
+        {() => (
+          <Alert icon={<IconAlertCircle size={16} />} color="red">
+            Failed to load providers. Please try again.
+          </Alert>
+        )}
+      </FormModal>
     );
   }
 
-  // FIXED: Ensure providers is an array before trying to map
-  console.log('CreateModelMappingModal providers data:', {
-    providers,
-    type: typeof providers,
-    isArray: Array.isArray(providers),
-  });
-  
+  // Process provider options
   const providerOptions = Array.isArray(providers) 
-    ? providers.map((provider) => {
-        console.log('Processing provider:', provider);
-        return {
-          value: provider.providerName,
-          label: provider.providerName,
-          disabled: !provider.isEnabled,
-        };
-      })
+    ? providers.map((provider) => ({
+        value: provider.providerName,
+        label: provider.providerName,
+        disabled: !provider.isEnabled,
+      }))
     : [];
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
-      onClose={handleClose}
+      onClose={onClose}
       title="Create Model Mapping"
-      size="lg"
+      form={form}
+      mutation={mutationWrapper}
+      entityType="model mapping"
+      submitText="Create Mapping"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
+      {(form) => (
+        <>
           {providerOptions.length === 0 ? (
             <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light">
               <Text size="sm">
@@ -237,21 +239,8 @@ export function CreateModelMappingModal({ opened, onClose }: CreateModelMappingM
               </Alert>
             </>
           )}
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              loading={createMutation.isPending}
-              disabled={providerOptions.length === 0}
-            >
-              Create Mapping
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        </>
+      )}
+    </FormModal>
   );
 }

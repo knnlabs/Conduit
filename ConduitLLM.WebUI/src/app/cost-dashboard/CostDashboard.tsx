@@ -33,7 +33,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
-import { ErrorState } from '@/components/common/ErrorState';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { safeLog } from '@/lib/utils/logging';
 
 interface ProviderCost {
@@ -150,7 +150,7 @@ export default function CostDashboard() {
   const budgetStatusColor = budgetUsagePercent > 90 ? 'red' : budgetUsagePercent > 70 ? 'yellow' : 'green';
 
   if (error) {
-    return <ErrorState error={error} title="Failed to load cost data" />;
+    return <ErrorDisplay error={error} title="Failed to load cost data" variant="card" onRetry={() => window.location.reload()} />;
   }
 
   return (

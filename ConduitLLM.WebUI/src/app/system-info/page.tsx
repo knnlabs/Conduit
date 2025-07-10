@@ -16,6 +16,7 @@ import {
   Alert,
   Accordion,
 } from '@mantine/core';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 import {
   IconServer,
   IconDatabase,
@@ -61,22 +62,22 @@ export default function SystemInfoPage() {
   };
 
 
-  const getStatusColor = (status: string) => {
+  const mapToSystemStatus = (status: string) => {
     switch (status) {
       case 'running':
       case 'connected':
       case 'healthy':
-        return 'green';
+        return 'healthy';
       case 'warning':
       case 'degraded':
-        return 'yellow';
+        return 'degraded';
       case 'stopped':
       case 'disconnected':
       case 'error':
       case 'critical':
-        return 'red';
+        return 'unhealthy';
       default:
-        return 'gray';
+        return 'unknown';
     }
   };
 
@@ -133,9 +134,12 @@ export default function SystemInfoPage() {
             <Text size="xs" tt="uppercase" fw={700} c="dimmed">
               System Health
             </Text>
-            <ThemeIcon size="sm" variant="light" color={health ? getStatusColor(health.status) : 'gray'}>
-              <IconServer size={16} />
-            </ThemeIcon>
+            <StatusIndicator
+              status={health ? mapToSystemStatus(health.status) : 'unknown'}
+              variant="icon"
+              size="sm"
+              showTooltip={false}
+            />
           </Group>
           <Text fw={700} size="xl">
             {health?.status?.toUpperCase() || 'UNKNOWN'}
@@ -206,9 +210,12 @@ export default function SystemInfoPage() {
                 <Card.Section p="md" withBorder>
                   <Group justify="space-between">
                     <Text fw={600}>Service Health Status</Text>
-                    <Badge color={health ? getStatusColor(health.status) : 'gray'} variant="light">
-                      {health?.status?.toUpperCase() || 'UNKNOWN'}
-                    </Badge>
+                    <StatusIndicator
+                      status={health ? mapToSystemStatus(health.status) : 'unknown'}
+                      variant="badge"
+                      size="sm"
+                      label={health?.status?.toUpperCase() || 'UNKNOWN'}
+                    />
                   </Group>
                 </Card.Section>
                 <Card.Section>
@@ -231,9 +238,12 @@ export default function SystemInfoPage() {
                             <Text fw={500}>{name}</Text>
                           </Table.Td>
                           <Table.Td>
-                            <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                              {healthCheck.status?.toUpperCase() || 'UNKNOWN'}
-                            </Badge>
+                            <StatusIndicator
+                              status={mapToSystemStatus(healthCheck.status)}
+                              variant="badge"
+                              size="sm"
+                              label={healthCheck.status?.toUpperCase() || 'UNKNOWN'}
+                            />
                           </Table.Td>
                           <Table.Td>
                             <Text size="sm">{healthCheck.duration ? `${healthCheck.duration}ms` : '-'}</Text>
@@ -280,9 +290,12 @@ export default function SystemInfoPage() {
                               <Text fw={500}>{provider.providerName}</Text>
                             </Table.Td>
                             <Table.Td>
-                              <Badge color={getStatusColor(provider.status)} variant="light" size="sm">
-                                {provider.status?.toUpperCase() || 'UNKNOWN'}
-                              </Badge>
+                              <StatusIndicator
+                                status={mapToSystemStatus(provider.status)}
+                                variant="badge"
+                                size="sm"
+                                label={provider.status?.toUpperCase() || 'UNKNOWN'}
+                              />
                             </Table.Td>
                             <Table.Td>
                               <Text size="sm">{provider.responseTime ? `${provider.responseTime}ms` : '-'}</Text>
@@ -462,14 +475,20 @@ export default function SystemInfoPage() {
                     <Card key={name} withBorder p="sm">
                       <Group justify="space-between">
                         <Group>
-                          <ThemeIcon color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                            {healthCheck.status === 'healthy' ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
-                          </ThemeIcon>
+                          <StatusIndicator
+                            status={mapToSystemStatus(healthCheck.status)}
+                            variant="icon"
+                            size="sm"
+                            showTooltip={false}
+                          />
                           <Text size="sm" fw={500}>{name}</Text>
                         </Group>
-                        <Badge color={getStatusColor(healthCheck.status)} variant="light" size="sm">
-                          {healthCheck.status}
-                        </Badge>
+                        <StatusIndicator
+                          status={mapToSystemStatus(healthCheck.status)}
+                          variant="badge"
+                          size="sm"
+                          label={healthCheck.status}
+                        />
                       </Group>
                       {healthCheck.description && (
                         <Text size="xs" c="dimmed" mt="xs">

@@ -41,7 +41,7 @@ type ChatMessage = ChatCompletionMessage;
 import { useVirtualKeys } from '@/hooks/api/useAdminApi';
 import { notifications } from '@mantine/notifications';
 import { safeLog } from '@/lib/utils/logging';
-import { ErrorState } from '@/components/common/ErrorState';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 
 export default function ChatInterface() {
   const [message, setMessage] = useState('');
@@ -256,10 +256,14 @@ export default function ChatInterface() {
           <Title order={1}>Chat Interface</Title>
           <Text c="dimmed">Interactive chat with LLM models</Text>
         </div>
-        <ErrorState 
+        <ErrorDisplay 
           error={(keysError || modelsError) as Error} 
           title="Failed to load configuration"
-          fullPage
+          variant="fullscreen"
+          onRetry={() => {
+            // Retry loading keys and models
+            window.location.reload();
+          }}
         />
       </Stack>
     );

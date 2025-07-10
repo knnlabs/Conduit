@@ -8,8 +8,6 @@ import {
   Grid,
   Group,
   Button,
-  Table,
-  ScrollArea,
   Badge,
   ThemeIcon,
   Progress,
@@ -22,6 +20,8 @@ import {
   Code,
   LoadingOverlay,
 } from '@mantine/core';
+import { BaseTable } from '@/components/common/BaseTable';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 import {
   IconShield,
   IconAlertTriangle,
@@ -335,62 +335,88 @@ export default function SecurityMonitoringPage() {
             {/* Events Table */}
             <Card withBorder>
               <LoadingOverlay visible={eventsLoading} />
-              <ScrollArea h={400}>
-                <Table striped highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Time</Table.Th>
-                      <Table.Th>Type</Table.Th>
-                      <Table.Th>Severity</Table.Th>
-                      <Table.Th>Source</Table.Th>
-                      <Table.Th>Details</Table.Th>
-                      <Table.Th>Virtual Key</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {filteredEvents.map((event) => {
+              <BaseTable
+                data={filteredEvents}
+                columns={[
+                  {
+                    key: 'timestamp',
+                    label: 'Time',
+                    sortable: true,
+                    sortType: 'date',
+                    render: (event) => (
+                      <Text size="sm">{formatters.date(event.timestamp)}</Text>
+                    ),
+                  },
+                  {
+                    key: 'type',
+                    label: 'Type',
+                    sortable: true,
+                    render: (event) => {
                       const Icon = getEventIcon(event.type);
                       return (
-                        <Table.Tr key={`${event.timestamp}-${event.source}`}>
-                          <Table.Td>
-                            <Text size="sm">{formatters.date(event.timestamp)}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <ThemeIcon size="xs" variant="light" color={getSeverityColor(event.severity)}>
-                                <Icon size={14} />
-                              </ThemeIcon>
-                              <Text size="sm">{event.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Text>
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge color={getSeverityColor(event.severity)} variant="light">
-                              {event.severity}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Tooltip label={event.source}>
-                              <Code>{event.source}</Code>
-                            </Tooltip>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm" lineClamp={1}>
-                              {typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            {event.virtualKeyId ? (
-                              <Code>{event.virtualKeyId}</Code>
-                            ) : (
-                              <Text size="sm" c="dimmed">-</Text>
-                            )}
-                          </Table.Td>
-                        </Table.Tr>
+                        <Group gap="xs">
+                          <ThemeIcon size="xs" variant="light" color={getSeverityColor(event.severity)}>
+                            <Icon size={14} />
+                          </ThemeIcon>
+                          <Text size="sm">{event.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Text>
+                        </Group>
                       );
-                    })}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
+                    },
+                  },
+                  {
+                    key: 'severity',
+                    label: 'Severity',
+                    sortable: true,
+                    render: (event) => (
+                      <StatusIndicator 
+                        status={event.severity === 'high' ? 'warning' :
+                               event.severity === 'warning' ? 'warning' : 'healthy'}
+                        variant="badge"
+                        size="sm"
+                      />
+                    ),
+                  },
+                  {
+                    key: 'source',
+                    label: 'Source',
+                    sortable: true,
+                    render: (event) => (
+                      <Tooltip label={event.source}>
+                        <Code>{event.source}</Code>
+                      </Tooltip>
+                    ),
+                  },
+                  {
+                    key: 'details',
+                    label: 'Details',
+                    render: (event) => (
+                      <Text size="sm" lineClamp={1}>
+                        {typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}
+                      </Text>
+                    ),
+                  },
+                  {
+                    key: 'virtualKeyId',
+                    label: 'Virtual Key',
+                    render: (event) => (
+                      event.virtualKeyId ? (
+                        <Code>{event.virtualKeyId}</Code>
+                      ) : (
+                        <Text size="sm" c="dimmed">-</Text>
+                      )
+                    ),
+                  },
+                ]}
+                minWidth={800}
+                searchable={false}
+                pagination={{
+                  page: 1,
+                  pageSize: 10,
+                  total: filteredEvents.length,
+                  onPageChange: () => {},
+                  onPageSizeChange: () => {},
+                }}
+              />
             </Card>
 
             {/* Event Distribution Chart */}
@@ -446,36 +472,57 @@ export default function SecurityMonitoringPage() {
             <Card withBorder>
               <Title order={3} mb="md">Top Threat Sources</Title>
               <LoadingOverlay visible={threatsLoading} />
-              <ScrollArea h={300}>
-                <Table>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>IP Address</Table.Th>
-                      <Table.Th>Failed Attempts</Table.Th>
-                      <Table.Th>Days Active</Table.Th>
-                      <Table.Th>Risk Score</Table.Th>
-                      <Table.Th>Last Seen</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {threatsData?.topThreats?.map((threat, index) => (
-                      <Table.Tr key={index}>
-                        <Table.Td>
-                          <Code>{threat.ipAddress}</Code>
-                        </Table.Td>
-                        <Table.Td>{threat.totalFailures}</Table.Td>
-                        <Table.Td>{threat.daysActive}</Table.Td>
-                        <Table.Td>
-                          <Badge color={threat.riskScore > 10 ? 'red' : threat.riskScore > 5 ? 'orange' : 'yellow'}>
-                            {threat.riskScore.toFixed(1)}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>{formatters.date(threat.lastSeen)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
+              <BaseTable
+                data={threatsData?.topThreats || []}
+                columns={[
+                  {
+                    key: 'ipAddress',
+                    label: 'IP Address',
+                    sortable: true,
+                    render: (threat) => (
+                      <Code>{threat.ipAddress}</Code>
+                    ),
+                  },
+                  {
+                    key: 'totalFailures',
+                    label: 'Failed Attempts',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (threat) => threat.totalFailures,
+                  },
+                  {
+                    key: 'daysActive',
+                    label: 'Days Active',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (threat) => threat.daysActive,
+                  },
+                  {
+                    key: 'riskScore',
+                    label: 'Risk Score',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (threat) => (
+                      <StatusIndicator 
+                        status={threat.riskScore > 10 ? 'error' : 
+                               threat.riskScore > 5 ? 'warning' : 'healthy'}
+                        variant="badge"
+                        size="sm"
+                        context={threat.riskScore.toFixed(1)}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'lastSeen',
+                    label: 'Last Seen',
+                    sortable: true,
+                    sortType: 'date',
+                    render: (threat) => formatters.date(threat.lastSeen),
+                  },
+                ]}
+                minWidth={600}
+                searchable={true}
+              />
             </Card>
 
             {/* Threat Distribution by Type */}

@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Modal,
   TextInput,
   Switch,
   Button,
@@ -14,8 +13,8 @@ import {
   Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import { useCreateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
+import { FormModal } from '@/components/common/FormModal';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
@@ -81,6 +80,21 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
     },
   });
 
+  // Create mutation wrapper for payload transformation
+  const mutationWrapper = {
+    ...createProvider,
+    mutate: (values: CreateProviderForm, options?: any) => {
+      const payload = {
+        providerName: values.providerType, // Use provider type as the provider name
+        apiKey: values.apiKey.trim(),
+        apiEndpoint: values.apiEndpoint?.trim() || undefined,
+        organizationId: values.organizationId?.trim() || undefined,
+        isEnabled: values.isEnabled,
+      };
+      
+      createProvider.mutate(payload, options);
+    },
+  };
 
   const getProviderInfo = (providerType: string) => {
     const info: Record<string, { endpoint?: string; docs?: string; note?: string }> = {
@@ -148,37 +162,16 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
   }, [form.values.apiKey, form.values.providerType, form.values.apiEndpoint]);
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Add Provider" size="lg">
-      <form
-        onSubmit={form.onSubmit((values) => {
-          const payload = {
-            providerName: values.providerType, // Use provider type as the provider name
-            apiKey: values.apiKey.trim(),
-            apiEndpoint: values.apiEndpoint?.trim() || undefined,
-            organizationId: values.organizationId?.trim() || undefined,
-            isEnabled: values.isEnabled,
-          };
-          
-          createProvider.mutate(payload, {
-            onSuccess: () => {
-              notifications.show({
-                title: 'Success',
-                message: 'Provider created successfully',
-                color: 'green',
-              });
-              onClose();
-              form.reset();
-            },
-            onError: (_error: unknown) => {
-              notifications.show({
-                title: 'Error',
-                message: 'Failed to create provider',
-                color: 'red',
-              });
-            },
-          });
-        })}
-      >
+    <FormModal
+      opened={opened}
+      onClose={onClose}
+      title="Add Provider"
+      form={form}
+      mutation={mutationWrapper}
+      entityType="provider"
+      submitText="Add Provider"
+    >
+      {(form) => (
         <Stack gap="md">
           <Select
             label="Provider Type"
@@ -274,17 +267,8 @@ export function CreateProviderModal({ opened, onClose }: CreateProviderModalProp
               )}
             </Alert>
           )}
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={createProvider.isPending}>
-              Add Provider
-            </Button>
-          </Group>
         </Stack>
-      </form>
-    </Modal>
+      )}
+    </FormModal>
   );
 }

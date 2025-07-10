@@ -1,18 +1,16 @@
 'use client';
 
 import {
-  Modal,
   Stack,
   TextInput,
   Select,
   Textarea,
-  Button,
-  Group,
   Text,
   NumberInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useCreateSecurityEvent } from '@/hooks/api/useSecurityApi';
+import { FormModal } from '@/components/common/FormModal';
 import type { CreateSecurityEventDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateSecurityEventModalProps {
@@ -35,7 +33,7 @@ const severityLevels = [
 ];
 
 export function CreateSecurityEventModal({ opened, onClose }: CreateSecurityEventModalProps) {
-  const { mutate: createEvent, isPending } = useCreateSecurityEvent();
+  const createEvent = useCreateSecurityEvent();
 
   const form = useForm<CreateSecurityEventDto & { detailsText?: string }>({
     initialValues: {
@@ -55,44 +53,46 @@ export function CreateSecurityEventModal({ opened, onClose }: CreateSecurityEven
     },
   });
 
-  const handleSubmit = (values: CreateSecurityEventDto & { detailsText?: string }) => {
-    // Parse details from the text field
-    let parsedDetails: Record<string, unknown> = {};
-    if (values.detailsText && values.detailsText.trim()) {
-      try {
-        parsedDetails = JSON.parse(values.detailsText);
-      } catch {
-        parsedDetails = { message: values.detailsText };
+  // Create mutation wrapper for payload transformation
+  const mutationWrapper = {
+    ...createEvent,
+    mutate: (values: CreateSecurityEventDto & { detailsText?: string }, options?: any) => {
+      // Parse details from the text field
+      let parsedDetails: Record<string, unknown> = {};
+      if (values.detailsText && values.detailsText.trim()) {
+        try {
+          parsedDetails = JSON.parse(values.detailsText);
+        } catch {
+          parsedDetails = { message: values.detailsText };
+        }
+      } else {
+        parsedDetails = { message: 'Manual security event' };
       }
-    } else {
-      parsedDetails = { message: 'Manual security event' };
-    }
 
-    createEvent(
-      {
+      const payload = {
         ...values,
         details: parsedDetails,
         virtualKeyId: values.virtualKeyId || undefined,
         ipAddress: values.ipAddress || undefined,
         statusCode: values.statusCode || undefined,
-      },
-      {
-        onSuccess: () => {
-          form.reset();
-          onClose();
-        },
-      }
-    );
+      };
+
+      createEvent.mutate(payload, options);
+    },
   };
 
   return (
-    <Modal
+    <FormModal
       opened={opened}
       onClose={onClose}
       title="Create Security Event"
       size="md"
+      form={form}
+      mutation={mutationWrapper}
+      entityType="security event"
+      submitText="Create Event"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      {(form) => (
         <Stack>
           <Select
             label="Event Type"
@@ -152,17 +152,8 @@ export function CreateSecurityEventModal({ opened, onClose }: CreateSecurityEven
           <Text size="xs" c="dimmed">
             Note: If the backend endpoint is not yet implemented, this operation may fail with a 404 or 501 error.
           </Text>
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose} disabled={isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={isPending}>
-              Create Event
-            </Button>
-          </Group>
         </Stack>
-      </form>
-    </Modal>
+      )}
+    </FormModal>
   );
 }

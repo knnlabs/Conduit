@@ -7,7 +7,6 @@ import {
   Group,
   Button,
   Card,
-  Table,
   Badge,
   TextInput,
   Select,
@@ -23,6 +22,8 @@ import {
   SimpleGrid,
   ThemeIcon,
 } from '@mantine/core';
+import { BaseTable } from '@/components/common/BaseTable';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 import {
   IconPlus,
   IconRefresh,
@@ -362,98 +363,135 @@ export default function IpFilteringPage() {
             <div style={{ position: 'relative' }}>
               <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>IP Address</Table.Th>
-                    <Table.Th>Action</Table.Th>
-                    <Table.Th>Type</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Reason</Table.Th>
-                    <Table.Th>Created</Table.Th>
-                    <Table.Th>Expires</Table.Th>
-                    <Table.Th>Actions</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filteredRules.map((rule) => (
-                    <Table.Tr key={rule.id}>
-                      <Table.Td>
-                        <Text fw={500}>{rule.ipAddress}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge color={getRuleActionColor(rule.action)} variant="light">
-                          {rule.action.toUpperCase()}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge variant="light">
-                          {rule.type}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Badge color={getRuleStatusColor(rule.isActive)} variant="light">
-                            {rule.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                          <Switch
-                            size="xs"
-                            checked={rule.isActive}
-                            onChange={(event) => handleToggleRule(rule, event.currentTarget.checked)}
-                          />
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm" style={{ maxWidth: 200 }} truncate>
-                          {rule.reason}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {new Date(rule.createdAt).toLocaleDateString()}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {rule.expiresAt ? 
-                            new Date(rule.expiresAt).toLocaleDateString() : 
-                            'Never'
-                          }
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <Tooltip label="Edit rule">
-                            <ActionIcon
-                              variant="subtle"
-                              size="sm"
-                              onClick={() => handleEditRule(rule)}
-                            >
-                              <IconEdit size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Delete rule">
-                            <ActionIcon
-                              variant="subtle"
-                              size="sm"
-                              color="red"
-                              onClick={() => handleDeleteRule(rule)}
-                            >
-                              <IconTrash size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-
-              {filteredRules.length === 0 && !isLoading && (
-                <Text c="dimmed" ta="center" py="xl">
-                  No IP filtering rules found. Create your first rule to get started.
-                </Text>
-              )}
+              <BaseTable
+                data={filteredRules}
+                columns={[
+                  {
+                    key: 'ipAddress',
+                    label: 'IP Address',
+                    sortable: true,
+                    render: (rule) => (
+                      <Text fw={500}>{rule.ipAddress}</Text>
+                    ),
+                  },
+                  {
+                    key: 'action',
+                    label: 'Action',
+                    sortable: true,
+                    filterable: true,
+                    filterType: 'select',
+                    render: (rule) => (
+                      <StatusIndicator
+                        status={rule.action === 'allow' ? 'enabled' : 'disabled'}
+                        variant="badge"
+                        size="sm"
+                        context={rule.action.toUpperCase()}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'type',
+                    label: 'Type',
+                    sortable: true,
+                    filterable: true,
+                    filterType: 'select',
+                    render: (rule) => (
+                      <Badge variant="light">
+                        {rule.type}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'isActive',
+                    label: 'Status',
+                    sortable: true,
+                    render: (rule) => (
+                      <Group gap="xs">
+                        <StatusIndicator
+                          status={rule.isActive ? 'enabled' : 'disabled'}
+                          variant="badge"
+                          size="sm"
+                        />
+                        <Switch
+                          size="xs"
+                          checked={rule.isActive}
+                          onChange={(event) => handleToggleRule(rule, event.currentTarget.checked)}
+                        />
+                      </Group>
+                    ),
+                  },
+                  {
+                    key: 'reason',
+                    label: 'Reason',
+                    render: (rule) => (
+                      <Text size="sm" style={{ maxWidth: 200 }} truncate>
+                        {rule.reason}
+                      </Text>
+                    ),
+                  },
+                  {
+                    key: 'createdAt',
+                    label: 'Created',
+                    sortable: true,
+                    sortType: 'date',
+                    render: (rule) => (
+                      <Text size="sm">
+                        {new Date(rule.createdAt).toLocaleDateString()}
+                      </Text>
+                    ),
+                  },
+                  {
+                    key: 'expiresAt',
+                    label: 'Expires',
+                    sortable: true,
+                    sortType: 'date',
+                    render: (rule) => (
+                      <Text size="sm">
+                        {rule.expiresAt ? 
+                          new Date(rule.expiresAt).toLocaleDateString() : 
+                          'Never'
+                        }
+                      </Text>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (rule) => (
+                      <Group gap="xs">
+                        <Tooltip label="Edit rule">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => handleEditRule(rule)}
+                          >
+                            <IconEdit size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Delete rule">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            color="red"
+                            onClick={() => handleDeleteRule(rule)}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    ),
+                  },
+                ]}
+                searchable={false}
+                pagination={{
+                  page: 1,
+                  pageSize: 20,
+                  total: filteredRules.length,
+                  onPageChange: () => {},
+                  onPageSizeChange: () => {},
+                }}
+                emptyMessage="No IP filtering rules found. Create your first rule to get started."
+              />
             </div>
           </Card>
         </Tabs.Panel>

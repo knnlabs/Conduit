@@ -46,6 +46,7 @@ import { notifications } from '@mantine/notifications';
 import { CostChart, type ChartDataItem } from '@/components/charts/CostChart';
 import { formatters } from '@/lib/utils/formatters';
 import { badgeHelpers } from '@/lib/utils/badge-helpers';
+import { BaseTable, type ColumnDef } from '@/components/common/BaseTable';
 
 export default function UsageAnalyticsPage() {
   const [timeRangeValue, setTimeRangeValue] = useState('24h');
@@ -520,80 +521,100 @@ export default function UsageAnalyticsPage() {
             <div style={{ position: 'relative' }}>
               <LoadingOverlay visible={keyUsageLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
               
-              <Card withBorder>
-                <Card.Section p="md" withBorder>
-                  <Group justify="space-between">
-                    <Text fw={600}>User Analytics</Text>
-                    <Button
-                      size="xs"
-                      variant="light"
-                      leftSection={<IconDownload size={14} />}
-                      onClick={() => handleExport('users')}
-                    >
-                      Export
-                    </Button>
-                  </Group>
-                </Card.Section>
-                <Card.Section>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Virtual Key</Table.Th>
-                        <Table.Th>Requests</Table.Th>
-                        <Table.Th>Tokens</Table.Th>
-                        <Table.Th>Avg Latency</Table.Th>
-                        <Table.Th>Error Rate</Table.Th>
-                        <Table.Th>Top Models</Table.Th>
-                        <Table.Th>Last Activity</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {(userAnalytics || []).map((user: any) => (
-                        <Table.Tr key={user.virtualKeyId}>
-                          <Table.Td>
-                            <Text fw={500}>{user.virtualKeyName}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge variant="light">
-                              {formatters.number(user.totalRequests)}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge variant="light">
-                              {formatters.number(user.totalTokens)}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>{formatters.responseTime(user.averageLatency)}</Table.Td>
-                          <Table.Td>
-                            <Badge color={getStatusColor(user.errorRate, 'error')} variant="light">
-                              {user.errorRate.toFixed(1)}%
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              {user.topModels.slice(0, 2).map((model: any) => (
-                                <Badge key={model} size="xs" variant="light">
-                                  {model}
-                                </Badge>
-                              ))}
-                              {user.topModels.length > 2 && (
-                                <Badge size="xs" variant="light" color="gray">
-                                  +{user.topModels.length - 2}
-                                </Badge>
-                              )}
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm" c="dimmed">
-                              {formatters.date(user.lastActivity)}
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Card.Section>
-              </Card>
+              <BaseTable
+                data={userAnalytics || []}
+                isLoading={keyUsageLoading}
+                searchable
+                searchPlaceholder="Search virtual keys..."
+                onRefresh={handleRefresh}
+                emptyMessage="No user analytics data available"
+                columns={[
+                  {
+                    key: 'virtualKeyName',
+                    label: 'Virtual Key',
+                    sortable: true,
+                    filterable: true,
+                    render: (user) => <Text fw={500}>{user.virtualKeyName}</Text>
+                  },
+                  {
+                    key: 'totalRequests',
+                    label: 'Requests',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (user) => (
+                      <Badge variant="light">
+                        {formatters.number(user.totalRequests)}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'totalTokens',
+                    label: 'Tokens',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (user) => (
+                      <Badge variant="light">
+                        {formatters.number(user.totalTokens)}
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'averageLatency',
+                    label: 'Avg Latency',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (user) => formatters.responseTime(user.averageLatency)
+                  },
+                  {
+                    key: 'errorRate',
+                    label: 'Error Rate',
+                    sortable: true,
+                    sortType: 'number',
+                    render: (user) => (
+                      <Badge color={getStatusColor(user.errorRate, 'error')} variant="light">
+                        {user.errorRate.toFixed(1)}%
+                      </Badge>
+                    )
+                  },
+                  {
+                    key: 'topModels',
+                    label: 'Top Models',
+                    render: (user) => (
+                      <Group gap="xs">
+                        {user.topModels.slice(0, 2).map((model: any) => (
+                          <Badge key={model} size="xs" variant="light">
+                            {model}
+                          </Badge>
+                        ))}
+                        {user.topModels.length > 2 && (
+                          <Badge size="xs" variant="light" color="gray">
+                            +{user.topModels.length - 2}
+                          </Badge>
+                        )}
+                      </Group>
+                    )
+                  },
+                  {
+                    key: 'lastActivity',
+                    label: 'Last Activity',
+                    sortable: true,
+                    sortType: 'date',
+                    render: (user) => (
+                      <Text size="sm" c="dimmed">
+                        {formatters.date(user.lastActivity)}
+                      </Text>
+                    )
+                  }
+                ] as ColumnDef<any>[]}
+                customActions={[
+                  {
+                    label: 'Export',
+                    icon: IconDownload,
+                    onClick: () => handleExport('users'),
+                    tooltip: 'Export user analytics'
+                  }
+                ]}
+              />
             </div>
           </Tabs.Panel>
 

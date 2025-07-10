@@ -1,34 +1,22 @@
 'use client';
 
 import {
-  Table,
   Group,
   Text,
   ActionIcon,
   Badge,
-  Menu,
-  rem,
-  Box,
-  Paper,
-  LoadingOverlay,
-  Alert,
   Tooltip,
   Stack,
   Code,
 } from '@mantine/core';
 import {
-  IconDots,
-  IconEdit,
-  IconTrash,
   IconTestPipe,
-  IconAlertCircle,
   IconArrowRight,
   IconRefresh,
 } from '@tabler/icons-react';
 import { useModelMappings, useDeleteModelMapping } from '@/hooks/useConduitAdmin';
-import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
-import { formatters } from '@/lib/utils/formatters';
+import { BaseTable, type ColumnDef, type ActionDef, type DeleteConfirmation } from '@/components/common/BaseTable';
+import { useTableData, tableFormatters } from '@/hooks/useTableData';
 import { badgeHelpers } from '@/lib/utils/badge-helpers';
 
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
@@ -41,45 +29,19 @@ interface ModelMappingsTableProps {
 }
 
 export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showProvider = true }: ModelMappingsTableProps) {
-  const { data: defaultMappings, isLoading, error, refetch } = useModelMappings();
+  const queryResult = useModelMappings();
   const deleteModelMapping = useDeleteModelMapping();
   
+  const { handleRefresh, handleDelete } = useTableData({
+    queryResult,
+    deleteMutation: deleteModelMapping,
+    refreshMessage: 'Model mappings refreshed',
+    deleteSuccessMessage: 'Model mapping deleted successfully',
+    deleteErrorMessage: 'Failed to delete model mapping',
+  });
+
   // Use provided data or default to fetched data
-  // Ensure modelMappings is always an array
-  const modelMappings = Array.isArray(data) ? data : Array.isArray(defaultMappings) ? defaultMappings : [];
-
-  const handleDelete = (mapping: ModelProviderMappingDto) => {
-    modals.openConfirmModal({
-      title: 'Delete Model Mapping',
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete the mapping for &quot;{mapping.modelId}&quot;? 
-          This will prevent routing requests to this model configuration.
-        </Text>
-      ),
-      labels: { confirm: 'Delete', cancel: 'Cancel' },
-      confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await deleteModelMapping.mutateAsync(mapping.id.toString());
-      },
-    });
-  };
-
-  const handleTestLocal = (mapping: ModelProviderMappingDto) => {
-    if (onTest) {
-      onTest(mapping);
-    }
-  };
-
-  const handleRefresh = () => {
-    refetch();
-    notifications.show({
-      title: 'Refreshing',
-      message: 'Model mappings refreshed',
-      color: 'blue',
-    });
-  };
-
+  const modelMappings = data || queryResult.data || [];
 
   const getCapabilityColor = (capability: string) => {
     const colors: Record<string, string> = {
@@ -95,21 +57,50 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
     return colors[capability.toLowerCase()] || 'gray';
   };
 
-  if (error) {
-    return (
-      <Alert 
-        icon={<IconAlertCircle size={16} />} 
-        title="Error loading model mappings"
-        color="red"
-      >
-        {error.message || 'Failed to load model mappings. Please try again.'}
-      </Alert>
-    );
-  }
+  const renderCapabilities = (mapping: ModelProviderMappingDto) => {
+    // Build capabilities array from boolean flags
+    const capabilities = [];
+    if (mapping.supportsVision) capabilities.push('vision');
+    if (mapping.supportsImageGeneration) capabilities.push('image_generation');
+    if (mapping.supportsAudioTranscription) capabilities.push('audio_transcription');
+    if (mapping.supportsTextToSpeech) capabilities.push('text_to_speech');
+    if (mapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
+    if (mapping.supportsFunctionCalling) capabilities.push('function_calling');
+    if (mapping.supportsStreaming) capabilities.push('streaming');
+    
+    const badges = [];
+    for (let i = 0; i < Math.min(3, capabilities.length); i++) {
+      const capability = capabilities[i];
+      badges.push(
+        <Badge 
+          key={capability}
+          size="xs" 
+          variant="dot" 
+          color={getCapabilityColor(capability)}
+        >
+          {capability}
+        </Badge>
+      );
+    }
+    
+    if (capabilities.length > 3) {
+      badges.push(
+        <Tooltip key="more" label={capabilities.slice(3).join(', ')}>
+          <Badge size="xs" variant="light" color="gray">
+            +{capabilities.length - 3}
+          </Badge>
+        </Tooltip>
+      );
+    }
+    
+    return <Group gap={4}>{badges}</Group>;
+  };
 
-  const rows = modelMappings.map((mapping: ModelProviderMappingDto) => (
-    <Table.Tr key={mapping.id}>
-      <Table.Td>
+  const columns: ColumnDef<ModelProviderMappingDto>[] = [
+    {
+      key: 'mapping',
+      label: 'Model Mapping',
+      render: (mapping) => (
         <Stack gap={4}>
           <Group gap="xs">
             <Code>{mapping.modelId}</Code>
@@ -120,163 +111,84 @@ export function ModelMappingsTable({ onEdit, onTest, data, showProvider: _showPr
             via {mapping.providerId}
           </Text>
         </Stack>
-      </Table.Td>
-
-      <Table.Td>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (mapping) => (
         <Badge 
           color={badgeHelpers.getStatusColor(mapping.isEnabled)} 
           variant={mapping.isEnabled ? 'light' : 'filled'}
         >
           {badgeHelpers.formatStatus(mapping.isEnabled)}
         </Badge>
-      </Table.Td>
-
-      <Table.Td>
+      ),
+    },
+    {
+      key: 'priority',
+      label: 'Priority',
+      render: (mapping) => (
         <Text size="sm" fw={500}>
           {mapping.priority}
         </Text>
-      </Table.Td>
-
-      <Table.Td>
-        <Group gap={4}>
-          {(() => {
-            // Build capabilities array from boolean flags
-            const capabilities = [];
-            if (mapping.supportsVision) capabilities.push('vision');
-            if (mapping.supportsImageGeneration) capabilities.push('image_generation');
-            if (mapping.supportsAudioTranscription) capabilities.push('audio_transcription');
-            if (mapping.supportsTextToSpeech) capabilities.push('text_to_speech');
-            if (mapping.supportsRealtimeAudio) capabilities.push('realtime_audio');
-            if (mapping.supportsFunctionCalling) capabilities.push('function_calling');
-            if (mapping.supportsStreaming) capabilities.push('streaming');
-            
-            const badges = [];
-            for (let i = 0; i < Math.min(3, capabilities.length); i++) {
-              const capability = capabilities[i];
-              badges.push(
-                <Badge 
-                  key={capability}
-                  size="xs" 
-                  variant="dot" 
-                  color={getCapabilityColor(capability)}
-                >
-                  {capability}
-                </Badge>
-              );
-            }
-            
-            if (capabilities.length > 3) {
-              badges.push(
-                <Tooltip key="more" label={capabilities.slice(3).join(', ')}>
-                  <Badge size="xs" variant="light" color="gray">
-                    +{capabilities.length - 3}
-                  </Badge>
-                </Tooltip>
-              );
-            }
-            
-            return badges;
-          })()}
-        </Group>
-      </Table.Td>
-
-      <Table.Td>
-        <Text size="sm">-</Text>
-      </Table.Td>
-
-      <Table.Td>
+      ),
+    },
+    {
+      key: 'capabilities',
+      label: 'Capabilities',
+      render: renderCapabilities,
+    },
+    {
+      key: 'requests',
+      label: 'Requests',
+      render: () => <Text size="sm">-</Text>,
+    },
+    {
+      key: 'lastUsed',
+      label: 'Last Used',
+      render: (mapping) => (
         <Text size="sm" c="dimmed">
-          {formatters.date(mapping.updatedAt)}
+          {tableFormatters.date(mapping.updatedAt)}
         </Text>
-      </Table.Td>
+      ),
+    },
+  ];
 
-      <Table.Td>
-        <Group gap={0} justify="flex-end">
-          <Tooltip label="Test model">
-            <ActionIcon 
-              variant="subtle" 
-              color="blue"
-              onClick={() => handleTestLocal(mapping)}
-            >
-              <IconTestPipe size={16} />
-            </ActionIcon>
-          </Tooltip>
-          
-          <Menu shadow="md" width={200}>
-            <Menu.Target>
-              <ActionIcon variant="subtle" color="gray">
-                <IconDots size={16} />
-              </ActionIcon>
-            </Menu.Target>
+  const customActions: ActionDef<ModelProviderMappingDto>[] = [
+    {
+      label: 'Test model',
+      icon: IconTestPipe,
+      onClick: (mapping) => onTest?.(mapping),
+      color: 'blue',
+    },
+    {
+      label: 'Refresh capabilities',
+      icon: IconRefresh,
+      onClick: () => handleRefresh(),
+      color: 'blue',
+    },
+  ];
 
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<IconEdit style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => onEdit?.(mapping)}
-              >
-                Edit
-              </Menu.Item>
-              
-              <Menu.Item
-                leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => handleTestLocal(mapping)}
-              >
-                Test model
-              </Menu.Item>
-              
-              <Menu.Item
-                leftSection={<IconRefresh style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => handleRefresh()}
-              >
-                Refresh capabilities
-              </Menu.Item>
-              
-              <Menu.Divider />
-              
-              <Menu.Item
-                color="red"
-                leftSection={<IconTrash style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => handleDelete(mapping)}
-              >
-                Delete
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  ));
+  const deleteConfirmation: DeleteConfirmation<ModelProviderMappingDto> = {
+    title: 'Delete Model Mapping',
+    message: (mapping) => 
+      `Are you sure you want to delete the mapping for "${mapping.modelId}"? This will prevent routing requests to this model configuration.`,
+  };
 
   return (
-    <Paper withBorder radius="md">
-      <Box pos="relative">
-        <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-        
-        <Table.ScrollContainer minWidth={900}>
-          <Table verticalSpacing="sm" horizontalSpacing="md">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Model Mapping</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Priority</Table.Th>
-                <Table.Th>Capabilities</Table.Th>
-                <Table.Th>Requests</Table.Th>
-                <Table.Th>Last Used</Table.Th>
-                <Table.Th></Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-
-        {modelMappings.length === 0 && (
-          <Box p="xl" style={{ textAlign: 'center' }}>
-            <Text c="dimmed">No model mappings configured. Add your first mapping to start routing requests.</Text>
-          </Box>
-        )}
-      </Box>
-    </Paper>
+    <BaseTable
+      data={modelMappings}
+      isLoading={queryResult.isLoading}
+      error={queryResult.error}
+      columns={columns}
+      onEdit={onEdit}
+      onDelete={(mapping) => handleDelete(mapping.id.toString())}
+      onRefresh={handleRefresh}
+      customActions={customActions}
+      deleteConfirmation={deleteConfirmation}
+      emptyMessage="No model mappings configured. Add your first mapping to start routing requests."
+      minWidth={900}
+    />
   );
 }

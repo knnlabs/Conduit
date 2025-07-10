@@ -38,6 +38,8 @@ import {
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useRequestLogs, useExportRequestLogs, type RequestLog } from '@/hooks/api/useRequestLogsApi';
+import { BaseTable, type ColumnDef } from '@/components/common/BaseTable';
+import { StatusIndicator } from '@/components/common/StatusIndicator';
 
 interface RequestLogFilters {
   search: string;
@@ -123,23 +125,25 @@ export default function RequestLogsPage() {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  // Convert response time to status for color coding
+  const getResponseTimeStatus = (responseTime: number): 'healthy' | 'warning' | 'unhealthy' => {
+    if (responseTime < 500) return 'healthy';
+    if (responseTime < 1000) return 'warning';
+    return 'unhealthy';
+  };
+  
+  // Convert request log status to SystemStatusType
+  const mapLogStatusToSystemStatus = (status: string): 'completed' | 'failed' | 'warning' => {
     switch (status) {
       case 'success':
-        return 'green';
+        return 'completed';
       case 'error':
-        return 'red';
+        return 'failed';
       case 'timeout':
-        return 'orange';
+        return 'warning';
       default:
-        return 'gray';
+        return 'failed';
     }
-  };
-
-  const getResponseTimeColor = (responseTime: number) => {
-    if (responseTime < 500) return 'green';
-    if (responseTime < 1000) return 'yellow';
-    return 'red';
   };
 
   const formatFileSize = (bytes: number) => {
@@ -333,121 +337,160 @@ export default function RequestLogsPage() {
       </Card>
 
       {/* Logs Table */}
-      <Card>
-        <div style={{ position: 'relative' }}>
-          <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-          
-          {error && (
-            <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
-              <Text fw={500}>Error loading request logs</Text>
-              <Text size="sm">{(error as Error).message}</Text>
-            </Alert>
-          )}
-          
-          <ScrollArea>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Timestamp</Table.Th>
-                  <Table.Th>Type</Table.Th>
-                  <Table.Th>Model</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Duration</Table.Th>
-                  <Table.Th>Virtual Key</Table.Th>
-                  <Table.Th>Provider</Table.Th>
-                  <Table.Th>IP Address</Table.Th>
-                  <Table.Th>Tokens</Table.Th>
-                  <Table.Th>Cost</Table.Th>
-                  <Table.Th>Actions</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {logs.map((log: RequestLog) => (
-                  <Table.Tr key={log.id}>
-                    <Table.Td>
-                      <Text size="xs">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" size="sm">
-                        POST
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" style={{ maxWidth: 200 }} truncate>
-                        {log.model || 'N/A'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={getStatusColor(log.status)} variant="light">
-                        {log.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={getResponseTimeColor(log.duration)} variant="light">
-                        {log.duration}ms
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" style={{ maxWidth: 120 }} truncate>
-                        {log.virtualKeyName || 'N/A'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm">{log.provider || 'N/A'}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm">{log.ipAddress}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="xs">
-                        {log.inputTokens} / {log.outputTokens} tokens
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm">
-                        {log.cost ? formatCurrency(log.cost) : 'N/A'}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Tooltip label="View details">
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLog(log);
-                            openModal();
-                          }}
-                        >
-                          <IconEye size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-
-          {logs.length === 0 && !isLoading && (
-            <Text c="dimmed" ta="center" py="xl">
-              No request logs found. Try adjusting your filters.
-            </Text>
-          )}
-        </div>
-
-        {totalPages > 1 && (
-          <Group justify="center" mt="lg">
-            <Pagination
-              value={currentPage}
-              onChange={setCurrentPage}
-              total={totalPages}
-              size="sm"
-            />
-          </Group>
-        )}
-      </Card>
+      <BaseTable
+        data={logs}
+        isLoading={isLoading}
+        error={error}
+        searchable
+        searchPlaceholder="Search logs by model, IP, virtual key..."
+        onRefresh={() => refetch()}
+        emptyMessage="No request logs found. Try adjusting your filters."
+        minWidth={1200}
+        pagination={{
+          page: currentPage,
+          pageSize: 20,
+          total: totalPages * 20, // Approximate total from API
+          onPageChange: setCurrentPage,
+          onPageSizeChange: (size) => {
+            // Could extend API to support dynamic page sizes
+            console.log('Page size change requested:', size);
+          },
+          pageSizeOptions: ['10', '20', '50']
+        }}
+        columns={[
+          {
+            key: 'timestamp',
+            label: 'Timestamp',
+            sortable: true,
+            sortType: 'date',
+            width: '140px',
+            render: (log) => (
+              <Text size="xs">
+                {new Date(log.timestamp).toLocaleString()}
+              </Text>
+            )
+          },
+          {
+            key: 'method',
+            label: 'Type',
+            width: '80px',
+            render: () => (
+              <Badge variant="light" size="sm">
+                POST
+              </Badge>
+            )
+          },
+          {
+            key: 'model',
+            label: 'Model',
+            sortable: true,
+            filterable: true,
+            width: '160px',
+            render: (log) => (
+              <Text size="sm" style={{ maxWidth: 150 }} truncate>
+                {log.model || 'N/A'}
+              </Text>
+            )
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            sortable: true,
+            filterable: true,
+            width: '100px',
+            render: (log) => (
+              <StatusIndicator
+                status={mapLogStatusToSystemStatus(log.status)}
+                variant="badge"
+                size="sm"
+              />
+            )
+          },
+          {
+            key: 'duration',
+            label: 'Duration',
+            sortable: true,
+            sortType: 'number',
+            width: '100px',
+            render: (log) => (
+              <StatusIndicator
+                status={getResponseTimeStatus(log.duration)}
+                variant="badge"
+                size="sm"
+                context={`${log.duration}ms`}
+              />
+            )
+          },
+          {
+            key: 'virtualKeyName',
+            label: 'Virtual Key',
+            sortable: true,
+            filterable: true,
+            width: '140px',
+            render: (log) => (
+              <Text size="sm" style={{ maxWidth: 120 }} truncate>
+                {log.virtualKeyName || 'N/A'}
+              </Text>
+            )
+          },
+          {
+            key: 'provider',
+            label: 'Provider',
+            sortable: true,
+            filterable: true,
+            width: '100px',
+            render: (log) => (
+              <Text size="sm">{log.provider || 'N/A'}</Text>
+            )
+          },
+          {
+            key: 'ipAddress',
+            label: 'IP Address',
+            sortable: true,
+            filterable: true,
+            width: '120px',
+            render: (log) => (
+              <Text size="sm">{log.ipAddress}</Text>
+            )
+          },
+          {
+            key: 'tokens',
+            label: 'Tokens',
+            sortable: true,
+            sortType: 'number',
+            accessor: (log) => log.inputTokens + log.outputTokens,
+            width: '120px',
+            render: (log) => (
+              <Text size="xs">
+                {log.inputTokens} / {log.outputTokens}
+              </Text>
+            )
+          },
+          {
+            key: 'cost',
+            label: 'Cost',
+            sortable: true,
+            sortType: 'currency',
+            width: '100px',
+            render: (log) => (
+              <Text size="sm">
+                {log.cost ? formatCurrency(log.cost) : 'N/A'}
+              </Text>
+            )
+          }
+        ] as ColumnDef<RequestLog>[]}
+        customActions={[
+          {
+            label: 'View Details',
+            icon: IconEye,
+            onClick: (log) => {
+              setSelectedLog(log);
+              openModal();
+            },
+            tooltip: 'View request details'
+          }
+        ]}
+      />
 
       {/* Log Details Modal */}
       <Modal
@@ -490,15 +533,18 @@ export default function RequestLogsPage() {
                 <Group grow>
                   <div>
                     <Text size="sm" fw={500}>Status</Text>
-                    <Badge color={getStatusColor(selectedLog.status)}>
-                      {selectedLog.status}
-                    </Badge>
+                    <StatusIndicator
+                      status={mapLogStatusToSystemStatus(selectedLog.status)}
+                      variant="badge"
+                    />
                   </div>
                   <div>
                     <Text size="sm" fw={500}>Duration</Text>
-                    <Badge color={getResponseTimeColor(selectedLog.duration)}>
-                      {selectedLog.duration}ms
-                    </Badge>
+                    <StatusIndicator
+                      status={getResponseTimeStatus(selectedLog.duration)}
+                      variant="badge"
+                      context={`${selectedLog.duration}ms`}
+                    />
                   </div>
                 </Group>
 
