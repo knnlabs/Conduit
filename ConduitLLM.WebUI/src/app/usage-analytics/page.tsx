@@ -38,7 +38,6 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
 import { formatters } from '@/lib/utils/formatters';
-<<<<<<< HEAD
 
 interface UsageMetrics {
   totalRequests: number;
@@ -88,10 +87,6 @@ interface EndpointUsage {
   avgDuration: number;
   errorRate: number;
 }
-=======
-import { badgeHelpers } from '@/lib/utils/badge-helpers';
-import { BaseTable, type ColumnDef } from '@/components/common/BaseTable';
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
 export default function UsageAnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
@@ -451,7 +446,6 @@ export default function UsageAnalyticsPage() {
                               {model.provider}
                             </Badge>
                           </Table.Td>
-<<<<<<< HEAD
                           <Table.Td>{formatters.number(model.requests)}</Table.Td>
                           <Table.Td>${formatters.currency(model.cost)}</Table.Td>
                         </Table.Tr>
@@ -464,117 +458,6 @@ export default function UsageAnalyticsPage() {
           </Card>
         </Grid.Col>
       </Grid>
-=======
-                        </Table.Tr>
-                      )}
-                    </Table.Tbody>
-                  </Table>
-                </Card.Section>
-              </Card>
-            </div>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="users" pt="md">
-            <div style={{ position: 'relative' }}>
-              <LoadingOverlay visible={keyUsageLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-              
-              <BaseTable
-                data={userAnalytics || []}
-                isLoading={keyUsageLoading}
-                searchable
-                searchPlaceholder="Search virtual keys..."
-                onRefresh={handleRefresh}
-                emptyMessage="No user analytics data available"
-                columns={[
-                  {
-                    key: 'virtualKeyName',
-                    label: 'Virtual Key',
-                    sortable: true,
-                    filterable: true,
-                    render: (user) => <Text fw={500}>{user.virtualKeyName}</Text>
-                  },
-                  {
-                    key: 'totalRequests',
-                    label: 'Requests',
-                    sortable: true,
-                    sortType: 'number',
-                    render: (user) => (
-                      <Badge variant="light">
-                        {formatters.number(user.totalRequests)}
-                      </Badge>
-                    )
-                  },
-                  {
-                    key: 'totalTokens',
-                    label: 'Tokens',
-                    sortable: true,
-                    sortType: 'number',
-                    render: (user) => (
-                      <Badge variant="light">
-                        {formatters.number(user.totalTokens)}
-                      </Badge>
-                    )
-                  },
-                  {
-                    key: 'averageLatency',
-                    label: 'Avg Latency',
-                    sortable: true,
-                    sortType: 'number',
-                    render: (user) => formatters.responseTime(user.averageLatency)
-                  },
-                  {
-                    key: 'errorRate',
-                    label: 'Error Rate',
-                    sortable: true,
-                    sortType: 'number',
-                    render: (user) => (
-                      <Badge color={getStatusColor(user.errorRate, 'error')} variant="light">
-                        {user.errorRate.toFixed(1)}%
-                      </Badge>
-                    )
-                  },
-                  {
-                    key: 'topModels',
-                    label: 'Top Models',
-                    render: (user) => (
-                      <Group gap="xs">
-                        {user.topModels.slice(0, 2).map((model: any) => (
-                          <Badge key={model} size="xs" variant="light">
-                            {model}
-                          </Badge>
-                        ))}
-                        {user.topModels.length > 2 && (
-                          <Badge size="xs" variant="light" color="gray">
-                            +{user.topModels.length - 2}
-                          </Badge>
-                        )}
-                      </Group>
-                    )
-                  },
-                  {
-                    key: 'lastActivity',
-                    label: 'Last Activity',
-                    sortable: true,
-                    sortType: 'date',
-                    render: (user) => (
-                      <Text size="sm" c="dimmed">
-                        {formatters.date(user.lastActivity)}
-                      </Text>
-                    )
-                  }
-                ] as ColumnDef<any>[]}
-                customActions={[
-                  {
-                    label: 'Export',
-                    icon: IconDownload,
-                    onClick: () => handleExport('users'),
-                    tooltip: 'Export user analytics'
-                  }
-                ]}
-              />
-            </div>
-          </Tabs.Panel>
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
       {/* Virtual Key Usage */}
       <Card withBorder>

@@ -207,6 +207,25 @@ export default function SystemInfoPage() {
     }
   };
 
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'running':
+      case 'healthy':
+      case 'latest':
+        return 'green';
+      case 'degraded':
+      case 'warning':
+      case 'outdated':
+        return 'orange';
+      case 'stopped':
+      case 'unhealthy':
+      case 'error':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
   if (isLoading) {
     return (
       <Stack>

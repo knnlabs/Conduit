@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  Modal,
   TextInput,
-  Switch,
   Button,
   Group,
   Text,
@@ -13,15 +13,9 @@ import {
   Stack,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-<<<<<<< HEAD
 import { notifications } from '@mantine/notifications';
-=======
-import { useCreateProvider, useTestProviderConnection } from '@/hooks/useConduitAdmin';
-import { FormModal } from '@/components/common/FormModal';
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
 import { useState } from 'react';
-import { validators } from '@/lib/utils/form-validators';
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -40,20 +34,18 @@ interface CreateProviderForm {
 const PROVIDER_TYPES = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
-  { value: 'azure', label: 'Azure OpenAI' },
-  { value: 'aws-bedrock', label: 'AWS Bedrock' },
-  { value: 'google', label: 'Google AI' },
-  { value: 'cohere', label: 'Cohere' },
+  { value: 'google', label: 'Google' },
   { value: 'minimax', label: 'MiniMax' },
   { value: 'replicate', label: 'Replicate' },
-  { value: 'huggingface', label: 'Hugging Face' },
-  { value: 'custom', label: 'Custom Provider' },
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'perplexity', label: 'Perplexity' },
+  { value: 'elevenlabs', label: 'ElevenLabs' },
 ];
 
 export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const form = useForm<CreateProviderForm>({
     initialValues: {
@@ -64,21 +56,23 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       isEnabled: true,
     },
     validate: {
-      providerType: validators.required('Provider type'),
-      apiKey: validators.required('API key'),
-      apiEndpoint: (value, values) => {
-        if (values.providerType === 'custom' && !value) {
-          return 'API endpoint is required for custom providers';
-        }
-        if (value && !validators.url(value)) {
-          return 'Please enter a valid URL';
+      providerType: (value) => (!value ? 'Provider type is required' : null),
+      apiKey: (value) => (!value ? 'API key is required' : null),
+      apiEndpoint: (value) => {
+        if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+          return 'API endpoint must start with http:// or https://';
         }
         return null;
       },
     },
   });
 
-<<<<<<< HEAD
+  const handleClose = () => {
+    form.reset();
+    setTestResult(null);
+    onClose();
+  };
+
   const handleSubmit = async (values: CreateProviderForm) => {
     setIsSubmitting(true);
     try {
@@ -90,23 +84,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         organizationId: values.organizationId || undefined,
         isEnabled: values.isEnabled,
       };
-=======
-  // Create mutation wrapper for payload transformation
-  const mutationWrapper = {
-    ...createProvider,
-    mutate: (values: CreateProviderForm, options?: any) => {
-      const payload = {
-        providerName: values.providerType, // Use provider type as the provider name
-        apiKey: values.apiKey.trim(),
-        apiEndpoint: values.apiEndpoint?.trim() || undefined,
-        organizationId: values.organizationId?.trim() || undefined,
-        isEnabled: values.isEnabled,
-      };
-      
-      createProvider.mutate(payload, options);
-    },
-  };
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
 
       const response = await fetch('/api/providers', {
         method: 'POST',
@@ -126,10 +103,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         color: 'green',
       });
 
-      form.reset();
-      setTestResult(null);
+      handleClose();
       onSuccess?.();
-      onClose();
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -151,76 +126,76 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setTestResult(null);
 
     try {
-      // Create a temporary provider to test
-      const tempPayload = {
-        providerName: form.values.providerType,
-        providerType: form.values.providerType,
-        apiKey: form.values.apiKey,
-        apiEndpoint: form.values.apiEndpoint || undefined,
-        organizationId: form.values.organizationId || undefined,
-      };
-
-      // First create the provider temporarily
-      const createResponse = await fetch('/api/providers', {
+      const response = await fetch('/api/providers/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(tempPayload),
+        body: JSON.stringify({
+          providerType: form.values.providerType,
+          apiKey: form.values.apiKey,
+          apiEndpoint: form.values.apiEndpoint || undefined,
+          organizationId: form.values.organizationId || undefined,
+        }),
       });
 
-      if (!createResponse.ok) {
-        throw new Error('Failed to create test provider');
-      }
-
-      const provider = await createResponse.json();
-
-      // Test the connection
-      const testResponse = await fetch(`/api/providers/${provider.id}/test`, {
-        method: 'POST',
-      });
-
-      if (!testResponse.ok) {
-        throw new Error('Failed to test connection');
-      }
-
-      const result = await testResponse.json();
-      
+      const result = await response.json();
       setTestResult({
-        success: result.isSuccessful,
-        message: result.message || (result.isSuccessful ? 'Connection successful!' : 'Connection failed'),
-      });
-
-      // Delete the temporary provider
-      await fetch(`/api/providers/${provider.id}`, {
-        method: 'DELETE',
+        success: response.ok,
+        message: result.message || (response.ok ? 'Connection successful' : 'Connection failed'),
       });
     } catch (error) {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to test connection',
+        message: 'Failed to test connection',
       });
     } finally {
       setIsTesting(false);
     }
   };
 
-  const handleClose = () => {
-    form.reset();
-    setTestResult(null);
-    onClose();
-  };
-
   const getProviderHelp = (providerType: string) => {
     switch (providerType) {
       case 'openai':
-        return 'You can find your API key at platform.openai.com/api-keys';
+        return (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              Get your API key from <Text component="span" fw={600}>platform.openai.com/api-keys</Text>
+            </Text>
+          </Alert>
+        );
       case 'anthropic':
-        return 'Get your API key from console.anthropic.com/settings/keys';
-      case 'azure':
-        return 'You\'ll need your deployment endpoint and API key from Azure Portal';
-      case 'aws-bedrock':
-        return 'Ensure your AWS credentials have Bedrock access configured';
+        return (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              Get your API key from <Text component="span" fw={600}>console.anthropic.com/account/keys</Text>
+            </Text>
+          </Alert>
+        );
+      case 'google':
+        return (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              Get your API key from <Text component="span" fw={600}>makersuite.google.com/app/apikey</Text>
+            </Text>
+          </Alert>
+        );
+      case 'minimax':
+        return (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              Contact MiniMax support for API access. You will need both API key and organization ID.
+            </Text>
+          </Alert>
+        );
+      case 'replicate':
+        return (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              Get your API token from <Text component="span" fw={600}>replicate.com/account/api-tokens</Text>
+            </Text>
+          </Alert>
+        );
       default:
         return null;
     }
@@ -229,21 +204,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   const providerHelp = getProviderHelp(form.values.providerType);
 
   return (
-<<<<<<< HEAD
     <Modal opened={opened} onClose={handleClose} title="Add LLM Provider" size="lg">
       <form onSubmit={form.onSubmit(handleSubmit)}>
-=======
-    <FormModal
-      opened={opened}
-      onClose={onClose}
-      title="Add Provider"
-      form={form}
-      mutation={mutationWrapper}
-      entityType="provider"
-      submitText="Add Provider"
-    >
-      {(form) => (
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
         <Stack gap="md">
           <Select
             label="Provider Type"
@@ -253,39 +215,28 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             {...form.getInputProps('providerType')}
           />
 
-          {providerHelp && (
-            <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-              <Text size="sm">{providerHelp}</Text>
-            </Alert>
-          )}
-
           <PasswordInput
             label="API Key"
-            placeholder="Enter your API key"
+            placeholder="Enter API key"
             required
             {...form.getInputProps('apiKey')}
           />
 
+          {(form.values.providerType === 'minimax') && (
+            <TextInput
+              label="Organization ID"
+              placeholder="Enter organization ID"
+              {...form.getInputProps('organizationId')}
+            />
+          )}
+
           <TextInput
-            label="API Endpoint"
-            placeholder="https://api.example.com"
+            label="Custom API Endpoint"
+            placeholder="https://api.example.com (optional)"
             {...form.getInputProps('apiEndpoint')}
-            description={form.values.providerType === 'custom' ? 'Required for custom providers' : 'Optional - leave empty for default'}
           />
 
-          <TextInput
-            label="Organization ID"
-            placeholder="Optional organization identifier"
-            {...form.getInputProps('organizationId')}
-          />
-
-          <Switch
-            label="Enable Provider"
-            description="Provider will be available for use immediately"
-            {...form.getInputProps('isEnabled', { type: 'checkbox' })}
-          />
-
-          <Divider />
+          {providerHelp}
 
           {testResult && (
             <Alert
@@ -296,7 +247,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
               <Text size="sm">{testResult.message}</Text>
             </Alert>
           )}
-<<<<<<< HEAD
+
+          <Divider />
 
           <Group justify="space-between">
             <Button
@@ -307,7 +259,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             >
               Test Connection
             </Button>
-
             <Group>
               <Button variant="light" onClick={handleClose}>
                 Cancel
@@ -317,10 +268,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
               </Button>
             </Group>
           </Group>
-=======
->>>>>>> 8c6e680a0779d662d0317f0cdb2a8f3f34cd47a6
         </Stack>
-      )}
-    </FormModal>
+      </form>
+    </Modal>
   );
 }

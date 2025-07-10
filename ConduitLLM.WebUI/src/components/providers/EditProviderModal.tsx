@@ -28,7 +28,7 @@ interface Provider {
   healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   modelsAvailable?: number;
-  createdAt: string;
+  createdAt?: string;
   apiEndpoint?: string;
   description?: string;
   organizationId?: string;

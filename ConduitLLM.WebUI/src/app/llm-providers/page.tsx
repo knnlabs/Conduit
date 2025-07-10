@@ -46,7 +46,7 @@ interface Provider {
   isEnabled: boolean;
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  createdAt: string;
+  createdAt?: string;
   endpoint?: string;
   models?: string[];
 }
