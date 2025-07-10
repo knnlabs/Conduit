@@ -27,7 +27,7 @@ async function handler(
     
     // Forward the request
     const headers = new Headers(req.headers);
-    headers.set('X-API-Key', process.env.CONDUIT_WEBUI_AUTH_KEY || '');
+    headers.set('X-API-Key', process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || '');
     
     const response = await fetch(targetUrl, {
       method: req.method,

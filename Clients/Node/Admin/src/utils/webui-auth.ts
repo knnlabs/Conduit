@@ -6,8 +6,8 @@
  * implementations that need to follow the same authentication patterns as the
  * official Conduit WebUI.
  * 
- * The Admin SDK itself uses the CONDUIT_MASTER_KEY for API authentication.
- * The WebUI uses a separate CONDUIT_WEBUI_AUTH_KEY for user authentication.
+ * The Admin SDK itself uses the CONDUIT_API_TO_API_BACKEND_AUTH_KEY for API authentication.
+ * The WebUI uses a separate CONDUIT_ADMIN_LOGIN_PASSWORD for human administrator authentication.
  */
 
 import { createHash, randomBytes } from 'crypto';
@@ -72,7 +72,7 @@ export class WebUIAuthHelpers {
    * Uses constant-time comparison to prevent timing attacks
    * 
    * @param providedKey - The key provided by the user
-   * @param configuredKey - The configured CONDUIT_WEBUI_AUTH_KEY
+   * @param configuredKey - The configured CONDUIT_ADMIN_LOGIN_PASSWORD
    * @returns true if the keys match, false otherwise
    */
   validateAuthKey(providedKey: string, configuredKey: string): boolean {

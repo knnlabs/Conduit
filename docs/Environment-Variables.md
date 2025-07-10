@@ -24,7 +24,7 @@ Each service has its own set of environment variables for configuration.
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for service-to-service communication between backend services. This value should be kept secure. |
 | `ASPNETCORE_ENVIRONMENT` | String | `Production` | Controls the .NET runtime environment. Set to `Development` for detailed error information or `Production` for optimized performance. |
 | `ASPNETCORE_URLS` | String | `http://+:80` | The URL(s) on which the application will listen for HTTP requests inside the container. Use `http://+:80` for Docker. |
 | `CONDUIT_API_BASE_URL` | String | `null` | Specifies the public base URL where the Conduit API and WebUI are accessible, especially when deployed behind a reverse proxy (e.g., `https://conduit.yourdomain.com`). This is used for generating correct absolute URLs. |
@@ -49,8 +49,8 @@ ConduitLLM provides comprehensive security configuration options:
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_WEBUI_AUTH_KEY` | String | *None* | Authentication key for human access to the WebUI. Recommended for production deployments to separate human access from service-to-service authentication. |
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). Also used for WebUI authentication if `CONDUIT_WEBUI_AUTH_KEY` is not set. |
+| `CONDUIT_ADMIN_LOGIN_PASSWORD` | String | *None* | Password for human administrators to log into the WebUI dashboard. Recommended for production deployments to separate human access from service-to-service authentication. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | Backend authentication key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). Also used for WebUI authentication if `CONDUIT_ADMIN_LOGIN_PASSWORD` is not set. |
 | `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. **ONLY works in Development environments**. The application will throw an error and refuse to start if this is enabled in Production or Staging environments. A prominent warning banner is displayed in the UI when enabled. |
 
 ### Failed Login Protection
@@ -152,8 +152,8 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_ADMIN_API_BASE_URL` | String | `http://localhost:5002` | The base URL of the Admin API service. This is the primary variable for configuring Admin API connection. |
 | `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | Legacy alias for `CONDUIT_ADMIN_API_BASE_URL`. Use the BASE_URL version for new deployments. |
 | `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
-| `CONDUIT_WEBUI_AUTH_KEY` | String | *None* | The authentication key required for human access to the WebUI. If not set, falls back to `CONDUIT_MASTER_KEY` for backward compatibility. |
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. Also used for WebUI authentication if `CONDUIT_WEBUI_AUTH_KEY` is not set. |
+| `CONDUIT_ADMIN_LOGIN_PASSWORD` | String | *None* | The password required for human administrators to log into the WebUI. If not set, falls back to `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` for backward compatibility. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for authentication with the Admin API. Also used for WebUI authentication if `CONDUIT_ADMIN_LOGIN_PASSWORD` is not set. |
 | `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in October 2025). |
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
@@ -164,7 +164,7 @@ The following environment variables are specific to the WebUI service:
 
 The WebUI supports an AutoLogin feature that automatically authenticates users when:
 1. The `AutoLogin` global setting is set to `true` in the database
-2. Either `CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_MASTER_KEY` environment variable is set
+2. Either `CONDUIT_ADMIN_LOGIN_PASSWORD` or `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` environment variable is set
 
 To enable AutoLogin in development environments:
 ```bash
@@ -183,7 +183,7 @@ The following environment variables are specific to the Admin API service:
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for securing the Admin API endpoints. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for securing the Admin API endpoints. |
 | `CONDUIT_ADMIN_API_PORT` | Integer | 5001 | The port on which the Admin API service listens. |
 | `CONDUIT_ADMIN_LOG_LEVEL` | String | `Information` | The logging level for the Admin API service (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`). |
 
@@ -194,7 +194,7 @@ The following environment variables are specific to the LLM API service:
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
 | `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | The base URL of the Admin API service. |
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for authentication with the Admin API. |
 | `CONDUIT_LLM_API_PORT` | Integer | 5002 | The port on which the LLM API service listens. |
 | `CONDUIT_LLM_LOG_LEVEL` | String | `Information` | The logging level for the LLM API service. |
 
@@ -213,8 +213,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5000
-      - CONDUIT_WEBUI_AUTH_KEY=your_secure_webui_auth_key_here
-      - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_ADMIN_LOGIN_PASSWORD=your_secure_admin_password_here
+      - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_backend_key_here
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_LLM_API_URL=http://api:5002
       - CONDUIT_USE_ADMIN_API=true
@@ -245,7 +245,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5001
-      - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_backend_key_here
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
       - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
@@ -270,7 +270,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5002
-      - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_backend_key_here
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
@@ -318,8 +318,8 @@ COPY --from=build /app/webui/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5000
-ENV CONDUIT_WEBUI_AUTH_KEY=""
-ENV CONDUIT_MASTER_KEY=""
+ENV CONDUIT_ADMIN_LOGIN_PASSWORD=""
+ENV CONDUIT_API_TO_API_BACKEND_AUTH_KEY=""
 ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
 ENV CONDUIT_LLM_API_URL=http://localhost:5002
 ENV CONDUIT_USE_ADMIN_API=true
@@ -341,7 +341,7 @@ COPY --from=build /app/admin/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5001
-ENV CONDUIT_MASTER_KEY=""
+ENV CONDUIT_API_TO_API_BACKEND_AUTH_KEY=""
 ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
 ENV DATABASE_URL=""
 
@@ -359,7 +359,7 @@ COPY --from=build /app/http/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5002
-ENV CONDUIT_MASTER_KEY=""
+ENV CONDUIT_API_TO_API_BACKEND_AUTH_KEY=""
 ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
 ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
 

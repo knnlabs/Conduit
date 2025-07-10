@@ -8,7 +8,7 @@ export function createServerAdminClient(): ConduitAdminClient {
   const masterKey = config.auth.masterKey;
   
   if (!masterKey) {
-    throw new Error('CONDUIT_MASTER_KEY environment variable is not set');
+    throw new Error('CONDUIT_API_TO_API_BACKEND_AUTH_KEY environment variable is not set');
   }
 
   const adminApiUrl = getAdminApiUrl();

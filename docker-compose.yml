@@ -107,8 +107,8 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      # Using new CONDUIT_MASTER_KEY (old AdminApi__MasterKey still works)
-      CONDUIT_MASTER_KEY: alpha
+      # API-to-API authentication key for backend services
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
@@ -150,7 +150,7 @@ services:
       NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
       # Admin API is accessed through proxy routes, not directly
       # Server-side environment variables
-      CONDUIT_MASTER_KEY: alpha
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       CONDUIT_API_BASE_URL: http://api:8080
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
       # External URLs for SignalR connections from browser
@@ -161,8 +161,8 @@ services:
       # Redis configuration for session storage
       REDIS_URL: "redis://redis:6379"
       REDIS_SESSION_PREFIX: "conduit:session:"
-      # WebUI authentication key (should match CONDUIT_MASTER_KEY)
-      CONDUIT_WEBUI_AUTH_KEY: conduit123
+      # Admin login password for human users to access WebUI dashboard
+      CONDUIT_ADMIN_LOGIN_PASSWORD: alpha
     ports:
       - "3000:3000"
     restart: on-failure

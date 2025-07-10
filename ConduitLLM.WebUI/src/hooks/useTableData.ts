@@ -1,11 +1,25 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
+
+// Simple data fetching result interface (React Query alternative)
+export interface DataResult<T> {
+  data: T | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void | Promise<void>;
+}
+
+// Simple mutation result interface (React Query alternative)
+export interface MutationResult<TData, TError, TVariables> {
+  mutateAsync: (variables: TVariables) => Promise<TData>;
+  isPending: boolean;
+}
 
 export interface UseTableDataOptions<T> {
-  queryResult: UseQueryResult<T[], Error>;
-  deleteMutation?: UseMutationResult<void, Error, string>;
+  queryResult: DataResult<T[]>;
+  deleteMutation?: MutationResult<void, Error, string>;
   refreshMessage?: string;
   deleteSuccessMessage?: string;
   deleteErrorMessage?: string;

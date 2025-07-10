@@ -5,7 +5,7 @@ import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { ErrorClassifier } from '@/lib/utils/error-classifier';
 import { logger } from '@/lib/utils/logging';
 import { notifications } from '@mantine/notifications';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
+// Removed @tanstack/react-query dependency - not needed for basic error boundary
 
 export interface UnifiedErrorBoundaryProps {
   children: ReactNode;
@@ -306,10 +306,16 @@ export class UnifiedErrorBoundary extends Component<
   }
 }
 
-// Hook for using with React Query
+// Hook for using with error boundaries
 export function useUnifiedErrorBoundary() {
-  const { reset } = useQueryErrorResetBoundary();
-  return { reset };
+  // Simple reset functionality without React Query dependency
+  const [resetKey, setResetKey] = React.useState(0);
+  
+  const reset = React.useCallback(() => {
+    setResetKey(prev => prev + 1);
+  }, []);
+  
+  return { reset, resetKey };
 }
 
 // Higher-order component for wrapping components

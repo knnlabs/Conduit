@@ -12,19 +12,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## CRITICAL SECURITY: Authentication Keys
 **NEVER CONFUSE THESE TWO KEYS - THEY SERVE COMPLETELY DIFFERENT PURPOSES:**
 
-1. **CONDUIT_MASTER_KEY**: 
-   - Used by API clients to authenticate with the Core API
-   - Provides access to LLM functionality (chat, completions, embeddings)
-   - This is what end-users/applications use to consume AI services
-   - Configured on the Core API (ConduitLLM.Http)
+1. **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: 
+   - Used by WebUI backend to authenticate with the Core API and Admin API
+   - This is for server-to-server communication between backend services
+   - NOT for end-users or client applications
+   - Configured on the WebUI service to talk to other backend services
 
-2. **CONDUIT_WEBUI_AUTH_KEY**:
-   - Used to authenticate administrators to the WebUI dashboard
+2. **CONDUIT_ADMIN_LOGIN_PASSWORD**:
+   - Used by human administrators to log into the WebUI dashboard
+   - This is a password for human users, NOT an API key
    - Provides access to admin functions (virtual key management, provider configuration)
    - This is for system administrators only
    - Configured on the WebUI service (ConduitLLM.WebUI)
 
-**SECURITY RULE**: These keys must NEVER be the same value and serve completely different authentication boundaries. The MASTER_KEY is for API consumers, the WEBUI_AUTH_KEY is for administrators.
+**SECURITY RULE**: These keys must NEVER be the same value and serve completely different authentication boundaries. The API_TO_API_BACKEND_AUTH_KEY is for backend services, the ADMIN_LOGIN_PASSWORD is for human administrators.
 
 ## Build Commands
 - Build solution: `dotnet build`

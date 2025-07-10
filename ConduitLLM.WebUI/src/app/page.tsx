@@ -24,6 +24,9 @@ import { Alert } from '@mantine/core';
 import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
+// Force dynamic rendering to ensure health check runs at request time
+export const dynamic = 'force-dynamic';
+
 // Server Component - fetches data server-side
 export default async function HomePage() {
   // Fetch health status server-side
@@ -36,7 +39,7 @@ async function getHealthStatus() {
   try {
     // During build time, we don't have access to the admin client
     // Return default values to allow static generation
-    if (!process.env.CONDUIT_WEBUI_AUTH_KEY) {
+    if (!process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY) {
       return {
         adminApi: 'unavailable' as const,
         coreApi: 'unavailable' as const,

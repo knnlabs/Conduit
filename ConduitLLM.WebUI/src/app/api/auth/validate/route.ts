@@ -13,10 +13,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the admin key from environment variable
-    const validAdminKey = process.env.CONDUIT_WEBUI_AUTH_KEY;
+    const validAdminKey = process.env.CONDUIT_ADMIN_LOGIN_PASSWORD;
 
     if (!validAdminKey) {
-      console.error('CONDUIT_WEBUI_AUTH_KEY environment variable is not set');
+      console.error('CONDUIT_ADMIN_LOGIN_PASSWORD environment variable is not set');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }

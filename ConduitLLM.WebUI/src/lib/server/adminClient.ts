@@ -10,13 +10,13 @@ let adminClient: ConduitAdminClient | null = null;
 export function getServerAdminClient(): ConduitAdminClient {
   if (!adminClient) {
     if (!config.auth.masterKey) {
-      throw new Error('CONDUIT_WEBUI_AUTH_KEY is not configured');
+      throw new Error('CONDUIT_API_TO_API_BACKEND_AUTH_KEY is not configured');
     }
 
     // Use internal Docker service name for server-side connections
     const adminUrl = process.env.NODE_ENV === 'production' 
       ? 'http://admin:8080'  // Docker service name
-      : process.env.ADMIN_API_URL || 'http://localhost:8080';
+      : process.env.CONDUIT_ADMIN_API_BASE_URL || 'http://localhost:5002';
 
     adminClient = new ConduitAdminClient({
       masterKey: config.auth.masterKey,

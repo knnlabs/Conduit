@@ -27,8 +27,8 @@ namespace ConduitLLM.Admin.Security
             IConfiguration configuration)
             : base(options, logger, encoder)
         {
-            // Get master key from environment variable first, then fallback to configuration
-            _masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+            // Get backend auth key from environment variable first, then fallback to configuration
+            _masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY") 
                 ?? configuration["AdminApi:MasterKey"];
         }
 
@@ -98,7 +98,7 @@ namespace ConduitLLM.Admin.Security
 
             if (string.IsNullOrEmpty(_masterKey))
             {
-                Logger.LogError("Master key is not configured. Set CONDUIT_MASTER_KEY environment variable.");
+                Logger.LogError("Backend auth key is not configured. Set CONDUIT_API_TO_API_BACKEND_AUTH_KEY environment variable.");
                 return Task.FromResult(AuthenticateResult.Fail("Master key not configured"));
             }
 

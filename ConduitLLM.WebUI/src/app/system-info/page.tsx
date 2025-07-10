@@ -154,8 +154,8 @@ export default function SystemInfoPage() {
 
   const environmentVars: EnvironmentVariable[] = [
     { key: 'NODE_ENV', value: 'production', source: 'env' },
-    { key: 'CONDUIT_MASTER_KEY', value: '••••••••', source: 'env', sensitive: true },
-    { key: 'CONDUIT_WEBUI_AUTH_KEY', value: '••••••••', source: 'env', sensitive: true },
+    { key: 'CONDUIT_API_TO_API_BACKEND_AUTH_KEY', value: '••••••••', source: 'env', sensitive: true },
+    { key: 'CONDUIT_ADMIN_LOGIN_PASSWORD', value: '••••••••', source: 'env', sensitive: true },
     { key: 'DATABASE_URL', value: 'postgresql://...', source: 'env', sensitive: true },
     { key: 'REDIS_URL', value: 'redis://localhost:6379', source: 'env' },
     { key: 'RABBITMQ_URL', value: 'amqp://localhost:5672', source: 'env' },

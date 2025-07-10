@@ -120,7 +120,7 @@ To configure the Admin API client in your deployment:
 # Docker Compose environment variables
 environment:
   CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
-  CONDUIT_MASTER_KEY: your_master_key       # Master key for authentication
+  CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_backend_key  # Backend service authentication
   CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
   CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
 ```
@@ -173,7 +173,7 @@ services:
       - "5001:8080"
     environment:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
       CONDUIT_USE_ADMIN_API: "true"
       CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
     depends_on:
@@ -185,7 +185,7 @@ services:
       - "5002:8080"
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
     depends_on:
       - postgres
 
@@ -300,18 +300,18 @@ When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
 # Format: condt_your-virtual-key-here
 
 # Admin API Authentication
-CONDUIT_MASTER_KEY=your-secure-master-key  # For Admin API service authentication
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-backend-key  # For backend service authentication
 
 # WebUI Authentication (separate from Admin API)
-CONDUIT_WEBUI_AUTH_KEY=your-webui-auth-key  # For WebUI dashboard access
+CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # For human admin login to WebUI
 
 # Legacy format (still supported)
 AdminApi__MasterKey=your-secure-master-key
 ```
 
-**CRITICAL SECURITY:** The `CONDUIT_MASTER_KEY` and `CONDUIT_WEBUI_AUTH_KEY` serve different purposes:
-- **CONDUIT_MASTER_KEY**: Used by Admin API for service-to-service authentication
-- **CONDUIT_WEBUI_AUTH_KEY**: Used by WebUI for administrator dashboard access
+**CRITICAL SECURITY:** The `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` and `CONDUIT_ADMIN_LOGIN_PASSWORD` serve different purposes:
+- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication
+- **CONDUIT_ADMIN_LOGIN_PASSWORD**: Used by human administrators to log into the WebUI dashboard
 - **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
 
 #### Next.js WebUI Configuration
@@ -336,7 +336,7 @@ NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
 #### Security Configuration (WebUI)
 ```bash
 # WebUI Authentication
-CONDUIT_WEBUI_AUTH_KEY=your-webui-auth-key  # Separate key for WebUI access
+CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # Separate password for human admin login
 
 # IP Filtering
 CONDUIT_IP_FILTERING_ENABLED=true
@@ -365,7 +365,7 @@ CONDUIT_IP_BAN_DURATION_MINUTES=30
 
 **Required Configuration:**
 1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
-2. **Separate WebUI authentication** - Set `CONDUIT_WEBUI_AUTH_KEY` distinct from `CONDUIT_MASTER_KEY`
+2. **Separate WebUI authentication** - Set `CONDUIT_ADMIN_LOGIN_PASSWORD` distinct from `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
 3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).

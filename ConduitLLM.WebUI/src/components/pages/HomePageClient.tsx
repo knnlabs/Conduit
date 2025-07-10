@@ -152,6 +152,7 @@ export function HomePageClient({ initialHealthData }: HomePageClientProps) {
       case 'connected': return 'green';
       case 'degraded':
       case 'connecting': return 'yellow';
+      case 'unhealthy':
       case 'unavailable':
       case 'error': return 'red';
       default: return 'gray';
@@ -160,9 +161,10 @@ export function HomePageClient({ initialHealthData }: HomePageClientProps) {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'healthy': return 'Healthy';
-      case 'degraded': return 'Degraded';
-      case 'unavailable': return 'Unavailable';
+      case 'healthy': return 'HEALTHY';
+      case 'degraded': return 'DEGRADED';
+      case 'unhealthy': return 'UNHEALTHY';
+      case 'unavailable': return 'UNAVAILABLE';
       case 'connected': return 'Connected';
       case 'connecting': return 'Connecting...';
       case 'disconnected': return 'Disconnected';
