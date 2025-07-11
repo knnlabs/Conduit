@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
   ProviderCredentialDto,
@@ -38,7 +38,7 @@ const updateHealthConfigSchema = z.object({
   testModel: z.string().optional(),
 });
 
-export class ProviderService extends BaseApiClient {
+export class ProviderService extends FetchBaseApiClient {
   async create(request: CreateProviderCredentialDto): Promise<ProviderCredentialDto> {
     try {
       createProviderSchema.parse(request);

@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type {
   VideoGenerationRequest,
   VideoGenerationResponse,
@@ -24,7 +24,7 @@ export class VideosService {
   // Note: /v1/videos/generations endpoint does not exist - only async generation is supported
   private static readonly ASYNC_GENERATIONS_ENDPOINT = '/v1/videos/generations/async';
 
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * @deprecated The synchronous video generation endpoint does not exist. Use generateAsync() instead.

@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
 import {
   SystemInfoDto,
@@ -19,7 +19,7 @@ import {
 import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
-import { VirtualKeyService } from './VirtualKeyService';
+import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
 import { SettingsService } from './SettingsService';
 // Get SDK version from package.json at build time
 const SDK_VERSION = process.env.npm_package_version || '1.0.0';
@@ -45,7 +45,7 @@ const restoreBackupSchema = z.object({
   }).optional(),
 });
 
-export class SystemService extends BaseApiClient {
+export class SystemService extends FetchBaseApiClient {
   // System Information
   async getSystemInfo(): Promise<SystemInfoDto> {
     const cacheKey = 'system-info';
@@ -260,8 +260,8 @@ export class SystemService extends BaseApiClient {
   async getWebUIVirtualKey(): Promise<string> {
     // Use the same config as the current service instance
     const baseConfig = {
-      baseUrl: (this.axios.defaults.baseURL || '').replace('/api', ''),
-      masterKey: this.axios.defaults.headers[HTTP_HEADERS.X_API_KEY] as string,
+      baseUrl: (this.defaults.baseURL || '').replace('/api', ''),
+      masterKey: this.defaults.headers[HTTP_HEADERS.X_API_KEY] as string,
       logger: this.logger,
       cache: this.cache,
       retries: this.retryConfig,

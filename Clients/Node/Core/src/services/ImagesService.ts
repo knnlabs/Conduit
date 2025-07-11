@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type { 
   ImageGenerationRequest, 
@@ -16,7 +16,7 @@ import { validateImageGenerationRequest } from '../utils/validation';
 import { API_ENDPOINTS, HTTP_METHODS, CONTENT_TYPES } from '../constants';
 
 export class ImagesService {
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * Creates an image given a text prompt.

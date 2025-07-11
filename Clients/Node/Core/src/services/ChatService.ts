@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type { 
   ChatCompletionRequest, 
@@ -11,7 +11,7 @@ import { createTypedStream } from '../utils/streaming';
 import { API_ENDPOINTS, HTTP_METHODS } from '../constants';
 
 export class ChatService {
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   async create(
     request: ChatCompletionRequest & { stream?: false },

@@ -1,4 +1,4 @@
-import { BaseClient } from '../client/BaseClient';
+import { FetchBasedClient } from '../client/FetchBasedClient';
 import {
   MetricsSnapshot,
   DatabaseMetrics,
@@ -18,7 +18,7 @@ import {
  * Service for accessing system metrics and performance data from the Conduit Core API
  */
 export class MetricsService {
-  constructor(private client: BaseClient) {}
+  constructor(private client: FetchBasedClient) {}
 
   /**
    * Gets the current comprehensive metrics snapshot

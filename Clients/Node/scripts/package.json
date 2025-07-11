@@ -1,0 +1,24 @@
+{
+  "name": "@conduit/codegen-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Code generation scripts for Conduit SDK",
+  "scripts": {
+    "generate": "npm run generate:admin && npm run generate:core",
+    "generate:admin": "openapi-typescript http://localhost:5001/swagger/v1/swagger.json -o ../Admin/src/generated/admin-api.ts",
+    "generate:core": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o ../Core/src/generated/core-api.ts",
+    "generate:from-files": "npm run generate:core:file && npm run generate:admin:file",
+    "generate:admin:file": "openapi-typescript ../../../ConduitLLM.Admin/openapi.json -o ../Admin/src/generated/admin-api.ts",
+    "generate:core:file": "openapi-typescript ../../../ConduitLLM.Http/openapi.json -o ../Core/src/generated/core-api.ts",
+    "generate:docker": "npm run generate:admin:docker && npm run generate:core:docker",
+    "generate:admin:docker": "openapi-typescript ${ADMIN_API_URL}/swagger/v1/swagger.json -o ../Admin/src/generated/admin-api.ts",
+    "generate:core:docker": "openapi-typescript ${CORE_API_URL}/swagger/v1/swagger.json -o ../Core/src/generated/core-api.ts",
+    "postgenerate": "npm run format",
+    "format": "prettier --write ../*/src/generated/*.ts",
+    "clean": "rm -rf ../*/src/generated"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4",
+    "prettier": "^3.0.0"
+  }
+}

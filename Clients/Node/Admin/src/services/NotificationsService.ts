@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ApiClientConfig } from '../client/types';
 import {
   NotificationType,
@@ -17,7 +17,7 @@ import type {
 /**
  * Service for managing notifications through the Admin API
  */
-export class NotificationsService extends BaseApiClient {
+export class NotificationsService extends FetchBaseApiClient {
   private readonly baseEndpoint = '/api/notifications';
 
   constructor(config: ApiClientConfig) {

@@ -2,8 +2,8 @@
  * Integration test to verify SDK methods return data directly without wrapper objects
  */
 describe('SDK Response Format Verification', () => {
-  // Mock axios to simulate API responses
-  const mockAxiosCreate = jest.fn(() => ({
+  // Mock fetch to simulate API responses
+  const mockHTTPCreate = jest.fn(() => ({
     get: jest.fn(),
     post: jest.fn(),
     put: jest.fn(),
@@ -12,8 +12,8 @@ describe('SDK Response Format Verification', () => {
   }));
 
   beforeAll(() => {
-    jest.mock('axios', () => ({
-      create: mockAxiosCreate,
+    jest.mock('fetch', () => ({
+      create: mockHTTPCreate,
     }));
   });
 

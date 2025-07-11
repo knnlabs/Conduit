@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   SecurityEvent,
@@ -53,7 +53,7 @@ const threatFiltersSchema = z.object({
 /**
  * Service for managing security events, threat detection, and compliance
  */
-export class SecurityService extends BaseApiClient {
+export class SecurityService extends FetchBaseApiClient {
   /**
    * Get security events with optional filters
    * @param params - Filtering and pagination parameters

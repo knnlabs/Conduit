@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type { 
   ModelsDiscoveryResponse, 
@@ -19,7 +19,7 @@ import type {
 export class DiscoveryService {
   private readonly baseEndpoint = '/v1/discovery';
 
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * Gets all discovered models and their capabilities.

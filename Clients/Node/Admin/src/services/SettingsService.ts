@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   GlobalSettingDto,
@@ -36,7 +36,7 @@ const audioConfigSchema = z.object({
   customSettings: z.record(z.any()).optional(),
 });
 
-export class SettingsService extends BaseApiClient {
+export class SettingsService extends FetchBaseApiClient {
   // Global Settings
   async getGlobalSettings(filters?: SettingFilters): Promise<GlobalSettingDto[]> {
     const params = filters

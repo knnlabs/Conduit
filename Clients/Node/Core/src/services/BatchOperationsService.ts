@@ -1,4 +1,4 @@
-import { BaseClient } from '../client/BaseClient';
+import { FetchBasedClient } from '../client/FetchBasedClient';
 import {
   BatchSpendUpdateRequest,
   BatchVirtualKeyUpdateRequest,
@@ -18,7 +18,7 @@ import {
  * Service for performing batch operations on the Conduit Core API
  */
 export class BatchOperationsService {
-  constructor(private client: BaseClient) {}
+  constructor(private client: FetchBasedClient) {}
 
   /**
    * Performs a batch spend update operation

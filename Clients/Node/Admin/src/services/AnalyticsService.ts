@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
   CostSummaryDto,
@@ -40,7 +40,7 @@ const dateRangeSchema = z.object({
 });
 
 
-export class AnalyticsService extends BaseApiClient {
+export class AnalyticsService extends FetchBaseApiClient {
   // Cost Analytics
   async getCostSummary(dateRange: DateRange): Promise<CostSummaryDto> {
     try {
@@ -424,12 +424,9 @@ export class AnalyticsService extends BaseApiClient {
       includeMetadata: filters.includeMetadata,
     };
 
-    const response = await this.axios.get('/api/analytics/export', {
-      params,
+    return this.get<Blob>('/api/analytics/export', params, {
       responseType: 'blob',
     });
-
-    return response.data as Blob;
   }
 
   async exportAnalytics(

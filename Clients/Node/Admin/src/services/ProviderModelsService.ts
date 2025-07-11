@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 
 export interface ProviderModel {
@@ -35,7 +35,7 @@ export interface ProviderConnectionTestResponse {
 /**
  * Service for managing provider models and testing provider connections
  */
-export class ProviderModelsService extends BaseApiClient {
+export class ProviderModelsService extends FetchBaseApiClient {
 
   /**
    * Get available models for a specific provider

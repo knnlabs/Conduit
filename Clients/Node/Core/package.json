@@ -55,8 +55,7 @@
   },
   "homepage": "https://github.com/knnlabs/Conduit#readme",
   "dependencies": {
-    "@microsoft/signalr": "^8.0.7",
-    "axios": "^1.6.2"
+    "@microsoft/signalr": "^8.0.7"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

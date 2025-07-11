@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   IpFilterDto,
@@ -37,7 +37,7 @@ const ipCheckSchema = z.object({
   endpoint: z.string().optional(),
 });
 
-export class IpFilterService extends BaseApiClient {
+export class IpFilterService extends FetchBaseApiClient {
   async create(request: CreateIpFilterDto): Promise<IpFilterDto> {
     try {
       createFilterSchema.parse(request);

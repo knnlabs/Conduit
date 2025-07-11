@@ -192,8 +192,8 @@ export function isSerializedConduitError(data: unknown): data is ReturnType<Cond
   );
 }
 
-// Type guard for axios-like errors
-function isAxiosError(error: unknown): error is {
+// Type guard for HTTP errors
+function isHttpError(error: unknown): error is {
   response: { status: number; data: unknown; headers: Record<string, string> };
   message: string;
   request?: unknown;
@@ -207,8 +207,8 @@ function isAxiosError(error: unknown): error is {
   );
 }
 
-// Type guard for network errors (axios-specific)
-function isAxiosNetworkError(error: unknown): error is {
+// Type guard for network errors
+function isHttpNetworkError(error: unknown): error is {
   request: unknown;
   message: string;
   code?: string;
@@ -239,7 +239,7 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
     method,
   };
 
-  if (isAxiosError(error)) {
+  if (isHttpError(error)) {
     const { status, data } = error.response;
     const errorData = data as { error?: string; message?: string; details?: unknown } | null;
     const baseMessage = errorData?.error || errorData?.message || error.message;
@@ -275,7 +275,7 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
       default:
         throw new ConduitError(enhancedMessage, status, `HTTP_${status}`, context);
     }
-  } else if (isAxiosNetworkError(error)) {
+  } else if (isHttpNetworkError(error)) {
     const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
     context.code = error.code;
     

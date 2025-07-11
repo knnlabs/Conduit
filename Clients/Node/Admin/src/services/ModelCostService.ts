@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   ModelCost,
@@ -37,7 +37,7 @@ const calculateCostSchema = z.object({
   outputTokens: z.number().min(0),
 });
 
-export class ModelCostService extends BaseApiClient {
+export class ModelCostService extends FetchBaseApiClient {
   async create(modelCost: CreateModelCostDto): Promise<ModelCost> {
     try {
       createCostSchema.parse(modelCost);

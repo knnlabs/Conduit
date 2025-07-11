@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ConduitAdminClient } from '../client/ConduitAdminClient';
+import { FetchConduitAdminClient as ConduitAdminClient } from '../FetchConduitAdminClient';
 import { ConduitError, serializeError, isConduitError } from '../utils/errors';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -114,7 +114,7 @@ export function createAdminRoute<T = any>(
 
       const client = new ConduitAdminClient({
         masterKey: authKey,
-        adminApiUrl: apiUrl,
+        baseUrl: apiUrl,
       });
 
       const searchParams = new URLSearchParams(request.nextUrl.search);

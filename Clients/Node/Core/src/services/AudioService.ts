@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type {
   AudioTranscriptionRequest,
@@ -21,7 +21,7 @@ import type {
  * Service for audio operations including speech-to-text, text-to-speech, and audio translation
  */
 export class AudioService {
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * Transcribes audio to text using speech-to-text models.

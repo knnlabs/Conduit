@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type {
   EmbeddingRequest,
   EmbeddingResponse
@@ -16,7 +16,7 @@ import { API_ENDPOINTS } from '../constants/endpoints';
  * Service for creating text embeddings using the Conduit Core API
  */
 export class EmbeddingsService {
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * Creates embeddings for the given input text(s)

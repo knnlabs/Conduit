@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import { ConduitError } from '../utils/errors';
 import { API_ENDPOINTS, HTTP_METHODS, TASK_STATUS } from '../constants';
@@ -8,7 +8,7 @@ import { API_ENDPOINTS, HTTP_METHODS, TASK_STATUS } from '../constants';
  */
 export class TasksService {
 
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   /**
    * Gets the status of any task by its ID

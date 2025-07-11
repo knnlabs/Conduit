@@ -1,5 +1,6 @@
-// Main client
-export { ConduitAdminClient } from './client/ConduitAdminClient';
+// Main clients - export only fetch-based client
+export { FetchConduitAdminClient as ConduitAdminClient } from './FetchConduitAdminClient';
+export { FetchConduitAdminClient } from './FetchConduitAdminClient';
 
 // Types
 export * from './client/types';
@@ -40,7 +41,7 @@ export type {
 export type { CapabilityTestResult } from './models/modelMapping';
 
 // Services
-export { VirtualKeyService } from './services/VirtualKeyService';
+export { FetchVirtualKeyService as VirtualKeyService } from './services/FetchVirtualKeyService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
@@ -54,9 +55,9 @@ export { AudioConfigurationService } from './services/AudioConfigurationService'
 export { MetricsService } from './services/MetricsService';
 export { ProviderHealthService } from './services/ProviderHealthService';
 export { NotificationsService } from './services/NotificationsService';
-export { DatabaseBackupService } from './services/DatabaseBackupService';
+// export { DatabaseBackupService } from './services/DatabaseBackupService'; // Removed
 export { SignalRService } from './services/SignalRService';
-export { ConnectionService } from './services/ConnectionService';
+// export { ConnectionService } from './services/ConnectionService'; // Removed
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
 export { SecurityService } from './services/SecurityService';
 export { ConfigurationService } from './services/ConfigurationService';
@@ -73,6 +74,13 @@ export * from './utils/webui-auth';
 // Constants
 export * from './constants';
 
-// Default export
-import { ConduitAdminClient } from './client/ConduitAdminClient';
-export default ConduitAdminClient;
+// Re-export generated types
+export type { 
+  components as AdminComponents, 
+  operations as AdminOperations, 
+  paths as AdminPaths 
+} from './generated/admin-api';
+
+// Default export - using FetchConduitAdminClient as the recommended client
+import { FetchConduitAdminClient } from './FetchConduitAdminClient';
+export default FetchConduitAdminClient;

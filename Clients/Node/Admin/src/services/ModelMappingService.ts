@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   ModelProviderMappingDto,
@@ -32,7 +32,7 @@ const updateMappingSchema = z.object({
   metadata: z.string().optional(),
 });
 
-export class ModelMappingService extends BaseApiClient {
+export class ModelMappingService extends FetchBaseApiClient {
   async create(request: CreateModelProviderMappingDto): Promise<ModelProviderMappingDto> {
     try {
       createMappingSchema.parse(request);

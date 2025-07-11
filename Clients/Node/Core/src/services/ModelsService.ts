@@ -1,4 +1,4 @@
-import type { BaseClient } from '../client/BaseClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type { Model, ModelsResponse } from '../models/models';
 
@@ -7,7 +7,7 @@ export class ModelsService {
   private cacheExpiry?: number;
   private readonly cacheTTL = 5 * 60 * 1000; // 5 minutes
 
-  constructor(private readonly client: BaseClient) {}
+  constructor(private readonly client: FetchBasedClient) {}
 
   async list(options?: RequestOptions & { useCache?: boolean }): Promise<Model[]> {
     if (options?.useCache !== false && this.isCacheValid()) {

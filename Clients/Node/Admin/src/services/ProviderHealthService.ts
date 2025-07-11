@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ApiClientConfig } from '../client/types';
 import type {
   ProviderHealthConfigurationDto,
@@ -16,7 +16,7 @@ import type { PagedResponse } from '../models/common';
 /**
  * Service for managing provider health monitoring and status
  */
-export class ProviderHealthService extends BaseApiClient {
+export class ProviderHealthService extends FetchBaseApiClient {
   constructor(config: ApiClientConfig) {
     super(config);
   }

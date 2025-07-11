@@ -1,4 +1,6 @@
-export { ConduitCoreClient } from './client/ConduitCoreClient';
+// Export only the fetch-based client as the main client
+export { FetchConduitCoreClient as ConduitCoreClient } from './FetchConduitCoreClient';
+export { FetchConduitCoreClient } from './FetchConduitCoreClient';
 export type { ClientConfig, RequestOptions, SignalRConfig } from './client/types';
 
 export type {
@@ -154,7 +156,7 @@ export type {
   WaitForHealthOptions,
 } from './models/health';
 
-export { HealthService } from './services/HealthService';
+// export { HealthService } from './services/HealthService'; // Removed - using HealthService from FetchConduitCoreClient
 
 export type {
   MetricsSnapshot,
@@ -201,7 +203,7 @@ export { DiscoveryService } from './services/DiscoveryService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 
 export { SignalRService } from './services/SignalRService';
-export { ConnectionService } from './services/ConnectionService';
+// export { ConnectionService } from './services/ConnectionService'; // Removed - using ConnectionService from FetchConduitCoreClient
 export { TaskHubClient } from './signalr/TaskHubClient';
 export { VideoGenerationHubClient } from './signalr/VideoGenerationHubClient';
 export { ImageGenerationHubClient } from './signalr/ImageGenerationHubClient';

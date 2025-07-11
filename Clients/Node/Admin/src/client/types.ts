@@ -12,8 +12,8 @@ export interface CacheProvider {
   clear(): Promise<void>;
 }
 
-// Type definition for axios errors
-export interface AxiosError {
+// Type definition for HTTP errors
+export interface HttpError {
   code?: string;
   message: string;
   response?: {
@@ -32,7 +32,7 @@ export interface AxiosError {
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
-  retryCondition?: (error: AxiosError) => boolean;
+  retryCondition?: (error: Error | HttpError) => boolean;
 }
 
 import type { SignalRLogLevel, HttpTransportType } from '../models/signalr';
@@ -120,6 +120,7 @@ export interface RequestConfig {
   headers?: Record<string, string>;
   timeout?: number;
   responseType?: 'json' | 'text' | 'blob' | 'arraybuffer' | 'document' | 'stream';
+  signal?: AbortSignal;
 }
 
 export interface ApiClientConfig {

@@ -1,10 +1,10 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { DatabasePoolMetricsResponse, AdminMetricsResponse } from '../models/metrics';
 
 /**
  * Service for accessing Admin API metrics and performance data
  */
-export class MetricsService extends BaseApiClient {
+export class MetricsService extends FetchBaseApiClient {
 
   /**
    * Gets database connection pool metrics for the Admin API

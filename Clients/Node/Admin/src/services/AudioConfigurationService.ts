@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type {
   AudioProviderConfigRequest,
   AudioProviderConfigDto,
@@ -23,7 +23,7 @@ import { ENDPOINTS } from '../constants';
 /**
  * Service for managing audio provider configurations, cost settings, and usage analytics
  */
-export class AudioConfigurationService extends BaseApiClient {
+export class AudioConfigurationService extends FetchBaseApiClient {
   private static readonly PROVIDERS_ENDPOINT = '/admin/audio/providers';
   private static readonly COSTS_ENDPOINT = '/admin/audio/costs';
   private static readonly USAGE_ENDPOINT = '/admin/audio/usage';
