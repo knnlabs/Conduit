@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -18,11 +19,7 @@ export async function GET(
     const mapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     return NextResponse.json(mapping);
   } catch (error) {
-    console.error('Error fetching model mapping:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch model mapping' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -43,11 +40,7 @@ export async function PUT(
     const mapping = await adminClient.modelMappings.update(parseInt(id, 10), body);
     return NextResponse.json(mapping);
   } catch (error) {
-    console.error('Error updating model mapping:', error);
-    return NextResponse.json(
-      { error: 'Failed to update model mapping' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -67,10 +60,6 @@ export async function DELETE(
     await adminClient.modelMappings.deleteById(parseInt(id, 10));
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error deleting model mapping:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete model mapping' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

@@ -24,25 +24,12 @@ import {
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-
-interface VirtualKey {
-  id: string;
-  keyName: string;
-  keyHash: string;
-  currentSpend: number;
-  maxBudget?: number;
-  requestCount: number;
-  lastUsed?: string;
-  isEnabled: boolean;
-  createdAt: string;
-  tags?: string[];
-  description?: string;
-}
+import { UIVirtualKey } from '@/lib/types/mappers';
 
 interface VirtualKeysTableProps {
-  onEdit?: (key: VirtualKey) => void;
-  onView?: (key: VirtualKey) => void;
-  data?: VirtualKey[];
+  onEdit?: (key: UIVirtualKey) => void;
+  onView?: (key: UIVirtualKey) => void;
+  data?: UIVirtualKey[];
   onDelete?: (keyId: string) => void;
 }
 
@@ -58,18 +45,18 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
     });
   };
 
-  const handleDelete = (key: VirtualKey) => {
+  const handleDelete = (key: UIVirtualKey) => {
     modals.openConfirmModal({
       title: 'Delete Virtual Key',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the virtual key &quot;{key.keyName}&quot;? 
+          Are you sure you want to delete the virtual key &quot;{key.name}&quot;? 
           This action cannot be undone and will immediately revoke access for this key.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => onDelete?.(key.id),
+      onConfirm: () => onDelete?.(key.id.toString()),
     });
   };
 
@@ -85,16 +72,16 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
   };
 
   const rows = virtualKeys.map((key) => {
-    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
-    const budgetUsageColor = key.maxBudget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
+    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.budget);
+    const budgetUsageColor = key.budget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
 
     return (
       <Table.Tr key={key.id}>
         <Table.Td>
           <Stack gap={4}>
-            <Text fw={500}>{key.keyName}</Text>
-            {key.description && (
-              <Text size="xs" c="dimmed">{key.description}</Text>
+            <Text fw={500}>{key.name}</Text>
+            {key.metadata && (
+              <Text size="xs" c="dimmed">{JSON.stringify(key.metadata)}</Text>
             )}
           </Stack>
         </Table.Td>
@@ -102,13 +89,13 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         <Table.Td>
           <Group gap="xs">
             <Text size="sm" style={{ fontFamily: 'monospace' }}>
-              {key.keyHash.substring(0, 12)}...
+              {key.key.substring(0, 12)}...
             </Text>
             <Tooltip label="Copy full key">
               <ActionIcon
                 variant="subtle"
                 size="xs"
-                onClick={() => handleCopyKey(key.keyHash)}
+                onClick={() => handleCopyKey(key.key)}
               >
                 <IconCopy size={14} />
               </ActionIcon>
@@ -120,13 +107,13 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
           <Stack gap={4}>
             <Text size="sm" fw={500}>
               ${key.currentSpend.toFixed(2)}
-              {key.maxBudget && (
+              {key.budget && (
                 <Text component="span" size="sm" c="dimmed">
-                  {' '}/ ${key.maxBudget.toFixed(2)}
+                  {' '}/ ${key.budget.toFixed(2)}
                 </Text>
               )}
             </Text>
-            {key.maxBudget && (
+            {key.budget && (
               <Progress
                 value={budgetUsagePercentage}
                 color={budgetUsageColor}
@@ -138,22 +125,22 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         </Table.Td>
 
         <Table.Td>
-          <Text size="sm">{key.requestCount.toLocaleString()}</Text>
+          <Text size="sm">{key.requestCount?.toLocaleString() || '0'}</Text>
         </Table.Td>
 
         <Table.Td>
           <Badge
-            color={key.isEnabled ? 'green' : 'gray'}
+            color={key.isActive ? 'green' : 'gray'}
             variant="light"
             size="sm"
           >
-            {key.isEnabled ? 'Active' : 'Inactive'}
+            {key.isActive ? 'Active' : 'Inactive'}
           </Badge>
         </Table.Td>
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {key.lastUsed ? formatters.date(key.lastUsed) : 'Never'}
+            {key.lastUsedDate ? formatters.date(key.lastUsedDate) : 'Never'}
           </Text>
         </Table.Td>
 

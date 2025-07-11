@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 export async function GET(req: NextRequest) {
@@ -27,10 +28,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error exporting request logs:', error);
-    return NextResponse.json(
-      { error: 'Failed to export request logs' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

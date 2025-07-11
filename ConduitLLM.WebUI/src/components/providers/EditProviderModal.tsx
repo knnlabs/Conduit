@@ -27,16 +27,17 @@ import {
 
 interface Provider {
   id: string;
-  providerName: string;
-  providerType?: string;
+  name: string;
+  type: string;
   isEnabled: boolean;
   healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  modelsAvailable?: number;
-  createdAt?: string;
-  apiEndpoint?: string;
-  description?: string;
-  organizationId?: string;
+  endpoint?: string;
+  supportedModels: string[];
+  configuration: Record<string, unknown>;
+  createdDate: string;
+  modifiedDate: string;
+  models?: string[];
 }
 
 interface EditProviderModalProps {
@@ -82,10 +83,10 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   useEffect(() => {
     if (provider) {
       form.setValues({
-        providerName: provider.providerName,
+        providerName: provider.name,
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.apiEndpoint || '',
-        organizationId: provider.organizationId || '',
+        apiEndpoint: provider.endpoint || '',
+        organizationId: (provider.configuration?.organizationId as string) || '',
         isEnabled: provider.isEnabled,
       });
     }
@@ -147,9 +148,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     return null;
   }
 
-  const providerDisplayName = provider.providerType 
-    ? PROVIDER_DISPLAY_NAMES[provider.providerType as ProviderType] 
-    : provider.providerType;
+  const providerDisplayName = provider.type 
+    ? PROVIDER_DISPLAY_NAMES[provider.type as ProviderType] 
+    : provider.type;
   const getHealthIcon = (status?: string) => {
     switch (status) {
       case 'healthy':
@@ -170,7 +171,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerDisplayName || provider.providerType || 'Unknown'}</Badge>
+                <Badge>{providerDisplayName || provider.type || 'Unknown'}</Badge>
               </Group>
               {provider.healthStatus && (
                 <Group justify="space-between">
@@ -186,10 +187,10 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                   </Group>
                 </Group>
               )}
-              {provider.modelsAvailable !== undefined && (
+              {provider.models && provider.models.length > 0 && (
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Models Available</Text>
-                  <Text size="sm">{provider.modelsAvailable}</Text>
+                  <Text size="sm">{provider.models.length}</Text>
                 </Group>
               )}
               {provider.lastHealthCheck && (
@@ -218,7 +219,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.providerType as ProviderType];
+            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.type as ProviderType];
             if (!config) return null;
 
             return (
@@ -234,7 +235,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 {config.requiresOrganizationId && (
                   <TextInput
                     label="Organization ID"
-                    placeholder={provider.providerType === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    placeholder={provider.type === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
                     {...form.getInputProps('organizationId')}
                   />
                 )}

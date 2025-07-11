@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 export async function GET(req: NextRequest) {
@@ -90,10 +91,6 @@ Date,Total Requests,Total Cost,Avg Error Rate
       },
     });
   } catch (error) {
-    console.error('Error exporting virtual key analytics:', error);
-    return NextResponse.json(
-      { error: 'Failed to export virtual key analytics' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

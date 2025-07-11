@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { requireAuth } from '@/lib/auth/simple-auth';
+import { authConfig } from '@/lib/auth/config';
+
+// GET /api/auth/validate - Validate current session
+export async function GET(request: NextRequest) {
+  const auth = requireAuth(request);
+  
+  if (!auth.isValid) {
+    return NextResponse.json(
+      { valid: false, message: 'Invalid or expired session' },
+      { status: 401 }
+    );
+  }
+  
+  // Session is valid
+  return NextResponse.json({
+    valid: true,
+    message: 'Session is valid'
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,19 +33,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the admin key from environment variable
-    const validAdminKey = process.env.CONDUIT_ADMIN_LOGIN_PASSWORD;
-
-    if (!validAdminKey) {
-      console.error('CONDUIT_ADMIN_LOGIN_PASSWORD environment variable is not set');
+    // Check if auth is properly configured
+    if (!authConfig.isConfigured()) {
+      console.error('Authentication not properly configured');
       return NextResponse.json(
         { error: 'Server configuration error' },
         { status: 500 }
       );
     }
 
-    // Validate the admin key
-    const isValid = adminKey === validAdminKey;
+    // Validate the admin key using auth config service
+    const isValid = authConfig.verifyAdminPassword(adminKey);
 
     if (!isValid) {
       return NextResponse.json(
@@ -43,7 +62,6 @@ export async function POST(request: NextRequest) {
       const adminClient = getServerAdminClient();
       virtualKey = await adminClient.system.getWebUIVirtualKey();
     } catch (error) {
-      console.error('Failed to get WebUI virtual key:', error);
       // Don't fail authentication if virtual key retrieval fails
     }
 
@@ -72,10 +90,6 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Auth validation error:', error);
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

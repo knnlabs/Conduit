@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
@@ -134,10 +135,6 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json({ logs });
   } catch (error) {
-    console.error('Error fetching request logs:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch request logs' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

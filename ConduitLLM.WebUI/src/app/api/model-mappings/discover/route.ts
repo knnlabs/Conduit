@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -42,10 +43,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(discoveredModels);
     }
   } catch (error) {
-    console.error('Error discovering model mappings:', error);
-    return NextResponse.json(
-      { error: 'Failed to discover model mappings' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

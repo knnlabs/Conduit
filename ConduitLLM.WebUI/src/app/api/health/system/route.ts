@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 // Mock system health data - in production, this would come from actual system monitoring
@@ -53,10 +54,6 @@ export async function GET(req: NextRequest) {
     const systemHealth = generateSystemHealth();
     return NextResponse.json(systemHealth);
   } catch (error) {
-    console.error('Error fetching system health:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch system health' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

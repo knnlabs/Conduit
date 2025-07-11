@@ -1,27 +1,13 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { reportError } from '@/lib/utils/logging';
-import { config, getAdminApiUrl } from '@/config';
+import { config } from '@/config';
+import { getServerAdminClient as getSDKAdminClient } from '../server/sdk-config';
 
-// Server-side admin client configuration - uses environment variable
+// Server-side admin client configuration - uses centralized SDK config
 export function createServerAdminClient(): ConduitAdminClient {
-  const masterKey = config.auth.masterKey;
-  
-  if (!masterKey) {
-    throw new Error('CONDUIT_API_TO_API_BACKEND_AUTH_KEY environment variable is not set');
-  }
-
-  const adminApiUrl = getAdminApiUrl();
-  
-  // Client configuration validated - masterKey presence confirmed
-  
-  return new ConduitAdminClient({
-    adminApiUrl,
-    masterKey,
-    options: {
-      timeout: config.api.timeout,
-    }
-  });
+  // Use the centralized SDK configuration
+  return getSDKAdminClient();
 }
 
 // Note: Client-side admin clients have been removed for security.

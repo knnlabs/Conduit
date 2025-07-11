@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 /**
@@ -52,10 +53,6 @@ export async function POST(request: NextRequest) {
     return response;
     
   } catch (error) {
-    console.error('Session refresh error:', error);
-    return NextResponse.json(
-      { error: 'Failed to refresh session' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

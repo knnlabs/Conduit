@@ -1,90 +1,141 @@
 /**
- * TypeScript type definitions for Conduit SDK responses
- * These types ensure type safety when working with SDK data
+ * TypeScript type definitions for WebUI-specific types
+ * SDK types are imported from @knn_labs/conduit-admin-client and @knn_labs/conduit-core-client
  */
 
-// Base response types
-export interface PaginatedResponse<T> {
-  data: T[];
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  totalCount: number;
-}
+// Import UI types from mappers
+import type {
+  UIVirtualKey,
+  UIProvider,
+  UIModelMapping,
+  UIProviderHealth,
+  UISystemHealth,
+  UIRequestLog,
+} from '@/lib/types/mappers';
 
-export interface ApiResponse<T> {
-  data: T;
-  success: boolean;
-  message?: string;
-  errors?: string[];
-}
+// Import SDK types
+export type {
+  // Virtual Key types
+  VirtualKeyDto,
+  CreateVirtualKeyRequest,
+  CreateVirtualKeyResponse,
+  UpdateVirtualKeyRequest,
+  VirtualKeyValidationResult,
+  VirtualKeyFilters,
+  VirtualKeyStatistics,
+  VirtualKeyMaintenanceRequest,
+  VirtualKeyMaintenanceResponse,
+  
+  // Provider types
+  ProviderCredentialDto,
+  CreateProviderCredentialDto,
+  UpdateProviderCredentialDto,
+  ProviderHealthStatusDto,
+  ProviderHealthSummaryDto,
+  ProviderHealthRecordDto,
+  ProviderHealthStatisticsDto,
+  ProviderConnectionTestRequest,
+  ProviderConnectionTestResultDto,
+  ProviderDataDto,
+  ProviderFilters,
+  ProviderStatus,
+  
+  // Model types
+  ModelProviderMappingDto,
+  CreateModelProviderMappingDto,
+  UpdateModelProviderMappingDto,
+  ModelMappingFilters,
+  ModelCapabilities,
+  DiscoveredModel,
+  ModelProviderInfo,
+  ModelRoutingInfo,
+  
+  // System types
+  SystemInfoDto,
+  HealthStatusDto,
+  SystemConfiguration,
+  
+  // Analytics types
+  UsageMetricsDto,
+  ModelUsageDto,
+  KeyUsageDto,
+  CostSummaryDto,
+  CostByPeriodDto,
+  CostForecastDto,
+  RequestLogDto,
+  RequestLogFilters,
+  RequestLogStatistics,
+  RequestLogSummary,
+  
+  // Security types
+  SecurityEvent,
+  SecurityEventFilters,
+  ThreatAnalytics,
+  ThreatDetection,
+  ComplianceMetrics,
+  
+  // Backup types
+  BackupDto,
+  CreateBackupRequest,
+  RestoreBackupRequest,
+  BackupResult,
+  RestoreResult,
+  BackupInfo,
+  BackupMetadata,
+  
+  // Notification types
+  NotificationDto,
+  CreateNotificationDto,
+  UpdateNotificationDto,
+  NotificationFilters,
+  NotificationSummary,
+  NotificationStatistics,
+  NotificationType,
+  NotificationSeverity,
+  
+  // Settings types
+  GlobalSettingDto,
+  CreateGlobalSettingDto,
+  UpdateGlobalSettingDto,
+  AudioConfigurationDto,
+  RouterConfigurationDto,
+  
+  // Common types
+  PaginatedResponse,
+  ApiResponse,
+  PagedResponse,
+  ErrorResponse,
+  BudgetDuration,
+  FilterType,
+  FilterMode,
+  StatusType
+} from '@knn_labs/conduit-admin-client';
 
-// Virtual Key types
-export interface VirtualKey {
-  id: number;
-  name: string;
-  key: string;
-  isActive: boolean;
-  budget: number;
-  currentSpend: number;
-  budgetPeriod: 'daily' | 'monthly' | 'total';
-  allowedModels: string[] | null;
-  allowedProviders: string[] | null;
-  expirationDate: string | null;
-  createdDate: string;
-  modifiedDate: string;
-  lastUsedDate: string | null;
-  metadata: Record<string, unknown> | null;
-}
+// Import mapped UI types
+export type {
+  UIVirtualKey,
+  UIProvider,
+  UIModelMapping,
+  UIProviderHealth,
+  UISystemHealth,
+  UIRequestLog
+} from '@/lib/types/mappers';
 
-export interface VirtualKeyValidationResult {
-  isValid: boolean;
-  virtualKeyId?: number;
-  reason?: string;
-  remainingBudget?: number;
-  isModelAllowed?: boolean;
-}
+// Re-export mapping functions for convenience
+export {
+  mapVirtualKeyFromSDK,
+  mapVirtualKeyToSDK,
+  mapProviderFromSDK,
+  mapProviderToSDK,
+  mapModelMappingFromSDK,
+  mapModelMappingToSDK,
+  mapProviderHealthFromSDK,
+  mapSystemHealthFromSDK,
+  mapRequestLogFromSDK,
+  mapProviderHealthSummaryFromSDK
+} from '@/lib/types/mappers';
 
-export interface CreateVirtualKeyRequest {
-  name: string;
-  budget?: number;
-  budgetPeriod?: 'daily' | 'monthly' | 'total';
-  allowedModels?: string[];
-  allowedProviders?: string[];
-  expirationDate?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface CreateVirtualKeyResponse {
-  virtualKey: VirtualKey;
-  key: string;
-}
-
-// Provider types
-export interface Provider {
-  id: string;
-  name: string;
-  type: string;
-  isEnabled: boolean;
-  endpoint?: string;
-  supportedModels: string[];
-  configuration: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
-}
-
-export interface ProviderHealth {
-  providerId: string;
-  providerName: string;
-  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  responseTime: number;
-  uptime: number;
-  errorRate: number;
-  lastChecked: string;
-  lastError?: string;
-  incidents: ProviderIncident[];
-}
-
+// WebUI-specific types that don't exist in SDK
 export interface ProviderIncident {
   id: string;
   providerId: string;
@@ -94,26 +145,6 @@ export interface ProviderIncident {
   description: string;
   affectedModels: string[];
   status: 'active' | 'resolved';
-}
-
-export interface ProviderHealthSummary {
-  totalProviders: number;
-  healthyProviders: number;
-  degradedProviders: number;
-  unhealthyProviders: number;
-  averageResponseTime: number;
-  averageUptime: number;
-  providers: ProviderHealth[];
-}
-
-// System types
-export interface SystemHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  version: string;
-  uptime: number;
-  services: ServiceHealth[];
-  dependencies: DependencyHealth[];
-  timestamp: string;
 }
 
 export interface ServiceHealth {
@@ -134,72 +165,10 @@ export interface DependencyHealth {
   error?: string;
 }
 
-export interface SystemInfo {
-  version: string;
-  environment: string;
-  buildDate: string;
-  gitCommit?: string;
-  features: SystemFeature[];
-  configuration: SystemConfiguration;
-}
-
 export interface SystemFeature {
   name: string;
   enabled: boolean;
   version?: string;
-}
-
-export interface SystemConfiguration {
-  maxRequestSize: number;
-  requestTimeout: number;
-  rateLimiting: {
-    enabled: boolean;
-    requestsPerMinute?: number;
-  };
-  caching: {
-    enabled: boolean;
-    provider?: string;
-  };
-}
-
-// Analytics types
-export interface UsageAnalytics {
-  startDate: string;
-  endDate: string;
-  totalRequests: number;
-  totalCost: number;
-  totalTokens: {
-    input: number;
-    output: number;
-    total: number;
-  };
-  successRate: number;
-  averageLatency: number;
-  requestsByModel: ModelUsage[];
-  requestsByProvider: ProviderUsage[];
-  dailyUsage: DailyUsage[];
-}
-
-export interface ModelUsage {
-  model: string;
-  provider: string;
-  requests: number;
-  cost: number;
-  tokens: {
-    input: number;
-    output: number;
-  };
-  averageLatency: number;
-  errorRate: number;
-}
-
-export interface ProviderUsage {
-  provider: string;
-  requests: number;
-  cost: number;
-  successRate: number;
-  averageLatency: number;
-  models: string[];
 }
 
 export interface DailyUsage {
@@ -210,7 +179,68 @@ export interface DailyUsage {
   successRate: number;
 }
 
-// Cost Dashboard types
+export interface AudioDailyUsage {
+  date: string;
+  requests: number;
+  cost: number;
+  transcriptions?: number;
+  ttsGenerations?: number;
+  totalMinutes?: number;
+}
+
+export interface LanguageUsage {
+  language: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AudioModelPerformance {
+  model: string;
+  requests: number;
+  minutesProcessed: number;
+  avgProcessingTime?: string;
+  successRate?: number;
+  totalCost: number;
+  costPerMinute: number;
+}
+
+export interface MediaRecord {
+  id: string;
+  virtualKeyId: number;
+  mediaType: string;
+  mediaUrl: string;
+  thumbnailUrl?: string;
+  cdnUrl?: string;
+  storageKey: string;
+  size: number;
+  createdDate: string;
+  expirationDate?: string;
+  metadata?: {
+    model?: string;
+    prompt?: string;
+    width?: number;
+    height?: number;
+    duration?: number;
+    format?: string;
+  };
+}
+
+export interface MediaStorageStats {
+  virtualKeyId: number;
+  totalSize: number;
+  totalCount: number;
+  imageCount: number;
+  videoCount: number;
+  oldestMedia?: string;
+  newestMedia?: string;
+}
+
+export interface OverallMediaStorageStats extends MediaStorageStats {
+  byVirtualKey: MediaStorageStats[];
+  byProvider: Record<string, number>;
+  byType: Record<string, number>;
+}
+
 export interface CostDashboard {
   timeframe: string;
   startDate: string;
@@ -255,14 +285,13 @@ export interface CostTrendPoint {
   providers: Record<string, number>;
 }
 
-// Audio Usage types
 export interface AudioUsageSummary {
   startDate: string;
   endDate: string;
   totalRequests: number;
   totalCost: number;
-  totalDuration: number; // in seconds
-  averageLatency: number; // in ms
+  totalDuration: number;
+  averageLatency: number;
   transcriptionGrowth?: number;
   ttsGrowth?: number;
   costGrowth?: number;
@@ -281,156 +310,3 @@ export interface AudioModelUsage {
   percentage?: number;
 }
 
-export interface AudioDailyUsage {
-  date: string;
-  requests: number;
-  cost: number;
-  transcriptions?: number;
-  ttsGenerations?: number;
-  totalMinutes?: number;
-}
-
-export interface LanguageUsage {
-  language: string;
-  count: number;
-  percentage: number;
-}
-
-export interface AudioModelPerformance {
-  model: string;
-  requests: number;
-  minutesProcessed: number;
-  avgProcessingTime?: string;
-  successRate?: number;
-  totalCost: number;
-  costPerMinute: number;
-}
-
-// Media types
-export interface MediaRecord {
-  id: string;
-  virtualKeyId: number;
-  mediaType: string;
-  mediaUrl: string;
-  thumbnailUrl?: string;
-  cdnUrl?: string;
-  storageKey: string;
-  size: number;
-  createdDate: string;
-  expirationDate?: string;
-  metadata?: {
-    model?: string;
-    prompt?: string;
-    width?: number;
-    height?: number;
-    duration?: number; // for videos
-    format?: string;
-  };
-}
-
-export interface MediaStorageStats {
-  virtualKeyId: number;
-  totalSize: number;
-  totalCount: number;
-  imageCount: number;
-  videoCount: number;
-  oldestMedia?: string;
-  newestMedia?: string;
-}
-
-export interface OverallMediaStorageStats extends MediaStorageStats {
-  byVirtualKey: MediaStorageStats[];
-  byProvider: Record<string, number>;
-  byType: Record<string, number>;
-}
-
-// Security types
-export interface SecurityEvent {
-  timestamp: string;
-  type: 'auth_failure' | 'rate_limit' | 'blocked_ip' | 'suspicious_activity';
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  source: string;
-  virtualKeyId?: string;
-  details: string;
-  statusCode?: number;
-}
-
-export interface SecurityEventsSummary {
-  timestamp: string;
-  timeRange: {
-    start: string;
-    end: string;
-  };
-  totalEvents: number;
-  eventsByType: Array<{
-    type: string;
-    count: number;
-  }>;
-  eventsBySeverity: Array<{
-    severity: string;
-    count: number;
-  }>;
-  events: SecurityEvent[];
-}
-
-export interface ThreatAnalytics {
-  timestamp: string;
-  metrics: {
-    totalThreatsToday: number;
-    uniqueThreatsToday: number;
-    blockedIPs: number;
-    complianceScore: number;
-  };
-  topThreats: Array<{
-    ipAddress: string;
-    totalFailures: number;
-    daysActive: number;
-    lastSeen: string;
-    riskScore: number;
-  }>;
-  threatDistribution: Array<{
-    type: string;
-    count: number;
-    uniqueIPs: number;
-  }>;
-  threatTrend: Array<{
-    date: string;
-    threats: number;
-  }>;
-}
-
-// Request Log types
-export interface RequestLog {
-  id: string;
-  timestamp: string;
-  virtualKeyId: number;
-  virtualKeyName?: string;
-  provider: string;
-  model: string;
-  endpoint: string;
-  method: string;
-  statusCode: number;
-  latency: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  cost?: number;
-  error?: string;
-  clientIp?: string;
-  userAgent?: string;
-}
-
-// Model Mapping types
-export interface ModelMapping {
-  id: string;
-  sourceModel: string;
-  targetProvider: string;
-  targetModel: string;
-  isActive: boolean;
-  priority: number;
-  metadata?: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
-}
-
-// Export all types
-export type * from './sdk-responses';

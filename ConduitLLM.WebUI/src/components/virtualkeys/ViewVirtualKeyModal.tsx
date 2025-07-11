@@ -25,20 +25,10 @@ import {
   IconCheck,
   IconAlertCircle,
 } from '@tabler/icons-react';
+import { UIVirtualKey } from '@/lib/types/mappers';
 
-interface VirtualKey {
-  id: string;
-  keyName: string;
-  keyHash: string;
-  currentSpend: number;
-  maxBudget?: number;
-  isEnabled: boolean;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-  description?: string;
-  allowedModels?: string[];
-}
+// Legacy type alias for compatibility
+type VirtualKey = UIVirtualKey;
 
 interface ViewVirtualKeyModalProps {
   opened: boolean;
@@ -51,8 +41,8 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
     return null;
   }
 
-  const spendPercentage = virtualKey.maxBudget 
-    ? (virtualKey.currentSpend / virtualKey.maxBudget) * 100 
+  const spendPercentage = virtualKey.budget 
+    ? (virtualKey.currentSpend / virtualKey.budget) * 100 
     : 0;
 
   const formatDate = (date: string) => {
@@ -86,21 +76,21 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
           <Stack gap="sm">
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Key Name</Text>
-              <Text fw={500}>{virtualKey.keyName}</Text>
+              <Text fw={500}>{virtualKey.name}</Text>
             </Group>
 
-            {virtualKey.description && (
+            {virtualKey.metadata && (
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Description</Text>
-                <Text size="sm">{virtualKey.description}</Text>
+                <Text size="sm">{JSON.stringify(virtualKey.metadata)}</Text>
               </Group>
             )}
 
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Key Hash</Text>
               <Group gap="xs">
-                <Text size="sm" ff="monospace">{virtualKey.keyHash}</Text>
-                <CopyButton value={virtualKey.keyHash}>
+                <Text size="sm" ff="monospace">{virtualKey.key}</Text>
+                <CopyButton value={virtualKey.key}>
                   {({ copied, copy }) => (
                     <Tooltip label={copied ? 'Copied' : 'Copy'}>
                       <ActionIcon 
@@ -119,20 +109,20 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
 
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Status</Text>
-              <Badge color={virtualKey.isEnabled ? 'green' : 'red'}>
-                {virtualKey.isEnabled ? 'Active' : 'Disabled'}
+              <Badge color={virtualKey.isActive ? 'green' : 'red'}>
+                {virtualKey.isActive ? 'Active' : 'Disabled'}
               </Badge>
             </Group>
 
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Created</Text>
-              <Text size="sm">{formatDate(virtualKey.createdAt)}</Text>
+              <Text size="sm">{formatDate(virtualKey.createdDate)}</Text>
             </Group>
 
-            {virtualKey.lastUsed && (
+            {virtualKey.lastUsedDate && (
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Last Used</Text>
-                <Text size="sm">{formatDate(virtualKey.lastUsed)}</Text>
+                <Text size="sm">{formatDate(virtualKey.lastUsedDate)}</Text>
               </Group>
             )}
           </Stack>
@@ -146,7 +136,7 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
                 <IconActivity size={20} color="var(--mantine-color-blue-6)" />
                 <Text size="xs" c="dimmed">Requests</Text>
               </Group>
-              <Text size="xl" fw={700}>{virtualKey.requestCount.toLocaleString()}</Text>
+              <Text size="xl" fw={700}>{virtualKey.requestCount?.toLocaleString() || '0'}</Text>
             </Stack>
           </Card>
 
@@ -162,13 +152,13 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
         </SimpleGrid>
 
         {/* Budget Progress */}
-        {virtualKey.maxBudget && (
+        {virtualKey.budget && (
           <Card withBorder>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Text size="sm" fw={500}>Budget Usage</Text>
                 <Text size="sm" c="dimmed">
-                  {formatCurrency(virtualKey.currentSpend)} / {formatCurrency(virtualKey.maxBudget)}
+                  {formatCurrency(virtualKey.currentSpend)} / {formatCurrency(virtualKey.budget)}
                 </Text>
               </Group>
               <Progress 
@@ -184,23 +174,17 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
         )}
 
         {/* Allowed Models */}
-        {virtualKey.allowedModels && virtualKey.allowedModels.length > 0 && (
+        {virtualKey.allowedModels && (
           <Card withBorder>
             <Stack gap="sm">
               <Text size="sm" fw={500}>Allowed Models</Text>
-              <Group gap="xs">
-                {virtualKey.allowedModels.map((model) => (
-                  <Badge key={model} variant="light">
-                    {model}
-                  </Badge>
-                ))}
-              </Group>
+              <Text size="sm" c="dimmed">{virtualKey.allowedModels}</Text>
             </Stack>
           </Card>
         )}
 
         {/* Warning for no budget limit */}
-        {!virtualKey.maxBudget && (
+        {!virtualKey.budget && (
           <Alert icon={<IconAlertCircle size={16} />} color="yellow" variant="light">
             <Text size="sm">
               This key has no budget limit. Usage is unrestricted and may incur unexpected costs.

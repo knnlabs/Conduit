@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -18,15 +19,11 @@ export async function GET(
     const setting = await adminClient.settings.getGlobalSetting(key);
     return NextResponse.json(setting);
   } catch (error) {
-    console.error('Error fetching setting:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch setting' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
-// PUT /api/settings/[key] - Update a single setting
+// PUT /api/settings/[key] - Update a setting
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> }
@@ -43,10 +40,6 @@ export async function PUT(
     await adminClient.settings.updateGlobalSetting(key, { value: body.value });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating setting:', error);
-    return NextResponse.json(
-      { error: 'Failed to update setting' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

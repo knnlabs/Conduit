@@ -39,31 +39,16 @@ import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport
 import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-
-interface VirtualKey {
-  id: string;
-  keyName: string;
-  keyHash: string;
-  currentSpend: number;
-  maxBudget?: number;
-  isEnabled: boolean;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-  description?: string;
-  allowedModels?: string[];
-  allowedEndpoints?: string[];
-  ipWhitelist?: string[];
-  rateLimitPerMinute?: number;
-}
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { UIVirtualKey, mapVirtualKeyFromSDK } from '@/lib/types/mappers';
 
 export default function VirtualKeysPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
-  const [selectedKey, setSelectedKey] = useState<VirtualKey | null>(null);
+  const [selectedKey, setSelectedKey] = useState<UIVirtualKey | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [virtualKeys, setVirtualKeys] = useState<VirtualKey[]>([]);
+  const [virtualKeys, setVirtualKeys] = useState<UIVirtualKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -79,8 +64,9 @@ export default function VirtualKeysPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch virtual keys');
       }
-      const data = await response.json();
-      setVirtualKeys(data);
+      const data: VirtualKeyDto[] = await response.json();
+      const mappedKeys = data.map(mapVirtualKeyFromSDK);
+      setVirtualKeys(mappedKeys);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -94,10 +80,10 @@ export default function VirtualKeysPage() {
     
     const query = searchQuery.toLowerCase();
     return (
-      key.keyName.toLowerCase().includes(query) ||
-      key.keyHash.toLowerCase().includes(query) ||
-      key.id.toLowerCase().includes(query) ||
-      (key.description && key.description.toLowerCase().includes(query))
+      key.name.toLowerCase().includes(query) ||
+      key.key.toLowerCase().includes(query) ||
+      key.id.toString().toLowerCase().includes(query) ||
+      (key.metadata && JSON.stringify(key.metadata).toLowerCase().includes(query))
     );
   });
 
@@ -114,17 +100,17 @@ export default function VirtualKeysPage() {
   // Calculate statistics based on filtered data (not paginated)
   const stats = filteredKeys ? {
     totalKeys: filteredKeys.length,
-    activeKeys: filteredKeys.filter((k) => k.isEnabled).length,
+    activeKeys: filteredKeys.filter((k) => k.isActive).length,
     totalSpend: filteredKeys.reduce((sum: number, k) => sum + k.currentSpend, 0),
-    totalRequests: filteredKeys.reduce((sum: number, k) => sum + k.requestCount, 0),
+    totalRequests: filteredKeys.reduce((sum: number, k) => sum + (k.requestCount || 0), 0),
   } : null;
 
-  const handleEdit = (key: VirtualKey) => {
+  const handleEdit = (key: UIVirtualKey) => {
     setSelectedKey(key);
     openEditModal();
   };
 
-  const handleView = (key: VirtualKey) => {
+  const handleView = (key: UIVirtualKey) => {
     setSelectedKey(key);
     openViewModal();
   };
@@ -171,18 +157,18 @@ export default function VirtualKeysPage() {
     }
 
     const exportData = filteredKeys.map((key) => ({
-      name: key.keyName,
-      keyHash: key.keyHash,
-      status: key.isEnabled ? 'Active' : 'Disabled',
+      name: key.name,
+      keyHash: key.key,
+      status: key.isActive ? 'Active' : 'Disabled',
       currentSpend: formatCurrencyForExport(key.currentSpend),
-      maxBudget: key.maxBudget ? formatCurrencyForExport(key.maxBudget) : '',
-      requestCount: key.requestCount,
-      createdAt: formatDateForExport(key.createdAt),
-      lastUsed: formatDateForExport(key.lastUsed),
-      allowedModels: key.allowedModels?.join('; ') || '',
-      allowedEndpoints: key.allowedEndpoints?.join('; ') || '',
-      ipWhitelist: key.ipWhitelist?.join('; ') || '',
-      rateLimitPerMinute: key.rateLimitPerMinute || '',
+      maxBudget: key.budget ? formatCurrencyForExport(key.budget) : '',
+      requestCount: key.requestCount || 0,
+      createdAt: formatDateForExport(key.createdDate),
+      lastUsed: key.lastUsedDate ? formatDateForExport(key.lastUsedDate) : '',
+      allowedModels: key.allowedModels || '',
+      allowedProviders: key.allowedProviders?.join('; ') || '',
+      budgetPeriod: key.budgetPeriod || '',
+      expirationDate: key.expirationDate ? formatDateForExport(key.expirationDate) : '',
     }));
 
     exportToCSV(
@@ -198,9 +184,9 @@ export default function VirtualKeysPage() {
         { key: 'createdAt', label: 'Created At' },
         { key: 'lastUsed', label: 'Last Used' },
         { key: 'allowedModels', label: 'Allowed Models' },
-        { key: 'allowedEndpoints', label: 'Allowed Endpoints' },
-        { key: 'ipWhitelist', label: 'IP Whitelist' },
-        { key: 'rateLimitPerMinute', label: 'Rate Limit/Min' },
+        { key: 'allowedProviders', label: 'Allowed Providers' },
+        { key: 'budgetPeriod', label: 'Budget Period' },
+        { key: 'expirationDate', label: 'Expiration Date' },
       ]
     );
 

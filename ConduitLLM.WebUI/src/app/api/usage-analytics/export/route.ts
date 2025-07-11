@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 export async function GET(req: NextRequest) {
@@ -70,10 +71,6 @@ Endpoint Performance:
       },
     });
   } catch (error) {
-    console.error('Error exporting usage analytics:', error);
-    return NextResponse.json(
-      { error: 'Failed to export usage analytics' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

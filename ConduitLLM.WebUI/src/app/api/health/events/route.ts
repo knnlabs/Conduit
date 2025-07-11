@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 // Mock health events - in production, these would be stored and retrieved from a database
@@ -55,10 +56,6 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json(events);
   } catch (error) {
-    console.error('Error fetching health events:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch health events' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

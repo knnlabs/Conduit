@@ -67,16 +67,8 @@ export default function ConfigurationPage() {
   const fetchSystemInfo = async () => {
     try {
       setSystemLoading(true);
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      // const response = await fetch('/api/settings/system-info');
-      // if (!response.ok) {
-      //   throw new Error('Failed to fetch system info');
-      // }
-      // const data = await response.json();
-      // setSystemInfo(data);
-      
-      // Functionality broken - SDK not available
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      // Settings API not yet implemented in SDK
+      throw new Error('Settings management not yet available');
     } catch (err) {
       console.error('Error fetching system info:', err);
       notifications.show({
@@ -92,16 +84,8 @@ export default function ConfigurationPage() {
   const fetchSettings = async () => {
     try {
       setSettingsLoading(true);
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      // const response = await fetch('/api/settings');
-      // if (!response.ok) {
-      //   throw new Error('Failed to fetch settings');
-      // }
-      // const data = await response.json();
-      // setSettings(Array.isArray(data) ? data : []);
-      
-      // Functionality broken - SDK not available
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      // Settings API not yet implemented in SDK
+      throw new Error('Settings management not yet available');
     } catch (err) {
       console.error('Error fetching settings:', err);
       notifications.show({
@@ -121,21 +105,8 @@ export default function ConfigurationPage() {
 
   const handleSave = async (key: string) => {
     try {
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      // const response = await fetch(`/api/settings/${key}`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ value: editValue }),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Failed to update setting');
-      // }
-      
-      // Functionality broken - SDK not available
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      // Settings API not yet implemented in SDK
+      throw new Error('Settings management not yet available');
     } catch (error) {
       notifications.show({
         title: 'Error',

@@ -27,18 +27,20 @@ import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import { notifications } from '@mantine/notifications';
 
+// Use the same interface as the page component
 interface Provider {
   id: string;
-  providerName: string;
-  providerType?: string;
+  name: string;
+  type: string;
   isEnabled: boolean;
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  responseTime?: number;
+  endpoint?: string;
+  supportedModels: string[];
+  configuration: Record<string, unknown>;
+  createdDate: string;
+  modifiedDate: string;
   models?: string[];
-  supportedFeatures?: string[];
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 interface ProvidersTableProps {
@@ -57,7 +59,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {provider.providerName}? This action cannot be undone.
+          Are you sure you want to delete {provider.name}? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
@@ -92,9 +94,9 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     <Table.Tr key={provider.id}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{provider.providerName}</Text>
-          {provider.providerType && (
-            <Text size="xs" c="dimmed">Type: {provider.providerType}</Text>
+          <Text fw={500}>{provider.name}</Text>
+          {provider.type && (
+            <Text size="xs" c="dimmed">Type: {provider.type}</Text>
           )}
         </Stack>
       </Table.Td>
@@ -116,11 +118,6 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
             <Text size="sm" c={getHealthColor(provider.healthStatus)}>
               {provider.healthStatus}
             </Text>
-            {provider.responseTime && (
-              <Text size="xs" c="dimmed">
-                ({provider.responseTime}ms)
-              </Text>
-            )}
           </Group>
         </Tooltip>
       </Table.Td>
@@ -142,7 +139,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {provider.createdAt ? formatters.date(provider.createdAt) : '-'}
+          {provider.createdDate ? formatters.date(provider.createdDate) : '-'}
         </Text>
       </Table.Td>
 

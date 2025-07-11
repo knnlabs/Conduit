@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
@@ -162,10 +163,6 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json(analytics);
   } catch (error) {
-    console.error('Error fetching usage analytics:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch usage analytics' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

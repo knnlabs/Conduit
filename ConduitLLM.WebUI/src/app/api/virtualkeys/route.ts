@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -14,11 +15,7 @@ export async function GET(req: NextRequest) {
     const virtualKeys = await adminClient.virtualKeys.list();
     return NextResponse.json(virtualKeys);
   } catch (error) {
-    console.error('Error fetching virtual keys:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch virtual keys' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -30,15 +27,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const adminClient = getServerAdminClient();
     const body = await req.json();
+    const adminClient = getServerAdminClient();
     const virtualKey = await adminClient.virtualKeys.create(body);
     return NextResponse.json(virtualKey);
   } catch (error) {
-    console.error('Error creating virtual key:', error);
-    return NextResponse.json(
-      { error: 'Failed to create virtual key' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

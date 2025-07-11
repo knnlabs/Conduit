@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
@@ -80,13 +81,6 @@ export async function POST(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Provider test error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to test provider configuration',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

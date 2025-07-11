@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -34,48 +35,26 @@ export async function POST(
       });
     }
     
-    // Try to test a basic capability using the model
-    try {
-      // Test if the model supports chat completions (most common capability)
-      const result = await adminClient.modelMappings.testCapability(
-        mapping.modelId,
-        'chat'
-      );
-      
-      return NextResponse.json({
-        isSuccessful: result.isSupported,
-        message: result.isSupported 
-          ? `Model mapping "${mapping.modelId}" is working correctly. Provider: ${mapping.providerId}`
-          : `Model mapping test failed: Model does not support chat capability`,
-        details: {
-          modelId: mapping.modelId,
-          providerId: mapping.providerId,
-          providerModelId: mapping.providerModelId,
-          capability: 'chat',
-          isSupported: result.isSupported
-        }
-      });
-    } catch (testError: any) {
-      // Capability test failed
-      return NextResponse.json({
-        isSuccessful: false,
-        message: `Failed to test model mapping: ${testError.message || 'Unknown error'}`,
-        details: {
-          modelId: mapping.modelId,
-          providerId: mapping.providerId,
-          providerModelId: mapping.providerModelId,
-          error: testError.message
-        }
-      });
-    }
-  } catch (error: any) {
-    console.error('Error testing model mapping:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to test model mapping',
-        message: error.message || 'Unknown error occurred'
-      },
-      { status: 500 }
+    // Test if the model supports chat completions (most common capability)
+    const result = await adminClient.modelMappings.testCapability(
+      mapping.modelId,
+      'chat'
     );
+    
+    return NextResponse.json({
+      isSuccessful: result.isSupported,
+      message: result.isSupported 
+        ? `Model mapping "${mapping.modelId}" is working correctly. Provider: ${mapping.providerId}`
+        : `Model mapping test failed: Model does not support chat capability`,
+      details: {
+        modelId: mapping.modelId,
+        providerId: mapping.providerId,
+        providerModelId: mapping.providerModelId,
+        capability: 'chat',
+        isSupported: result.isSupported
+      }
+    });
+  } catch (error) {
+    return handleSDKError(error);
   }
 }

@@ -38,25 +38,21 @@ import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
+import type { ProviderCredentialDto, ProviderHealthStatusDto } from '@knn_labs/conduit-admin-client';
+import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
 
-interface Provider {
-  id: string;
-  providerName: string;
-  providerType?: string;
-  isEnabled: boolean;
+interface ProviderWithHealth extends UIProvider {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  createdAt?: string;
-  endpoint?: string;
   models?: string[];
 }
 
 export default function ProvidersPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderWithHealth | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [testingProviders, setTestingProviders] = useState<Set<string>>(new Set());
@@ -73,8 +69,16 @@ export default function ProvidersPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
-      const data = await response.json();
-      setProviders(data);
+      const data: ProviderCredentialDto[] = await response.json();
+      
+      // Map providers and add health status (would need separate health fetch in real app)
+      const mappedProviders: ProviderWithHealth[] = data.map(p => ({
+        ...mapProviderFromSDK(p),
+        healthStatus: 'unknown' as const,
+        models: []
+      }));
+      
+      setProviders(mappedProviders);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -145,9 +149,9 @@ export default function ProvidersPage() {
     
     const query = searchQuery.toLowerCase();
     return (
-      provider.providerName.toLowerCase().includes(query) ||
+      provider.name.toLowerCase().includes(query) ||
       provider.id.toLowerCase().includes(query) ||
-      (provider.providerType && provider.providerType.toLowerCase().includes(query)) ||
+      (provider.type && provider.type.toLowerCase().includes(query)) ||
       (provider.endpoint && provider.endpoint.toLowerCase().includes(query))
     );
   });
@@ -169,7 +173,7 @@ export default function ProvidersPage() {
     unhealthyProviders: filteredProviders.filter((p) => p.healthStatus === 'unhealthy').length,
   };
 
-  const handleEdit = (provider: Provider) => {
+  const handleEdit = (provider: ProviderWithHealth) => {
     setSelectedProvider(provider);
     openEditModal();
   };
@@ -185,14 +189,14 @@ export default function ProvidersPage() {
     }
 
     const exportData = filteredProviders.map((provider) => ({
-      name: provider.providerName,
-      type: provider.providerType || '',
+      name: provider.name,
+      type: provider.type || '',
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
       health: provider.healthStatus,
       endpoint: provider.endpoint || '',
       models: provider.models?.join('; ') || '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-      createdAt: formatDateForExport(provider.createdAt),
+      createdAt: formatDateForExport(provider.createdDate),
     }));
 
     exportToCSV(

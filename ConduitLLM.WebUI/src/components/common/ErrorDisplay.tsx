@@ -23,7 +23,7 @@ import {
   IconChevronUp,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { ErrorClassifier, type ErrorClassification } from '@/lib/utils/error-classifier';
+import { ErrorClassifier, type ErrorClassification } from '@/lib/utils/ui-error-classifier';
 
 export interface ErrorAction {
   label: string;

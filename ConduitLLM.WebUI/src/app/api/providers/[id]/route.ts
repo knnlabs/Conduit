@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -18,11 +19,7 @@ export async function GET(
     const provider = await adminClient.providers.getById(parseInt(id, 10));
     return NextResponse.json(provider);
   } catch (error) {
-    console.error('Error fetching provider:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch provider' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -43,11 +40,7 @@ export async function PUT(
     const provider = await adminClient.providers.update(parseInt(id, 10), body);
     return NextResponse.json(provider);
   } catch (error) {
-    console.error('Error updating provider:', error);
-    return NextResponse.json(
-      { error: 'Failed to update provider' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -67,10 +60,6 @@ export async function DELETE(
     await adminClient.providers.deleteById(parseInt(id, 10));
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error deleting provider:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete provider' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

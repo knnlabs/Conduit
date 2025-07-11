@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -14,11 +15,7 @@ export async function GET(req: NextRequest) {
     const providers = await adminClient.providers.list();
     return NextResponse.json(providers);
   } catch (error) {
-    console.error('Error fetching providers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch providers' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -30,15 +27,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const adminClient = getServerAdminClient();
     const body = await req.json();
+    const adminClient = getServerAdminClient();
     const provider = await adminClient.providers.create(body);
     return NextResponse.json(provider);
   } catch (error) {
-    console.error('Error creating provider:', error);
-    return NextResponse.json(
-      { error: 'Failed to create provider' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

@@ -1,347 +1,164 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
-
-// SDK Error Types
-export enum SDKErrorType {
-  NETWORK = 'NETWORK',
-  AUTHENTICATION = 'AUTHENTICATION',
-  AUTHORIZATION = 'AUTHORIZATION',
-  VALIDATION = 'VALIDATION',
-  RATE_LIMIT = 'RATE_LIMIT',
-  NOT_FOUND = 'NOT_FOUND',
-  CONFLICT = 'CONFLICT',
-  SERVER_ERROR = 'SERVER_ERROR',
-  TIMEOUT = 'TIMEOUT',
-  UNKNOWN = 'UNKNOWN',
-}
-
-// SDK Error class with enhanced context
-export class SDKError extends Error {
-  constructor(
-    public type: SDKErrorType,
-    message: string,
-    public statusCode: number,
-    public context?: unknown,
-    public originalError?: unknown
-  ) {
-    super(message);
-    this.name = 'SDKError';
-  }
-}
+import { 
+  ConduitError, 
+  AuthError,
+  AuthenticationError,
+  AuthorizationError,
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  RateLimitError,
+  ServerError,
+  NetworkError,
+  TimeoutError,
+  isConduitError,
+  isAuthError,
+  isValidationError,
+  isNotFoundError,
+  isRateLimitError,
+  isNetworkError
+} from '@knn_labs/conduit-admin-client';
 
 // Map SDK errors to appropriate HTTP responses
-export function mapSDKErrorToResponse(error: unknown): NextResponse {
+export function handleSDKError(error: unknown): NextResponse {
   const errorInfo = {
     error: error instanceof Error ? error.message : 'Unknown error',
-    type: error && typeof error === 'object' && 'type' in error ? error.type : 'unknown',
-    context: error && typeof error === 'object' && 'context' in error ? error.context : undefined,
+    type: error instanceof ConduitError ? error.code : 'unknown',
+    context: error instanceof ConduitError ? error.context : undefined,
     stack: error instanceof Error ? error.stack : undefined,
   };
   logger.error('SDK operation failed', errorInfo);
 
-  // Handle SDK-specific errors
-  if (error instanceof SDKError) {
+  // Handle specific SDK error types
+  if (isRateLimitError(error)) {
     return NextResponse.json(
-      {
-        error: {
-          type: error.type,
-          message: error.message,
-          ...(process.env.NODE_ENV === 'development' && { context: error.context }),
-        },
+      { 
+        error: error.message || 'Rate limit exceeded',
+        retryAfter: error.retryAfter 
       },
-      { status: error.statusCode }
+      { status: 429 }
     );
   }
 
-  // Handle network errors
-  const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
-  if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
+  if (isAuthError(error)) {
     return NextResponse.json(
-      {
-        error: {
-          type: SDKErrorType.NETWORK,
-          message: 'Service temporarily unavailable. Please try again later.',
-        },
+      { error: error.message || 'Authentication failed' },
+      { status: 401 }
+    );
+  }
+
+  if (error instanceof AuthorizationError) {
+    return NextResponse.json(
+      { error: error.message || 'Access denied' },
+      { status: 403 }
+    );
+  }
+
+  if (isValidationError(error)) {
+    return NextResponse.json(
+      { 
+        error: error.message || 'Validation failed',
+        field: error.field,
+        details: error.details
       },
+      { status: 400 }
+    );
+  }
+
+  if (isNotFoundError(error)) {
+    return NextResponse.json(
+      { error: error.message || 'Resource not found' },
+      { status: 404 }
+    );
+  }
+
+  if (error instanceof ConflictError) {
+    return NextResponse.json(
+      { error: error.message || 'Resource conflict' },
+      { status: 409 }
+    );
+  }
+
+  if (isNetworkError(error)) {
+    return NextResponse.json(
+      { error: error.message || 'Network error occurred' },
       { status: 503 }
     );
   }
 
-  // Handle timeout errors
-  const errorMessage = error instanceof Error ? error.message : '';
-  if (errorCode === 'ETIMEDOUT' || errorMessage.includes('timeout')) {
+  if (error instanceof TimeoutError) {
     return NextResponse.json(
-      {
-        error: {
-          type: SDKErrorType.TIMEOUT,
-          message: 'Request timed out. Please try again.',
-        },
-      },
+      { error: error.message || 'Request timed out' },
       { status: 504 }
     );
   }
 
-  // Handle Conduit API errors (from SDK)
-  const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
-  if (response && typeof response === 'object') {
-    const status = 'status' in response ? (response.status as number) || 500 : 500;
-    const data = 'data' in response ? response.data || {} : {};
-
-    switch (status) {
-      case 400:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.VALIDATION,
-              message: (data as { error?: string }).error || 'Invalid request parameters',
-              details: (data as { details?: unknown }).details,
-            },
-          },
-          { status: 400 }
-        );
-
-      case 401:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.AUTHENTICATION,
-              message: 'Authentication failed. Please check your credentials.',
-            },
-          },
-          { status: 401 }
-        );
-
-      case 403:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.AUTHORIZATION,
-              message: 'You do not have permission to perform this action.',
-            },
-          },
-          { status: 403 }
-        );
-
-      case 404:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.NOT_FOUND,
-              message: (data as { error?: string }).error || 'Resource not found',
-            },
-          },
-          { status: 404 }
-        );
-
-      case 409:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.CONFLICT,
-              message: (data as { error?: string }).error || 'Resource conflict',
-            },
-          },
-          { status: 409 }
-        );
-
-      case 429:
-        return NextResponse.json(
-          {
-            error: {
-              type: SDKErrorType.RATE_LIMIT,
-              message: 'Rate limit exceeded. Please slow down your requests.',
-              retryAfter: response && 'headers' in response ? 
-                (response.headers as { ['retry-after']?: string })?.['retry-after'] : 
-                undefined,
-            },
-          },
-          { status: 429 }
-        );
-
-      default:
-        if (status >= 500) {
-          return NextResponse.json(
-            {
-              error: {
-                type: SDKErrorType.SERVER_ERROR,
-                message: 'An internal error occurred. Please try again later.',
-              },
-            },
-            { status: 500 }
-          );
-        }
-    }
+  if (error instanceof ServerError) {
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 
-  // Default error response
-  return NextResponse.json(
-    {
-      error: {
-        type: SDKErrorType.UNKNOWN,
-        message: 'An unexpected error occurred',
+  if (isConduitError(error)) {
+    return NextResponse.json(
+      { 
+        error: error.message,
+        code: error.code,
         ...(process.env.NODE_ENV === 'development' && { 
-          originalError: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-        }),
+          context: error.context,
+          details: error.details
+        })
       },
-    },
+      { status: error.statusCode || 500 }
+    );
+  }
+
+  // Handle non-SDK errors (e.g., network errors from fetch)
+  const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+  if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable' },
+      { status: 503 }
+    );
+  }
+
+  if (errorCode === 'ETIMEDOUT') {
+    return NextResponse.json(
+      { error: 'Request timed out' },
+      { status: 504 }
+    );
+  }
+
+  // Unknown error
+  console.error('Unexpected error:', error);
+  return NextResponse.json(
+    { error: 'Internal server error' },
     { status: 500 }
   );
 }
 
-// Wrap SDK operations with consistent error handling
-export async function withSDKErrorHandling<T>(
-  operation: () => Promise<T>,
-  context: string
-): Promise<T> {
-  try {
-    return await operation();
-  } catch (error: unknown) {
-    logger.error(`SDK operation failed: ${context}`, { error });
+// Legacy alias for backward compatibility
+export const mapSDKErrorToResponse = handleSDKError;
 
-    // Enhance error with context
-    const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
-    if (response && typeof response === 'object' && 'status' in response) {
-      const status = response.status as number;
-      const data = 'data' in response ? response.data : null;
-      const dataError = data && typeof data === 'object' && 'error' in data ? data.error : null;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      throw new SDKError(
-        getErrorType(status),
-        typeof dataError === 'string' ? dataError : errorMessage,
-        status,
-        { operation: context },
-        error
-      );
-    }
-
-    // Network or timeout errors
-    const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
-    if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
-      throw new SDKError(
-        SDKErrorType.NETWORK,
-        'Service unavailable',
-        503,
-        { operation: context },
-        error
-      );
-    }
-
-    if (errorCode === 'ETIMEDOUT') {
-      throw new SDKError(
-        SDKErrorType.TIMEOUT,
-        'Operation timed out',
-        504,
-        { operation: context },
-        error
-      );
-    }
-
-    // Re-throw SDK errors
-    if (error instanceof SDKError) {
-      throw error;
-    }
-
-    // Unknown errors
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new SDKError(
-      SDKErrorType.UNKNOWN,
-      errorMessage,
-      500,
-      { operation: context },
-      error
-    );
-  }
-}
-
-// Helper to determine error type from status code
-function getErrorType(status: number): SDKErrorType {
-  switch (status) {
-    case 400: return SDKErrorType.VALIDATION;
-    case 401: return SDKErrorType.AUTHENTICATION;
-    case 403: return SDKErrorType.AUTHORIZATION;
-    case 404: return SDKErrorType.NOT_FOUND;
-    case 409: return SDKErrorType.CONFLICT;
-    case 429: return SDKErrorType.RATE_LIMIT;
-    default:
-      if (status >= 500) return SDKErrorType.SERVER_ERROR;
-      return SDKErrorType.UNKNOWN;
-  }
-}
-
-// Create user-friendly error messages
-export function getUserFriendlyError(error: SDKError): string {
-  switch (error.type) {
-    case SDKErrorType.NETWORK:
-      return 'Unable to connect to the service. Please check your connection and try again.';
-    case SDKErrorType.AUTHENTICATION:
-      return 'Your session has expired. Please log in again.';
-    case SDKErrorType.AUTHORIZATION:
-      return 'You don\'t have permission to perform this action.';
-    case SDKErrorType.VALIDATION:
-      return error.message || 'Please check your input and try again.';
-    case SDKErrorType.RATE_LIMIT:
-      return 'You\'re making requests too quickly. Please slow down.';
-    case SDKErrorType.NOT_FOUND:
-      return 'The requested resource was not found.';
-    case SDKErrorType.CONFLICT:
-      return 'This action conflicts with existing data.';
-    case SDKErrorType.SERVER_ERROR:
-      return 'Something went wrong on our end. Please try again later.';
-    case SDKErrorType.TIMEOUT:
-      return 'The request took too long. Please try again.';
-    default:
-      return 'An unexpected error occurred. Please try again.';
-  }
-}
-
-// Retry logic for transient failures
-export async function withRetry<T>(
-  operation: () => Promise<T>,
-  options: {
-    maxRetries?: number;
-    retryDelay?: number;
-    shouldRetry?: (error: unknown) => boolean;
-  } = {}
-): Promise<T> {
-  const { 
-    maxRetries = 3, 
-    retryDelay = 1000,
-    shouldRetry = (error: unknown) => {
-      // Retry on network errors and 5xx errors
-      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
-      if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') return true;
-      
-      const response = error && typeof error === 'object' && 'response' in error ? error.response : null;
-      const status = response && typeof response === 'object' && 'status' in response ? response.status as number : null;
-      if (status && status >= 500) return true;
-      
-      return false;
-    }
-  } = options;
-
-  let lastError: unknown;
-  
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await operation();
-    } catch (error: unknown) {
-      lastError = error;
-      
-      if (!shouldRetry(error) || i === maxRetries - 1) {
-        throw error;
-      }
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.warn(`Retrying operation (attempt ${i + 2}/${maxRetries})`, {
-        error: errorMessage,
-      });
-      
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, i)));
-    }
-  }
-  
-  throw lastError;
-}
+// Re-export SDK error types for convenience
+export {
+  ConduitError,
+  AuthError,
+  AuthenticationError,
+  AuthorizationError,
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  RateLimitError,
+  ServerError,
+  NetworkError,
+  TimeoutError,
+  isConduitError,
+  isAuthError,
+  isValidationError,
+  isNotFoundError,
+  isRateLimitError,
+  isNetworkError
+};

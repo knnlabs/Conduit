@@ -39,16 +39,11 @@ import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { UIModelMapping, mapModelMappingFromSDK } from '@/lib/types/mappers';
 
-interface ModelMapping {
-  id: string;
-  modelName: string;
-  providerModelId: string;
-  providerId: number;
+interface ModelMappingWithStats extends UIModelMapping {
   providerName?: string;
-  isEnabled: boolean;
-  priority: number;
-  createdAt: string;
   lastUsed?: string;
   requestCount: number;
   successRate?: number;
@@ -58,10 +53,10 @@ interface ModelMapping {
 export default function ModelMappingsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedMapping, setSelectedMapping] = useState<ModelMapping | null>(null);
+  const [selectedMapping, setSelectedMapping] = useState<ModelMappingWithStats | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [mappings, setMappings] = useState<ModelMapping[]>([]);
+  const [mappings, setMappings] = useState<ModelMappingWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [testingMappings, setTestingMappings] = useState<Set<string>>(new Set());
@@ -79,8 +74,22 @@ export default function ModelMappingsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch model mappings');
       }
-      const data = await response.json();
-      setMappings(data);
+      const data: ModelProviderMappingDto[] = await response.json();
+      
+      // Map SDK types and add stats (would need separate stats fetch in real app)
+      const mappedData: ModelMappingWithStats[] = data.map(m => {
+        const mapped = mapModelMappingFromSDK(m);
+        return {
+          ...mapped,
+          providerName: mapped.targetProvider,
+          lastUsed: undefined,
+          requestCount: 0,
+          successRate: undefined,
+          averageLatency: undefined,
+        };
+      });
+      
+      setMappings(mappedData);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -184,16 +193,16 @@ export default function ModelMappingsPage() {
   // Filter mappings based on search and tab
   const filteredMappings = mappings.filter((mapping) => {
     // Tab filter
-    if (activeTab === 'enabled' && !mapping.isEnabled) return false;
-    if (activeTab === 'disabled' && mapping.isEnabled) return false;
+    if (activeTab === 'enabled' && !mapping.isActive) return false;
+    if (activeTab === 'disabled' && mapping.isActive) return false;
     
     // Search filter
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
     return (
-      mapping.modelName.toLowerCase().includes(query) ||
-      mapping.providerModelId.toLowerCase().includes(query) ||
+      mapping.sourceModel.toLowerCase().includes(query) ||
+      mapping.targetModel.toLowerCase().includes(query) ||
       (mapping.providerName && mapping.providerName.toLowerCase().includes(query)) ||
       mapping.id.toLowerCase().includes(query)
     );
@@ -211,12 +220,12 @@ export default function ModelMappingsPage() {
 
   const stats = {
     totalMappings: mappings.length,
-    enabledMappings: mappings.filter((m) => m.isEnabled).length,
-    disabledMappings: mappings.filter((m) => !m.isEnabled).length,
+    enabledMappings: mappings.filter((m) => m.isActive).length,
+    disabledMappings: mappings.filter((m) => !m.isActive).length,
     totalRequests: mappings.reduce((sum, m) => sum + m.requestCount, 0),
   };
 
-  const handleEdit = (mapping: ModelMapping) => {
+  const handleEdit = (mapping: ModelMappingWithStats) => {
     setSelectedMapping(mapping);
     openEditModal();
   };
@@ -232,16 +241,16 @@ export default function ModelMappingsPage() {
     }
 
     const exportData = filteredMappings.map((mapping) => ({
-      modelName: mapping.modelName,
-      providerModelId: mapping.providerModelId,
+      modelName: mapping.sourceModel,
+      providerModelId: mapping.targetModel,
       providerName: mapping.providerName || '',
-      status: mapping.isEnabled ? 'Enabled' : 'Disabled',
+      status: mapping.isActive ? 'Enabled' : 'Disabled',
       priority: mapping.priority,
       requestCount: mapping.requestCount,
       successRate: mapping.successRate ? `${mapping.successRate}%` : '',
       averageLatency: mapping.averageLatency ? `${mapping.averageLatency}ms` : '',
       lastUsed: formatDateForExport(mapping.lastUsed),
-      createdAt: formatDateForExport(mapping.createdAt),
+      createdAt: formatDateForExport(mapping.createdDate),
     }));
 
     exportToCSV(

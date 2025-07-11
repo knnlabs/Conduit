@@ -24,7 +24,6 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
-import { BackendErrorHandler } from '@/lib/errors/BackendErrorHandler';
 
 interface BackendStatusIndicatorProps {
   compact?: boolean;
@@ -36,7 +35,7 @@ export function BackendStatusIndicator({
   showDetails = false 
 }: BackendStatusIndicatorProps) {
   const [expanded, setExpanded] = useState(false);
-  const { healthStatus, isHealthy, isDegraded, isUnavailable, adminError, coreError, refetch } = useBackendHealth();
+  const { healthStatus, isHealthy, isDegraded, isUnavailable, error, refetch } = useBackendHealth();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,46 +143,14 @@ export function BackendStatusIndicator({
           </Group>
         </Group>
 
-        {Boolean(adminError || coreError) && (
-          <Stack gap="xs">
-            {Boolean(adminError) && (
-              <Alert 
-                icon={<IconAlertCircle size={16} />} 
-                color="red" 
-                title="Admin API Issue"
-              >
-                <Text size="xs">
-                  {BackendErrorHandler.getUserFriendlyMessage(
-                    BackendErrorHandler.classifyError(adminError)
-                  )}
-                </Text>
-                <Text size="xs" c="dimmed" mt="xs">
-                  {BackendErrorHandler.getActionableMessage(
-                    BackendErrorHandler.classifyError(adminError)
-                  )}
-                </Text>
-              </Alert>
-            )}
-            
-            {Boolean(coreError) && (
-              <Alert 
-                icon={<IconAlertCircle size={16} />} 
-                color="red" 
-                title="Core API Issue"
-              >
-                <Text size="xs">
-                  {BackendErrorHandler.getUserFriendlyMessage(
-                    BackendErrorHandler.classifyError(coreError)
-                  )}
-                </Text>
-                <Text size="xs" c="dimmed" mt="xs">
-                  {BackendErrorHandler.getActionableMessage(
-                    BackendErrorHandler.classifyError(coreError)
-                  )}
-                </Text>
-              </Alert>
-            )}
-          </Stack>
+        {Boolean(error) && (
+          <Alert 
+            icon={<IconAlertCircle size={16} />} 
+            color="red" 
+            title="Backend API Issue"
+          >
+            <Text size="xs">{error}</Text>
+          </Alert>
         )}
 
         {isUnavailable && (

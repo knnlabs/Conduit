@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 export async function POST(_request: Request) {
   try {
@@ -18,10 +19,6 @@ export async function POST(_request: Request) {
 
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Logout failed' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

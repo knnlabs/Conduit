@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
@@ -18,11 +19,7 @@ export async function GET(
     const virtualKey = await adminClient.virtualKeys.getById(parseInt(id, 10));
     return NextResponse.json(virtualKey);
   } catch (error) {
-    console.error('Error fetching virtual key:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch virtual key' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -43,11 +40,7 @@ export async function PUT(
     const virtualKey = await adminClient.virtualKeys.update(parseInt(id, 10), body);
     return NextResponse.json(virtualKey);
   } catch (error) {
-    console.error('Error updating virtual key:', error);
-    return NextResponse.json(
-      { error: 'Failed to update virtual key' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }
 
@@ -67,10 +60,6 @@ export async function DELETE(
     await adminClient.virtualKeys.deleteById(parseInt(id, 10));
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('Error deleting virtual key:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete virtual key' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 export async function GET(req: NextRequest) {
@@ -78,10 +79,6 @@ Summary Statistics:
       },
     });
   } catch (error) {
-    console.error('Error exporting provider health:', error);
-    return NextResponse.json(
-      { error: 'Failed to export provider health' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

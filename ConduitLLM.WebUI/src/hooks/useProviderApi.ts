@@ -1,0 +1,319 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { notifications } from '@mantine/notifications';
+
+interface Provider {
+  id: string;
+  name: string;
+  type: string;
+  endpoint: string;
+  apiKey?: string;
+  isActive: boolean;
+  priority: number;
+  capabilities: string[];
+  config?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProviderHealth {
+  providerId: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  lastCheck: string;
+  responseTime: number;
+  successRate: number;
+  errorCount: number;
+  issues?: string[];
+}
+
+interface ProviderModel {
+  id: string;
+  name: string;
+  capabilities: string[];
+  contextWindow?: number;
+  maxTokens?: number;
+  pricing?: {
+    prompt: number;
+    completion: number;
+    currency: string;
+  };
+}
+
+interface TestProviderRequest {
+  endpoint: string;
+  apiKey: string;
+  type: string;
+  model?: string;
+}
+
+export function useProviderApi() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const getProviders = useCallback(async (): Promise<Provider[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/providers', {
+        method: 'GET',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch providers');
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch providers';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getProvider = useCallback(async (id: string): Promise<Provider> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${id}`, {
+        method: 'GET',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch provider');
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch provider';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const createProvider = useCallback(async (provider: Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>): Promise<Provider> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/providers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(provider),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create provider');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Provider created successfully',
+        color: 'green',
+      });
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create provider';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const updateProvider = useCallback(async (id: string, updates: Partial<Provider>): Promise<Provider> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update provider');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Provider updated successfully',
+        color: 'green',
+      });
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update provider';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const deleteProvider = useCallback(async (id: string): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete provider');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Provider deleted successfully',
+        color: 'green',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete provider';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const testProvider = useCallback(async (request: TestProviderRequest): Promise<{ success: boolean; message: string }> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/providers/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Provider test failed');
+      }
+
+      notifications.show({
+        title: result.success ? 'Success' : 'Failed',
+        message: result.message,
+        color: result.success ? 'green' : 'red',
+      });
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Provider test failed';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealth> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/health/providers/${id}`, {
+        method: 'GET',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch provider health');
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch provider health';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getProviderModels = useCallback(async (id: string): Promise<ProviderModel[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${id}/models`, {
+        method: 'GET',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch provider models');
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch provider models';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    getProviders,
+    getProvider,
+    createProvider,
+    updateProvider,
+    deleteProvider,
+    testProvider,
+    getProviderHealth,
+    getProviderModels,
+    isLoading,
+    error,
+  };
+}

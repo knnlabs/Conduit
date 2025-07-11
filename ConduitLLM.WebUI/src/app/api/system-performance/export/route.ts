@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 export async function GET(req: NextRequest) {
@@ -66,10 +67,6 @@ System Uptime: 7 days`;
       },
     });
   } catch (error) {
-    console.error('Error exporting system performance:', error);
-    return NextResponse.json(
-      { error: 'Failed to export system performance' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

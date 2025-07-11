@@ -1,4 +1,5 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import { SDK_CONFIG } from '../server/sdk-config';
 
 export interface ValidateMasterKeyResult {
   isValid: boolean;
@@ -36,10 +37,13 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
       return { isValid: false };
     }
 
-    // Server-side validation
+    // Server-side validation - create a temporary client with the provided key
     const adminClient = new ConduitAdminClient({
-      adminApiUrl: process.env.CONDUIT_ADMIN_API_BASE_URL!,
       masterKey: masterKey,
+      adminApiUrl: SDK_CONFIG.adminBaseURL,
+      options: {
+        signalR: SDK_CONFIG.signalR,
+      }
     });
 
     // Try to make a simple request to validate the key

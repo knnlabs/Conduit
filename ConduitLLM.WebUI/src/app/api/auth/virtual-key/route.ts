@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
@@ -26,7 +27,6 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Failed to retrieve virtual key:', error);
     
     // Try to get from session if available
     const sessionCookie = request.cookies.get('conduit_session');
@@ -40,13 +40,10 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch {
-        // Ignore parse errors
+        // Session parse error, continue to error response
       }
     }
     
-    return NextResponse.json(
-      { error: 'Failed to retrieve virtual key' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

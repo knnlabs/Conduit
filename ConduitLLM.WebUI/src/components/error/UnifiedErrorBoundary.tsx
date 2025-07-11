@@ -2,7 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
-import { ErrorClassifier } from '@/lib/utils/error-classifier';
+import { ErrorClassifier } from '@/lib/utils/ui-error-classifier';
 import { logger } from '@/lib/utils/logging';
 import { notifications } from '@mantine/notifications';
 // Removed @tanstack/react-query dependency - not needed for basic error boundary

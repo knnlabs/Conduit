@@ -18,19 +18,10 @@ import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
 import { useState, useEffect } from 'react';
 
-interface VirtualKey {
-  id: string;
-  keyName: string;
-  keyHash: string;
-  currentSpend: number;
-  maxBudget?: number;
-  isEnabled: boolean;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
-  description?: string;
-  allowedModels?: string[];
-}
+import { UIVirtualKey } from '@/lib/types/mappers';
+
+// Legacy type alias for compatibility
+type VirtualKey = UIVirtualKey;
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
@@ -79,11 +70,11 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
   useEffect(() => {
     if (virtualKey) {
       form.setValues({
-        keyName: virtualKey.keyName,
-        description: virtualKey.description || '',
-        maxBudget: virtualKey.maxBudget,
-        isEnabled: virtualKey.isEnabled,
-        allowedModels: virtualKey.allowedModels || [],
+        keyName: virtualKey.name,
+        description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
+        maxBudget: virtualKey.budget,
+        isEnabled: virtualKey.isActive,
+        allowedModels: virtualKey.allowedModels ? [virtualKey.allowedModels] : [],
       });
     }
   }, [virtualKey]);
@@ -94,7 +85,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     setIsSubmitting(true);
     try {
       const payload = {
-        id: parseInt(virtualKey.id, 10),
+        id: virtualKey.id,
         keyName: values.keyName.trim(),
         description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
@@ -151,7 +142,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         <Alert icon={<IconAlertCircle size={16} />} color="blue">
           <Text size="sm" fw={500}>Key Hash</Text>
           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-            {virtualKey.keyHash}
+            {virtualKey.key}
           </Text>
         </Alert>
 
@@ -189,7 +180,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         <Alert icon={<IconAlertCircle size={16} />} color="gray">
           <Text size="sm">
             Current spend: ${virtualKey.currentSpend.toFixed(2)} | 
-            Requests: {virtualKey.requestCount.toLocaleString()}
+            Requests: {virtualKey.requestCount?.toLocaleString() || '0'}
           </Text>
         </Alert>
         
