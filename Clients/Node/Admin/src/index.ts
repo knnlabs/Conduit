@@ -9,6 +9,7 @@ export * from './models/common';
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/providerModels';
+export * from './models/providerHealth';
 export * from './models/settings';
 export * from './models/ipFilter';
 // Re-export modelCost types except CostTrend (conflicts with analytics)
@@ -81,6 +82,7 @@ export { FetchProviderModelsService } from './services/FetchProviderModelsServic
 export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
+export { FetchProviderHealthService } from './services/FetchProviderHealthService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

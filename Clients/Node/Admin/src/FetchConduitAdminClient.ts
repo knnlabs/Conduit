@@ -7,6 +7,7 @@ import { FetchModelMappingsService } from './services/FetchModelMappingsService'
 import { FetchProviderModelsService } from './services/FetchProviderModelsService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
+import { FetchProviderHealthService } from './services/FetchProviderHealthService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -36,6 +37,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providerModels: FetchProviderModelsService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
+  public readonly providerHealth: FetchProviderHealthService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -49,6 +51,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providerModels = new FetchProviderModelsService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
+    this.providerHealth = new FetchProviderHealthService(this);
   }
 
   /**

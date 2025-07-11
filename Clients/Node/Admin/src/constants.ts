@@ -181,7 +181,11 @@ export const ENDPOINTS = {
     STATUS: '/providerhealth/status',
     STATUS_BY_PROVIDER: (provider: string) => `/providerhealth/status/${provider}`,
     HISTORY: '/providerhealth/history',
+    HISTORY_BY_PROVIDER: (provider: string) => `/providerhealth/history/${provider}`,
     CHECK: (provider: string) => `/providerhealth/check/${provider}`,
+    SUMMARY: '/api/health/providers',
+    ALERTS: '/api/health/alerts',
+    PERFORMANCE: (provider: string) => `/api/health/providers/${provider}/performance`,
   },
 
   // System
