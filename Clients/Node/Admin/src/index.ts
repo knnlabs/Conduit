@@ -73,6 +73,43 @@ export {
   AuditLogPage,
 } from './models/securityExtended';
 export * from './models/configuration';
+// Re-export configurationExtended types except RoutingRule and UpdateRoutingConfigDto (conflicts with configuration)
+export {
+  RoutingConfigDto,
+  RetryPolicy,
+  // UpdateRoutingConfigDto, // conflicts with configuration
+  // RoutingRule, // conflicts with configuration
+  RuleCondition,
+  RuleAction,
+  CreateRoutingRuleDto,
+  UpdateRoutingRuleDto,
+  CacheConfigDto,
+  UpdateCacheConfigDto,
+  CacheRule,
+  CacheCondition,
+  CacheClearParams,
+  CacheClearResult,
+  CacheStatsDto,
+  CacheKeyStats,
+  LoadBalancerConfigDto,
+  UpdateLoadBalancerConfigDto,
+  LoadBalancerHealthDto,
+  LoadBalancerNode,
+  PerformanceConfigDto,
+  UpdatePerformanceConfigDto,
+  PerformanceTestParams,
+  PerformanceTestResult,
+  PerformanceDataPoint,
+  ErrorSummary,
+  FeatureFlag,
+  FeatureFlagCondition,
+  UpdateFeatureFlagDto,
+} from './models/configurationExtended';
+// Re-export the extended versions of conflicting types
+export { 
+  RoutingRule as ExtendedRoutingRule,
+  UpdateRoutingConfigDto as ExtendedUpdateRoutingConfigDto
+} from './models/configurationExtended';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -103,6 +140,7 @@ export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './serv
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { FetchProviderHealthService } from './services/FetchProviderHealthService';
 export { FetchSecurityService } from './services/FetchSecurityService';
+export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

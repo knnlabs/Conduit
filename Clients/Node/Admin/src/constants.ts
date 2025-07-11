@@ -228,6 +228,8 @@ export const ENDPOINTS = {
     ROUTING: '/api/configuration/routing',
     ROUTING_TEST: '/api/configuration/routing/test',
     LOAD_BALANCER_HEALTH: '/api/configuration/routing/health',
+    ROUTING_RULES: '/api/config/routing/rules',
+    ROUTING_RULE_BY_ID: (id: string) => `/api/config/routing/rules/${id}`,
     
     // Caching
     CACHING: '/api/configuration/caching',
@@ -236,6 +238,19 @@ export const ENDPOINTS = {
     CACHE_REGIONS: '/api/configuration/caching/regions',
     CACHE_CLEAR: (regionId: string) => `/api/configuration/caching/regions/${regionId}/clear`,
     CACHE_STATISTICS: '/api/configuration/caching/statistics',
+    CACHE_CONFIG: '/api/config/cache',
+    CACHE_STATS: '/api/config/cache/stats',
+    
+    // Load Balancer
+    LOAD_BALANCER: '/api/config/loadbalancer',
+    
+    // Performance
+    PERFORMANCE: '/api/config/performance',
+    PERFORMANCE_TEST: '/api/config/performance/test',
+    
+    // Feature Flags
+    FEATURES: '/api/config/features',
+    FEATURE_BY_KEY: (key: string) => `/api/config/features/${key}`,
   },
 } as const;
 
