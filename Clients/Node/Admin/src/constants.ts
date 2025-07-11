@@ -86,6 +86,9 @@ export const ENDPOINTS = {
     REFRESH: (providerId: string) => `/provider-models/${providerId}/refresh`,
     TEST_CONNECTION: '/provider-models/test-connection',
     SUMMARY: '/provider-models/summary',
+    DETAILS: (provider: string, model: string) => `/provider-models/${provider}/${model}`,
+    CAPABILITIES: (provider: string, model: string) => `/provider-models/${provider}/${model}/capabilities`,
+    SEARCH: '/provider-models/search',
   },
 
   // Model Provider Mappings

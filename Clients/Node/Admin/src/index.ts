@@ -8,6 +8,7 @@ export * from './models/common';
 // discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';
+export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/modelCost';
@@ -45,6 +46,7 @@ export { FetchVirtualKeyService as VirtualKeyService } from './services/FetchVir
 export { FetchProvidersService as ProvidersService } from './services/FetchProvidersService';
 export { FetchSystemService } from './services/FetchSystemService';
 export { FetchModelMappingsService } from './services/FetchModelMappingsService';
+export { FetchProviderModelsService } from './services/FetchProviderModelsService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
