@@ -15,11 +15,6 @@
       "types": "./dist/nextjs.d.ts",
       "import": "./dist/nextjs.mjs",
       "require": "./dist/nextjs.js"
-    },
-    "./react-query": {
-      "types": "./dist/react-query.d.ts",
-      "import": "./dist/react-query.mjs",
-      "require": "./dist/react-query.js"
     }
   },
   "scripts": {
@@ -55,18 +50,10 @@
   "author": "Conduit Team",
   "license": "MIT",
   "peerDependencies": {
-    "@tanstack/react-query": "^5.81.5",
-    "next": ">=13.0.0",
-    "react": ">=17.0.0"
+    "next": ">=13.0.0"
   },
   "peerDependenciesMeta": {
     "next": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    },
-    "@tanstack/react-query": {
       "optional": true
     }
   },
