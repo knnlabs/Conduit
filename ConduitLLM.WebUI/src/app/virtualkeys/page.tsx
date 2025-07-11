@@ -64,8 +64,19 @@ export default function VirtualKeysPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch virtual keys');
       }
-      const data: VirtualKeyDto[] = await response.json();
-      const mappedKeys = data.map(mapVirtualKeyFromSDK);
+      const data = await response.json();
+      
+      // Handle both array and paginated response formats
+      let virtualKeysData: VirtualKeyDto[];
+      if (Array.isArray(data)) {
+        virtualKeysData = data;
+      } else if (data.items && Array.isArray(data.items)) {
+        virtualKeysData = data.items;
+      } else {
+        virtualKeysData = [];
+      }
+      
+      const mappedKeys = virtualKeysData.map(mapVirtualKeyFromSDK);
       setVirtualKeys(mappedKeys);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));

@@ -69,12 +69,17 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
   // Update form when virtualKey changes
   useEffect(() => {
     if (virtualKey) {
+      // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
+      const models = virtualKey.allowedModels 
+        ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
+        : ['*']; // Default to all models if none specified
+      
       form.setValues({
         keyName: virtualKey.name,
         description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
         maxBudget: virtualKey.budget,
         isEnabled: virtualKey.isActive,
-        allowedModels: virtualKey.allowedModels ? [virtualKey.allowedModels] : [],
+        allowedModels: models,
       });
     }
   }, [virtualKey]);
@@ -85,14 +90,16 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     setIsSubmitting(true);
     try {
       const payload = {
-        id: virtualKey.id,
         keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
         maxBudget: values.maxBudget || undefined,
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
+        // Note: description is stored in metadata for virtual keys
+        metadata: values.description?.trim() || undefined,
       };
 
+      console.log('[EditVirtualKey] Updating with payload:', payload);
+      
       const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
         method: 'PUT',
         headers: {
@@ -101,7 +108,11 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         body: JSON.stringify(payload),
       });
 
+      console.log('[EditVirtualKey] Response status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[EditVirtualKey] Error response:', errorText);
         throw new Error('Failed to update virtual key');
       }
 

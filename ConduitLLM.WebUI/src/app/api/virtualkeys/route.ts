@@ -11,9 +11,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '100', 10);
+    
     const adminClient = getServerAdminClient();
-    const virtualKeys = await adminClient.virtualKeys.list();
-    return NextResponse.json(virtualKeys);
+    const response = await adminClient.virtualKeys.list(page, pageSize);
+    
+    // Return the response as-is (includes items array and pagination info)
+    return NextResponse.json(response);
   } catch (error) {
     return handleSDKError(error);
   }
@@ -28,10 +34,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    console.log('[VirtualKeys] Creating virtual key with data:', body);
+    
     const adminClient = getServerAdminClient();
     const virtualKey = await adminClient.virtualKeys.create(body);
+    
+    console.log('[VirtualKeys] Virtual key created successfully:', virtualKey);
     return NextResponse.json(virtualKey);
   } catch (error) {
+    console.error('[VirtualKeys] Error creating virtual key:', error);
     return handleSDKError(error);
   }
 }

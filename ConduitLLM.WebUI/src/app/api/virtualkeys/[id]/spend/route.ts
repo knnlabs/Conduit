@@ -3,34 +3,41 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
-// GET /api/model-mappings - List all model mappings
-export async function GET(req: NextRequest) {
+// GET /api/virtualkeys/[id]/spend - Get spend history for a virtual key
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const auth = requireAuth(req);
   if (!auth.isValid) {
     return auth.response!;
   }
 
   try {
+    const { id } = await params;
     const adminClient = getServerAdminClient();
-    const mappings = await adminClient.modelMappings.list();
-    return NextResponse.json(mappings);
+    const spendHistory = await adminClient.virtualKeys.getSpend(id);
+    return NextResponse.json(spendHistory);
   } catch (error) {
     return handleSDKError(error);
   }
 }
 
-// POST /api/model-mappings - Create a new model mapping
-export async function POST(req: NextRequest) {
+// POST /api/virtualkeys/[id]/spend/reset - Reset spend for a virtual key
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const auth = requireAuth(req);
   if (!auth.isValid) {
     return auth.response!;
   }
 
   try {
+    const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json();
-    const mapping = await adminClient.modelMappings.create(body);
-    return NextResponse.json(mapping, { status: 201 });
+    await adminClient.virtualKeys.resetSpend(id);
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     return handleSDKError(error);
   }

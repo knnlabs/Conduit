@@ -96,6 +96,7 @@ export abstract class FetchBaseApiClient {
         await this.onRequest(requestInfo);
       }
 
+      console.log('[SDK] API Request:', requestInfo.method, requestInfo.url);
       this.log('debug', `API Request: ${requestInfo.method} ${requestInfo.url}`);
 
       const response = await this.executeWithRetry<TResponse, TRequest>(
@@ -281,6 +282,13 @@ export abstract class FetchBaseApiClient {
       }
 
       if (!response.ok) {
+        console.log('[SDK] API Error Response:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          method: init.method || 'GET'
+        });
+        
         const apiError = await handleApiError({
           response: {
             status: response.status,

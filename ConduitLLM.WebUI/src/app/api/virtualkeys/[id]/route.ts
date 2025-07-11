@@ -35,11 +35,16 @@ export async function PUT(
 
   try {
     const { id } = await params;
-    const adminClient = getServerAdminClient();
     const body = await req.json();
+    console.log('[VirtualKeys] Updating virtual key:', { id, body });
+    
+    const adminClient = getServerAdminClient();
     const virtualKey = await adminClient.virtualKeys.update(id, body);
+    
+    console.log('[VirtualKeys] Virtual key updated successfully:', virtualKey);
     return NextResponse.json(virtualKey);
   } catch (error) {
+    console.error('[VirtualKeys] Error updating virtual key:', error);
     return handleSDKError(error);
   }
 }

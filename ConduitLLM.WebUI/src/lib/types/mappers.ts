@@ -23,6 +23,7 @@ export interface UIVirtualKey extends Omit<VirtualKeyDto, 'keyName' | 'budgetDur
   modifiedDate: string;
   lastUsedDate: string | null;
   metadata: Record<string, unknown> | null;
+  // Note: allowedModels is inherited from VirtualKeyDto as a string
 }
 
 export interface UIProvider extends Omit<ProviderCredentialDto, 'id' | 'providerName' | 'apiEndpoint' | 'additionalConfig' | 'createdAt' | 'updatedAt'> {
@@ -115,10 +116,14 @@ export function mapVirtualKeyFromSDK(sdk: VirtualKeyDto): UIVirtualKey {
   return {
     ...sdk,
     name: sdk.keyName,
-    key: sdk.apiKey || '',
+    // TODO: SDK should include keyHash or masked key for display purposes
+    // Currently apiKey is only returned on creation, afterwards it's not available
+    // Using keyPrefix as a workaround for display
+    key: sdk.keyPrefix || sdk.apiKey || `key_${sdk.id}`, 
     isActive: sdk.isEnabled,
-    budget: sdk.maxBudget,
-    budgetPeriod: sdk.budgetDuration.toLowerCase() as 'daily' | 'monthly' | 'total',
+    budget: sdk.maxBudget || 0,
+    budgetPeriod: (sdk.budgetDuration || 'Total').toLowerCase() as 'daily' | 'monthly' | 'total',
+    // TODO: SDK should include allowedProviders field
     allowedProviders: null, // Not available in SDK
     expirationDate: sdk.expiresAt || null,
     createdDate: sdk.createdAt,
