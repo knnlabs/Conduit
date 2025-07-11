@@ -3,6 +3,7 @@ import { FetchVirtualKeyService } from './services/FetchVirtualKeyService';
 import { FetchDashboardService } from './services/FetchDashboardService';
 import { FetchProvidersService } from './services/FetchProvidersService';
 import { FetchSystemService } from './services/FetchSystemService';
+import { FetchModelMappingsService } from './services/FetchModelMappingsService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -28,6 +29,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly dashboard: FetchDashboardService;
   public readonly providers: FetchProvidersService;
   public readonly system: FetchSystemService;
+  public readonly modelMappings: FetchModelMappingsService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -37,6 +39,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.dashboard = new FetchDashboardService(this);
     this.providers = new FetchProvidersService(this);
     this.system = new FetchSystemService(this);
+    this.modelMappings = new FetchModelMappingsService(this);
   }
 
   /**
