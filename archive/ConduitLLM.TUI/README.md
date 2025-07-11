@@ -1,4 +1,6 @@
-# Conduit TUI
+# Conduit TUI (ARCHIVED)
+
+> **Status: Archived** – This project was moved to `archive/ConduitLLM.TUI` on 2025-07-10 and is not maintained at the moment. It remains here for historical reference and can be re-enabled by moving it back, re-adding to `Conduit.sln`, and updating build scripts.
 
 A Terminal User Interface (TUI) for Conduit LLM Gateway that provides full functionality equivalent to the WebUI through a text-based interface.
 
