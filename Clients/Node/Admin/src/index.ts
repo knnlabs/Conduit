@@ -42,6 +42,7 @@ export type { CapabilityTestResult } from './models/modelMapping';
 
 // Services
 export { FetchVirtualKeyService as VirtualKeyService } from './services/FetchVirtualKeyService';
+export { FetchProvidersService as ProvidersService } from './services/FetchProvidersService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
