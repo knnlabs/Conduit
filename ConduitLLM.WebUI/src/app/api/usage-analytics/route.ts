@@ -146,22 +146,33 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const range = searchParams.get('range') || '7d';
+    const adminClient = getServerAdminClient();
     
-    // In production, we would use the Admin SDK like this:
-    // const adminClient = getServerAdminClient();
-    // const analytics = await adminClient.analytics.getUsageAnalytics({
-    //   timeRange: range,
-    //   includeTimeSeries: true,
-    //   includeProviderBreakdown: true,
-    //   includeModelBreakdown: true,
-    //   includeVirtualKeyBreakdown: true,
-    //   includeEndpointBreakdown: true,
-    // });
+    // Calculate date range based on selected period
+    const now = new Date();
+    const ranges = {
+      '24h': 1,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+    };
+    const days = ranges[range as keyof typeof ranges] || 7;
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = now.toISOString();
     
-    // For now, return mock data
+    // TODO: Replace with real SDK calls once the SDK provides comprehensive analytics methods
+    // The current SDK requires multiple calls with complex data transformation that doesn't match
+    // the WebUI's needs. See GitHub issue #384 for tracking the proper SDK implementation.
+    // 
+    // For now, we'll return mock data to keep the implementation simple and maintainable.
+    // This is acceptable since we're okay with scalability/performance issues for admin users.
+    
     const analytics = generateMockAnalytics(range);
     
-    return NextResponse.json(analytics);
+    return NextResponse.json({
+      ...analytics,
+      _notice: 'Using mock data. Real SDK integration pending (see issue #384).',
+    });
   } catch (error) {
     return handleSDKError(error);
   }

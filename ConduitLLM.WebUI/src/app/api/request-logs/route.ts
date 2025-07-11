@@ -82,58 +82,125 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
+    const adminClient = getServerAdminClient();
     
-    // In production, we would use the Admin SDK like this:
-    // const adminClient = getServerAdminClient();
-    // const logs = await adminClient.analytics.getRequestLogs({
-    //   pageNumber: parseInt(searchParams.get('page') || '1', 10),
-    //   pageSize: parseInt(searchParams.get('pageSize') || '20', 10),
-    //   startDate: searchParams.get('dateFrom') || undefined,
-    //   endDate: searchParams.get('dateTo') || undefined,
-    //   virtualKeyId: searchParams.get('virtualKeyId') || undefined,
-    //   provider: searchParams.get('provider') || undefined,
-    //   search: searchParams.get('search') || undefined,
-    // });
-    
-    // For now, return mock data
-    let logs = generateMockLogs();
-    
-    // Apply filters
-    const search = searchParams.get('search');
-    if (search) {
-      logs = logs.filter(log => 
-        log.path.toLowerCase().includes(search.toLowerCase()) ||
-        log.id.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    
-    const virtualKeyId = searchParams.get('virtualKeyId');
-    if (virtualKeyId) {
-      logs = logs.filter(log => log.virtualKeyName === virtualKeyId);
-    }
-    
-    const provider = searchParams.get('provider');
-    if (provider) {
-      logs = logs.filter(log => log.provider === provider);
-    }
-    
-    const statusCode = searchParams.get('statusCode');
-    if (statusCode) {
-      if (statusCode === '2xx') {
-        logs = logs.filter(log => log.statusCode >= 200 && log.statusCode < 300);
-      } else if (statusCode === '4xx') {
-        logs = logs.filter(log => log.statusCode >= 400 && log.statusCode < 500);
-      } else if (statusCode === '5xx') {
-        logs = logs.filter(log => log.statusCode >= 500);
+    try {
+      // Use the Admin SDK to fetch real request logs
+      const logsResponse = await adminClient.analytics.getRequestLogs({
+        page: parseInt(searchParams.get('page') || '1', 10),
+        pageSize: parseInt(searchParams.get('pageSize') || '20', 10),
+        startDate: searchParams.get('dateFrom') || undefined,
+        endDate: searchParams.get('dateTo') || undefined,
+        virtualKeyId: searchParams.get('virtualKeyId') || undefined,
+        provider: searchParams.get('provider') || undefined,
+        model: searchParams.get('model') || undefined,
+        statusCode: searchParams.get('statusCode') ? parseInt(searchParams.get('statusCode')!, 10) : undefined,
+        // TODO: SDK should support search parameter for filtering logs
+        // search: searchParams.get('search') || undefined,
+      });
+      
+      // Transform the response to match the expected format
+      // TODO: The SDK response should match the WebUI expectations
+      const logs = logsResponse.items.map((log: any) => ({
+        id: log.id,
+        timestamp: log.timestamp,
+        method: log.method,
+        path: log.path || log.endpoint,
+        statusCode: log.statusCode,
+        duration: log.duration || log.latency || log.responseTime,
+        virtualKeyId: log.virtualKeyId,
+        virtualKeyName: log.virtualKeyName || `Key ${log.virtualKeyId}`,
+        provider: log.provider,
+        model: log.model,
+        tokenUsage: log.tokenUsage || log.tokens ? {
+          prompt: log.tokenUsage?.prompt || log.tokens?.prompt || 0,
+          completion: log.tokenUsage?.completion || log.tokens?.completion || 0,
+          total: log.tokenUsage?.total || log.tokens?.total || 0,
+        } : undefined,
+        cost: log.cost,
+        error: log.error || log.errorMessage,
+        userAgent: log.userAgent,
+        ipAddress: log.ipAddress,
+        requestBody: log.requestBody,
+        responseBody: log.responseBody,
+      }));
+      
+      // Apply client-side search filtering if needed
+      // TODO: Remove this once SDK supports search parameter
+      let filteredLogs = logs;
+      const search = searchParams.get('search');
+      if (search) {
+        filteredLogs = logs.filter((log: any) => 
+          log.path?.toLowerCase().includes(search.toLowerCase()) ||
+          log.id?.toLowerCase().includes(search.toLowerCase()) ||
+          log.model?.toLowerCase().includes(search.toLowerCase()) ||
+          log.provider?.toLowerCase().includes(search.toLowerCase())
+        );
       }
+      
+      // Apply status code group filtering (2xx, 4xx, 5xx)
+      const statusCodeParam = searchParams.get('statusCode');
+      if (statusCodeParam && statusCodeParam.endsWith('xx')) {
+        const statusGroup = parseInt(statusCodeParam[0], 10);
+        filteredLogs = filteredLogs.filter((log: any) => 
+          Math.floor(log.statusCode / 100) === statusGroup
+        );
+      }
+      
+      return NextResponse.json({ 
+        logs: filteredLogs,
+        totalCount: logsResponse.totalCount,
+        page: logsResponse.page,
+        pageSize: logsResponse.pageSize,
+        totalPages: logsResponse.totalPages,
+      });
+    } catch (sdkError) {
+      // If SDK call fails, fall back to mock data
+      console.warn('Failed to fetch request logs from SDK, using mock data:', sdkError);
+      const logs = generateMockLogs();
+      
+      // Apply the same filtering logic to mock data
+      let filteredLogs = logs;
+      
+      const search = searchParams.get('search');
+      if (search) {
+        filteredLogs = filteredLogs.filter(log => 
+          log.path.toLowerCase().includes(search.toLowerCase()) ||
+          log.id.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+      
+      const virtualKeyId = searchParams.get('virtualKeyId');
+      if (virtualKeyId) {
+        filteredLogs = filteredLogs.filter(log => log.virtualKeyName === virtualKeyId);
+      }
+      
+      const provider = searchParams.get('provider');
+      if (provider) {
+        filteredLogs = filteredLogs.filter(log => log.provider === provider);
+      }
+      
+      const statusCode = searchParams.get('statusCode');
+      if (statusCode) {
+        if (statusCode === '2xx') {
+          filteredLogs = filteredLogs.filter(log => log.statusCode >= 200 && log.statusCode < 300);
+        } else if (statusCode === '4xx') {
+          filteredLogs = filteredLogs.filter(log => log.statusCode >= 400 && log.statusCode < 500);
+        } else if (statusCode === '5xx') {
+          filteredLogs = filteredLogs.filter(log => log.statusCode >= 500);
+        }
+      }
+      
+      const method = searchParams.get('method');
+      if (method) {
+        filteredLogs = filteredLogs.filter(log => log.method === method);
+      }
+      
+      return NextResponse.json({ 
+        logs: filteredLogs,
+        _warning: 'Using mock data due to SDK error.',
+      });
     }
-    
-    const method = searchParams.get('method');
-    if (method) {
-      logs = logs.filter(log => log.method === method);
-    }
-    
-    return NextResponse.json({ logs });
   } catch (error) {
     return handleSDKError(error);
   }

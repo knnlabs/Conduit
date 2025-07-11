@@ -16,7 +16,7 @@ export async function GET(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const virtualKey = await adminClient.virtualKeys.getById(parseInt(id, 10));
+    const virtualKey = await adminClient.virtualKeys.get(id);
     return NextResponse.json(virtualKey);
   } catch (error) {
     return handleSDKError(error);
@@ -37,7 +37,7 @@ export async function PUT(
     const { id } = await params;
     const adminClient = getServerAdminClient();
     const body = await req.json();
-    const virtualKey = await adminClient.virtualKeys.update(parseInt(id, 10), body);
+    const virtualKey = await adminClient.virtualKeys.update(id, body);
     return NextResponse.json(virtualKey);
   } catch (error) {
     return handleSDKError(error);
@@ -57,7 +57,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    await adminClient.virtualKeys.deleteById(parseInt(id, 10));
+    await adminClient.virtualKeys.delete(id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     return handleSDKError(error);

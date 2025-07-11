@@ -212,21 +212,121 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const range = searchParams.get('range') || '7d';
     const keys = searchParams.get('keys')?.split(',').filter(Boolean);
+    const adminClient = getServerAdminClient();
     
-    // In production, we would use the Admin SDK like this:
-    // const adminClient = getServerAdminClient();
-    // const analytics = await adminClient.virtualKeys.getAnalytics({
-    //   timeRange: range,
-    //   keyIds: keys,
-    //   includeTimeSeries: true,
-    //   includeProviderBreakdown: true,
-    //   includeModelBreakdown: true,
-    // });
+    // Calculate date range
+    const now = new Date();
+    const ranges = {
+      '24h': 1,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+    };
+    const days = ranges[range as keyof typeof ranges] || 7;
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = now.toISOString();
     
-    // For now, return mock data
-    const analytics = generateMockVirtualKeyAnalytics(range, keys);
-    
-    return NextResponse.json(analytics);
+    try {
+      // Get virtual key analytics from SDK
+      const vkAnalytics = await adminClient.analytics.getVirtualKeyAnalytics({
+        startDate,
+        endDate,
+        virtualKeyIds: keys,
+      });
+      
+      // TODO: The SDK should provide time series data and more detailed breakdowns
+      // Currently we need to combine data from multiple sources
+      
+      // Get all virtual keys to enrich the data
+      const allKeys = await adminClient.virtualKeys.list(1, 100);
+      
+      // Transform the SDK response to match WebUI expectations
+      const virtualKeys = vkAnalytics.virtualKeys.map((vkData: any) => {
+        const keyInfo = allKeys.items.find((k: any) => k.id === vkData.keyId || k.keyName === vkData.keyName);
+        
+        return {
+          id: vkData.keyId || keyInfo?.id || vkData.keyName,
+          name: vkData.keyName || keyInfo?.keyName || `Key ${vkData.keyId}`,
+          status: keyInfo?.isEnabled ? 'active' : 'inactive',
+          created: keyInfo?.createdAt || new Date().toISOString(),
+          lastUsed: vkData.lastUsed || new Date().toISOString(),
+          usage: {
+            requests: vkData.usage?.requests || vkData.requests || 0,
+            requestsChange: 0, // TODO: SDK should provide change percentages
+            tokens: vkData.usage?.tokens || vkData.tokens || 0,
+            tokensChange: 0, // TODO: SDK should provide change percentages
+            cost: vkData.usage?.cost || vkData.cost || 0,
+            costChange: 0, // TODO: SDK should provide change percentages
+            errorRate: vkData.errorRate || 0,
+          },
+          quotas: {
+            requests: {
+              used: vkData.usage?.requests || 0,
+              limit: keyInfo?.rateLimit || 10000,
+              period: 'day' as const,
+            },
+            tokens: {
+              used: vkData.usage?.tokens || 0,
+              limit: 1000000, // TODO: SDK should provide token limits
+              period: 'month' as const,
+            },
+            cost: {
+              used: vkData.usage?.cost || 0,
+              limit: keyInfo?.maxBudget || 500,
+              period: 'month' as const,
+            },
+          },
+          providers: vkData.providerBreakdown || [],
+          models: vkData.modelBreakdown || [],
+          endpoints: [], // TODO: SDK should provide endpoint breakdown
+        };
+      });
+      
+      // Generate time series data (SDK doesn't provide this yet)
+      // TODO: Remove mock time series when SDK provides real data
+      const timeSeries: Record<string, any[]> = {};
+      virtualKeys.forEach((key: any) => {
+        timeSeries[key.id] = [];
+        const points = Math.min(days, 30);
+        for (let i = points - 1; i >= 0; i--) {
+          const timestamp = new Date(now.getTime() - (i * (days / points) * 24 * 60 * 60 * 1000));
+          timeSeries[key.id].push({
+            timestamp: timestamp.toISOString(),
+            requests: Math.floor((key.usage.requests / points) * (0.8 + Math.random() * 0.4)),
+            tokens: Math.floor((key.usage.tokens / points) * (0.8 + Math.random() * 0.4)),
+            cost: (key.usage.cost / points) * (0.8 + Math.random() * 0.4),
+            errorRate: key.usage.errorRate * (0.8 + Math.random() * 0.4),
+          });
+        }
+      });
+      
+      // Calculate aggregate metrics
+      const aggregateMetrics = {
+        totalRequests: virtualKeys.reduce((sum: number, key: any) => sum + key.usage.requests, 0),
+        totalTokens: virtualKeys.reduce((sum: number, key: any) => sum + key.usage.tokens, 0),
+        totalCost: virtualKeys.reduce((sum: number, key: any) => sum + key.usage.cost, 0),
+        activeKeys: virtualKeys.filter((key: any) => key.status === 'active').length,
+        avgErrorRate: virtualKeys.length > 0 
+          ? virtualKeys.reduce((sum: number, key: any) => sum + key.usage.errorRate, 0) / virtualKeys.length 
+          : 0,
+        topKey: vkAnalytics.topUsers?.byRequests?.[0]?.keyName || virtualKeys[0]?.name || '',
+      };
+      
+      return NextResponse.json({
+        virtualKeys,
+        timeSeries,
+        aggregateMetrics,
+      });
+    } catch (sdkError) {
+      // If SDK calls fail, fall back to mock data
+      console.warn('Failed to fetch virtual key analytics from SDK, using mock data:', sdkError);
+      const analytics = generateMockVirtualKeyAnalytics(range, keys);
+      
+      return NextResponse.json({
+        ...analytics,
+        _warning: 'Using mock data due to SDK error.',
+      });
+    }
   } catch (error) {
     return handleSDKError(error);
   }

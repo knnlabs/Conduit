@@ -39,11 +39,10 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
 
     // Server-side validation - create a temporary client with the provided key
     const adminClient = new ConduitAdminClient({
+      baseUrl: SDK_CONFIG.adminBaseURL,
       masterKey: masterKey,
-      adminApiUrl: SDK_CONFIG.adminBaseURL,
-      options: {
-        signalR: SDK_CONFIG.signalR,
-      }
+      timeout: SDK_CONFIG.timeout,
+      retries: SDK_CONFIG.maxRetries,
     });
 
     // Try to make a simple request to validate the key

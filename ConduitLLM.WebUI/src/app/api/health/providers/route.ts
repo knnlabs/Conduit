@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
     const adminClient = getServerAdminClient();
     
     // Get all providers
-    const providers = await adminClient.providers.list();
+    const providersResponse = await adminClient.providers.list();
     
     // Generate health data for each provider
-    const providerHealth = generateProviderHealth(providers);
+    const providerHealth = generateProviderHealth(providersResponse.items);
     
     return NextResponse.json(providerHealth);
   } catch (error) {

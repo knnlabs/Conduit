@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const coreClient = getServerCoreClient();
     
     // Call the Core SDK's chat completion method
-    const result = await coreClient.chat.completions.create({
+    const result = await coreClient.chat.create({
       messages: body.messages,
       model: body.model,
       temperature: body.temperature,

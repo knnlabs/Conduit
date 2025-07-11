@@ -55,11 +55,10 @@ export function getServerAdminClient(): ConduitAdminClient {
     validateEnvironment();
     
     adminClient = new ConduitAdminClient({
+      baseUrl: SDK_CONFIG.adminBaseURL,
       masterKey: SDK_CONFIG.masterKey,
-      adminApiUrl: SDK_CONFIG.adminBaseURL,
-      options: {
-        signalR: SDK_CONFIG.signalR,
-      }
+      timeout: SDK_CONFIG.timeout,
+      retries: SDK_CONFIG.maxRetries,
     });
   }
   return adminClient;

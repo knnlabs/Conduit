@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
 // POST /api/videos/generate - Generate videos using Core SDK
@@ -11,18 +10,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const coreClient = getServerCoreClient();
+    // TODO: The Core SDK doesn't currently have a videos service
+    // This endpoint would need to make a direct HTTP call to the Core API
+    // or wait for the Core SDK to be updated with video generation support
     
-    // Call the Core SDK's async video generation method
-    const result = await coreClient.videos.generateAsync({
-      prompt: body.prompt,
-      model: body.model,
-      duration: body.duration,
-      size: body.resolution, // Map resolution to size property
-    });
-    
-    return NextResponse.json(result);
+    return NextResponse.json(
+      { error: 'Video generation is not yet implemented in the Core SDK' },
+      { status: 501 }
+    );
   } catch (error) {
     return handleSDKError(error);
   }

@@ -37,7 +37,7 @@ export async function POST(
     
     // Test if the model supports chat completions (most common capability)
     const result = await adminClient.modelMappings.testCapability(
-      mapping.modelId,
+      parseInt(id, 10),
       'chat'
     );
     

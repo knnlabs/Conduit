@@ -161,20 +161,122 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const range = searchParams.get('range') || '24h';
+    const adminClient = getServerAdminClient();
     
-    // In production, we would use the Admin SDK like this:
-    // const adminClient = getServerAdminClient();
-    // const healthData = await adminClient.providers.getHealthStatus({
-    //   timeRange: range,
-    //   includeHistory: true,
-    //   includeMetrics: true,
-    //   includeIncidents: true,
-    // });
-    
-    // For now, return mock data
-    const healthData = generateMockProviderHealth(range);
-    
-    return NextResponse.json(healthData);
+    try {
+      // Get health summary for all providers
+      const healthSummary = await adminClient.providerHealth.getHealthSummary();
+      
+      // Calculate date range for history
+      const now = new Date();
+      const ranges = {
+        '1h': 1,
+        '24h': 24,
+        '7d': 168,
+        '30d': 720,
+      };
+      const hours = ranges[range as keyof typeof ranges] || 24;
+      const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
+      const endDate = now.toISOString();
+      
+      // TODO: The SDK should provide a single method to get comprehensive health data
+      // Currently we need to make multiple calls per provider which is inefficient
+      
+      // Get detailed health data for each provider
+      const providerDetailsPromises = healthSummary.providers.map(async (provider: any) => {
+        try {
+          const [health, history] = await Promise.all([
+            adminClient.providerHealth.getProviderHealth(provider.id || provider.name),
+            adminClient.providerHealth.getHealthHistory(provider.id || provider.name, {
+              startDate,
+              endDate,
+              resolution: hours <= 24 ? 'hour' : 'day',
+              includeIncidents: true,
+            }),
+          ]);
+          
+          return {
+            id: provider.id || provider.name,
+            name: provider.name,
+            status: health.status || provider.status || 'unknown',
+            uptime: (health as any).uptime || provider.uptime || 0,
+            responseTime: (health as any).averageResponseTime || (health as any).responseTime || provider.responseTime || 0,
+            errorRate: (health as any).errorRate || provider.errorRate || 0,
+            successRate: (health as any).successRate || (100 - ((health as any).errorRate || 0)),
+            lastCheck: (health as any).lastChecked || (health as any).lastCheck || provider.lastChecked || new Date().toISOString(),
+            endpoints: (health as any).endpoints || [],
+            models: (health as any).models || [],
+            rateLimit: (health as any).rateLimit || {
+              requests: { used: 0, limit: 0, reset: new Date().toISOString() },
+              tokens: { used: 0, limit: 0, reset: new Date().toISOString() },
+            },
+            recentIncidents: history.incidents || [],
+            history: history.dataPoints || [],
+          };
+        } catch (error) {
+          console.warn(`Failed to get details for provider ${provider.name}:`, error);
+          // Return basic info if detailed fetch fails
+          return {
+            id: provider.id || provider.name,
+            name: provider.name,
+            status: provider.status || 'unknown',
+            uptime: provider.uptime || 0,
+            responseTime: provider.responseTime || 0,
+            errorRate: provider.errorRate || 0,
+            successRate: provider.successRate || 0,
+            lastCheck: provider.lastChecked || new Date().toISOString(),
+            endpoints: [],
+            models: [],
+            rateLimit: {
+              requests: { used: 0, limit: 0, reset: new Date().toISOString() },
+              tokens: { used: 0, limit: 0, reset: new Date().toISOString() },
+            },
+            recentIncidents: [],
+            history: [],
+          };
+        }
+      });
+      
+      const providers = await Promise.all(providerDetailsPromises);
+      
+      // Transform history data into the expected format
+      const history: Record<string, any[]> = {};
+      const metrics: Record<string, any> = {};
+      
+      providers.forEach(provider => {
+        history[provider.id] = provider.history.map((point: any) => ({
+          timestamp: point.timestamp,
+          responseTime: point.averageResponseTime || point.responseTime || 0,
+          errorRate: point.errorRate || 0,
+          availability: point.availability || (100 - (point.errorRate || 0)),
+        }));
+        
+        // TODO: SDK should provide aggregated metrics
+        metrics[provider.id] = {
+          totalRequests: 0, // Not available from current SDK
+          failedRequests: 0, // Not available from current SDK
+          avgResponseTime: provider.responseTime,
+          p95ResponseTime: 0, // Not available from current SDK
+          p99ResponseTime: 0, // Not available from current SDK
+          availability: provider.uptime,
+        };
+      });
+      
+      return NextResponse.json({
+        providers,
+        history,
+        metrics,
+      });
+    } catch (sdkError) {
+      // If SDK calls fail, fall back to mock data
+      console.warn('Failed to fetch provider health from SDK, using mock data:', sdkError);
+      const healthData = generateMockProviderHealth(range);
+      
+      return NextResponse.json({
+        ...healthData,
+        _warning: 'Using mock data due to SDK error.',
+      });
+    }
   } catch (error) {
     return handleSDKError(error);
   }
