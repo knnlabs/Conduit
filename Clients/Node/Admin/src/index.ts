@@ -47,6 +47,8 @@ export { FetchProvidersService as ProvidersService } from './services/FetchProvi
 export { FetchSystemService } from './services/FetchSystemService';
 export { FetchModelMappingsService } from './services/FetchModelMappingsService';
 export { FetchProviderModelsService } from './services/FetchProviderModelsService';
+export { FetchSettingsService } from './services/FetchSettingsService';
+export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

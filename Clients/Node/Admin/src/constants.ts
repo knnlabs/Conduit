@@ -192,6 +192,7 @@ export const ENDPOINTS = {
   SETTINGS: {
     GLOBAL: '/api/GlobalSettings',
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
+    BATCH_UPDATE: '/api/GlobalSettings/batch',
     AUDIO: '/api/audio-configuration',
     AUDIO_BY_PROVIDER: (provider: string) => `/api/audio-configuration/${provider}`,
     ROUTER: '/api/router-configuration',
