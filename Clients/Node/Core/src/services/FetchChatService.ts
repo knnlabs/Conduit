@@ -1,8 +1,7 @@
-import type { FetchBasedClient } from '../client/FetchBasedClient';
-import type { RequestOptions } from '../client/types';
+import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { ClientConfig, RequestOptions } from '../client/types';
 import type { components } from '../generated/core-api';
 import type { StreamingResponse } from '../models/streaming';
-// import { validateChatCompletionRequest } from '../utils/validation'; // TODO: Fix validation with proper types
 import { createWebStream } from '../utils/web-streaming';
 import { API_ENDPOINTS, HTTP_METHODS } from '../constants';
 
@@ -14,8 +13,10 @@ type ChatCompletionChunk = components['schemas']['ChatCompletionChunk'];
 /**
  * Type-safe Chat service using generated OpenAPI types and native fetch
  */
-export class FetchChatService {
-  constructor(private readonly client: FetchBasedClient) {}
+export class FetchChatService extends FetchBasedClient {
+  constructor(config: ClientConfig) {
+    super(config);
+  }
 
   /**
    * Create a chat completion with full type safety
@@ -50,11 +51,13 @@ export class FetchChatService {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<ChatCompletionResponse> {
-    return this.client['post']<ChatCompletionResponse, ChatCompletionRequest>(
+    const response = await this.post<ChatCompletionResponse, ChatCompletionRequest>(
       API_ENDPOINTS.V1.CHAT.COMPLETIONS,
       request,
       options
     );
+    
+    return response;
   }
 
   private async createStream(
@@ -67,6 +70,9 @@ export class FetchChatService {
     if (!stream) {
       throw new Error('Response body is not a stream');
     }
+    
+    // Return stream without validation
+    
     return createWebStream<ChatCompletionChunk>(stream, options);
   }
 
@@ -74,19 +80,19 @@ export class FetchChatService {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<Response> {
-    const url = `${this.client['config'].baseURL}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
+    const url = `${this.config.baseURL}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
     const controller = new AbortController();
     
     // Set up timeout
-    const timeoutId = options?.timeout || this.client['config'].timeout
-      ? setTimeout(() => controller.abort(), options?.timeout || this.client['config'].timeout)
+    const timeoutId = options?.timeout || this.config.timeout
+      ? setTimeout(() => controller.abort(), options?.timeout || this.config.timeout)
       : undefined;
 
     try {
       const response = await fetch(url, {
         method: HTTP_METHODS.POST,
         headers: {
-          'Authorization': `Bearer ${this.client['config'].apiKey}`,
+          'Authorization': `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
           'User-Agent': '@conduit/core/1.0.0',
           ...options?.headers,

@@ -1,16 +1,20 @@
-import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { ClientConfig } from '../client/types';
 import type { HealthCheckResponse, HealthCheckOptions, WaitForHealthOptions } from '../models/health';
 
-export class HealthService {
-  constructor(private client: FetchBasedClient) {}
+export class HealthService extends FetchBasedClient {
+  constructor(config: ClientConfig) {
+    super(config);
+  }
 
   async check(options?: HealthCheckOptions): Promise<HealthCheckResponse> {
-    return this.client['get']<HealthCheckResponse>('/health', options);
+    return this.get<HealthCheckResponse>('/health', options);
   }
 
   async waitForHealth(options?: WaitForHealthOptions): Promise<HealthCheckResponse> {
-    const maxAttempts = options?.maxAttempts || 30;
-    const delayMs = options?.delayMs || 1000;
+    const timeout = options?.timeout || 30000;
+    const pollingInterval = options?.pollingInterval || 1000;
+    const maxAttempts = Math.floor(timeout / pollingInterval);
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
@@ -23,7 +27,7 @@ export class HealthService {
       }
 
       if (i < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
       }
     }
 

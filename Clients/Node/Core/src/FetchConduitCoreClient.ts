@@ -1,5 +1,7 @@
 import { FetchBasedClient } from './client/FetchBasedClient';
 import { FetchChatService } from './services/FetchChatService';
+import { AudioService } from './services/AudioService';
+import { HealthService } from './services/HealthService';
 import type { ClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -25,12 +27,16 @@ import { ConduitError } from './utils/errors';
  */
 export class FetchConduitCoreClient extends FetchBasedClient {
   public readonly chat: FetchChatService;
+  public readonly audio: AudioService;
+  public readonly health: HealthService;
 
   constructor(config: ClientConfig) {
     super(config);
 
     // Initialize services
-    this.chat = new FetchChatService(this);
+    this.chat = new FetchChatService(config);
+    this.audio = new AudioService(config);
+    this.health = new HealthService(config);
   }
 
   /**
@@ -105,5 +111,4 @@ export {
   AuthError,
   RateLimitError,
   NetworkError,
-  ValidationError,
 } from './utils/errors';

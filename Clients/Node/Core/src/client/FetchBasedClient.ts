@@ -5,10 +5,11 @@ import {
   AuthError, 
   RateLimitError, 
   NetworkError,
-  ValidationError,
   createErrorFromResponse
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
+import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
+import { CircuitBreaker } from './ErrorRecovery';
 
 /**
  * Type-safe base client using native fetch API
@@ -19,6 +20,7 @@ export abstract class FetchBasedClient {
     Pick<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>;
   protected readonly retryConfig: RetryConfig;
   protected readonly retryDelays: number[];
+  protected readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: ClientConfig) {
     this.config = {
@@ -43,6 +45,7 @@ export abstract class FetchBasedClient {
     };
 
     this.retryDelays = this.config.retryDelay;
+    this.circuitBreaker = new CircuitBreaker();
   }
 
   /**
@@ -76,6 +79,13 @@ export abstract class FetchBasedClient {
         await this.config.onRequest(requestConfig);
       }
 
+      // Check circuit breaker
+      if (!this.circuitBreaker.shouldAllowRequest()) {
+        throw new NetworkError('Circuit breaker is open - too many failures', {
+          code: 'CIRCUIT_BREAKER_OPEN',
+        });
+      }
+
       if (this.config.debug) {
         console.debug(`[Conduit] ${requestConfig.method} ${requestConfig.url}`);
       }
@@ -87,7 +97,10 @@ export abstract class FetchBasedClient {
           headers: requestConfig.headers as HeadersInit,
           body: options.body ? JSON.stringify(options.body) : undefined,
           signal: options.signal || controller.signal,
-        }
+          responseType: options.responseType,
+          timeout: options.timeout || this.config.timeout,
+        },
+        options
       );
 
       return response;
@@ -188,11 +201,12 @@ export abstract class FetchBasedClient {
 
   private async executeWithRetry<TResponse, TRequest = unknown>(
     url: string,
-    init: RequestInit,
+    init: ExtendedRequestInit,
+    options: RequestOptions = {},
     attempt: number = 1
   ): Promise<TResponse> {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
       
       // Call onResponse callback if provided
       if (this.config.onResponse) {
@@ -225,32 +239,24 @@ export abstract class FetchBasedClient {
         throw error;
       }
 
-      // Handle empty responses
-      const contentLength = response.headers.get('content-length');
-      const contentType = response.headers.get('content-type');
-      
-      if (contentLength === '0' || response.status === 204) {
-        return undefined as TResponse;
-      }
-
-      if (contentType?.includes('application/json')) {
-        return await response.json() as TResponse;
-      }
-
-      // For non-JSON responses, return text
-      return await response.text() as unknown as TResponse;
+      // Parse response using ResponseParser
+      this.circuitBreaker.recordSuccess();
+      return await ResponseParser.parse<TResponse>(response, init.responseType || options.responseType);
     } catch (error) {
-      if (attempt >= this.retryConfig.maxRetries) {
+      this.circuitBreaker.recordFailure();
+      
+      // Check if we've exceeded max retries
+      if (attempt > this.retryConfig.maxRetries) {
         throw this.handleError(error);
       }
 
-      if (this.shouldRetry(error)) {
+      if (this.shouldRetry(error) && attempt <= this.retryConfig.maxRetries) {
         const delay = this.calculateDelay(attempt);
         if (this.config.debug) {
           console.debug(`[Conduit] Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
         }
         await this.sleep(delay);
-        return this.executeWithRetry<TResponse, TRequest>(url, init, attempt + 1);
+        return this.executeWithRetry<TResponse, TRequest>(url, init, options, attempt + 1);
       }
 
       throw this.handleError(error);
@@ -283,12 +289,10 @@ export abstract class FetchBasedClient {
         retryAfter ? parseInt(retryAfter, 10) : undefined
       );
     } else if (status === 400) {
-      return new ValidationError(
-        errorData?.error?.message || 'Validation failed',
-        { 
-          code: errorData?.error?.code || 'validation_error',
-          details: errorData?.error 
-        }
+      return new ConduitError(
+        errorData?.error?.message || 'Bad request',
+        status,
+        errorData?.error?.code || 'bad_request'
       );
     } else if (errorData?.error) {
       return createErrorFromResponse(errorData, status);

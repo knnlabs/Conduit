@@ -124,15 +124,15 @@ export interface TranscriptionSegment {
   /** Text content of the segment */
   text: string;
   /** Array of token IDs for the text content */
-  tokens: number[];
+  tokens?: number[];
   /** Temperature parameter used for generation */
-  temperature: number;
+  temperature?: number;
   /** Average logprob of the segment */
-  avg_logprob: number;
+  avg_logprob?: number;
   /** Compression ratio of the segment */
-  compression_ratio: number;
+  compression_ratio?: number;
   /** Probability of no speech */
-  no_speech_prob: number;
+  no_speech_prob?: number;
 }
 
 export interface TranscriptionWord {

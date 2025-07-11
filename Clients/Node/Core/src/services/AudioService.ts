@@ -1,5 +1,5 @@
-import type { FetchBasedClient } from '../client/FetchBasedClient';
-import type { RequestOptions } from '../client/types';
+import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { ClientConfig, RequestOptions } from '../client/types';
 import type {
   AudioTranscriptionRequest,
   AudioTranscriptionResponse,
@@ -20,8 +20,10 @@ import type {
 /**
  * Service for audio operations including speech-to-text, text-to-speech, and audio translation
  */
-export class AudioService {
-  constructor(private readonly client: FetchBasedClient) {}
+export class AudioService extends FetchBasedClient {
+  constructor(config: ClientConfig) {
+    super(config);
+  }
 
   /**
    * Transcribes audio to text using speech-to-text models.
@@ -44,16 +46,16 @@ export class AudioService {
       timestamp_granularities: request.timestamp_granularities,
     });
 
-    return this.client['request']<AudioTranscriptionResponse>(
+    return await this.request<AudioTranscriptionResponse>(
+      '/v1/audio/transcriptions',
       {
         method: 'POST',
-        url: '/v1/audio/transcriptions',
-        data: formData,
+        body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      },
-      options
+        ...options
+      }
     );
   }
 
@@ -76,16 +78,16 @@ export class AudioService {
       temperature: request.temperature,
     });
 
-    return this.client['request']<AudioTranslationResponse>(
+    return this.request<AudioTranslationResponse>(
+      '/v1/audio/translations',
       {
         method: 'POST',
-        url: '/v1/audio/translations',
-        data: formData,
+        body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      },
-      options
+        ...options
+      }
     );
   }
 
@@ -101,14 +103,14 @@ export class AudioService {
   ): Promise<TextToSpeechResponse> {
     this.validateSpeechRequest(request);
 
-    const response = await this.client['request']<ArrayBuffer>(
+    const response = await this.request<ArrayBuffer>(
+      '/v1/audio/speech',
       {
         method: 'POST',
-        url: '/v1/audio/speech',
-        data: request,
+        body: request,
         responseType: 'arraybuffer',
-      },
-      options
+        ...options
+      }
     );
 
     // Convert ArrayBuffer to Buffer for Node.js compatibility
@@ -146,17 +148,17 @@ export class AudioService {
       session_id: request.session_id,
     });
 
-    const response = await this.client['request']<ArrayBuffer>(
+    const response = await this.request<ArrayBuffer>(
+      '/v1/audio/hybrid/process',
       {
         method: 'POST',
-        url: '/v1/audio/hybrid/process',
-        data: formData,
+        body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         responseType: 'arraybuffer',
-      },
-      options
+        ...options
+      }
     );
 
     // Parse the hybrid response (assuming it includes metadata in headers)

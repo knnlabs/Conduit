@@ -45,12 +45,12 @@ export class EmbeddingsService {
       validateEmbeddingRequest(request);
 
       const response = await this.client['request']<EmbeddingResponse>(
+        API_ENDPOINTS.V1.EMBEDDINGS.BASE,
         {
           method: 'POST',
-          url: API_ENDPOINTS.V1.EMBEDDINGS.BASE,
-          data: request,
-        },
-        options
+          body: request,
+          ...options
+        }
       );
 
       return response;

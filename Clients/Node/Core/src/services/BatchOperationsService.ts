@@ -52,11 +52,13 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch spend update request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>({
-      method: 'POST',
-      url: '/v1/batch/spend-updates',
-      data: request,
-    });
+    return this.client['request']<BatchOperationStartResponse>(
+      '/v1/batch/spend-updates',
+      {
+        method: 'POST',
+        body: request,
+      }
+    );
   }
 
   /**
@@ -90,11 +92,13 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch virtual key update request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>({
-      method: 'POST',
-      url: '/v1/batch/virtual-key-updates',
-      data: request,
-    });
+    return this.client['request']<BatchOperationStartResponse>(
+      '/v1/batch/virtual-key-updates',
+      {
+        method: 'POST',
+        body: request,
+      }
+    );
   }
 
   /**
@@ -132,11 +136,13 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch webhook send request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>({
-      method: 'POST',
-      url: '/v1/batch/webhook-sends',
-      data: request,
-    });
+    return this.client['request']<BatchOperationStartResponse>(
+      '/v1/batch/webhook-sends',
+      {
+        method: 'POST',
+        body: request,
+      }
+    );
   }
 
   /**
@@ -162,10 +168,12 @@ export class BatchOperationsService {
    * ```
    */
   async getOperationStatus(operationId: string): Promise<BatchOperationStatusResponse> {
-    return this.client['request']<BatchOperationStatusResponse>({
-      method: 'GET',
-      url: `/v1/batch/operations/${operationId}`,
-    });
+    return this.client['request']<BatchOperationStatusResponse>(
+      `/v1/batch/operations/${operationId}`,
+      {
+        method: 'GET',
+      }
+    );
   }
 
   /**
@@ -182,11 +190,13 @@ export class BatchOperationsService {
    * ```
    */
   async cancelOperation(operationId: string): Promise<BatchOperationStatusResponse> {
-    return this.client['request']<BatchOperationStatusResponse>({
-      method: 'POST',
-      url: `/v1/batch/operations/${operationId}/cancel`,
-      data: {},
-    });
+    return this.client['request']<BatchOperationStatusResponse>(
+      `/v1/batch/operations/${operationId}/cancel`,
+      {
+        method: 'POST',
+        body: {},
+      }
+    );
   }
 
   /**

@@ -1,4 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
 import {
   SystemInfoDto,
@@ -89,12 +90,15 @@ export class SystemService extends FetchBaseApiClient {
   }
 
   async downloadBackup(backupId: string): Promise<Blob> {
-    const response = await super.request<any>({
-      method: 'GET',
-      url: `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
-      headers: { Accept: 'application/octet-stream' }
-    });
-    return new Blob([response]);
+    const response = await super.request<any>(
+      `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
+      {
+        method: 'GET',
+        headers: { Accept: 'application/octet-stream' },
+        responseType: 'blob'
+      }
+    );
+    return response;
   }
 
   async deleteBackup(backupId: string): Promise<void> {
@@ -259,12 +263,14 @@ export class SystemService extends FetchBaseApiClient {
    */
   async getWebUIVirtualKey(): Promise<string> {
     // Use the same config as the current service instance
-    const baseConfig = {
-      baseUrl: (this.defaults.baseURL || '').replace('/api', ''),
-      masterKey: this.defaults.headers[HTTP_HEADERS.X_API_KEY] as string,
+    const baseConfig: ApiClientConfig = {
+      baseUrl: this.baseUrl.replace('/api', ''),
+      masterKey: this.masterKey,
       logger: this.logger,
       cache: this.cache,
       retries: this.retryConfig,
+      timeout: this.timeout,
+      defaultHeaders: this.defaultHeaders,
     };
     
     const settingsService = new SettingsService(baseConfig);
@@ -288,7 +294,7 @@ export class SystemService extends FetchBaseApiClient {
     };
 
     // Create the virtual key via VirtualKeyService
-    const virtualKeyService = new VirtualKeyService(baseConfig);
+    const virtualKeyService = new VirtualKeyService(this);
     const response = await virtualKeyService.create({
       keyName: 'WebUI Internal Key',
       metadata: JSON.stringify(metadata)

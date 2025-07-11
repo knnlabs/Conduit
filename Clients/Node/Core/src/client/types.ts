@@ -75,6 +75,7 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   timeout?: number;
   correlationId?: string;
+  responseType?: 'json' | 'text' | 'arraybuffer' | 'blob';
 }
 
 export interface RetryConfig {

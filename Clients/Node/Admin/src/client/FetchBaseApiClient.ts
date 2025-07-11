@@ -9,6 +9,7 @@ import type {
 } from './types';
 import { handleApiError } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
+import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
 
 /**
  * Type-safe base API client for Conduit Admin using native fetch
@@ -47,10 +48,13 @@ export abstract class FetchBaseApiClient {
       return {
         maxRetries: retries,
         retryDelay: 1000,
-        retryCondition: (error: Error): boolean => {
-          return error.name === 'AbortError' || 
-                 error.message.includes('network') ||
-                 error.message.includes('fetch');
+        retryCondition: (error: any): boolean => {
+          if (error instanceof Error) {
+            return error.name === 'AbortError' || 
+                   error.message.includes('network') ||
+                   error.message.includes('fetch');
+          }
+          return false;
         },
       };
     }
@@ -68,6 +72,7 @@ export abstract class FetchBaseApiClient {
       headers?: Record<string, string>;
       signal?: AbortSignal;
       timeout?: number;
+      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
     } = {}
   ): Promise<TResponse> {
     const fullUrl = this.buildUrl(url);
@@ -100,6 +105,8 @@ export abstract class FetchBaseApiClient {
           headers: requestInfo.headers,
           body: options.body ? JSON.stringify(options.body) : undefined,
           signal: options.signal || controller.signal,
+          responseType: options.responseType,
+          timeout: options.timeout || this.timeout,
         }
       );
 
@@ -120,13 +127,13 @@ export abstract class FetchBaseApiClient {
       headers?: Record<string, string>;
       signal?: AbortSignal;
       timeout?: number;
-      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer' | 'document' | 'stream';
+      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
     } | Record<string, unknown>,
     extraOptions?: {
       headers?: Record<string, string>;
       signal?: AbortSignal;
       timeout?: number;
-      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer' | 'document' | 'stream';
+      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
     }
   ): Promise<TResponse> {
     // Handle 3-argument case (url, params, options)
@@ -142,7 +149,7 @@ export abstract class FetchBaseApiClient {
     
     if (isOptions) {
       return this.request<TResponse>(url, { 
-        ...(optionsOrParams as { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: string; }), 
+        ...(optionsOrParams as { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: 'json' | 'text' | 'blob' | 'arraybuffer'; }), 
         method: 'GET' 
       });
     } else {
@@ -247,11 +254,11 @@ export abstract class FetchBaseApiClient {
 
   private async executeWithRetry<TResponse, TRequest = unknown>(
     url: string,
-    init: RequestInit,
+    init: ExtendedRequestInit,
     attempt: number = 1
   ): Promise<TResponse> {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, ResponseParser.cleanRequestInit(init));
       
       this.log('debug', `API Response: ${response.status} ${response.statusText}`);
       
@@ -296,14 +303,10 @@ export abstract class FetchBaseApiClient {
         return undefined as TResponse;
       }
 
-      if (contentType?.includes('application/json')) {
-        return await response.json() as TResponse;
-      }
-
-      // For non-JSON responses, return text
-      return await response.text() as unknown as TResponse;
+      // Parse response using ResponseParser
+      return await ResponseParser.parse<TResponse>(response, init.responseType);
     } catch (error) {
-      if (attempt >= this.retryConfig.maxRetries) {
+      if (attempt > this.retryConfig.maxRetries) {
         if (this.onError && error instanceof Error) {
           this.onError(error);
         }

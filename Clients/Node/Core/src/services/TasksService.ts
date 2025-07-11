@@ -23,11 +23,11 @@ export class TasksService {
       }
 
       const response = await this.client['request']<TaskStatusResponse>(
+        API_ENDPOINTS.V1.TASKS.BY_ID(taskId),
         {
           method: HTTP_METHODS.GET,
-          url: API_ENDPOINTS.V1.TASKS.BY_ID(taskId),
-        },
-        options
+          ...options
+        }
       );
 
       return response;
@@ -54,12 +54,12 @@ export class TasksService {
       }
 
       await this.client['request']<void>(
+        API_ENDPOINTS.V1.TASKS.CANCEL(taskId),
         {
           method: HTTP_METHODS.POST,
-          url: API_ENDPOINTS.V1.TASKS.CANCEL(taskId),
-          data: {},
-        },
-        options
+          body: {},
+          ...options
+        }
       );
     } catch (error) {
       if (error instanceof ConduitError) {
@@ -155,12 +155,12 @@ export class TasksService {
       const request = { older_than_hours: olderThanHours };
 
       const response = await this.client['request']<CleanupTasksResponse>(
+        API_ENDPOINTS.V1.TASKS.CLEANUP,
         {
           method: HTTP_METHODS.POST,
-          url: API_ENDPOINTS.V1.TASKS.CLEANUP,
-          data: request,
-        },
-        options
+          body: request,
+          ...options
+        }
       );
 
       return response.tasks_removed;

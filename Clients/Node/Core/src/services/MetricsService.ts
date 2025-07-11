@@ -26,10 +26,12 @@ export class MetricsService {
    * @returns Promise<MetricsSnapshot> A complete snapshot of current system metrics
    */
   async getCurrentMetrics(): Promise<MetricsSnapshot> {
-    const response = await this.client['request']<MetricsSnapshot>({
-      method: 'GET',
-      url: '/metrics'
-    });
+    const response = await this.client['request']<MetricsSnapshot>(
+      '/metrics',
+      {
+        method: 'GET',
+      }
+    );
     return response;
   }
 
@@ -39,10 +41,12 @@ export class MetricsService {
    * @returns Promise<DatabaseMetrics> Database connection pool metrics
    */
   async getDatabasePoolMetrics(): Promise<DatabaseMetrics> {
-    const response = await this.client['request']<DatabaseMetrics>({
-      method: 'GET',
-      url: '/metrics/database/pool'
-    });
+    const response = await this.client['request']<DatabaseMetrics>(
+      '/metrics/database/pool',
+      {
+        method: 'GET',
+      }
+    );
     return response;
   }
 
@@ -52,12 +56,16 @@ export class MetricsService {
    * @returns Promise<string> Prometheus-formatted metrics as a string
    */
   async getPrometheusMetrics(): Promise<string> {
-    const response = await this.client['client'].get('/metrics', {
-      headers: {
-        'Accept': 'text/plain'
+    const response = await this.client['request']<string>(
+      '/metrics',
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain'
+        }
       }
-    });
-    return response.data;
+    );
+    return response;
   }
 
   /**
@@ -67,11 +75,13 @@ export class MetricsService {
    * @returns Promise<HistoricalMetricsResponse> Historical metrics data
    */
   async getHistoricalMetrics(request: HistoricalMetricsRequest): Promise<HistoricalMetricsResponse> {
-    const response = await this.client['request']<HistoricalMetricsResponse>({
-      method: 'POST',
-      url: '/metrics/historical',
-      data: request
-    });
+    const response = await this.client['request']<HistoricalMetricsResponse>(
+      '/metrics/historical',
+      {
+        method: 'POST',
+        body: request
+      }
+    );
     return response;
   }
 

@@ -6,6 +6,7 @@ import { ENDPOINTS } from '../constants';
 // Type aliases for better readability
 type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
 type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequestDto'];
+type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
 type UpdateVirtualKeyRequestDto = components['schemas']['UpdateVirtualKeyRequestDto'];
 type VirtualKeyValidationResponseDto = components['schemas']['VirtualKeyValidationResult'];
 
@@ -94,8 +95,8 @@ export class FetchVirtualKeyService {
   async create(
     data: CreateVirtualKeyRequestDto,
     config?: RequestConfig
-  ): Promise<VirtualKeyDto> {
-    return this.client['post']<VirtualKeyDto, CreateVirtualKeyRequestDto>(
+  ): Promise<CreateVirtualKeyResponseDto> {
+    return this.client['post']<CreateVirtualKeyResponseDto, CreateVirtualKeyRequestDto>(
       ENDPOINTS.VIRTUAL_KEYS.BASE,
       data,
       {

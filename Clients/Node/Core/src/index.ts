@@ -128,7 +128,6 @@ export {
   ConduitError,
   AuthenticationError,
   RateLimitError,
-  ValidationError,
   NetworkError,
   StreamError,
 } from './utils/errors';

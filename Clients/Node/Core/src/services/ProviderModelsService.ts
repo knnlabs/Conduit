@@ -27,11 +27,11 @@ export class ProviderModelsService {
     const queryParams = forceRefresh ? '?forceRefresh=true' : '';
     
     const response = await this.client['request']<string[]>(
+      `${this.baseEndpoint}/${encodeURIComponent(providerName)}${queryParams}`,
       {
         method: 'GET',
-        url: `${this.baseEndpoint}/${encodeURIComponent(providerName)}${queryParams}`,
-      },
-      options
+        ...options
+      }
     );
 
     return response;

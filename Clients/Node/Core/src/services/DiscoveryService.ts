@@ -26,11 +26,11 @@ export class DiscoveryService {
    */
   async getModels(options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
     const response = await this.client['request']<ModelsDiscoveryResponse>(
+      `${this.baseEndpoint}/models`,
       {
         method: 'GET',
-        url: `${this.baseEndpoint}/models`,
-      },
-      options
+        ...options
+      }
     );
     return response;
   }
@@ -44,11 +44,11 @@ export class DiscoveryService {
     }
 
     const response = await this.client['request']<ProviderModelsDiscoveryResponse>(
+      `${this.baseEndpoint}/providers/${encodeURIComponent(provider)}/models`,
       {
         method: 'GET',
-        url: `${this.baseEndpoint}/providers/${encodeURIComponent(provider)}/models`,
-      },
-      options
+        ...options
+      }
     );
     return response;
   }
@@ -66,11 +66,11 @@ export class DiscoveryService {
     }
 
     const response = await this.client['request']<CapabilityTestResponse>(
+      `${this.baseEndpoint}/models/${encodeURIComponent(model)}/capabilities/${capability}`,
       {
         method: 'GET',
-        url: `${this.baseEndpoint}/models/${encodeURIComponent(model)}/capabilities/${capability}`,
-      },
-      options
+        ...options
+      }
     );
     return response;
   }
@@ -88,12 +88,12 @@ export class DiscoveryService {
     }
     
     const response = await this.client['request']<BulkCapabilityTestResponse>(
+      `${this.baseEndpoint}/bulk/capabilities`,
       {
         method: 'POST',
-        url: `${this.baseEndpoint}/bulk/capabilities`,
-        data: request,
-      },
-      options
+        body: request,
+        ...options
+      }
     );
     return response;
   }
@@ -111,12 +111,12 @@ export class DiscoveryService {
     }
     
     const response = await this.client['request']<BulkModelDiscoveryResponse>(
+      `${this.baseEndpoint}/bulk/models`,
       {
         method: 'POST',
-        url: `${this.baseEndpoint}/bulk/models`,
-        data: request,
-      },
-      options
+        body: request,
+        ...options
+      }
     );
     return response;
   }
@@ -127,11 +127,11 @@ export class DiscoveryService {
    */
   async refreshCapabilities(options?: RequestOptions): Promise<void> {
     await this.client['request'](
+      `${this.baseEndpoint}/refresh`,
       {
         method: 'POST',
-        url: `${this.baseEndpoint}/refresh`,
-      },
-      options
+        ...options
+      }
     );
   }
 
