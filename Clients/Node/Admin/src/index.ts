@@ -53,6 +53,25 @@ export * from './models/databaseBackup';
 export * from './models/signalr';
 export * from './models/notifications';
 export * from './models/security';
+// Re-export securityExtended types except ExportParams and ExportResult (conflicts with analytics)
+export {
+  IpWhitelistDto,
+  IpEntry,
+  SecurityEventParams,
+  SecurityEventType,
+  SecurityEventExtended,
+  SecurityEventPage,
+  ThreatSummaryDto,
+  ThreatCategory,
+  ActiveThreat,
+  AccessPolicy,
+  PolicyRule,
+  CreateAccessPolicyDto,
+  UpdateAccessPolicyDto,
+  AuditLogParams,
+  AuditLog,
+  AuditLogPage,
+} from './models/securityExtended';
 export * from './models/configuration';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
@@ -83,6 +102,7 @@ export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { FetchProviderHealthService } from './services/FetchProviderHealthService';
+export { FetchSecurityService } from './services/FetchSecurityService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
