@@ -11,9 +11,40 @@ export * from './models/provider';
 export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
-export * from './models/modelCost';
+// Re-export modelCost types except CostTrend (conflicts with analytics)
+export {
+  ModelCost,
+  ModelCostDto,
+  CreateModelCostDto,
+  UpdateModelCostDto,
+  ModelCostFilters,
+  ModelCostCalculation,
+  BulkModelCostUpdate,
+  ModelCostHistory,
+  CostEstimate,
+  ModelCostComparison,
+  ModelCostOverview,
+  ImportResult,
+} from './models/modelCost';
+// Re-export analytics types (includes the main ExportParams/ExportResult we'll use)
 export * from './models/analytics';
-export * from './models/analyticsExport';
+// Re-export analyticsExport types except ExportParams and ExportResult (conflicts with analytics)
+export {
+  ExportUsageParams,
+  ExportCostParams,
+  ExportVirtualKeyParams,
+  ExportProviderParams,
+  ExportSecurityParams,
+  CreateExportScheduleDto,
+  ExportSchedule,
+  ExportHistory,
+  ExportRequestLogsParams,
+  RequestLogStatistics,
+  RequestLogSummaryParams,
+  RequestLogSummary,
+  RequestLog,
+  ExportStatus,
+} from './models/analyticsExport';
 export * from './models/system';
 export * from './models/audioConfiguration';
 export * from './models/metrics';
@@ -49,6 +80,7 @@ export { FetchModelMappingsService } from './services/FetchModelMappingsService'
 export { FetchProviderModelsService } from './services/FetchProviderModelsService';
 export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
+export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

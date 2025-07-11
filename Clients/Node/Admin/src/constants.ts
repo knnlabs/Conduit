@@ -147,6 +147,12 @@ export const ENDPOINTS = {
     REQUEST_LOGS: '/logs',
     REQUEST_LOG_BY_ID: (id: string) => `/logs/${id}`,
     
+    // Core analytics endpoints
+    USAGE_ANALYTICS: '/api/usage-analytics',
+    VIRTUAL_KEY_ANALYTICS: '/api/virtual-keys-analytics',
+    MODEL_USAGE_ANALYTICS: '/api/model-usage-analytics',
+    COST_ANALYTICS: '/api/cost-analytics',
+    
     // Specialized exports
     EXPORT_USAGE: '/api/analytics/export/usage',
     EXPORT_COST: '/api/analytics/export/cost',
