@@ -140,13 +140,13 @@ export interface RequestConfigInfo {
   method: string;
   url: string;
   headers: Record<string, string>;
-  data?: any;
+  data?: unknown;
 }
 
 export interface ResponseInfo {
   status: number;
   statusText: string;
   headers: Record<string, string>;
-  data: any;
+  data: unknown;
   config: RequestConfigInfo;
 }

@@ -57,22 +57,32 @@ export class ConduitError extends Error {
   }
   
   // Static method to reconstruct from serialized error
-  static fromSerializable(data: any): ConduitError {
-    if (!data || !data.isConduitError) {
+  static fromSerializable(data: unknown): ConduitError {
+    if (!data || typeof data !== 'object' || !('isConduitError' in data) || !(data as { isConduitError: unknown }).isConduitError) {
       throw new Error('Invalid serialized ConduitError');
     }
     
+    const errorData = data as unknown as {
+      message: string;
+      statusCode: number;
+      code: string;
+      context?: Record<string, unknown>;
+      details?: unknown;
+      endpoint?: string;
+      method?: string;
+    };
+    
     const error = new ConduitError(
-      data.message,
-      data.statusCode,
-      data.code,
-      data.context
+      errorData.message,
+      errorData.statusCode,
+      errorData.code,
+      errorData.context
     );
     
     // Restore additional properties
-    if (data.details !== undefined) error.details = data.details;
-    if (data.endpoint !== undefined) error.endpoint = data.endpoint;
-    if (data.method !== undefined) error.method = data.method;
+    if (errorData.details !== undefined) error.details = errorData.details;
+    if (errorData.endpoint !== undefined) error.endpoint = errorData.endpoint;
+    if (errorData.method !== undefined) error.method = errorData.method;
     
     return error;
   }
@@ -178,7 +188,7 @@ export function isSerializedConduitError(data: unknown): data is ReturnType<Cond
     typeof data === 'object' &&
     data !== null &&
     'isConduitError' in data &&
-    (data as any).isConduitError === true
+    (data as { isConduitError: unknown }).isConduitError === true
   );
 }
 
@@ -193,7 +203,7 @@ function isAxiosError(error: unknown): error is {
     typeof error === 'object' &&
     error !== null &&
     'response' in error &&
-    typeof (error as any).response === 'object'
+    typeof (error as { response: unknown }).response === 'object'
   );
 }
 
@@ -219,7 +229,7 @@ function isErrorLike(error: unknown): error is {
     typeof error === 'object' &&
     error !== null &&
     'message' in error &&
-    typeof (error as any).message === 'string'
+    typeof (error as { message: unknown }).message === 'string'
   );
 }
 
@@ -231,7 +241,7 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
 
   if (isAxiosError(error)) {
     const { status, data } = error.response;
-    const errorData = data as any;
+    const errorData = data as { error?: string; message?: string; details?: unknown } | null;
     const baseMessage = errorData?.error || errorData?.message || error.message;
     
     // Enhanced error messages with endpoint information
@@ -283,7 +293,7 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
 }
 
 // Next.js-specific utilities for error serialization across server/client boundaries
-export function serializeError(error: unknown): Record<string, any> {
+export function serializeError(error: unknown): Record<string, unknown> {
   if (isConduitError(error)) {
     return error.toSerializable();
   }
@@ -309,8 +319,13 @@ export function deserializeError(data: unknown): Error {
   }
   
   if (typeof data === 'object' && data !== null && 'isError' in data) {
-    const errorData = data as any;
-    const error = new Error(errorData.message);
+    const errorData = data as {
+      message?: string;
+      name?: string;
+      stack?: string;
+      isError: boolean;
+    };
+    const error = new Error(errorData.message || 'Unknown error');
     if (errorData.name) error.name = errorData.name;
     if (errorData.stack) error.stack = errorData.stack;
     return error;

@@ -3,12 +3,12 @@ import { useConduitAdmin } from '../../ConduitAdminProvider';
 import { adminQueryKeys } from '../../queryKeys';
 import type { BackupInfo } from '../../../models/databaseBackup';
 
-export interface UseBackupOptions extends Omit<UseQueryOptions<BackupInfo, Error>, 'queryKey' | 'queryFn'> {}
+export interface UseBackupOptions extends Omit<UseQueryOptions<BackupInfo | null, Error>, 'queryKey' | 'queryFn'> {}
 
 export function useBackup(backupId: string, options?: UseBackupOptions) {
   const { adminClient } = useConduitAdmin();
   
-  return useQuery({
+  return useQuery<BackupInfo | null, Error>({
     queryKey: adminQueryKeys.system.backups.detail(backupId),
     queryFn: () => adminClient.databaseBackup.getBackupInfo(backupId),
     enabled: !!backupId,

@@ -1,7 +1,7 @@
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { useConduitAdmin } from '../../ConduitAdminProvider';
 import { adminQueryKeys } from '../../queryKeys';
-import type { ProviderModelsResponse } from '../../../services/ProviderModelsService';
+import type { ProviderModel } from '../../../services/ProviderModelsService';
 
 interface DiscoverModelsVariables {
   providerId: string;
@@ -12,7 +12,7 @@ interface DiscoverModelsVariables {
 }
 
 export function useDiscoverProviderModels(
-  options?: UseMutationOptions<ProviderModelsResponse, Error, DiscoverModelsVariables>
+  options?: UseMutationOptions<ProviderModel[], Error, DiscoverModelsVariables>
 ) {
   const { adminClient } = useConduitAdmin();
   const queryClient = useQueryClient();
@@ -20,7 +20,7 @@ export function useDiscoverProviderModels(
   return useMutation({
     mutationFn: ({ providerId, options }: DiscoverModelsVariables) => 
       adminClient.providerModels.getProviderModels(providerId, options),
-    onSuccess: (data: ProviderModelsResponse, { providerId }: DiscoverModelsVariables) => {
+    onSuccess: (data: ProviderModel[], { providerId }: DiscoverModelsVariables) => {
       // Update the provider models cache
       queryClient.setQueryData(adminQueryKeys.providerModels(providerId), data);
       
