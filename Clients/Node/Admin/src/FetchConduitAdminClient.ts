@@ -10,6 +10,7 @@ import { FetchAnalyticsService } from './services/FetchAnalyticsService';
 import { FetchProviderHealthService } from './services/FetchProviderHealthService';
 import { FetchSecurityService } from './services/FetchSecurityService';
 import { FetchConfigurationService } from './services/FetchConfigurationService';
+import { FetchMonitoringService } from './services/FetchMonitoringService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -42,6 +43,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providerHealth: FetchProviderHealthService;
   public readonly security: FetchSecurityService;
   public readonly configuration: FetchConfigurationService;
+  public readonly monitoring: FetchMonitoringService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -58,6 +60,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providerHealth = new FetchProviderHealthService(this);
     this.security = new FetchSecurityService(this);
     this.configuration = new FetchConfigurationService(this);
+    this.monitoring = new FetchMonitoringService(this);
   }
 
   /**

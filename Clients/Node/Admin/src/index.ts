@@ -52,6 +52,7 @@ export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
 export * from './models/notifications';
+export * from './models/monitoring';
 export * from './models/security';
 // Re-export securityExtended types except ExportParams and ExportResult (conflicts with analytics)
 export {
@@ -141,6 +142,7 @@ export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { FetchProviderHealthService } from './services/FetchProviderHealthService';
 export { FetchSecurityService } from './services/FetchSecurityService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
+export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
