@@ -39,7 +39,7 @@ import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport
 import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@/types/api-types';
 import { UIVirtualKey, mapVirtualKeyFromSDK } from '@/lib/types/mappers';
 
 export default function VirtualKeysPage() {
@@ -54,17 +54,35 @@ export default function VirtualKeysPage() {
 
   // Fetch virtual keys on mount
   useEffect(() => {
-    fetchVirtualKeys();
+    let cancelled = false;
+    
+    const loadVirtualKeys = async () => {
+      if (cancelled) return;
+      await fetchVirtualKeys();
+    };
+    
+    loadVirtualKeys();
+    
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const fetchVirtualKeys = async () => {
     try {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
+      
       const response = await fetch('/api/virtualkeys');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch virtual keys');
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch virtual keys: ${errorText}`);
       }
+      
+      // Parse the response directly
       const data = await response.json();
+      console.log('[VirtualKeys] Fetched data:', data);
       
       // Handle both array and paginated response formats
       let virtualKeysData: VirtualKeyDto[];

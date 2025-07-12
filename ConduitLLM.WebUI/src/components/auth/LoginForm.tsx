@@ -13,14 +13,12 @@ import {
   Alert,
   Group,
   ThemeIcon,
-  Progress,
-  Badge,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconKey, IconAlertCircle } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { LoginCredentials } from '@/types/auth';
-import { validateMasterKeyFormat, getMasterKeyStrength } from '@/lib/auth/validation';
+import { validateMasterKeyFormat } from '@/lib/auth/client-validation';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -40,8 +38,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     },
   });
 
-  // Get password strength for real-time feedback
-  const keyStrength = getMasterKeyStrength(form.values.masterKey);
 
   const handleSubmit = async (values: LoginCredentials) => {
     setIsSubmitting(true);
@@ -104,45 +100,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
                     disabled={loading}
                     {...form.getInputProps('masterKey')}
                   />
-                  
-                  {form.values.masterKey && (
-                    <Stack gap={4}>
-                      <Group justify="space-between">
-                        <Text size="xs" c="dimmed">Strength:</Text>
-                        <Badge 
-                          size="xs" 
-                          variant="light"
-                          color={
-                            keyStrength.score >= 85 ? 'green' :
-                            keyStrength.score >= 70 ? 'blue' :
-                            keyStrength.score >= 50 ? 'yellow' :
-                            keyStrength.score >= 30 ? 'orange' : 'red'
-                          }
-                        >
-                          {keyStrength.label}
-                        </Badge>
-                      </Group>
-                      
-                      <Progress 
-                        value={keyStrength.score} 
-                        size="xs"
-                        color={
-                          keyStrength.score >= 85 ? 'green' :
-                          keyStrength.score >= 70 ? 'blue' :
-                          keyStrength.score >= 50 ? 'yellow' :
-                          keyStrength.score >= 30 ? 'orange' : 'red'
-                        }
-                      />
-                      
-                      {keyStrength.suggestions.length > 0 && keyStrength.score < 70 && (
-                        <Alert color="yellow" variant="light">
-                          <Text size="xs">
-                            Suggestions: {keyStrength.suggestions.slice(0, 2).join(', ')}
-                          </Text>
-                        </Alert>
-                      )}
-                    </Stack>
-                  )}
                 </Stack>
 
                 <Checkbox

@@ -1,107 +1,110 @@
 /**
  * Model capability constants for the WebUI
- * Re-exports types from the Admin SDK and adds UI-specific configurations
+ * Defines model capabilities locally to avoid importing SDK on client side
  */
 
-import { ModelCapability, getCapabilityDisplayName } from '@knn_labs/conduit-admin-client';
-
-// Re-export the enum and display function from SDK
-export { ModelCapability, getCapabilityDisplayName };
-
-// UI-specific capability metadata
-export interface CapabilityInfo {
-  value: ModelCapability;
-  label: string;
-  description: string;
-  icon?: string;
-  color?: string;
+// Model capability enum - mirrors the SDK but defined locally
+export enum ModelCapability {
+  Chat = 'Chat',
+  Completion = 'Completion',
+  Embedding = 'Embedding',
+  Audio = 'Audio',
+  Image = 'Image',
+  Video = 'Video',
+  FunctionCalling = 'FunctionCalling',
+  Vision = 'Vision',
+  Code = 'Code',
+  Reasoning = 'Reasoning',
+  Search = 'Search',
+  Json = 'Json',
 }
 
-// Descriptions for each capability
-export const CAPABILITY_DESCRIPTIONS: Record<ModelCapability, string> = {
-  [ModelCapability.CHAT]: 'Supports text-based chat conversations',
-  [ModelCapability.VISION]: 'Can analyze and understand images',
-  [ModelCapability.IMAGE_GENERATION]: 'Can generate images from text prompts',
-  [ModelCapability.AUDIO_TRANSCRIPTION]: 'Can transcribe audio to text',
-  [ModelCapability.TEXT_TO_SPEECH]: 'Can convert text to spoken audio',
-  [ModelCapability.REALTIME_AUDIO]: 'Supports real-time audio streaming',
+// Display names for capabilities
+const CAPABILITY_DISPLAY_NAMES: Record<ModelCapability, string> = {
+  [ModelCapability.Chat]: 'Chat',
+  [ModelCapability.Completion]: 'Text Completion',
+  [ModelCapability.Embedding]: 'Embeddings',
+  [ModelCapability.Audio]: 'Audio',
+  [ModelCapability.Image]: 'Image Generation',
+  [ModelCapability.Video]: 'Video Generation',
+  [ModelCapability.FunctionCalling]: 'Function Calling',
+  [ModelCapability.Vision]: 'Vision',
+  [ModelCapability.Code]: 'Code Generation',
+  [ModelCapability.Reasoning]: 'Reasoning',
+  [ModelCapability.Search]: 'Web Search',
+  [ModelCapability.Json]: 'JSON Mode',
 };
 
-// Icons for capabilities (using Tabler icons)
-export const CAPABILITY_ICONS: Record<ModelCapability, string> = {
-  [ModelCapability.CHAT]: 'message-circle',
-  [ModelCapability.VISION]: 'eye',
-  [ModelCapability.IMAGE_GENERATION]: 'photo',
-  [ModelCapability.AUDIO_TRANSCRIPTION]: 'microphone',
-  [ModelCapability.TEXT_TO_SPEECH]: 'volume',
-  [ModelCapability.REALTIME_AUDIO]: 'broadcast',
-};
+export function getCapabilityDisplayName(capability: ModelCapability): string {
+  return CAPABILITY_DISPLAY_NAMES[capability] || capability;
+}
 
-// Colors for capability badges
-export const CAPABILITY_COLORS: Record<ModelCapability, string> = {
-  [ModelCapability.CHAT]: 'blue',
-  [ModelCapability.VISION]: 'purple',
-  [ModelCapability.IMAGE_GENERATION]: 'green',
-  [ModelCapability.AUDIO_TRANSCRIPTION]: 'orange',
-  [ModelCapability.TEXT_TO_SPEECH]: 'cyan',
-  [ModelCapability.REALTIME_AUDIO]: 'red',
-};
+// Icon configuration for capabilities
+export const CAPABILITY_ICONS = {
+  [ModelCapability.Chat]: 'IconMessage',
+  [ModelCapability.Completion]: 'IconLetterCase',
+  [ModelCapability.Embedding]: 'IconVector',
+  [ModelCapability.Audio]: 'IconMicrophone',
+  [ModelCapability.Image]: 'IconPhoto',
+  [ModelCapability.Video]: 'IconVideo',
+  [ModelCapability.FunctionCalling]: 'IconFunction',
+  [ModelCapability.Vision]: 'IconEye',
+  [ModelCapability.Code]: 'IconCode',
+  [ModelCapability.Reasoning]: 'IconBrain',
+  [ModelCapability.Search]: 'IconSearch',
+  [ModelCapability.Json]: 'IconJson',
+} as const;
 
-// Get all capabilities as an array
-export const ALL_CAPABILITIES = Object.values(ModelCapability);
+// Badge colors for capabilities  
+export const CAPABILITY_COLORS = {
+  [ModelCapability.Chat]: 'blue',
+  [ModelCapability.Completion]: 'cyan',
+  [ModelCapability.Embedding]: 'grape',
+  [ModelCapability.Audio]: 'orange',
+  [ModelCapability.Image]: 'pink',
+  [ModelCapability.Video]: 'red',
+  [ModelCapability.FunctionCalling]: 'green',
+  [ModelCapability.Vision]: 'indigo',
+  [ModelCapability.Code]: 'violet',
+  [ModelCapability.Reasoning]: 'yellow',
+  [ModelCapability.Search]: 'teal',
+  [ModelCapability.Json]: 'gray',
+} as const;
 
-// Helper to check if a value is a valid capability
-export const isValidCapability = (value: string): value is ModelCapability => {
-  return ALL_CAPABILITIES.includes(value as ModelCapability);
-};
+// Groups for organizing capabilities in UI
+export const CAPABILITY_GROUPS = {
+  'Text Processing': [
+    ModelCapability.Chat,
+    ModelCapability.Completion,
+    ModelCapability.Code,
+    ModelCapability.Reasoning,
+  ],
+  'Multimodal': [
+    ModelCapability.Vision,
+    ModelCapability.Audio,
+    ModelCapability.Image,
+    ModelCapability.Video,
+  ],
+  'Advanced Features': [
+    ModelCapability.FunctionCalling,
+    ModelCapability.Search,
+    ModelCapability.Json,
+    ModelCapability.Embedding,
+  ],
+} as const;
 
-// Get complete capability info for UI components
-export const getCapabilityInfo = (capability: ModelCapability): CapabilityInfo => {
-  return {
-    value: capability,
-    label: getCapabilityDisplayName(capability),
-    description: CAPABILITY_DESCRIPTIONS[capability],
-    icon: CAPABILITY_ICONS[capability],
-    color: CAPABILITY_COLORS[capability],
-  };
-};
-
-// Get all capabilities as select options
-export const getAllCapabilityInfos = (): CapabilityInfo[] => {
-  return ALL_CAPABILITIES.map(getCapabilityInfo);
-};
-
-// Legacy capability mappings (for backward compatibility)
-// These map to the capabilities used in CreateModelMappingModal
-export const LEGACY_CAPABILITY_MAP: Record<string, ModelCapability> = {
-  'vision': ModelCapability.VISION,
-  'function_calling': ModelCapability.CHAT, // Function calling is part of chat
-  'streaming': ModelCapability.CHAT, // Streaming is part of chat
-  'image_generation': ModelCapability.IMAGE_GENERATION,
-  'audio_transcription': ModelCapability.AUDIO_TRANSCRIPTION,
-  'text_to_speech': ModelCapability.TEXT_TO_SPEECH,
-  'realtime_audio': ModelCapability.REALTIME_AUDIO,
-};
-
-// Convert legacy capability array to ModelCapability array
-export const convertLegacyCapabilities = (legacyCapabilities: string[]): ModelCapability[] => {
-  const capabilitySet = new Set<ModelCapability>();
+// Helper to get capabilities from a comma-separated string
+export function parseCapabilities(capabilitiesString?: string | null): ModelCapability[] {
+  if (!capabilitiesString) return [];
   
-  legacyCapabilities.forEach(legacy => {
-    const capability = LEGACY_CAPABILITY_MAP[legacy];
-    if (capability) {
-      capabilitySet.add(capability);
-    }
-  });
-  
-  return Array.from(capabilitySet);
-};
+  return capabilitiesString
+    .split(',')
+    .map(c => c.trim())
+    .filter(c => c in ModelCapability)
+    .map(c => c as ModelCapability);
+}
 
-// Get capability options for MultiSelect component
-export const getCapabilitySelectOptions = () => {
-  return getAllCapabilityInfos().map(info => ({
-    value: info.value,
-    label: info.label,
-    description: info.description,
-  }));
-};
+// Helper to format capabilities for display
+export function formatCapabilities(capabilities: ModelCapability[]): string {
+  return capabilities.map(getCapabilityDisplayName).join(', ');
+}

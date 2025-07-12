@@ -20,7 +20,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { ProviderModelSelect } from '@/components/common/ProviderModelSelect';
-import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelProviderMappingDto } from '@/types/api-types';
 
 interface CreateModelMappingModalProps {
   opened: boolean;

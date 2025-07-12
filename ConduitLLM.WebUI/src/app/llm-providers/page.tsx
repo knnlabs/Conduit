@@ -38,7 +38,7 @@ import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { ProviderCredentialDto, ProviderHealthStatusDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto, ProviderHealthStatusDto } from '@/types/api-types';
 import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
 
 interface ProviderWithHealth extends UIProvider {

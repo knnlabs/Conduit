@@ -58,25 +58,25 @@ export const DATE_FORMATS = {
 export const ENDPOINTS = {
   // Virtual Keys
   VIRTUAL_KEYS: {
-    BASE: '/api/virtualkeys',
-    BY_ID: (id: number) => `/api/virtualkeys/${id}`,
-    RESET_SPEND: (id: number) => `/api/virtualkeys/${id}/reset-spend`,
-    VALIDATE: '/api/virtualkeys/validate',
-    SPEND: (id: number) => `/api/virtualkeys/${id}/spend`,
-    REFUND: (id: number) => `/api/virtualkeys/${id}/refund`,
-    CHECK_BUDGET: (id: number) => `/api/virtualkeys/${id}/check-budget`,
-    VALIDATION_INFO: (id: number) => `/api/virtualkeys/${id}/validation-info`,
-    MAINTENANCE: '/api/virtualkeys/maintenance',
+    BASE: '/api/VirtualKeys',
+    BY_ID: (id: number) => `/api/VirtualKeys/${id}`,
+    RESET_SPEND: (id: number) => `/api/VirtualKeys/${id}/reset-spend`,
+    VALIDATE: '/api/VirtualKeys/validate',
+    SPEND: (id: number) => `/api/VirtualKeys/${id}/spend`,
+    REFUND: (id: number) => `/api/VirtualKeys/${id}/refund`,
+    CHECK_BUDGET: (id: number) => `/api/VirtualKeys/${id}/check-budget`,
+    VALIDATION_INFO: (id: number) => `/api/VirtualKeys/${id}/validation-info`,
+    MAINTENANCE: '/api/VirtualKeys/maintenance',
   },
 
   // Provider Credentials
   PROVIDERS: {
-    BASE: '/api/providercredentials',
-    BY_ID: (id: number) => `/api/providercredentials/${id}`,
-    BY_NAME: (name: string) => `/api/providercredentials/name/${name}`,
-    NAMES: '/api/providercredentials/names',
-    TEST_BY_ID: (id: number) => `/api/providercredentials/test/${id}`,
-    TEST: '/api/providercredentials/test',
+    BASE: '/api/ProviderCredentials',
+    BY_ID: (id: number) => `/api/ProviderCredentials/${id}`,
+    BY_NAME: (name: string) => `/api/ProviderCredentials/name/${name}`,
+    NAMES: '/api/ProviderCredentials/names',
+    TEST_BY_ID: (id: number) => `/api/ProviderCredentials/test/${id}`,
+    TEST: '/api/ProviderCredentials/test',
   },
 
   // Provider Models
@@ -93,19 +93,19 @@ export const ENDPOINTS = {
 
   // Model Provider Mappings
   MODEL_MAPPINGS: {
-    BASE: '/api/modelprovidermapping',
-    BY_ID: (id: number) => `/api/modelprovidermapping/${id}`,
-    BY_MODEL: (modelId: string) => `/api/modelprovidermapping/by-model/${modelId}`,
-    PROVIDERS: '/api/modelprovidermapping/providers',
-    BULK: '/api/modelprovidermapping/bulk',
-    DISCOVER_PROVIDER: (providerName: string) => `/api/modelprovidermapping/discover/provider/${providerName}`,
-    DISCOVER_MODEL: (providerName: string, modelId: string) => `/api/modelprovidermapping/discover/model/${providerName}/${modelId}`,
-    DISCOVER_ALL: '/api/modelprovidermapping/discover/all',
-    TEST_CAPABILITY: (modelAlias: string, capability: string) => `/api/modelprovidermapping/discover/capability/${modelAlias}/${capability}`,
-    IMPORT: '/api/modelprovidermapping/import',
-    EXPORT: '/api/modelprovidermapping/export',
-    SUGGEST: '/api/modelprovidermapping/suggest',
-    ROUTING: (modelId: string) => `/api/modelprovidermapping/routing/${modelId}`,
+    BASE: '/api/ModelProviderMapping',
+    BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
+    BY_MODEL: (modelId: string) => `/api/ModelProviderMapping/by-model/${modelId}`,
+    PROVIDERS: '/api/ModelProviderMapping/providers',
+    BULK: '/api/ModelProviderMapping/bulk',
+    DISCOVER_PROVIDER: (providerName: string) => `/api/ModelProviderMapping/discover/provider/${providerName}`,
+    DISCOVER_MODEL: (providerName: string, modelId: string) => `/api/ModelProviderMapping/discover/model/${providerName}/${modelId}`,
+    DISCOVER_ALL: '/api/ModelProviderMapping/discover/all',
+    TEST_CAPABILITY: (modelAlias: string, capability: string) => `/api/ModelProviderMapping/discover/capability/${modelAlias}/${capability}`,
+    IMPORT: '/api/ModelProviderMapping/import',
+    EXPORT: '/api/ModelProviderMapping/export',
+    SUGGEST: '/api/ModelProviderMapping/suggest',
+    ROUTING: (modelId: string) => `/api/ModelProviderMapping/routing/${modelId}`,
   },
 
   // IP Filters
@@ -127,25 +127,25 @@ export const ENDPOINTS = {
 
   // Model Costs
   MODEL_COSTS: {
-    BASE: '/modelcosts',
-    BY_ID: (id: number) => `/modelcosts/${id}`,
-    BY_MODEL: (modelId: string) => `/modelcosts/model/${modelId}`,
-    BY_PROVIDER: (providerName: string) => `/modelcosts/provider/${providerName}`,
-    BATCH: '/modelcosts/batch',
-    IMPORT: '/modelcosts/import',
-    BULK_UPDATE: '/modelcosts/bulk-update',
-    OVERVIEW: '/modelcosts/overview',
-    TRENDS: '/modelcosts/trends',
+    BASE: '/api/ModelCosts',
+    BY_ID: (id: number) => `/api/ModelCosts/${id}`,
+    BY_MODEL: (modelId: string) => `/api/ModelCosts/model/${modelId}`,
+    BY_PROVIDER: (providerName: string) => `/api/ModelCosts/provider/${providerName}`,
+    BATCH: '/api/ModelCosts/batch',
+    IMPORT: '/api/ModelCosts/import',
+    BULK_UPDATE: '/api/ModelCosts/bulk-update',
+    OVERVIEW: '/api/ModelCosts/overview',
+    TRENDS: '/api/ModelCosts/trends',
   },
 
   // Analytics & Cost Dashboard
   ANALYTICS: {
-    COST_SUMMARY: '/costdashboard/summary',
-    COST_BY_PERIOD: '/costdashboard/by-period',
-    COST_BY_MODEL: '/costdashboard/by-model',
-    COST_BY_KEY: '/costdashboard/by-key',
-    REQUEST_LOGS: '/logs',
-    REQUEST_LOG_BY_ID: (id: string) => `/logs/${id}`,
+    COST_SUMMARY: '/api/CostDashboard/summary',
+    COST_BY_PERIOD: '/api/CostDashboard/by-period',
+    COST_BY_MODEL: '/api/CostDashboard/by-model',
+    COST_BY_KEY: '/api/CostDashboard/by-key',
+    REQUEST_LOGS: '/api/Logs',
+    REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
     
     // Core analytics endpoints
     USAGE_ANALYTICS: '/api/usage-analytics',
@@ -176,13 +176,13 @@ export const ENDPOINTS = {
 
   // Provider Health
   HEALTH: {
-    CONFIGURATIONS: '/providerhealth/configurations',
-    CONFIG_BY_PROVIDER: (provider: string) => `/providerhealth/configurations/${provider}`,
-    STATUS: '/providerhealth/status',
-    STATUS_BY_PROVIDER: (provider: string) => `/providerhealth/status/${provider}`,
-    HISTORY: '/providerhealth/history',
-    HISTORY_BY_PROVIDER: (provider: string) => `/providerhealth/history/${provider}`,
-    CHECK: (provider: string) => `/providerhealth/check/${provider}`,
+    CONFIGURATIONS: '/api/ProviderHealth/configurations',
+    CONFIG_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/configurations/${provider}`,
+    STATUS: '/api/ProviderHealth/status',
+    STATUS_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/status/${provider}`,
+    HISTORY: '/api/ProviderHealth/history',
+    HISTORY_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/history/${provider}`,
+    CHECK: (provider: string) => `/api/ProviderHealth/check/${provider}`,
     SUMMARY: '/api/health/providers',
     ALERTS: '/api/health/alerts',
     PERFORMANCE: (provider: string) => `/api/health/providers/${provider}/performance`,
@@ -190,12 +190,12 @@ export const ENDPOINTS = {
 
   // System
   SYSTEM: {
-    INFO: '/systeminfo/info',
-    HEALTH: '/systeminfo/health',
-    BACKUP: '/databasebackup',
-    RESTORE: '/databasebackup/restore',
-    NOTIFICATIONS: '/notifications',
-    NOTIFICATION_BY_ID: (id: number) => `/notifications/${id}`,
+    INFO: '/api/SystemInfo/info',
+    HEALTH: '/api/SystemInfo/health',
+    BACKUP: '/api/DatabaseBackup',
+    RESTORE: '/api/DatabaseBackup/restore',
+    NOTIFICATIONS: '/api/Notifications',
+    NOTIFICATION_BY_ID: (id: number) => `/api/Notifications/${id}`,
   },
 
   // Settings
@@ -203,9 +203,9 @@ export const ENDPOINTS = {
     GLOBAL: '/api/GlobalSettings',
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
     BATCH_UPDATE: '/api/GlobalSettings/batch',
-    AUDIO: '/api/audio-configuration',
-    AUDIO_BY_PROVIDER: (provider: string) => `/api/audio-configuration/${provider}`,
-    ROUTER: '/api/router-configuration',
+    AUDIO: '/api/AudioConfiguration',
+    AUDIO_BY_PROVIDER: (provider: string) => `/api/AudioConfiguration/${provider}`,
+    ROUTER: '/api/Router',
   },
 
   // Discovery moved to MODEL_MAPPINGS endpoints in Admin API

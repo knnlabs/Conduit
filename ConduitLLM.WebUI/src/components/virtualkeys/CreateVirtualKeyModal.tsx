@@ -110,6 +110,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         rateLimitRpm: values.rateLimitPerMinute || undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         metadata: values.metadata?.trim() ? values.metadata : undefined,
+        isEnabled: values.isEnabled,
       };
 
       const response = await fetch('/api/virtualkeys', {

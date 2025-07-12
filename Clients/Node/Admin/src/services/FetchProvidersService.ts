@@ -147,7 +147,7 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<TestConnectionResult> {
     return this.client['post']<TestConnectionResult>(
-      `${ENDPOINTS.PROVIDERS.BASE}/${id}/test`,
+      ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
       undefined,
       {
         signal: config?.signal,

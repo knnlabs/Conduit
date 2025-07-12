@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthError, isAuthError } from '@knn_labs/conduit-admin-client';
 import { requireAuth as requireAuthNew, requireAdmin as requireAdminNew } from '../auth';
+
+// Define AuthError locally to avoid importing SDK
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+export function isAuthError(error: unknown): error is AuthError {
+  return error instanceof AuthError || (error as any)?.name === 'AuthError';
+}
 
 /**
  * Dead simple auth check for API routes

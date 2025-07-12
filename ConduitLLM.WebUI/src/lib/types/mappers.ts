@@ -3,12 +3,53 @@ import type {
   ProviderCredentialDto,
   ModelProviderMappingDto,
   ProviderHealthStatusDto,
-  HealthStatusDto,
-  RequestLogDto,
-  SystemInfoDto,
-  ProviderHealthSummaryDto,
   BudgetDuration
-} from '@knn_labs/conduit-admin-client';
+} from '@/types/api-types';
+
+// Types that aren't in api-types.ts yet
+interface HealthStatusDto {
+  isHealthy: boolean;
+  version?: string;
+  timestamp?: string;
+  services?: Array<{ name: string; isHealthy: boolean; version?: string; message?: string }>;
+}
+
+interface RequestLogDto {
+  id?: string;
+  virtualKeyId?: number;
+  model?: string;
+  provider?: string;
+  requestType?: string;
+  type?: string;
+  responseTime?: number;
+  timestamp?: string;
+  statusCode?: number;
+  latencyMs?: number;
+  latency?: number;
+  totalCost?: number;
+  cost?: number;
+  errorMessage?: string;
+  error?: string;
+  ipAddress?: string;
+  clientIp?: string;
+  tokenUsage?: any;
+}
+
+interface SystemInfoDto {
+  version?: string;
+}
+
+interface ProviderHealthSummaryDto {
+  totalProviders?: number;
+  total?: number;
+  healthyCount?: number;
+  healthy?: number;
+  unhealthyCount?: number;
+  unhealthy?: number;
+  averageResponseTimeMs?: number;
+  averageResponseTime?: number;
+  providers?: ProviderHealthStatusDto[];
+}
 
 // UI-specific types that extend SDK types
 export interface UIVirtualKey extends Omit<VirtualKeyDto, 'keyName' | 'budgetDuration' | 'apiKey' | 'maxBudget' | 'isEnabled' | 'createdAt' | 'updatedAt' | 'expiresAt' | 'lastUsedAt' | 'metadata'> {
@@ -129,7 +170,16 @@ export function mapVirtualKeyFromSDK(sdk: VirtualKeyDto): UIVirtualKey {
     createdDate: sdk.createdAt,
     modifiedDate: sdk.updatedAt,
     lastUsedDate: sdk.lastUsedAt || null,
-    metadata: sdk.metadata ? JSON.parse(sdk.metadata) : null,
+    metadata: (() => {
+      if (!sdk.metadata) return null;
+      try {
+        return JSON.parse(sdk.metadata);
+      } catch (e) {
+        console.warn('[mapVirtualKeyFromSDK] Failed to parse metadata:', sdk.metadata, e);
+        // Return the raw string if parsing fails
+        return { raw: sdk.metadata };
+      }
+    })(),
   };
 }
 

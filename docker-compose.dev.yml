@@ -17,6 +17,7 @@ services:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
       # Faster refresh
-      WATCHPACK_POLLING: true
+      WATCHPACK_POLLING: "true"
     working_dir: /app/ConduitLLM.WebUI
     command: npm run dev
+    user: root

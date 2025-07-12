@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { AuthError } from '@knn_labs/conduit-admin-client';
+
+// Define AuthError locally to avoid importing SDK
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
 
 interface Session {
   id: string;
@@ -50,9 +57,7 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
   const sessionCookie = request.cookies.get('conduit_session');
   
   if (!sessionCookie) {
-    throw new AuthError('Authentication required', {
-      code: 'UNAUTHENTICATED',
-    });
+    throw new AuthError('Authentication required');
   }
   
   try {
@@ -60,16 +65,12 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
     
     // Check expiration
     if (session.expiresAt && session.expiresAt < Date.now()) {
-      throw new AuthError('Session expired', {
-        code: 'UNAUTHENTICATED',
-      });
+      throw new AuthError('Session expired');
     }
     
     // Check if authenticated
     if (!session.isAuthenticated) {
-      throw new AuthError('Not authenticated', {
-        code: 'UNAUTHENTICATED',
-      });
+      throw new AuthError('Not authenticated');
     }
     
     return session;
@@ -77,9 +78,7 @@ export async function requireAuth(request: NextRequest): Promise<Session> {
     if (error instanceof AuthError) {
       throw error;
     }
-    throw new AuthError('Invalid session', {
-      code: 'UNAUTHENTICATED',
-    });
+    throw new AuthError('Invalid session');
   }
 }
 

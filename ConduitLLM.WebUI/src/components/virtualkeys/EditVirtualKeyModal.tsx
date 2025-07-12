@@ -89,6 +89,9 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
 
     setIsSubmitting(true);
     try {
+      console.log('[EditVirtualKey] Form values:', values);
+      console.log('[EditVirtualKey] Virtual key being edited:', virtualKey);
+      
       const payload = {
         keyName: values.keyName.trim(),
         maxBudget: values.maxBudget || undefined,
@@ -98,7 +101,8 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         metadata: values.description?.trim() || undefined,
       };
 
-      console.log('[EditVirtualKey] Updating with payload:', payload);
+      console.log('[EditVirtualKey] Updating virtual key ID:', virtualKey.id);
+      console.log('[EditVirtualKey] Update payload:', JSON.stringify(payload, null, 2));
       
       const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
         method: 'PUT',
@@ -109,12 +113,27 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       });
 
       console.log('[EditVirtualKey] Response status:', response.status);
+      console.log('[EditVirtualKey] Response headers:', response.headers);
+      
+      const responseText = await response.text();
+      console.log('[EditVirtualKey] Response body:', responseText);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[EditVirtualKey] Error response:', errorText);
-        throw new Error('Failed to update virtual key');
+        console.error('[EditVirtualKey] Error response:', responseText);
+        let errorMessage = 'Failed to update virtual key';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (e) {
+          // If not JSON, use the text as is
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
+      
+      // Parse the successful response
+      const result = JSON.parse(responseText);
+      console.log('[EditVirtualKey] Success response:', result);
 
       notifications.show({
         title: 'Success',

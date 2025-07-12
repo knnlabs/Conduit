@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { AuthState, AuthUser } from '@/types/auth';
 import { authStorage, StoredAuth } from '@/lib/auth/storage';
-import { validateMasterKey, sanitizeMasterKey } from '@/lib/auth/validation';
+import { sanitizeMasterKey } from '@/lib/auth/client-validation';
+import { validateMasterKey } from '@/lib/auth/validation';
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
