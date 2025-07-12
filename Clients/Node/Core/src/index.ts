@@ -271,3 +271,7 @@ export type {
   NotificationOptions,
 } from './models/notifications';
 
+// Export metadata and common types
+export * from './models/metadata';
+export * from './models/common-types';
+

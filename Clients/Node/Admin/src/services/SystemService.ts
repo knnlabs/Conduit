@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { HttpMethod } from '../client/HttpMethod';
+import type { DiagnosticChecks } from '../models/common-types';
 import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
 import {
@@ -91,7 +92,7 @@ export class SystemService extends FetchBaseApiClient {
   }
 
   async downloadBackup(backupId: string): Promise<Blob> {
-    const response = await super.request<any>(
+    const response = await super.request<Blob>(
       `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
       {
         method: HttpMethod.GET,
@@ -232,7 +233,7 @@ export class SystemService extends FetchBaseApiClient {
 
   async getDiagnostics(): Promise<{
     timestamp: string;
-    checks: Record<string, any>;
+    checks: DiagnosticChecks;
     recommendations: string[];
     issues: Array<{
       severity: 'low' | 'medium' | 'high';

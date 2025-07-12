@@ -1,6 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
+import type { ProviderSettings, HealthCheckDetails } from '../models/common-types';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
@@ -23,7 +24,7 @@ interface ProviderConfig {
   apiKey: string;
   baseUrl?: string;
   organizationId?: string;
-  additionalConfig?: Record<string, any>;
+  additionalConfig?: ProviderSettings;
 }
 
 interface HealthStatusParams {
@@ -43,6 +44,15 @@ interface ExportResult {
   fileName: string;
   expiresAt: string;
   size: number;
+}
+
+interface ProviderHealthStatus {
+  providerId: string;
+  providerName: string;
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  lastCheck?: string;
+  responseTime?: number;
+  details?: HealthCheckDetails;
 }
 
 /**
@@ -181,7 +191,7 @@ export class FetchProvidersService {
   async getHealthStatus(
     params?: HealthStatusParams,
     config?: RequestConfig
-  ): Promise<any[]> {
+  ): Promise<ProviderHealthStatus[]> {
     const searchParams = new URLSearchParams();
     if (params?.includeHistory) {
       searchParams.set('includeHistory', 'true');
@@ -190,7 +200,7 @@ export class FetchProvidersService {
       searchParams.set('historyDays', params.historyDays.toString());
     }
 
-    return this.client['get']<any[]>(
+    return this.client['get']<ProviderHealthStatus[]>(
       `${ENDPOINTS.PROVIDERS.BASE}/health${searchParams.toString() ? `?${searchParams}` : ''}`,
       {
         signal: config?.signal,

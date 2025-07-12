@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import type { ModelConfigMetadata } from './metadata';
 
 export interface ModelCost {
   id: number;
@@ -14,7 +15,7 @@ export interface ModelCost {
   priority: number;
   effectiveDate: string;
   expiryDate?: string;
-  metadata?: Record<string, any>;
+  metadata?: ModelConfigMetadata;
   createdAt: string;
   updatedAt: string;
 }

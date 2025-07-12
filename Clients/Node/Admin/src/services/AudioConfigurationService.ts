@@ -1,4 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { AudioProviderSettings } from '../models/common-types';
 import type {
   AudioProviderConfigRequest,
   AudioProviderConfigDto,
@@ -404,7 +405,7 @@ export const AudioConfigurationHelpers = {
       supportedOperations?: string[];
       priority?: number;
       timeoutSeconds?: number;
-      settings?: Record<string, any>;
+      settings?: AudioProviderSettings;
     }
   ): AudioProviderConfigRequest {
     return {

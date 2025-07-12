@@ -1,3 +1,5 @@
+import type { ModelConfigMetadata } from './metadata';
+
 export interface ModelDto {
   id: string;
   name: string;
@@ -82,7 +84,7 @@ export interface DiscoveredModel {
     supportedVideoResolutions?: string[];
     maxVideoDurationSeconds?: number;
   };
-  metadata?: Record<string, any>;
+  metadata?: ModelConfigMetadata;
   lastVerified: string;
 }
 

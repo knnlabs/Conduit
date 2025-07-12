@@ -1,6 +1,7 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
+import type { TaskResult } from '../models/common-types';
 import { ConduitError } from '../utils/errors';
 import { API_ENDPOINTS, TASK_STATUS } from '../constants';
 
@@ -75,7 +76,7 @@ export class TasksService {
   /**
    * Polls a task until completion or timeout
    */
-  async pollTaskUntilCompletion<T = any>(
+  async pollTaskUntilCompletion<T = unknown>(
     taskId: string,
     pollingOptions?: TaskPollingOptions,
     options?: RequestOptions
@@ -209,7 +210,7 @@ export interface TaskStatusResponse {
   updated_at: string;
 
   /** The task result, available when status is completed */
-  result?: any;
+  result?: TaskResult;
 
   /** Error information if the task failed */
   error?: string;

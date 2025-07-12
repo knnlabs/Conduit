@@ -1,4 +1,5 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { VideoApiRequest, AsyncVideoApiRequest } from '../models/common-types';
 import type {
   VideoGenerationRequest,
   VideoGenerationResponse,
@@ -48,7 +49,7 @@ export class VideosService extends FetchBasedClient {
       // Convert to API request format
       const apiRequest = this.convertToAsyncApiRequest(request);
 
-      const response = await this.post<AsyncVideoGenerationResponse, any>(
+      const response = await this.post<AsyncVideoGenerationResponse, AsyncVideoApiRequest>(
         VideosService.ASYNC_GENERATIONS_ENDPOINT,
         apiRequest,
         options
@@ -216,7 +217,7 @@ export class VideosService extends FetchBasedClient {
   /**
    * Converts a VideoGenerationRequest to the API request format
    */
-  private convertToApiRequest(request: VideoGenerationRequest): Record<string, any> {
+  private convertToApiRequest(request: VideoGenerationRequest): VideoApiRequest {
     return {
       prompt: request.prompt,
       model: request.model || VideoModels.DEFAULT,
@@ -234,7 +235,7 @@ export class VideosService extends FetchBasedClient {
   /**
    * Converts an AsyncVideoGenerationRequest to the API request format
    */
-  private convertToAsyncApiRequest(request: AsyncVideoGenerationRequest): Record<string, any> {
+  private convertToAsyncApiRequest(request: AsyncVideoGenerationRequest): AsyncVideoApiRequest {
     const baseRequest = this.convertToApiRequest(request);
 
     return {

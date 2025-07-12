@@ -61,7 +61,7 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.POST,
         headers: {
-          ...(this.client as any).getHeaders(),
+          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -414,7 +414,7 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.GET,
         headers: {
-          ...(this.client as any).getHeaders(),
+          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -517,7 +517,7 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.POST,
         headers: {
-          ...(this.client as any).getHeaders(),
+          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -762,5 +762,10 @@ export class FetchMonitoringService {
           { type: 'log', config: { level: 'info' } },
         ];
     }
+  }
+  
+  private getClientHeaders(): Record<string, string> {
+    // @ts-ignore - accessing private method for headers
+    return (this.client as any).getHeaders?.() || {};
   }
 }

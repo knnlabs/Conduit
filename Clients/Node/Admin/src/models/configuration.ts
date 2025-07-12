@@ -2,6 +2,8 @@
  * Configuration-related models for routing and caching
  */
 
+import type { BaseMetadata } from './metadata';
+
 /**
  * Routing configuration for multi-provider setups
  */
@@ -210,7 +212,7 @@ export interface CachePolicy {
   enabled: boolean;
   
   /** Additional metadata */
-  metadata?: Record<string, any>;
+  metadata?: BaseMetadata;
 }
 
 /**
@@ -224,7 +226,7 @@ export interface CreateCachePolicyDto {
   maxSizeMB?: number;
   strategy: 'memory' | 'redis' | 'hybrid';
   enabled?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: BaseMetadata;
 }
 
 /**
@@ -237,7 +239,7 @@ export interface UpdateCachePolicyDto {
   maxSizeMB?: number;
   strategy?: 'memory' | 'redis' | 'hybrid';
   enabled?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: BaseMetadata;
 }
 
 /**

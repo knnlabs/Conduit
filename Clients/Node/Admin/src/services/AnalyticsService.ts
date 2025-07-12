@@ -1,4 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { AnalyticsOptions } from '../models/common-types';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
   CostSummaryDto,
@@ -389,12 +390,12 @@ export class AnalyticsService extends FetchBaseApiClient {
   async downloadExport(exportId: string): Promise<Blob> {
     const response = await this.get<Blob>(ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId), {
       responseType: 'blob',
-    } as any);
+    });
     return response;
   }
 
   // Stub methods
-  async getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<any> {
+  async getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<never> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getDetailedCostBreakdown requires Admin API endpoint implementation. ' +
@@ -460,7 +461,7 @@ export class AnalyticsService extends FetchBaseApiClient {
   async generateReport(
     _type: 'cost' | 'usage' | 'performance',
     _dateRange: DateRange,
-    _options?: Record<string, any>
+    _options?: AnalyticsOptions
   ): Promise<Blob> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(

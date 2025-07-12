@@ -135,6 +135,8 @@ export interface ExportConfigMetadata {
  * Model configuration metadata
  */
 export interface ModelConfigMetadata {
+  /** Model description */
+  description?: string;
   /** Model version */
   version?: string;
   /** Model family or type */
