@@ -37,7 +37,31 @@ export async function PUT(
     const { id } = await params;
     const adminClient = getServerAdminClient();
     const body = await req.json();
-    const mapping = await adminClient.modelMappings.update(parseInt(id, 10), body);
+    
+    // Transform frontend data to match backend DTO expectations
+    const transformedBody = {
+      id: parseInt(id, 10),
+      modelId: body.modelAlias,
+      providerModelId: body.providerModelName,
+      providerId: body.providerId.toString(),
+      priority: body.priority || 0,
+      isEnabled: body.isEnabled !== undefined ? body.isEnabled : true,
+      supportsVision: body.supportsVision || false,
+      supportsImageGeneration: body.supportsImageGeneration || false,
+      supportsAudioTranscription: body.supportsAudioTranscription || false,
+      supportsTextToSpeech: body.supportsTextToSpeech || false,
+      supportsRealtimeAudio: body.supportsRealtimeAudio || false,
+      supportsVideoGeneration: false,
+      supportsEmbeddings: false,
+      capabilities: JSON.stringify({
+        functionCalling: body.supportsFunctionCalling || false,
+        streaming: body.supportsStreaming || false,
+      }),
+      maxContextLength: body.maxInputTokens || null,
+      notes: body.notes || null,
+    };
+    
+    const mapping = await adminClient.modelMappings.update(parseInt(id, 10), transformedBody);
     return NextResponse.json(mapping);
   } catch (error) {
     return handleSDKError(error);
