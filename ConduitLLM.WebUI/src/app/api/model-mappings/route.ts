@@ -12,8 +12,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const mappings = await adminClient.modelMappings.list();
-    return NextResponse.json(mappings);
+    const searchParams = req.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
+    
+    // SDK returns paginated response
+    const response = await adminClient.modelMappings.list(page, pageSize);
+    
+    // For backward compatibility, return just the items array
+    // Components expect an array, not a paginated response
+    return NextResponse.json(response.items || []);
   } catch (error) {
     return handleSDKError(error);
   }

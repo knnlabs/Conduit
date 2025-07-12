@@ -69,15 +69,21 @@ export default function ProvidersPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
-      const data: ProviderCredentialDto[] = await response.json();
+      const data = await response.json();
+      console.log('Providers API response:', data);
+      
+      // Check if data is an array or if it's wrapped in a response object
+      const providersList = Array.isArray(data) ? data : (data.items || data.providers || []);
+      console.log('Providers list:', providersList);
       
       // Map providers and add health status (would need separate health fetch in real app)
-      const mappedProviders: ProviderWithHealth[] = data.map(p => ({
+      const mappedProviders: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
         ...mapProviderFromSDK(p),
         healthStatus: 'unknown' as const,
         models: []
       }));
       
+      console.log('Mapped providers:', mappedProviders);
       setProviders(mappedProviders);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -89,7 +95,7 @@ export default function ProvidersPage() {
   const handleTestProvider = async (providerId: string) => {
     setTestingProviders(prev => new Set(prev).add(providerId));
     try {
-      const response = await fetch(`/api/providers/${providerId}/test`, {
+      const response = await fetch(`/api/providers/${providerId}/test-connection`, {
         method: 'POST',
       });
       if (!response.ok) {

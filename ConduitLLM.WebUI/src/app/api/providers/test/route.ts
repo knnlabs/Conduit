@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const testResult = await adminClient.providers.testConfig({
       providerName: body.providerName,
       apiKey: body.apiKey,
-      baseUrl: body.baseUrl,
+      baseUrl: body.apiEndpoint, // SDK expects baseUrl, but we receive apiEndpoint
       organizationId: body.organizationId,
       additionalConfig: body.additionalConfig,
     });

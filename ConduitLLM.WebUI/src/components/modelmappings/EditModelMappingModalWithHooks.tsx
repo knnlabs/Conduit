@@ -9,27 +9,26 @@ import {
   NumberInput,
   Button,
   Select,
+  MultiSelect,
   Title,
   Text,
   Divider,
-  Alert,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconInfoCircle } from '@tabler/icons-react';
-import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
+import { useEffect } from 'react';
+import { useUpdateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import { ProviderModelSelect } from './ProviderModelSelect';
-import type { CreateModelProviderMappingDto } from '@/types/api-types';
-import type { UIProvider } from '@/lib/types/mappers';
+import type { UIModelMapping, UIProvider } from '@/lib/types/mappers';
+import type { UpdateModelProviderMappingDto } from '@/types/api-types';
 
-interface CreateModelMappingModalProps {
+interface EditModelMappingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  mapping: UIModelMapping | null;
+  onSave?: () => void;
 }
 
 interface FormValues {
-  modelId: string;
   providerId: string;
   providerModelId: string;
   priority: number;
@@ -47,17 +46,17 @@ interface FormValues {
   maxOutputTokens?: number;
 }
 
-export function CreateModelMappingModal({ 
-  isOpen, 
-  onClose, 
-  onSuccess 
-}: CreateModelMappingModalProps) {
-  const createMapping = useCreateModelMapping();
-  const { providers, isLoading: providersLoading } = useProviders();
+export function EditModelMappingModal({
+  isOpen,
+  onClose,
+  mapping,
+  onSave,
+}: EditModelMappingModalProps) {
+  const updateMapping = useUpdateModelMapping();
+  const { providers } = useProviders();
 
   const form = useForm<FormValues>({
     initialValues: {
-      modelId: '',
       providerId: '',
       providerModelId: '',
       priority: 100,
@@ -68,21 +67,37 @@ export function CreateModelMappingModal({
       supportsTextToSpeech: false,
       supportsRealtimeAudio: false,
       supportsFunctionCalling: false,
-      supportsStreaming: true, // Most models support streaming
+      supportsStreaming: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
     },
-    validate: {
-      modelId: (value) => !value?.trim() ? 'Model ID is required' : null,
-      providerId: (value) => !value?.trim() ? 'Provider is required' : null,
-      providerModelId: (value) => !value?.trim() ? 'Provider model ID is required' : null,
-      priority: (value) => value < 0 || value > 1000 ? 'Priority must be between 0 and 1000' : null,
-    },
   });
 
+  // Update form when mapping changes
+  useEffect(() => {
+    if (mapping) {
+      form.setValues({
+        providerId: mapping.targetProvider,
+        providerModelId: mapping.targetModel,
+        priority: mapping.priority || 100,
+        isEnabled: mapping.isActive,
+        supportsVision: mapping.supportsVision || false,
+        supportsImageGeneration: mapping.supportsImageGeneration || false,
+        supportsAudioTranscription: mapping.supportsAudioTranscription || false,
+        supportsTextToSpeech: mapping.supportsTextToSpeech || false,
+        supportsRealtimeAudio: mapping.supportsRealtimeAudio || false,
+        supportsFunctionCalling: mapping.supportsFunctionCalling || false,
+        supportsStreaming: mapping.supportsStreaming || false,
+        maxContextLength: mapping.maxContextLength,
+        maxOutputTokens: mapping.maxOutputTokens,
+      });
+    }
+  }, [mapping]);
+
   const handleSubmit = async (values: FormValues) => {
-    const createData: CreateModelProviderMappingDto = {
-      modelId: values.modelId,
+    if (!mapping) return;
+
+    const updateData: UpdateModelProviderMappingDto = {
       providerId: values.providerId,
       providerModelId: values.providerModelId,
       priority: values.priority,
@@ -98,74 +113,46 @@ export function CreateModelMappingModal({
       maxOutputTokens: values.maxOutputTokens,
     };
 
-    await createMapping.mutateAsync(createData);
-    form.reset();
-    onSuccess?.();
+    await updateMapping.mutateAsync({
+      id: parseInt(mapping.id, 10),
+      data: updateData,
+    });
+
+    onSave?.();
     onClose();
   };
 
   const providerOptions = providers?.map((p: UIProvider) => ({
-    value: p.id.toString(),
+    value: p.name,
     label: p.name,
   })) || [];
-
-  const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
-    // Update form values based on detected capabilities
-    Object.entries(capabilities).forEach(([key, value]) => {
-      if (form.values.hasOwnProperty(key)) {
-        form.setFieldValue(key as keyof FormValues, value);
-      }
-    });
-  };
 
   return (
     <Modal
       opened={isOpen}
       onClose={onClose}
-      title="Create Model Mapping"
+      title="Edit Model Mapping"
       size="lg"
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Model mappings allow you to route requests for a specific model ID to any provider that supports it.
-          </Alert>
-
-          {!providersLoading && providerOptions.length === 0 && (
-            <Alert icon={<IconInfoCircle size={16} />} color="yellow">
-              No providers configured. Please configure at least one LLM provider before creating model mappings.
-            </Alert>
-          )}
-
-          <TextInput
-            label="Model ID"
-            placeholder="e.g., gpt-4, claude-3-opus, my-custom-model"
-            description="The model identifier that clients will request"
-            required
-            {...form.getInputProps('modelId')}
-          />
+          <div>
+            <Text size="sm" c="dimmed" mb={4}>Model</Text>
+            <Text fw={500}>{mapping?.sourceModel}</Text>
+          </div>
 
           <Select
             label="Provider"
-            placeholder={providersLoading ? "Loading providers..." : providerOptions.length === 0 ? "No providers configured" : "Select provider"}
-            description="The provider that will handle requests for this model"
+            placeholder="Select provider"
             data={providerOptions}
-            required
-            disabled={providersLoading || providerOptions.length === 0}
-            nothingFoundMessage="No providers found. Please configure a provider first."
             {...form.getInputProps('providerId')}
           />
 
-          <ProviderModelSelect
-            providerId={form.values.providerId}
-            value={form.values.providerModelId}
-            onChange={(value) => form.setFieldValue('providerModelId', value)}
-            onCapabilitiesDetected={handleCapabilitiesDetected}
+          <TextInput
             label="Provider Model ID"
-            placeholder="e.g., gpt-4-1106-preview"
-            description="The actual model ID to use with the selected provider"
-            required
-            error={form.errors.providerModelId as string | undefined}
+            placeholder="e.g., gpt-4-turbo"
+            description="The model identifier used by the provider"
+            {...form.getInputProps('providerModelId')}
           />
 
           <NumberInput
@@ -178,16 +165,12 @@ export function CreateModelMappingModal({
           />
 
           <Switch
-            label="Enable mapping immediately"
-            description="Start routing requests through this mapping right away"
+            label="Enable mapping"
+            description="Disabled mappings will not be used for routing"
             {...form.getInputProps('isEnabled', { type: 'checkbox' })}
           />
 
           <Divider label="Capabilities" labelPosition="center" />
-
-          <Text size="sm" c="dimmed">
-            Select the capabilities supported by this model. These affect routing decisions.
-          </Text>
 
           <Group grow>
             <Switch
@@ -227,7 +210,7 @@ export function CreateModelMappingModal({
             {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
           />
 
-          <Divider label="Context Limits (Optional)" labelPosition="center" />
+          <Divider label="Context Limits" labelPosition="center" />
 
           <Group grow>
             <NumberInput
@@ -252,9 +235,9 @@ export function CreateModelMappingModal({
             </Button>
             <Button 
               type="submit" 
-              loading={createMapping.isPending}
+              loading={updateMapping.isPending}
             >
-              Create Mapping
+              Save Changes
             </Button>
           </Group>
         </Stack>

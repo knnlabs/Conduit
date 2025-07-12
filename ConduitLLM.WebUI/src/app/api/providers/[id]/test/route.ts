@@ -3,6 +3,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
+// POST /api/providers/[id]/test - Test a specific provider connection
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

@@ -12,13 +12,32 @@ export async function GET(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const response = await adminClient.providers.list();
+    // The SDK list method expects page and pageSize parameters
+    const response = await adminClient.providers.list(1, 100); // Get up to 100 providers
     
-    // The SDK returns a paginated response object, extract the items array
+    console.log('SDK providers.list() response:', response);
+    
+    // The SDK returns a paginated response object with items array
     const providers = response.items || response;
     
+    // Ensure we always return an array
+    if (!Array.isArray(providers)) {
+      console.error('Unexpected response from providers.list():', response);
+      // Try to extract providers from common response structures
+      if (response && typeof response === 'object') {
+        const responseAny = response as any;
+        const possibleProviders = responseAny.data || responseAny.providers || responseAny.result;
+        if (Array.isArray(possibleProviders)) {
+          return NextResponse.json(possibleProviders);
+        }
+      }
+      return NextResponse.json([]);
+    }
+    
+    console.log('Returning providers:', providers);
     return NextResponse.json(providers);
   } catch (error) {
+    console.error('Error fetching providers:', error);
     return handleSDKError(error);
   }
 }

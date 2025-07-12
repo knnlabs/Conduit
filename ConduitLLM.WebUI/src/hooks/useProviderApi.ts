@@ -2,20 +2,13 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+import { useQuery } from '@tanstack/react-query';
 
-interface Provider {
-  id: string;
-  name: string;
-  type: string;
-  endpoint: string;
-  apiKey?: string;
-  isActive: boolean;
-  priority: number;
-  capabilities: string[];
-  config?: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { ProviderCredentialDto } from '@/types/api-types';
+import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
+
+// Use UIProvider from mappers for consistency
+type Provider = UIProvider;
 
 interface ProviderHealth {
   providerId: string;
@@ -315,5 +308,29 @@ export function useProviderApi() {
     getProviderModels,
     isLoading,
     error,
+  };
+}
+
+// React Query hook for fetching providers
+export function useProviders() {
+  const { data: providers, isLoading, error, refetch } = useQuery({
+    queryKey: ['providers'],
+    queryFn: async () => {
+      const response = await fetch('/api/providers');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch providers');
+      }
+      const data = await response.json() as ProviderCredentialDto[];
+      // Map SDK response to UI types
+      return data.map(mapProviderFromSDK);
+    },
+  });
+
+  return {
+    providers: providers || [],
+    isLoading,
+    error,
+    refetch,
   };
 }

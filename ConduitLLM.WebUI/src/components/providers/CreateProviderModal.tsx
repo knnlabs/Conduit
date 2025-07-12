@@ -74,8 +74,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setIsSubmitting(true);
     try {
       const payload = {
-        providerName: values.providerType,
-        providerType: values.providerType,
+        providerName: values.providerType, // Use the provider type as-is (e.g., "openai")
         apiKey: values.apiKey,
         apiEndpoint: values.apiEndpoint || undefined,
         organizationId: values.organizationId || undefined,
@@ -91,7 +90,9 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create provider');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        console.error('Provider creation failed:', errorData);
+        throw new Error(errorData.error || errorData.message || `Failed to create provider: ${response.status}`);
       }
 
       notifications.show({
@@ -105,11 +106,22 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         onSuccess();
       }
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to create provider',
-        color: 'red',
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create provider';
+      
+      // Check if it's a duplicate provider error
+      if (errorMessage.includes('already exists')) {
+        notifications.show({
+          title: 'Provider Already Exists',
+          message: `A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`,
+          color: 'orange',
+        });
+      } else {
+        notifications.show({
+          title: 'Error',
+          message: errorMessage,
+          color: 'red',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +137,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/providers/test', {
+      const response = await fetch('/api/providers/test-config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,16 +145,25 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         body: JSON.stringify({
           providerName: form.values.providerType,
           apiKey: form.values.apiKey,
-          baseUrl: form.values.apiEndpoint || undefined,
+          apiEndpoint: form.values.apiEndpoint || undefined, // Changed from baseUrl to apiEndpoint
           organizationId: form.values.organizationId || undefined,
         }),
       });
 
-      const result = await response.json();
-      setTestResult({
-        success: response.ok && result.success,
-        message: result.message || (response.ok ? 'Connection successful' : 'Connection failed'),
-      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+        console.error('Provider test failed:', errorData);
+        setTestResult({
+          success: false,
+          message: errorData.error || errorData.message || `Connection failed: ${response.status}`,
+        });
+      } else {
+        const result = await response.json();
+        setTestResult({
+          success: result.success,
+          message: result.message || 'Connection successful',
+        });
+      }
     } catch (error) {
       setTestResult({
         success: false,

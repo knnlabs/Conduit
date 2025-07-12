@@ -87,6 +87,7 @@ export interface UIModelMapping extends Omit<ModelProviderMappingDto, 'id' | 'mo
   metadata?: Record<string, unknown>;
   createdDate: string;
   modifiedDate: string;
+  // All capability fields are inherited from ModelProviderMappingDto
 }
 
 export interface UIProviderHealth extends Omit<ProviderHealthStatusDto, 'providerId' | 'lastCheckTime' | 'responseTimeMs' | 'errorMessage'> {
@@ -235,6 +236,16 @@ export function mapProviderToSDK(ui: UIProvider): Partial<ProviderCredentialDto>
 }
 
 export function mapModelMappingFromSDK(sdk: ModelProviderMappingDto): UIModelMapping {
+  let parsedMetadata: Record<string, unknown> | undefined;
+  if (sdk.metadata) {
+    try {
+      parsedMetadata = JSON.parse(sdk.metadata);
+    } catch (e) {
+      console.warn('[mapModelMappingFromSDK] Failed to parse metadata:', sdk.metadata, e);
+      parsedMetadata = { raw: sdk.metadata };
+    }
+  }
+  
   return {
     ...sdk,
     id: sdk.id.toString(),
@@ -242,7 +253,7 @@ export function mapModelMappingFromSDK(sdk: ModelProviderMappingDto): UIModelMap
     targetProvider: sdk.providerId,
     targetModel: sdk.providerModelId,
     isActive: sdk.isEnabled,
-    metadata: sdk.metadata ? JSON.parse(sdk.metadata) : undefined,
+    metadata: parsedMetadata,
     createdDate: sdk.createdAt,
     modifiedDate: sdk.updatedAt,
   };
@@ -263,6 +274,9 @@ export function mapModelMappingToSDK(ui: UIModelMapping): Partial<ModelProviderM
     updatedAt: modifiedDate,
   };
 }
+
+// Convenience alias for mapModelMappingFromSDK
+export const toUIModelMapping = mapModelMappingFromSDK;
 
 export function mapProviderHealthFromSDK(sdk: ProviderHealthStatusDto): UIProviderHealth {
   const sdkAny = sdk as any;

@@ -22,13 +22,19 @@ export async function POST(req: NextRequest) {
       const results = [];
       for (const model of discoveredModels) {
         try {
-          // Create a mapping for each discovered model
+          // Create a mapping for each discovered model with capability flags
           const mapping = {
             modelId: model.modelId,
             providerId: model.provider,
             providerModelId: model.modelId,
             isEnabled: body.enableNewMappings || false,
             priority: 50,
+            // Map capabilities from discovered model
+            supportsVision: model.capabilities?.vision || false,
+            supportsImageGeneration: model.capabilities?.imageGeneration || false,
+            supportsFunctionCalling: model.capabilities?.functionCalling || false,
+            supportsStreaming: model.capabilities?.chatStream || false,
+            maxContextLength: model.capabilities?.maxTokens,
           };
           const created = await adminClient.modelMappings.create(mapping);
           results.push({ ...model, created: true });
