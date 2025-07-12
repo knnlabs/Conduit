@@ -100,6 +100,13 @@ namespace ConduitLLM.Core.HealthChecks
                     }
                     data["queue_metrics"] = queueMetrics;
 
+                    // Add error queue metrics separately
+                    var errorQueueMetrics = GetErrorQueueMetrics(managementStats);
+                    if (errorQueueMetrics.Any())
+                    {
+                        data["error_queue_metrics"] = errorQueueMetrics;
+                    }
+
                     // Determine health status based on metrics
                     var (status, description) = EvaluateHealthStatus(managementStats);
                     
@@ -245,6 +252,13 @@ namespace ConduitLLM.Core.HealthChecks
             // Check critical queue depths
             foreach (var queue in stats.Queues)
             {
+                // Skip error queues and skipped queues from health evaluation
+                // These queues are expected to have messages without consumers
+                if (queue.Name.EndsWith("_error") || queue.Name.EndsWith("_skipped"))
+                {
+                    continue;
+                }
+
                 if (queue.Messages > QueueDepthCriticalThreshold)
                 {
                     issues.Add($"Critical queue depth: {queue.Name} has {queue.Messages} messages");
@@ -274,6 +288,30 @@ namespace ConduitLLM.Core.HealthChecks
 
             return (HealthStatus.Healthy, 
                 $"RabbitMQ healthy - {stats.TotalMessages} total messages, {stats.TotalConnections} connections");
+        }
+
+        private Dictionary<string, object> GetErrorQueueMetrics(RabbitMQStats stats)
+        {
+            var errorMetrics = new Dictionary<string, object>();
+            
+            var errorQueues = stats.Queues
+                .Where(q => q.Name.EndsWith("_error") || q.Name.EndsWith("_skipped"))
+                .Where(q => q.Messages > 0)
+                .ToList();
+
+            if (errorQueues.Any())
+            {
+                errorMetrics["total_error_messages"] = errorQueues.Sum(q => q.Messages);
+                errorMetrics["queues_with_errors"] = errorQueues.Count;
+                errorMetrics["details"] = errorQueues.Select(q => new
+                {
+                    name = q.Name,
+                    messages = q.Messages,
+                    type = q.Name.EndsWith("_error") ? "error" : "skipped"
+                }).ToList();
+            }
+
+            return errorMetrics;
         }
 
         private class BusHealthStatus
