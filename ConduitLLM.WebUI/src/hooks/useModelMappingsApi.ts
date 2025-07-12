@@ -96,6 +96,8 @@ export function useUpdateModelMapping() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => {
+      console.log('[useUpdateModelMapping] Updating mapping:', { id, data });
+      
       const response = await fetch(`/api/model-mappings/${id}`, {
         method: 'PUT',
         headers: {
@@ -104,12 +106,29 @@ export function useUpdateModelMapping() {
         body: JSON.stringify(data),
       });
 
+      console.log('[useUpdateModelMapping] Response status:', response.status);
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to update model mapping');
+        console.error('[useUpdateModelMapping] Error response:', error);
+        
+        // Try to parse the details if it's a JSON string
+        let detailsMessage = error.message || 'Failed to update model mapping';
+        if (error.details) {
+          try {
+            const details = JSON.parse(error.details);
+            detailsMessage = details.detail || details.message || detailsMessage;
+          } catch (e) {
+            detailsMessage = error.details;
+          }
+        }
+        
+        throw new Error(detailsMessage);
       }
 
-      return response.json() as Promise<ModelProviderMappingDto>;
+      const result = await response.json() as ModelProviderMappingDto;
+      console.log('[useUpdateModelMapping] Success result:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
@@ -161,49 +180,6 @@ export function useDeleteModelMapping() {
   });
 }
 
-export function useTestModelMapping() {
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await fetch(`/api/model-mappings/${id}/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to test model mapping');
-      }
-
-      return response.json() as Promise<{
-        isSuccessful: boolean;
-        message: string;
-        details?: {
-          modelId: string;
-          providerId: string;
-          providerModelId: string;
-          capability: string;
-          isSupported: boolean;
-        };
-      }>;
-    },
-    onSuccess: (data: { isSuccessful: boolean; message: string; details?: { modelId: string; providerId: string; providerModelId: string; capability: string; isSupported: boolean; } }) => {
-      notifications.show({
-        title: data.isSuccessful ? 'Test Passed' : 'Test Failed',
-        message: data.message,
-        color: data.isSuccessful ? 'green' : 'orange',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Test Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
-  });
-}
 
 interface DiscoveredModelWithStatus extends DiscoveredModel {
   created?: boolean;

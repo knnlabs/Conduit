@@ -13,7 +13,6 @@ import {
   IconEdit,
   IconTrash,
   IconDotsVertical,
-  IconTestPipe,
   IconArrowRight,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
@@ -22,17 +21,13 @@ import { notifications } from '@mantine/notifications';
 interface ModelMappingsTableProps {
   data: any[];
   onEdit?: (mapping: any) => void;
-  onTest?: (mappingId: string) => void;
   onDelete?: (mappingId: string) => void;
-  testingMappings?: Set<string>;
 }
 
 export function ModelMappingsTable({ 
   data,
   onEdit,
-  onTest,
   onDelete,
-  testingMappings = new Set(),
 }: ModelMappingsTableProps) {
   const handleDelete = (mapping: any) => {
     modals.openConfirmModal({
@@ -131,13 +126,6 @@ export function ModelMappingsTable({
                 onClick={() => onEdit?.(mapping)}
               >
                 Edit
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => onTest?.(mapping.id)}
-                disabled={testingMappings.has(mapping.id)}
-              >
-                {testingMappings.has(mapping.id) ? 'Testing...' : 'Test'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item

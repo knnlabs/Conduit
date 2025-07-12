@@ -16,15 +16,13 @@ import {
   IconEdit,
   IconTrash,
   IconDotsVertical,
-  IconTestPipe,
   IconArrowRight,
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { 
   useModelMappings, 
-  useDeleteModelMapping, 
-  useTestModelMapping 
+  useDeleteModelMapping
 } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
@@ -39,9 +37,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
   const { providers } = useProviders();
   const deleteMapping = useDeleteModelMapping();
-  const testMapping = useTestModelMapping();
   const [editingMapping, setEditingMapping] = useState<ModelProviderMappingDto | null>(null);
-  const [testingMappings, setTestingMappings] = useState<Set<number>>(new Set());
   
   // Create a provider ID to name lookup map
   const providerIdToName = useMemo(() => {
@@ -63,18 +59,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     setEditingMapping(mapping);
   };
 
-  const handleTest = async (mappingId: number) => {
-    setTestingMappings(prev => new Set(prev).add(mappingId));
-    try {
-      await testMapping.mutateAsync(mappingId);
-    } finally {
-      setTestingMappings(prev => {
-        const next = new Set(prev);
-        next.delete(mappingId);
-        return next;
-      });
-    }
-  };
 
   const handleDelete = (mapping: ModelProviderMappingDto) => {
     modals.openConfirmModal({
@@ -228,13 +212,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
                 onClick={() => handleEdit(mapping)}
               >
                 Edit
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => handleTest(mapping.id)}
-                disabled={testingMappings.has(mapping.id) || !mapping.isEnabled}
-              >
-                {testingMappings.has(mapping.id) ? 'Testing...' : 'Test'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item

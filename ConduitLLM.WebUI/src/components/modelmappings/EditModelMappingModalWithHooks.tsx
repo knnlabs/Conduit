@@ -75,9 +75,21 @@ export function EditModelMappingModal({
 
   // Update form when mapping changes
   useEffect(() => {
-    if (mapping) {
-      form.setValues({
-        providerId: mapping.targetProvider,
+    if (mapping && providers) {
+      console.log('[EditModal] Setting form values from mapping:', mapping);
+      console.log('[EditModal] Available providers:', providers);
+      
+      // Find the provider name from the ID
+      const provider = providers.find(p => p.id === mapping.targetProvider);
+      const providerName = provider?.name || mapping.targetProvider;
+      
+      console.log('[EditModal] Mapped provider ID to name:', { 
+        providerId: mapping.targetProvider, 
+        providerName 
+      });
+      
+      const formData = {
+        providerId: mapping.targetProvider.toString(), // Convert numeric ID to string for form
         providerModelId: mapping.targetModel,
         priority: mapping.priority || 100,
         isEnabled: mapping.isActive,
@@ -90,15 +102,20 @@ export function EditModelMappingModal({
         supportsStreaming: mapping.supportsStreaming || false,
         maxContextLength: mapping.maxContextLength,
         maxOutputTokens: mapping.maxOutputTokens,
-      });
+      };
+      console.log('[EditModal] Form data to set:', formData);
+      form.setValues(formData);
     }
-  }, [mapping]);
+  }, [mapping, providers]);
 
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
 
+    console.log('[EditModal] Form values:', values);
+    console.log('[EditModal] Mapping:', mapping);
+
     const updateData: UpdateModelProviderMappingDto = {
-      providerId: values.providerId,
+      providerId: values.providerId, // This is now the numeric ID as string
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,
@@ -113,17 +130,23 @@ export function EditModelMappingModal({
       maxOutputTokens: values.maxOutputTokens,
     };
 
-    await updateMapping.mutateAsync({
-      id: parseInt(mapping.id, 10),
-      data: updateData,
-    });
+    console.log('[EditModal] Update data:', updateData);
 
-    onSave?.();
-    onClose();
+    try {
+      await updateMapping.mutateAsync({
+        id: parseInt(mapping.id, 10),
+        data: updateData,
+      });
+
+      onSave?.();
+      onClose();
+    } catch (error) {
+      console.error('[EditModal] Update failed:', error);
+    }
   };
 
   const providerOptions = providers?.map((p: UIProvider) => ({
-    value: p.name,
+    value: p.id.toString(), // Backend expects numeric provider ID
     label: p.name,
   })) || [];
 
@@ -136,10 +159,12 @@ export function EditModelMappingModal({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          <div>
-            <Text size="sm" c="dimmed" mb={4}>Model</Text>
-            <Text fw={500}>{mapping?.sourceModel}</Text>
-          </div>
+          <TextInput
+            label="Model Alias"
+            value={mapping?.sourceModel || ''}
+            disabled
+            description="Model aliases cannot be renamed. To change the alias, delete this mapping and create a new one."
+          />
 
           <Select
             label="Provider"
