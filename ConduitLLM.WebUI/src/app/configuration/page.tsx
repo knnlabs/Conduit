@@ -32,13 +32,33 @@ import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 
 interface SystemInfo {
-  version?: string;
-  environment?: string;
-  uptime?: string;
-  nodeVersion?: string;
-  platform?: string;
-  totalMemory?: string;
-  freeMemory?: string;
+  version: {
+    appVersion: string;
+    buildDate: string | null;
+  };
+  operatingSystem: {
+    description: string;
+    architecture: string;
+  };
+  database: {
+    provider: string;
+    version: string;
+    connected: boolean;
+    connectionString: string;
+    location: string;
+  };
+  runtime: {
+    runtimeVersion: string;
+    startTime: string;
+    uptime: string;
+  };
+  recordCounts: {
+    virtualKeys: number;
+    requests: number;
+    settings: number;
+    providers: number;
+    modelMappings: number;
+  };
 }
 
 interface GlobalSetting {
@@ -67,8 +87,20 @@ export default function ConfigurationPage() {
   const fetchSystemInfo = async () => {
     try {
       setSystemLoading(true);
-      // Settings API not yet implemented in SDK
-      throw new Error('Settings management not yet available');
+      const response = await fetch('/api/settings/system-info');
+      if (!response.ok) {
+        throw new Error('Failed to fetch system info');
+      }
+      const data = await response.json();
+      
+      // Validate the data structure
+      if (data && typeof data === 'object' && 
+          data.version && data.operatingSystem && data.runtime && data.database) {
+        setSystemInfo(data);
+      } else {
+        console.error('Invalid system info structure:', data);
+        setSystemInfo(null);
+      }
     } catch (err) {
       console.error('Error fetching system info:', err);
       notifications.show({
@@ -76,6 +108,7 @@ export default function ConfigurationPage() {
         message: 'Failed to load system information',
         color: 'red',
       });
+      setSystemInfo(null);
     } finally {
       setSystemLoading(false);
     }
@@ -84,8 +117,19 @@ export default function ConfigurationPage() {
   const fetchSettings = async () => {
     try {
       setSettingsLoading(true);
-      // Settings API not yet implemented in SDK
-      throw new Error('Settings management not yet available');
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+      const data = await response.json();
+      
+      // Ensure we have an array
+      if (Array.isArray(data)) {
+        setSettings(data);
+      } else {
+        console.error('Settings data is not an array:', data);
+        setSettings([]);
+      }
     } catch (err) {
       console.error('Error fetching settings:', err);
       notifications.show({
@@ -93,6 +137,7 @@ export default function ConfigurationPage() {
         message: 'Failed to load settings',
         color: 'red',
       });
+      setSettings([]); // Set empty array on error
     } finally {
       setSettingsLoading(false);
     }
@@ -105,8 +150,33 @@ export default function ConfigurationPage() {
 
   const handleSave = async (key: string) => {
     try {
-      // Settings API not yet implemented in SDK
-      throw new Error('Settings management not yet available');
+      const response = await fetch(`/api/settings/${key}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ value: editValue }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update setting');
+      }
+
+      // Update local state
+      setSettings(prevSettings =>
+        prevSettings.map(s =>
+          s.key === key ? { ...s, value: editValue } : s
+        )
+      );
+      
+      setEditingKey(null);
+      setEditValue('');
+      
+      notifications.show({
+        title: 'Success',
+        message: 'Setting updated successfully',
+        color: 'green',
+      });
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -121,14 +191,16 @@ export default function ConfigurationPage() {
     setEditValue('');
   };
 
-  const groupedSettings = settings.reduce((acc, setting) => {
-    const category = setting.category || 'General';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(setting);
-    return acc;
-  }, {} as Record<string, GlobalSetting[]>);
+  const groupedSettings = Array.isArray(settings) 
+    ? settings.reduce((acc, setting) => {
+        const category = setting.category || 'General';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(setting);
+        return acc;
+      }, {} as Record<string, GlobalSetting[]>)
+    : {};
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -182,38 +254,58 @@ export default function ConfigurationPage() {
             <Grid>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Version</Text>
-                  <Text size="lg" fw={500}>{systemInfo.version || 'Unknown'}</Text>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>App Version</Text>
+                  <Text size="lg" fw={500}>{systemInfo.version.appVersion}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Environment</Text>
-                  <Text size="lg" fw={500}>{systemInfo.environment || 'Production'}</Text>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Runtime</Text>
+                  <Text size="lg" fw={500}>{systemInfo.runtime.runtimeVersion}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Uptime</Text>
-                  <Text size="lg" fw={500}>{systemInfo.uptime || 'Unknown'}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.runtime.uptime}</Text>
                 </Paper>
               </Grid.Col>
-              {systemInfo.platform && (
-                <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                  <Paper p="md" withBorder>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Platform</Text>
-                    <Text size="lg" fw={500}>{systemInfo.platform}</Text>
-                  </Paper>
-                </Grid.Col>
-              )}
-              {systemInfo.nodeVersion && (
-                <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                  <Paper p="md" withBorder>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Node Version</Text>
-                    <Text size="lg" fw={500}>{systemInfo.nodeVersion}</Text>
-                  </Paper>
-                </Grid.Col>
-              )}
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Operating System</Text>
+                  <Text size="lg" fw={500}>{systemInfo.operatingSystem.description}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Architecture</Text>
+                  <Text size="lg" fw={500}>{systemInfo.operatingSystem.architecture}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Database</Text>
+                  <Text size="lg" fw={500}>{systemInfo.database.provider} v{systemInfo.database.version}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Virtual Keys</Text>
+                  <Text size="lg" fw={500}>{systemInfo.recordCounts.virtualKeys}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Providers</Text>
+                  <Text size="lg" fw={500}>{systemInfo.recordCounts.providers}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Model Mappings</Text>
+                  <Text size="lg" fw={500}>{systemInfo.recordCounts.modelMappings}</Text>
+                </Paper>
+              </Grid.Col>
             </Grid>
           )}
         </Card.Section>
@@ -295,7 +387,7 @@ export default function ConfigurationPage() {
                             ) : (
                               <Group mt="xs" gap="xs" align="center">
                                 <Badge variant="light" size="lg">
-                                  {setting.value}
+                                  {typeof setting.value === 'object' ? JSON.stringify(setting.value) : String(setting.value)}
                                 </Badge>
                                 <ActionIcon
                                   variant="subtle"
