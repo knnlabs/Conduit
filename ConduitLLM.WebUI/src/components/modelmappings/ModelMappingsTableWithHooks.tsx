@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   Group,
@@ -26,6 +26,7 @@ import {
   useDeleteModelMapping, 
   useTestModelMapping 
 } from '@/hooks/useModelMappingsApi';
+import { useProviders } from '@/hooks/useProviderApi';
 import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
 import { toUIModelMapping } from '@/lib/types/mappers';
 import type { ModelProviderMappingDto } from '@/types/api-types';
@@ -36,10 +37,20 @@ interface ModelMappingsTableProps {
 
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
+  const { providers } = useProviders();
   const deleteMapping = useDeleteModelMapping();
   const testMapping = useTestModelMapping();
   const [editingMapping, setEditingMapping] = useState<ModelProviderMappingDto | null>(null);
   const [testingMappings, setTestingMappings] = useState<Set<number>>(new Set());
+  
+  // Create a provider ID to name lookup map
+  const providerIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    providers?.forEach(provider => {
+      map.set(provider.id.toString(), provider.name);
+    });
+    return map;
+  }, [providers]);
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -147,7 +158,9 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       </Table.Td>
       
       <Table.Td>
-        <Text size="sm">{mapping.providerId}</Text>
+        <Text size="sm">
+          {providerIdToName.get(mapping.providerId) || mapping.providerId}
+        </Text>
       </Table.Td>
 
       <Table.Td>
