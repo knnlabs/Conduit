@@ -53,7 +53,7 @@ export function ProviderModelSelect({
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/providers/${providerId}/models`);
+      const response = await fetch(`/api/provider-models/${providerId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch models');
       }

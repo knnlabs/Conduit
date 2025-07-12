@@ -277,7 +277,7 @@ export function useProviderApi() {
     setError(null);
     
     try {
-      const response = await fetch(`/api/providers/${id}/models`, {
+      const response = await fetch(`/api/provider-models/${id}`, {
         method: 'GET',
       });
 

@@ -60,6 +60,32 @@ export interface ModelCapabilities {
   plugins: boolean;
 }
 
+// Type matching the Admin API's DiscoveredModel response
+export interface DiscoveredModel {
+  modelId: string;
+  provider: string;
+  displayName?: string;
+  capabilities: {
+    chat?: boolean;
+    chatStream?: boolean;
+    embeddings?: boolean;
+    imageGeneration?: boolean;
+    vision?: boolean;
+    videoGeneration?: boolean;
+    videoUnderstanding?: boolean;
+    functionCalling?: boolean;
+    toolUse?: boolean;
+    jsonMode?: boolean;
+    maxTokens?: number;
+    maxOutputTokens?: number;
+    supportedImageSizes?: string[];
+    supportedVideoResolutions?: string[];
+    maxVideoDurationSeconds?: number;
+  };
+  metadata?: Record<string, any>;
+  lastVerified: string;
+}
+
 // List response for paginated results
 export interface ModelListResponseDto {
   items: ModelDto[];
@@ -76,9 +102,13 @@ export interface RefreshModelsRequest {
 }
 
 export interface RefreshModelsResponse {
-  providerName: string;
-  modelsUpdated: number;
-  modelsAdded: number;
-  modelsRemoved: number;
-  refreshedAt: string;
+  provider: string;
+  providerName?: string; // For backwards compatibility
+  modelsCount: number;
+  modelsUpdated?: number;
+  modelsAdded?: number;
+  modelsRemoved?: number;
+  refreshedAt?: string;
+  success: boolean;
+  message: string;
 }

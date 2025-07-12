@@ -17,11 +17,8 @@ export async function GET(
     const { id } = await params;
     const adminClient = getServerAdminClient();
     
-    // Get provider details first
-    const provider = await adminClient.providers.getById(parseInt(id, 10));
-    
-    // Get models for this provider
-    const models = await adminClient.providerModels.getProviderModels(provider.providerName);
+    // Get models for this provider using the provider ID directly
+    const models = await adminClient.providerModels.getProviderModels(id);
     
     return NextResponse.json(models);
   } catch (error) {

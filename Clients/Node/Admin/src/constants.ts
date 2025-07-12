@@ -79,15 +79,16 @@ export const ENDPOINTS = {
     TEST: '/api/ProviderCredentials/test',
   },
 
-  // Provider Models
+  // Provider Models (Note: These endpoints don't exist in Admin API, use MODEL_MAPPINGS.DISCOVER_* instead)
+  // TODO: Remove this section once all references are updated
   PROVIDER_MODELS: {
-    BY_PROVIDER: (providerId: string) => `/api/provider-models/${providerId}`,
-    CACHED: (providerId: string) => `/api/provider-models/${providerId}/cached`,
-    REFRESH: (providerId: string) => `/api/provider-models/${providerId}/refresh`,
+    BY_PROVIDER: (providerName: string) => `/api/provider-models/${providerName}`,
+    CACHED: (providerName: string) => `/api/provider-models/${providerName}/cached`,
+    REFRESH: (providerName: string) => `/api/provider-models/${providerName}/refresh`,
     TEST_CONNECTION: '/api/provider-models/test-connection',
     SUMMARY: '/api/provider-models/summary',
-    DETAILS: (provider: string, model: string) => `/api/provider-models/${provider}/${model}`,
-    CAPABILITIES: (provider: string, model: string) => `/api/provider-models/${provider}/${model}/capabilities`,
+    DETAILS: (providerName: string, modelId: string) => `/api/provider-models/${providerName}/${modelId}`,
+    CAPABILITIES: (providerName: string, modelId: string) => `/api/provider-models/${providerName}/${modelId}/capabilities`,
     SEARCH: '/api/provider-models/search',
   },
 

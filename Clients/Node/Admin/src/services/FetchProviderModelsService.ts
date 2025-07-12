@@ -9,6 +9,7 @@ import type {
   ModelSearchResult,
   ModelListResponseDto,
   RefreshModelsResponse,
+  DiscoveredModel,
 } from '../models/providerModels';
 
 /**
@@ -24,139 +25,162 @@ export class FetchProviderModelsService {
     providerName: string,
     config?: RequestConfig
   ): Promise<ModelDto[]> {
-    return this.client['get']<ModelDto[]>(
-      ENDPOINTS.PROVIDER_MODELS.BY_PROVIDER(providerName),
+    // The Admin API returns DiscoveredModel[], we need to map to ModelDto[]
+    const discoveredModels = await this.client['get']<DiscoveredModel[]>(
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerName),
       {
         signal: config?.signal,
         timeout: config?.timeout,
         headers: config?.headers,
       }
     );
+    
+    // Map DiscoveredModel to ModelDto
+    return discoveredModels.map(dm => ({
+      id: dm.modelId,
+      name: dm.modelId,
+      displayName: dm.displayName || dm.modelId,
+      provider: dm.provider,
+      description: dm.metadata?.description as string | undefined,
+      contextWindow: dm.capabilities?.maxTokens || 0,
+      maxTokens: dm.capabilities?.maxOutputTokens || 0,
+      inputCost: 0, // Admin API doesn't provide cost information
+      outputCost: 0, // Admin API doesn't provide cost information
+      capabilities: {
+        chat: dm.capabilities?.chat || false,
+        completion: false, // Not in DiscoveredModel
+        embedding: dm.capabilities?.embeddings || false,
+        vision: dm.capabilities?.vision || false,
+        functionCalling: dm.capabilities?.functionCalling || false,
+        streaming: dm.capabilities?.chatStream || false,
+        fineTuning: false, // Not in DiscoveredModel
+        plugins: false, // Not in DiscoveredModel
+      },
+      status: 'active', // Default since Admin API doesn't provide status
+    }));
   }
 
   /**
    * Get cached models for a specific provider (faster, may be stale)
+   * @deprecated This endpoint doesn't exist in Admin API. Use getProviderModels instead.
    */
   async getCachedProviderModels(
     providerName: string,
     config?: RequestConfig
   ): Promise<ModelDto[]> {
-    return this.client['get']<ModelDto[]>(
-      ENDPOINTS.PROVIDER_MODELS.CACHED(providerName),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // Fallback to regular getProviderModels since cached endpoint doesn't exist
+    console.warn('getCachedProviderModels: This endpoint does not exist in Admin API. Using getProviderModels instead.');
+    return this.getProviderModels(providerName, config);
   }
 
   /**
    * Refresh model list from provider
+   * @deprecated This endpoint doesn't exist in Admin API. Model discovery happens in real-time.
    */
   async refreshProviderModels(
     providerName: string,
     config?: RequestConfig
   ): Promise<RefreshModelsResponse> {
-    return this.client['post']<RefreshModelsResponse>(
-      ENDPOINTS.PROVIDER_MODELS.REFRESH(providerName),
-      { providerName, forceRefresh: true },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // Admin API discovers models in real-time, no refresh needed
+    console.warn('refreshProviderModels: This endpoint does not exist in Admin API. Model discovery happens in real-time.');
+    const models = await this.getProviderModels(providerName, config);
+    return {
+      provider: providerName,
+      modelsCount: models.length,
+      success: true,
+      message: `Discovered ${models.length} models for ${providerName}`,
+    };
   }
 
   /**
    * Get detailed model information
    */
   async getModelDetails(
-    provider: string,
-    model: string,
+    providerName: string,
+    modelId: string,
     config?: RequestConfig
   ): Promise<ModelDetailsDto> {
-    return this.client['get']<ModelDetailsDto>(
-      ENDPOINTS.PROVIDER_MODELS.DETAILS(provider, model),
+    // Use the discover endpoint to get model details
+    const discoveredModel = await this.client['get']<DiscoveredModel>(
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerName, modelId),
       {
         signal: config?.signal,
         timeout: config?.timeout,
         headers: config?.headers,
       }
     );
+    
+    // Map to ModelDetailsDto
+    return {
+      id: discoveredModel.modelId,
+      name: discoveredModel.modelId,
+      displayName: discoveredModel.displayName || discoveredModel.modelId,
+      provider: discoveredModel.provider,
+      description: discoveredModel.metadata?.description as string | undefined,
+      contextWindow: discoveredModel.capabilities?.maxTokens || 0,
+      maxTokens: discoveredModel.capabilities?.maxOutputTokens || 0,
+      inputCost: 0,
+      outputCost: 0,
+      capabilities: {
+        chat: discoveredModel.capabilities?.chat || false,
+        completion: false,
+        embedding: discoveredModel.capabilities?.embeddings || false,
+        vision: discoveredModel.capabilities?.vision || false,
+        functionCalling: discoveredModel.capabilities?.functionCalling || false,
+        streaming: discoveredModel.capabilities?.chatStream || false,
+        fineTuning: false,
+        plugins: false,
+      },
+      status: 'active',
+      version: discoveredModel.metadata?.version as string || 'unknown',
+    };
   }
 
   /**
    * Get model capabilities
    */
   async getModelCapabilities(
-    provider: string,
-    model: string,
+    providerName: string,
+    modelId: string,
     config?: RequestConfig
   ): Promise<ModelCapabilities> {
-    return this.client['get']<ModelCapabilities>(
-      ENDPOINTS.PROVIDER_MODELS.CAPABILITIES(provider, model),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // Get model details which includes capabilities
+    const modelDetails = await this.getModelDetails(providerName, modelId, config);
+    return modelDetails.capabilities;
   }
 
   /**
    * Search models across all providers
+   * @deprecated This endpoint doesn't exist in Admin API. Implement client-side filtering instead.
    */
   async searchModels(
     query: string,
     filters?: ModelSearchFilters,
     config?: RequestConfig
   ): Promise<ModelSearchResult> {
-    return this.client['post']<ModelSearchResult>(
-      ENDPOINTS.PROVIDER_MODELS.SEARCH,
-      {
-        query,
-        filters,
-      },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    console.warn('searchModels: This endpoint does not exist in Admin API. This method is deprecated.');
+    throw new Error('searchModels is not available in Admin API. Use getProviderModels and filter results client-side.');
   }
 
   /**
    * Get summary of all provider models
+   * @deprecated This endpoint doesn't exist in Admin API.
    */
   async getModelsSummary(config?: RequestConfig): Promise<Record<string, number>> {
-    return this.client['get']<Record<string, number>>(
-      ENDPOINTS.PROVIDER_MODELS.SUMMARY,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    console.warn('getModelsSummary: This endpoint does not exist in Admin API. This method is deprecated.');
+    throw new Error('getModelsSummary is not available in Admin API.');
   }
 
   /**
    * Test provider connection
+   * @deprecated Use the providers service testConnection method instead.
    */
   async testProviderConnection(
     providerName: string,
     config?: RequestConfig
   ): Promise<{ success: boolean; message: string; responseTimeMs?: number }> {
-    return this.client['post']<{ success: boolean; message: string; responseTimeMs?: number }>(
-      ENDPOINTS.PROVIDER_MODELS.TEST_CONNECTION,
-      { providerName },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    console.warn('testProviderConnection: This endpoint does not exist in Admin API. Use providers.testConnection instead.');
+    throw new Error('testProviderConnection is not available here. Use the providers service instead.');
   }
 
   /**
