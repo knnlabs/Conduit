@@ -391,3 +391,276 @@ export interface AnomalyDto {
   metrics: Record<string, any>;
   resolved: boolean;
 }
+
+// New comprehensive analytics types for WebUI integration
+export interface ComprehensiveUsageAnalyticsParams {
+  timeRange: string; // '24h', '7d', '30d', '90d'
+  includeTimeSeries?: boolean;
+  includeProviderBreakdown?: boolean;
+  includeModelBreakdown?: boolean;
+  includeVirtualKeyBreakdown?: boolean;
+  includeEndpointBreakdown?: boolean;
+}
+
+export interface ComprehensiveUsageAnalytics {
+  metrics: {
+    totalRequests: number;
+    totalCost: number;
+    totalTokens: number;
+    activeVirtualKeys: number;
+    requestsChange: number;  // percentage
+    costChange: number;      // percentage
+    tokensChange: number;    // percentage
+    virtualKeysChange: number; // percentage
+  };
+  timeSeries?: TimeSeriesDataPoint[];
+  providerUsage?: ProviderUsageBreakdown[];
+  modelUsage?: ModelUsageBreakdown[];
+  virtualKeyUsage?: VirtualKeyUsageBreakdown[];
+  endpointUsage?: EndpointUsageBreakdown[];
+}
+
+export interface TimeSeriesDataPoint {
+  timestamp: string;
+  requests: number;
+  cost: number;
+  tokens: number;
+}
+
+export interface ProviderUsageBreakdown {
+  provider: string;
+  requests: number;
+  cost: number;
+  tokens: number;
+  percentage: number;
+}
+
+export interface ModelUsageBreakdown {
+  model: string;
+  provider: string;
+  requests: number;
+  cost: number;
+  tokens: number;
+}
+
+export interface VirtualKeyUsageBreakdown {
+  keyName: string;
+  requests: number;
+  cost: number;
+  tokens: number;
+  lastUsed: string;
+}
+
+export interface EndpointUsageBreakdown {
+  endpoint: string;
+  requests: number;
+  avgDuration: number;
+  errorRate: number;
+}
+
+export interface RequestLogStatisticsParams {
+  startDate?: string;
+  endDate?: string;
+  virtualKeyId?: string;
+  provider?: string;
+  model?: string;
+}
+
+export interface RequestLogStatistics {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  averageLatency: number;
+  p95Latency: number;
+  p99Latency: number;
+  totalCost: number;
+  totalTokens: number;
+  errorRate: number;
+  byStatusCode: Record<number, number>;
+  byProvider: Record<string, { requests: number; cost: number; errors: number }>;
+  byModel: Record<string, { requests: number; cost: number; tokens: number }>;
+  hourlyDistribution: Array<{ hour: number; requests: number }>;
+}
+
+export interface SystemPerformanceMetricsParams {
+  timeRange?: string; // '1h', '24h', '7d'
+  includeServiceHealth?: boolean;
+  includeQueueMetrics?: boolean;
+  includeDatabaseMetrics?: boolean;
+}
+
+export interface SystemPerformanceMetrics {
+  cpu: {
+    usage: number;
+    cores: number;
+    trend: number; // percentage change
+  };
+  memory: {
+    used: number;
+    total: number;
+    percentage: number;
+    trend: number;
+  };
+  disk: {
+    used: number;
+    total: number;
+    percentage: number;
+    trend: number;
+  };
+  services?: ServiceHealthMetrics[];
+  queues?: QueueMetrics[];
+  database?: DatabaseMetrics;
+  alerts: SystemAlert[];
+}
+
+export interface ServiceHealthMetrics {
+  name: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  uptime: number; // percentage
+  responseTime: number; // ms
+  errorRate: number;
+  lastChecked: string;
+}
+
+export interface QueueMetrics {
+  name: string;
+  size: number;
+  processing: number;
+  failed: number;
+  throughput: number; // messages per second
+}
+
+export interface DatabaseMetrics {
+  connections: {
+    active: number;
+    idle: number;
+    total: number;
+  };
+  queryPerformance: {
+    averageTime: number;
+    slowQueries: number;
+  };
+  size: number; // bytes
+}
+
+export interface SystemAlert {
+  id: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  message: string;
+  timestamp: string;
+  service?: string;
+}
+
+export interface ProviderHealthSummaryParams {
+  includeHistory?: boolean;
+  historyDays?: number;
+  includeIncidents?: boolean;
+}
+
+export interface ProviderHealthAnalyticsSummary {
+  providers: ProviderHealthDetails[];
+  overallHealth: 'healthy' | 'partial' | 'unhealthy';
+  healthyCount: number;
+  degradedCount: number;
+  unhealthyCount: number;
+  incidents?: ProviderIncident[];
+}
+
+export interface ProviderHealthDetails {
+  provider: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  uptime: number; // percentage
+  averageLatency: number; // ms
+  errorRate: number; // percentage
+  lastChecked: string;
+  endpoints: EndpointHealth[];
+  history?: HealthHistoryPoint[];
+}
+
+export interface EndpointHealth {
+  endpoint: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  responseTime: number;
+  successRate: number;
+  lastError?: string;
+}
+
+export interface HealthHistoryPoint {
+  timestamp: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  uptime: number;
+  errorRate: number;
+}
+
+export interface ProviderIncident {
+  id: string;
+  provider: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'active' | 'resolved';
+  startTime: string;
+  endTime?: string;
+  description: string;
+  impact: string;
+}
+
+export interface ComprehensiveVirtualKeyAnalyticsParams {
+  timeRange?: string; // '24h', '7d', '30d', '90d'
+  virtualKeyIds?: string[];
+  includeUsagePatterns?: boolean;
+  includeQuotaStatus?: boolean;
+}
+
+export interface ComprehensiveVirtualKeyAnalytics {
+  virtualKeys: VirtualKeyDetail[];
+  aggregateMetrics: {
+    totalKeys: number;
+    activeKeys: number;
+    totalRequests: number;
+    totalCost: number;
+    averageUtilization: number;
+  };
+  usagePatterns?: {
+    peakHours: Array<{ hour: number; requests: number }>;
+    topModels: Array<{ model: string; requests: number; cost: number }>;
+    topProviders: Array<{ provider: string; requests: number; cost: number }>;
+  };
+  quotaAlerts: QuotaAlert[];
+}
+
+export interface VirtualKeyDetail {
+  keyId: string;
+  keyName: string;
+  status: 'active' | 'expired' | 'disabled';
+  usage: {
+    requests: number;
+    tokens: number;
+    cost: number;
+    lastUsed: string;
+  };
+  quota: {
+    limit: number;
+    used: number;
+    remaining: number;
+    percentage: number;
+    resetDate?: string;
+  };
+  performance: {
+    averageLatency: number;
+    errorRate: number;
+    successRate: number;
+  };
+  trends: {
+    dailyChange: number; // percentage
+    weeklyChange: number; // percentage
+  };
+}
+
+export interface QuotaAlert {
+  keyId: string;
+  keyName: string;
+  type: 'approaching_limit' | 'exceeded_limit' | 'unusual_activity';
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  threshold?: number;
+  currentUsage?: number;
+}

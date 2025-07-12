@@ -173,6 +173,12 @@ export const ENDPOINTS = {
     // Request log analytics
     REQUEST_LOG_STATS: '/api/analytics/request-logs/statistics',
     REQUEST_LOG_SUMMARY: '/api/analytics/request-logs/summary',
+    
+    // System performance
+    SYSTEM_PERFORMANCE: '/api/analytics/system-performance',
+    
+    // Provider health
+    PROVIDER_HEALTH_SUMMARY: '/api/analytics/provider-health',
   },
 
   // Provider Health

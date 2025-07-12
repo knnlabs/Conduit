@@ -5,10 +5,6 @@ import type {
   RequestLogParams,
   RequestLogPage,
   RequestLogDto,
-  UsageParams,
-  UsageAnalytics,
-  VirtualKeyParams,
-  VirtualKeyAnalytics,
   ModelUsageParams,
   ModelUsageAnalytics,
   CostParams,
@@ -17,6 +13,16 @@ import type {
   CostByPeriodDto,
   ExportParams,
   ExportResult,
+  ComprehensiveUsageAnalyticsParams,
+  ComprehensiveUsageAnalytics,
+  RequestLogStatisticsParams,
+  RequestLogStatistics,
+  SystemPerformanceMetricsParams,
+  SystemPerformanceMetrics,
+  ProviderHealthSummaryParams,
+  ProviderHealthAnalyticsSummary,
+  ComprehensiveVirtualKeyAnalyticsParams,
+  ComprehensiveVirtualKeyAnalytics,
 } from '../models/analytics';
 
 /**
@@ -89,30 +95,23 @@ export class FetchAnalyticsService {
   }
 
   /**
-   * Get usage analytics
+   * Get comprehensive usage analytics for WebUI dashboards
+   * This method provides all analytics data needed for dashboard views in a single call
    */
-  async getUsageAnalytics(params?: UsageParams, config?: RequestConfig): Promise<UsageAnalytics> {
+  async getUsageAnalytics(params: ComprehensiveUsageAnalyticsParams, config?: RequestConfig): Promise<ComprehensiveUsageAnalytics> {
     const queryParams = new URLSearchParams();
     
-    if (params) {
-      if (params.startDate) queryParams.append('startDate', params.startDate);
-      if (params.endDate) queryParams.append('endDate', params.endDate);
-      if (params.groupBy) queryParams.append('groupBy', params.groupBy);
-      if (params.virtualKeyIds?.length) {
-        params.virtualKeyIds.forEach(id => queryParams.append('virtualKeyIds', id));
-      }
-      if (params.providers?.length) {
-        params.providers.forEach(p => queryParams.append('providers', p));
-      }
-      if (params.models?.length) {
-        params.models.forEach(m => queryParams.append('models', m));
-      }
-    }
+    queryParams.append('timeRange', params.timeRange);
+    if (params.includeTimeSeries !== undefined) queryParams.append('includeTimeSeries', params.includeTimeSeries.toString());
+    if (params.includeProviderBreakdown !== undefined) queryParams.append('includeProviderBreakdown', params.includeProviderBreakdown.toString());
+    if (params.includeModelBreakdown !== undefined) queryParams.append('includeModelBreakdown', params.includeModelBreakdown.toString());
+    if (params.includeVirtualKeyBreakdown !== undefined) queryParams.append('includeVirtualKeyBreakdown', params.includeVirtualKeyBreakdown.toString());
+    if (params.includeEndpointBreakdown !== undefined) queryParams.append('includeEndpointBreakdown', params.includeEndpointBreakdown.toString());
 
     const queryString = queryParams.toString();
     const url = queryString ? `${ENDPOINTS.ANALYTICS.USAGE_ANALYTICS}?${queryString}` : ENDPOINTS.ANALYTICS.USAGE_ANALYTICS;
 
-    return this.client['get']<UsageAnalytics>(
+    return this.client['get']<ComprehensiveUsageAnalytics>(
       url,
       {
         signal: config?.signal,
@@ -138,24 +137,24 @@ export class FetchAnalyticsService {
   }
 
   /**
-   * Get virtual key analytics
+   * Get comprehensive virtual key analytics including usage patterns and quotas
    */
-  async getVirtualKeyAnalytics(params?: VirtualKeyParams, config?: RequestConfig): Promise<VirtualKeyAnalytics> {
+  async getVirtualKeyAnalytics(params?: ComprehensiveVirtualKeyAnalyticsParams, config?: RequestConfig): Promise<ComprehensiveVirtualKeyAnalytics> {
     const queryParams = new URLSearchParams();
     
     if (params) {
-      if (params.startDate) queryParams.append('startDate', params.startDate);
-      if (params.endDate) queryParams.append('endDate', params.endDate);
-      if (params.groupBy) queryParams.append('groupBy', params.groupBy);
+      if (params.timeRange) queryParams.append('timeRange', params.timeRange);
       if (params.virtualKeyIds?.length) {
         params.virtualKeyIds.forEach(id => queryParams.append('virtualKeyIds', id));
       }
+      if (params.includeUsagePatterns !== undefined) queryParams.append('includeUsagePatterns', params.includeUsagePatterns.toString());
+      if (params.includeQuotaStatus !== undefined) queryParams.append('includeQuotaStatus', params.includeQuotaStatus.toString());
     }
 
     const queryString = queryParams.toString();
     const url = queryString ? `${ENDPOINTS.ANALYTICS.VIRTUAL_KEY_ANALYTICS}?${queryString}` : ENDPOINTS.ANALYTICS.VIRTUAL_KEY_ANALYTICS;
 
-    return this.client['get']<VirtualKeyAnalytics>(
+    return this.client['get']<ComprehensiveVirtualKeyAnalytics>(
       url,
       {
         signal: config?.signal,
@@ -402,5 +401,83 @@ export class FetchAnalyticsService {
     const end = new Date(endDate);
 
     return start <= end && end <= new Date();
+  }
+
+  /**
+   * Get aggregated request log statistics without fetching all logs
+   */
+  async getRequestLogStatistics(params?: RequestLogStatisticsParams, config?: RequestConfig): Promise<RequestLogStatistics> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+      if (params.virtualKeyId) queryParams.append('virtualKeyId', params.virtualKeyId);
+      if (params.provider) queryParams.append('provider', params.provider);
+      if (params.model) queryParams.append('model', params.model);
+    }
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `${ENDPOINTS.ANALYTICS.REQUEST_LOG_STATS}?${queryString}` : ENDPOINTS.ANALYTICS.REQUEST_LOG_STATS;
+
+    return this.client['get']<RequestLogStatistics>(
+      url,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Get system performance metrics, service status, and alerts
+   */
+  async getSystemPerformanceMetrics(params?: SystemPerformanceMetricsParams, config?: RequestConfig): Promise<SystemPerformanceMetrics> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.timeRange) queryParams.append('timeRange', params.timeRange);
+      if (params.includeServiceHealth !== undefined) queryParams.append('includeServiceHealth', params.includeServiceHealth.toString());
+      if (params.includeQueueMetrics !== undefined) queryParams.append('includeQueueMetrics', params.includeQueueMetrics.toString());
+      if (params.includeDatabaseMetrics !== undefined) queryParams.append('includeDatabaseMetrics', params.includeDatabaseMetrics.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `${ENDPOINTS.ANALYTICS.SYSTEM_PERFORMANCE}?${queryString}` : ENDPOINTS.ANALYTICS.SYSTEM_PERFORMANCE;
+
+    return this.client['get']<SystemPerformanceMetrics>(
+      url,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Get comprehensive provider health data including uptime, response times, and incidents
+   */
+  async getProviderHealthSummary(params?: ProviderHealthSummaryParams, config?: RequestConfig): Promise<ProviderHealthAnalyticsSummary> {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.includeHistory !== undefined) queryParams.append('includeHistory', params.includeHistory.toString());
+      if (params.historyDays !== undefined) queryParams.append('historyDays', params.historyDays.toString());
+      if (params.includeIncidents !== undefined) queryParams.append('includeIncidents', params.includeIncidents.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `${ENDPOINTS.ANALYTICS.PROVIDER_HEALTH_SUMMARY}?${queryString}` : ENDPOINTS.ANALYTICS.PROVIDER_HEALTH_SUMMARY;
+
+    return this.client['get']<ProviderHealthAnalyticsSummary>(
+      url,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 }
