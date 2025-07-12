@@ -17,6 +17,7 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  // Enhanced webpack configuration for hot reload
   webpack: (config, { dev, isServer }) => {
     config.externals.push({
       'utf-8-validate': 'commonjs utf-8-validate',
@@ -36,6 +37,13 @@ const nextConfig = {
         minimizer: [],
         splitChunks: false,
         runtimeChunk: false,
+      };
+      
+      // Enhanced hot reload configuration
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.next'],
       };
     }
     

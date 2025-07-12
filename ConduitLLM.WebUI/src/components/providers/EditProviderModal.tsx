@@ -48,7 +48,6 @@ interface EditProviderModalProps {
 }
 
 interface EditProviderForm {
-  providerName: string;
   apiKey?: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -62,14 +61,12 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
   const form = useForm<EditProviderForm>({
     initialValues: {
-      providerName: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
       isEnabled: true,
     },
     validate: {
-      providerName: validators.required('Provider name'),
       apiEndpoint: (value) => {
         if (value && !validators.url(value)) {
           return 'Please enter a valid URL';
@@ -83,7 +80,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   useEffect(() => {
     if (provider) {
       form.setValues({
-        providerName: provider.name,
         apiKey: '', // Don't show existing key for security
         apiEndpoint: provider.endpoint || '',
         organizationId: (provider.configuration?.organizationId as string) || '',
@@ -98,8 +94,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     setIsSubmitting(true);
     try {
       const payload = {
-        id: parseInt(provider.id, 10),
-        providerName: values.providerName,
         apiKey: values.apiKey || undefined, // Only send if changed
         apiEndpoint: values.apiEndpoint || undefined,
         organizationId: values.organizationId || undefined,
@@ -206,9 +200,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
           <TextInput
             label="Provider Name"
-            placeholder="Enter provider name"
-            required
-            {...form.getInputProps('providerName')}
+            value={provider.name}
+            disabled
+            description="Provider name cannot be changed"
           />
 
           <PasswordInput

@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const providers = await adminClient.providers.list();
+    const response = await adminClient.providers.list();
+    
+    // The SDK returns a paginated response object, extract the items array
+    const providers = response.items || response;
+    
     return NextResponse.json(providers);
   } catch (error) {
     return handleSDKError(error);

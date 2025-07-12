@@ -131,9 +131,9 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          providerType: form.values.providerType,
+          providerName: form.values.providerType,
           apiKey: form.values.apiKey,
-          apiEndpoint: form.values.apiEndpoint || undefined,
+          baseUrl: form.values.apiEndpoint || undefined,
           organizationId: form.values.organizationId || undefined,
         }),
       });

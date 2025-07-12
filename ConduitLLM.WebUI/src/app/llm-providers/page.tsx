@@ -98,9 +98,9 @@ export default function ProvidersPage() {
       const result = await response.json();
       
       notifications.show({
-        title: result.isSuccessful ? 'Connection Successful' : 'Connection Failed',
-        message: result.message || (result.isSuccessful ? 'Provider is working correctly' : 'Failed to connect to provider'),
-        color: result.isSuccessful ? 'green' : 'red',
+        title: result.success ? 'Connection Successful' : 'Connection Failed',
+        message: result.message || (result.success ? 'Provider is working correctly' : 'Failed to connect to provider'),
+        color: result.success ? 'green' : 'red',
       });
       
       // Refresh providers to get updated health status
@@ -133,7 +133,7 @@ export default function ProvidersPage() {
         message: 'Provider deleted successfully',
         color: 'green',
       });
-      fetchProviders();
+      await fetchProviders();
     } catch (err) {
       notifications.show({
         title: 'Error',

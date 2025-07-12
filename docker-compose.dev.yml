@@ -3,11 +3,13 @@
 
 services:
   webui:
+    # Override user to root in development to avoid permission issues
+    user: root
     volumes:
       # Mount source code for hot reloading
-      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
-      - ./Clients/Node/Admin:/app/Clients/Node/Admin
-      - ./Clients/Node/Core:/app/Clients/Node/Core
+      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated
+      - ./Clients/Node/Admin:/app/Clients/Node/Admin:delegated
+      - ./Clients/Node/Core:/app/Clients/Node/Core:delegated
       # Prevent node_modules from being overwritten
       - /app/ConduitLLM.WebUI/node_modules
       - /app/Clients/Node/Admin/node_modules
@@ -16,8 +18,12 @@ services:
       # Enable Next.js development mode
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
-      # Faster refresh
+      # Enhanced hot reload settings
       WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      # Fast refresh
+      FAST_REFRESH: "true"
     working_dir: /app/ConduitLLM.WebUI
-    command: npm run dev
-    user: root
+    # HACKY FIX: Build SDKs and install deps before starting
+    command: sh -c "cd /app/Clients/Node/Admin && npm run build && cd /app/Clients/Node/Core && npm run build && cd /app/ConduitLLM.WebUI && npm install && npm run dev"
