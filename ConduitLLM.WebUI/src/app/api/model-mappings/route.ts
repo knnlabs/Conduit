@@ -19,9 +19,26 @@ export async function GET(req: NextRequest) {
     // SDK returns paginated response
     const response = await adminClient.modelMappings.list(page, pageSize);
     
-    // For backward compatibility, return just the items array
-    // Components expect an array, not a paginated response
-    return NextResponse.json(response.items || []);
+    console.log('[Model Mappings] List response:', {
+      isArray: Array.isArray(response),
+      hasItems: !!response?.items,
+      itemsLength: response?.items?.length || 0,
+      responseKeys: response ? Object.keys(response) : [],
+    });
+    
+    // Handle both array and paginated response formats
+    if (Array.isArray(response)) {
+      // If response is already an array, return it directly
+      return NextResponse.json(response);
+    } else if (response?.items) {
+      // If response has items property, return just the items array
+      // Components expect an array, not a paginated response
+      return NextResponse.json(response.items);
+    } else {
+      // Fallback to empty array
+      console.warn('[Model Mappings] Unexpected response format:', response);
+      return NextResponse.json([]);
+    }
   } catch (error) {
     return handleSDKError(error);
   }

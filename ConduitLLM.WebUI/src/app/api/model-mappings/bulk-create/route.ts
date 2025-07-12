@@ -57,23 +57,6 @@ export async function POST(req: NextRequest) {
     
     for (const model of body.models) {
       try {
-        // Prepare all capabilities and metadata
-        const metadata = {
-          displayName: model.displayName,
-          capabilities: {
-            supportsVision: model.capabilities.supportsVision,
-            supportsImageGeneration: model.capabilities.supportsImageGeneration,
-            supportsAudioTranscription: model.capabilities.supportsAudioTranscription,
-            supportsTextToSpeech: model.capabilities.supportsTextToSpeech,
-            supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
-            supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
-            supportsStreaming: model.capabilities.supportsStreaming,
-            supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
-            supportsEmbeddings: model.capabilities.supportsEmbeddings,
-            maxContextLength: model.capabilities.maxContextLength,
-            maxOutputTokens: model.capabilities.maxOutputTokens,
-          }
-        };
         
         // Log the data we're about to send
         const createData = {
@@ -82,25 +65,32 @@ export async function POST(req: NextRequest) {
           providerModelId: model.modelId,
           isEnabled: body.enableByDefault ?? true,
           priority: body.defaultPriority ?? 50,
-          // Include all capability flags that the SDK supports
+          // Include only capability flags that the SDK supports
           supportsVision: model.capabilities.supportsVision,
           supportsImageGeneration: model.capabilities.supportsImageGeneration,
           supportsAudioTranscription: model.capabilities.supportsAudioTranscription,
           supportsTextToSpeech: model.capabilities.supportsTextToSpeech,
           supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
-          supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
-          supportsStreaming: model.capabilities.supportsStreaming,
+          supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
           maxContextLength: model.capabilities.maxContextLength || undefined,
-          maxOutputTokens: model.capabilities.maxOutputTokens || undefined,
-          // Store additional data in metadata
-          metadata: JSON.stringify(metadata),
+          // Map unsupported capabilities to the capabilities string field
+          capabilities: [
+            model.capabilities.supportsFunctionCalling && 'function-calling',
+            model.capabilities.supportsStreaming && 'streaming',
+            model.capabilities.supportsEmbeddings && 'embeddings'
+          ].filter(Boolean).join(',') || undefined,
+          // isDefault is required by the SDK
+          isDefault: false,
+          // Store additional metadata in notes
+          notes: JSON.stringify({
+            displayName: model.displayName,
+            maxOutputTokens: model.capabilities.maxOutputTokens,
+            bulkImported: true,
+            importedAt: new Date().toISOString()
+          }),
         };
         
-        console.log('[Bulk Create] Creating mapping:', {
-          modelId: createData.modelId,
-          providerId: createData.providerId,
-          providerModelId: createData.providerModelId,
-        });
+        console.log('[Bulk Create] Creating mapping with full data:', JSON.stringify(createData, null, 2));
         
         // Use the regular create method with full data
         const mapping = await adminClient.modelMappings.create(createData);
@@ -111,12 +101,29 @@ export async function POST(req: NextRequest) {
         console.error('[Bulk Create] Error details:', {
           modelId: model.modelId,
           providerId: model.providerId,
+          errorMessage: error.message,
+          errorStack: error.stack,
+          errorResponse: error.response,
           errorContext: error.context,
           errorDetails: error.details,
+          fullError: JSON.stringify(error, null, 2),
         });
+        
+        // Extract more detailed error message
+        let errorMessage = 'Unknown error';
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response?.data) {
+          errorMessage = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+        } else if (error.details) {
+          errorMessage = error.details;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         results.failed.push({
           modelId: model.modelId,
-          error: error.details || error.message || 'Unknown error',
+          error: errorMessage,
         });
       }
     }

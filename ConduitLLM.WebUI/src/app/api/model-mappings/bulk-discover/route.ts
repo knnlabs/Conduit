@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
     // Enhance discovered models with conflict information
     const enhancedModels = discoveredModels.map(model => ({
       ...model,
-      providerId: providerName, // Use provider name, not ID
+      providerId: providerId, // Use provider ID, not name
       hasConflict: existingModelIds.has(model.modelId),
       existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) || null,
-      // Map capabilities to SDK expected format
+      // Map capabilities to frontend expected format
       capabilities: {
         supportsVision: model.capabilities?.vision || false,
         supportsImageGeneration: model.capabilities?.imageGeneration || false,
