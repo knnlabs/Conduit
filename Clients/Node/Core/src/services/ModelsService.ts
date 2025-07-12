@@ -1,4 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 import type { Model, ModelsResponse } from '../models/models';
 
@@ -16,7 +17,7 @@ export class ModelsService {
 
     const response = await this.client['request']<ModelsResponse>(
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         url: '/v1/models',
       },
       options

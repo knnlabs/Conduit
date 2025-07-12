@@ -10,6 +10,7 @@ import {
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
 import { CircuitBreaker } from './ErrorRecovery';
+import { HttpMethod } from './HttpMethod';
 
 /**
  * Type-safe base client using native fetch API
@@ -54,7 +55,7 @@ export abstract class FetchBasedClient {
   protected async request<TResponse = unknown, TRequest = unknown>(
     url: string,
     options: RequestOptions & { 
-      method?: string; 
+      method?: HttpMethod; 
       body?: TRequest;
     } = {}
   ): Promise<TResponse> {
@@ -68,7 +69,7 @@ export abstract class FetchBasedClient {
 
     try {
       const requestConfig: RequestConfig = {
-        method: options.method || 'GET',
+        method: options.method || HttpMethod.GET,
         url: fullUrl,
         headers: this.buildHeaders(options.headers),
         data: options.body,
@@ -118,7 +119,7 @@ export abstract class FetchBasedClient {
     url: string,
     options?: RequestOptions
   ): Promise<TResponse> {
-    return this.request<TResponse>(url, { ...options, method: 'GET' });
+    return this.request<TResponse>(url, { ...options, method: HttpMethod.GET });
   }
 
   /**
@@ -131,7 +132,7 @@ export abstract class FetchBasedClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'POST', 
+      method: HttpMethod.POST, 
       body: data 
     });
   }
@@ -146,7 +147,7 @@ export abstract class FetchBasedClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'PUT', 
+      method: HttpMethod.PUT, 
       body: data 
     });
   }
@@ -161,7 +162,7 @@ export abstract class FetchBasedClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'PATCH', 
+      method: HttpMethod.PATCH, 
       body: data 
     });
   }
@@ -173,7 +174,7 @@ export abstract class FetchBasedClient {
     url: string,
     options?: RequestOptions
   ): Promise<TResponse> {
-    return this.request<TResponse>(url, { ...options, method: 'DELETE' });
+    return this.request<TResponse>(url, { ...options, method: HttpMethod.DELETE });
   }
 
   private buildUrl(path: string): string {

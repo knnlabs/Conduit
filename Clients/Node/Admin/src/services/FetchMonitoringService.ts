@@ -1,4 +1,5 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestConfig } from '../client/types';
 import type {
   MetricsQueryParams,
@@ -58,7 +59,7 @@ export class FetchMonitoringService {
     const response = await this.client['request']<ReadableStream<Uint8Array>>(
       '/api/monitoring/metrics/stream',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           ...(this.client as any).getHeaders(),
           ...config?.headers,
@@ -411,7 +412,7 @@ export class FetchMonitoringService {
     const response = await this.client['request']<ReadableStream<Uint8Array>>(
       '/api/monitoring/system/stream',
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         headers: {
           ...(this.client as any).getHeaders(),
           ...config?.headers,
@@ -514,7 +515,7 @@ export class FetchMonitoringService {
     const response = await this.client['request']<ReadableStream<Uint8Array>>(
       '/api/monitoring/logs/stream',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           ...(this.client as any).getHeaders(),
           ...config?.headers,

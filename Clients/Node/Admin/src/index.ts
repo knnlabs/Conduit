@@ -4,6 +4,8 @@ export { FetchConduitAdminClient } from './FetchConduitAdminClient';
 
 // Types
 export * from './client/types';
+export { HttpMethod } from './client/HttpMethod';
+export type { RequestOptions, ApiResponse } from './client/HttpMethod';
 export * from './models/common';
 // discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';

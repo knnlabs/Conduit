@@ -1,4 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 import type { 
   ModelsDiscoveryResponse, 
@@ -28,7 +29,7 @@ export class DiscoveryService {
     const response = await this.client['request']<ModelsDiscoveryResponse>(
       `${this.baseEndpoint}/models`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         ...options
       }
     );
@@ -46,7 +47,7 @@ export class DiscoveryService {
     const response = await this.client['request']<ProviderModelsDiscoveryResponse>(
       `${this.baseEndpoint}/providers/${encodeURIComponent(provider)}/models`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         ...options
       }
     );
@@ -68,7 +69,7 @@ export class DiscoveryService {
     const response = await this.client['request']<CapabilityTestResponse>(
       `${this.baseEndpoint}/models/${encodeURIComponent(model)}/capabilities/${capability}`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         ...options
       }
     );
@@ -90,7 +91,7 @@ export class DiscoveryService {
     const response = await this.client['request']<BulkCapabilityTestResponse>(
       `${this.baseEndpoint}/bulk/capabilities`,
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
         ...options
       }
@@ -113,7 +114,7 @@ export class DiscoveryService {
     const response = await this.client['request']<BulkModelDiscoveryResponse>(
       `${this.baseEndpoint}/bulk/models`,
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
         ...options
       }
@@ -129,7 +130,7 @@ export class DiscoveryService {
     await this.client['request'](
       `${this.baseEndpoint}/refresh`,
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         ...options
       }
     );

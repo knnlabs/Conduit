@@ -1,4 +1,5 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import {
   MetricsSnapshot,
   DatabaseMetrics,
@@ -29,7 +30,7 @@ export class MetricsService {
     const response = await this.client['request']<MetricsSnapshot>(
       '/metrics',
       {
-        method: 'GET',
+        method: HttpMethod.GET,
       }
     );
     return response;
@@ -44,7 +45,7 @@ export class MetricsService {
     const response = await this.client['request']<DatabaseMetrics>(
       '/metrics/database/pool',
       {
-        method: 'GET',
+        method: HttpMethod.GET,
       }
     );
     return response;
@@ -59,7 +60,7 @@ export class MetricsService {
     const response = await this.client['request']<string>(
       '/metrics',
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         headers: {
           'Accept': 'text/plain'
         }
@@ -78,7 +79,7 @@ export class MetricsService {
     const response = await this.client['request']<HistoricalMetricsResponse>(
       '/metrics/historical',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request
       }
     );

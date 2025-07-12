@@ -1,4 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 import type { 
   ChatCompletionRequest, 
@@ -8,7 +9,7 @@ import type {
 import type { StreamingResponse } from '../models/streaming';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { createTypedStream } from '../utils/streaming';
-import { API_ENDPOINTS, HTTP_METHODS } from '../constants';
+import { API_ENDPOINTS } from '../constants';
 
 export class ChatService {
   constructor(private readonly client: FetchBasedClient) {}
@@ -43,7 +44,7 @@ export class ChatService {
   ): Promise<ChatCompletionResponse> {
     return this.client['request']<ChatCompletionResponse>(
       {
-        method: HTTP_METHODS.POST,
+        method: HttpMethod.POST,
         url: API_ENDPOINTS.V1.CHAT.COMPLETIONS,
         data: request,
       },

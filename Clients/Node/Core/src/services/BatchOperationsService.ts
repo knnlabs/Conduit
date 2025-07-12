@@ -1,4 +1,5 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import {
   BatchSpendUpdateRequest,
   BatchVirtualKeyUpdateRequest,
@@ -55,7 +56,7 @@ export class BatchOperationsService {
     return this.client['request']<BatchOperationStartResponse>(
       '/v1/batch/spend-updates',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
       }
     );
@@ -95,7 +96,7 @@ export class BatchOperationsService {
     return this.client['request']<BatchOperationStartResponse>(
       '/v1/batch/virtual-key-updates',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
       }
     );
@@ -139,7 +140,7 @@ export class BatchOperationsService {
     return this.client['request']<BatchOperationStartResponse>(
       '/v1/batch/webhook-sends',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
       }
     );
@@ -171,7 +172,7 @@ export class BatchOperationsService {
     return this.client['request']<BatchOperationStatusResponse>(
       `/v1/batch/operations/${operationId}`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
       }
     );
   }
@@ -193,7 +194,7 @@ export class BatchOperationsService {
     return this.client['request']<BatchOperationStatusResponse>(
       `/v1/batch/operations/${operationId}/cancel`,
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: {},
       }
     );

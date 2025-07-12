@@ -2,6 +2,8 @@
 export { FetchConduitCoreClient as ConduitCoreClient } from './FetchConduitCoreClient';
 export { FetchConduitCoreClient } from './FetchConduitCoreClient';
 export type { ClientConfig, RequestOptions, SignalRConfig } from './client/types';
+export { HttpMethod } from './client/HttpMethod';
+export type { RequestOptions as CoreRequestOptions, ApiResponse } from './client/HttpMethod';
 
 export type {
   ChatCompletionMessage,

@@ -1,9 +1,10 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { ClientConfig, RequestOptions } from '../client/types';
 import type { components } from '../generated/core-api';
 import type { StreamingResponse } from '../models/streaming';
 import { createWebStream } from '../utils/web-streaming';
-import { API_ENDPOINTS, HTTP_METHODS } from '../constants';
+import { API_ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
 type ChatCompletionRequest = components['schemas']['ChatCompletionRequest'];
@@ -90,7 +91,7 @@ export class FetchChatService extends FetchBasedClient {
 
     try {
       const response = await fetch(url, {
-        method: HTTP_METHODS.POST,
+        method: HttpMethod.POST,
         headers: {
           'Authorization': `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',

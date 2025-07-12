@@ -1,4 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 
 /**
@@ -29,7 +30,7 @@ export class ProviderModelsService {
     const response = await this.client['request']<string[]>(
       `${this.baseEndpoint}/${encodeURIComponent(providerName)}${queryParams}`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         ...options
       }
     );

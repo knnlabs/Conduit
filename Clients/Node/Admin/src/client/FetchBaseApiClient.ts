@@ -10,6 +10,7 @@ import type {
 import { handleApiError } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
 import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
+import { HttpMethod, RequestOptions } from './HttpMethod';
 
 /**
  * Type-safe base API client for Conduit Admin using native fetch
@@ -66,14 +67,7 @@ export abstract class FetchBaseApiClient {
    */
   protected async request<TResponse = unknown, TRequest = unknown>(
     url: string,
-    options: {
-      method?: string;
-      body?: TRequest;
-      headers?: Record<string, string>;
-      signal?: AbortSignal;
-      timeout?: number;
-      responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
-    } = {}
+    options: RequestOptions<TRequest> & { method?: HttpMethod } = {}
   ): Promise<TResponse> {
     const fullUrl = this.buildUrl(url);
     const controller = new AbortController();
@@ -140,7 +134,7 @@ export abstract class FetchBaseApiClient {
     // Handle 3-argument case (url, params, options)
     if (extraOptions) {
       const urlWithParams = optionsOrParams ? this.buildUrlWithParams(url, optionsOrParams as Record<string, unknown>) : url;
-      return this.request<TResponse>(urlWithParams, { ...extraOptions, method: 'GET' });
+      return this.request<TResponse>(urlWithParams, { ...extraOptions, method: HttpMethod.GET });
     }
     
     // Check if it's options (has headers/signal/timeout/responseType) or params
@@ -151,12 +145,12 @@ export abstract class FetchBaseApiClient {
     if (isOptions) {
       return this.request<TResponse>(url, { 
         ...(optionsOrParams as { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: 'json' | 'text' | 'blob' | 'arraybuffer'; }), 
-        method: 'GET' 
+        method: HttpMethod.GET 
       });
     } else {
       // It's params - add them to the URL
       const urlWithParams = optionsOrParams ? this.buildUrlWithParams(url, optionsOrParams) : url;
-      return this.request<TResponse>(urlWithParams, { method: 'GET' });
+      return this.request<TResponse>(urlWithParams, { method: HttpMethod.GET });
     }
   }
 
@@ -174,7 +168,7 @@ export abstract class FetchBaseApiClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'POST', 
+      method: HttpMethod.POST, 
       body: data 
     });
   }
@@ -193,7 +187,7 @@ export abstract class FetchBaseApiClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'PUT', 
+      method: HttpMethod.PUT, 
       body: data 
     });
   }
@@ -212,7 +206,7 @@ export abstract class FetchBaseApiClient {
   ): Promise<TResponse> {
     return this.request<TResponse, TRequest>(url, { 
       ...options, 
-      method: 'PATCH', 
+      method: HttpMethod.PATCH, 
       body: data 
     });
   }
@@ -228,7 +222,7 @@ export abstract class FetchBaseApiClient {
       timeout?: number;
     }
   ): Promise<TResponse> {
-    return this.request<TResponse>(url, { ...options, method: 'DELETE' });
+    return this.request<TResponse>(url, { ...options, method: HttpMethod.DELETE });
   }
 
   private buildUrl(path: string): string {
@@ -276,7 +270,7 @@ export abstract class FetchBaseApiClient {
           statusText: response.statusText,
           headers,
           data: undefined, // Will be populated after parsing
-          config: { url, method: init?.method || 'GET' } as RequestConfigInfo,
+          config: { url, method: init?.method || HttpMethod.GET } as RequestConfigInfo,
         };
         await this.onResponse(responseInfo);
       }
@@ -286,7 +280,7 @@ export abstract class FetchBaseApiClient {
           url,
           status: response.status,
           statusText: response.statusText,
-          method: init.method || 'GET'
+          method: init.method || HttpMethod.GET
         });
         
         const apiError = await handleApiError({
@@ -295,7 +289,7 @@ export abstract class FetchBaseApiClient {
             data: await this.parseErrorResponse(response),
             headers,
           },
-          config: { url, method: init.method || 'GET' },
+          config: { url, method: init.method || HttpMethod.GET },
           isHttpError: false,
           message: `HTTP ${response.status}: ${response.statusText}`,
         });

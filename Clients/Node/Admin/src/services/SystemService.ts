@@ -1,4 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { HttpMethod } from '../client/HttpMethod';
 import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
 import {
@@ -93,7 +94,7 @@ export class SystemService extends FetchBaseApiClient {
     const response = await super.request<any>(
       `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
       {
-        method: 'GET',
+        method: HttpMethod.GET,
         headers: { Accept: 'application/octet-stream' },
         responseType: 'blob'
       }

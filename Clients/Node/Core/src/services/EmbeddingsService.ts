@@ -1,4 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type {
   EmbeddingRequest,
   EmbeddingResponse
@@ -47,7 +48,7 @@ export class EmbeddingsService {
       const response = await this.client['request']<EmbeddingResponse>(
         API_ENDPOINTS.V1.EMBEDDINGS.BASE,
         {
-          method: 'POST',
+          method: HttpMethod.POST,
           body: request,
           ...options
         }

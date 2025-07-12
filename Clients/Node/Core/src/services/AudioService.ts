@@ -1,4 +1,5 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { ClientConfig, RequestOptions } from '../client/types';
 import type {
   AudioTranscriptionRequest,
@@ -49,7 +50,7 @@ export class AudioService extends FetchBasedClient {
     return await this.request<AudioTranscriptionResponse>(
       '/v1/audio/transcriptions',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -81,7 +82,7 @@ export class AudioService extends FetchBasedClient {
     return this.request<AudioTranslationResponse>(
       '/v1/audio/translations',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -106,7 +107,7 @@ export class AudioService extends FetchBasedClient {
     const response = await this.request<ArrayBuffer>(
       '/v1/audio/speech',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: request,
         responseType: 'arraybuffer',
         ...options
@@ -151,7 +152,7 @@ export class AudioService extends FetchBasedClient {
     const response = await this.request<ArrayBuffer>(
       '/v1/audio/hybrid/process',
       {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: formData as any,
         headers: {
           'Content-Type': 'multipart/form-data',

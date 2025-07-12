@@ -1,7 +1,8 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 import { ConduitError } from '../utils/errors';
-import { API_ENDPOINTS, HTTP_METHODS, TASK_STATUS } from '../constants';
+import { API_ENDPOINTS, TASK_STATUS } from '../constants';
 
 /**
  * Service for general task management operations using the Conduit Core API
@@ -25,7 +26,7 @@ export class TasksService {
       const response = await this.client['request']<TaskStatusResponse>(
         API_ENDPOINTS.V1.TASKS.BY_ID(taskId),
         {
-          method: HTTP_METHODS.GET,
+          method: HttpMethod.GET,
           ...options
         }
       );
@@ -56,7 +57,7 @@ export class TasksService {
       await this.client['request']<void>(
         API_ENDPOINTS.V1.TASKS.CANCEL(taskId),
         {
-          method: HTTP_METHODS.POST,
+          method: HttpMethod.POST,
           body: {},
           ...options
         }
@@ -157,7 +158,7 @@ export class TasksService {
       const response = await this.client['request']<CleanupTasksResponse>(
         API_ENDPOINTS.V1.TASKS.CLEANUP,
         {
-          method: HTTP_METHODS.POST,
+          method: HttpMethod.POST,
           body: request,
           ...options
         }

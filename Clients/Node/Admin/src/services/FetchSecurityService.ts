@@ -1,4 +1,5 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { HttpMethod } from '../client/HttpMethod';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import type {
@@ -79,7 +80,7 @@ export class FetchSecurityService {
     return this.client['request']<void>(
       '/api/security/ip-whitelist',
       {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers,
         body: JSON.stringify({ ips }),
         signal: config?.signal,
