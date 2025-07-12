@@ -1,4 +1,5 @@
 import { FilterOptions, DateRange } from './common';
+import { AnalyticsMetadata } from './metadata';
 
 // Additional types for comprehensive analytics service
 export interface RequestLogParams {
@@ -218,7 +219,13 @@ export interface ExportParams {
   format: 'csv' | 'json' | 'excel';
   startDate?: string;
   endDate?: string;
-  filters?: Record<string, any>;
+  filters?: {
+    providers?: string[];
+    models?: string[];
+    virtualKeyIds?: string[];
+    status?: string[];
+    [key: string]: string[] | undefined;
+  };
 }
 
 export interface ExportResult {
@@ -289,7 +296,7 @@ export interface RequestLogDto {
   userAgent?: string;
   requestHeaders?: Record<string, string>;
   responseHeaders?: Record<string, string>;
-  metadata?: Record<string, any>;
+  metadata?: AnalyticsMetadata;
 }
 
 export interface RequestLogFilters extends FilterOptions {
@@ -388,7 +395,13 @@ export interface AnomalyDto {
     id: string;
     name: string;
   }[];
-  metrics: Record<string, any>;
+  metrics: {
+    cost?: number;
+    tokens?: number;
+    latency?: number;
+    errorRate?: number;
+    [key: string]: number | undefined;
+  };
   resolved: boolean;
 }
 

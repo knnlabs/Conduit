@@ -4,6 +4,7 @@ import {
   HttpTransportType,
   DefaultTransports
 } from '../models/signalr';
+import type { SignalRArgs, SignalRValue } from './types';
 
 /**
  * Base class for SignalR hub connections with automatic reconnection and error handling.
@@ -208,7 +209,7 @@ export abstract class BaseSignalRConnection {
   /**
    * Invokes a hub method with retry logic.
    */
-  protected async invoke(methodName: string, ...args: any[]): Promise<void> {
+  protected async invoke(methodName: string, ...args: SignalRArgs): Promise<void> {
     const connection = await this.getConnection();
     
     const maxRetries = 3;
@@ -232,7 +233,7 @@ export abstract class BaseSignalRConnection {
   /**
    * Invokes a hub method with return value and retry logic.
    */
-  protected async invokeWithResult<T>(methodName: string, ...args: any[]): Promise<T> {
+  protected async invokeWithResult<T extends SignalRValue>(methodName: string, ...args: SignalRArgs): Promise<T> {
     const connection = await this.getConnection();
     
     const maxRetries = 3;

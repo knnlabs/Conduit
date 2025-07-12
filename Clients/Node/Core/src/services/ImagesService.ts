@@ -1,4 +1,4 @@
-import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
 import type { 
   ImageGenerationRequest, 
@@ -13,10 +13,12 @@ import type {
 } from '../models/images';
 import { DEFAULT_POLLING_OPTIONS } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
-import { API_ENDPOINTS, HTTP_METHODS, CONTENT_TYPES } from '../constants';
+import { API_ENDPOINTS, CONTENT_TYPES } from '../constants';
 
-export class ImagesService {
-  constructor(private readonly client: FetchBasedClient) {}
+export class ImagesService extends FetchBasedClient {
+  constructor(client: FetchBasedClient) {
+    super(client['config']);
+  }
 
   /**
    * Creates an image given a text prompt.
@@ -30,12 +32,9 @@ export class ImagesService {
   ): Promise<ImageGenerationResponse> {
     validateImageGenerationRequest(request);
 
-    return this.client['request']<ImageGenerationResponse>(
-      {
-        method: HTTP_METHODS.POST,
-        url: API_ENDPOINTS.V1.IMAGES.GENERATIONS,
-        data: request,
-      },
+    return this.post<ImageGenerationResponse, ImageGenerationRequest>(
+      API_ENDPOINTS.V1.IMAGES.GENERATIONS,
+      request,
       options
     );
   }
@@ -73,16 +72,16 @@ export class ImagesService {
       formData.append('user', request.user);
     }
 
-    return this.client['request']<ImageEditResponse>(
+    return this.post<ImageEditResponse, FormData>(
+      API_ENDPOINTS.V1.IMAGES.EDITS,
+      formData,
       {
-        method: HTTP_METHODS.POST,
-        url: API_ENDPOINTS.V1.IMAGES.EDITS,
-        data: formData,
+        ...options,
         headers: {
+          ...options?.headers,
           'Content-Type': CONTENT_TYPES.FORM_DATA,
         },
-      },
-      options
+      }
     );
   }
 
@@ -115,16 +114,16 @@ export class ImagesService {
       formData.append('user', request.user);
     }
 
-    return this.client['request']<ImageVariationResponse>(
+    return this.post<ImageVariationResponse, FormData>(
+      API_ENDPOINTS.V1.IMAGES.VARIATIONS,
+      formData,
       {
-        method: HTTP_METHODS.POST,
-        url: API_ENDPOINTS.V1.IMAGES.VARIATIONS,
-        data: formData,
+        ...options,
         headers: {
+          ...options?.headers,
           'Content-Type': CONTENT_TYPES.FORM_DATA,
         },
-      },
-      options
+      }
     );
   }
 
@@ -157,12 +156,9 @@ export class ImagesService {
       }
     }
 
-    return this.client['request']<AsyncImageGenerationResponse>(
-      {
-        method: HTTP_METHODS.POST,
-        url: API_ENDPOINTS.V1.IMAGES.ASYNC_GENERATIONS,
-        data: request,
-      },
+    return this.post<AsyncImageGenerationResponse, AsyncImageGenerationRequest>(
+      API_ENDPOINTS.V1.IMAGES.ASYNC_GENERATIONS,
+      request,
       options
     );
   }
@@ -181,11 +177,8 @@ export class ImagesService {
       throw new Error('Task ID is required');
     }
 
-    return this.client['request']<AsyncImageGenerationResponse>(
-      {
-        method: HTTP_METHODS.GET,
-        url: API_ENDPOINTS.V1.IMAGES.TASK_STATUS(taskId),
-      },
+    return this.get<AsyncImageGenerationResponse>(
+      API_ENDPOINTS.V1.IMAGES.TASK_STATUS(taskId),
       options
     );
   }
@@ -203,11 +196,8 @@ export class ImagesService {
       throw new Error('Task ID is required');
     }
 
-    await this.client['request']<void>(
-      {
-        method: HTTP_METHODS.DELETE,
-        url: API_ENDPOINTS.V1.IMAGES.CANCEL_TASK(taskId),
-      },
+    await this.delete<void>(
+      API_ENDPOINTS.V1.IMAGES.CANCEL_TASK(taskId),
       options
     );
   }

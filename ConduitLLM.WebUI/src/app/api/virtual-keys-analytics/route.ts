@@ -229,9 +229,10 @@ export async function GET(req: NextRequest) {
     try {
       // Get virtual key analytics from SDK
       const vkAnalytics = await adminClient.analytics.getVirtualKeyAnalytics({
-        startDate,
-        endDate,
+        timeRange: range || '7d',
         virtualKeyIds: keys,
+        includeUsagePatterns: true,
+        includeQuotaStatus: true,
       });
       
       // TODO: The SDK should provide time series data and more detailed breakdowns
@@ -309,7 +310,7 @@ export async function GET(req: NextRequest) {
         avgErrorRate: virtualKeys.length > 0 
           ? virtualKeys.reduce((sum: number, key: any) => sum + key.usage.errorRate, 0) / virtualKeys.length 
           : 0,
-        topKey: vkAnalytics.topUsers?.byRequests?.[0]?.keyName || virtualKeys[0]?.name || '',
+        topKey: vkAnalytics.virtualKeys?.[0]?.keyName || virtualKeys[0]?.name || '',
       };
       
       return NextResponse.json({

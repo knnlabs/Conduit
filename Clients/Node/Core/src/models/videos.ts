@@ -2,6 +2,8 @@
  * Video generation models and types for the Conduit Core API
  */
 
+import type { VideoWebhookMetadata } from './metadata';
+
 /**
  * Request for generating a video from a text prompt
  */
@@ -131,7 +133,7 @@ export interface AsyncVideoGenerationRequest extends VideoGenerationRequest {
   webhook_url?: string;
   
   /** Additional metadata to include with the webhook callback */
-  webhook_metadata?: Record<string, any>;
+  webhook_metadata?: VideoWebhookMetadata;
   
   /** Additional headers to include with the webhook callback */
   webhook_headers?: Record<string, string>;
@@ -417,7 +419,7 @@ export interface WebhookPayloadBase {
   task_id: string;
   
   /** Optional metadata provided in the original request */
-  metadata?: Record<string, any>;
+  metadata?: VideoWebhookMetadata;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import { VirtualKeyMetadata } from './metadata';
 
 export type BudgetDuration = 'Total' | 'Daily' | 'Weekly' | 'Monthly';
 
@@ -108,7 +109,7 @@ export interface VirtualKeyValidationInfo {
     rpm?: number;
     rpd?: number;
   };
-  metadata?: Record<string, any>;
+  metadata?: VirtualKeyMetadata;
 }
 
 export interface VirtualKeyMaintenanceRequest {

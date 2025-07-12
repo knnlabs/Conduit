@@ -2,6 +2,8 @@
  * Audio configuration models and types for the Conduit Admin API
  */
 
+import { AudioConfigMetadata } from './metadata';
+
 /**
  * Request for creating or updating an audio provider configuration
  */
@@ -22,7 +24,7 @@ export interface AudioProviderConfigRequest {
   supportedOperations?: string[];
   
   /** Additional configuration settings */
-  settings?: Record<string, any>;
+  settings?: AudioConfigMetadata;
   
   /** The priority/weight of this provider */
   priority?: number;
@@ -141,7 +143,7 @@ export interface AudioUsageDto {
   fileSizeBytes?: number;
   
   /** Additional metadata about the usage */
-  metadata?: Record<string, any>;
+  metadata?: AudioConfigMetadata;
 }
 
 /**
@@ -296,7 +298,12 @@ export interface AudioProviderTestResult {
   testedAt: string;
   
   /** Additional test details */
-  details?: Record<string, any>;
+  details?: {
+    capabilities?: string[];
+    models?: string[];
+    features?: string[];
+    [key: string]: string[] | string | undefined;
+  };
 }
 
 /**

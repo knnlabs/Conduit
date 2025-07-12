@@ -1,9 +1,42 @@
 # API Reference
 
+> **📋 SDK Migration Notice**: If you're upgrading from previous SDK versions, see the [SDK Type Safety Migration Guide](./SDK-TYPE-SAFETY-MIGRATION-GUIDE.md) for breaking changes and migration instructions.
+
 ConduitLLM provides two distinct APIs:
 
 1. **LLM API**: OpenAI-compatible API for LLM interactions
 2. **Admin API**: Management API for configuration and monitoring
+
+## Node.js SDK Support
+
+Both APIs are available through official Node.js SDKs with full TypeScript support:
+
+- **[@knn_labs/conduit-core-client](../Clients/Node/Core/)**: Type-safe client for LLM API (v1.0.0+)
+- **[@knn_labs/conduit-admin-client](../Clients/Node/Admin/)**: Type-safe client for Admin API (v2.0.0+)
+
+### Recent SDK Updates (v2.0.0 / v1.0.0)
+
+🎯 **Full Type Safety**: All `any`/`unknown` types replaced with OpenAPI-generated types  
+🚀 **Native Fetch**: Removed Axios dependency, using native fetch API  
+📦 **Smaller Bundles**: ~40KB reduction in bundle sizes  
+⚠️ **Breaking Changes**: React Query support removed, see migration guide
+
+```typescript
+// New type-safe usage
+import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+
+const client = new ConduitCoreClient({
+  apiKey: 'condt_yourvirtualkey',
+  baseURL: 'http://localhost:5002/v1'
+});
+
+// Fully typed request/response
+const response = await client.chat.create({
+  model: 'my-gpt4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  temperature: 0.7
+});
+```
 
 ## LLM API
 
@@ -45,6 +78,32 @@ Creates a chat completion for the provided conversation.
 
 **Headers**:
 - `Authorization: Bearer condt_yourvirtualkey` (required)
+
+#### SDK Usage
+
+```typescript
+import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+
+const client = new ConduitCoreClient({
+  apiKey: 'condt_yourvirtualkey',
+  baseURL: 'http://localhost:5002'
+});
+
+// Type-safe chat completion
+const response = await client.chat.create({
+  model: 'my-gpt4',
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello!' }
+  ],
+  max_tokens: 1024,
+  temperature: 0.7
+});
+
+console.log(response.choices[0].message.content);
+```
+
+> **Migration Note**: Previous versions used `any` types. The new SDK provides full type safety with OpenAPI-generated types.
 
 **Request Body**:
 ```json
@@ -220,6 +279,31 @@ Admin API endpoints require authentication using the master key:
 Authorization: Bearer your_master_key_here
 ```
 
+#### SDK Usage
+
+```typescript
+import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+
+const adminClient = new ConduitAdminClient({
+  masterKey: 'your_master_key_here',
+  adminApiUrl: 'http://localhost:5001'
+});
+
+// Type-safe virtual key management
+const keys = await adminClient.virtualKeys.list();
+console.log(`Found ${keys.length} virtual keys`);
+
+// Create a new virtual key with full type safety
+const newKey = await adminClient.virtualKeys.create({
+  keyName: 'production-key',
+  maxBudget: 1000,
+  budgetDuration: 'Monthly', // Enum value with autocomplete
+  isActive: true
+});
+```
+
+> **Migration Note**: v2.0.0 removes React Query hooks. Use direct service methods as shown above. See [Migration Guide](./SDK-TYPE-SAFETY-MIGRATION-GUIDE.md) for details.
+
 ### Admin API Endpoints
 
 Below are the main categories of Admin API endpoints:
@@ -323,6 +407,37 @@ Error response format:
   }
 }
 ```
+
+### SDK Error Handling
+
+The Node.js SDKs provide type-safe error handling with specific error classes:
+
+```typescript
+import { 
+  ConduitError,
+  ValidationError,
+  NotFoundError,
+  AuthenticationError
+} from '@knn_labs/conduit-core-client';
+
+try {
+  const response = await client.chat.create(request);
+} catch (error) {
+  // Type-safe error handling with built-in type guards
+  if (client.isRateLimitError(error)) {
+    console.log(`Rate limited. Retry after ${error.retryAfter} seconds`);
+  } else if (client.isAuthError(error)) {
+    console.log(`Authentication failed: ${error.code}`);
+  } else if (error instanceof ValidationError) {
+    console.log(`Validation error: ${error.details}`);
+  } else if (error instanceof ConduitError) {
+    console.log(`API error: ${error.statusCode} - ${error.message}`);
+    console.log(`Endpoint: ${error.endpoint}`);
+  }
+}
+```
+
+> **Migration Note**: Previous versions required manual error parsing. The new SDKs provide typed error classes and type guards for safer error handling.
 
 ---
 

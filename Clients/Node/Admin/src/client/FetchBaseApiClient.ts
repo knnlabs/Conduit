@@ -48,7 +48,7 @@ export abstract class FetchBaseApiClient {
       return {
         maxRetries: retries,
         retryDelay: 1000,
-        retryCondition: (error: any): boolean => {
+        retryCondition: (error: unknown): boolean => {
           if (error instanceof Error) {
             return error.name === 'AbortError' || 
                    error.message.includes('network') ||

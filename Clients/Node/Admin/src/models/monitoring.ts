@@ -1,3 +1,5 @@
+import { AlertMetadata } from './metadata';
+
 /**
  * Real-time monitoring metric
  */
@@ -17,7 +19,7 @@ export interface MetricTimeSeries {
   unit: string;
   aggregation: 'avg' | 'sum' | 'max' | 'min' | 'count';
   dataPoints: MetricDataPoint[];
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
 }
 
 /**
@@ -69,7 +71,7 @@ export interface AlertDto {
   metric: string;
   condition: AlertCondition;
   actions: AlertAction[];
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   createdAt: string;
   updatedAt: string;
   lastTriggered?: string;
@@ -95,7 +97,15 @@ export interface AlertCondition {
  */
 export interface AlertAction {
   type: 'email' | 'webhook' | 'slack' | 'teams' | 'pagerduty' | 'log';
-  config: Record<string, any>;
+  config: {
+    recipients?: string[];
+    url?: string;
+    channel?: string;
+    apiKey?: string;
+    priority?: string;
+    template?: string;
+    [key: string]: string | string[] | undefined;
+  };
   cooldownMinutes?: number;
 }
 
@@ -109,7 +119,7 @@ export interface CreateAlertDto {
   metric: string;
   condition: AlertCondition;
   actions: AlertAction[];
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   enabled?: boolean;
 }
 
@@ -122,7 +132,7 @@ export interface UpdateAlertDto {
   severity?: AlertSeverity;
   condition?: AlertCondition;
   actions?: AlertAction[];
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   enabled?: boolean;
 }
 
@@ -151,7 +161,7 @@ export interface DashboardDto {
   layout: DashboardLayout;
   widgets: DashboardWidget[];
   refreshInterval?: number;
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   isPublic: boolean;
   createdBy: string;
   createdAt: string;
@@ -224,7 +234,7 @@ export interface CreateDashboardDto {
   layout: DashboardLayout;
   widgets: Omit<DashboardWidget, 'id'>[];
   refreshInterval?: number;
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   isPublic?: boolean;
 }
 
@@ -237,7 +247,7 @@ export interface UpdateDashboardDto {
   layout?: DashboardLayout;
   widgets?: DashboardWidget[];
   refreshInterval?: number;
-  metadata?: Record<string, any>;
+  metadata?: AlertMetadata;
   isPublic?: boolean;
 }
 
@@ -392,7 +402,7 @@ export interface SpanLog {
   timestamp: string;
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
-  fields?: Record<string, any>;
+  fields?: { [key: string]: string | number | boolean | null };
 }
 
 /**

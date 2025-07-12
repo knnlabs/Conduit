@@ -1,4 +1,4 @@
-import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { FetchBasedClient } from '../client/FetchBasedClient';
 import type {
   VideoGenerationRequest,
   VideoGenerationResponse,
@@ -16,15 +16,18 @@ import {
   getVideoModelCapabilities
 } from '../models/videos';
 import { ConduitError } from '../utils/errors';
+import type { VideoWebhookMetadata } from '../models/metadata';
 
 /**
  * Service for video generation operations using the Conduit Core API
  */
-export class VideosService {
+export class VideosService extends FetchBasedClient {
   // Note: /v1/videos/generations endpoint does not exist - only async generation is supported
   private static readonly ASYNC_GENERATIONS_ENDPOINT = '/v1/videos/generations/async';
 
-  constructor(private readonly client: FetchBasedClient) {}
+  constructor(client: FetchBasedClient) {
+    super(client['config']);
+  }
 
   /**
    * @deprecated The synchronous video generation endpoint does not exist. Use generateAsync() instead.
@@ -45,12 +48,9 @@ export class VideosService {
       // Convert to API request format
       const apiRequest = this.convertToAsyncApiRequest(request);
 
-      const response = await this.client['request']<AsyncVideoGenerationResponse>(
-        {
-          method: 'POST',
-          url: VideosService.ASYNC_GENERATIONS_ENDPOINT,
-          data: apiRequest,
-        },
+      const response = await this.post<AsyncVideoGenerationResponse, any>(
+        VideosService.ASYNC_GENERATIONS_ENDPOINT,
+        apiRequest,
         options
       );
 
@@ -79,11 +79,8 @@ export class VideosService {
 
       const endpoint = `/v1/videos/generations/tasks/${encodeURIComponent(taskId)}`;
 
-      const response = await this.client['request']<AsyncVideoGenerationResponse>(
-        {
-          method: 'GET',
-          url: endpoint,
-        },
+      const response = await this.get<AsyncVideoGenerationResponse>(
+        endpoint,
         options
       );
 
@@ -112,11 +109,8 @@ export class VideosService {
 
       const endpoint = `/v1/videos/generations/${encodeURIComponent(taskId)}`;
 
-      await this.client['request']<void>(
-        {
-          method: 'DELETE',
-          url: endpoint,
-        },
+      await this.delete<void>(
+        endpoint,
         options
       );
     } catch (error) {
@@ -202,7 +196,7 @@ export class VideosService {
       }
 
       // Wait before next poll
-      await this.sleep(currentInterval);
+      await new Promise(resolve => setTimeout(resolve, currentInterval));
 
       // Apply exponential backoff if enabled
       if (opts.useExponentialBackoff) {
@@ -218,12 +212,6 @@ export class VideosService {
     return getVideoModelCapabilities(model);
   }
 
-  /**
-   * Helper method to sleep for a specified duration
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
 
   /**
    * Converts a VideoGenerationRequest to the API request format
@@ -300,7 +288,7 @@ export const VideoHelpers = {
       fps?: number;
       style?: string;
       timeoutSeconds?: number;
-      webhookMetadata?: Record<string, any>;
+      webhookMetadata?: VideoWebhookMetadata;
     }
   ): AsyncVideoGenerationRequest {
     return {

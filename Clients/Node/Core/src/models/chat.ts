@@ -1,4 +1,5 @@
 import type { Usage, ResponseFormat, Tool, ToolCall, FinishReason, PerformanceMetrics } from './common';
+import type { ToolParameters } from './metadata';
 
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -33,7 +34,7 @@ export interface ChatCompletionRequest {
   functions?: Array<{
     name: string;
     description?: string;
-    parameters?: Record<string, any>;
+    parameters?: ToolParameters;
   }>;
   /**
    * @deprecated Use 'tool_choice' instead.

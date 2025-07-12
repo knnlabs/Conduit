@@ -32,7 +32,7 @@ export interface HttpError {
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
-  retryCondition?: (error: Error | HttpError) => boolean;
+  retryCondition?: (error: unknown) => boolean;
 }
 
 import type { SignalRLogLevel, HttpTransportType } from '../models/signalr';

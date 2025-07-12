@@ -1,5 +1,6 @@
 import type { VideoMetadata } from './videos';
 import type { ImageData } from './images';
+import type { NotificationMetadata } from './metadata';
 
 /**
  * Event emitted when video generation progress is updated
@@ -62,7 +63,7 @@ export interface TaskUpdateEvent {
   progress?: number;
   result?: any;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata?: NotificationMetadata;
 }
 
 /**

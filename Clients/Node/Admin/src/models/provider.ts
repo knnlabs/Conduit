@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import { ProviderConfigMetadata } from './metadata';
 
 export interface ProviderCredentialDto {
   id: number;
@@ -54,7 +55,7 @@ export interface ProviderDataDto {
   requiresApiKey: boolean;
   requiresEndpoint: boolean;
   requiresOrganizationId: boolean;
-  configSchema?: Record<string, any>;
+  configSchema?: ProviderConfigMetadata;
 }
 
 export interface ProviderHealthConfigurationDto {
