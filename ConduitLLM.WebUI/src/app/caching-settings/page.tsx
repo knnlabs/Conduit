@@ -88,11 +88,7 @@ export default function CachingSettingsPage() {
 
   const fetchCacheData = async () => {
     try {
-      const response = await fetch('/api/config/caching', {
-        headers: {
-          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
-        },
-      });
+      const response = await fetch('/api/config/caching');
 
       if (!response.ok) {
         throw new Error('Failed to fetch cache configuration');
@@ -236,9 +232,6 @@ export default function CachingSettingsPage() {
     try {
       const response = await fetch(`/api/config/caching/${cacheId}/clear`, {
         method: 'POST',
-        headers: {
-          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
-        },
       });
 
       if (!response.ok) {
@@ -267,7 +260,6 @@ export default function CachingSettingsPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
         },
         body: JSON.stringify({ cacheId, updates }),
       });
