@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
+import { getServerAdminClient } from '@/lib/server/adminClient';
+import { requireAuth } from '@/lib/auth/simple-auth';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+
+// POST /api/model-mappings/bulk-discover - Discover models from a specific provider with capabilities
+export async function POST(req: NextRequest) {
+  const auth = requireAuth(req);
+  if (!auth.isValid) {
+    return auth.response!;
+  }
+
+  try {
+    const adminClient = getServerAdminClient();
+    const { providerId, providerName } = await req.json();
+    
+    if (!providerId || !providerName) {
+      return NextResponse.json(
+        { error: 'Provider ID and name are required' },
+        { status: 400 }
+      );
+    }
+    
+    console.log('[Bulk Discover] Starting discovery for provider:', providerName);
+    
+    // Discover all models from the provider
+    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(providerName);
+    
+    // Get existing mappings to check for conflicts
+    const existingMappingsResponse = await adminClient.modelMappings.list();
+    const existingMappings: ModelProviderMappingDto[] = Array.isArray(existingMappingsResponse) 
+      ? existingMappingsResponse 
+      : (existingMappingsResponse as any).items || [];
+    
+    // Create a set of existing model IDs for quick lookup
+    const existingModelIds = new Set(existingMappings.map((m: ModelProviderMappingDto) => m.modelId));
+    
+    // Enhance discovered models with conflict information
+    const enhancedModels = discoveredModels.map(model => ({
+      ...model,
+      providerId: providerName, // Use provider name, not ID
+      hasConflict: existingModelIds.has(model.modelId),
+      existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) || null,
+      // Map capabilities to SDK expected format
+      capabilities: {
+        supportsVision: model.capabilities?.vision || false,
+        supportsImageGeneration: model.capabilities?.imageGeneration || false,
+        supportsAudioTranscription: false, // Not in discovered capabilities
+        supportsTextToSpeech: false, // Not in discovered capabilities
+        supportsRealtimeAudio: false, // Not in discovered capabilities
+        supportsFunctionCalling: model.capabilities?.functionCalling || false,
+        supportsStreaming: model.capabilities?.chatStream || false,
+        supportsVideoGeneration: model.capabilities?.videoGeneration || false,
+        supportsEmbeddings: model.capabilities?.embeddings || false,
+        maxContextLength: model.capabilities?.maxTokens || null,
+        maxOutputTokens: model.capabilities?.maxOutputTokens || null,
+      }
+    }));
+    
+    console.log(`[Bulk Discover] Found ${enhancedModels.length} models, ${enhancedModels.filter(m => m.hasConflict).length} have conflicts`);
+    
+    return NextResponse.json({
+      providerId,
+      providerName,
+      models: enhancedModels,
+      totalModels: enhancedModels.length,
+      conflictCount: enhancedModels.filter(m => m.hasConflict).length
+    });
+  } catch (error) {
+    console.error('[Bulk Discover] Error:', error);
+    return handleSDKError(error);
+  }
+}

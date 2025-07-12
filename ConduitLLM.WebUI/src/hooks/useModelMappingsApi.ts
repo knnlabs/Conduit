@@ -270,3 +270,152 @@ export function useDiscoverModels() {
     isDiscovering,
   };
 }
+
+interface BulkDiscoverResult {
+  providerId: string;
+  providerName: string;
+  models: Array<{
+    modelId: string;
+    displayName: string;
+    providerId: string;
+    hasConflict: boolean;
+    existingMapping: any | null;
+    capabilities: {
+      supportsVision: boolean;
+      supportsImageGeneration: boolean;
+      supportsAudioTranscription: boolean;
+      supportsTextToSpeech: boolean;
+      supportsRealtimeAudio: boolean;
+      supportsFunctionCalling: boolean;
+      supportsStreaming: boolean;
+      supportsVideoGeneration: boolean;
+      supportsEmbeddings: boolean;
+      maxContextLength?: number | null;
+      maxOutputTokens?: number | null;
+    };
+  }>;
+  totalModels: number;
+  conflictCount: number;
+}
+
+export function useBulkDiscoverModels() {
+  const [isDiscovering, setIsDiscovering] = useState(false);
+
+  const discoverModels = async (providerId: string, providerName: string): Promise<BulkDiscoverResult> => {
+    setIsDiscovering(true);
+    try {
+      const response = await fetch('/api/model-mappings/bulk-discover', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          providerId,
+          providerName,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to discover models');
+      }
+
+      const result = await response.json() as BulkDiscoverResult;
+      return result;
+    } catch (error) {
+      notifications.show({
+        title: 'Discovery Failed',
+        message: error instanceof Error ? error.message : 'Failed to discover models',
+        color: 'red',
+      });
+      throw error;
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  return {
+    discoverModels,
+    isDiscovering,
+  };
+}
+
+interface BulkCreateRequest {
+  models: Array<{
+    modelId: string;
+    displayName: string;
+    providerId: string;
+    capabilities: {
+      supportsVision: boolean;
+      supportsImageGeneration: boolean;
+      supportsAudioTranscription: boolean;
+      supportsTextToSpeech: boolean;
+      supportsRealtimeAudio: boolean;
+      supportsFunctionCalling: boolean;
+      supportsStreaming: boolean;
+      supportsVideoGeneration: boolean;
+      supportsEmbeddings: boolean;
+      maxContextLength?: number | null;
+      maxOutputTokens?: number | null;
+    };
+  }>;
+  defaultPriority?: number;
+  enableByDefault?: boolean;
+}
+
+interface BulkCreateResult {
+  success: boolean;
+  created: number;
+  failed: number;
+  details: {
+    created: any[];
+    failed: Array<{
+      modelId: string;
+      error: string;
+    }>;
+  };
+}
+
+export function useBulkCreateMappings() {
+  const [isCreating, setIsCreating] = useState(false);
+  const queryClient = useQueryClient();
+
+  const createMappings = async (request: BulkCreateRequest): Promise<BulkCreateResult> => {
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/model-mappings/bulk-create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create mappings');
+      }
+
+      const result = await response.json() as BulkCreateResult;
+      
+      // Invalidate cache to show new mappings
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      
+      return result;
+    } catch (error) {
+      notifications.show({
+        title: 'Bulk Creation Failed',
+        message: error instanceof Error ? error.message : 'Failed to create mappings',
+        color: 'red',
+      });
+      throw error;
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return {
+    createMappings,
+    isCreating,
+  };
+}

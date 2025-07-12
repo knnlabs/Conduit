@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
-import { IconPlus, IconRefresh, IconWand } from '@tabler/icons-react';
+import { IconPlus, IconRefresh, IconWand, IconFileImport } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { ModelMappingsTable } from '@/components/modelmappings/ModelMappingsTableWithHooks';
 import { CreateModelMappingModal } from '@/components/modelmappings/CreateModelMappingModal';
+import { BulkMappingModal } from '@/components/modelmappings/BulkMappingModal';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useDiscoverModels } from '@/hooks/useModelMappingsApi';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -13,6 +14,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 export default function ModelMappingsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const { user } = useAuthStore();
   const isAdmin = true; // All authenticated users can manage model mappings
   const { discoverModels, isDiscovering } = useDiscoverModels();
@@ -62,6 +64,14 @@ export default function ModelMappingsPage() {
                 Discover Models
               </Button>
               <Button
+                leftSection={<IconFileImport size={16} />}
+                variant="light"
+                onClick={() => setBulkModalOpen(true)}
+                disabled={!isAdmin}
+              >
+                Bulk Import
+              </Button>
+              <Button
                 leftSection={<IconRefresh size={16} />}
                 variant="subtle"
                 onClick={handleRefresh}
@@ -89,6 +99,15 @@ export default function ModelMappingsPage() {
           onClose={() => setCreateModalOpen(false)}
           onSuccess={() => {
             setCreateModalOpen(false);
+            handleRefresh();
+          }}
+        />
+        
+        <BulkMappingModal
+          isOpen={bulkModalOpen}
+          onClose={() => setBulkModalOpen(false)}
+          onSuccess={() => {
+            setBulkModalOpen(false);
             handleRefresh();
           }}
         />
