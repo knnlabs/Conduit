@@ -93,14 +93,8 @@ export async function PUT(
       transformedBody.maxOutputTokens = body.maxOutputTokens;
     }
     
-    // Build capabilities string if needed
-    const caps = [];
-    if (body.supportsFunctionCalling) caps.push('function-calling');
-    if (body.supportsStreaming) caps.push('streaming');
-    if (body.supportsEmbeddings) caps.push('embeddings');
-    if (caps.length > 0) {
-      transformedBody.capabilities = caps.join(',');
-    }
+    // Don't build capabilities string - let backend handle individual boolean fields
+    // The capabilities field is legacy and the backend should derive it from the boolean flags
     
     if (body.metadata !== undefined) {
       transformedBody.metadata = body.metadata;

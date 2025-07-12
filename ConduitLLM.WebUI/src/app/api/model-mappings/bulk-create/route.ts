@@ -65,26 +65,24 @@ export async function POST(req: NextRequest) {
           providerModelId: model.modelId,
           isEnabled: body.enableByDefault ?? true,
           priority: body.defaultPriority ?? 50,
-          // Include only capability flags that the SDK supports
+          // Include all capability flags that the SDK supports
           supportsVision: model.capabilities.supportsVision,
           supportsImageGeneration: model.capabilities.supportsImageGeneration,
           supportsAudioTranscription: model.capabilities.supportsAudioTranscription,
           supportsTextToSpeech: model.capabilities.supportsTextToSpeech,
           supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
-          supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
+          supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
+          supportsStreaming: model.capabilities.supportsStreaming,
           maxContextLength: model.capabilities.maxContextLength || undefined,
-          // Map unsupported capabilities to the capabilities string field
-          capabilities: [
-            model.capabilities.supportsFunctionCalling && 'function-calling',
-            model.capabilities.supportsStreaming && 'streaming',
-            model.capabilities.supportsEmbeddings && 'embeddings'
-          ].filter(Boolean).join(',') || undefined,
+          maxOutputTokens: model.capabilities.maxOutputTokens || undefined,
+          // Don't set capabilities string - let backend derive from boolean flags
           // isDefault is required by the SDK
           isDefault: false,
           // Store additional metadata in notes
-          notes: JSON.stringify({
+          metadata: JSON.stringify({
             displayName: model.displayName,
-            maxOutputTokens: model.capabilities.maxOutputTokens,
+            supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
+            supportsEmbeddings: model.capabilities.supportsEmbeddings,
             bulkImported: true,
             importedAt: new Date().toISOString()
           }),
