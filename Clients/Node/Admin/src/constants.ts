@@ -199,6 +199,8 @@ export const ENDPOINTS = {
   SYSTEM: {
     INFO: '/api/SystemInfo/info',
     HEALTH: '/api/SystemInfo/health',
+    SERVICES: '/api/health/services',
+    METRICS: '/api/metrics',
     BACKUP: '/api/DatabaseBackup',
     RESTORE: '/api/DatabaseBackup/restore',
     NOTIFICATIONS: '/api/Notifications',

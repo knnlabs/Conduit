@@ -226,3 +226,67 @@ export interface FeatureAvailability {
   }>;
   timestamp: string;
 }
+
+// Issue #427 - System Health SDK Methods
+export interface SystemHealthDto {
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  components: {
+    api: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    database: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    cache: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    queue: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+  };
+  metrics: {
+    cpu: number;
+    memory: number;
+    disk: number;
+    activeConnections: number;
+  };
+}
+
+export interface SystemMetricsDto {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+  activeConnections: number;
+  uptime: number;
+}
+
+export interface ServiceStatusDto {
+  coreApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
+  };
+  adminApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
+  };
+  database: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    connections: number;
+  };
+  cache: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    hitRate: number;
+  };
+}
