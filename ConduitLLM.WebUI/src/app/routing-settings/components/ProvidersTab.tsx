@@ -1,0 +1,1 @@
+export { ProvidersTab } from './ProvidersTab/index';
