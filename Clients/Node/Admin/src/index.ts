@@ -145,6 +145,7 @@ export { FetchProviderHealthService } from './services/FetchProviderHealthServic
 export { FetchSecurityService } from './services/FetchSecurityService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { FetchMonitoringService } from './services/FetchMonitoringService';
+export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

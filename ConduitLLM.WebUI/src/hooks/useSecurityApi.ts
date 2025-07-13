@@ -21,12 +21,15 @@ interface Threat {
   status: 'active' | 'mitigated' | 'resolved';
 }
 
-interface IpRule {
+export interface IpRule {
   id?: string;
   ipAddress: string;
   action: 'allow' | 'block';
   description?: string;
   createdAt?: string;
+  isEnabled?: boolean;
+  lastMatchedAt?: string;
+  matchCount?: number;
 }
 
 export function useSecurityApi() {
