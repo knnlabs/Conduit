@@ -204,6 +204,38 @@ namespace ConduitLLM.Core.Events
         public string PartitionKey => KeyId.ToString();
     }
 
+    /// <summary>
+    /// Raised when a spend update cannot be processed immediately
+    /// Allows other services to handle the update in appropriate context
+    /// </summary>
+    public record SpendUpdateDeferred : DomainEvent
+    {
+        /// <summary>
+        /// Virtual Key database ID
+        /// </summary>
+        public int KeyId { get; init; }
+        
+        /// <summary>
+        /// Amount to add to current spend
+        /// </summary>
+        public decimal Amount { get; init; }
+        
+        /// <summary>
+        /// Optional request identifier for correlation
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Reason for deferral
+        /// </summary>
+        public string Reason { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => KeyId.ToString();
+    }
+
     // ===============================
     // Provider Credential Domain Events
     // ===============================
