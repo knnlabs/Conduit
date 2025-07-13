@@ -21,6 +21,7 @@ import {
   IconSettings,
 } from '@tabler/icons-react';
 import { ProviderPriorityList } from './ProviderPriorityList';
+import { ProviderPriorityManager } from '../ProviderPriorityManager';
 import { useProviderPriorities } from '../../hooks/useProviderPriorities';
 import { ProviderPriority, RoutingConfiguration, LoadBalancerHealth } from '../../types/routing';
 
@@ -160,34 +161,10 @@ export function ProvidersTab({ onLoadingChange }: ProvidersTabProps) {
         </SimpleGrid>
       )}
 
-      {/* Provider Priorities */}
-      {isLoading && providers.length === 0 ? (
-        <Center h={300}>
-          <Loader />
-        </Center>
-      ) : providers.length === 0 ? (
-        <Card shadow="sm" p="xl" radius="md" withBorder>
-          <Center h={200}>
-            <Stack align="center" gap="md">
-              <IconServer size={48} stroke={1.5} color="gray" />
-              <div style={{ textAlign: 'center' }}>
-                <Text size="lg" fw={500}>No providers configured</Text>
-                <Text c="dimmed" size="sm" mt={4}>
-                  Provider priorities will appear here once you configure LLM providers
-                </Text>
-              </div>
-            </Stack>
-          </Center>
-        </Card>
-      ) : (
-        <ProviderPriorityList
-          providers={providers}
-          config={config}
-          health={health}
-          onUpdateProviders={handleUpdateProviders}
-          onUpdateConfig={handleUpdateConfig}
-        />
-      )}
+      {/* Provider Priorities - New Enhanced Interface */}
+      <ProviderPriorityManager
+        onLoadingChange={onLoadingChange}
+      />
     </Stack>
   );
 }
