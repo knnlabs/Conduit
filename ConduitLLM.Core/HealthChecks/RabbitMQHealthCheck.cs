@@ -106,6 +106,10 @@ namespace ConduitLLM.Core.HealthChecks
                     {
                         data["error_queue_metrics"] = errorQueueMetrics;
                     }
+                    
+                    // Add error queue summary for monitoring
+                    var errorQueueSummary = GetErrorQueueSummary(managementStats);
+                    data["error_queue_summary"] = errorQueueSummary;
 
                     // Determine health status based on metrics
                     var (status, description) = EvaluateHealthStatus(managementStats);
@@ -312,6 +316,25 @@ namespace ConduitLLM.Core.HealthChecks
             }
 
             return errorMetrics;
+        }
+
+        private Dictionary<string, object> GetErrorQueueSummary(RabbitMQStats stats)
+        {
+            var errorQueues = stats.Queues
+                .Where(q => q.Name.EndsWith("_error") || q.Name.EndsWith("_skipped"))
+                .ToList();
+
+            var summary = new Dictionary<string, object>
+            {
+                ["total_queues"] = errorQueues.Count,
+                ["total_messages"] = errorQueues.Sum(q => q.Messages),
+                ["critical_queues"] = errorQueues.Where(q => q.Messages > 1000).Select(q => q.Name).ToList(),
+                ["warning_queues"] = errorQueues.Where(q => q.Messages > 100 && q.Messages <= 1000).Select(q => q.Name).ToList(),
+                ["status"] = errorQueues.Any(q => q.Messages > 1000) ? "critical" :
+                            errorQueues.Any(q => q.Messages > 100) ? "warning" : "healthy"
+            };
+
+            return summary;
         }
 
         private class BusHealthStatus

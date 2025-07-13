@@ -253,6 +253,9 @@ public partial class Program
 
         // Add monitoring services
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
+        
+        // Add error queue metrics collection service
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
 
         var app = builder.Build();
 

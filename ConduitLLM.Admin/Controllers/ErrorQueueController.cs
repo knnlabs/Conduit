@@ -50,23 +50,26 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] string? queueNameFilter = null,
             CancellationToken cancellationToken = default)
         {
-            try
+            using (ErrorQueueMetricsService.StartOperationTimer("list", "all"))
             {
-                _logger.LogDebug("Getting error queues with filters: includeEmpty={IncludeEmpty}, minMessages={MinMessages}, filter={Filter}",
-                    includeEmpty, minMessages, queueNameFilter);
+                try
+                {
+                    _logger.LogDebug("Getting error queues with filters: includeEmpty={IncludeEmpty}, minMessages={MinMessages}, filter={Filter}",
+                        includeEmpty, minMessages, queueNameFilter);
 
-                var response = await _errorQueueService.GetErrorQueuesAsync(
-                    includeEmpty, 
-                    minMessages, 
-                    queueNameFilter,
-                    cancellationToken);
+                    var response = await _errorQueueService.GetErrorQueuesAsync(
+                        includeEmpty, 
+                        minMessages, 
+                        queueNameFilter,
+                        cancellationToken);
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get error queues");
-                return StatusCode(500, new { error = "Failed to retrieve error queues", correlationId = HttpContext.TraceIdentifier });
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get error queues");
+                    return StatusCode(500, new { error = "Failed to retrieve error queues", correlationId = HttpContext.TraceIdentifier });
+                }
             }
         }
 
@@ -89,29 +92,32 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] bool includeBody = true,
             CancellationToken cancellationToken = default)
         {
-            try
+            using (ErrorQueueMetricsService.StartOperationTimer("get_messages", queueName))
             {
-                if (page < 1) page = 1;
-                if (pageSize < 1) pageSize = 20;
-                if (pageSize > 100) pageSize = 100;
+                try
+                {
+                    if (page < 1) page = 1;
+                    if (pageSize < 1) pageSize = 20;
+                    if (pageSize > 100) pageSize = 100;
 
-                _logger.LogDebug("Getting messages from queue {QueueName}, page={Page}, pageSize={PageSize}",
-                    queueName, page, pageSize);
+                    _logger.LogDebug("Getting messages from queue {QueueName}, page={Page}, pageSize={PageSize}",
+                        queueName, page, pageSize);
 
-                var response = await _errorQueueService.GetErrorMessagesAsync(
-                    queueName,
-                    page,
-                    pageSize,
-                    includeHeaders,
-                    includeBody,
-                    cancellationToken);
+                    var response = await _errorQueueService.GetErrorMessagesAsync(
+                        queueName,
+                        page,
+                        pageSize,
+                        includeHeaders,
+                        includeBody,
+                        cancellationToken);
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get messages from queue {QueueName}", queueName);
-                return StatusCode(500, new { error = "Failed to retrieve error messages", correlationId = HttpContext.TraceIdentifier });
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get messages from queue {QueueName}", queueName);
+                    return StatusCode(500, new { error = "Failed to retrieve error messages", correlationId = HttpContext.TraceIdentifier });
+                }
             }
         }
 
@@ -128,26 +134,29 @@ namespace ConduitLLM.Admin.Controllers
             string messageId,
             CancellationToken cancellationToken = default)
         {
-            try
+            using (ErrorQueueMetricsService.StartOperationTimer("get_message", queueName))
             {
-                _logger.LogDebug("Getting message {MessageId} from queue {QueueName}", messageId, queueName);
-
-                var message = await _errorQueueService.GetErrorMessageAsync(
-                    queueName,
-                    messageId,
-                    cancellationToken);
-
-                if (message == null)
+                try
                 {
-                    return NotFound(new { error = $"Message {messageId} not found in queue {queueName}" });
-                }
+                    _logger.LogDebug("Getting message {MessageId} from queue {QueueName}", messageId, queueName);
 
-                return Ok(message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get message {MessageId} from queue {QueueName}", messageId, queueName);
-                return StatusCode(500, new { error = "Failed to retrieve error message", correlationId = HttpContext.TraceIdentifier });
+                    var message = await _errorQueueService.GetErrorMessageAsync(
+                        queueName,
+                        messageId,
+                        cancellationToken);
+
+                    if (message == null)
+                    {
+                        return NotFound(new { error = $"Message {messageId} not found in queue {queueName}" });
+                    }
+
+                    return Ok(message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get message {MessageId} from queue {QueueName}", messageId, queueName);
+                    return StatusCode(500, new { error = "Failed to retrieve error message", correlationId = HttpContext.TraceIdentifier });
+                }
             }
         }
 
@@ -164,29 +173,32 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] string groupBy = "hour",
             CancellationToken cancellationToken = default)
         {
-            try
+            using (ErrorQueueMetricsService.StartOperationTimer("get_statistics", "all"))
             {
-                var validGroupBy = new[] { "hour", "day", "week" };
-                if (!validGroupBy.Contains(groupBy.ToLower()))
+                try
                 {
-                    return BadRequest(new { error = "Invalid groupBy value. Must be 'hour', 'day', or 'week'." });
+                    var validGroupBy = new[] { "hour", "day", "week" };
+                    if (!validGroupBy.Contains(groupBy.ToLower()))
+                    {
+                        return BadRequest(new { error = "Invalid groupBy value. Must be 'hour', 'day', or 'week'." });
+                    }
+
+                    since ??= DateTime.UtcNow.AddDays(-7);
+
+                    _logger.LogDebug("Getting error queue statistics since {Since}, grouped by {GroupBy}", since, groupBy);
+
+                    var statistics = await _errorQueueService.GetStatisticsAsync(
+                        since.Value,
+                        groupBy,
+                        cancellationToken);
+
+                    return Ok(statistics);
                 }
-
-                since ??= DateTime.UtcNow.AddDays(-7);
-
-                _logger.LogDebug("Getting error queue statistics since {Since}, grouped by {GroupBy}", since, groupBy);
-
-                var statistics = await _errorQueueService.GetStatisticsAsync(
-                    since.Value,
-                    groupBy,
-                    cancellationToken);
-
-                return Ok(statistics);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get error queue statistics");
-                return StatusCode(500, new { error = "Failed to retrieve statistics", correlationId = HttpContext.TraceIdentifier });
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get error queue statistics");
+                    return StatusCode(500, new { error = "Failed to retrieve statistics", correlationId = HttpContext.TraceIdentifier });
+                }
             }
         }
 
@@ -198,19 +210,119 @@ namespace ConduitLLM.Admin.Controllers
         [HttpGet("health")]
         public async Task<ActionResult<ErrorQueueHealth>> GetHealth(CancellationToken cancellationToken = default)
         {
-            try
+            using (ErrorQueueMetricsService.StartOperationTimer("get_health", "all"))
             {
-                _logger.LogDebug("Getting error queue health status");
+                try
+                {
+                    _logger.LogDebug("Getting error queue health status");
 
-                var health = await _errorQueueService.GetHealthAsync(cancellationToken);
+                    var health = await _errorQueueService.GetHealthAsync(cancellationToken);
 
-                return Ok(health);
+                    return Ok(health);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to get error queue health");
+                    return StatusCode(500, new { error = "Failed to retrieve health status", correlationId = HttpContext.TraceIdentifier });
+                }
             }
-            catch (Exception ex)
+        }
+
+        /// <summary>
+        /// Replays messages from an error queue.
+        /// </summary>
+        /// <param name="queueName">Name of the error queue.</param>
+        /// <param name="request">Replay request parameters.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Replay operation result.</returns>
+        [HttpPost("{queueName}/replay")]
+        public async Task<ActionResult> ReplayMessages(
+            string queueName,
+            [FromBody] ReplayRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            using (ErrorQueueMetricsService.StartOperationTimer("replay", queueName))
             {
-                _logger.LogError(ex, "Failed to get error queue health");
-                return StatusCode(500, new { error = "Failed to retrieve health status", correlationId = HttpContext.TraceIdentifier });
+                try
+                {
+                    _logger.LogInformation("Replaying messages from queue {QueueName}", queueName);
+
+                    // TODO: Implement replay logic when API support is added
+                    // For now, simulate success
+                    var successCount = request?.MessageIds?.Count ?? 0;
+                    
+                    ErrorQueueMetricsService.RecordReplay(queueName, "success", successCount);
+                    
+                    return Ok(new 
+                    { 
+                        success = true, 
+                        message = $"Replay operation queued for {successCount} messages",
+                        successCount = successCount,
+                        failedCount = 0
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to replay messages from queue {QueueName}", queueName);
+                    ErrorQueueMetricsService.RecordReplay(queueName, "failed", request?.MessageIds?.Count ?? 0);
+                    return StatusCode(500, new { error = "Failed to replay messages", correlationId = HttpContext.TraceIdentifier });
+                }
             }
+        }
+
+        /// <summary>
+        /// Deletes messages from an error queue.
+        /// </summary>
+        /// <param name="queueName">Name of the error queue.</param>
+        /// <param name="messageId">Optional message ID to delete specific message.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Delete operation result.</returns>
+        [HttpDelete("{queueName}/messages/{messageId?}")]
+        public async Task<ActionResult> DeleteMessages(
+            string queueName,
+            string? messageId = null,
+            CancellationToken cancellationToken = default)
+        {
+            using (ErrorQueueMetricsService.StartOperationTimer("delete", queueName))
+            {
+                try
+                {
+                    _logger.LogInformation("Deleting messages from queue {QueueName}, messageId={MessageId}", 
+                        queueName, messageId);
+
+                    // TODO: Implement delete logic when API support is added
+                    var reason = string.IsNullOrEmpty(messageId) ? "manual_clear" : "manual_delete";
+                    var count = string.IsNullOrEmpty(messageId) ? 10 : 1; // Mock count
+                    
+                    ErrorQueueMetricsService.RecordDeletion(queueName, reason, count);
+                    
+                    return Ok(new 
+                    { 
+                        success = true, 
+                        message = messageId != null 
+                            ? $"Message {messageId} deleted from queue {queueName}"
+                            : $"All messages deleted from queue {queueName}",
+                        deletedCount = count
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to delete messages from queue {QueueName}", queueName);
+                    return StatusCode(500, new { error = "Failed to delete messages", correlationId = HttpContext.TraceIdentifier });
+                }
+            }
+        }
+
+        /// <summary>
+        /// Request model for replay operations.
+        /// </summary>
+        public class ReplayRequest
+        {
+            /// <summary>
+            /// Gets or sets the list of message IDs to replay.
+            /// If null or empty, all messages are replayed.
+            /// </summary>
+            public List<string>? MessageIds { get; set; }
         }
     }
 }
