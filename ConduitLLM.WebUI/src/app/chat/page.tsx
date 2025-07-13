@@ -1,12 +1,12 @@
 'use client';
 
-import { ChatInterfaceEnhanced } from './components/ChatInterfaceEnhanced';
+import { ChatInterfaceFixed } from './components/ChatInterfaceFixed';
 // Alternate interfaces:
-// import { ChatInterfaceFixed } from './components/ChatInterfaceFixed';
+// import { ChatInterfaceEnhanced } from './components/ChatInterfaceEnhanced';
 // import { ChatInterface } from './components/ChatInterface';
 // import { SimpleChatInterface } from './components/SimpleChatInterface';
 import './styles.css';
 
 export default function ChatPage() {
-  return <ChatInterfaceEnhanced />;
+  return <ChatInterfaceFixed />;
 }

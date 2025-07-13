@@ -131,8 +131,6 @@ export function ChatInterfaceFixed() {
       const decoder = new TextDecoder();
       let buffer = '';
       let fullContent = '';
-      let startTime = Date.now();
-      let tokenCount = 0;
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -146,19 +144,13 @@ export function ChatInterfaceFixed() {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
-              const endTime = Date.now();
-              const duration = (endTime - startTime) / 1000;
-              const finalTps = tokenCount / duration;
-              
               const assistantMessage: Message = {
                 id: uuidv4(),
                 role: 'assistant',
                 content: fullContent,
                 timestamp: new Date(),
                 metadata: {
-                  tokensUsed: tokenCount,
-                  tokensPerSecond: finalTps,
-                  latency: duration * 1000,
+                  // Metrics will be populated from server-sent performance data
                 }
               };
 
@@ -175,14 +167,6 @@ export function ChatInterfaceFixed() {
               if (delta?.content) {
                 fullContent += delta.content;
                 setStreamingContent(fullContent);
-                tokenCount += delta.content.split(/\s+/).length;
-                
-                // Update TPS every few tokens
-                const currentTime = Date.now();
-                const currentDuration = (currentTime - startTime) / 1000;
-                if (currentDuration > 0) {
-                  setTokensPerSecond(tokenCount / currentDuration);
-                }
               }
 
               // Check for performance metrics in the chunk
