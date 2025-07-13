@@ -208,6 +208,38 @@ export const ENDPOINTS = {
     NOTIFICATION_BY_ID: (id: number) => `/api/Notifications/${id}`,
   },
 
+  // Comprehensive Metrics (Issue #434)
+  METRICS: {
+    // System-wide metrics
+    SYSTEM: '/api/dashboard/metrics/system',
+    SYSTEM_TIMESERIES: '/api/dashboard/metrics/timeseries',
+    
+    // Performance metrics  
+    PERFORMANCE: '/api/dashboard/metrics/performance',
+    PERFORMANCE_TIMESERIES: '/api/dashboard/metrics/timeseries/performance',
+    
+    // Provider metrics
+    PROVIDERS: '/api/dashboard/metrics/providers',
+    PROVIDER_BREAKDOWN: '/api/dashboard/metrics/providers/breakdown',
+    
+    // Model metrics
+    MODELS: '/api/dashboard/metrics/models',
+    MODEL_BREAKDOWN: '/api/dashboard/metrics/models/breakdown',
+    MODEL_RANKINGS: '/api/dashboard/metrics/models/rankings',
+    
+    // Error metrics and analysis
+    ERRORS: '/api/dashboard/metrics/errors',
+    ERROR_ANALYSIS: '/api/dashboard/metrics/errors/analysis',
+    ERROR_PATTERNS: '/api/dashboard/metrics/errors/patterns',
+    
+    // Legacy Admin API metrics
+    ADMIN_BASIC: '/api/metrics',
+    ADMIN_DATABASE_POOL: '/metrics/database/pool',
+    
+    // Real-time metrics
+    REALTIME: '/api/dashboard/metrics/realtime',
+  },
+
   // Settings
   SETTINGS: {
     GLOBAL: '/api/GlobalSettings',
