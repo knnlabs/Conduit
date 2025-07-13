@@ -24,11 +24,13 @@ import { ENDPOINTS } from '../constants';
 /**
  * Service for managing audio provider configurations, cost settings, and usage analytics
  */
-export class AudioConfigurationService extends FetchBaseApiClient {
-  private static readonly PROVIDERS_ENDPOINT = '/admin/audio/providers';
-  private static readonly COSTS_ENDPOINT = '/admin/audio/costs';
-  private static readonly USAGE_ENDPOINT = '/admin/audio/usage';
-  private static readonly SESSIONS_ENDPOINT = '/admin/audio/sessions';
+export class AudioConfigurationService {
+  private static readonly PROVIDERS_ENDPOINT = '/api/admin/audio/providers';
+  private static readonly COSTS_ENDPOINT = '/api/admin/audio/costs';
+  private static readonly USAGE_ENDPOINT = '/api/admin/audio/usage';
+  private static readonly SESSIONS_ENDPOINT = '/api/admin/audio/sessions';
+
+  constructor(private readonly client: FetchBaseApiClient) {}
 
   // #region Provider Configuration
 
@@ -38,7 +40,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
   async createProvider(request: AudioProviderConfigRequest): Promise<AudioProviderConfigDto> {
     validateAudioProviderRequest(request);
     
-    return this.post<AudioProviderConfigDto>(
+    return this.client['post']<AudioProviderConfigDto>(
       AudioConfigurationService.PROVIDERS_ENDPOINT,
       request
     );
@@ -48,7 +50,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
    * Gets all audio provider configurations
    */
   async getProviders(): Promise<AudioProviderConfigDto[]> {
-    return this.get<AudioProviderConfigDto[]>(
+    return this.client['get']<AudioProviderConfigDto[]>(
       AudioConfigurationService.PROVIDERS_ENDPOINT
     );
   }
@@ -63,7 +65,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.PROVIDERS_ENDPOINT}/enabled/${encodeURIComponent(operationType)}`;
     
-    return this.get<AudioProviderConfigDto[]>(endpoint);
+    return this.client['get']<AudioProviderConfigDto[]>(endpoint);
   }
 
   /**
@@ -76,7 +78,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.PROVIDERS_ENDPOINT}/${encodeURIComponent(providerId)}`;
     
-    return this.get<AudioProviderConfigDto>(endpoint);
+    return this.client['get']<AudioProviderConfigDto>(endpoint);
   }
 
   /**
@@ -94,7 +96,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.PROVIDERS_ENDPOINT}/${encodeURIComponent(providerId)}`;
     
-    return this.put<AudioProviderConfigDto>(
+    return this.client['put']<AudioProviderConfigDto>(
       endpoint,
       request
     );
@@ -110,7 +112,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.PROVIDERS_ENDPOINT}/${encodeURIComponent(providerId)}`;
     
-    await this.delete<void>(endpoint);
+    await this.client['delete']<void>(endpoint);
   }
 
   /**
@@ -123,7 +125,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.PROVIDERS_ENDPOINT}/${encodeURIComponent(providerId)}/test`;
     
-    return this.post<AudioProviderTestResult>(
+    return this.client['post']<AudioProviderTestResult>(
       endpoint,
       {}
     );
@@ -139,7 +141,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
   async createCostConfig(request: AudioCostConfigRequest): Promise<AudioCostConfigDto> {
     validateAudioCostConfigRequest(request);
     
-    return this.post<AudioCostConfigDto>(
+    return this.client['post']<AudioCostConfigDto>(
       AudioConfigurationService.COSTS_ENDPOINT,
       request
     );
@@ -149,7 +151,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
    * Gets all audio cost configurations
    */
   async getCostConfigs(): Promise<AudioCostConfigDto[]> {
-    return this.get<AudioCostConfigDto[]>(
+    return this.client['get']<AudioCostConfigDto[]>(
       AudioConfigurationService.COSTS_ENDPOINT
     );
   }
@@ -164,7 +166,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.COSTS_ENDPOINT}/${encodeURIComponent(configId)}`;
     
-    return this.get<AudioCostConfigDto>(endpoint);
+    return this.client['get']<AudioCostConfigDto>(endpoint);
   }
 
   /**
@@ -182,7 +184,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.COSTS_ENDPOINT}/${encodeURIComponent(configId)}`;
     
-    return this.put<AudioCostConfigDto>(
+    return this.client['put']<AudioCostConfigDto>(
       endpoint,
       request
     );
@@ -198,7 +200,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.COSTS_ENDPOINT}/${encodeURIComponent(configId)}`;
     
-    await this.delete<void>(endpoint);
+    await this.client['delete']<void>(endpoint);
   }
 
   // #endregion
@@ -247,7 +249,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
       ? `${AudioConfigurationService.USAGE_ENDPOINT}?${queryParams.join('&')}`
       : AudioConfigurationService.USAGE_ENDPOINT;
     
-    return this.get<PagedResponse<AudioUsageDto>>(endpoint);
+    return this.client['get']<PagedResponse<AudioUsageDto>>(endpoint);
   }
 
   /**
@@ -281,7 +283,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.USAGE_ENDPOINT}/summary?${queryParams.join('&')}`;
     
-    return this.get<AudioUsageSummaryDto>(endpoint);
+    return this.client['get']<AudioUsageSummaryDto>(endpoint);
   }
 
   // #endregion
@@ -292,7 +294,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
    * Gets all active real-time audio sessions
    */
   async getActiveSessions(): Promise<RealtimeSessionDto[]> {
-    return this.get<RealtimeSessionDto[]>(
+    return this.client['get']<RealtimeSessionDto[]>(
       AudioConfigurationService.SESSIONS_ENDPOINT
     );
   }
@@ -307,7 +309,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
 
     const endpoint = `${AudioConfigurationService.SESSIONS_ENDPOINT}/${encodeURIComponent(sessionId)}`;
     
-    return this.get<RealtimeSessionDto>(endpoint);
+    return this.client['get']<RealtimeSessionDto>(endpoint);
   }
 
   /**
@@ -321,7 +323,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
     const endpoint = `${AudioConfigurationService.SESSIONS_ENDPOINT}/${encodeURIComponent(sessionId)}/terminate`;
     
     try {
-      const response = await this.post<{ success: boolean; message?: string }>(endpoint, {});
+      const response = await this.client['post']<{ success: boolean; message?: string }>(endpoint, {});
       return {
         success: response.success,
         sessionId,
@@ -380,7 +382,7 @@ export class AudioConfigurationService extends FetchBaseApiClient {
       },
     };
 
-    return this.post<ExportResult>(
+    return this.client['post']<ExportResult>(
       ENDPOINTS.ANALYTICS.EXPORT_AUDIO_USAGE,
       requestBody
     );

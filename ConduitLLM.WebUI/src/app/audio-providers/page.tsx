@@ -111,8 +111,81 @@ export default function AudioProvidersPage() {
 
   const fetchProviders = async () => {
     try {
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      // Fetch providers
+      const providersResponse = await fetch('/api/audio-configuration');
+      if (!providersResponse.ok) {
+        throw new Error('Failed to fetch providers');
+      }
+      const providersData = await providersResponse.json();
+      
+      // Transform API response to match our interface
+      const transformedProviders: AudioProvider[] = providersData.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        type: p.providerType?.toLowerCase() || 'custom',
+        enabled: p.isEnabled,
+        models: [], // Will be populated separately if needed
+        config: {
+          apiKey: p.apiKey,
+          endpoint: p.endpoint,
+          region: p.region,
+          ...(p.settings || {})
+        },
+        status: p.isEnabled ? 'active' : 'inactive',
+        lastChecked: p.lastModified,
+        totalRequests: 0,
+        totalMinutes: 0,
+        avgLatency: 0,
+        errorRate: 0,
+      }));
+      
+      setProviders(transformedProviders);
+      
+      // Fetch usage summary for stats (last 30 days)
+      const endDate = new Date().toISOString();
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const summaryResponse = await fetch(`/api/audio-configuration/usage/summary?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+      if (summaryResponse.ok) {
+        const summaryData = await summaryResponse.json();
+        // Transform summary data to stats format
+        const statsMap: Record<string, AudioStats> = {};
+        
+        // summaryData has usageByProvider array
+        if (summaryData.usageByProvider && Array.isArray(summaryData.usageByProvider)) {
+          summaryData.usageByProvider.forEach((providerUsage: any) => {
+            if (providerUsage.providerId) {
+              // Calculate total minutes from duration in seconds
+              const totalMinutes = (providerUsage.totalDurationSeconds || 0) / 60;
+              
+              // Calculate request counts by operation type
+              let transcriptionRequests = 0;
+              let ttsRequests = 0;
+              
+              if (providerUsage.usageByOperation && Array.isArray(providerUsage.usageByOperation)) {
+                providerUsage.usageByOperation.forEach((op: any) => {
+                  if (op.operationType === 'speech-to-text' || op.operationType === 'transcription') {
+                    transcriptionRequests += op.requestCount || 0;
+                  } else if (op.operationType === 'text-to-speech' || op.operationType === 'tts') {
+                    ttsRequests += op.requestCount || 0;
+                  }
+                });
+              }
+              
+              statsMap[providerUsage.providerId] = {
+                providerId: providerUsage.providerId,
+                transcriptionRequests,
+                ttsRequests,
+                totalMinutes,
+                avgProcessingTime: 0, // Not available in the summary
+                successRate: 100, // Assume 100% for now
+                cost: providerUsage.totalCost || 0,
+              };
+            }
+          });
+        }
+        
+        setStats(statsMap);
+      }
     } catch (error) {
       console.error('Error fetching audio providers:', error);
       notifications.show({
@@ -138,20 +211,29 @@ export default function AudioProvidersPage() {
 
   const handleTestProvider = async (providerId: string) => {
     try {
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      // const response = await fetch(`/api/admin/audio-configuration/${providerId}/test`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
-      //   },
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Test failed');
-      // }
+      const response = await fetch(`/api/audio-configuration/${providerId}/test`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Test failed');
+      }
       
-      // Functionality broken - SDK not available
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      const result = await response.json();
+      
+      if (result.isSuccessful) {
+        notifications.show({
+          title: 'Test Successful',
+          message: `Provider ${result.providerName} is working correctly`,
+          color: 'green',
+        });
+      } else {
+        notifications.show({
+          title: 'Test Failed',
+          message: result.errorMessage || 'Failed to connect to audio provider',
+          color: 'red',
+        });
+      }
     } catch (error) {
       notifications.show({
         title: 'Test Failed',
@@ -163,22 +245,39 @@ export default function AudioProvidersPage() {
 
   const handleToggleProvider = async (providerId: string, enabled: boolean) => {
     try {
-      // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-      // const response = await fetch(`/api/admin/audio-configuration/${providerId}`, {
-      //   method: 'PUT',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
-      //   },
-      //   body: JSON.stringify({ enabled }),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Failed to update provider');
-      // }
+      const provider = providers.find(p => p.id === providerId);
+      if (!provider) return;
       
-      // Functionality broken - SDK not available
-      throw new Error('Direct API calls are forbidden - SDK not available');
+      const response = await fetch(`/api/audio-configuration/${providerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: provider.name,
+          providerType: provider.type.toUpperCase(),
+          apiKey: provider.config.apiKey,
+          endpoint: provider.config.endpoint,
+          region: provider.config.region,
+          isEnabled: enabled,
+          settings: provider.config,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update provider');
+      }
+      
+      // Update local state
+      setProviders(providers.map(p => 
+        p.id === providerId ? { ...p, enabled, status: enabled ? 'active' : 'inactive' } : p
+      ));
+      
+      notifications.show({
+        title: 'Success',
+        message: `Provider ${enabled ? 'enabled' : 'disabled'} successfully`,
+        color: 'green',
+      });
     } catch (error) {
       notifications.show({
         title: 'Error',
