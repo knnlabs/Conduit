@@ -117,3 +117,78 @@ export interface UpdateRoutingRuleRequest {
   actions?: RoutingAction[];
   enabled?: boolean;
 }
+
+// Enhanced Testing Interfaces
+export interface TestRequest {
+  model: string;
+  region?: string;
+  costThreshold?: number;
+  virtualKeyId?: string;
+  customFields: Record<string, any>;
+  headers?: Record<string, string>;
+  metadata?: Record<string, any>;
+}
+
+export interface ConditionMatch {
+  condition: RoutingCondition;
+  matched: boolean;
+  actualValue: any;
+  reason: string;
+}
+
+export interface MatchedRule {
+  rule: RoutingRule;
+  matchedConditions: ConditionMatch[];
+  applied: boolean;
+  priority: number;
+}
+
+export interface EvaluationStep {
+  timestamp: number;
+  stepNumber: number;
+  action: string;
+  details: string;
+  success: boolean;
+  duration: number;
+  ruleId?: string;
+  ruleName?: string;
+}
+
+export interface Provider {
+  id: string;
+  name: string;
+  type: 'primary' | 'backup' | 'special';
+  isEnabled: boolean;
+  priority: number;
+  endpoint?: string;
+}
+
+export interface TestResult {
+  matchedRules: MatchedRule[];
+  selectedProvider?: Provider;
+  fallbackChain: Provider[];
+  evaluationTime: number;
+  evaluationSteps: EvaluationStep[];
+  routingDecision: {
+    strategy: string;
+    reason: string;
+    fallbackUsed: boolean;
+    processingTimeMs: number;
+  };
+  success: boolean;
+  errors?: string[];
+}
+
+export interface TestCase {
+  id: string;
+  name: string;
+  request: TestRequest;
+  expectedResult?: Partial<TestResult>;
+  timestamp: string;
+  description?: string;
+}
+
+export interface TestHistory {
+  cases: TestCase[];
+  lastRun?: string;
+}
