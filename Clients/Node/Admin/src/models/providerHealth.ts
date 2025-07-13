@@ -224,6 +224,114 @@ export interface ProviderHealthListResponseDto {
   totalPages: number;
 }
 
+// Issue #430 - Provider Health SDK Methods
+export interface ProviderHealthStatusResponse {
+  providers: ProviderHealthItem[];
+  _warning?: string;
+}
+
+export interface ProviderHealthItem {
+  id: string;
+  name: string;
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  lastChecked: string;
+  responseTime: number;
+  uptime: number;
+  errorRate: number;
+  details?: {
+    lastError?: string;
+    consecutiveFailures?: number;
+    lastSuccessfulCheck?: string;
+  };
+}
+
+export interface ProviderWithHealthDto {
+  id: string;
+  name: string;
+  isEnabled: boolean;
+  providerName: string;
+  apiKey?: string;
+  health: {
+    status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+    responseTime: number;
+    uptime: number;
+    errorRate: number;
+  };
+}
+
+export interface ProviderHealthMetricsDto {
+  providerId: string;
+  providerName: string;
+  metrics: {
+    totalRequests: number;
+    failedRequests: number;
+    avgResponseTime: number;
+    p95ResponseTime: number;
+    p99ResponseTime: number;
+    availability: number;
+    endpoints: ProviderEndpointHealth[];
+    models: ProviderModelHealth[];
+    rateLimit: {
+      requests: {
+        used: number;
+        limit: number;
+        reset: string;
+      };
+      tokens: {
+        used: number;
+        limit: number;
+        reset: string;
+      };
+    };
+  };
+  incidents: ProviderHealthIncident[];
+}
+
+export interface ProviderEndpointHealth {
+  name: string;
+  status: 'healthy' | 'degraded' | 'down';
+  responseTime: number;
+  lastCheck: string;
+}
+
+export interface ProviderModelHealth {
+  name: string;
+  available: boolean;
+  responseTime: number;
+  tokenCapacity: {
+    used: number;
+    total: number;
+  };
+}
+
+export interface ProviderHealthIncident {
+  id: string;
+  timestamp: string;
+  type: 'outage' | 'degradation' | 'rate_limit';
+  duration: number;
+  message: string;
+  resolved: boolean;
+}
+
+export interface ProviderHealthHistoryOptions {
+  startDate: string;
+  endDate: string;
+  resolution: 'minute' | 'hour' | 'day';
+  includeIncidents: boolean;
+}
+
+export interface ProviderHealthHistoryResponse {
+  dataPoints: ProviderHealthDataPoint[];
+  incidents: ProviderHealthIncident[];
+}
+
+export interface ProviderHealthDataPoint {
+  timestamp: string;
+  responseTime: number;
+  errorRate: number;
+  availability: number;
+}
+
 // Re-export types from provider.ts for convenience
 export type {
   ProviderHealthConfigurationDto,
