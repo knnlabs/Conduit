@@ -322,18 +322,68 @@ The WebUI supports several customization options:
 
 ### Authentication
 
-The WebUI can be configured with different authentication methods:
+The WebUI supports two primary authentication modes:
 
-- Local authentication *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
-- OAuth/OpenID Connect *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
-- LDAP/Active Directory *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
-- Single Sign-On integration *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
-- Password-based login using `CONDUIT_ADMIN_LOGIN_PASSWORD`
-- Clerk authentication (JWT-based, passwordless) — enable via `CONDUIT_AUTH_TYPE=clerk` and provide `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY`
-- Backend key fallback (`CONDUIT_API_TO_API_BACKEND_AUTH_KEY`) when no admin password is set
-- Other enterprise SSO options (OAuth/OIDC, LDAP/AD, SAML) *(planned – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
+#### Password Authentication (Default)
+- Uses `CONDUIT_ADMIN_LOGIN_PASSWORD` for admin access
+- Session-based authentication with configurable timeout
+- Fallback to `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` when no admin password is set
+- Simple username/password login form
 
-> WebUI now supports two authentication modes: **password** (default) and **Clerk**. Select the mode with `CONDUIT_AUTH_TYPE` (see Environment-Variables.md). Additional enterprise SSO methods are still planned — follow [issue #17](https://github.com/knnlabs/Conduit/issues/17) for updates.
+#### Clerk Authentication (Modern OAuth)
+- Modern, secure JWT-based authentication
+- Supports multiple sign-in methods (email, social, etc.)
+- Hosted authentication UI and user management
+- No password storage required
+
+### Clerk Authentication Setup
+
+To enable Clerk authentication:
+
+1. **Create a Clerk Application**
+   - Sign up at [clerk.com](https://clerk.com)
+   - Create a new application in your [Clerk Dashboard](https://dashboard.clerk.com)
+
+2. **Configure Environment Variables**
+   ```bash
+   # Set authentication mode to Clerk
+   CONDUIT_AUTH_TYPE=clerk
+   NEXT_PUBLIC_CONDUIT_AUTH_TYPE=clerk
+   
+   # Add your Clerk keys from the dashboard
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+   CLERK_SECRET_KEY=sk_test_xxx
+   ```
+
+3. **Configure Clerk Application Settings**
+   - Set redirect URLs in Clerk Dashboard:
+     - Sign-in URL: `http://localhost:3000/sign-in`
+     - Home URL: `http://localhost:3000/`
+   - Enable desired authentication methods (email, Google, GitHub, etc.)
+
+4. **Start the Application**
+   ```bash
+   npm run dev
+   ```
+
+### Environment Variables Reference
+
+```bash
+# Authentication Mode (required)
+CONDUIT_AUTH_TYPE=password|clerk
+
+# Password Mode (default)
+CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-backend-key
+SESSION_SECRET=your-session-secret
+
+# Clerk Mode (when CONDUIT_AUTH_TYPE=clerk)
+NEXT_PUBLIC_CONDUIT_AUTH_TYPE=clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
+```
+
+> **Note**: Additional enterprise SSO methods (OAuth/OIDC, LDAP/AD, SAML) are planned — follow [issue #17](https://github.com/knnlabs/Conduit/issues/17) for updates.
 
 ## Deployment Options
 
