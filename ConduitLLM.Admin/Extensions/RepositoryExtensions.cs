@@ -115,6 +115,7 @@ namespace ConduitLLM.Admin.Extensions
                 ModelId = mapping.ModelAlias,
                 ProviderModelId = mapping.ProviderModelName,
                 ProviderId = mapping.ProviderCredentialId.ToString(),
+                ProviderName = mapping.ProviderCredential?.ProviderName,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields

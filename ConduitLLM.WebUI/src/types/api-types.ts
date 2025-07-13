@@ -59,6 +59,7 @@ export interface ModelProviderMappingDto {
   id: number;
   modelId: string;
   providerId: string;
+  providerName?: string;
   providerModelId: string;
   priority: number;
   isEnabled: boolean;

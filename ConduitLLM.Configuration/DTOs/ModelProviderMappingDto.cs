@@ -32,6 +32,11 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderId { get; set; } = string.Empty;
 
         /// <summary>
+        /// The human-readable provider name (e.g., "OpenAI", "Anthropic")
+        /// </summary>
+        public string? ProviderName { get; set; }
+
+        /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
         public int Priority { get; set; }

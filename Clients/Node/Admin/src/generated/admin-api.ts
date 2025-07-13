@@ -1412,6 +1412,7 @@ export interface components {
       modelId: string;
       providerModelId: string;
       providerId: string;
+      providerName?: string;
       priority: number;
       isEnabled: boolean;
       capabilities?: string;

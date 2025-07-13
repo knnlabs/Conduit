@@ -24,7 +24,6 @@ import {
   useModelMappings, 
   useDeleteModelMapping
 } from '@/hooks/useModelMappingsApi';
-import { useProviders } from '@/hooks/useProviderApi';
 import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
 import { toUIModelMapping } from '@/lib/types/mappers';
 import type { ModelProviderMappingDto } from '@/types/api-types';
@@ -35,18 +34,8 @@ interface ModelMappingsTableProps {
 
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
-  const { providers } = useProviders();
   const deleteMapping = useDeleteModelMapping();
   const [editingMapping, setEditingMapping] = useState<ModelProviderMappingDto | null>(null);
-  
-  // Create a provider ID to name lookup map
-  const providerIdToName = useMemo(() => {
-    const map = new Map<string, string>();
-    providers?.forEach(provider => {
-      map.set(provider.id.toString(), provider.name);
-    });
-    return map;
-  }, [providers]);
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -143,7 +132,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       
       <Table.Td>
         <Text size="sm">
-          {providerIdToName.get(mapping.providerId) || mapping.providerId}
+          {mapping.providerName || mapping.providerId}
         </Text>
       </Table.Td>
 
