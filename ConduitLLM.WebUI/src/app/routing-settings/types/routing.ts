@@ -15,7 +15,7 @@ export interface RoutingRule {
 }
 
 export interface RoutingCondition {
-  type: 'model' | 'header' | 'body' | 'time' | 'load' | 'key' | 'metadata';
+  type: 'model' | 'header' | 'body' | 'time' | 'load' | 'key' | 'metadata' | 'cost' | 'region' | 'virtualKeyId';
   field?: string;
   operator: ConditionOperator;
   value: any;

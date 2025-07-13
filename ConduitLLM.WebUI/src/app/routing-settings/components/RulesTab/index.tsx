@@ -20,7 +20,7 @@ import {
   IconRoute,
 } from '@tabler/icons-react';
 import { RulesList } from './RulesList';
-import { RuleEditor } from './RuleEditor';
+import { RuleBuilder } from '../RuleBuilder';
 import { useRoutingRules } from '../../hooks/useRoutingRules';
 import { RoutingRule, CreateRoutingRuleRequest } from '../../types/routing';
 
@@ -187,8 +187,8 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
         />
       )}
 
-      {/* Rule Editor Modal */}
-      <RuleEditor
+      {/* Rule Builder Modal */}
+      <RuleBuilder
         isOpen={isEditorOpen}
         rule={selectedRule}
         onClose={() => setIsEditorOpen(false)}
