@@ -14,6 +14,14 @@ import {
   ClearCacheResult,
   CacheStatistics,
 } from '../models/configuration';
+import {
+  RoutingConfigDto,
+  UpdateRoutingConfigDto as UpdateExtendedRoutingConfigDto,
+  RoutingRule,
+  CreateRoutingRuleDto,
+  UpdateRoutingRuleDto,
+  LoadBalancerHealthDto,
+} from '../models/configurationExtended';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -70,6 +78,43 @@ const createCachePolicySchema = z.object({
   strategy: z.enum(['memory', 'redis', 'hybrid']),
   enabled: z.boolean().optional(),
   metadata: z.record(z.any()).optional(),
+});
+
+/**
+ * Schema for extended routing configuration updates
+ */
+const updateExtendedRoutingSchema = z.object({
+  defaultStrategy: z.enum(['round_robin', 'least_latency', 'cost_optimized', 'priority']).optional(),
+  fallbackEnabled: z.boolean().optional(),
+  retryPolicy: z.object({
+    maxAttempts: z.number().min(0).optional(),
+    initialDelayMs: z.number().min(0).optional(),
+    maxDelayMs: z.number().min(0).optional(),
+    backoffMultiplier: z.number().positive().optional(),
+    retryableStatuses: z.array(z.number()).optional(),
+  }).optional(),
+  timeoutMs: z.number().positive().optional(),
+  maxConcurrentRequests: z.number().positive().optional(),
+});
+
+/**
+ * Schema for creating routing rules
+ */
+const createRoutingRuleSchema = z.object({
+  name: z.string().min(1),
+  priority: z.number().optional(),
+  conditions: z.array(z.object({
+    type: z.enum(['model', 'header', 'body', 'time', 'load']),
+    field: z.string().optional(),
+    operator: z.enum(['equals', 'contains', 'regex', 'gt', 'lt', 'between']),
+    value: z.any(),
+  })),
+  actions: z.array(z.object({
+    type: z.enum(['route', 'transform', 'cache', 'rate_limit', 'log']),
+    target: z.string().optional(),
+    parameters: z.record(z.any()).optional(),
+  })),
+  enabled: z.boolean().optional(),
 });
 
 /**
@@ -273,6 +318,155 @@ export class ConfigurationService extends SettingsService {
   };
 
   /**
+   * Extended routing configuration management
+   */
+  extendedRouting = {
+    /**
+     * Get extended routing configuration
+     */
+    get: async (): Promise<RoutingConfigDto> => {
+      return this.withCache(
+        'extended-routing-config',
+        () => this.get<RoutingConfigDto>('/api/config/routing'),
+        CACHE_TTL.SHORT
+      );
+    },
+
+    /**
+     * Update extended routing configuration
+     */
+    update: async (config: UpdateExtendedRoutingConfigDto): Promise<RoutingConfigDto> => {
+      const parsed = updateExtendedRoutingSchema.safeParse(config);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid extended routing configuration', {
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
+      }
+
+      const response = await this.put<RoutingConfigDto>(
+        '/api/config/routing',
+        parsed.data
+      );
+      
+      await this.invalidateConfigurationCache();
+      return response;
+    },
+
+    /**
+     * Get all routing rules
+     */
+    getRules: async (): Promise<RoutingRule[]> => {
+      return this.withCache(
+        ENDPOINTS.CONFIGURATION.ROUTING_RULES,
+        () => this.get<RoutingRule[]>(ENDPOINTS.CONFIGURATION.ROUTING_RULES),
+        CACHE_TTL.SHORT
+      );
+    },
+
+    /**
+     * Create a new routing rule
+     */
+    createRule: async (rule: CreateRoutingRuleDto): Promise<RoutingRule> => {
+      const parsed = createRoutingRuleSchema.safeParse(rule);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid routing rule', {
+          validationErrors: parsed.error.errors,
+          issues: parsed.error.format()
+        });
+      }
+
+      const response = await this.post<RoutingRule>(
+        ENDPOINTS.CONFIGURATION.ROUTING_RULES,
+        parsed.data
+      );
+      
+      await this.invalidateConfigurationCache();
+      return response;
+    },
+
+    /**
+     * Update an existing routing rule
+     */
+    updateRule: async (id: string, rule: UpdateRoutingRuleDto): Promise<RoutingRule> => {
+      if (!id || id.trim() === '') {
+        throw new ValidationError('Rule ID is required');
+      }
+
+      const response = await this.put<RoutingRule>(
+        ENDPOINTS.CONFIGURATION.ROUTING_RULE_BY_ID(id),
+        rule
+      );
+      
+      await this.invalidateConfigurationCache();
+      return response;
+    },
+
+    /**
+     * Delete a routing rule
+     */
+    deleteRule: async (id: string): Promise<void> => {
+      if (!id || id.trim() === '') {
+        throw new ValidationError('Rule ID is required');
+      }
+
+      await this.delete(ENDPOINTS.CONFIGURATION.ROUTING_RULE_BY_ID(id));
+      await this.invalidateConfigurationCache();
+    },
+
+    /**
+     * Bulk update routing rules
+     */
+    bulkUpdateRules: async (rules: RoutingRule[]): Promise<RoutingRule[]> => {
+      const response = await this.put<RoutingRule[]>(
+        ENDPOINTS.CONFIGURATION.ROUTING_RULES,
+        { rules }
+      );
+      
+      await this.invalidateConfigurationCache();
+      return response;
+    },
+
+    /**
+     * Get extended load balancer health
+     */
+    getLoadBalancerHealthExtended: async (): Promise<LoadBalancerHealthDto> => {
+      return this.withCache(
+        'extended-load-balancer-health',
+        () => this.get<LoadBalancerHealthDto>('/api/config/loadbalancer/health'),
+        CACHE_TTL.SHORT
+      );
+    },
+  };
+
+  /**
+   * Real-time subscription support (to be implemented with SignalR)
+   */
+  subscriptions = {
+    /**
+     * Subscribe to routing status updates
+     * @param callback Function to call when status updates
+     * @returns Unsubscribe function
+     */
+    subscribeToRoutingStatus: (callback: (status: any) => void): (() => void) => {
+      // TODO: Implement with SignalR
+      console.warn('Real-time subscriptions not yet implemented');
+      return () => {};
+    },
+
+    /**
+     * Subscribe to health status updates
+     * @param callback Function to call when health updates
+     * @returns Unsubscribe function
+     */
+    subscribeToHealthStatus: (callback: (health: LoadBalancerHealthDto) => void): (() => void) => {
+      // TODO: Implement with SignalR
+      console.warn('Real-time subscriptions not yet implemented');
+      return () => {};
+    },
+  };
+
+  /**
    * Invalidate configuration-related cache entries
    */
   private async invalidateConfigurationCache(): Promise<void> {
@@ -286,6 +480,10 @@ export class ConfigurationService extends SettingsService {
       ENDPOINTS.CONFIGURATION.CACHE_POLICIES,
       ENDPOINTS.CONFIGURATION.CACHE_REGIONS,
       ENDPOINTS.CONFIGURATION.CACHE_STATISTICS,
+      ENDPOINTS.CONFIGURATION.ROUTING_RULES,
+      '/api/config/routing',
+      'extended-routing-config',
+      'extended-load-balancer-health',
     ];
 
     for (const key of keysToInvalidate) {

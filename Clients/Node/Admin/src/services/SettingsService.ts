@@ -8,6 +8,7 @@ import {
   CreateAudioConfigurationDto,
   UpdateAudioConfigurationDto,
   RouterConfigurationDto,
+  RouterRule,
   UpdateRouterConfigurationDto,
   SystemConfiguration,
   SettingFilters,
@@ -151,9 +152,122 @@ export class SettingsService extends FetchBaseApiClient {
     );
   }
 
-  async updateRouterConfiguration(request: UpdateRouterConfigurationDto): Promise<void> {
-    await this.put(ENDPOINTS.SETTINGS.ROUTER, request);
+  async updateRouterConfiguration(request: UpdateRouterConfigurationDto): Promise<RouterConfigurationDto> {
+    const response = await this.put<RouterConfigurationDto>(ENDPOINTS.SETTINGS.ROUTER, request);
     await this.invalidateCache();
+    return response;
+  }
+
+  // Router Rules Management
+  async createRouterRule(rule: Omit<RouterRule, 'id'>): Promise<RouterRule> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Add new rule with generated ID
+    const newRule: RouterRule = {
+      ...rule,
+      id: Math.max(0, ...(config.customRules?.map(r => r.id || 0) || [0])) + 1
+    };
+    
+    // Update configuration with new rule
+    const updatedRules = [...(config.customRules || []), newRule];
+    await this.updateRouterConfiguration({ customRules: updatedRules });
+    
+    return newRule;
+  }
+
+  async updateRouterRule(id: number, rule: Partial<RouterRule>): Promise<RouterRule> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Find and update the rule
+    const rules = config.customRules || [];
+    const ruleIndex = rules.findIndex(r => r.id === id);
+    
+    if (ruleIndex === -1) {
+      throw new ValidationError(`Router rule with ID ${id} not found`);
+    }
+    
+    const updatedRule = { ...rules[ruleIndex], ...rule, id };
+    rules[ruleIndex] = updatedRule;
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: rules });
+    
+    return updatedRule;
+  }
+
+  async deleteRouterRule(id: number): Promise<void> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Remove the rule
+    const rules = (config.customRules || []).filter(r => r.id !== id);
+    
+    if (rules.length === (config.customRules || []).length) {
+      throw new ValidationError(`Router rule with ID ${id} not found`);
+    }
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: rules });
+  }
+
+  async reorderRouterRules(ruleIds: number[]): Promise<RouterRule[]> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    const rules = config.customRules || [];
+    
+    // Create a map of rules by ID
+    const ruleMap = new Map(rules.map(r => [r.id, r]));
+    
+    // Reorder rules based on provided IDs
+    const reorderedRules: RouterRule[] = [];
+    for (let i = 0; i < ruleIds.length; i++) {
+      const rule = ruleMap.get(ruleIds[i]);
+      if (!rule) {
+        throw new ValidationError(`Router rule with ID ${ruleIds[i]} not found`);
+      }
+      reorderedRules.push({ ...rule, priority: ruleIds.length - i });
+    }
+    
+    // Add any rules not in the provided list at the end
+    const remainingRules = rules
+      .filter(r => !ruleIds.includes(r.id || 0))
+      .map((r, index) => ({ ...r, priority: -index - 1 }));
+    
+    const allRules = [...reorderedRules, ...remainingRules];
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: allRules });
+    
+    return allRules;
+  }
+
+  async testRouterRule(rule: RouterRule): Promise<{ success: boolean; message: string; details?: any }> {
+    // This would typically call a test endpoint, but for now we'll do basic validation
+    if (!rule.name || rule.name.trim() === '') {
+      return { success: false, message: 'Rule name is required' };
+    }
+    
+    if (!rule.condition || !rule.condition.type || !rule.condition.operator) {
+      return { success: false, message: 'Rule condition is invalid' };
+    }
+    
+    if (!rule.action || !rule.action.type) {
+      return { success: false, message: 'Rule action is invalid' };
+    }
+    
+    // In a real implementation, this would call a test endpoint
+    // For now, return success
+    return {
+      success: true,
+      message: 'Rule validation passed',
+      details: {
+        condition: rule.condition,
+        action: rule.action,
+        priority: rule.priority
+      }
+    };
   }
 
   // Convenience methods
