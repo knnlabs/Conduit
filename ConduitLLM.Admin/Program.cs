@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Providers.Extensions;
@@ -41,6 +42,12 @@ public partial class Program
 
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
+        
+        // Add HttpClient for RabbitMQ Management API
+        builder.Services.AddHttpClient<IRabbitMQManagementClient, RabbitMQManagementClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>

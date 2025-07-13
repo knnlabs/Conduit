@@ -117,6 +117,10 @@ public static class ServiceCollectionExtensions
             return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, publishEndpoint, logger);
         });
 
+        // Register Error Queue monitoring services
+        services.AddSingleton<IRabbitMQManagementClient, RabbitMQManagementClient>();
+        services.AddScoped<IErrorQueueService, ErrorQueueService>();
+
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();

@@ -146,6 +146,23 @@ export { FetchSecurityService } from './services/FetchSecurityService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
+export { FetchErrorQueueService } from './services/FetchErrorQueueService';
+export type {
+  ErrorQueueInfo,
+  ErrorQueueSummary,
+  ErrorQueueListResponse,
+  ErrorMessage,
+  ErrorMessageDetail,
+  ErrorDetails,
+  ErrorMessageListResponse,
+  ErrorRateTrend,
+  FailingMessageType,
+  QueueGrowthPattern,
+  ErrorQueueStatistics,
+  HealthStatusCounts,
+  HealthIssue,
+  ErrorQueueHealth
+} from './services/FetchErrorQueueService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
