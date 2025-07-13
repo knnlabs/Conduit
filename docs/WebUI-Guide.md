@@ -328,9 +328,12 @@ The WebUI can be configured with different authentication methods:
 - OAuth/OpenID Connect *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
 - LDAP/Active Directory *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
 - Single Sign-On integration *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
-- **Current:** Master key authentication for admin access
+- Password-based login using `CONDUIT_ADMIN_LOGIN_PASSWORD`
+- Clerk authentication (JWT-based, passwordless) — enable via `CONDUIT_AUTH_TYPE=clerk` and provide `CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY`
+- Backend key fallback (`CONDUIT_API_TO_API_BACKEND_AUTH_KEY`) when no admin password is set
+- Other enterprise SSO options (OAuth/OIDC, LDAP/AD, SAML) *(planned – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
 
-> Only master key authentication is currently available. Additional authentication methods are planned and tracked in [issue #17](https://github.com/knnlabs/Conduit/issues/17).
+> WebUI now supports two authentication modes: **password** (default) and **Clerk**. Select the mode with `CONDUIT_AUTH_TYPE` (see Environment-Variables.md). Additional enterprise SSO methods are still planned — follow [issue #17](https://github.com/knnlabs/Conduit/issues/17) for updates.
 
 ## Deployment Options
 

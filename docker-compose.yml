@@ -1,3 +1,23 @@
+# Docker Compose configuration for Conduit LLM Platform (development)
+# --------------------------------------------------------------
+# This stack provides all required infrastructure services:
+#  - PostgreSQL for persistent relational storage
+#  - Redis for caching and message queues (via BullMQ, etc.)
+#  - RabbitMQ for event streaming / background tasks
+#  - `api` : ASP.NET Core HTTP service (LLM gateway)
+#  - `admin`: ASP.NET Core HTTP service (Web Admin API)
+# Additional WebUI (Next.js) is run locally with `npm run dev` and talks to `admin`.
+#
+# ----------------------------
+# AUTHENTICATION MODES
+# ----------------------------
+# WebUI supports two mutually exclusive auth modes controlled by environment:
+#   CONDUIT_AUTH_TYPE=password   # (default) prompts for CONDUIT_ADMIN_LOGIN_PASSWORD
+#   CONDUIT_AUTH_TYPE=clerk      # use Clerk cloud auth
+# When using Clerk auth you must also provide:
+#   CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY (plus NEXT_PUBLIC_CONDUIT_AUTH_TYPE)
+# Those are usually exported in your shell before running `npm run dev` for WebUI,
+# not inside this compose file. They’re documented here for reference.
 services:
   postgres:
     image: postgres:16
@@ -16,6 +36,8 @@ services:
       timeout: 5s
       retries: 5
       
+  # --------------------------------------------------------------
+  # Redis – used for caching and lightweight pub/sub queues.
   redis:
     image: redis:alpine
     restart: always
@@ -29,6 +51,8 @@ services:
       timeout: 5s
       retries: 5
       
+  # --------------------------------------------------------------
+  # RabbitMQ – durable message broker for background jobs & events.
   rabbitmq:
     build: 
       context: ./docker/rabbitmq
@@ -49,6 +73,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # --------------------------------------------------------------
+  # Conduit LLM API – main gateway that interfaces with model providers
+  # and performs inference / media storage.
   api:
     build:
       context: .
@@ -93,6 +120,8 @@ services:
       retries: 3
       start_period: 60s
 
+  # --------------------------------------------------------------
+  # Admin API – management endpoints consumed by WebUI & automation.
   admin:
     build:
       context: .
@@ -108,7 +137,16 @@ services:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
       # API-to-API authentication key for backend services
-      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha  # Shared secret used by WebUI → Admin API
+      # ----------------------------
+      # Optional WebUI authentication mode overrides (choose ONE)
+      # --- Password auth (default) ---
+      # CONDUIT_AUTH_TYPE: password
+      # CONDUIT_ADMIN_LOGIN_PASSWORD: "change-me"
+      # --- Clerk auth ---
+      # CONDUIT_AUTH_TYPE: clerk
+      # CLERK_PUBLISHABLE_KEY: "pk_test_xxx"
+      # CLERK_SECRET_KEY: "sk_test_xxx"
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"

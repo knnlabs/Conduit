@@ -35,6 +35,7 @@
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "axios": "^1.10.0",
+    "@clerk/nextjs": "^4.30.0",
     "eslint": "^9.30.0",
     "next": "^15.3.5",
     "react": "^19.1.0",

@@ -19,6 +19,7 @@ import {
   IconChevronDown,
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { UserButton, useAuth as useClerkAuth } from '@clerk/nextjs';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -38,6 +39,8 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter();
   const { user: _user, logout } = useAuthStore();
+  const { isSignedIn } = useClerkAuth();
+  const authType = process.env.NEXT_PUBLIC_CONDUIT_AUTH_TYPE ?? 'password';
 
   const handleLogout = () => {
     logout();
@@ -81,6 +84,9 @@ export function Header({
           <IconBell size={18} />
         </ActionIcon>
 
+        {authType === 'clerk' ? (
+          <UserButton afterSignOutUrl="/sign-in" />
+        ) : (
         <Menu shadow="md" width={200} position="bottom-end">
           <Menu.Target>
             <UnstyledButton>
@@ -114,7 +120,7 @@ export function Header({
               Sign out
             </Menu.Item>
           </Menu.Dropdown>
-        </Menu>
+        </Menu>) }
       </Group>
     </Group>
   );

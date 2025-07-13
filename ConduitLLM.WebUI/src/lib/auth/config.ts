@@ -8,6 +8,7 @@ interface AuthConfig {
   sessionSecret: string;
   sessionDuration: number;
   apiToApiAuthKey: string;
+  authType: 'password' | 'clerk';
 }
 
 class AuthConfigService {
@@ -16,11 +17,16 @@ class AuthConfigService {
 
   private constructor() {
     // Initialize configuration from environment variables
+    const envAuthType = (process.env.CONDUIT_AUTH_TYPE || 'password').toLowerCase();
+    if (!['password', 'clerk'].includes(envAuthType)) {
+      throw new Error(`Invalid CONDUIT_AUTH_TYPE: ${envAuthType}. Expected 'password' or 'clerk'.`);
+    }
     this.config = {
       adminPassword: process.env.CONDUIT_ADMIN_LOGIN_PASSWORD || '',
       sessionSecret: process.env.CONDUIT_SESSION_SECRET || 'default-session-secret',
       sessionDuration: parseInt(process.env.CONDUIT_SESSION_DURATION || '86400000', 10), // 24 hours default
-      apiToApiAuthKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || ''
+      apiToApiAuthKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || '',
+      authType: envAuthType as 'password' | 'clerk',
     };
 
     // Validate required configuration
@@ -70,7 +76,23 @@ class AuthConfigService {
    * Check if auth is properly configured
    */
   isConfigured(): boolean {
-    return !!(this.config.adminPassword && this.config.apiToApiAuthKey);
+    if (this.config.authType === 'password') {
+      return !!this.config.adminPassword;
+    }
+    // clerk mode – assume Clerk env vars handled separately
+    return true;
+  }
+
+  getAuthType() {
+    return this.config.authType;
+  }
+
+  isClerk() {
+    return this.config.authType === 'clerk';
+  }
+
+  isPassword() {
+    return this.config.authType === 'password';
   }
 }
 

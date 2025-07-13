@@ -3,6 +3,7 @@ import { ColorSchemeScript } from '@mantine/core';
 import { MantineProvider } from '@/lib/providers/MantineProvider';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { AuthProvider } from '@/lib/providers/AuthProvider';
+import { MaybeClerkProvider } from '@/lib/providers/MaybeClerkProvider';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppWrapper } from '@/components/layout/AppWrapper';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -32,6 +33,7 @@ export default function RootLayout({
         <ColorSchemeScript defaultColorScheme="auto" />
       </head>
       <body>
+        <MaybeClerkProvider>
         <QueryProvider>
           <ThemeProvider>
             <MantineProvider>
@@ -49,6 +51,7 @@ export default function RootLayout({
             </MantineProvider>
           </ThemeProvider>
         </QueryProvider>
+              </MaybeClerkProvider>
       </body>
     </html>
   );

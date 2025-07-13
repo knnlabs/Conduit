@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { authMiddleware as clerkAuthMiddleware } from '@clerk/nextjs'
+import { authConfig } from '@/lib/auth/config'
 
 const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout', '/api/health']
 
@@ -17,6 +19,14 @@ const securityHeaders = {
 };
 
 export function middleware(request: NextRequest) {
+  // If Clerk auth is enabled, let Clerk middleware handle everything
+  if (authConfig.isClerk()) {
+    // Create Clerk middleware instance lazily to avoid executing at import time
+    const clerkMw = clerkAuthMiddleware({
+      publicRoutes: ['/sign-in', '/api/health'],
+    });
+    return clerkMw(request);
+  }
   const { pathname } = request.nextUrl
   
   // Helper function to add security headers to response
