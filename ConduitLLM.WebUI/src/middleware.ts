@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { authMiddleware as clerkAuthMiddleware } from '@clerk/nextjs'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { authConfig } from '@/lib/auth/config'
 
 const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout', '/api/health']
@@ -18,14 +18,20 @@ const securityHeaders = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
+// Define public routes for Clerk
+const isPublicRoute = createRouteMatcher(['/sign-in(*)', '/sign-up(*)', '/api/health']);
+
+// Create the clerk middleware function
+const clerkMw = clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
+  }
+});
+
 export function middleware(request: NextRequest) {
   // If Clerk auth is enabled, let Clerk middleware handle everything
   if (authConfig.isClerk()) {
-    // Create Clerk middleware instance lazily to avoid executing at import time
-    const clerkMw = clerkAuthMiddleware({
-      publicRoutes: ['/sign-in', '/api/health'],
-    });
-    return clerkMw(request);
+    return clerkMw(request, {} as any); // Pass empty context as second parameter
   }
   const { pathname } = request.nextUrl
   

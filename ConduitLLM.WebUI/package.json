@@ -14,6 +14,7 @@
     "pre-commit": "lint-staged"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.24.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
     "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
@@ -35,11 +36,11 @@
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "axios": "^1.10.0",
-    "@clerk/nextjs": "^4.30.0",
     "eslint": "^9.30.0",
     "next": "^15.3.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "recharts": "^3.1.0",
     "typescript": "^5.8.3",
     "zod": "^3.25.72",
     "zustand": "^5.0.6"

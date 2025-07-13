@@ -20,8 +20,8 @@ export const LazyBarChart = withSuspense(BarChartLazy, <ChartSkeleton />);
 const PieChartLazy = lazy(() => import('recharts').then(mod => ({ default: mod.PieChart })));
 export const LazyPieChart = withSuspense(PieChartLazy, <ChartSkeleton />);
 
-// Export other recharts components needed
-export { 
+// Direct re-exports for chart components
+export {
   Line,
   Area,
   Bar,

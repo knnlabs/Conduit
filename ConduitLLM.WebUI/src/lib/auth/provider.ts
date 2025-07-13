@@ -26,9 +26,9 @@ function unauthorizedJson() {
 /**
  * getSession – SSR safe helper that returns Session or null regardless of auth system.
  */
-export function getSession(request?: NextRequest): Session | null {
+export async function getSession(request?: NextRequest): Promise<Session | null> {
   if (authConfig.isClerk()) {
-    const { userId } = clerkAuth();
+    const { userId } = await clerkAuth();
     if (!userId) return null;
     return {
       userId,
@@ -39,7 +39,7 @@ export function getSession(request?: NextRequest): Session | null {
   // password mode
   const cookieValue = request
     ? request.cookies.get('conduit_session')?.value
-    : cookies().get('conduit_session')?.value;
+    : (await cookies()).get('conduit_session')?.value;
   if (!cookieValue) return null;
   try {
     const parsed = JSON.parse(cookieValue);
@@ -59,8 +59,8 @@ export function getSession(request?: NextRequest): Session | null {
 /**
  * requireAuth – API route helper that enforces authentication and returns NextResponse on failure.
  */
-export function requireAuth(request: NextRequest): { isValid: boolean; response?: NextResponse; session?: Session } {
-  const session = getSession(request);
+export async function requireAuth(request: NextRequest): Promise<{ isValid: boolean; response?: NextResponse; session?: Session }> {
+  const session = await getSession(request);
   if (!session) {
     return { isValid: false, response: unauthorizedJson() };
   }
