@@ -129,6 +129,8 @@ describe('FetchModelMappingsService', () => {
   describe('update', () => {
     it('should update an existing model mapping', async () => {
       const updateData = {
+        id: 1,
+        modelId: 'gpt-4',
         isEnabled: false,
         priority: 2,
       };

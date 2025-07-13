@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
+import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/model-mappings/[id] - Get a single model mapping
 export async function GET(
@@ -46,9 +47,8 @@ export async function PUT(
     console.log('[PUT /api/model-mappings] Existing mapping:', existingMapping);
     
     // Transform frontend data to match SDK UpdateModelProviderMappingDto
-    // Note: Backend seems to require modelId even though SDK type doesn't include it
-    // Only include fields that are defined to avoid sending nulls
-    const transformedBody: any = {
+    // Backend requires id and modelId fields even for updates
+    const transformedBody: UpdateModelProviderMappingDto = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
       modelId: existingMapping.modelId, // Backend requires this even for updates
     };
@@ -102,9 +102,8 @@ export async function PUT(
     
     console.log('[PUT /api/model-mappings] Transformed body:', JSON.stringify(transformedBody, null, 2));
     
+    // Update returns void (204 No Content), so we need to fetch the updated mapping
     await adminClient.modelMappings.update(parseInt(id, 10), transformedBody);
-    
-    // The update returns 204 No Content, so we need to fetch the updated mapping
     const updatedMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     
     console.log('[PUT /api/model-mappings] Update successful:', updatedMapping);
