@@ -16,7 +16,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
-import { useUpdateModelMapping } from '@/hooks/useModelMappingsApi';
+import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { UIModelMapping, UIProvider } from '@/lib/types/mappers';
 import type { UpdateModelProviderMappingDto } from '@/types/api-types';
@@ -29,6 +29,7 @@ interface EditModelMappingModalProps {
 }
 
 interface FormValues {
+  modelId: string;
   providerId: string;
   providerModelId: string;
   priority: number;
@@ -54,9 +55,11 @@ export function EditModelMappingModal({
 }: EditModelMappingModalProps) {
   const updateMapping = useUpdateModelMapping();
   const { providers } = useProviders();
+  const { mappings } = useModelMappings();
 
   const form = useForm<FormValues>({
     initialValues: {
+      modelId: '',
       providerId: '',
       providerModelId: '',
       priority: 100,
@@ -70,6 +73,22 @@ export function EditModelMappingModal({
       supportsStreaming: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
+    },
+    validate: {
+      modelId: (value) => {
+        if (!value?.trim()) return 'Model alias is required';
+        
+        // Check for duplicates, but exclude the current mapping being edited
+        const duplicate = mappings.find(m => 
+          m.modelId === value && m.id !== parseInt(mapping?.id || '0', 10)
+        );
+        
+        if (duplicate) {
+          return 'Model alias already exists';
+        }
+        
+        return null;
+      },
     },
   });
 
@@ -89,6 +108,7 @@ export function EditModelMappingModal({
       });
       
       const formData = {
+        modelId: mapping.sourceModel,
         providerId: mapping.targetProvider.toString(), // Convert numeric ID to string for form
         providerModelId: mapping.targetModel,
         priority: mapping.priority || 100,
@@ -115,6 +135,7 @@ export function EditModelMappingModal({
     console.log('[EditModal] Mapping:', mapping);
 
     const updateData: UpdateModelProviderMappingDto = {
+      modelId: values.modelId,
       providerId: values.providerId, // This is now the numeric ID as string
       providerModelId: values.providerModelId,
       priority: values.priority,
@@ -161,9 +182,10 @@ export function EditModelMappingModal({
         <Stack gap="md">
           <TextInput
             label="Model Alias"
-            value={mapping?.sourceModel || ''}
-            disabled
-            description="Model aliases cannot be renamed. To change the alias, delete this mapping and create a new one."
+            placeholder="e.g., gpt-4-turbo"
+            description="The alias used to reference this model in API calls"
+            required
+            {...form.getInputProps('modelId')}
           />
 
           <Select

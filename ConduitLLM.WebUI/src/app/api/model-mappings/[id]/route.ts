@@ -50,7 +50,7 @@ export async function PUT(
     // Backend requires id and modelId fields even for updates
     const transformedBody: UpdateModelProviderMappingDto = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
-      modelId: existingMapping.modelId, // Backend requires this even for updates
+      modelId: body.modelId || existingMapping.modelId, // Allow modelId to be updated if provided
     };
     
     if (body.providerId !== undefined) {

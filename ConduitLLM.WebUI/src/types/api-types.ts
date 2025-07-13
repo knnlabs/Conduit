@@ -122,6 +122,7 @@ export interface CreateModelProviderMappingDto {
 }
 
 export interface UpdateModelProviderMappingDto {
+  modelId?: string;
   providerId?: string;
   providerModelId?: string;
   priority?: number;
