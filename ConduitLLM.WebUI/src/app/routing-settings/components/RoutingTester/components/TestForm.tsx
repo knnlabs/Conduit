@@ -17,6 +17,7 @@ import {
   Badge,
   Accordion,
   Textarea,
+  Alert,
 } from '@mantine/core';
 import {
   IconFlask,
@@ -24,8 +25,11 @@ import {
   IconPlus,
   IconTrash,
   IconHistory,
+  IconInfoCircle,
+  IconHelp,
 } from '@tabler/icons-react';
 import { TestRequest, TestCase } from '../../../types/routing';
+import { getHelpText, getTooltip } from '../../../utils/helpContent';
 
 interface TestFormProps {
   request: TestRequest;
@@ -126,7 +130,14 @@ export function TestForm({
         {/* Header */}
         <Group justify="space-between" align="center">
           <div>
-            <Title order={5}>Test Request Parameters</Title>
+            <Group align="center" gap="xs">
+              <Title order={5}>Test Request Parameters</Title>
+              <Tooltip label="Configure test parameters to simulate routing requests and evaluate rule behavior">
+                <ActionIcon size="sm" variant="subtle" color="gray">
+                  <IconHelp size={14} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
             <Text size="sm" c="dimmed">
               Configure your test request to evaluate routing rules
             </Text>
@@ -138,53 +149,71 @@ export function TestForm({
           )}
         </Group>
 
+        {/* Help Alert */}
+        <Alert icon={<IconInfoCircle size="1rem" />} title="Testing Tips" color="blue" variant="light">
+          Use realistic test parameters that match your actual request patterns. 
+          The testing interface helps validate routing behavior before applying rules to production traffic.
+        </Alert>
+
         {/* Core Parameters */}
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Select
-              label="Model"
-              placeholder="Select a model"
-              data={modelOptions}
-              value={request.model}
-              onChange={(value) => onRequestChange({ ...request, model: value || '' })}
-              searchable
-              required
-              error={!request.model.trim() ? 'Model is required' : null}
-            />
+            <Tooltip label={getHelpText('testModel')} position="top-start">
+              <Select
+                label="Model"
+                placeholder="Select a model"
+                description="Choose the model to test routing rules against"
+                data={modelOptions}
+                value={request.model}
+                onChange={(value) => onRequestChange({ ...request, model: value || '' })}
+                searchable
+                required
+                error={!request.model.trim() ? 'Model is required' : null}
+              />
+            </Tooltip>
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Select
-              label="Region"
-              placeholder="Select a region"
-              data={regionOptions}
-              value={request.region || ''}
-              onChange={(value) => onRequestChange({ ...request, region: value || undefined })}
-              searchable
-              clearable
-            />
+            <Tooltip label={getHelpText('testRegion')} position="top-start">
+              <Select
+                label="Region"
+                placeholder="Select a region"
+                description="Choose user or provider region for geographic routing"
+                data={regionOptions}
+                value={request.region || ''}
+                onChange={(value) => onRequestChange({ ...request, region: value || undefined })}
+                searchable
+                clearable
+              />
+            </Tooltip>
           </Grid.Col>
         </Grid>
 
         <Grid>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Cost Threshold (USD)"
-              placeholder="e.g., 0.05"
-              value={request.costThreshold}
-              onChange={(value) => onRequestChange({ ...request, costThreshold: typeof value === 'number' ? value : undefined })}
-              min={0}
-              max={10}
-              step={0.01}
-              decimalScale={4}
-            />
+            <Tooltip label={getHelpText('testCostThreshold')} position="top-start">
+              <NumberInput
+                label="Cost Threshold (USD)"
+                placeholder="e.g., 0.05"
+                description="Maximum acceptable cost per token for testing"
+                value={request.costThreshold}
+                onChange={(value) => onRequestChange({ ...request, costThreshold: typeof value === 'number' ? value : undefined })}
+                min={0}
+                max={10}
+                step={0.01}
+                decimalScale={4}
+              />
+            </Tooltip>
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <TextInput
-              label="Virtual Key ID"
-              placeholder="Enter virtual key ID"
-              value={request.virtualKeyId || ''}
-              onChange={(e) => onRequestChange({ ...request, virtualKeyId: e.target.value || undefined })}
-            />
+            <Tooltip label="Virtual key ID for authentication and tracking" position="top-start">
+              <TextInput
+                label="Virtual Key ID"
+                placeholder="Enter virtual key ID"
+                description="Optional virtual key for testing authentication"
+                value={request.virtualKeyId || ''}
+                onChange={(e) => onRequestChange({ ...request, virtualKeyId: e.target.value || undefined })}
+              />
+            </Tooltip>
           </Grid.Col>
         </Grid>
 
@@ -197,25 +226,34 @@ export function TestForm({
                 <Badge size="sm" variant="light">
                   {Object.keys(request.customFields).length} fields
                 </Badge>
+                <Tooltip label={getHelpText('testMetadata')}>
+                  <ActionIcon size="sm" variant="subtle" color="gray">
+                    <IconHelp size={12} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Accordion.Control>
             <Accordion.Panel>
               <Stack gap="md">
+                <Text size="sm" c="dimmed">
+                  Add custom key-value pairs to simulate request metadata for testing metadata-based routing conditions.
+                </Text>
+                
                 {/* Add Custom Field */}
                 <Group>
                   <TextInput
-                    placeholder="Field name"
+                    placeholder="Field name (e.g., user_tier)"
                     value={customFieldKey}
                     onChange={(e) => setCustomFieldKey(e.target.value)}
                     style={{ flex: 1 }}
                   />
                   <TextInput
-                    placeholder="Field value"
+                    placeholder="Field value (e.g., premium)"
                     value={customFieldValue}
                     onChange={(e) => setCustomFieldValue(e.target.value)}
                     style={{ flex: 1 }}
                   />
-                  <Tooltip label="Add custom field">
+                  <Tooltip label={getTooltip('addRule')}>
                     <ActionIcon
                       variant="light"
                       onClick={handleAddCustomField}
@@ -254,10 +292,19 @@ export function TestForm({
                 <Badge size="sm" variant="light">
                   {Object.keys(request.headers || {}).length} headers
                 </Badge>
+                <Tooltip label={getHelpText('testHeaders')}>
+                  <ActionIcon size="sm" variant="subtle" color="gray">
+                    <IconHelp size={12} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Accordion.Control>
             <Accordion.Panel>
               <Stack gap="md">
+                <Text size="sm" c="dimmed">
+                  Simulate HTTP headers for testing header-based routing rules. Common examples: X-API-Version, Authorization, User-Agent.
+                </Text>
+                
                 {/* Add Header */}
                 <Group>
                   <TextInput
@@ -267,12 +314,12 @@ export function TestForm({
                     style={{ flex: 1 }}
                   />
                   <TextInput
-                    placeholder="Header value"
+                    placeholder="Header value (e.g., production)"
                     value={headerValue}
                     onChange={(e) => setHeaderValue(e.target.value)}
                     style={{ flex: 1 }}
                   />
-                  <Tooltip label="Add header">
+                  <Tooltip label="Add HTTP header for testing">
                     <ActionIcon
                       variant="light"
                       onClick={handleAddHeader}
@@ -306,47 +353,63 @@ export function TestForm({
 
           <Accordion.Item value="metadata">
             <Accordion.Control>
-              <Text fw={500}>Request Metadata (JSON)</Text>
+              <Group>
+                <Text fw={500}>Request Metadata (JSON)</Text>
+                <Tooltip label="Advanced metadata configuration in JSON format">
+                  <ActionIcon size="sm" variant="subtle" color="gray">
+                    <IconHelp size={12} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             </Accordion.Control>
             <Accordion.Panel>
-              <Textarea
-                placeholder="Enter JSON metadata (optional)"
-                value={request.metadata ? JSON.stringify(request.metadata, null, 2) : ''}
-                onChange={(e) => {
-                  try {
-                    const metadata = e.target.value ? JSON.parse(e.target.value) : {};
-                    onRequestChange({ ...request, metadata });
-                  } catch {
-                    // Invalid JSON - keep previous value
-                  }
-                }}
-                minRows={3}
-                maxRows={8}
-                autosize
-              />
+              <Stack gap="sm">
+                <Text size="sm" c="dimmed">
+                  Enter additional metadata in JSON format. This supplements the custom fields above with more complex data structures.
+                </Text>
+                <Textarea
+                  placeholder='{"user_id": "12345", "organization": "acme-corp", "features": ["premium", "analytics"]}'
+                  value={request.metadata ? JSON.stringify(request.metadata, null, 2) : ''}
+                  onChange={(e) => {
+                    try {
+                      const metadata = e.target.value ? JSON.parse(e.target.value) : {};
+                      onRequestChange({ ...request, metadata });
+                    } catch {
+                      // Invalid JSON - keep previous value
+                    }
+                  }}
+                  minRows={3}
+                  maxRows={8}
+                  autosize
+                />
+              </Stack>
             </Accordion.Panel>
           </Accordion.Item>
         </Accordion>
 
         {/* Action Buttons */}
         <Group justify="space-between">
-          <Button
-            variant="subtle"
-            leftSection={<IconRefresh size={16} />}
-            onClick={onClear}
-            disabled={isLoading}
-          >
-            Clear Form
-          </Button>
+          <Tooltip label={getTooltip('clearTest')}>
+            <Button
+              variant="subtle"
+              leftSection={<IconRefresh size={16} />}
+              onClick={onClear}
+              disabled={isLoading}
+            >
+              Clear Form
+            </Button>
+          </Tooltip>
           
-          <Button
-            leftSection={<IconFlask size={16} />}
-            onClick={onRunTest}
-            disabled={!isFormValid || isLoading}
-            loading={isLoading}
-          >
-            Run Test
-          </Button>
+          <Tooltip label={getTooltip('runTest')}>
+            <Button
+              leftSection={<IconFlask size={16} />}
+              onClick={onRunTest}
+              disabled={!isFormValid || isLoading}
+              loading={isLoading}
+            >
+              Run Test
+            </Button>
+          </Tooltip>
         </Group>
       </Stack>
     </Card>

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Container, Title, Text, Tabs, Stack, LoadingOverlay, Alert } from '@mantine/core';
+import { Container, Title, Text, Tabs, Stack, LoadingOverlay, Alert, Tooltip } from '@mantine/core';
 import { 
   IconRoute, 
   IconServer, 
   IconTestPipe,
   IconSettings,
-  IconInfoCircle
+  IconInfoCircle,
+  IconHelp
 } from '@tabler/icons-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RulesTab } from './components/RulesTab';
@@ -44,24 +45,30 @@ export default function RoutingSettingsPage() {
             
             <Tabs value={activeTab} onChange={setActiveTab}>
               <Tabs.List>
-                <Tabs.Tab 
-                  value="rules" 
-                  leftSection={<IconRoute size={16} />}
-                >
-                  Routing Rules
-                </Tabs.Tab>
-                <Tabs.Tab 
-                  value="providers" 
-                  leftSection={<IconServer size={16} />}
-                >
-                  Provider Priority
-                </Tabs.Tab>
-                <Tabs.Tab 
-                  value="testing" 
-                  leftSection={<IconTestPipe size={16} />}
-                >
-                  Testing & Validation
-                </Tabs.Tab>
+                <Tooltip label="Create and manage routing rules based on request conditions">
+                  <Tabs.Tab 
+                    value="rules" 
+                    leftSection={<IconRoute size={16} />}
+                  >
+                    Routing Rules
+                  </Tabs.Tab>
+                </Tooltip>
+                <Tooltip label="Configure provider priority order and fallback chains">
+                  <Tabs.Tab 
+                    value="providers" 
+                    leftSection={<IconServer size={16} />}
+                  >
+                    Provider Priority
+                  </Tabs.Tab>
+                </Tooltip>
+                <Tooltip label="Test routing rules and validate routing behavior with sample requests">
+                  <Tabs.Tab 
+                    value="testing" 
+                    leftSection={<IconTestPipe size={16} />}
+                  >
+                    Testing & Validation
+                  </Tabs.Tab>
+                </Tooltip>
               </Tabs.List>
 
               <Tabs.Panel value="rules" pt="md">
