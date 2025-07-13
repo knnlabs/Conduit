@@ -82,6 +82,18 @@ export interface CreateModelProviderMappingDto {
 }
 
 export interface UpdateModelProviderMappingDto {
+  /**
+   * The ID of the model mapping.
+   * Required by backend for validation - must match the ID in the route.
+   */
+  id?: number;
+  
+  /**
+   * The model ID/alias.
+   * Required by backend even for updates (not just creates).
+   */
+  modelId?: string;
+  
   providerId?: string;
   providerModelId?: string;
   isEnabled?: boolean;
@@ -98,6 +110,9 @@ export interface UpdateModelProviderMappingDto {
   supportsStreaming?: boolean;
   
   // Extended Metadata Fields
+  /**
+   * @deprecated Legacy field - backend should derive this from individual capability flags
+   */
   capabilities?: string;
   maxContextLength?: number;
   maxOutputTokens?: number;

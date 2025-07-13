@@ -97,8 +97,8 @@ export class FetchModelMappingsService {
     id: number,
     data: UpdateModelProviderMappingDto,
     config?: RequestConfig
-  ): Promise<ModelProviderMappingDto> {
-    return this.client['put']<ModelProviderMappingDto, UpdateModelProviderMappingDto>(
+  ): Promise<void> {
+    await this.client['put']<void, UpdateModelProviderMappingDto>(
       ENDPOINTS.MODEL_MAPPINGS.BY_ID(id),
       data,
       {
@@ -235,12 +235,11 @@ export class FetchModelMappingsService {
   async bulkUpdate(
     updates: { id: number; data: UpdateModelProviderMappingDto }[],
     config?: RequestConfig
-  ): Promise<ModelProviderMappingDto[]> {
+  ): Promise<void> {
     // This would need a specific endpoint - using individual updates for now
-    const results = await Promise.all(
+    await Promise.all(
       updates.map(({ id, data }) => this.update(id, data, config))
     );
-    return results;
   }
 
   /**

@@ -132,17 +132,9 @@ describe('FetchModelMappingsService', () => {
         isEnabled: false,
         priority: 2,
       };
-      const mockResponse = {
-        id: 1,
-        modelId: 'gpt-4',
-        providerId: 'openai',
-        providerModelId: 'gpt-4',
-        isEnabled: false,
-        priority: 2,
-      };
-      (mockClient.put as jest.Mock).mockResolvedValue(mockResponse);
+      (mockClient.put as jest.Mock).mockResolvedValue(undefined);
 
-      const result = await service.update(1, updateData);
+      await service.update(1, updateData);
 
       expect(mockClient.put).toHaveBeenCalledWith(
         ENDPOINTS.MODEL_MAPPINGS.BY_ID(1),
@@ -153,7 +145,6 @@ describe('FetchModelMappingsService', () => {
           headers: undefined,
         }
       );
-      expect(result).toEqual(mockResponse);
     });
   });
 

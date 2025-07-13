@@ -96,7 +96,7 @@ export class ModelMappingService extends FetchBaseApiClient {
       throw new ValidationError('Invalid model mapping update request', { validationError: error });
     }
 
-    await this.put(ENDPOINTS.MODEL_MAPPINGS.BY_ID(id), request);
+    await this.put<void>(ENDPOINTS.MODEL_MAPPINGS.BY_ID(id), request);
     await this.invalidateCache();
   }
 
