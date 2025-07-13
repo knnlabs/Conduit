@@ -25,6 +25,7 @@ namespace ConduitLLM.Core.Services
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
         private readonly ILogger<CacheManager> _logger;
+        private readonly ICacheStatisticsCollector? _statisticsCollector;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionConfig> _regionConfigs;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionStatistics> _statistics;
         private readonly SemaphoreSlim _statisticsLock = new(1, 1);
@@ -40,11 +41,13 @@ namespace ConduitLLM.Core.Services
             IMemoryCache memoryCache,
             IDistributedCache? distributedCache,
             ILogger<CacheManager> logger,
-            IOptions<CacheManagerOptions>? options = null)
+            IOptions<CacheManagerOptions>? options = null,
+            ICacheStatisticsCollector? statisticsCollector = null)
         {
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _distributedCache = distributedCache;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _statisticsCollector = statisticsCollector;
             _useDistributedCache = distributedCache != null;
 
             _regionConfigs = new ConcurrentDictionary<CacheRegion, CacheRegionConfig>();
@@ -96,6 +99,19 @@ namespace ConduitLLM.Core.Services
 
                 // Update statistics
                 await UpdateStatisticsAsync(region, found ? "Hit" : "Miss", stopwatch.Elapsed, found);
+                
+                // Record operation in statistics collector
+                if (_statisticsCollector != null)
+                {
+                    await _statisticsCollector.RecordOperationAsync(new CacheOperation
+                    {
+                        Region = region,
+                        OperationType = found ? CacheOperationType.Hit : CacheOperationType.Miss,
+                        Success = true,
+                        Duration = stopwatch.Elapsed,
+                        Key = key
+                    });
+                }
 
                 if (!found)
                 {
@@ -184,6 +200,20 @@ namespace ConduitLLM.Core.Services
 
                 _logger.LogDebug("Cached key {Key} in region {Region} with TTL {TTL}", key, region, expiry);
                 await UpdateStatisticsAsync(region, "Set", stopwatch.Elapsed, true);
+                
+                // Record operation in statistics collector
+                if (_statisticsCollector != null)
+                {
+                    await _statisticsCollector.RecordOperationAsync(new CacheOperation
+                    {
+                        Region = region,
+                        OperationType = CacheOperationType.Set,
+                        Success = true,
+                        Duration = stopwatch.Elapsed,
+                        Key = key,
+                        DataSizeBytes = value != null ? EstimateObjectSize(value) : 0
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -322,15 +352,42 @@ namespace ConduitLLM.Core.Services
             return value != null;
         }
 
-        public Task<CacheRegionStatistics> GetRegionStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
+        public async Task<CacheRegionStatistics> GetRegionStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
+            // If we have a statistics collector, prefer its data
+            if (_statisticsCollector != null)
+            {
+                try
+                {
+                    var collectorStats = await _statisticsCollector.GetStatisticsAsync(region, cancellationToken);
+                    return new CacheRegionStatistics
+                    {
+                        Region = region,
+                        HitCount = collectorStats.HitCount,
+                        MissCount = collectorStats.MissCount,
+                        SetCount = collectorStats.SetCount,
+                        EvictionCount = collectorStats.EvictionCount,
+                        EntryCount = collectorStats.EntryCount,
+                        TotalSizeBytes = collectorStats.MemoryUsageBytes,
+                        AverageGetTime = collectorStats.AverageGetTime,
+                        AverageSetTime = collectorStats.AverageSetTime,
+                        LastResetTime = collectorStats.StartTime
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get statistics from collector for region {Region}", region);
+                }
+            }
+
+            // Fallback to internal statistics
             if (!_statistics.TryGetValue(region, out var stats))
             {
                 stats = new CacheRegionStatistics { Region = region, LastResetTime = DateTime.UtcNow };
                 _statistics[region] = stats;
             }
 
-            return Task.FromResult(stats);
+            return stats;
         }
 
         public async Task<Dictionary<CacheRegion, CacheRegionStatistics>> GetAllStatisticsAsync(CancellationToken cancellationToken = default)
@@ -655,6 +712,24 @@ namespace ConduitLLM.Core.Services
                 EvictionPolicy = CacheEvictionPolicy.LRU,
                 EnableDetailedStats = true
             };
+        }
+
+        private long EstimateObjectSize(object obj)
+        {
+            // This is a simplified estimation
+            // In production, consider using a more accurate serialization-based approach
+            try
+            {
+                if (obj == null) return 0;
+                
+                var json = System.Text.Json.JsonSerializer.Serialize(obj);
+                return System.Text.Encoding.UTF8.GetByteCount(json);
+            }
+            catch
+            {
+                // Fallback to rough estimation
+                return 1024; // 1KB default
+            }
         }
 
         public void Dispose()

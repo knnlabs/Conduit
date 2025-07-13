@@ -29,6 +29,10 @@ namespace ConduitLLM.Core.Extensions
 
             // Configure options from configuration
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
+            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
+
+            // Register statistics collector
+            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
 
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
@@ -53,6 +57,9 @@ namespace ConduitLLM.Core.Extensions
 
             // Configure options
             services.Configure(configureOptions);
+
+            // Register statistics collector with default options
+            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
 
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
@@ -91,6 +98,12 @@ namespace ConduitLLM.Core.Extensions
             {
                 services.Configure(configureOptions);
             }
+
+            // Register statistics store for Redis
+            services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+
+            // Register statistics collector
+            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
 
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
@@ -140,9 +153,25 @@ namespace ConduitLLM.Core.Extensions
 
             // Configure options from configuration
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
+            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
 
             // Add cache registry
             services.AddCacheRegistry(autoDiscover);
+
+            // Register statistics collector
+            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
+
+            // Check if we have Redis configuration for statistics store
+            var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
+            if (!string.IsNullOrEmpty(redisConnection))
+            {
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnection;
+                    options.InstanceName = "conduit:cache:";
+                });
+                services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+            }
 
             // Register cache manager with registry integration
             services.AddSingleton<ICacheManager>(provider =>
@@ -152,8 +181,9 @@ namespace ConduitLLM.Core.Extensions
                 var logger = provider.GetRequiredService<ILogger<CacheManager>>();
                 var options = provider.GetService<Microsoft.Extensions.Options.IOptions<CacheManagerOptions>>();
                 var registry = provider.GetService<ICacheRegistry>();
+                var statisticsCollector = provider.GetService<ICacheStatisticsCollector>();
 
-                var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options);
+                var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options, statisticsCollector);
 
                 // Sync configurations from registry if available
                 if (registry != null)
