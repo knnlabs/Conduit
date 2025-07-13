@@ -201,6 +201,7 @@ export const ENDPOINTS = {
     HEALTH: '/api/SystemInfo/health',
     SERVICES: '/api/health/services',
     METRICS: '/api/metrics',
+    HEALTH_EVENTS: '/api/health/events',
     BACKUP: '/api/DatabaseBackup',
     RESTORE: '/api/DatabaseBackup/restore',
     NOTIFICATIONS: '/api/Notifications',

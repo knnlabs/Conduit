@@ -290,3 +290,36 @@ export interface ServiceStatusDto {
     hitRate: number;
   };
 }
+
+// Issue #428 - Health Events SDK Methods
+export interface HealthEventDto {
+  id: string;
+  timestamp: string;
+  type: 'provider_down' | 'provider_up' | 'system_issue' | 'system_recovered';
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  source?: string;
+  metadata?: {
+    providerId?: string;
+    componentName?: string;
+    errorDetails?: string;
+    duration?: number;
+  };
+}
+
+export interface HealthEventsResponseDto {
+  events: HealthEventDto[];
+}
+
+export interface HealthEventSubscriptionOptions {
+  severityFilter?: ('info' | 'warning' | 'error')[];
+  typeFilter?: ('provider_down' | 'provider_up' | 'system_issue' | 'system_recovered')[];
+  sourceFilter?: string[];
+}
+
+export interface HealthEventSubscription {
+  unsubscribe(): void;
+  isConnected(): boolean;
+  onEvent(callback: (event: HealthEventDto) => void): void;
+  onConnectionStateChanged(callback: (connected: boolean) => void): void;
+}

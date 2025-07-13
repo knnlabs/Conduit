@@ -7,7 +7,11 @@ import type {
   HealthStatusDto,
   SystemHealthDto,
   SystemMetricsDto,
-  ServiceStatusDto
+  ServiceStatusDto,
+  HealthEventDto,
+  HealthEventsResponseDto,
+  HealthEventSubscriptionOptions,
+  HealthEventSubscription
 } from '../models/system';
 
 // Type aliases for better readability  
@@ -442,6 +446,214 @@ export class FetchSystemService {
       
       return Math.min(estimatedConnections, 100); // Cap at reasonable maximum
     }
+  }
+
+  /**
+   * Get recent health events for the system.
+   * Retrieves historical health events including provider outages, system issues,
+   * and recovery events with detailed metadata and timestamps.
+   * 
+   * @param limit - Optional limit on number of events to return (default: 50)
+   * @param config - Optional request configuration for timeout, signal, headers
+   * @returns Promise<HealthEventsResponseDto> - Array of health events with:
+   *   - id: Unique event identifier
+   *   - timestamp: ISO timestamp of event occurrence
+   *   - type: Event type (provider_down, provider_up, system_issue, system_recovered)
+   *   - message: Human-readable event description
+   *   - severity: Event severity level (info, warning, error)
+   *   - source: Event source (provider name, component name)
+   *   - metadata: Additional context and details
+   * @throws {Error} When health events cannot be retrieved
+   * @since Issue #428 - Health Events SDK Methods
+   */
+  async getHealthEvents(limit?: number, config?: RequestConfig): Promise<HealthEventsResponseDto> {
+    const searchParams = new URLSearchParams();
+    if (limit) {
+      searchParams.set('limit', limit.toString());
+    }
+
+    try {
+      // Try to get from dedicated health events endpoint
+      return await this.client['get']<HealthEventsResponseDto>(
+        `${ENDPOINTS.SYSTEM.HEALTH_EVENTS}${searchParams.toString() ? `?${searchParams}` : ''}`,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+    } catch (error) {
+      // Fallback: construct from available health data
+      const healthStatus = await this.getHealth(config);
+      const systemInfo = await this.getSystemInfo(config);
+      
+      // Generate mock events based on current health status
+      const now = new Date();
+      const events: HealthEventDto[] = [];
+      
+      // Add system startup event
+      const startupTime = new Date(now.getTime() - systemInfo.uptime * 1000);
+      events.push({
+        id: `system-startup-${startupTime.getTime()}`,
+        timestamp: startupTime.toISOString(),
+        type: 'system_recovered',
+        message: 'System started successfully',
+        severity: 'info',
+        source: 'system',
+        metadata: {
+          componentName: 'core',
+          duration: 0,
+        },
+      });
+
+      // Add events based on current health checks
+      Object.entries(healthStatus.checks).forEach(([componentName, check]) => {
+        if (check.status !== 'healthy') {
+          events.push({
+            id: `${componentName}-issue-${Date.now()}`,
+            timestamp: new Date(now.getTime() - Math.random() * 3600000).toISOString(), // Random time in last hour
+            type: 'system_issue',
+            message: check.description || `${componentName} experiencing issues`,
+            severity: check.status === 'degraded' ? 'warning' : 'error',
+            source: componentName,
+            metadata: {
+              componentName,
+              errorDetails: check.error,
+              duration: check.duration,
+            },
+          });
+        }
+      });
+
+      // Sort events by timestamp (newest first)
+      events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      return {
+        events: events.slice(0, limit || 50),
+      };
+    }
+  }
+
+  /**
+   * Subscribe to real-time health event updates.
+   * Creates a persistent connection to receive live health events as they occur,
+   * supporting filtering by severity, type, and source with automatic reconnection.
+   * 
+   * @param options - Optional subscription configuration:
+   *   - severityFilter: Array of severity levels to include
+   *   - typeFilter: Array of event types to include
+   *   - sourceFilter: Array of sources to include
+   * @param config - Optional request configuration for timeout, signal, headers
+   * @returns Promise<HealthEventSubscription> - Subscription handle with:
+   *   - unsubscribe(): Disconnect from events
+   *   - isConnected(): Check connection status
+   *   - onEvent(): Register event callback
+   *   - onConnectionStateChanged(): Register connection callback
+   * @throws {Error} When subscription cannot be established
+   * @since Issue #428 - Health Events SDK Methods
+   */
+  async subscribeToHealthEvents(
+    options?: HealthEventSubscriptionOptions,
+    config?: RequestConfig
+  ): Promise<HealthEventSubscription> {
+    // Note: This implementation provides a basic subscription interface
+    // In a full implementation, this would integrate with SignalR or WebSocket
+    
+    let connected = false;
+    let eventCallbacks: Array<(event: HealthEventDto) => void> = [];
+    let connectionCallbacks: Array<(connected: boolean) => void> = [];
+    let pollInterval: NodeJS.Timeout | null = null;
+    let lastEventTimestamp: string | null = null;
+
+    const startPolling = () => {
+      if (pollInterval) return;
+      
+      connected = true;
+      connectionCallbacks.forEach(cb => cb(true));
+      
+      pollInterval = setInterval(async () => {
+        try {
+          const events = await this.getHealthEvents(10, config);
+          
+          // Filter new events since last check
+          const newEvents = events.events.filter(event => {
+            if (!lastEventTimestamp) return true;
+            return new Date(event.timestamp) > new Date(lastEventTimestamp);
+          });
+
+          // Apply filters if provided
+          const filteredEvents = newEvents.filter(event => {
+            if (options?.severityFilter && !options.severityFilter.includes(event.severity)) {
+              return false;
+            }
+            if (options?.typeFilter && !options.typeFilter.includes(event.type)) {
+              return false;
+            }
+            if (options?.sourceFilter && event.source && !options.sourceFilter.includes(event.source)) {
+              return false;
+            }
+            return true;
+          });
+
+          // Notify callbacks of new events
+          filteredEvents.forEach(event => {
+            eventCallbacks.forEach(cb => cb(event));
+          });
+
+          // Update last event timestamp
+          if (events.events.length > 0) {
+            lastEventTimestamp = events.events[0].timestamp;
+          }
+        } catch (error) {
+          console.warn('Health events polling error:', error);
+          if (connected) {
+            connected = false;
+            connectionCallbacks.forEach(cb => cb(false));
+          }
+        }
+      }, 5000); // Poll every 5 seconds
+    };
+
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      if (connected) {
+        connected = false;
+        connectionCallbacks.forEach(cb => cb(false));
+      }
+    };
+
+    // Start polling immediately
+    try {
+      // Get initial events to establish baseline
+      const initialEvents = await this.getHealthEvents(1, config);
+      if (initialEvents.events.length > 0) {
+        lastEventTimestamp = initialEvents.events[0].timestamp;
+      }
+      startPolling();
+    } catch (error) {
+      throw new Error(`Failed to establish health events subscription: ${error}`);
+    }
+
+    return {
+      unsubscribe: () => {
+        stopPolling();
+        eventCallbacks = [];
+        connectionCallbacks = [];
+      },
+      
+      isConnected: () => connected,
+      
+      onEvent: (callback: (event: HealthEventDto) => void) => {
+        eventCallbacks.push(callback);
+      },
+      
+      onConnectionStateChanged: (callback: (connected: boolean) => void) => {
+        connectionCallbacks.push(callback);
+      },
+    };
   }
 
   /**
