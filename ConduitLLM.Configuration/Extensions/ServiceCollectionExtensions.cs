@@ -59,6 +59,9 @@ namespace ConduitLLM.Configuration.Extensions
             // Register media record repository
             services.AddScoped<IMediaRecordRepository, MediaRecordRepository>();
 
+            // Register cache configuration service
+            services.AddScoped<ICacheConfigurationService, CacheConfigurationService>();
+
             return services;
         }
 

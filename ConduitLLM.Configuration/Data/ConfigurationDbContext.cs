@@ -145,6 +145,16 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<BatchOperationHistory> BatchOperationHistory { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for cache configurations
+        /// </summary>
+        public virtual DbSet<CacheConfiguration> CacheConfigurations { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for cache configuration audit logs
+        /// </summary>
+        public virtual DbSet<CacheConfigurationAudit> CacheConfigurationAudits { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -392,6 +402,26 @@ namespace ConduitLLM.Configuration
                       .WithMany()
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure CacheConfiguration entity
+            modelBuilder.Entity<CacheConfiguration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Region).IsUnique().HasFilter("IsActive = 1");
+                entity.HasIndex(e => new { e.Region, e.IsActive });
+                entity.HasIndex(e => e.UpdatedAt);
+                entity.Property(e => e.Version).IsConcurrencyToken();
+            });
+
+            // Configure CacheConfigurationAudit entity
+            modelBuilder.Entity<CacheConfigurationAudit>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Region);
+                entity.HasIndex(e => e.ChangedAt);
+                entity.HasIndex(e => new { e.Region, e.ChangedAt });
+                entity.HasIndex(e => e.ChangedBy);
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
