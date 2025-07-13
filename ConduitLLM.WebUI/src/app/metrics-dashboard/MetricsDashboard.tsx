@@ -18,6 +18,7 @@ import {
   Tabs,
   Switch,
   LoadingOverlay,
+  Alert,
 } from '@mantine/core';
 import {
   IconActivity,
@@ -55,7 +56,7 @@ import {
   LabelList,
 } from '@/components/charts/LazyCharts';
 // import { useHealthCheck, useSystemHealth } from '@/hooks/api/useAdminApi';
-import { mockHealthData } from '@/mocks/healthData';
+// TODO: Import real health data hooks when SDK provides comprehensive metrics endpoints
 
 interface MetricCardProps {
   title: string;
@@ -160,9 +161,28 @@ export default function MetricsDashboard() {
     }
   };
 
-  // Use mock data if API call fails or is loading
-  const displayData = healthData || mockHealthData;
-  const systemData = systemHealthData || mockHealthData.systemHealth;
+  // TODO: Replace with real data from SDK when available
+  // SDK methods needed:
+  // - adminClient.metrics.getSystemMetrics() - for system-wide metrics
+  // - adminClient.metrics.getPerformanceMetrics() - for performance data
+  // - adminClient.metrics.getProviderMetrics() - for provider-specific metrics
+  const displayData = healthData || {
+    status: 'unknown',
+    timestamp: new Date().toISOString(),
+    services: {
+      coreApi: { status: 'unknown', latency: 0 },
+      adminApi: { status: 'unknown', latency: 0 },
+      database: { status: 'unknown', latency: 0 },
+      cache: { status: 'unknown', latency: 0 },
+    },
+    _warning: 'Metrics data is not available. SDK metrics methods are not yet implemented.',
+  };
+  const systemData = systemHealthData || {
+    cpuUsage: 0,
+    memoryUsage: 0,
+    diskUsage: 0,
+    uptime: 0,
+  };
 
   // Calculate metrics
   const totalRequests = 125000;
@@ -205,6 +225,17 @@ export default function MetricsDashboard() {
 
   return (
     <Stack>
+      <Alert
+        icon={<IconAlertCircle size="1rem" />}
+        title="Limited SDK Functionality"
+        color="yellow"
+        variant="light"
+        mb="md"
+      >
+        System metrics data is currently unavailable. The SDK methods for comprehensive metrics collection
+        (system metrics, performance data, and provider metrics) are not yet implemented.
+      </Alert>
+
       <Card shadow="sm" p="md" radius="md">
         <Group justify="space-between" align="center">
           <div>

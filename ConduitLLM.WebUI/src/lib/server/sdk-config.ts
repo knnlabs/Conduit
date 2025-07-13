@@ -48,6 +48,7 @@ export const SDK_CONFIG = {
 // Singleton instances
 let adminClient: ConduitAdminClient | null = null;
 let coreClient: ConduitCoreClient | null = null;
+let webuiVirtualKey: string | null = null;
 
 export function getServerAdminClient(): ConduitAdminClient {
   if (!adminClient) {
@@ -64,13 +65,26 @@ export function getServerAdminClient(): ConduitAdminClient {
   return adminClient;
 }
 
-export function getServerCoreClient(): ConduitCoreClient {
-  if (!coreClient) {
+export async function getServerCoreClient(): Promise<ConduitCoreClient> {
+  if (!coreClient || !webuiVirtualKey) {
     // Validate environment at runtime
     validateEnvironment();
     
+    // Get the WebUI's virtual key from the Admin API
+    if (!webuiVirtualKey) {
+      try {
+        const adminApi = getServerAdminClient();
+        webuiVirtualKey = await adminApi.system.getWebUIVirtualKey();
+        console.log('[SDK] WebUI virtual key fetched successfully');
+      } catch (error) {
+        console.error('[SDK] Failed to fetch WebUI virtual key, falling back to master key:', error);
+        // Fallback to master key if we can't get the virtual key
+        webuiVirtualKey = SDK_CONFIG.masterKey;
+      }
+    }
+    
     coreClient = new ConduitCoreClient({
-      apiKey: SDK_CONFIG.masterKey,
+      apiKey: webuiVirtualKey,
       baseURL: SDK_CONFIG.coreBaseURL,
       signalR: SDK_CONFIG.signalR,
     });
@@ -85,7 +99,7 @@ export function getServerCoreClient(): ConduitCoreClient {
 export async function initializeSDKClients(): Promise<void> {
   try {
     getServerAdminClient();
-    getServerCoreClient();
+    await getServerCoreClient();
     console.log('[SDK] Clients initialized successfully');
   } catch (error) {
     console.error('[SDK] Failed to initialize clients:', error);
@@ -100,5 +114,6 @@ export async function initializeSDKClients(): Promise<void> {
 export async function cleanupSDKClients(): Promise<void> {
   adminClient = null;
   coreClient = null;
+  webuiVirtualKey = null;
   console.log('[SDK] Clients cleaned up successfully');
 }

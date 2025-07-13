@@ -12,7 +12,12 @@ export type {
   ChatCompletionChoice,
   ChatCompletionChunk,
   ChatCompletionChunkChoice,
+  MessageContent,
+  TextContent,
+  ImageContent,
 } from './models/chat';
+
+export { ContentHelpers } from './models/chat';
 
 export type {
   Model,

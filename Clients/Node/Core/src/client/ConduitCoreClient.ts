@@ -1,4 +1,4 @@
-import { BaseClient } from './BaseClient';
+import { FetchBasedClient } from './FetchBasedClient';
 import type { ClientConfig } from './types';
 import { ChatService } from '../services/ChatService';
 import { ModelsService } from '../services/ModelsService';
@@ -15,11 +15,12 @@ import { SignalRService } from '../services/SignalRService';
 import { EmbeddingsService } from '../services/EmbeddingsService';
 import { NotificationsService } from '../services/NotificationsService';
 import { ConnectionService } from '../services/ConnectionService';
+import { ConversationService } from '../services/ConversationService';
+import { MessageService } from '../services/MessageService';
+import { UsageService } from '../services/UsageService';
 
-export class ConduitCoreClient extends BaseClient {
-  public readonly chat: {
-    completions: ChatService;
-  };
+export class ConduitCoreClient extends FetchBasedClient {
+  public readonly chat: ChatService;
   public readonly audio: AudioService;
   public readonly images: ImagesService;
   public readonly videos: VideosService;
@@ -34,13 +35,14 @@ export class ConduitCoreClient extends BaseClient {
   public readonly embeddings: EmbeddingsService;
   public readonly notifications: NotificationsService;
   public readonly connection: ConnectionService;
+  public readonly conversations: ConversationService;
+  public readonly messages: MessageService;
+  public readonly usage: UsageService;
 
   constructor(config: ClientConfig) {
     super(config);
 
-    this.chat = {
-      completions: new ChatService(this),
-    };
+    this.chat = new ChatService(this);
 
     this.audio = new AudioService(this);
     this.images = new ImagesService(this);
@@ -66,6 +68,11 @@ export class ConduitCoreClient extends BaseClient {
     // Initialize connection service
     this.connection = new ConnectionService(this);
     this.connection.initializeSignalR(this.signalr);
+    
+    // Initialize conversation management services
+    this.conversations = new ConversationService(this);
+    this.messages = new MessageService(this);
+    this.usage = new UsageService(this);
     
     // Auto-connect SignalR if enabled
     if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {

@@ -15,7 +15,7 @@ export async function GET(
 
   try {
     const { taskId } = await params;
-    const coreClient = getServerCoreClient();
+    const coreClient = await getServerCoreClient();
     
     // Get task status from Core SDK
     const status = await coreClient.videos.getTaskStatus(taskId);
@@ -38,7 +38,7 @@ export async function DELETE(
 
   try {
     const { taskId } = await params;
-    const coreClient = getServerCoreClient();
+    const coreClient = await getServerCoreClient();
     
     // Cancel task via Core SDK
     await coreClient.videos.cancelTask(taskId);

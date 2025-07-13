@@ -30,15 +30,6 @@ export default function RoutingSettingsPage() {
             </Text>
           </div>
 
-          <Alert 
-            icon={<IconInfoCircle size="1rem" />} 
-            title="Development Preview" 
-            color="blue"
-            variant="light"
-          >
-            This interface is currently using mock data for demonstration purposes. 
-            The backend API endpoints for routing configuration are not yet implemented.
-          </Alert>
 
           <div style={{ position: 'relative', minHeight: 600 }}>
             <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />

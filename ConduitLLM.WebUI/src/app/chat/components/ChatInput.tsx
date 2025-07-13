@@ -1,9 +1,10 @@
+'use client';
+
 import { 
   Textarea, 
   Button, 
   Group, 
   ActionIcon,
-  FileButton,
   Badge,
   Tooltip,
   Stack,
@@ -11,23 +12,23 @@ import {
   Paper,
   Modal,
   JsonInput,
-  TextInput,
-  Collapse
+  Collapse,
+  Divider
 } from '@mantine/core';
 import { 
   IconSend, 
-  IconPaperclip, 
-  IconX, 
   IconPlayerStop,
   IconTool,
-  IconPhoto
+  IconMicrophone,
+  IconX
 } from '@tabler/icons-react';
 import { useState, useRef, KeyboardEvent } from 'react';
-import { ModelWithCapabilities, FunctionDefinition } from '../types';
+import { ModelWithCapabilities, FunctionDefinition, ImageAttachment } from '../types';
 import { useDisclosure } from '@mantine/hooks';
+import { ImageUpload } from './ImageUpload';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, attachments?: File[]) => void;
+  onSendMessage: (message: string, images?: ImageAttachment[]) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
   disabled?: boolean;
@@ -42,7 +43,7 @@ export function ChatInput({
   model
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const [images, setImages] = useState<ImageAttachment[]>([]);
   const [functions, setFunctions] = useState<FunctionDefinition[]>([]);
   const [functionsEnabled, setFunctionsEnabled] = useState(false);
   const [functionModalOpened, { open: openFunctionModal, close: closeFunctionModal }] = useDisclosure(false);
@@ -50,10 +51,10 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
-    if (message.trim() || attachments.length > 0) {
-      onSendMessage(message.trim(), attachments);
+    if (message.trim() || images.length > 0) {
+      onSendMessage(message.trim(), images);
       setMessage('');
-      setAttachments([]);
+      setImages([]);
     }
   };
 
@@ -62,16 +63,6 @@ export function ChatInput({
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleFileSelect = (files: File[]) => {
-    if (files) {
-      setAttachments(prev => [...prev, ...files]);
-    }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const addFunction = () => {
@@ -133,27 +124,15 @@ export function ChatInput({
         </Collapse>
       )}
       
-      {attachments.length > 0 && (
-        <Group gap="xs">
-          {attachments.map((file, index) => (
-            <Badge
-              key={index}
-              variant="light"
-              leftSection={<IconPhoto size={14} />}
-              rightSection={
-                <ActionIcon 
-                  size="xs" 
-                  variant="subtle" 
-                  onClick={() => removeAttachment(index)}
-                >
-                  <IconX size={12} />
-                </ActionIcon>
-              }
-            >
-              {file.name}
-            </Badge>
-          ))}
-        </Group>
+      {supportsVision && images.length > 0 && (
+        <>
+          <ImageUpload
+            images={images}
+            onImagesChange={setImages}
+            disabled={disabled || isStreaming}
+          />
+          <Divider />
+        </>
       )}
       
       <Group gap="xs" align="flex-end">
@@ -183,21 +162,12 @@ export function ChatInput({
             </Tooltip>
           )}
           
-          {supportsVision && (
-            <FileButton
-              onChange={handleFileSelect}
-              accept="image/*"
-              multiple
-            >
-              {(props) => (
-                <Tooltip label="Attach images">
-                  <ActionIcon {...props} size="lg" variant="default">
-                    <IconPaperclip size={20} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-            </FileButton>
-          )}
+          {/* Audio input stub - TODO: Implement audio recording */}
+          <Tooltip label="Audio input - Coming soon">
+            <ActionIcon size="lg" variant="default" disabled>
+              <IconMicrophone size={20} />
+            </ActionIcon>
+          </Tooltip>
           
           {isStreaming ? (
             <Button
@@ -212,7 +182,7 @@ export function ChatInput({
             <Button
               size="md"
               onClick={handleSend}
-              disabled={disabled || (!message.trim() && attachments.length === 0)}
+              disabled={disabled || (!message.trim() && images.length === 0)}
               leftSection={<IconSend size={20} />}
             >
               Send
@@ -220,6 +190,14 @@ export function ChatInput({
           )}
         </Group>
       </Group>
+      
+      {supportsVision && images.length === 0 && (
+        <ImageUpload
+          images={images}
+          onImagesChange={setImages}
+          disabled={disabled || isStreaming}
+        />
+      )}
       
       <Modal
         opened={functionModalOpened}

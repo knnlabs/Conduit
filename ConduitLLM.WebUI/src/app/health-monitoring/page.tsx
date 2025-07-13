@@ -190,6 +190,16 @@ export default function HealthMonitoringPage() {
 
   return (
     <Stack gap="xl">
+      <Alert
+        icon={<IconAlertCircle size="1rem" />}
+        title="Limited SDK Functionality"
+        color="yellow"
+        variant="light"
+      >
+        System health metrics and health events are currently using simulated data. The SDK methods for real-time system monitoring are not yet available.
+        Provider health data may be partially available depending on your SDK configuration.
+      </Alert>
+
       <Group justify="space-between">
         <div>
           <Title order={1}>Health Monitoring</Title>

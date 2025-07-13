@@ -95,19 +95,19 @@ export function ChatSettings() {
             }))}
             onChange={handlePresetSelect}
             clearable
-            leftSection={
-              CHAT_PRESETS.find(p => 
+            leftSection={(() => {
+              const matchingPreset = CHAT_PRESETS.find(p => 
                 p.parameters.temperature === parameters.temperature &&
                 p.parameters.topP === parameters.topP &&
                 p.parameters.frequencyPenalty === parameters.frequencyPenalty &&
                 p.parameters.presencePenalty === parameters.presencePenalty
-              ) ? getPresetIcon(CHAT_PRESETS.find(p => 
-                p.parameters.temperature === parameters.temperature &&
-                p.parameters.topP === parameters.topP &&
-                p.parameters.frequencyPenalty === parameters.frequencyPenalty &&
-                p.parameters.presencePenalty === parameters.presencePenalty
-              )!.icon)({ size: 16 }) : undefined
-            }
+              );
+              if (matchingPreset) {
+                const Icon = getPresetIcon(matchingPreset.icon);
+                return <Icon size={16} />;
+              }
+              return undefined;
+            })()}
           />
           
           <Divider />

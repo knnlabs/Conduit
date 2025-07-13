@@ -32,6 +32,15 @@ export interface IpRule {
   matchCount?: number;
 }
 
+export interface IpStats {
+  totalRules: number;
+  allowRules: number;
+  blockRules: number;
+  activeRules: number;
+  blockedRequests24h: number;
+  lastRuleUpdate: string | null;
+}
+
 export function useSecurityApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,6 +253,31 @@ export function useSecurityApi() {
     }
   }, []);
 
+  const getIpStats = useCallback(async (): Promise<IpStats> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/admin/security/ip-rules/stats', {
+        method: 'GET',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch IP stats');
+      }
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch IP stats';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     getSecurityEvents,
     getThreats,
@@ -251,6 +285,7 @@ export function useSecurityApi() {
     createIpRule,
     updateIpRule,
     deleteIpRule,
+    getIpStats,
     isLoading,
     error,
   };

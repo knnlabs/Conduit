@@ -19,36 +19,14 @@ export function useRoutingRules() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      // Simulating API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await fetch('/api/config/routing/rules');
       
-      const mockRules: RoutingRule[] = [
-        {
-          id: '1',
-          name: 'High Priority Models',
-          description: 'Route GPT-4 and Claude requests to premium providers',
-          priority: 1,
-          isEnabled: true,
-          conditions: [
-            {
-              type: 'model',
-              operator: 'contains',
-              value: 'gpt-4'
-            }
-          ],
-          actions: [
-            {
-              type: 'route',
-              target: 'openai-premium'
-            }
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-
-      return mockRules;
+      if (!response.ok) {
+        throw new Error('Failed to fetch routing rules');
+      }
+      
+      const rules = await response.json();
+      return rules;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch routing rules';
       setError(message);
@@ -63,24 +41,24 @@ export function useRoutingRules() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const newRule: RoutingRule = {
-        id: Date.now().toString(),
-        name: rule.name,
-        description: rule.description,
-        priority: rule.priority || 1,
-        isEnabled: rule.enabled || false,
-        conditions: rule.conditions || [],
-        actions: rule.actions || [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      const response = await fetch('/api/config/routing/rules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(rule),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to create routing rule');
+      }
+
+      const newRule = await response.json();
 
       notifications.show({
         title: 'Success',
-        message: 'Routing rule created successfully (mock)',
+        message: 'Routing rule created successfully',
         color: 'green',
       });
 
@@ -181,46 +159,21 @@ export function useRoutingRules() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      // Simulating API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const mockResult: RouteTestResult = {
-        success: true,
-        selectedProvider: 'openai-premium',
-        routingDecision: {
-          strategy: 'priority',
-          reason: 'Matched rule: High Priority Models',
-          processingTimeMs: 15,
-          fallbackUsed: false
+      const response = await fetch('/api/config/routing/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        matchedRules: [
-          {
-            id: '1',
-            name: 'High Priority Models',
-            priority: 1,
-            isEnabled: true,
-            conditions: [
-              {
-                type: 'model',
-                operator: 'contains',
-                value: 'gpt-4'
-              }
-            ],
-            actions: [
-              {
-                type: 'route',
-                target: 'openai-premium'
-              }
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ],
-        errors: []
-      };
+        body: JSON.stringify(testRequest),
+      });
 
-      return mockResult;
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to test routing rules');
+      }
+
+      const result = await response.json();
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to test routing rules';
       setError(message);

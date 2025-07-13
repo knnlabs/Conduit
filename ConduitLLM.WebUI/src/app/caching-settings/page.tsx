@@ -80,11 +80,23 @@ export default function CachingSettingsPage() {
   const [activeTab, setActiveTab] = useState<string | null>('configuration');
   const [cacheConfigs, setCacheConfigs] = useState<CacheConfig[]>([]);
   const [cacheStats, setCacheStats] = useState<Record<string, CacheStats>>({});
-  const [selectedCache, setSelectedCache] = useState<string>('provider-responses');
+  const [selectedCache, setSelectedCache] = useState<string>('');
 
   useEffect(() => {
     fetchCacheData();
   }, []);
+
+  useEffect(() => {
+    if (cacheConfigs.length > 0 && !selectedCache) {
+      setSelectedCache(cacheConfigs[0].id);
+    }
+  }, [cacheConfigs, selectedCache]);
+
+  useEffect(() => {
+    if (selectedCache) {
+      fetchCacheEntries(selectedCache);
+    }
+  }, [selectedCache]);
 
   const fetchCacheData = async () => {
     try {
@@ -96,115 +108,8 @@ export default function CachingSettingsPage() {
 
       const data = await response.json();
       
-      // Mock data for development
-      const mockConfigs: CacheConfig[] = [
-        {
-          id: 'provider-responses',
-          name: 'Provider Responses',
-          type: 'redis',
-          enabled: true,
-          ttl: 3600,
-          maxSize: 1024,
-          evictionPolicy: 'lru',
-          compression: true,
-          persistent: true,
-        },
-        {
-          id: 'embeddings',
-          name: 'Embeddings Cache',
-          type: 'redis',
-          enabled: true,
-          ttl: 86400,
-          maxSize: 2048,
-          evictionPolicy: 'lfu',
-          compression: true,
-          persistent: true,
-        },
-        {
-          id: 'model-metadata',
-          name: 'Model Metadata',
-          type: 'memory',
-          enabled: true,
-          ttl: 600,
-          maxSize: 256,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: false,
-        },
-        {
-          id: 'rate-limits',
-          name: 'Rate Limit Counters',
-          type: 'memory',
-          enabled: true,
-          ttl: 60,
-          maxSize: 128,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: false,
-        },
-        {
-          id: 'auth-tokens',
-          name: 'Auth Token Cache',
-          type: 'distributed',
-          enabled: true,
-          ttl: 1800,
-          maxSize: 512,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: true,
-        },
-      ];
-
-      const mockStats: Record<string, CacheStats> = {
-        'provider-responses': {
-          hits: 45678,
-          misses: 12345,
-          evictions: 890,
-          size: 768,
-          entries: 3456,
-          hitRate: 78.7,
-          avgLatency: 0.45,
-        },
-        'embeddings': {
-          hits: 23456,
-          misses: 5678,
-          evictions: 234,
-          size: 1536,
-          entries: 1890,
-          hitRate: 80.5,
-          avgLatency: 0.38,
-        },
-        'model-metadata': {
-          hits: 98765,
-          misses: 8765,
-          evictions: 1234,
-          size: 128,
-          entries: 234,
-          hitRate: 91.8,
-          avgLatency: 0.12,
-        },
-        'rate-limits': {
-          hits: 234567,
-          misses: 12345,
-          evictions: 4567,
-          size: 64,
-          entries: 890,
-          hitRate: 95.0,
-          avgLatency: 0.08,
-        },
-        'auth-tokens': {
-          hits: 56789,
-          misses: 6789,
-          evictions: 456,
-          size: 256,
-          entries: 678,
-          hitRate: 89.3,
-          avgLatency: 0.22,
-        },
-      };
-
-      setCacheConfigs(data.configs || mockConfigs);
-      setCacheStats(data.stats || mockStats);
+      setCacheConfigs(data.configs || []);
+      setCacheStats(data.stats || {});
     } catch (error) {
       console.error('Error fetching cache data:', error);
       notifications.show({
@@ -228,6 +133,19 @@ export default function CachingSettingsPage() {
     });
   };
 
+  const fetchCacheEntries = async (cacheId: string) => {
+    setIsLoadingEntries(true);
+    try {
+      // In a real implementation, this would fetch from an API endpoint
+      // For now, we'll just clear the entries as we don't have a backend endpoint for this
+      setCacheEntries([]);
+    } catch (error) {
+      console.error('Error fetching cache entries:', error);
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  };
+
   const handleClearCache = async (cacheId: string) => {
     try {
       const response = await fetch(`/api/config/caching/${cacheId}/clear`, {
@@ -238,9 +156,11 @@ export default function CachingSettingsPage() {
         throw new Error('Failed to clear cache');
       }
 
+      const data = await response.json();
+      
       notifications.show({
         title: 'Cache Cleared',
-        message: `${cacheId} cache has been cleared`,
+        message: data.message || `${cacheId} cache has been cleared`,
         color: 'green',
       });
 
@@ -284,33 +204,8 @@ export default function CachingSettingsPage() {
     }
   };
 
-  // Mock cache entries for detail view
-  const mockCacheEntries: CacheEntry[] = [
-    {
-      key: 'openai:gpt-4:chat:abc123',
-      size: 2048,
-      ttl: 3542,
-      hits: 234,
-      lastAccessed: '2024-01-10T12:30:00Z',
-      expires: '2024-01-10T13:30:00Z',
-    },
-    {
-      key: 'anthropic:claude-3:complete:def456',
-      size: 1536,
-      ttl: 2890,
-      hits: 189,
-      lastAccessed: '2024-01-10T12:28:00Z',
-      expires: '2024-01-10T13:15:00Z',
-    },
-    {
-      key: 'embeddings:text-embedding-ada-002:xyz789',
-      size: 4096,
-      ttl: 85234,
-      hits: 567,
-      lastAccessed: '2024-01-10T12:25:00Z',
-      expires: '2024-01-11T12:00:00Z',
-    },
-  ];
+  const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>([]);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false);
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -373,7 +268,16 @@ export default function CachingSettingsPage() {
                 Total Hit Rate
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                85.4%
+                {cacheStats && Object.keys(cacheStats).length > 0
+                  ? (() => {
+                      const totalHits = Object.values(cacheStats).reduce((sum, stat) => sum + stat.hits, 0);
+                      const totalMisses = Object.values(cacheStats).reduce((sum, stat) => sum + stat.misses, 0);
+                      const totalRate = totalHits + totalMisses > 0
+                        ? ((totalHits / (totalHits + totalMisses)) * 100).toFixed(1)
+                        : '0.0';
+                      return `${totalRate}%`;
+                    })()
+                  : '0.0%'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
                 Across all caches
@@ -392,7 +296,14 @@ export default function CachingSettingsPage() {
                 Memory Usage
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                2.8GB
+                {cacheStats && Object.keys(cacheStats).length > 0
+                  ? (() => {
+                      const totalSize = Object.values(cacheStats).reduce((sum, stat) => sum + stat.size, 0);
+                      return totalSize >= 1024 
+                        ? `${(totalSize / 1024).toFixed(1)}GB`
+                        : `${totalSize}MB`;
+                    })()
+                  : '0MB'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
                 Of 4GB allocated
@@ -411,7 +322,15 @@ export default function CachingSettingsPage() {
                 Avg Latency
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                0.28ms
+                {cacheStats && Object.keys(cacheStats).length > 0
+                  ? (() => {
+                      const avgLatencies = Object.values(cacheStats).map(stat => stat.avgLatency);
+                      const avgLatency = avgLatencies.length > 0
+                        ? (avgLatencies.reduce((sum, lat) => sum + lat, 0) / avgLatencies.length).toFixed(2)
+                        : '0.00';
+                      return `${avgLatency}ms`;
+                    })()
+                  : '0.00ms'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
                 Cache response time
@@ -648,9 +567,10 @@ export default function CachingSettingsPage() {
               <Title order={4}>Cache Entries</Title>
               <Select
                 value={selectedCache}
-                onChange={(value) => setSelectedCache(value || 'provider-responses')}
+                onChange={(value) => setSelectedCache(value || '')}
                 data={cacheConfigs.map(c => ({ value: c.id, label: c.name }))}
                 w={250}
+                placeholder="Select a cache"
               />
             </Group>
             
@@ -669,38 +589,53 @@ export default function CachingSettingsPage() {
                   </Text>
                 </Alert>
 
-                <ScrollArea>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Key</Table.Th>
-                        <Table.Th>Size</Table.Th>
-                        <Table.Th>TTL</Table.Th>
-                        <Table.Th>Hits</Table.Th>
-                        <Table.Th>Last Accessed</Table.Th>
-                        <Table.Th>Expires</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {mockCacheEntries.map((entry) => (
-                        <Table.Tr key={entry.key}>
-                          <Table.Td>
-                            <Code>{entry.key}</Code>
-                          </Table.Td>
-                          <Table.Td>{formatters.fileSize(entry.size)}</Table.Td>
-                          <Table.Td>{formatters.duration(entry.ttl * 1000)}</Table.Td>
-                          <Table.Td>{entry.hits}</Table.Td>
-                          <Table.Td>
-                            <Text size="xs">{formatters.date(entry.lastAccessed, { relativeDays: 7 })}</Text>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="xs">{formatters.date(entry.expires, { relativeDays: 7 })}</Text>
-                          </Table.Td>
+                {isLoadingEntries ? (
+                  <LoadingOverlay visible={true} />
+                ) : cacheEntries.length > 0 ? (
+                  <ScrollArea>
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Key</Table.Th>
+                          <Table.Th>Size</Table.Th>
+                          <Table.Th>TTL</Table.Th>
+                          <Table.Th>Hits</Table.Th>
+                          <Table.Th>Last Accessed</Table.Th>
+                          <Table.Th>Expires</Table.Th>
                         </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </ScrollArea>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {cacheEntries.map((entry) => (
+                          <Table.Tr key={entry.key}>
+                            <Table.Td>
+                              <Code>{entry.key}</Code>
+                            </Table.Td>
+                            <Table.Td>{formatters.fileSize(entry.size)}</Table.Td>
+                            <Table.Td>{formatters.duration(entry.ttl * 1000)}</Table.Td>
+                            <Table.Td>{entry.hits}</Table.Td>
+                            <Table.Td>
+                              <Text size="xs">{formatters.date(entry.lastAccessed, { relativeDays: 7 })}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="xs">{formatters.date(entry.expires, { relativeDays: 7 })}</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </ScrollArea>
+                ) : (
+                  <Alert
+                    icon={<IconInfoCircle size={16} />}
+                    title="No cache entries available"
+                    color="gray"
+                  >
+                    <Text size="sm">
+                      Individual cache entry inspection is not available in the current backend implementation.
+                      Use the statistics tab to view aggregate cache performance metrics.
+                    </Text>
+                  </Alert>
+                )}
               </Stack>
             )}
           </Card>

@@ -32,25 +32,17 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
-import { useSecurityApi, type IpRule } from '@/hooks/useSecurityApi';
+import { useSecurityApi, type IpRule, type IpStats } from '@/hooks/useSecurityApi';
 import { notifications } from '@mantine/notifications';
 import { IpRulesTable } from '@/components/ip-filtering/IpRulesTable';
 import { IpRuleModal } from '@/components/ip-filtering/IpRuleModal';
 import { IpTestModal } from '@/components/ip-filtering/IpTestModal';
 
-interface IpRuleStats {
-  totalRules: number;
-  allowRules: number;
-  blockRules: number;
-  activeRules: number;
-  blockedRequests24h: number;
-  lastRuleUpdate: string | null;
-}
 
 export default function IpFilteringPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [rules, setRules] = useState<IpRule[]>([]);
-  const [stats, setStats] = useState<IpRuleStats | null>(null);
+  const [stats, setStats] = useState<IpStats | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('all');
   const [selectedRules, setSelectedRules] = useState<string[]>([]);
   const [selectedRule, setSelectedRule] = useState<IpRule | null>(null);
@@ -58,7 +50,7 @@ export default function IpFilteringPage() {
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { getIpRules, createIpRule, updateIpRule, deleteIpRule, error } = useSecurityApi();
+  const { getIpRules, createIpRule, updateIpRule, deleteIpRule, getIpStats, error } = useSecurityApi();
 
   useEffect(() => {
     fetchIpRules();
@@ -70,18 +62,18 @@ export default function IpFilteringPage() {
       const fetchedRules = await getIpRules();
       setRules(fetchedRules);
       
-      // Calculate statistics
-      const stats: IpRuleStats = {
+      // Calculate statistics from the rules data
+      const calculatedStats: IpStats = {
         totalRules: fetchedRules.length,
         allowRules: fetchedRules.filter(r => r.action === 'allow').length,
         blockRules: fetchedRules.filter(r => r.action === 'block').length,
         activeRules: fetchedRules.filter(r => r.isEnabled !== false).length,
-        blockedRequests24h: Math.floor(Math.random() * 1000), // Mock data
+        blockedRequests24h: 0, // This would need to come from a real endpoint
         lastRuleUpdate: fetchedRules.length > 0 
           ? new Date(Math.max(...fetchedRules.map(r => new Date(r.createdAt || '').getTime()).filter(t => !isNaN(t)))).toISOString()
           : null,
       };
-      setStats(stats);
+      setStats(calculatedStats);
     } catch (err) {
       notifications.show({
         title: 'Error',
@@ -403,25 +395,27 @@ export default function IpFilteringPage() {
       </Card>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
         {statCards.map((stat) => (
           <Card key={stat.title} padding="lg" radius="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value.toLocaleString()}
-                </Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  {stat.description}
-                </Text>
-              </div>
-              <ThemeIcon color={stat.color} variant="light" size={48} radius="md">
-                <stat.icon size={24} />
-              </ThemeIcon>
-            </Group>
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start">
+                <Stack gap={4} style={{ flex: 1 }}>
+                  <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+                    {stat.title}
+                  </Text>
+                  <Text fw={700} size="xl" lh={1}>
+                    {stat.value.toLocaleString()}
+                  </Text>
+                </Stack>
+                <ThemeIcon color={stat.color} variant="light" size={40} radius="md">
+                  <stat.icon size={20} />
+                </ThemeIcon>
+              </Group>
+              <Text size="xs" c="dimmed" lh={1.2}>
+                {stat.description}
+              </Text>
+            </Stack>
           </Card>
         ))}
       </SimpleGrid>

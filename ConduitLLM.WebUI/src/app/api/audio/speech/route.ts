@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const coreClient = getServerCoreClient();
+    const coreClient = await getServerCoreClient();
     
     // Call the Core SDK's text-to-speech method
     const result = await coreClient.audio.generateSpeech({

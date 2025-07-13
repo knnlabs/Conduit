@@ -1,7 +1,16 @@
+export interface ImageAttachment {
+  url: string;
+  base64?: string;
+  mimeType: string;
+  size: number;
+  name: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'function';
   content: string;
+  images?: ImageAttachment[];
   timestamp: Date;
   model?: string;
   functionCall?: {

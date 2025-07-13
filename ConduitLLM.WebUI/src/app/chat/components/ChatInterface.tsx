@@ -22,7 +22,7 @@ import { ModelSelector } from './ModelSelector';
 import { ChatSettings } from './ChatSettings';
 import { ConversationStarters } from './ConversationStarters';
 import { useChatCompletion } from '../hooks/useChatCompletion';
-import { ChatMessage } from '../types';
+import { ChatMessage, ImageAttachment } from '../types';
 
 export function ChatInterface() {
   const { data: models, isLoading: modelsLoading, error: modelsError } = useModels();
@@ -53,12 +53,13 @@ export function ChatInterface() {
     }
   }, [activeSession, models, createSession]);
 
-  const handleSendMessage = async (content: string, attachments?: File[]) => {
+  const handleSendMessage = async (content: string, images?: ImageAttachment[]) => {
     if (!activeSession) return;
     
     const userMessage: Omit<ChatMessage, 'id' | 'timestamp'> = {
       role: 'user',
       content,
+      images,
     };
     
     addMessage(activeSession.id, userMessage);

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
+import { getServerAdminClient } from '@/lib/server/adminClient';
 
-// Mock system health data - in production, this would come from actual system monitoring
+// TODO: Remove this mock data generator when SDK provides system health endpoints
+// SDK methods needed:
+// - adminClient.system.getSystemMetrics() - for CPU, memory, disk usage
+// - adminClient.system.getServiceStatus() - for individual service health
+// - adminClient.system.getUptime() - for system uptime
+// - adminClient.system.getActiveConnections() - for active connection count
 function generateSystemHealth() {
   const cpuUsage = Math.floor(Math.random() * 60) + 20;
   const memoryUsage = Math.floor(Math.random() * 70) + 20;
@@ -41,6 +47,7 @@ function generateSystemHealth() {
       disk: diskUsage,
       activeConnections: Math.floor(Math.random() * 100) + 20,
     },
+    _warning: 'This data is simulated. SDK system health methods are not yet available.',
   };
 }
 
@@ -51,6 +58,26 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const adminClient = getServerAdminClient();
+    
+    // Try to get real system health data from SDK
+    try {
+      // TODO: Replace with actual SDK call when available
+      // const systemHealth = await adminClient.system.getSystemHealth();
+      // return NextResponse.json(systemHealth);
+      
+      // For now, check if the SDK has any system health methods
+      // @ts-ignore - SDK methods may not be typed yet
+      if (adminClient.system && adminClient.system.getSystemHealth) {
+        // @ts-ignore - SDK methods may not be typed yet
+        const systemHealth = await adminClient.system.getSystemHealth();
+        return NextResponse.json(systemHealth);
+      }
+    } catch (sdkError) {
+      console.warn('SDK system health methods not available:', sdkError);
+    }
+    
+    // Fallback to mock data
     const systemHealth = generateSystemHealth();
     return NextResponse.json(systemHealth);
   } catch (error) {

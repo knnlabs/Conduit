@@ -10,6 +10,7 @@ import type { StreamingResponse } from '../models/streaming';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { createTypedStream } from '../utils/streaming';
 import { API_ENDPOINTS } from '../constants';
+import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
 
 export class ChatService {
   constructor(private readonly client: FetchBasedClient) {}
@@ -109,5 +110,23 @@ export class ChatService {
     }
     
     return processedRequest;
+  }
+
+  /**
+   * Creates a chat completion stream with pause/resume/cancel controls
+   */
+  async createControllable(
+    request: ChatCompletionRequest & { stream: true },
+    options?: RequestOptions & { streamControl?: StreamControlOptions }
+  ): Promise<ControllableStream<ChatCompletionChunk>> {
+    const processedRequest = this.convertLegacyFunctions(request);
+    validateChatCompletionRequest(processedRequest);
+
+    const baseStream = await this.createStream(
+      processedRequest as ChatCompletionRequest & { stream: true },
+      options
+    );
+
+    return new ControllableChatStream(baseStream, options?.streamControl || {});
   }
 }

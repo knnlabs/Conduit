@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const coreClient = getServerCoreClient();
+    const coreClient = await getServerCoreClient();
     
     // Check if async generation is requested
     if (body.async === true) {

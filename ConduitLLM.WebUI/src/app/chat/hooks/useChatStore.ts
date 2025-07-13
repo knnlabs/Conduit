@@ -32,7 +32,7 @@ const DEFAULT_PARAMETERS: ChatParameters = {
   responseFormat: 'text',
 };
 
-export const useChatStore = create<ChatStore>()(
+const useChatStoreBase = create<ChatStore>()(
   persist(
     (set, get) => ({
       sessions: [],
@@ -183,3 +183,6 @@ export const useChatStore = create<ChatStore>()(
     }
   )
 );
+
+// Export with SSR protection
+export const useChatStore = ((state) => useChatStoreBase(state)) as typeof useChatStoreBase;

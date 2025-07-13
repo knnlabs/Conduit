@@ -13,35 +13,14 @@ export function useProviderPriorities() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      // Simulating API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await fetch('/api/config/routing/providers');
       
-      const mockProviders: ProviderPriority[] = [
-        {
-          providerId: 'openai-1',
-          providerName: 'OpenAI Premium',
-          priority: 1,
-          weight: 80,
-          isEnabled: true
-        },
-        {
-          providerId: 'anthropic-1',
-          providerName: 'Anthropic Claude',
-          priority: 2,
-          weight: 60,
-          isEnabled: true
-        },
-        {
-          providerId: 'openai-2',
-          providerName: 'OpenAI Standard',
-          priority: 3,
-          weight: 40,
-          isEnabled: false
-        }
-      ];
-
-      return mockProviders;
+      if (!response.ok) {
+        throw new Error('Failed to fetch provider priorities');
+      }
+      
+      const providers = await response.json();
+      return providers;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch provider priorities';
       setError(message);
@@ -56,16 +35,28 @@ export function useProviderPriorities() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      await new Promise(resolve => setTimeout(resolve, 600));
+      const response = await fetch('/api/config/routing/providers', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(providers),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update provider priorities');
+      }
+
+      const updatedProviders = await response.json();
 
       notifications.show({
         title: 'Success',
-        message: 'Provider priorities updated successfully (mock)',
+        message: 'Provider priorities updated successfully',
         color: 'green',
       });
 
-      return providers;
+      return updatedProviders;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update provider priorities';
       setError(message);
@@ -85,25 +76,14 @@ export function useProviderPriorities() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      // Simulating API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const response = await fetch('/api/config/routing');
       
-      const mockConfig: RoutingConfiguration = {
-        defaultStrategy: 'round_robin',
-        fallbackEnabled: true,
-        timeoutMs: 30000,
-        maxConcurrentRequests: 100,
-        retryPolicy: {
-          maxAttempts: 3,
-          initialDelayMs: 1000,
-          maxDelayMs: 5000,
-          backoffMultiplier: 2,
-          retryableStatuses: [500, 502, 503, 504]
-        }
-      };
-
-      return mockConfig;
+      if (!response.ok) {
+        throw new Error('Failed to fetch routing configuration');
+      }
+      
+      const config = await response.json();
+      return config;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch routing configuration';
       setError(message);
@@ -158,53 +138,14 @@ export function useProviderPriorities() {
     setError(null);
     
     try {
-      // TODO: Replace with actual API call when backend is implemented
-      // Simulating API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 600));
+      const response = await fetch('/api/config/routing/health');
       
-      const mockHealth: LoadBalancerHealth = {
-        status: 'healthy',
-        lastCheck: new Date().toISOString(),
-        nodes: [
-          {
-            id: 'openai-1',
-            endpoint: 'api.openai.com',
-            status: 'healthy',
-            weight: 80,
-            totalRequests: 1250,
-            avgResponseTime: 850,
-            activeConnections: 15,
-            lastHealthCheck: new Date().toISOString()
-          },
-          {
-            id: 'anthropic-1',
-            endpoint: 'api.anthropic.com',
-            status: 'healthy',
-            weight: 60,
-            totalRequests: 890,
-            avgResponseTime: 920,
-            activeConnections: 8,
-            lastHealthCheck: new Date().toISOString()
-          },
-          {
-            id: 'openai-2',
-            endpoint: 'backup.openai.com',
-            status: 'draining',
-            weight: 40,
-            totalRequests: 340,
-            avgResponseTime: 1100,
-            activeConnections: 2,
-            lastHealthCheck: new Date().toISOString()
-          }
-        ],
-        distribution: {
-          'openai-1': 45,
-          'anthropic-1': 35,
-          'openai-2': 20
-        }
-      };
-
-      return mockHealth;
+      if (!response.ok) {
+        throw new Error('Failed to fetch load balancer health');
+      }
+      
+      const health = await response.json();
+      return health;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch load balancer health';
       setError(message);

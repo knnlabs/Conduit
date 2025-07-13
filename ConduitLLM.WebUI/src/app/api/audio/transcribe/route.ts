@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const coreClient = getServerCoreClient();
+    const coreClient = await getServerCoreClient();
     
     // Convert File to Buffer for SDK
     const buffer = Buffer.from(await file.arrayBuffer());

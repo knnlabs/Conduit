@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { ImagePreview } from './ImagePreview';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -52,22 +53,22 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
               </Text>
             </Group>
             
-            {!isUser && message.metadata && (
+            {!isUser && (message.metadata || (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
-                {message.metadata.tokensUsed && (
+                {message.metadata?.tokensUsed && (
                   <Badge size="xs" variant="light">
                     {message.metadata.tokensUsed} tokens
                   </Badge>
                 )}
-                {message.metadata.tokensPerSecond && (
+                {(message.metadata?.tokensPerSecond || (isStreaming && tokensPerSecond)) && (
                   <Badge size="xs" variant="light" color="green">
                     <Group gap={4}>
                       <IconBolt size={12} />
-                      {message.metadata.tokensPerSecond.toFixed(1)} t/s
+                      {(message.metadata?.tokensPerSecond || tokensPerSecond)?.toFixed(1)} t/s
                     </Group>
                   </Badge>
                 )}
-                {message.metadata.latency && (
+                {message.metadata?.latency && (
                   <Badge size="xs" variant="light" color="blue">
                     <Group gap={4}>
                       <IconClock size={12} />
@@ -78,6 +79,10 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
               </Group>
             )}
           </Group>
+          
+          {message.images && message.images.length > 0 && (
+            <ImagePreview images={message.images} compact />
+          )}
           
           {message.functionCall && (
             <Paper p="xs" radius="sm" withBorder>
@@ -130,15 +135,6 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
               {content || ''}
             </ReactMarkdown>
           </div>
-          
-          {isStreaming && tokensPerSecond && (
-            <Badge size="xs" variant="light" color="green">
-              <Group gap={4}>
-                <IconBolt size={12} />
-                {tokensPerSecond.toFixed(1)} tokens/sec
-              </Group>
-            </Badge>
-          )}
         </Stack>
       </Paper>
     );

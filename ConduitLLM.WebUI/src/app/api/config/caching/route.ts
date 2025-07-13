@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
           persistent: cacheConfig.distributedCacheEnabled,
         },
       ],
-      stats: cacheStats ? transformCacheStats(cacheStats) : generateMockStats(),
+      stats: cacheStats ? transformCacheStats(cacheStats) : {},
     };
 
     return NextResponse.json(response);
@@ -234,53 +234,3 @@ function transformCacheStats(stats: any): Record<string, any> {
   return transformed;
 }
 
-// Generate mock statistics if real stats are not available
-function generateMockStats(): Record<string, any> {
-  return {
-    'provider-responses': {
-      hits: 45678,
-      misses: 12345,
-      evictions: 890,
-      size: 768,
-      entries: 3456,
-      hitRate: 78.7,
-      avgLatency: 0.45,
-    },
-    'embeddings': {
-      hits: 23456,
-      misses: 5678,
-      evictions: 234,
-      size: 1536,
-      entries: 1890,
-      hitRate: 80.5,
-      avgLatency: 0.38,
-    },
-    'model-metadata': {
-      hits: 98765,
-      misses: 8765,
-      evictions: 1234,
-      size: 128,
-      entries: 234,
-      hitRate: 91.8,
-      avgLatency: 0.12,
-    },
-    'rate-limits': {
-      hits: 234567,
-      misses: 12345,
-      evictions: 4567,
-      size: 64,
-      entries: 890,
-      hitRate: 95.0,
-      avgLatency: 0.08,
-    },
-    'auth-tokens': {
-      hits: 56789,
-      misses: 6789,
-      evictions: 456,
-      size: 256,
-      entries: 678,
-      hitRate: 89.3,
-      avgLatency: 0.22,
-    },
-  };
-}

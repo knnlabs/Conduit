@@ -1,8 +1,99 @@
-import type { ChatCompletionRequest } from '../models/chat';
+import type { ChatCompletionRequest, MessageContent, TextContent, ImageContent } from '../models/chat';
 import type { ImageGenerationRequest } from '../models/images';
 import { ValidationError } from './errors';
 import { IMAGE_MODEL_CAPABILITIES } from '../models/images';
 import { CHAT_ROLES, ChatRoleHelpers, ImageValidationHelpers } from '../constants';
+
+/**
+ * Validates multi-modal content array
+ */
+function validateMultiModalContent(content: Array<TextContent | ImageContent>, messageIndex: number): void {
+  if (content.length === 0) {
+    throw new ValidationError(
+      `Message at index ${messageIndex} has empty content array`,
+      'messages'
+    );
+  }
+
+  let hasTextContent = false;
+  let imageCount = 0;
+
+  for (let j = 0; j < content.length; j++) {
+    const part = content[j];
+    
+    if (!part || typeof part !== 'object') {
+      throw new ValidationError(
+        `Content part at index ${j} in message ${messageIndex} must be an object`,
+        'messages'
+      );
+    }
+
+    if (!part.type) {
+      throw new ValidationError(
+        `Content part at index ${j} in message ${messageIndex} must have a type`,
+        'messages'
+      );
+    }
+
+    if (part.type === 'text') {
+      const textPart = part as TextContent;
+      if (typeof textPart.text !== 'string') {
+        throw new ValidationError(
+          `Text content at index ${j} in message ${messageIndex} must have a string 'text' property`,
+          'messages'
+        );
+      }
+      hasTextContent = true;
+    } else if (part.type === 'image_url') {
+      const imagePart = part as ImageContent;
+      if (!imagePart.image_url || typeof imagePart.image_url !== 'object') {
+        throw new ValidationError(
+          `Image content at index ${j} in message ${messageIndex} must have an 'image_url' object`,
+          'messages'
+        );
+      }
+      
+      if (!imagePart.image_url.url || typeof imagePart.image_url.url !== 'string') {
+        throw new ValidationError(
+          `Image URL at index ${j} in message ${messageIndex} must have a string 'url' property`,
+          'messages'
+        );
+      }
+
+      // Validate image URL format (either http(s) URL or base64 data URL)
+      const url = imagePart.image_url.url;
+      if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:image/')) {
+        throw new ValidationError(
+          `Image URL at index ${j} in message ${messageIndex} must be an HTTP(S) URL or base64 data URL`,
+          'messages'
+        );
+      }
+
+      // Validate detail level if provided
+      if (imagePart.image_url.detail !== undefined) {
+        const validDetails = ['low', 'high', 'auto'];
+        if (!validDetails.includes(imagePart.image_url.detail)) {
+          throw new ValidationError(
+            `Image detail at index ${j} in message ${messageIndex} must be one of: ${validDetails.join(', ')}`,
+            'messages'
+          );
+        }
+      }
+
+      imageCount++;
+    } else {
+      throw new ValidationError(
+        `Unknown content type '${part.type}' at index ${j} in message ${messageIndex}. Must be 'text' or 'image_url'`,
+        'messages'
+      );
+    }
+  }
+
+  // Warn if there are many images (but don't fail validation)
+  if (imageCount > 10) {
+    console.warn(`Message at index ${messageIndex} contains ${imageCount} images. This may impact performance and token usage.`);
+  }
+}
 
 export function validateChatCompletionRequest(request: ChatCompletionRequest): void {
   if (!request.model) {
@@ -31,11 +122,17 @@ export function validateChatCompletionRequest(request: ChatCompletionRequest): v
       );
     }
 
+    // Validate content
     if (message.content === null && !message.tool_calls) {
       throw new ValidationError(
         `Message at index ${i} must have content or tool_calls`,
         'messages'
       );
+    }
+
+    // Validate multi-modal content if it's an array
+    if (Array.isArray(message.content)) {
+      validateMultiModalContent(message.content, i);
     }
 
     if (message.role === 'tool' && !message.tool_call_id) {
