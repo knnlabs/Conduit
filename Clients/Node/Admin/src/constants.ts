@@ -293,6 +293,17 @@ export const ENDPOINTS = {
     // Feature Flags
     FEATURES: '/api/config/features',
     FEATURE_BY_KEY: (key: string) => `/api/config/features/${key}`,
+    
+    // Routing Health (Issue #437)
+    ROUTING_HEALTH: '/api/config/routing/health',
+    ROUTING_HEALTH_DETAILED: '/api/config/routing/health/detailed',
+    ROUTING_HEALTH_HISTORY: '/api/config/routing/health/history',
+    ROUTE_HEALTH_BY_ID: (routeId: string) => `/api/config/routing/health/routes/${routeId}`,
+    ROUTE_PERFORMANCE_TEST: '/api/config/routing/performance/test',
+    CIRCUIT_BREAKERS: '/api/config/routing/circuit-breakers',
+    CIRCUIT_BREAKER_BY_ID: (breakerId: string) => `/api/config/routing/circuit-breakers/${breakerId}`,
+    ROUTING_EVENTS: '/api/config/routing/events',
+    ROUTING_EVENTS_SUBSCRIBE: '/api/config/routing/events/subscribe',
   },
 } as const;
 
