@@ -1,4 +1,4 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { User } from '@clerk/nextjs/server';
 
 /**
@@ -6,12 +6,6 @@ import { User } from '@clerk/nextjs/server';
  */
 export async function isClerkAdmin(): Promise<boolean> {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return false;
-    }
-
     const user = await currentUser();
     
     if (!user) {
@@ -33,12 +27,6 @@ export async function isClerkAdmin(): Promise<boolean> {
  */
 export async function getClerkUser(): Promise<User | null> {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return null;
-    }
-
     return await currentUser();
   } catch (error) {
     console.error('Error getting Clerk user:', error);
@@ -48,11 +36,12 @@ export async function getClerkUser(): Promise<User | null> {
 
 /**
  * Check if user is authenticated with Clerk
+ * Note: This should be called from server components or API routes
  */
 export async function isClerkAuthenticated(): Promise<boolean> {
   try {
-    const { userId } = await auth();
-    return !!userId;
+    const user = await currentUser();
+    return !!user;
   } catch (error) {
     console.error('Error checking Clerk authentication:', error);
     return false;

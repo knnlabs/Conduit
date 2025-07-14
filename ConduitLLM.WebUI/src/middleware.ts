@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { getAuthMode } from '@/lib/auth/auth-mode'
 
 const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout', '/api/health']
 
 // Clerk-specific public paths
-const clerkPublicPaths = ['/sign-in', '/sign-up', '/api/health']
+const clerkPublicPaths = ['/sign-in', '/sign-up', '/api/health', '/unauthorized']
 
 // Paths that require authentication but should not have session parsing
 // (SSE endpoints need special handling)
@@ -150,86 +151,32 @@ function conduitAuthMiddleware(request: NextRequest) {
   }
 }
 
-// Clerk middleware logic
-async function clerkAuthMiddleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Allow Clerk public paths
-  if (clerkPublicPaths.some(path => pathname.startsWith(path))) {
-    const response = NextResponse.next();
-    return addSecurityHeaders(response);
-  }
-  
-  // Allow static assets and Next.js internals
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon.ico') ||
-    pathname.includes('.')
-  ) {
-    const response = NextResponse.next();
-    return addSecurityHeaders(response);
-  }
-  
-  // Import Clerk auth helpers
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
-  
-  // If not authenticated
-  if (!userId) {
-    // For API routes, return 401 JSON response
-    if (pathname.startsWith('/api/')) {
-      const response = new NextResponse(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-      return addSecurityHeaders(response);
-    }
+// Create route matcher for public routes
+const isPublicRoute = createRouteMatcher(clerkPublicPaths);
+
+// Create the clerk middleware with protection for non-public routes
+const clerkMW = clerkMiddleware(async (auth, req) => {
+  // If it's not a public route, protect it
+  if (!isPublicRoute(req)) {
+    await auth.protect();
     
-    // Redirect to Clerk sign-in page
-    const signInUrl = new URL('/sign-in', request.url);
-    signInUrl.searchParams.set('redirect_url', pathname);
-    return NextResponse.redirect(signInUrl);
-  }
-  
-  // Check admin status for authenticated users
-  const { isClerkAdmin } = await import('@/lib/auth/clerk-helpers');
-  const isAdmin = await isClerkAdmin();
-  
-  if (!isAdmin) {
-    // For API routes, return 403 JSON response
-    if (pathname.startsWith('/api/')) {
-      const response = new NextResponse(
-        JSON.stringify({ error: 'Forbidden: Admin access required' }),
-        { 
-          status: 403,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-      return addSecurityHeaders(response);
+    // After basic auth protection, check if user is admin
+    const { userId } = await auth();
+    if (userId) {
+      // For now, we'll need to check admin status in the actual routes
+      // since we can't access the full user object here
+      // The middleware will ensure authentication, routes will check authorization
     }
-    
-    // For UI routes, show an access denied page or redirect
-    const response = new NextResponse(
-      'Access Denied: Admin privileges required',
-      { status: 403 }
-    );
-    return addSecurityHeaders(response);
   }
-  
-  // Continue with the request
-  const response = NextResponse.next();
-  return addSecurityHeaders(response);
-}
+});
 
 // Main middleware function that delegates based on auth mode
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, context: any) {
   const authMode = getAuthMode()
   
   if (authMode === 'clerk') {
-    return clerkAuthMiddleware(request)
+    // Use Clerk middleware - it expects request and context
+    return clerkMW(request, context);
   }
   
   return conduitAuthMiddleware(request)

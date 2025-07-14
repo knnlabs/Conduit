@@ -163,6 +163,8 @@ services:
       REDIS_SESSION_PREFIX: "conduit:session:"
       # Admin login password for human users to access WebUI dashboard
       CONDUIT_ADMIN_LOGIN_PASSWORD: alpha
+      # Optional Clerk authentication (comment out to use password auth above)
+      # Get these values from your Clerk dashboard at https://dashboard.clerk.com
     ports:
       - "3000:3000"
     restart: on-failure

@@ -2,7 +2,6 @@ import { getAuthMode } from './auth-mode';
 import { isClerkAdmin, isClerkAuthenticated } from './clerk-helpers';
 import { validateSession } from './middleware';
 import { NextRequest } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 
 /**
  * Unified authentication check that works with both Clerk and Conduit auth
@@ -44,8 +43,8 @@ export async function requireAuth(request: NextRequest): Promise<void> {
   const authMode = getAuthMode();
   
   if (authMode === 'clerk') {
-    const { userId } = await auth();
-    if (!userId) {
+    const authenticated = await isClerkAuthenticated();
+    if (!authenticated) {
       throw new Error('Unauthorized');
     }
     
