@@ -185,14 +185,15 @@ export async function GET(req: NextRequest) {
       // Get detailed health data for each provider
       const providerDetailsPromises = healthSummary.providers.map(async (provider: any) => {
         try {
-          const [health, history] = await Promise.all([
+          const [health, history, metrics] = await Promise.all([
             adminClient.providerHealth.getProviderHealth(provider.id || provider.name),
-            adminClient.providerHealth.getHealthHistory(provider.id || provider.name, {
+            adminClient.providerHealth.getProviderHealthHistory(provider.id || provider.name, {
               startDate,
               endDate,
               resolution: hours <= 24 ? 'hour' : 'day',
               includeIncidents: true,
             }),
+            adminClient.providers.getHealthMetrics(provider.id || provider.name, range).catch(() => null),
           ]);
           
           return {
@@ -204,9 +205,9 @@ export async function GET(req: NextRequest) {
             errorRate: (health as any).errorRate || provider.errorRate || 0,
             successRate: (health as any).successRate || (100 - ((health as any).errorRate || 0)),
             lastCheck: (health as any).lastChecked || (health as any).lastCheck || provider.lastChecked || new Date().toISOString(),
-            endpoints: (health as any).endpoints || [],
-            models: (health as any).models || [],
-            rateLimit: (health as any).rateLimit || {
+            endpoints: metrics?.metrics?.endpoints || (health as any).endpoints || [],
+            models: metrics?.metrics?.models || (health as any).models || [],
+            rateLimit: metrics?.metrics?.rateLimit || (health as any).rateLimit || {
               requests: { used: 0, limit: 0, reset: new Date().toISOString() },
               tokens: { used: 0, limit: 0, reset: new Date().toISOString() },
             },
@@ -251,13 +252,13 @@ export async function GET(req: NextRequest) {
           availability: point.availability || (100 - (point.errorRate || 0)),
         }));
         
-        // TODO: SDK should provide aggregated metrics
+        // Create metrics from provider data (no separate metrics property)
         metrics[provider.id] = {
-          totalRequests: 0, // Not available from current SDK
-          failedRequests: 0, // Not available from current SDK
+          totalRequests: 0, // Will be populated by separate SDK call if needed
+          failedRequests: 0, // Will be populated by separate SDK call if needed
           avgResponseTime: provider.responseTime,
-          p95ResponseTime: 0, // Not available from current SDK
-          p99ResponseTime: 0, // Not available from current SDK
+          p95ResponseTime: 0, // Will be populated by separate SDK call if needed
+          p99ResponseTime: 0, // Will be populated by separate SDK call if needed
           availability: provider.uptime,
         };
       });

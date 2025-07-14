@@ -199,10 +199,45 @@ export const ENDPOINTS = {
   SYSTEM: {
     INFO: '/api/SystemInfo/info',
     HEALTH: '/api/SystemInfo/health',
+    SERVICES: '/api/health/services',
+    METRICS: '/api/metrics',
+    HEALTH_EVENTS: '/api/health/events',
     BACKUP: '/api/DatabaseBackup',
     RESTORE: '/api/DatabaseBackup/restore',
     NOTIFICATIONS: '/api/Notifications',
     NOTIFICATION_BY_ID: (id: number) => `/api/Notifications/${id}`,
+  },
+
+  // Comprehensive Metrics (Issue #434)
+  METRICS: {
+    // System-wide metrics
+    SYSTEM: '/api/dashboard/metrics/system',
+    SYSTEM_TIMESERIES: '/api/dashboard/metrics/timeseries',
+    
+    // Performance metrics  
+    PERFORMANCE: '/api/dashboard/metrics/performance',
+    PERFORMANCE_TIMESERIES: '/api/dashboard/metrics/timeseries/performance',
+    
+    // Provider metrics
+    PROVIDERS: '/api/dashboard/metrics/providers',
+    PROVIDER_BREAKDOWN: '/api/dashboard/metrics/providers/breakdown',
+    
+    // Model metrics
+    MODELS: '/api/dashboard/metrics/models',
+    MODEL_BREAKDOWN: '/api/dashboard/metrics/models/breakdown',
+    MODEL_RANKINGS: '/api/dashboard/metrics/models/rankings',
+    
+    // Error metrics and analysis
+    ERRORS: '/api/dashboard/metrics/errors',
+    ERROR_ANALYSIS: '/api/dashboard/metrics/errors/analysis',
+    ERROR_PATTERNS: '/api/dashboard/metrics/errors/patterns',
+    
+    // Legacy Admin API metrics
+    ADMIN_BASIC: '/api/metrics',
+    ADMIN_DATABASE_POOL: '/metrics/database/pool',
+    
+    // Real-time metrics
+    REALTIME: '/api/dashboard/metrics/realtime',
   },
 
   // Settings
@@ -258,6 +293,17 @@ export const ENDPOINTS = {
     // Feature Flags
     FEATURES: '/api/config/features',
     FEATURE_BY_KEY: (key: string) => `/api/config/features/${key}`,
+    
+    // Routing Health (Issue #437)
+    ROUTING_HEALTH: '/api/config/routing/health',
+    ROUTING_HEALTH_DETAILED: '/api/config/routing/health/detailed',
+    ROUTING_HEALTH_HISTORY: '/api/config/routing/health/history',
+    ROUTE_HEALTH_BY_ID: (routeId: string) => `/api/config/routing/health/routes/${routeId}`,
+    ROUTE_PERFORMANCE_TEST: '/api/config/routing/performance/test',
+    CIRCUIT_BREAKERS: '/api/config/routing/circuit-breakers',
+    CIRCUIT_BREAKER_BY_ID: (breakerId: string) => `/api/config/routing/circuit-breakers/${breakerId}`,
+    ROUTING_EVENTS: '/api/config/routing/events',
+    ROUTING_EVENTS_SUBSCRIBE: '/api/config/routing/events/subscribe',
   },
 } as const;
 

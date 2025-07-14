@@ -226,3 +226,100 @@ export interface FeatureAvailability {
   }>;
   timestamp: string;
 }
+
+// Issue #427 - System Health SDK Methods
+export interface SystemHealthDto {
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  components: {
+    api: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    database: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    cache: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    queue: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+  };
+  metrics: {
+    cpu: number;
+    memory: number;
+    disk: number;
+    activeConnections: number;
+  };
+}
+
+export interface SystemMetricsDto {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+  activeConnections: number;
+  uptime: number;
+}
+
+export interface ServiceStatusDto {
+  coreApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
+  };
+  adminApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
+  };
+  database: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    connections: number;
+  };
+  cache: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    hitRate: number;
+  };
+}
+
+// Issue #428 - Health Events SDK Methods
+export interface HealthEventDto {
+  id: string;
+  timestamp: string;
+  type: 'provider_down' | 'provider_up' | 'system_issue' | 'system_recovered';
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  source?: string;
+  metadata?: {
+    providerId?: string;
+    componentName?: string;
+    errorDetails?: string;
+    duration?: number;
+  };
+}
+
+export interface HealthEventsResponseDto {
+  events: HealthEventDto[];
+}
+
+export interface HealthEventSubscriptionOptions {
+  severityFilter?: ('info' | 'warning' | 'error')[];
+  typeFilter?: ('provider_down' | 'provider_up' | 'system_issue' | 'system_recovered')[];
+  sourceFilter?: string[];
+}
+
+export interface HealthEventSubscription {
+  unsubscribe(): void;
+  isConnected(): boolean;
+  onEvent(callback: (event: HealthEventDto) => void): void;
+  onConnectionStateChanged(callback: (connected: boolean) => void): void;
+}

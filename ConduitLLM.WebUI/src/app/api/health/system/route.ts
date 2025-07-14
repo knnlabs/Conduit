@@ -60,26 +60,17 @@ export async function GET(req: NextRequest) {
   try {
     const adminClient = getServerAdminClient();
     
-    // Try to get real system health data from SDK
+    // Use the new SDK system health methods from Issue #427
     try {
-      // TODO: Replace with actual SDK call when available
-      // const systemHealth = await adminClient.system.getSystemHealth();
-      // return NextResponse.json(systemHealth);
-      
-      // For now, check if the SDK has any system health methods
-      // @ts-ignore - SDK methods may not be typed yet
-      if (adminClient.system && adminClient.system.getSystemHealth) {
-        // @ts-ignore - SDK methods may not be typed yet
-        const systemHealth = await adminClient.system.getSystemHealth();
-        return NextResponse.json(systemHealth);
-      }
+      const systemHealth = await adminClient.system.getSystemHealth();
+      return NextResponse.json(systemHealth);
     } catch (sdkError) {
-      console.warn('SDK system health methods not available:', sdkError);
+      console.warn('SDK system health methods failed, falling back to mock data:', sdkError);
+      
+      // Fallback to mock data if SDK methods fail
+      const systemHealth = generateSystemHealth();
+      return NextResponse.json(systemHealth);
     }
-    
-    // Fallback to mock data
-    const systemHealth = generateSystemHealth();
-    return NextResponse.json(systemHealth);
   } catch (error) {
     return handleSDKError(error);
   }

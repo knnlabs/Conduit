@@ -64,26 +64,17 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const adminClient = getServerAdminClient();
     
-    // Try to get real health events from SDK
+    // Use the new SDK health events methods from Issue #428
     try {
-      // TODO: Replace with actual SDK call when available
-      // const events = await adminClient.system.getHealthEvents(limit);
-      // return NextResponse.json(events);
-      
-      // For now, check if the SDK has health event methods
-      // @ts-ignore - SDK methods may not be typed yet
-      if (adminClient.system && adminClient.system.getHealthEvents) {
-        // @ts-ignore - SDK methods may not be typed yet
-        const events = await adminClient.system.getHealthEvents(limit);
-        return NextResponse.json(events);
-      }
+      const events = await adminClient.system.getHealthEvents(limit);
+      return NextResponse.json(events);
     } catch (sdkError) {
-      console.warn('SDK health event methods not available:', sdkError);
+      console.warn('SDK health event methods failed, falling back to mock data:', sdkError);
+      
+      // Fallback to mock data if SDK methods fail
+      const mockData = generateMockEvents(limit);
+      return NextResponse.json(mockData);
     }
-    
-    // Fallback to mock data
-    const mockData = generateMockEvents(limit);
-    return NextResponse.json(mockData);
   } catch (error) {
     return handleSDKError(error);
   }
