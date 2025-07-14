@@ -1,6 +1,5 @@
 import { 
   ActionIcon, 
-  Popover, 
   Stack, 
   Slider, 
   Text, 
@@ -13,15 +12,13 @@ import {
   Divider,
   Badge
 } from '@mantine/core';
-import { IconSettings, IconRefresh } from '@tabler/icons-react';
-import { useState } from 'react';
+import { IconRefresh } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
 import { CHAT_PRESETS, getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
 
 export function ChatSettings() {
   const { getActiveSession, updateSessionParameters } = useChatStore();
-  const [opened, setOpened] = useState(false);
   const activeSession = getActiveSession();
   
   if (!activeSession) return null;
@@ -51,40 +48,23 @@ export function ChatSettings() {
       responseFormat: 'text',
       seed: undefined,
       stop: undefined,
+      stream: true,
     });
   };
 
   return (
-    <Popover 
-      opened={opened} 
-      onChange={setOpened}
-      width={400} 
-      position="bottom-end"
-      withArrow
-    >
-      <Popover.Target>
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Text fw={600}>Chat Settings</Text>
         <ActionIcon 
           variant="subtle" 
-          size="lg"
-          onClick={() => setOpened(!opened)}
+          size="sm"
+          onClick={resetToDefaults}
+          title="Reset to defaults"
         >
-          <IconSettings size={20} />
+          <IconRefresh size={16} />
         </ActionIcon>
-      </Popover.Target>
-      
-      <Popover.Dropdown>
-        <Stack gap="md">
-          <Group justify="space-between">
-            <Text fw={600}>Chat Settings</Text>
-            <ActionIcon 
-              variant="subtle" 
-              size="sm"
-              onClick={resetToDefaults}
-              title="Reset to defaults"
-            >
-              <IconRefresh size={16} />
-            </ActionIcon>
-          </Group>
+      </Group>
           
           <Select
             label="Preset"
@@ -207,6 +187,13 @@ export function ChatSettings() {
             ]}
           />
           
+          <Switch
+            label="Streaming"
+            checked={parameters.stream ?? true}
+            onChange={(event) => handleParameterChange({ stream: event.currentTarget.checked })}
+            description="Stream responses as they are generated"
+          />
+          
           <NumberInput
             label="Seed (optional)"
             placeholder="Random"
@@ -223,8 +210,21 @@ export function ChatSettings() {
             minRows={3}
             maxRows={6}
           />
-        </Stack>
-      </Popover.Dropdown>
-    </Popover>
+          
+          <Textarea
+            label="Stop Sequences"
+            placeholder="Enter stop sequences, one per line..."
+            value={parameters.stop?.join('\n') || ''}
+            onChange={(e) => {
+              const sequences = e.currentTarget.value
+                .split('\n')
+                .filter(s => s.trim().length > 0);
+              handleParameterChange({ stop: sequences.length > 0 ? sequences : undefined });
+            }}
+            minRows={2}
+            maxRows={4}
+            description="The model will stop generating when it encounters any of these sequences"
+          />
+    </Stack>
   );
 }

@@ -54,6 +54,7 @@ export interface ChatParameters {
   responseFormat?: 'text' | 'json_object';
   seed?: number;
   stop?: string[];
+  stream?: boolean;
 }
 
 export interface ChatPreset {

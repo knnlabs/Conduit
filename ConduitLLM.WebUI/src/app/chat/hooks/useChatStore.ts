@@ -30,6 +30,7 @@ const DEFAULT_PARAMETERS: ChatParameters = {
   frequencyPenalty: 0,
   presencePenalty: 0,
   responseFormat: 'text',
+  stream: true,
 };
 
 const useChatStoreBase = create<ChatStore>()(

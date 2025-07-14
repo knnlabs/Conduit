@@ -140,7 +140,7 @@ export class FetchErrorQueueService {
     }
 
     return this.client['get']<ErrorQueueListResponse>(
-      `/admin/error-queues${params.toString() ? `?${params.toString()}` : ''}`,
+      `/api/admin/error-queues${params.toString() ? `?${params.toString()}` : ''}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -177,7 +177,7 @@ export class FetchErrorQueueService {
     }
 
     return this.client['get']<ErrorMessageListResponse>(
-      `/admin/error-queues/${encodeURIComponent(queueName)}/messages${params.toString() ? `?${params.toString()}` : ''}`,
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages${params.toString() ? `?${params.toString()}` : ''}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -195,7 +195,7 @@ export class FetchErrorQueueService {
     config?: RequestConfig
   ): Promise<ErrorMessageDetail> {
     return this.client['get']<ErrorMessageDetail>(
-      `/admin/error-queues/${encodeURIComponent(queueName)}/messages/${encodeURIComponent(messageId)}`,
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages/${encodeURIComponent(messageId)}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -223,7 +223,7 @@ export class FetchErrorQueueService {
     }
 
     return this.client['get']<ErrorQueueStatistics>(
-      `/admin/error-queues/statistics${params.toString() ? `?${params.toString()}` : ''}`,
+      `/api/admin/error-queues/statistics${params.toString() ? `?${params.toString()}` : ''}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -237,7 +237,7 @@ export class FetchErrorQueueService {
    */
   async getHealth(config?: RequestConfig): Promise<ErrorQueueHealth> {
     return this.client['get']<ErrorQueueHealth>(
-      '/admin/error-queues/health',
+      '/api/admin/error-queues/health',
       {
         signal: config?.signal,
         timeout: config?.timeout,
