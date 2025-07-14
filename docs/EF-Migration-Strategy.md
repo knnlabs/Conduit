@@ -108,6 +108,62 @@ INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES ('MigrationId', '9.0.5');
 ```
 
+### Complete Migration Reset Procedure
+When you need to consolidate migrations or resolve persistent conflicts:
+
+#### Why This Is Necessary
+EF Core migrations are compiled into the assembly. When you delete .cs files but don't properly rebuild, the old migrations remain in the compiled DLL. The migration system reads ALL migrations from the assembly, not from the .cs files.
+
+#### Step 1: Remove ALL migration files including the snapshot
+```bash
+rm -rf ConduitLLM.Configuration/Migrations/*
+```
+
+#### Step 2: Clean and rebuild the solution
+```bash
+# Clean all build artifacts
+dotnet clean
+rm -rf bin/ obj/
+
+# Rebuild the solution
+dotnet build
+```
+
+#### Step 3: Create a fresh initial migration
+```bash
+cd ConduitLLM.Configuration
+dotnet ef migrations add InitialCreate
+```
+
+#### Step 4: Handle existing databases
+
+**Option A: Drop and recreate (development only - loses all data)**
+```sql
+DROP DATABASE conduitdb;
+CREATE DATABASE conduitdb;
+```
+
+**Option B: Manually sync the migration history (preserves data)**
+1. Generate the migration SQL script:
+```bash
+dotnet ef migrations script -o initial-migration.sql
+```
+
+2. Edit the script to remove CREATE TABLE statements for existing tables
+
+3. Apply only the INSERT into __EFMigrationsHistory:
+```sql
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") 
+VALUES ('20250114_InitialCreate', '9.0.5');
+```
+
+#### Best Practices for Migration Resets
+1. **Use feature branches** for experimental migrations
+2. **Squash migrations only at major releases** when you can afford downtime
+3. **Always backup databases** before migration changes
+4. **Use migration bundles** for production deployments
+5. **Consider using EF Core's migration squashing tools** instead of manual deletion
+
 ### Rollback Procedure
 ```bash
 # Generate down script
