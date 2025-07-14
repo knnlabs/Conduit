@@ -126,9 +126,9 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
   [ProviderType.MiniMax]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: true,
+    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
-    helpText: 'Contact MiniMax support for API access. You will need both API key and organization ID.',
+    helpText: 'Contact MiniMax support for API access.',
   },
   [ProviderType.Replicate]: {
     requiresApiKey: true,
