@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -72,8 +73,34 @@ namespace ConduitLLM.Configuration.Data
                         continue;
                     }
 
-                    // Try both EnsureCreated and Migrate approaches
-                    await ApplyMigrationsWithFallbackAsync(context);
+                    // Use PostgreSQL advisory lock to prevent race conditions
+                    var migrationLockId = 7891011; // Unique ID for migration lock
+                    var gotLock = false;
+                    
+                    try
+                    {
+                        gotLock = await TryAcquireMigrationLockAsync(context, migrationLockId);
+                        
+                        if (gotLock)
+                        {
+                            _logger.LogInformation("Acquired migration lock, proceeding with database initialization");
+                            // Try both EnsureCreated and Migrate approaches
+                            await ApplyMigrationsWithFallbackAsync(context);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Another instance is running migrations, waiting for completion...");
+                            await WaitForMigrationsToCompleteAsync(context, maxWaitTime: TimeSpan.FromMinutes(5));
+                        }
+                    }
+                    finally
+                    {
+                        if (gotLock)
+                        {
+                            await ReleaseMigrationLockAsync(context, migrationLockId);
+                            _logger.LogInformation("Released migration lock");
+                        }
+                    }
 
                     // Verify critical tables exist
                     var tablesToVerify = new[]
@@ -863,6 +890,103 @@ namespace ConduitLLM.Configuration.Data
             // Add other table definitions as needed
 
             return definitions;
+        }
+
+        /// <summary>
+        /// Tries to acquire a PostgreSQL advisory lock for database migrations
+        /// </summary>
+        private async Task<bool> TryAcquireMigrationLockAsync(ConfigurationDbContext context, long lockId)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT pg_try_advisory_lock(@lockId)";
+                
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@lockId";
+                parameter.Value = lockId;
+                command.Parameters.Add(parameter);
+
+                var result = await command.ExecuteScalarAsync();
+                return result != null && (bool)result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to acquire migration lock");
+                // If we can't acquire the lock, assume someone else has it
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Releases a PostgreSQL advisory lock
+        /// </summary>
+        private async Task ReleaseMigrationLockAsync(ConfigurationDbContext context, long lockId)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT pg_advisory_unlock(@lockId)";
+                
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@lockId";
+                parameter.Value = lockId;
+                command.Parameters.Add(parameter);
+
+                await command.ExecuteScalarAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to release migration lock");
+                // Lock will be automatically released when connection closes
+            }
+        }
+
+        /// <summary>
+        /// Waits for database migrations to complete by checking if critical tables exist
+        /// </summary>
+        private async Task WaitForMigrationsToCompleteAsync(ConfigurationDbContext context, TimeSpan maxWaitTime)
+        {
+            var startTime = DateTime.UtcNow;
+            var checkInterval = TimeSpan.FromSeconds(2);
+            
+            while (DateTime.UtcNow - startTime < maxWaitTime)
+            {
+                try
+                {
+                    // Check if the migrations history table exists and has entries
+                    var hasMigrations = await context.Database.GetAppliedMigrationsAsync();
+                    if (hasMigrations.Any())
+                    {
+                        // Also verify at least one critical table exists
+                        if (await TableExistsAsync(context, "VirtualKeys"))
+                        {
+                            _logger.LogInformation("Migrations completed by another instance");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Waiting for migrations to complete...");
+                }
+
+                await Task.Delay(checkInterval);
+            }
+
+            throw new TimeoutException($"Timed out waiting for database migrations to complete after {maxWaitTime}");
         }
     }
 }
