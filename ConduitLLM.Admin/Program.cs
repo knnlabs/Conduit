@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Caching;
 using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
@@ -256,6 +257,10 @@ public partial class Program
         
         // Add error queue metrics collection service
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
+        
+        // Add cache monitoring and alerting services
+        builder.Services.AddCacheMonitoring(builder.Configuration);
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();
 
         var app = builder.Build();
 

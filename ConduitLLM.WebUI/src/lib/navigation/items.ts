@@ -18,6 +18,7 @@ import {
   IconCreditCard,
   IconNetwork,
   IconFilter,
+  IconHeartRateMonitor,
   IconDeviceDesktop,
   IconAlertTriangle,
 } from '@tabler/icons-react';
@@ -124,6 +125,14 @@ export const navigationSections: NavigationSection[] = [
         icon: IconDatabase,
         href: '/caching-settings',
         description: 'Cache configuration',
+      },
+      {
+        id: 'cache-monitoring',
+        label: 'Cache Monitoring',
+        icon: IconHeartRateMonitor,
+        href: '/cache-monitoring',
+        description: 'Real-time cache alerts',
+        color: 'cyan',
       },
       {
         id: 'ip-filtering',

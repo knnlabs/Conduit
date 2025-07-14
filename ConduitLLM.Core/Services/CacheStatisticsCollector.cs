@@ -29,7 +29,7 @@ namespace ConduitLLM.Core.Services
         private readonly SemaphoreSlim _lock = new(1, 1);
 
         public event EventHandler<CacheStatisticsUpdatedEventArgs>? StatisticsUpdated;
-        public event EventHandler<CacheAlertEventArgs>? AlertTriggered;
+        public event EventHandler<ConduitLLM.Core.Models.CacheAlertEventArgs>? AlertTriggered;
 
         public CacheStatisticsCollector(
             ILogger<CacheStatisticsCollector> logger,
@@ -328,7 +328,7 @@ namespace ConduitLLM.Core.Services
                 var alertKey = $"{alert.Region}_{alert.AlertType}";
                 var isNew = _activeAlerts.TryAdd(alertKey, alert);
 
-                AlertTriggered?.Invoke(this, new CacheAlertEventArgs
+                AlertTriggered?.Invoke(this, new ConduitLLM.Core.Models.CacheAlertEventArgs
                 {
                     Alert = alert,
                     IsNew = isNew,
