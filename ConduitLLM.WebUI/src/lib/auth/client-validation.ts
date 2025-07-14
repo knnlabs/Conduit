@@ -2,14 +2,25 @@
  * Client-safe validation functions that don't import the SDK
  */
 
-export function validateMasterKeyFormat(key: string): boolean {
+export function validateMasterKeyFormat(key: string): string | null {
   if (!key || typeof key !== 'string') {
-    return false;
+    return 'Master key is required';
   }
   
-  // Basic format validation - adjust as needed
-  // Minimum 8 characters, contains letters and numbers
-  return key.length >= 8 && /[a-zA-Z]/.test(key) && /[0-9]/.test(key);
+  const sanitized = key.trim();
+  
+  // Use same validation as backend - minimum 4 characters
+  if (sanitized.length < 4) {
+    return 'Master key must be at least 4 characters';
+  }
+  
+  if (sanitized.length > 100) {
+    return 'Master key is too long (maximum 100 characters)';
+  }
+  
+  // Allow any format - the server will validate strength
+  // This prevents the form from blocking weak passwords entirely
+  return null;
 }
 
 
@@ -25,8 +36,9 @@ export function sanitizeMasterKey(key: string): string {
 export async function validateMasterKey(key: string): Promise<{ isValid: boolean; error?: string }> {
   // On client side, we can only do format validation
   // The actual validation happens through the API
-  if (!validateMasterKeyFormat(key)) {
-    return { isValid: false, error: 'Invalid key format' };
+  const formatError = validateMasterKeyFormat(key);
+  if (formatError) {
+    return { isValid: false, error: formatError };
   }
   
   // For client-side, we assume it's valid if format is correct

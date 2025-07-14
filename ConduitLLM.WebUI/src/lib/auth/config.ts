@@ -3,6 +3,8 @@
  * Centralizes auth-related configuration to avoid direct process.env access in routes
  */
 
+import { getMasterKeyStrength } from './validation';
+
 interface AuthConfig {
   adminPassword: string;
   sessionSecret: string;
@@ -25,7 +27,30 @@ class AuthConfigService {
 
     // Validate required configuration
     if (!this.config.adminPassword) {
-      console.warn('CONDUIT_ADMIN_LOGIN_PASSWORD not set - admin login will not work');
+      console.warn('⚠️  CONDUIT_ADMIN_LOGIN_PASSWORD not set - admin login will not work');
+    } else {
+      // Check password strength and warn if weak, but still allow app to start
+      const strength = getMasterKeyStrength(this.config.adminPassword);
+      
+      if (strength.score < 50) {
+        console.warn('⚠️  WEAK ADMIN PASSWORD DETECTED');
+        console.warn(`   Password strength: ${strength.label} (${strength.score}/100)`);
+        console.warn('   This is a security risk in production environments.');
+        
+        if (strength.suggestions.length > 0) {
+          console.warn('   Suggestions to improve security:');
+          strength.suggestions.forEach(suggestion => {
+            console.warn(`   • ${suggestion}`);
+          });
+        }
+        
+        console.warn('   Consider using a stronger password by updating CONDUIT_ADMIN_LOGIN_PASSWORD');
+        console.warn('   The WebUI will continue to start, but please address this security concern.');
+      } else if (strength.score < 70) {
+        console.info(`ℹ️  Admin password strength: ${strength.label} (${strength.score}/100) - Consider strengthening for production`);
+      } else {
+        console.info(`✅ Admin password strength: ${strength.label} (${strength.score}/100)`);
+      }
     }
   }
 
