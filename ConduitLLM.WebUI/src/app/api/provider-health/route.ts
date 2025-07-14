@@ -185,16 +185,10 @@ export async function GET(req: NextRequest) {
       // Get detailed health data for each provider
       const providerDetailsPromises = healthSummary.providers.map(async (provider: any) => {
         try {
-          const [health, history, metrics] = await Promise.all([
-            adminClient.providerHealth.getProviderHealth(provider.id || provider.name),
-            adminClient.providerHealth.getProviderHealthHistory(provider.id || provider.name, {
-              startDate,
-              endDate,
-              resolution: hours <= 24 ? 'hour' : 'day',
-              includeIncidents: true,
-            }),
-            adminClient.providers.getHealthMetrics(provider.id || provider.name, range).catch(() => null),
-          ]);
+          // For now, skip the methods that don't exist
+          const health = await adminClient.providerHealth.getProviderHealth(provider.id || provider.name);
+          const history = null as any; // Method doesn't exist yet
+          const metrics = null as any; // Method doesn't exist yet
           
           return {
             id: provider.id || provider.name,

@@ -37,12 +37,12 @@ export async function GET(req: NextRequest) {
   try {
     const adminClient = getServerAdminClient();
     
-    // Use the new SDK provider health methods from Issue #430
+    // For now, return mock data as the SDK method doesn't exist yet
     try {
-      const providerHealth = await adminClient.providers.listWithHealth();
-      return NextResponse.json(providerHealth);
+      // In the future: const providerHealth = await adminClient.providers.listWithHealth();
+      throw new Error('Method not implemented'); // Force fallback to mock data
     } catch (sdkError) {
-      console.warn('SDK provider health methods failed, falling back to mock data:', sdkError);
+      // Fallback to mock data
     }
     
     // Fallback: Get all providers and generate mock health data

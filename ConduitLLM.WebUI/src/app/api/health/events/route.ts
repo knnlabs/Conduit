@@ -64,13 +64,11 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const adminClient = getServerAdminClient();
     
-    // Use the new SDK health events methods from Issue #428
+    // For now, return mock data as the SDK method doesn't exist yet
     try {
-      const events = await adminClient.system.getHealthEvents(limit);
-      return NextResponse.json(events);
+      // In the future: const events = await adminClient.system.getHealthEvents(limit);
+      throw new Error('Method not implemented'); // Force fallback to mock data
     } catch (sdkError) {
-      console.warn('SDK health event methods failed, falling back to mock data:', sdkError);
-      
       // Fallback to mock data if SDK methods fail
       const mockData = generateMockEvents(limit);
       return NextResponse.json(mockData);

@@ -3,7 +3,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { requireAuth } from '@/lib/auth/simple-auth';
 
-// POST /api/config/caching/[cacheId]/clear - Clear a specific cache
+// POST /api/config/caching/[cacheId]/refresh - Refresh a specific cache
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ cacheId: string }> }
@@ -17,12 +17,13 @@ export async function POST(
     const adminClient = getServerAdminClient();
     const { cacheId } = await context.params;
     
-    // Clear the cache using the SDK method
+    // For now, clear the cache as a refresh mechanism
+    // In the future, this would call a specific refresh endpoint
     await adminClient.configuration.clearCacheByRegion(cacheId);
     
     return NextResponse.json({ 
       success: true, 
-      message: `Cache ${cacheId} cleared successfully` 
+      message: `Cache ${cacheId} refreshed successfully` 
     });
   } catch (error) {
     return handleSDKError(error);

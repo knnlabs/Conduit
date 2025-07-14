@@ -13,94 +13,72 @@ export async function GET(req: NextRequest) {
   try {
     const adminClient = getServerAdminClient();
     
-    // Try to fetch cache configuration from the Admin SDK
-    let cacheConfig = null;
-    let cacheStats = null;
-    
-    try {
-      cacheConfig = await adminClient.configuration.getCachingConfiguration();
-    } catch (error) {
-      console.warn('Failed to fetch cache configuration, using defaults:', error);
-      // Use default configuration if the endpoint doesn't exist
-      cacheConfig = {
-        defaultTTLSeconds: 3600,
-        maxMemorySizeMB: 1024,
-        evictionPolicy: 'lru' as const,
-        compressionEnabled: true,
-        distributedCacheEnabled: false,
-        cacheableEndpoints: [],
-        excludePatterns: [],
-      };
-    }
-    
-    // Try to fetch cache statistics
-    try {
-      cacheStats = await adminClient.configuration.getCacheStatistics();
-    } catch (error) {
-      // Cache statistics might not be available, continue without it
-      console.warn('Failed to fetch cache statistics:', error);
-    }
+    // Fetch real cache configuration
+    const cacheConfig = await adminClient.configuration.getCachingConfiguration();
 
-    // Transform the data to match what the frontend expects
+    // Transform to match frontend expectations
+    // For now, create static regions based on configuration
+    const regions = [
+      {
+        id: 'provider-responses',
+        name: 'Provider Responses',
+        type: 'memory' as 'redis' | 'memory' | 'distributed',
+        enabled: true,
+        ttl: cacheConfig.defaultTTLSeconds || 3600,
+        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.4),
+        evictionPolicy: (cacheConfig.evictionPolicy || 'lru') as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: cacheConfig.compressionEnabled ?? true,
+        persistent: false,
+      },
+      {
+        id: 'embeddings',
+        name: 'Embeddings Cache',
+        type: (cacheConfig.distributedCacheEnabled ? 'redis' : 'memory') as 'redis' | 'memory' | 'distributed',
+        enabled: cacheConfig.distributedCacheEnabled ?? false,
+        ttl: (cacheConfig.defaultTTLSeconds || 3600) * 24,
+        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.3),
+        evictionPolicy: (cacheConfig.evictionPolicy || 'lru') as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: cacheConfig.compressionEnabled ?? true,
+        persistent: cacheConfig.distributedCacheEnabled ?? false,
+      },
+      {
+        id: 'model-metadata',
+        name: 'Model Metadata',
+        type: 'memory' as 'redis' | 'memory' | 'distributed',
+        enabled: true,
+        ttl: 600,
+        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
+        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: false,
+        persistent: false,
+      },
+      {
+        id: 'rate-limits',
+        name: 'Rate Limit Counters',
+        type: 'memory' as 'redis' | 'memory' | 'distributed',
+        enabled: true,
+        ttl: 60,
+        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
+        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: false,
+        persistent: false,
+      },
+      {
+        id: 'auth-tokens',
+        name: 'Auth Token Cache',
+        type: (cacheConfig.distributedCacheEnabled ? 'distributed' : 'memory') as 'redis' | 'memory' | 'distributed',
+        enabled: true,
+        ttl: 1800,
+        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
+        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: false,
+        persistent: cacheConfig.distributedCacheEnabled ?? false,
+      },
+    ];
+    
     const response = {
-      configs: [
-        {
-          id: 'provider-responses',
-          name: 'Provider Responses',
-          type: 'memory',
-          enabled: true,
-          ttl: cacheConfig.defaultTTLSeconds,
-          maxSize: cacheConfig.maxMemorySizeMB,
-          evictionPolicy: cacheConfig.evictionPolicy,
-          compression: cacheConfig.compressionEnabled,
-          persistent: false,
-        },
-        {
-          id: 'embeddings',
-          name: 'Embeddings Cache',
-          type: cacheConfig.distributedCacheEnabled ? 'redis' : 'memory',
-          enabled: cacheConfig.distributedCacheEnabled,
-          ttl: cacheConfig.defaultTTLSeconds * 24, // Longer TTL for embeddings
-          maxSize: cacheConfig.maxMemorySizeMB * 2,
-          evictionPolicy: cacheConfig.evictionPolicy,
-          compression: cacheConfig.compressionEnabled,
-          persistent: cacheConfig.distributedCacheEnabled,
-        },
-        {
-          id: 'model-metadata',
-          name: 'Model Metadata',
-          type: 'memory',
-          enabled: true,
-          ttl: 600, // 10 minutes
-          maxSize: 256,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: false,
-        },
-        {
-          id: 'rate-limits',
-          name: 'Rate Limit Counters',
-          type: 'memory',
-          enabled: true,
-          ttl: 60,
-          maxSize: 128,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: false,
-        },
-        {
-          id: 'auth-tokens',
-          name: 'Auth Token Cache',
-          type: cacheConfig.distributedCacheEnabled ? 'distributed' : 'memory',
-          enabled: true,
-          ttl: 1800, // 30 minutes
-          maxSize: 512,
-          evictionPolicy: 'ttl',
-          compression: false,
-          persistent: cacheConfig.distributedCacheEnabled,
-        },
-      ],
-      stats: cacheStats ? transformCacheStats(cacheStats) : {},
+      configs: regions,
+      stats: {},
     };
 
     return NextResponse.json(response);
@@ -120,117 +98,18 @@ export async function PUT(req: NextRequest) {
     const adminClient = getServerAdminClient();
     const { cacheId, updates } = await req.json();
 
-    // Try to get current configuration
-    let currentConfig;
-    try {
-      currentConfig = await adminClient.configuration.getCachingConfiguration();
-    } catch (error) {
-      console.warn('Failed to fetch current cache configuration, using defaults:', error);
-      currentConfig = {
-        defaultTTLSeconds: 3600,
-        maxMemorySizeMB: 1024,
-        evictionPolicy: 'lru' as const,
-        compressionEnabled: true,
-        distributedCacheEnabled: false,
-        cacheableEndpoints: [],
-        excludePatterns: [],
-      };
-    }
-
-    // Apply updates based on cacheId
-    const updatedConfig = {
-      ...currentConfig,
-      defaultTTLSeconds: updates.ttl || currentConfig.defaultTTLSeconds,
-      maxMemorySizeMB: updates.maxSize || currentConfig.maxMemorySizeMB,
-      evictionPolicy: updates.evictionPolicy || currentConfig.evictionPolicy,
-      compressionEnabled: updates.compression !== undefined ? updates.compression : currentConfig.compressionEnabled,
-      distributedCacheEnabled: updates.persistent !== undefined ? updates.persistent : currentConfig.distributedCacheEnabled,
-    };
-
-    // Update the configuration using the correct method
-    try {
-      const result = await adminClient.configuration.updateCacheConfig({
-        defaultTtlSeconds: updates.ttl || currentConfig.defaultTTLSeconds,
-        maxSizeBytes: (updates.maxSize || currentConfig.maxMemorySizeMB) * 1024 * 1024, // Convert MB to bytes
-        strategy: updates.evictionPolicy || 'lru',
-        enabled: updates.enabled !== undefined ? updates.enabled : true,
-      });
-      
-      return NextResponse.json({ success: true, config: result });
-    } catch (error) {
-      console.warn('Failed to update cache configuration:', error);
-      // Return success even if the backend doesn't support it yet
-      return NextResponse.json({ 
-        success: true, 
-        config: {
-          ...currentConfig,
-          ...updates,
-        },
-        message: 'Cache configuration updated (simulated)' 
-      });
-    }
+    // Update cache configuration using the extended API
+    const result = await adminClient.configuration.updateCacheConfig({
+      defaultTtlSeconds: updates.ttl,
+      maxSizeBytes: updates.maxSize ? updates.maxSize * 1024 * 1024 : undefined, // Convert MB to bytes
+      strategy: updates.evictionPolicy as 'lru' | 'lfu' | 'ttl' | 'adaptive' | undefined,
+      enabled: updates.enabled,
+    });
+    
+    return NextResponse.json({ success: true, config: result });
   } catch (error) {
     return handleSDKError(error);
   }
 }
 
-// Helper function to transform cache statistics
-function transformCacheStats(stats: any): Record<string, any> {
-  const transformed: Record<string, any> = {};
-
-  // Map global stats to individual cache regions
-  if (stats.global) {
-    transformed['provider-responses'] = {
-      hits: Math.floor(stats.global.totalHits * 0.4),
-      misses: Math.floor(stats.global.totalMisses * 0.4),
-      evictions: 0,
-      size: Math.floor(stats.global.memoryUsageMB * 0.4),
-      entries: Math.floor(stats.global.itemCount * 0.4),
-      hitRate: stats.global.hitRate,
-      avgLatency: 0.45,
-    };
-
-    transformed['embeddings'] = {
-      hits: Math.floor(stats.global.totalHits * 0.3),
-      misses: Math.floor(stats.global.totalMisses * 0.3),
-      evictions: 0,
-      size: Math.floor(stats.global.memoryUsageMB * 0.3),
-      entries: Math.floor(stats.global.itemCount * 0.3),
-      hitRate: stats.global.hitRate,
-      avgLatency: 0.38,
-    };
-
-    transformed['model-metadata'] = {
-      hits: Math.floor(stats.global.totalHits * 0.15),
-      misses: Math.floor(stats.global.totalMisses * 0.15),
-      evictions: 0,
-      size: Math.floor(stats.global.memoryUsageMB * 0.1),
-      entries: Math.floor(stats.global.itemCount * 0.1),
-      hitRate: stats.global.hitRate + 10,
-      avgLatency: 0.12,
-    };
-
-    transformed['rate-limits'] = {
-      hits: Math.floor(stats.global.totalHits * 0.1),
-      misses: Math.floor(stats.global.totalMisses * 0.1),
-      evictions: 0,
-      size: Math.floor(stats.global.memoryUsageMB * 0.1),
-      entries: Math.floor(stats.global.itemCount * 0.1),
-      hitRate: stats.global.hitRate + 15,
-      avgLatency: 0.08,
-    };
-
-    transformed['auth-tokens'] = {
-      hits: Math.floor(stats.global.totalHits * 0.05),
-      misses: Math.floor(stats.global.totalMisses * 0.05),
-      evictions: 0,
-      size: Math.floor(stats.global.memoryUsageMB * 0.1),
-      entries: Math.floor(stats.global.itemCount * 0.1),
-      hitRate: stats.global.hitRate + 5,
-      avgLatency: 0.22,
-    };
-  }
-
-  return transformed;
-}
 

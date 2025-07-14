@@ -67,11 +67,21 @@ interface CacheStats {
 
 interface CacheEntry {
   key: string;
-  size: number;
-  ttl: number;
-  hits: number;
-  lastAccessed: string;
-  expires: string;
+  size: string; // Changed to string as API returns formatted size
+  createdAt: string;
+  lastAccessedAt: string;
+  expiresAt: string;
+  accessCount: number;
+  priority: number;
+}
+
+interface CacheEntriesResponse {
+  regionId: string;
+  entries: CacheEntry[];
+  totalCount: number;
+  skip: number;
+  take: number;
+  message?: string;
 }
 
 export default function CachingSettingsPage() {
@@ -136,11 +146,26 @@ export default function CachingSettingsPage() {
   const fetchCacheEntries = async (cacheId: string) => {
     setIsLoadingEntries(true);
     try {
-      // In a real implementation, this would fetch from an API endpoint
-      // For now, we'll just clear the entries as we don't have a backend endpoint for this
-      setCacheEntries([]);
+      const response = await fetch(`/api/config/caching/${cacheId}/entries`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch cache entries');
+      }
+      
+      const data: CacheEntriesResponse = await response.json();
+      setCacheEntries(data.entries || []);
+      
+      // Show message if access is restricted
+      if (data.message) {
+        notifications.show({
+          title: 'Information',
+          message: data.message,
+          color: 'blue',
+        });
+      }
     } catch (error) {
       console.error('Error fetching cache entries:', error);
+      setCacheEntries([]);
     } finally {
       setIsLoadingEntries(false);
     }
@@ -306,7 +331,7 @@ export default function CachingSettingsPage() {
                   : '0MB'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Of 4GB allocated
+                Total usage
               </Text>
             </div>
             <ThemeIcon color="blue" variant="light" size={48} radius="md">
@@ -608,16 +633,23 @@ export default function CachingSettingsPage() {
                         {cacheEntries.map((entry) => (
                           <Table.Tr key={entry.key}>
                             <Table.Td>
-                              <Code>{entry.key}</Code>
+                              <Code style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {entry.key}
+                          </Code>
                             </Table.Td>
-                            <Table.Td>{formatters.fileSize(entry.size)}</Table.Td>
-                            <Table.Td>{formatters.duration(entry.ttl * 1000)}</Table.Td>
-                            <Table.Td>{entry.hits}</Table.Td>
+                            <Table.Td>{entry.size}</Table.Td>
                             <Table.Td>
-                              <Text size="xs">{formatters.date(entry.lastAccessed, { relativeDays: 7 })}</Text>
+                              {entry.expiresAt 
+                                ? formatters.duration(new Date(entry.expiresAt).getTime() - Date.now())
+                                : 'No expiry'
+                              }
+                            </Table.Td>
+                            <Table.Td>{entry.accessCount}</Table.Td>
+                            <Table.Td>
+                              <Text size="xs">{formatters.date(entry.lastAccessedAt, { relativeDays: 7 })}</Text>
                             </Table.Td>
                             <Table.Td>
-                              <Text size="xs">{formatters.date(entry.expires, { relativeDays: 7 })}</Text>
+                              <Text size="xs">{entry.expiresAt ? formatters.date(entry.expiresAt, { relativeDays: 7 }) : 'Never'}</Text>
                             </Table.Td>
                           </Table.Tr>
                         ))}
