@@ -35,7 +35,8 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dbContextFactory">Database context factory.</param>
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
-        /// <param name="configuration">Configuration.</param>
+        /// <param name="configuration">Application configuration.</param>
+        /// <param name="cacheManagementService">Service for cache maintenance operations.</param>
         public ConfigurationController(
             IDbContextFactory<ConfigurationDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,

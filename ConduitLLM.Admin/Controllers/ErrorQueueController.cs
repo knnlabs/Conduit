@@ -8,6 +8,7 @@ using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -241,6 +242,8 @@ namespace ConduitLLM.Admin.Controllers
             [FromBody] ReplayRequest request,
             CancellationToken cancellationToken = default)
         {
+                        // Placeholder await to keep method asynchronous until replay logic implemented
+            await Task.CompletedTask;
             using (ErrorQueueMetricsService.StartOperationTimer("replay", queueName))
             {
                 try
@@ -283,6 +286,8 @@ namespace ConduitLLM.Admin.Controllers
             string? messageId = null,
             CancellationToken cancellationToken = default)
         {
+                        // Placeholder await to keep method asynchronous until delete logic implemented
+            await Task.CompletedTask;
             using (ErrorQueueMetricsService.StartOperationTimer("delete", queueName))
             {
                 try

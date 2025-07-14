@@ -26,6 +26,12 @@ namespace ConduitLLM.Admin.Services
         private readonly Dictionary<string, DateTime> _alertCooldowns = new();
         private readonly SemaphoreSlim _cooldownLock = new(1, 1);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CacheAlertNotificationService"/>.
+        /// </summary>
+        /// <param name="serviceProvider">Root service provider used for scoped resolution.</param>
+        /// <param name="notificationService">SignalR admin notification dispatcher.</param>
+        /// <param name="logger">Logger instance.</param>
         public CacheAlertNotificationService(
             IServiceProvider serviceProvider,
             Hubs.AdminNotificationService notificationService,
@@ -36,6 +42,10 @@ namespace ConduitLLM.Admin.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Starts the background subscription to cache-monitoring alerts.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token signalled when the host is shutting down.</param>
         public Task StartAsync(CancellationToken cancellationToken)
         {
             // Get the services from DI
@@ -65,6 +75,10 @@ namespace ConduitLLM.Admin.Services
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Unsubscribes from alert streams and stops the service.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token signalled when the host is shutting down.</param>
         public Task StopAsync(CancellationToken cancellationToken)
         {
             if (_monitoringService != null)
@@ -304,6 +318,8 @@ namespace ConduitLLM.Admin.Services
 
         private async Task SendDetailedCacheAlert(object notification)
         {
+            // Placeholder to keep the method asynchronous until real implementation is added.
+            await Task.CompletedTask;
             try
             {
                 // This would require adding a new method to AdminNotificationHub
@@ -319,6 +335,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             _cooldownLock?.Dispose();

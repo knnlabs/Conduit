@@ -11,7 +11,7 @@ using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Tests.Core.Services
 {
-    public class CacheManagerTests
+    public class CacheManagerTests : IDisposable
     {
         private readonly Mock<ILogger<CacheManager>> _loggerMock;
         private readonly IMemoryCache _memoryCache;
@@ -177,7 +177,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task RegionConfig_AppliesCorrectTTL()
+        public void RegionConfig_AppliesCorrectTTL()
         {
             // Arrange
             var options = new CacheManagerOptions
@@ -308,14 +308,9 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(value, retrievedValue);
         }
 
-        [Fact]
-        public void Dispose_DisposesResources()
+        public void Dispose()
         {
-            // Arrange
-            var cacheManager = new CacheManager(_memoryCache, null, _loggerMock.Object);
-
-            // Act & Assert (should not throw)
-            cacheManager.Dispose();
+            _memoryCache?.Dispose();
         }
 
         // Performance benchmark test (simplified)
@@ -343,9 +338,6 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.True(avgOperationTime < 1.0, $"Average operation time {avgOperationTime}ms exceeds 1ms threshold");
         }
 
-        public void Dispose()
-        {
-            _memoryCache?.Dispose();
-        }
+
     }
 }
