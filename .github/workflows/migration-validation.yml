@@ -1,0 +1,112 @@
+name: EF Core Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - '**.cs'
+      - '**/Migrations/**'
+      - '**/*.csproj'
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - '**.cs'
+      - '**/Migrations/**'
+      - '**/*.csproj'
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Install EF Core tools
+      run: dotnet tool install --global dotnet-ef
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build solution
+      run: dotnet build --no-restore
+    
+    - name: Validate migrations
+      run: ./scripts/migrations/validate-migrations.sh --check-pending
+      env:
+        DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+    
+    - name: Test migration application
+      run: |
+        cd ConduitLLM.Configuration
+        dotnet ef database update --no-build
+      env:
+        DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+    
+    - name: Generate migration script
+      if: github.event_name == 'pull_request'
+      run: |
+        cd ConduitLLM.Configuration
+        dotnet ef migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
+    
+    - name: Upload migration script
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: migration-script
+        path: migration-script.sql
+    
+    - name: Comment PR with migration info
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const migrationScript = fs.readFileSync('migration-script.sql', 'utf8');
+          const lineCount = migrationScript.split('\n').length;
+          
+          const comment = `## 🗄️ Database Migration Summary
+          
+          This PR includes database migrations.
+          
+          **Migration Script Stats:**
+          - Lines: ${lineCount}
+          - Size: ${(migrationScript.length / 1024).toFixed(2)} KB
+          
+          <details>
+          <summary>View Migration Script Preview (first 50 lines)</summary>
+          
+          \`\`\`sql
+          ${migrationScript.split('\n').slice(0, 50).join('\n')}
+          \`\`\`
+          
+          </details>
+          
+          **Action Required:** Review the migration script artifact for full details.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

@@ -309,6 +309,31 @@ namespace ConduitLLM.Configuration.Data
                     }
                 }
             }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07") // relation already exists
+            {
+                _logger.LogWarning("Migration conflict detected: {Message}. Attempting to resolve...", ex.MessageText);
+                
+                // Check if this is a migration ordering issue
+                var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+                var allMigrations = context.Database.GetMigrations();
+                var orphanedMigrations = appliedMigrations.Where(m => !allMigrations.Contains(m)).ToList();
+                
+                if (orphanedMigrations.Any())
+                {
+                    _logger.LogWarning("Found {Count} orphaned migrations in database: {Migrations}",
+                        orphanedMigrations.Count, string.Join(", ", orphanedMigrations));
+                    
+                    // Mark current migrations as applied to bypass the conflict
+                    await MarkPendingMigrationsAsAppliedAsync(context);
+                    _logger.LogInformation("Marked pending migrations as applied to resolve conflict");
+                }
+                else
+                {
+                    // If no orphaned migrations, this might be a real schema issue
+                    _logger.LogError("Unable to resolve migration conflict automatically");
+                    throw;
+                }
+            }
             catch (InvalidOperationException ex) when (ex.Message.Contains("PendingModelChangesWarning"))
             {
                 // This is the specific error we're seeing - handle it gracefully
@@ -987,6 +1012,60 @@ namespace ConduitLLM.Configuration.Data
             }
 
             throw new TimeoutException($"Timed out waiting for database migrations to complete after {maxWaitTime}");
+        }
+        
+        /// <summary>
+        /// Marks all pending migrations as applied without actually running them
+        /// Used to resolve migration conflicts when database schema already exists
+        /// </summary>
+        private async Task MarkPendingMigrationsAsAppliedAsync(ConfigurationDbContext context)
+        {
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (!pendingMigrations.Any())
+            {
+                _logger.LogInformation("No pending migrations to mark as applied");
+                return;
+            }
+            
+            var connection = context.Database.GetDbConnection();
+            await connection.OpenAsync();
+            
+            try
+            {
+                using var transaction = await connection.BeginTransactionAsync();
+                
+                foreach (var migration in pendingMigrations)
+                {
+                    var command = connection.CreateCommand();
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
+                        VALUES (@migrationId, @productVersion)
+                        ON CONFLICT (""MigrationId"") DO NOTHING";
+                    
+                    var migrationIdParam = command.CreateParameter();
+                    migrationIdParam.ParameterName = "@migrationId";
+                    migrationIdParam.Value = migration;
+                    command.Parameters.Add(migrationIdParam);
+                    
+                    var productVersionParam = command.CreateParameter();
+                    productVersionParam.ParameterName = "@productVersion";
+                    productVersionParam.Value = "9.0.5"; // Current EF Core version
+                    command.Parameters.Add(productVersionParam);
+                    
+                    await command.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Marked migration {Migration} as applied", migration);
+                }
+                
+                await transaction.CommitAsync();
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
     }
 }
