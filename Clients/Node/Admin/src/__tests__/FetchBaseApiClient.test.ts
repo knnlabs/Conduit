@@ -1,5 +1,4 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { ResponseParser } from '../client/FetchOptions';
 import { ConduitError } from '../utils/errors';
 import type { ApiClientConfig } from '../client/types';
 

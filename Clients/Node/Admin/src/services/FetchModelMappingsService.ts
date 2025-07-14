@@ -10,15 +10,11 @@ import type {
   CapabilityTestResult,
   ModelMappingSuggestion,
   ModelRoutingInfo,
-  BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';
 
 // Type aliases for better readability - using generated types where available
-type ModelProviderMappingDtoGenerated = components['schemas']['ModelProviderMappingDto'];
-type CreateModelProviderMappingDtoGenerated = components['schemas']['CreateModelProviderMappingDto'];
 type BulkModelMappingRequest = components['schemas']['BulkModelMappingRequest'];
-type BulkModelMappingResponse = components['schemas']['BulkModelMappingResponse'];
 
 // Define inline types for responses that aren't in the generated schemas
 interface ModelMappingListResponseDto {

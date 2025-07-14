@@ -1,7 +1,6 @@
 import { FetchSecurityService } from '../FetchSecurityService';
 import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
-import type { RequestConfig } from '../../client/types';
 import type {
   IpWhitelistDto,
   SecurityEventParams,
@@ -20,9 +19,8 @@ import type {
 import type {
   SecurityEvent,
   CreateSecurityEventDto,
-  ThreatDetection,
+  ThreatAnalytics,
   ComplianceMetrics,
-  PagedResult,
 } from '../../models/security';
 
 jest.mock('../../client/FetchBaseApiClient');

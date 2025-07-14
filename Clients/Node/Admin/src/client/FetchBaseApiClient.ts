@@ -1,6 +1,5 @@
 import type { 
   ApiClientConfig, 
-  RequestConfig, 
   RetryConfig, 
   Logger, 
   CacheProvider, 
@@ -299,7 +298,7 @@ export abstract class FetchBaseApiClient {
 
       // Handle empty responses
       const contentLength = response.headers.get('content-length');
-      const contentType = response.headers.get('content-type');
+      // Content type checked but not used for empty responses
       
       if (contentLength === '0' || response.status === 204) {
         return undefined as TResponse;
@@ -366,9 +365,6 @@ export abstract class FetchBaseApiClient {
     }
   }
 
-  protected getCacheKey(method: string, url: string, params?: Record<string, unknown>): string;
-  protected getCacheKey(resource: string, id?: unknown): string;
-  protected getCacheKey(resource: string, id1: string, id2: string): string;
   protected getCacheKey(
     methodOrResource: string, 
     urlOrId?: unknown, 

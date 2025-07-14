@@ -1,22 +1,18 @@
 import { FetchMonitoringService } from '../FetchMonitoringService';
 import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
-import type { RequestConfig } from '../../client/types';
 import type {
   MetricsQueryParams,
   MetricsResponse,
   AlertDto,
   CreateAlertDto,
-  UpdateAlertDto,
   AlertHistoryEntry,
   DashboardDto,
   CreateDashboardDto,
-  UpdateDashboardDto,
   SystemResourceMetrics,
   TraceDto,
   TraceQueryParams,
   LogEntry,
   LogQueryParams,
-  LogStreamOptions,
   MonitoringHealthStatus,
   MetricExportParams,
   MetricExportResult,

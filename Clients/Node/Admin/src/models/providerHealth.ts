@@ -1,13 +1,6 @@
 import { FilterOptions } from './common';
 import type { 
-  ProviderHealthStatusDto,
-  ProviderHealthSummaryDto,
-  ProviderHealthConfigurationDto,
-  UpdateProviderHealthConfigurationDto,
-  ProviderHealthRecordDto,
-  CreateProviderHealthConfigurationDto,
-  ProviderHealthStatisticsDto,
-  ProviderHealthFilters
+  ProviderHealthStatusDto
 } from './provider';
 
 // Core health types
@@ -334,12 +327,5 @@ export interface ProviderHealthDataPoint {
 
 // Re-export types from provider.ts for convenience
 export type {
-  ProviderHealthConfigurationDto,
-  UpdateProviderHealthConfigurationDto,
-  ProviderHealthRecordDto,
   ProviderHealthStatusDto,
-  ProviderHealthSummaryDto,
-  CreateProviderHealthConfigurationDto,
-  ProviderHealthStatisticsDto,
-  ProviderHealthFilters,
 } from './provider';

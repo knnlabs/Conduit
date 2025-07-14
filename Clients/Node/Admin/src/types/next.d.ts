@@ -1,4 +1,6 @@
 // Type declarations for optional Next.js dependency
+/// <reference types="node" />
+
 declare module 'next/server' {
   export interface NextRequest extends Request {
     nextUrl: URL & { search: string };

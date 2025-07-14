@@ -445,22 +445,22 @@ export class ConfigurationService extends SettingsService {
   subscriptions = {
     /**
      * Subscribe to routing status updates
-     * @param callback Function to call when status updates
      * @returns Unsubscribe function
+     * @todo Implement with SignalR - will accept callback parameter when ready
      */
-    subscribeToRoutingStatus: (callback: (status: any) => void): (() => void) => {
-      // TODO: Implement with SignalR
+    subscribeToRoutingStatus: (): (() => void) => {
+      // TODO: Implement with SignalR - will accept callback parameter when ready
       console.warn('Real-time subscriptions not yet implemented');
       return () => {};
     },
 
     /**
      * Subscribe to health status updates
-     * @param callback Function to call when health updates
      * @returns Unsubscribe function
+     * @todo Implement with SignalR - will accept callback parameter when ready
      */
-    subscribeToHealthStatus: (callback: (health: LoadBalancerHealthDto) => void): (() => void) => {
-      // TODO: Implement with SignalR
+    subscribeToHealthStatus: (): (() => void) => {
+      // TODO: Implement with SignalR - will accept callback parameter when ready
       console.warn('Real-time subscriptions not yet implemented');
       return () => {};
     },

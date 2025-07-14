@@ -15,7 +15,6 @@ import type {
   UpdateAccessPolicyDto,
   AuditLogParams,
   AuditLogPage,
-  AuditLog,
   ExportParams,
   ExportResult,
 } from '../models/securityExtended';

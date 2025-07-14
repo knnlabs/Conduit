@@ -12,11 +12,20 @@ module.exports = {
   env: {
     node: true,
     jest: true,
+    browser: true,
+  },
+  globals: {
+    RequestInit: 'readonly',
+    ResponseInit: 'readonly',
   },
   ignorePatterns: ['.eslintrc.js', 'dist/', 'node_modules/', '*.js'],
   rules: {
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }],
+    '@typescript-eslint/no-unused-vars': ['error', { 
+      'argsIgnorePattern': '^_',
+      'destructuredArrayIgnorePattern': '^_',
+      'ignoreRestSiblings': true
+    }],
     'no-case-declarations': 'error',
   },
 };

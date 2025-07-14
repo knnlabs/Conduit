@@ -1,33 +1,26 @@
 import { FetchConfigurationService } from '../FetchConfigurationService';
 import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
-import type { RequestConfig } from '../../client/types';
 import type {
   RoutingConfigDto,
   UpdateRoutingConfigDto as ExtendedUpdateRoutingConfigDto,
   RoutingRule as ExtendedRoutingRule,
   CreateRoutingRuleDto,
   CacheConfigDto,
-  UpdateCacheConfigDto,
   CacheClearParams,
   CacheClearResult,
   CacheStatsDto,
   LoadBalancerConfigDto,
-  UpdateLoadBalancerConfigDto,
   LoadBalancerHealthDto,
   PerformanceConfigDto,
-  UpdatePerformanceConfigDto,
   PerformanceTestParams,
   PerformanceTestResult,
   FeatureFlag,
   UpdateFeatureFlagDto,
 } from '../../models/configurationExtended';
 import type {
-  RoutingConfiguration,
-  CachingConfiguration,
   CachePolicy,
   CreateCachePolicyDto,
-  CacheStatistics,
   TestResult,
 } from '../../models/configuration';
 

@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * Extended fetch options that include response type hints
  * This provides a cleaner way to handle different response types
@@ -51,8 +53,9 @@ export class ResponseParser {
           return await response.json() as T;
         case 'text':
           return await response.text() as T;
-        case 'blob':
+        case 'blob': {
           return await response.blob() as T;
+        }
         case 'arraybuffer':
           return await response.arrayBuffer() as T;
         case 'stream':
@@ -60,10 +63,11 @@ export class ResponseParser {
             throw new Error('Response body is not a stream');
           }
           return response.body as T;
-        default:
+        default: {
           // TypeScript exhaustiveness check
           const _exhaustive: never = responseType;
           throw new Error(`Unknown response type: ${_exhaustive}`);
+        }
       }
     }
     

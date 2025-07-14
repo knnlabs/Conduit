@@ -5,9 +5,6 @@ import type {
   ModelDto,
   ModelDetailsDto,
   ModelCapabilities,
-  ModelSearchFilters,
-  ModelSearchResult,
-  ModelListResponseDto,
   RefreshModelsResponse,
   DiscoveredModel,
 } from '../models/providerModels';
@@ -149,39 +146,6 @@ export class FetchProviderModelsService {
     return modelDetails.capabilities;
   }
 
-  /**
-   * Search models across all providers
-   * @deprecated This endpoint doesn't exist in Admin API. Implement client-side filtering instead.
-   */
-  async searchModels(
-    query: string,
-    filters?: ModelSearchFilters,
-    config?: RequestConfig
-  ): Promise<ModelSearchResult> {
-    console.warn('searchModels: This endpoint does not exist in Admin API. This method is deprecated.');
-    throw new Error('searchModels is not available in Admin API. Use getProviderModels and filter results client-side.');
-  }
-
-  /**
-   * Get summary of all provider models
-   * @deprecated This endpoint doesn't exist in Admin API.
-   */
-  async getModelsSummary(config?: RequestConfig): Promise<Record<string, number>> {
-    console.warn('getModelsSummary: This endpoint does not exist in Admin API. This method is deprecated.');
-    throw new Error('getModelsSummary is not available in Admin API.');
-  }
-
-  /**
-   * Test provider connection
-   * @deprecated Use the providers service testConnection method instead.
-   */
-  async testProviderConnection(
-    providerName: string,
-    config?: RequestConfig
-  ): Promise<{ success: boolean; message: string; responseTimeMs?: number }> {
-    console.warn('testProviderConnection: This endpoint does not exist in Admin API. Use providers.testConnection instead.');
-    throw new Error('testProviderConnection is not available here. Use the providers service instead.');
-  }
 
   /**
    * Helper method to check if a model supports a specific capability

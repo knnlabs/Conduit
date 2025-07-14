@@ -1,7 +1,6 @@
 import { FetchProviderHealthService } from '../FetchProviderHealthService';
 import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
-import type { RequestConfig } from '../../client/types';
 import type { 
   HealthSummaryDto,
   ProviderHealthDto,

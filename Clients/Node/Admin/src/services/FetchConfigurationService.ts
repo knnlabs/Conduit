@@ -28,7 +28,6 @@ import type {
   RoutingHealthResponse,
   RoutePerformanceTestParams,
   RoutePerformanceTestResult,
-  RoutingHealthEvent,
   CircuitBreakerConfig,
   CircuitBreakerStatus,
 } from '../models/configurationExtended';
@@ -1022,7 +1021,7 @@ export class FetchConfigurationService {
 
   private generateMockRouteHealthDetails(routeId?: string): RouteHealthDetails[] {
     const routes = ['openai-gpt4', 'anthropic-claude', 'azure-gpt35', 'google-gemini', 'replicate-llama'];
-    return routes.map((route, index) => ({
+    return routes.map((route) => ({
       routeId: routeId || route,
       routeName: route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' '),
       pattern: `/api/chat/completions/${route}`,

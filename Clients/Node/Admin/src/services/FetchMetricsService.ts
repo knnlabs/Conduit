@@ -8,7 +8,6 @@ import type {
   ProviderMetricsResponse,
   ModelMetricsResponse,
   ErrorMetricsResponse,
-  SystemMetrics,
   RequestMetrics,
   CpuMetrics,
   MemoryMetrics,

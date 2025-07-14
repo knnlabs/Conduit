@@ -373,11 +373,12 @@ export class FetchAnalyticsService {
         case 'day':
           period = date.toISOString().slice(0, 10);
           break;
-        case 'week':
+        case 'week': {
           const weekStart = new Date(date);
           weekStart.setDate(date.getDate() - date.getDay());
           period = weekStart.toISOString().slice(0, 10);
           break;
+        }
         case 'month':
           period = date.toISOString().slice(0, 7);
           break;

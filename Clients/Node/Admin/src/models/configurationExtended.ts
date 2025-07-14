@@ -1,4 +1,4 @@
-import { FilterOptions } from './common';
+// Removed unused import: FilterOptions
 
 // Extended Routing types from issue #380
 export interface RoutingConfigDto {

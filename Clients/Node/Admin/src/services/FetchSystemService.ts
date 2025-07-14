@@ -16,7 +16,6 @@ import type {
 
 // Type aliases for better readability  
 type GlobalSettingDto = components['schemas']['GlobalSettingDto'];
-type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
 type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequestDto'];
 type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
 type CreateGlobalSettingDto = components['schemas']['CreateGlobalSettingDto'];
@@ -213,9 +212,6 @@ export class FetchSystemService {
    * @since Issue #427 - System Health SDK Methods
    */
   async getSystemHealth(config?: RequestConfig): Promise<SystemHealthDto> {
-    // Get basic health status
-    const healthStatus = await this.getHealth(config);
-    
     // Get system info for runtime metrics
     const systemInfo = await this.getSystemInfo(config);
     
@@ -364,7 +360,6 @@ export class FetchSystemService {
     } catch (error) {
       // Fallback: construct from health and system info
       const health = await this.getHealth(config);
-      const systemInfo = await this.getSystemInfo(config);
       
       // Map health checks to service status
       const dbStatus = health.checks.database?.status || 'healthy';
@@ -562,7 +557,7 @@ export class FetchSystemService {
     let connected = false;
     let eventCallbacks: Array<(event: HealthEventDto) => void> = [];
     let connectionCallbacks: Array<(connected: boolean) => void> = [];
-    let pollInterval: NodeJS.Timeout | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
     let lastEventTimestamp: string | null = null;
 
     const startPolling = () => {

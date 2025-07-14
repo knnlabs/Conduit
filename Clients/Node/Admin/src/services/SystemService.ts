@@ -2,7 +2,7 @@ import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { HttpMethod } from '../client/HttpMethod';
 import type { DiagnosticChecks } from '../models/common-types';
 import { ApiClientConfig } from '../client/types';
-import { ENDPOINTS, CACHE_TTL, HTTP_HEADERS } from '../constants';
+import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   SystemInfoDto,
   HealthStatusDto,

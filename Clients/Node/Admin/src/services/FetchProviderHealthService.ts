@@ -5,20 +5,14 @@ import type {
   HealthSummaryDto,
   ProviderHealthDto,
   ProviderHealthStatusDto,
-  ProviderHealthSummaryDto,
   ProviderHealthSummary,
   HealthHistory,
   HistoryParams,
   HealthAlert,
-  HealthAlertListResponseDto,
   AlertParams,
   ConnectionTestResult,
   PerformanceParams,
   PerformanceMetrics,
-  ProviderHealthConfigurationDto,
-  CreateProviderHealthConfigurationDto,
-  UpdateProviderHealthConfigurationDto,
-  ProviderHealthRecordDto,
   ProviderHealthHistoryOptions,
   ProviderHealthHistoryResponse,
 } from '../models/providerHealth';
@@ -46,8 +40,8 @@ export class FetchProviderHealthService {
   /**
    * Get legacy health summary (using existing endpoint)
    */
-  async getLegacyHealthSummary(config?: RequestConfig): Promise<ProviderHealthSummaryDto> {
-    return this.client['get']<ProviderHealthSummaryDto>(
+  async getLegacyHealthSummary(config?: RequestConfig): Promise<HealthSummaryDto> {
+    return this.client['get']<HealthSummaryDto>(
       ENDPOINTS.HEALTH.STATUS,
       {
         signal: config?.signal,
@@ -126,7 +120,7 @@ export class FetchProviderHealthService {
     startDate?: string,
     endDate?: string,
     config?: RequestConfig
-  ): Promise<ProviderHealthRecordDto[]> {
+  ): Promise<any[]> {
     const queryParams = new URLSearchParams();
     if (startDate) queryParams.append('startDate', startDate);
     if (endDate) queryParams.append('endDate', endDate);
@@ -136,7 +130,7 @@ export class FetchProviderHealthService {
       ? `${ENDPOINTS.HEALTH.HISTORY}?${queryString}`
       : ENDPOINTS.HEALTH.HISTORY;
 
-    return this.client['get']<ProviderHealthRecordDto[]>(
+    return this.client['get']<any[]>(
       url,
       {
         signal: config?.signal,
@@ -237,8 +231,8 @@ export class FetchProviderHealthService {
   /**
    * Get provider health configurations
    */
-  async getHealthConfigurations(config?: RequestConfig): Promise<ProviderHealthConfigurationDto[]> {
-    return this.client['get']<ProviderHealthConfigurationDto[]>(
+  async getHealthConfigurations(config?: RequestConfig): Promise<any[]> {
+    return this.client['get']<any[]>(
       ENDPOINTS.HEALTH.CONFIGURATIONS,
       {
         signal: config?.signal,
@@ -254,8 +248,8 @@ export class FetchProviderHealthService {
   async getProviderHealthConfiguration(
     providerId: string,
     config?: RequestConfig
-  ): Promise<ProviderHealthConfigurationDto> {
-    return this.client['get']<ProviderHealthConfigurationDto>(
+  ): Promise<any> {
+    return this.client['get']<any>(
       ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
       {
         signal: config?.signal,
@@ -269,10 +263,10 @@ export class FetchProviderHealthService {
    * Create health configuration for a provider
    */
   async createHealthConfiguration(
-    data: CreateProviderHealthConfigurationDto,
+    data: any,
     config?: RequestConfig
-  ): Promise<ProviderHealthConfigurationDto> {
-    return this.client['post']<ProviderHealthConfigurationDto, CreateProviderHealthConfigurationDto>(
+  ): Promise<any> {
+    return this.client['post']<any, any>(
       ENDPOINTS.HEALTH.CONFIGURATIONS,
       data,
       {
@@ -288,10 +282,10 @@ export class FetchProviderHealthService {
    */
   async updateHealthConfiguration(
     providerId: string,
-    data: UpdateProviderHealthConfigurationDto,
+    data: any,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, UpdateProviderHealthConfigurationDto>(
+    return this.client['put']<void, any>(
       ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
       data,
       {
