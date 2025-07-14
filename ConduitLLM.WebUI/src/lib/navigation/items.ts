@@ -54,7 +54,7 @@ export const navigationSections: NavigationSection[] = [
         id: 'image-generation',
         label: 'Image Generation',
         icon: IconPhoto,
-        href: '/image-generation',
+        href: '/images',
         description: 'Generate images with AI',
         color: 'pink',
       },
