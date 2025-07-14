@@ -1,17 +1,23 @@
 using System;
 using System.Collections.Generic;
+using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Models
 {
     /// <summary>
     /// Represents a cache entry with metadata for management and monitoring.
     /// </summary>
-    public class CacheEntry<T>
+    public class CacheEntry<T> : ICacheEntry
     {
         /// <summary>
         /// The cached value.
         /// </summary>
         public T Value { get; set; } = default!;
+
+        /// <summary>
+        /// Gets the value as an object for the interface.
+        /// </summary>
+        object? ICacheEntry.Value => Value;
 
         /// <summary>
         /// The cache key used to store this entry.
@@ -82,6 +88,15 @@ namespace ConduitLLM.Core.Models
         /// Gets the time since last access.
         /// </summary>
         public TimeSpan TimeSinceLastAccess => DateTime.UtcNow - LastAccessedAt;
+
+        /// <summary>
+        /// Updates the last accessed time and increments access count.
+        /// </summary>
+        public void RecordAccess()
+        {
+            LastAccessedAt = DateTime.UtcNow;
+            AccessCount++;
+        }
     }
 
     /// <summary>

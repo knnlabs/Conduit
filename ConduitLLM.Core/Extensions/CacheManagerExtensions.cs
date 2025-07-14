@@ -34,6 +34,9 @@ namespace ConduitLLM.Core.Extensions
             // Register statistics collector
             services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
 
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
+
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
@@ -105,6 +108,9 @@ namespace ConduitLLM.Core.Extensions
             // Register statistics collector
             services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
 
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
+
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
@@ -160,6 +166,9 @@ namespace ConduitLLM.Core.Extensions
 
             // Register statistics collector
             services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
+
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
 
             // Check if we have Redis configuration for statistics store
             var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];

@@ -198,7 +198,7 @@ namespace ConduitLLM.Tests.TestHelpers
     {
         private readonly Mock<IMemoryCache> _mock = new();
         private readonly Dictionary<object, CacheItem> _cache = new();
-        private readonly List<ICacheEntry> _entries = new();
+        private readonly List<Microsoft.Extensions.Caching.Memory.ICacheEntry> _entries = new();
 
         private class CacheItem
         {
@@ -207,12 +207,12 @@ namespace ConduitLLM.Tests.TestHelpers
             public TimeSpan? SlidingExpiration { get; set; }
         }
 
-        public MemoryCacheBuilder WithEntry(object key, object value, Action<ICacheEntry> configure = null)
+        public MemoryCacheBuilder WithEntry(object key, object value, Action<Microsoft.Extensions.Caching.Memory.ICacheEntry> configure = null)
         {
             var item = new CacheItem { Value = value };
             _cache[key] = item;
 
-            var entry = new Mock<ICacheEntry>();
+            var entry = new Mock<Microsoft.Extensions.Caching.Memory.ICacheEntry>();
             entry.SetupAllProperties();
             entry.Setup(x => x.Key).Returns(key);
             entry.Setup(x => x.Value).Returns(() => item.Value);
@@ -278,7 +278,7 @@ namespace ConduitLLM.Tests.TestHelpers
                     var entry = _entries.FirstOrDefault(e => e.Key.Equals(key));
                     if (entry != null) return entry;
 
-                    var newEntry = new Mock<ICacheEntry>();
+                    var newEntry = new Mock<Microsoft.Extensions.Caching.Memory.ICacheEntry>();
                     newEntry.SetupAllProperties();
                     newEntry.Setup(e => e.Key).Returns(key);
                     
