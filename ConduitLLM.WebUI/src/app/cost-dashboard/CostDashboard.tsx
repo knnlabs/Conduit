@@ -35,6 +35,7 @@ import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { safeLog } from '@/lib/utils/logging';
+import { useQuery } from '@tanstack/react-query';
 
 interface ProviderCost {
   provider: string;
@@ -61,67 +62,68 @@ interface DailyCost {
 export default function CostDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedProvider, setSelectedProvider] = useState<string | null>('all');
-  const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
 
-  // Mock data - in a real app, this would come from an API
-  const totalSpend = 2847.23;
-  const monthlyBudget = 5000;
-  const projectedSpend = 3412.50;
-  const averageDailyCost = 94.91;
-
-  const providerCosts: ProviderCost[] = [
-    { provider: 'OpenAI', cost: 1423.12, usage: 65, trend: 12.5 },
-    { provider: 'Anthropic', cost: 856.45, usage: 25, trend: -5.3 },
-    { provider: 'Google', cost: 432.66, usage: 8, trend: 23.1 },
-    { provider: 'Replicate', cost: 135.00, usage: 2, trend: 45.2 },
-  ];
-
-  const modelUsage: ModelUsage[] = [
-    { model: 'gpt-4-turbo', provider: 'OpenAI', requests: 45320, tokensIn: 12500000, tokensOut: 8900000, cost: 892.34 },
-    { model: 'gpt-3.5-turbo', provider: 'OpenAI', requests: 125430, tokensIn: 45000000, tokensOut: 32000000, cost: 530.78 },
-    { model: 'claude-3-opus', provider: 'Anthropic', requests: 23450, tokensIn: 8900000, tokensOut: 6200000, cost: 656.23 },
-    { model: 'claude-3-sonnet', provider: 'Anthropic', requests: 34200, tokensIn: 12000000, tokensOut: 9800000, cost: 200.22 },
-    { model: 'gemini-pro', provider: 'Google', requests: 18900, tokensIn: 6700000, tokensOut: 4500000, cost: 432.66 },
-    { model: 'stable-diffusion-xl', provider: 'Replicate', requests: 450, tokensIn: 0, tokensOut: 0, cost: 135.00 },
-  ];
-
-  const dailyCosts: DailyCost[] = Array.from({ length: 30 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (29 - i));
-    const baseCost = 80 + Math.random() * 40;
-    
-    return {
-      date: date.toISOString().split('T')[0],
-      cost: baseCost,
-      providers: {
-        OpenAI: baseCost * 0.5,
-        Anthropic: baseCost * 0.3,
-        Google: baseCost * 0.15,
-        Replicate: baseCost * 0.05,
-      },
-    };
+  // Fetch real cost analytics data from the API
+  const { data: costData, isLoading, error, refetch } = useQuery({
+    queryKey: ['cost-analytics', timeRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/cost-analytics?timeRange=${timeRange}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch cost data');
+      }
+      return response.json();
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+  // Use real data from API or fallback values
+  const totalSpend = costData?.totalSpend || 0;
+  const monthlyBudget = costData?.monthlyBudget || 5000;
+  const projectedSpend = costData?.projectedMonthlySpend || 0;
+  const averageDailyCost = costData?.averageDailyCost || 0;
+  const providerCosts: ProviderCost[] = costData?.providerCosts || [];
+  const modelUsage: ModelUsage[] = costData?.modelUsage || [];
+  const dailyCosts: DailyCost[] = costData?.dailyCosts || [];
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
       notifications.show({
         title: 'Data Refreshed',
         message: 'Cost data has been updated',
         color: 'green',
       });
-    }, 1000);
+    } catch (error) {
+      safeLog('error', 'Failed to refresh cost data', error);
+      notifications.show({
+        title: 'Refresh Failed',
+        message: 'Failed to refresh cost data',
+        color: 'red',
+      });
+    }
   };
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      // Simulate export functionality
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(`/api/cost-analytics/export?timeRange=${timeRange}`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cost-report-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
       
       notifications.show({
         title: 'Export Successful',
@@ -129,6 +131,7 @@ export default function CostDashboard() {
         color: 'green',
       });
     } catch (error) {
+      safeLog('error', 'Failed to export cost report', error);
       notifications.show({
         title: 'Export Failed',
         message: 'Failed to export cost report',
@@ -155,6 +158,18 @@ export default function CostDashboard() {
 
   return (
     <Stack>
+      {!costData && !isLoading && (
+        <Alert
+          icon={<IconAlertCircle size="1rem" />}
+          title="Cost Tracking Initializing"
+          color="blue"
+          variant="light"
+          mb="md"
+        >
+          Cost tracking data is being collected. Initial data may take a few moments to appear.
+        </Alert>
+      )}
+
       <Card shadow="sm" p="md" radius="md">
         <Group justify="space-between" align="center">
           <div>

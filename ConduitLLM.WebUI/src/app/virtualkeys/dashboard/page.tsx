@@ -16,6 +16,7 @@ import {
   ScrollArea,
   Paper,
   SimpleGrid,
+  LoadingOverlay,
 } from '@mantine/core';
 import {
   IconKey,
@@ -31,9 +32,27 @@ import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 // Removed unused DatePickerInput
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
+import { useQuery } from '@tanstack/react-query';
 
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+interface VirtualKey {
+  id: string;
+  name: string;
+  status: string;
+  requests: number;
+  cost: number;
+  budget: number;
+  budgetUsed: number;
+}
+
+interface ModelUsage {
+  name: string;
+  value: number;
+  percentage: number;
+  model: string;
+}
 
 export default function VirtualKeysDashboardPage() {
   const [_dateRange, _setDateRange] = useState<[Date | null, Date | null]>([
@@ -43,50 +62,49 @@ export default function VirtualKeysDashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Generate mock data based on selected period
-  const _getDaysFromPeriod = (period: string) => {
-    switch (period) {
-      case '7d': return 7;
-      case '30d': return 30;
-      case '90d': return 90;
-      default: return 30;
-    }
-  };
+  // Fetch real virtual keys data from the API
+  const { data: dashboardData, isLoading, error, refetch } = useQuery({
+    queryKey: ['virtual-keys-dashboard', selectedPeriod],
+    queryFn: async () => {
+      const response = await fetch(`/api/virtualkeys/dashboard?period=${selectedPeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch virtual keys data');
+      }
+      return response.json();
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
+  });
 
-  // Time series data will come from SDK when available
-  const timeSeriesData: Array<{ date: string; requests: number; cost: number }> = [];
+  // Use real data from API or fallback values
+  const virtualKeys: VirtualKey[] = dashboardData?.virtualKeys || [];
+  const totalRequests = dashboardData?.summary?.totalRequests || 0;
+  const totalCost = dashboardData?.summary?.totalCost || 0;
+  const averageBudgetUsed = dashboardData?.summary?.averageBudgetUsed || 0;
+  const requestsGrowth = dashboardData?.summary?.requestsGrowth || 0;
+  const costGrowth = dashboardData?.summary?.costGrowth || 0;
+  const activeKeysGrowth = dashboardData?.summary?.activeKeysGrowth || 0;
+  const activeKeys = dashboardData?.summary?.activeKeys || 0;
+  const timeSeriesData = dashboardData?.timeSeriesData || [];
+  const modelUsage: ModelUsage[] = dashboardData?.modelUsage || [];
 
-  // Virtual keys data will come from SDK when available
-  const mockVirtualKeys: Array<unknown> = [];
-
-  // Calculate summary statistics
-  const totalRequests = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { requests: number }).requests, 0);
-  const totalCost = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { cost: number }).cost, 0);
-  const _totalBudget = mockVirtualKeys.reduce((sum: number, key) => sum + (key as { budget: number }).budget, 0);
-  const averageBudgetUsed = mockVirtualKeys.length > 0 
-    ? mockVirtualKeys.reduce((sum: number, key) => sum + (key as { budgetUsed: number }).budgetUsed, 0) / mockVirtualKeys.length
-    : 0;
-
-  // Calculate growth rates (will come from SDK)
-  const requestsGrowth = 0;
-  const costGrowth = 0;
-  const activeKeysGrowth = 0;
-  const activeKeys = 0;
-
-  // Mock data that will be replaced with SDK data
-  const mockModelUsage: Array<{ name: string; value: number }> = [];
-  const _mockBudgetAlerts: Array<unknown> = [];
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await refetch();
       notifications.show({
         title: 'Dashboard Refreshed',
         message: 'Virtual keys data has been updated',
         color: 'green',
       });
-    }, 1000);
+    } catch (error) {
+      notifications.show({
+        title: 'Refresh Failed',
+        message: 'Failed to refresh virtual keys data',
+        color: 'red',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleExport = () => {
@@ -113,6 +131,21 @@ export default function VirtualKeysDashboardPage() {
     if (percentage >= 50) return 'yellow';
     return 'green';
   };
+
+  if (error) {
+    return (
+      <Card withBorder p="xl">
+        <Stack align="center" gap="md">
+          <ThemeIcon size="xl" color="red" variant="light">
+            <IconAlertCircle size={32} />
+          </ThemeIcon>
+          <Title order={4}>Failed to load virtual keys data</Title>
+          <Text c="dimmed">Please try refreshing the page</Text>
+          <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+        </Stack>
+      </Card>
+    );
+  }
 
   return (
     <Stack gap="md">
@@ -297,35 +330,35 @@ export default function VirtualKeysDashboardPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {mockVirtualKeys.map((key) => (
-                    <Table.Tr key={(key as { id: string }).id}>
+                  {virtualKeys.map((key) => (
+                    <Table.Tr key={key.id}>
                       <Table.Td>
                         <Group gap="xs">
                           <ThemeIcon size="xs" variant="light">
                             <IconKey size={12} />
                           </ThemeIcon>
                           <div>
-                            <Text size="sm" fw={500}>{(key as { name: string }).name}</Text>
-                            <Text size="xs" c="dimmed">{(key as { id: string }).id}</Text>
+                            <Text size="sm" fw={500}>{key.name}</Text>
+                            <Text size="xs" c="dimmed">{key.id}</Text>
                           </div>
                         </Group>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="light" color={getStatusColor((key as { status: string }).status)}>
-                          {(key as { status: string }).status}
+                        <Badge variant="light" color={getStatusColor(key.status)}>
+                          {key.status}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>{formatters.number((key as { requests: number }).requests)}</Table.Td>
-                      <Table.Td>{formatters.currency((key as { cost: number }).cost)}</Table.Td>
-                      <Table.Td>{formatters.currency((key as { budget: number }).budget)}</Table.Td>
+                      <Table.Td>{formatters.number(key.requests)}</Table.Td>
+                      <Table.Td>{formatters.currency(key.cost)}</Table.Td>
+                      <Table.Td>{formatters.currency(key.budget)}</Table.Td>
                       <Table.Td>
                         <Stack gap={4}>
                           <Progress 
-                            value={(key as { budgetUsed: number }).budgetUsed} 
-                            color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
+                            value={key.budgetUsed} 
+                            color={getBudgetColor(key.budgetUsed)}
                             size="sm"
                           />
-                          <Text size="xs" c="dimmed">{formatters.percentage((key as { budgetUsed: number }).budgetUsed)}</Text>
+                          <Text size="xs" c="dimmed">{formatters.percentage(key.budgetUsed)}</Text>
                         </Stack>
                       </Table.Td>
                     </Table.Tr>
@@ -343,7 +376,7 @@ export default function VirtualKeysDashboardPage() {
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={mockModelUsage}
+                  data={modelUsage}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -352,7 +385,7 @@ export default function VirtualKeysDashboardPage() {
                   fill="#8884d8"
                   dataKey="percentage"
                 >
-                  {mockModelUsage.map((entry, index) => (
+                  {modelUsage.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -361,7 +394,7 @@ export default function VirtualKeysDashboardPage() {
             </ResponsiveContainer>
             
             <Stack gap="xs" mt="md">
-              {mockModelUsage.map((model, index) => (
+              {modelUsage.map((model, index) => (
                 <Group key={model.name} justify="space-between">
                   <Group gap="xs">
                     <div
@@ -389,42 +422,44 @@ export default function VirtualKeysDashboardPage() {
         <Group justify="space-between" mb="md">
           <Text fw={600}>Budget Alerts</Text>
           <Badge variant="light" color="orange">
-            {mockVirtualKeys.filter(k => (k as { budgetUsed: number }).budgetUsed > 75).length} warnings
+            {virtualKeys.filter(k => k.budgetUsed > 75).length} warnings
           </Badge>
         </Group>
         <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }}>
-          {mockVirtualKeys
-            .filter(k => (k as { budgetUsed: number }).budgetUsed > 50)
-            .sort((a, b) => (b as { budgetUsed: number }).budgetUsed - (a as { budgetUsed: number }).budgetUsed)
+          {virtualKeys
+            .filter(k => k.budgetUsed > 50)
+            .sort((a, b) => b.budgetUsed - a.budgetUsed)
             .map((key) => (
-              <Paper key={(key as { id: string }).id} p="md" withBorder>
+              <Paper key={key.id} p="md" withBorder>
                 <Group justify="space-between" mb="xs">
-                  <Text fw={500}>{(key as { name: string }).name}</Text>
+                  <Text fw={500}>{key.name}</Text>
                   <Badge 
                     variant="light" 
-                    color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
+                    color={getBudgetColor(key.budgetUsed)}
                   >
-                    {formatters.percentage((key as { budgetUsed: number }).budgetUsed)} used
+                    {formatters.percentage(key.budgetUsed)} used
                   </Badge>
                 </Group>
                 <Progress 
-                  value={(key as { budgetUsed: number }).budgetUsed} 
-                  color={getBudgetColor((key as { budgetUsed: number }).budgetUsed)}
+                  value={key.budgetUsed} 
+                  color={getBudgetColor(key.budgetUsed)}
                   size="lg"
                   mb="xs"
                 />
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">
-                    {formatters.currency((key as { cost: number }).cost)} / {formatters.currency((key as { budget: number }).budget)}
+                    {formatters.currency(key.cost)} / {formatters.currency(key.budget)}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {formatters.currency((key as { budget: number }).budget - (key as { cost: number }).cost)} remaining
+                    {formatters.currency(key.budget - key.cost)} remaining
                   </Text>
                 </Group>
               </Paper>
             ))}
         </SimpleGrid>
       </Card>
+      
+      <LoadingOverlay visible={isLoading || isRefreshing} />
     </Stack>
   );
 }

@@ -3,7 +3,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
-// Mock provider health data generator
+// Fallback provider health data generator for when SDK calls fail
 function generateMockProviderHealth(range: string) {
   const providers = [
     { id: 'openai', name: 'OpenAI' },
@@ -179,47 +179,77 @@ export async function GET(req: NextRequest) {
       const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
       const endDate = now.toISOString();
       
-      // TODO: The SDK should provide a single method to get comprehensive health data
-      // Currently we need to make multiple calls per provider which is inefficient
-      
       // Get detailed health data for each provider
       const providerDetailsPromises = healthSummary.providers.map(async (provider: any) => {
         try {
-          // For now, skip the methods that don't exist
-          const health = await adminClient.providerHealth.getProviderHealth(provider.id || provider.name);
-          const history = null as any; // Method doesn't exist yet
-          const metrics = null as any; // Method doesn't exist yet
+          // Get detailed health data
+          const [health, performance, healthHistory] = await Promise.all([
+            adminClient.providerHealth.getProviderHealth(provider.providerId || provider.id || provider.name),
+            adminClient.providerHealth.getProviderPerformance(
+              provider.providerId || provider.id || provider.name,
+              { startDate, endDate }
+            ),
+            adminClient.providerHealth.getProviderHealthHistory(
+              provider.providerId || provider.id || provider.name,
+              { startDate, endDate, resolution: 'hour', includeIncidents: true }
+            ),
+          ]);
+          
+          // Get recent alerts/incidents
+          const alerts = await adminClient.providerHealth.getHealthAlerts({
+            providerId: provider.providerId || provider.id || provider.name,
+            startDate,
+            endDate,
+          });
           
           return {
-            id: provider.id || provider.name,
-            name: provider.name,
-            status: health.status || provider.status || 'unknown',
-            uptime: (health as any).uptime || provider.uptime || 0,
-            responseTime: (health as any).averageResponseTime || (health as any).responseTime || provider.responseTime || 0,
-            errorRate: (health as any).errorRate || provider.errorRate || 0,
-            successRate: (health as any).successRate || (100 - ((health as any).errorRate || 0)),
-            lastCheck: (health as any).lastChecked || (health as any).lastCheck || provider.lastChecked || new Date().toISOString(),
-            endpoints: metrics?.metrics?.endpoints || (health as any).endpoints || [],
-            models: metrics?.metrics?.models || (health as any).models || [],
-            rateLimit: metrics?.metrics?.rateLimit || (health as any).rateLimit || {
-              requests: { used: 0, limit: 0, reset: new Date().toISOString() },
+            id: health.providerId || provider.providerId || provider.id || provider.name,
+            name: health.providerName || provider.name || provider.providerId,
+            status: health.status || 'unknown',
+            uptime: health.metrics?.uptime?.percentage || 0,
+            responseTime: health.metrics?.latency?.avg || performance.latency?.avg || 0,
+            errorRate: health.metrics?.errors?.rate || performance.errors?.rate || 0,
+            successRate: 100 - (health.metrics?.errors?.rate || performance.errors?.rate || 0),
+            lastCheck: health.metrics?.uptime?.since || new Date().toISOString(),
+            endpoints: Object.entries(health.details || {}).map(([name, check]: [string, any]) => ({
+              name: `/${name}`,
+              status: check.status || 'unknown',
+              responseTime: check.latency || 0,
+              lastCheck: check.lastChecked || new Date().toISOString(),
+            })),
+            models: [], // TODO: Get from provider models endpoint if needed
+            rateLimit: {
+              requests: { 
+                used: health.details?.quotaUsage?.details?.used || 0, 
+                limit: health.details?.quotaUsage?.details?.limit || 0, 
+                reset: new Date().toISOString() 
+              },
               tokens: { used: 0, limit: 0, reset: new Date().toISOString() },
             },
-            recentIncidents: history.incidents || [],
-            history: history.dataPoints || [],
+            recentIncidents: alerts?.filter((alert: any) => 
+              alert.severity === 'critical' || alert.severity === 'error'
+            ).map((alert: any) => ({
+              id: alert.id,
+              timestamp: alert.timestamp,
+              type: alert.type === 'outage' ? 'outage' : alert.type === 'performance' ? 'degradation' : 'rate_limit',
+              duration: alert.duration || 0,
+              message: alert.message,
+              resolved: alert.resolved,
+            })) || [],
+            history: healthHistory.dataPoints || [],
           };
         } catch (error) {
           console.warn(`Failed to get details for provider ${provider.name}:`, error);
           // Return basic info if detailed fetch fails
           return {
-            id: provider.id || provider.name,
-            name: provider.name,
+            id: provider.providerId || provider.id || provider.name,
+            name: provider.name || provider.providerId,
             status: provider.status || 'unknown',
-            uptime: provider.uptime || 0,
-            responseTime: provider.responseTime || 0,
+            uptime: provider.uptimePercentage || provider.uptime || 0,
+            responseTime: provider.averageResponseTime || provider.responseTime || 0,
             errorRate: provider.errorRate || 0,
-            successRate: provider.successRate || 0,
-            lastCheck: provider.lastChecked || new Date().toISOString(),
+            successRate: provider.successRate || (100 - (provider.errorRate || 0)),
+            lastCheck: provider.lastCheck || new Date().toISOString(),
             endpoints: [],
             models: [],
             rateLimit: {
@@ -243,16 +273,16 @@ export async function GET(req: NextRequest) {
           timestamp: point.timestamp,
           responseTime: point.averageResponseTime || point.responseTime || 0,
           errorRate: point.errorRate || 0,
-          availability: point.availability || (100 - (point.errorRate || 0)),
+          availability: point.availability || point.uptimePercentage || (100 - (point.errorRate || 0)),
         }));
         
-        // Create metrics from provider data (no separate metrics property)
+        // Create metrics from provider data
         metrics[provider.id] = {
-          totalRequests: 0, // Will be populated by separate SDK call if needed
-          failedRequests: 0, // Will be populated by separate SDK call if needed
+          totalRequests: provider.history.reduce((sum: number, p: any) => sum + (p.requestCount || 0), 0),
+          failedRequests: provider.history.reduce((sum: number, p: any) => sum + (p.failedRequests || 0), 0),
           avgResponseTime: provider.responseTime,
-          p95ResponseTime: 0, // Will be populated by separate SDK call if needed
-          p99ResponseTime: 0, // Will be populated by separate SDK call if needed
+          p95ResponseTime: provider.history.reduce((max: number, p: any) => Math.max(max, p.p95ResponseTime || 0), 0),
+          p99ResponseTime: provider.history.reduce((max: number, p: any) => Math.max(max, p.p99ResponseTime || 0), 0),
           availability: provider.uptime,
         };
       });

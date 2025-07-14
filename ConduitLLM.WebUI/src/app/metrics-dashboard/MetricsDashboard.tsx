@@ -55,8 +55,7 @@ import {
   RechartsLegend as Legend,
   LabelList,
 } from '@/components/charts/LazyCharts';
-// import { useHealthCheck, useSystemHealth } from '@/hooks/api/useAdminApi';
-// TODO: Import real health data hooks when SDK provides comprehensive metrics endpoints
+import { useQuery } from '@tanstack/react-query';
 
 interface MetricCardProps {
   title: string;
@@ -66,6 +65,41 @@ interface MetricCardProps {
   icon: React.ReactNode;
   color: string;
   subValue?: string;
+}
+
+// Helper functions
+function formatUptime(uptimeMs: number): string {
+  const days = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((uptimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) {
+    return `${days} days, ${hours} hours`;
+  }
+  return `${hours} hours`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getHealthColor(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'healthy':
+    case 'operational':
+      return 'green';
+    case 'degraded':
+    case 'warning':
+      return 'yellow';
+    case 'down':
+    case 'error':
+    case 'unhealthy':
+      return 'red';
+    default:
+      return 'gray';
+  }
 }
 
 function MetricCard({ title, value, unit, trend, icon, color, subValue }: MetricCardProps) {
@@ -123,11 +157,18 @@ export default function MetricsDashboard() {
   const [activeTab, setActiveTab] = useState<string | null>('performance');
   const [isExporting, setIsExporting] = useState(false);
 
-  const healthData = null;
-  const systemHealthData = null;
-  const isLoading = false;
-  const error = null;
-  const refetch = () => {};
+  // Fetch real metrics data from the API
+  const { data: dashboardData, isLoading, error, refetch } = useQuery({
+    queryKey: ['metrics-dashboard', timeRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/metrics-dashboard?timeRange=${timeRange}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics data');
+      }
+      return response.json();
+    },
+    refetchInterval: autoRefresh ? 10000 : false,
+  });
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -161,80 +202,50 @@ export default function MetricsDashboard() {
     }
   };
 
-  // TODO: Replace with real data from SDK when available
-  // SDK methods needed:
-  // - adminClient.metrics.getSystemMetrics() - for system-wide metrics
-  // - adminClient.metrics.getPerformanceMetrics() - for performance data
-  // - adminClient.metrics.getProviderMetrics() - for provider-specific metrics
-  const displayData = healthData || {
-    status: 'unknown',
-    timestamp: new Date().toISOString(),
-    services: {
-      coreApi: { status: 'unknown', latency: 0 },
-      adminApi: { status: 'unknown', latency: 0 },
-      database: { status: 'unknown', latency: 0 },
-      cache: { status: 'unknown', latency: 0 },
-    },
-    _warning: 'Metrics data is not available. SDK metrics methods are not yet implemented.',
-  };
-  const systemData = systemHealthData || {
-    cpuUsage: 0,
-    memoryUsage: 0,
-    diskUsage: 0,
+  // Use real data from the API or fallback values
+  const metrics = dashboardData?.metrics || {
+    totalRequests: 0,
+    avgResponseTime: 0,
+    errorRate: 0,
     uptime: 0,
+    p95ResponseTime: 0,
+    errorCount: 0,
   };
 
-  // Calculate metrics
-  const totalRequests = 125000;
-  const avgResponseTime = 45;
-  const errorRate = 0.23;
-  const uptime = 99.95;
+  const systemData = dashboardData?.system || {
+    cpu: { usage: 0, cores: 0 },
+    memory: { used: 0, total: 0, percentage: 0 },
+    disk: { used: 0, total: 0, percentage: 0 },
+    network: { in: 0, out: 0 },
+    services: [],
+  };
 
-  // Prepare chart data
-  const performanceData = [
-    { time: '00:00', requests: 1200, responseTime: 42 },
-    { time: '04:00', requests: 980, responseTime: 38 },
-    { time: '08:00', requests: 2100, responseTime: 45 },
-    { time: '12:00', requests: 3200, responseTime: 52 },
-    { time: '16:00', requests: 2800, responseTime: 48 },
-    { time: '20:00', requests: 1900, responseTime: 41 },
-    { time: '24:00', requests: 1400, responseTime: 39 },
-  ];
+  // Use real chart data from the API
+  const performanceData = dashboardData?.performance?.timeSeries || [];
+  const providerMetrics = dashboardData?.providers?.metrics || [];
+  const endpointMetrics = dashboardData?.performance?.endpoints || [];
+  const errorDistribution = dashboardData?.performance?.errorDistribution || [];
 
-  const providerMetrics = [
-    { name: 'OpenAI', requests: 45000, errors: 120, avgLatency: 42 },
-    { name: 'Anthropic', requests: 38000, errors: 89, avgLatency: 38 },
-    { name: 'Google', requests: 28000, errors: 76, avgLatency: 45 },
-    { name: 'Azure', requests: 14000, errors: 45, avgLatency: 51 },
-  ];
-
-  const endpointMetrics = [
-    { endpoint: '/chat/completions', count: 65000, avgTime: 42 },
-    { endpoint: '/embeddings', count: 32000, avgTime: 28 },
-    { endpoint: '/images/generations', count: 18000, avgTime: 120 },
-    { endpoint: '/audio/transcriptions', count: 10000, avgTime: 85 },
-  ];
-
-  const errorDistribution = [
-    { name: 'Rate Limit', value: 35, color: '#ff6b6b' },
-    { name: 'Timeout', value: 25, color: '#4ecdc4' },
-    { name: 'Invalid Request', value: 20, color: '#45b7d1' },
-    { name: 'Server Error', value: 15, color: '#96ceb4' },
-    { name: 'Other', value: 5, color: '#dfe6e9' },
-  ];
+  // Format performance data for the chart
+  const formattedPerformanceData = performanceData.map((point: any) => ({
+    time: new Date(point.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    requests: point.requestCount || 0,
+    responseTime: point.avgResponseTime || 0,
+  }));
 
   return (
     <Stack>
-      <Alert
-        icon={<IconAlertCircle size="1rem" />}
-        title="Limited SDK Functionality"
-        color="yellow"
-        variant="light"
-        mb="md"
-      >
-        System metrics data is currently unavailable. The SDK methods for comprehensive metrics collection
-        (system metrics, performance data, and provider metrics) are not yet implemented.
-      </Alert>
+      {error && (
+        <Alert
+          icon={<IconAlertCircle size="1rem" />}
+          title="Error Loading Metrics"
+          color="red"
+          variant="light"
+          mb="md"
+        >
+          Failed to load metrics data. Please try again later.
+        </Alert>
+      )}
 
       <Card shadow="sm" p="md" radius="md">
         <Group justify="space-between" align="center">
@@ -285,44 +296,44 @@ export default function MetricsDashboard() {
         <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Total Requests"
-            value={totalRequests.toLocaleString()}
+            value={metrics.totalRequests.toLocaleString()}
             unit="requests"
-            trend={12.5}
+            trend={dashboardData?.metrics?.requestsTrend}
             icon={<IconActivity size={24} />}
             color="blue"
-            subValue="Last 24 hours"
+            subValue={`Last ${timeRange}`}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Avg Response Time"
-            value={avgResponseTime}
+            value={Math.round(metrics.avgResponseTime)}
             unit="ms"
-            trend={-5.2}
+            trend={dashboardData?.metrics?.responseTimeTrend}
             icon={<IconBolt size={24} />}
             color="green"
-            subValue="P95: 120ms"
+            subValue={`P95: ${Math.round(metrics.p95ResponseTime || 0)}ms`}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="Error Rate"
-            value={errorRate}
+            value={(metrics.errorRate * 100).toFixed(2)}
             unit="%"
-            trend={0.05}
+            trend={dashboardData?.metrics?.errorRateTrend}
             icon={<IconAlertCircle size={24} />}
             color="red"
-            subValue="287 errors"
+            subValue={`${metrics.errorCount} errors`}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6, lg: 3 }}>
           <MetricCard
             title="System Uptime"
-            value={uptime}
+            value={(metrics.uptime * 100).toFixed(2)}
             unit="%"
             icon={<IconServer size={24} />}
             color="teal"
-            subValue="30 days"
+            subValue={formatUptime(systemData.uptime || 0)}
           />
         </Grid.Col>
       </Grid>
@@ -346,7 +357,7 @@ export default function MetricsDashboard() {
               <Card shadow="sm" p="md" radius="md" withBorder>
                 <Title order={4} mb="md">Request Volume & Response Time</Title>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={performanceData}>
+                  <LineChart data={formattedPerformanceData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis yAxisId="left" />
@@ -402,7 +413,7 @@ export default function MetricsDashboard() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {errorDistribution.map((entry, index) => (
+                      {errorDistribution.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -430,27 +441,27 @@ export default function MetricsDashboard() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {providerMetrics.map((provider) => (
+                  {providerMetrics.map((provider: any) => (
                     <Table.Tr key={provider.name}>
                       <Table.Td>{provider.name}</Table.Td>
                       <Table.Td>{provider.requests.toLocaleString()}</Table.Td>
                       <Table.Td>{provider.errors}</Table.Td>
                       <Table.Td>
                         <Badge
-                          color={provider.errors / provider.requests < 0.01 ? 'green' : 'red'}
+                          color={provider.errorRate < 0.01 ? 'green' : 'red'}
                           variant="light"
                         >
-                          {((provider.errors / provider.requests) * 100).toFixed(2)}%
+                          {(provider.errorRate * 100).toFixed(2)}%
                         </Badge>
                       </Table.Td>
-                      <Table.Td>{provider.avgLatency}ms</Table.Td>
+                      <Table.Td>{Math.round(provider.avgLatency || 0)}ms</Table.Td>
                       <Table.Td>
                         <Badge
                           leftSection={<IconCircle size={8} />}
-                          color="green"
+                          color={getHealthColor(provider.status)}
                           variant="light"
                         >
-                          Healthy
+                          {provider.status || 'Unknown'}
                         </Badge>
                       </Table.Td>
                     </Table.Tr>
@@ -467,14 +478,14 @@ export default function MetricsDashboard() {
               <Card shadow="sm" p="md" radius="md" withBorder>
                 <Title order={4} mb="md">CPU Usage</Title>
                 <Progress
-                  value={systemData?.cpuUsage || 45}
-                  color={systemData?.cpuUsage > 80 ? 'red' : 'blue'}
+                  value={systemData.cpu.usage || 0}
+                  color={systemData.cpu.usage > 80 ? 'red' : 'blue'}
                   size="xl"
                   radius="md"
                   mb="xs"
                 />
                 <Text size="sm" c="dimmed">
-                  {systemData?.cpuUsage || 45}% utilization
+                  {systemData.cpu.usage || 0}% utilization ({systemData.cpu.cores || 0} cores)
                 </Text>
               </Card>
             </Grid.Col>
@@ -483,14 +494,14 @@ export default function MetricsDashboard() {
               <Card shadow="sm" p="md" radius="md" withBorder>
                 <Title order={4} mb="md">Memory Usage</Title>
                 <Progress
-                  value={systemData?.memoryUsage || 62}
-                  color={systemData?.memoryUsage > 80 ? 'red' : 'green'}
+                  value={systemData.memory.percentage || 0}
+                  color={systemData.memory.percentage > 80 ? 'red' : 'green'}
                   size="xl"
                   radius="md"
                   mb="xs"
                 />
                 <Text size="sm" c="dimmed">
-                  {systemData?.memoryUsage || 62}% utilization
+                  {systemData.memory.percentage || 0}% utilization ({formatBytes(systemData.memory.used)} / {formatBytes(systemData.memory.total)})
                 </Text>
               </Card>
             </Grid.Col>
@@ -499,19 +510,19 @@ export default function MetricsDashboard() {
               <Card shadow="sm" p="md" radius="md" withBorder>
                 <Title order={4} mb="md">Service Status</Title>
                 <Stack gap="sm">
-                  {['Core API', 'Admin API', 'Redis Cache', 'PostgreSQL'].map((service) => (
-                    <Paper key={service} p="sm" withBorder>
+                  {(systemData.services || []).map((service: any) => (
+                    <Paper key={service.name} p="sm" withBorder>
                       <Group justify="space-between">
                         <Group>
                           <IconServer size={20} />
-                          <Text fw={500}>{service}</Text>
+                          <Text fw={500}>{service.name}</Text>
                         </Group>
                         <Badge
                           leftSection={<IconCircle size={8} />}
-                          color="green"
+                          color={getHealthColor(service.status)}
                           variant="light"
                         >
-                          Operational
+                          {service.status || 'Unknown'}
                         </Badge>
                       </Group>
                     </Paper>
@@ -523,7 +534,7 @@ export default function MetricsDashboard() {
         </Tabs.Panel>
       </Tabs>
 
-      <LoadingOverlay visible={isLoading && !displayData} />
+      <LoadingOverlay visible={isLoading && !dashboardData} />
     </Stack>
   );
 }
