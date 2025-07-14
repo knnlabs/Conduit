@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using ConduitLLM.Admin.Services;
+using ConduitLLM.Admin.Models;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -25,6 +27,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly ILogger<ConfigurationController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
+        private readonly ICacheManagementService _cacheManagementService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
@@ -37,12 +40,14 @@ namespace ConduitLLM.Admin.Controllers
             IDbContextFactory<ConfigurationDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ICacheManagementService cacheManagementService)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _cacheManagementService = cacheManagementService ?? throw new ArgumentNullException(nameof(cacheManagementService));
         }
 
         /// <summary>
@@ -139,116 +144,8 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Define cache policies
-                var cachePolicies = new List<object>
-                {
-                    new
-                    {
-                        Id = "model-list",
-                        Name = "Model List Cache",
-                        Type = "memory",
-                        TTL = 300, // 5 minutes
-                        MaxSize = 100,
-                        Strategy = "LRU",
-                        Enabled = true,
-                        Description = "Caches available models per provider"
-                    },
-                    new
-                    {
-                        Id = "provider-health",
-                        Name = "Provider Health Cache",
-                        Type = "memory",
-                        TTL = 60, // 1 minute
-                        MaxSize = 50,
-                        Strategy = "LRU",
-                        Enabled = true,
-                        Description = "Caches provider health check results"
-                    },
-                    new
-                    {
-                        Id = "virtual-key",
-                        Name = "Virtual Key Cache",
-                        Type = "memory",
-                        TTL = 600, // 10 minutes
-                        MaxSize = 1000,
-                        Strategy = "LRU",
-                        Enabled = true,
-                        Description = "Caches virtual key details and permissions"
-                    },
-                    new
-                    {
-                        Id = "response-cache",
-                        Name = "Response Cache",
-                        Type = "distributed",
-                        TTL = 3600, // 1 hour
-                        MaxSize = 10000,
-                        Strategy = "LFU",
-                        Enabled = _configuration.GetValue<bool>("Caching:EnableResponseCache", false),
-                        Description = "Caches LLM responses for identical requests"
-                    }
-                };
-
-                // Get cache statistics
-                var cacheStats = await GetCacheStatistics(dbContext, cancellationToken);
-
-                // Define cache regions
-                var cacheRegions = new List<object>
-                {
-                    new
-                    {
-                        Id = "global",
-                        Name = "Global Cache",
-                        Type = "memory",
-                        Status = "healthy",
-                        Nodes = 1,
-                        Metrics = new
-                        {
-                            Size = "45.2 MB",
-                            Items = 1234,
-                            HitRate = 85.5,
-                            MissRate = 14.5,
-                            EvictionRate = 2.1
-                        }
-                    }
-                };
-
-                if (_configuration.GetValue<bool>("Redis:Enabled", false))
-                {
-                    cacheRegions.Add(new
-                    {
-                        Id = "distributed",
-                        Name = "Redis Cache",
-                        Type = "redis",
-                        Status = "healthy",
-                        Nodes = _configuration.GetValue<int>("Redis:ClusterNodes", 1),
-                        Metrics = new
-                        {
-                            Size = "256 MB",
-                            Items = 45678,
-                            HitRate = 92.3,
-                            MissRate = 7.7,
-                            EvictionRate = 0.5
-                        }
-                    });
-                }
-
-                return Ok(new
-                {
-                    Timestamp = DateTime.UtcNow,
-                    CachePolicies = cachePolicies,
-                    CacheRegions = cacheRegions,
-                    Statistics = cacheStats,
-                    Configuration = new
-                    {
-                        DefaultTTL = _configuration.GetValue<int>("Caching:DefaultTTLSeconds", 300),
-                        MaxMemorySize = _configuration["Caching:MaxMemorySize"] ?? "1GB",
-                        EvictionPolicy = _configuration["Caching:EvictionPolicy"] ?? "LRU",
-                        CompressionEnabled = _configuration.GetValue<bool>("Caching:EnableCompression", true),
-                        RedisConnectionString = _configuration["Redis:ConnectionString"] != null ? "[REDACTED]" : null
-                    }
-                });
+                var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
+                return Ok(configuration);
             }
             catch (Exception ex)
             {
@@ -294,26 +191,11 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Success response.</returns>
         [HttpPut("caching")]
-        public async Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCachingConfigDto config, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> UpdateCachingConfig([FromBody] UpdateCacheConfigDto config, CancellationToken cancellationToken = default)
         {
             try
             {
-                // In a real implementation, this would update configuration in database or config service
-                _logger.LogInformation("Updating caching configuration");
-
-                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
-                await Task.CompletedTask;
-
-                // Clear all caches to apply new configuration
-                if (config.ClearAllCaches)
-                {
-                    // Clear memory cache
-                    if (_cache is MemoryCache memoryCache)
-                    {
-                        memoryCache.Compact(1.0);
-                    }
-                }
-
+                await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
                 return Ok(new { message = "Caching configuration updated successfully" });
             }
             catch (Exception ex)
@@ -334,36 +216,157 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                _logger.LogInformation("Clearing cache: {CacheId}", cacheId);
-
-                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
-                await Task.CompletedTask;
-
-                // Clear specific cache based on ID
-                switch (cacheId)
-                {
-                    case "model-list":
-                        _cache.Remove("models:*");
-                        break;
-                    case "provider-health":
-                        _cache.Remove("health:*");
-                        break;
-                    case "virtual-key":
-                        _cache.Remove("vkey:*");
-                        break;
-                    case "response-cache":
-                        _cache.Remove("response:*");
-                        break;
-                    default:
-                        return BadRequest($"Unknown cache ID: {cacheId}");
-                }
-
+                await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
                 return Ok(new { message = $"Cache '{cacheId}' cleared successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to clear cache {CacheId}", cacheId);
                 return StatusCode(500, new { error = "Failed to clear cache", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets cache statistics for all regions or a specific region.
+        /// </summary>
+        /// <param name="regionId">Optional region ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Cache statistics.</returns>
+        [HttpGet("caching/statistics")]
+        public async Task<IActionResult> GetCacheStatistics([FromQuery] string? regionId = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var statistics = await _cacheManagementService.GetStatisticsAsync(regionId, cancellationToken);
+                return Ok(statistics);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get cache statistics");
+                return StatusCode(500, new { error = "Failed to get cache statistics", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Lists all cache regions.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of cache regions.</returns>
+        [HttpGet("caching/regions")]
+        public async Task<IActionResult> GetCacheRegions(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
+                return Ok(new
+                {
+                    Regions = configuration.CacheRegions,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get cache regions");
+                return StatusCode(500, new { error = "Failed to get cache regions", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets entries from a specific cache region.
+        /// </summary>
+        /// <param name="regionId">Region ID.</param>
+        /// <param name="skip">Number of entries to skip.</param>
+        /// <param name="take">Number of entries to return.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Cache entries.</returns>
+        [HttpGet("caching/{regionId}/entries")]
+        public async Task<IActionResult> GetCacheEntries(string regionId, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (take > 1000)
+                {
+                    return BadRequest(new { error = "Cannot retrieve more than 1000 entries at once" });
+                }
+
+                var entries = await _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken);
+                return Ok(entries);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get cache entries for region {RegionId}", regionId);
+                return StatusCode(500, new { error = "Failed to get cache entries", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Forces a refresh of cache entries in a region.
+        /// </summary>
+        /// <param name="regionId">Region ID.</param>
+        /// <param name="key">Optional specific key to refresh.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Success response.</returns>
+        [HttpPost("caching/{regionId}/refresh")]
+        public async Task<IActionResult> RefreshCache(string regionId, [FromQuery] string? key = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
+                var message = string.IsNullOrEmpty(key) 
+                    ? $"Cache region '{regionId}' refreshed successfully" 
+                    : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
+                return Ok(new { message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to refresh cache for region {RegionId}", regionId);
+                return StatusCode(500, new { error = "Failed to refresh cache", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Updates the policy for a specific cache region.
+        /// </summary>
+        /// <param name="regionId">Region ID.</param>
+        /// <param name="policyUpdate">Policy update details.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Success response.</returns>
+        [HttpPut("caching/{regionId}/policy")]
+        public async Task<IActionResult> UpdateCachePolicy(string regionId, [FromBody] UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
+                return Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update cache policy for region {RegionId}", regionId);
+                return StatusCode(500, new { error = "Failed to update cache policy", message = ex.Message });
             }
         }
 
@@ -475,34 +478,4 @@ namespace ConduitLLM.Admin.Controllers
         public int CircuitBreakerThreshold { get; set; }
     }
 
-    /// <summary>
-    /// DTO for updating caching configuration.
-    /// </summary>
-    public class UpdateCachingConfigDto
-    {
-        /// <summary>
-        /// Default TTL in seconds.
-        /// </summary>
-        public int DefaultTTLSeconds { get; set; }
-
-        /// <summary>
-        /// Maximum memory size.
-        /// </summary>
-        public string MaxMemorySize { get; set; } = "1GB";
-
-        /// <summary>
-        /// Eviction policy.
-        /// </summary>
-        public string EvictionPolicy { get; set; } = "LRU";
-
-        /// <summary>
-        /// Enable or disable compression.
-        /// </summary>
-        public bool EnableCompression { get; set; }
-
-        /// <summary>
-        /// Clear all caches.
-        /// </summary>
-        public bool ClearAllCaches { get; set; }
-    }
 }

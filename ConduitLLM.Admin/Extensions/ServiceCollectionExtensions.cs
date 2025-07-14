@@ -238,6 +238,9 @@ public static class ServiceCollectionExtensions
         // Register SignalR admin notification service
         services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();
 
+        // Register cache management service
+        services.AddScoped<ICacheManagementService, CacheManagementService>();
+
         // Configure CORS for the Admin API
         services.AddCors(options =>
         {
