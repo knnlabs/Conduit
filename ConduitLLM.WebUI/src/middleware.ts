@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getAuthMode } from '@/lib/auth/auth-mode'
 
 const publicPaths = ['/login', '/api/auth/validate', '/api/auth/logout', '/api/health']
+
+// Clerk-specific public paths
+const clerkPublicPaths = ['/sign-in', '/sign-up', '/api/health']
 
 // Paths that require authentication but should not have session parsing
 // (SSE endpoints need special handling)
@@ -16,31 +20,32 @@ const securityHeaders = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+// Helper function to add security headers to response
+const addSecurityHeaders = (response: NextResponse) => {
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
   
-  // Helper function to add security headers to response
-  const addSecurityHeaders = (response: NextResponse) => {
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    
-    // Add CSP header for production
-    if (process.env.NODE_ENV === 'production') {
-      response.headers.set(
-        'Content-Security-Policy',
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-        "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: https: blob:; " +
-        "font-src 'self' data:; " +
-        "connect-src 'self' ws: wss: https:; " +
-        "frame-ancestors 'none';"
-      );
-    }
-    
-    return response;
-  };
+  // Add CSP header for production
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https: blob:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' ws: wss: https:; " +
+      "frame-ancestors 'none';"
+    );
+  }
+  
+  return response;
+};
+
+// Conduit auth middleware logic
+function conduitAuthMiddleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
   
   // Allow public paths
   if (publicPaths.some(path => pathname.startsWith(path))) {
@@ -143,6 +148,91 @@ export function middleware(request: NextRequest) {
     response.cookies.delete('conduit_session')
     return addSecurityHeaders(response);
   }
+}
+
+// Clerk middleware logic
+async function clerkAuthMiddleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Allow Clerk public paths
+  if (clerkPublicPaths.some(path => pathname.startsWith(path))) {
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
+  }
+  
+  // Allow static assets and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.includes('.')
+  ) {
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
+  }
+  
+  // Import Clerk auth helpers
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  
+  // If not authenticated
+  if (!userId) {
+    // For API routes, return 401 JSON response
+    if (pathname.startsWith('/api/')) {
+      const response = new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      return addSecurityHeaders(response);
+    }
+    
+    // Redirect to Clerk sign-in page
+    const signInUrl = new URL('/sign-in', request.url);
+    signInUrl.searchParams.set('redirect_url', pathname);
+    return NextResponse.redirect(signInUrl);
+  }
+  
+  // Check admin status for authenticated users
+  const { isClerkAdmin } = await import('@/lib/auth/clerk-helpers');
+  const isAdmin = await isClerkAdmin();
+  
+  if (!isAdmin) {
+    // For API routes, return 403 JSON response
+    if (pathname.startsWith('/api/')) {
+      const response = new NextResponse(
+        JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        { 
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      return addSecurityHeaders(response);
+    }
+    
+    // For UI routes, show an access denied page or redirect
+    const response = new NextResponse(
+      'Access Denied: Admin privileges required',
+      { status: 403 }
+    );
+    return addSecurityHeaders(response);
+  }
+  
+  // Continue with the request
+  const response = NextResponse.next();
+  return addSecurityHeaders(response);
+}
+
+// Main middleware function that delegates based on auth mode
+export function middleware(request: NextRequest) {
+  const authMode = getAuthMode()
+  
+  if (authMode === 'clerk') {
+    return clerkAuthMiddleware(request)
+  }
+  
+  return conduitAuthMiddleware(request)
 }
 
 export const config = {

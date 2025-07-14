@@ -20,8 +20,10 @@ import {
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useClerk, useUser } from '@clerk/nextjs';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { getAuthMode } from '@/lib/auth/auth-mode';
 
 interface HeaderProps {
   mobileOpened: boolean;
@@ -37,16 +39,46 @@ export function Header({
   toggleDesktop,
 }: HeaderProps) {
   const router = useRouter();
-  const { user: _user, logout } = useAuthStore();
+  const authMode = getAuthMode();
+  
+  // Conduit auth
+  const { user: conduitUser, logout: conduitLogout } = useAuthStore();
+  
+  // Clerk auth
+  const { signOut } = useClerk();
+  const { user: clerkUser } = useUser();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
+  const handleLogout = async () => {
+    if (authMode === 'clerk') {
+      await signOut();
+    } else {
+      conduitLogout();
+      router.push('/login');
+    }
   };
-
 
   const handleSettings = () => {
     router.push('/configuration');
+  };
+
+  // Get display name based on auth mode
+  const getDisplayName = () => {
+    if (authMode === 'clerk' && clerkUser) {
+      return clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress || 'Admin';
+    }
+    return 'Admin';
+  };
+
+  // Get avatar content based on auth mode
+  const getAvatarContent = () => {
+    if (authMode === 'clerk' && clerkUser?.imageUrl) {
+      return <Avatar src={clerkUser.imageUrl} size="sm" />;
+    }
+    return (
+      <Avatar size="sm" color="blue">
+        <IconUser size={16} />
+      </Avatar>
+    );
   };
 
   return (
@@ -85,11 +117,9 @@ export function Header({
           <Menu.Target>
             <UnstyledButton>
               <Group gap="xs">
-                <Avatar size="sm" color="blue">
-                  <IconUser size={16} />
-                </Avatar>
+                {getAvatarContent()}
                 <Text size="sm" fw={500}>
-                  Admin
+                  {getDisplayName()}
                 </Text>
                 <IconChevronDown size={12} />
               </Group>

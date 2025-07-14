@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { getAuthMode } from '@/lib/auth/auth-mode';
 import {
   Stack,
   Title,
@@ -30,7 +30,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { login } = useAuthStore();
+  
+  useEffect(() => {
+    // If Clerk is enabled, redirect to Clerk sign-in
+    if (getAuthMode() === 'clerk') {
+      router.replace('/sign-in');
+    }
+  }, [router]);
+  
+  // If Clerk is enabled, don't render the Conduit login form
+  if (getAuthMode() === 'clerk') {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,128 +62,94 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          adminKey: adminKey.trim()
+          password: adminKey,
+          rememberMe,
         }),
         credentials: 'include',
       });
-
+      
       if (response.ok) {
-        // Update the auth store to match the cookie state
-        const success = await login(adminKey.trim(), rememberMe);
+        const data = await response.json();
         
-        if (success) {
-          router.push('/');
-        } else {
-          setError('Unable to update authentication state');
-        }
+        // Login is handled by the API endpoint which sets the session cookie
+        // The auth state will be updated automatically via AuthProvider
+        
+        // Redirect to home page
+        router.replace('/');
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
-        setError(errorData.error || 'Invalid admin key');
+        const error = await response.json();
+        setError(error.message || 'Authentication failed');
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('Unable to connect to server');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred during login');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'auto' }}>
-      <div
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.03'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-          backgroundRepeat: 'repeat',
-          zIndex: 0 
-        }}
-      />
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.1)', zIndex: 1 }} />
-      <Container size={420} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', position: 'relative', zIndex: 2 }}>
-        <Paper withBorder shadow="lg" p={40} radius="md" w="100%" style={{ position: 'relative' }}>
-          <Center mb="xl">
-            <ThemeIcon size={60} radius="md" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+    <Container size={420} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+      <Paper shadow="lg" p="xl" radius="md" w="100%">
+        <Stack gap="md">
+          <Center>
+            <ThemeIcon size={60} radius="xl" variant="gradient" gradient={{ from: 'cyan', to: 'blue' }}>
               <IconServer size={30} />
             </ThemeIcon>
           </Center>
+          
+          <Stack gap={0} align="center">
+            <Title order={2}>Conduit Admin</Title>
+            <Text c="dimmed" size="sm">Enter your admin password to continue</Text>
+          </Stack>
 
-          <Title ta="center" mb="md">
-            Conduit Admin Access
-          </Title>
-          <Text c="dimmed" size="sm" ta="center" mb="xl">
-            AI Gateway & Management Platform
-          </Text>
-
-          <Alert icon={<IconKey size={16} />} color="blue" mb="md" variant="light">
-            <Text size="sm">
-              <strong>Admin Key Required:</strong><br />
-              Enter the administrator key to access the dashboard
-            </Text>
-          </Alert>
+          {error && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Authentication Failed"
+              color="red"
+              variant="light"
+            >
+              {error}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              {error && (
-                <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
-                  <Text size="sm">{error}</Text>
-                </Alert>
-              )}
-              
               <PasswordInput
-                label="Admin Key"
-                placeholder="Enter your admin key"
-                description="Contact your administrator for access credentials"
+                label="Admin Password"
+                placeholder="Enter admin password"
                 required
-                leftSection={<IconShield size={16} />}
                 value={adminKey}
-                onChange={(event) => setAdminKey(event.currentTarget.value)}
+                onChange={(e) => setAdminKey(e.currentTarget.value)}
+                leftSection={<IconKey size={16} />}
                 disabled={loading}
-                autoComplete="off"
-                data-testid="admin-key-input"
+                autoFocus
               />
 
-              <Group justify="space-between" mt="md">
-                <Checkbox
-                  label="Remember me"
-                  description="Keep me signed in for 7 days"
-                  checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.currentTarget.checked)}
-                  disabled={loading}
-                />
-              </Group>
+              <Checkbox
+                label="Remember me for 30 days"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.currentTarget.checked)}
+                disabled={loading}
+              />
 
               <Button
                 type="submit"
                 fullWidth
-                mt="md"
                 loading={loading}
-                leftSection={<IconKey size={16} />}
-                size="md"
-                disabled={loading}
-                data-testid="submit-button"
+                leftSection={!loading && <IconShield size={16} />}
               >
-                {loading ? 'Authenticating...' : 'Access Dashboard'}
+                Sign In
               </Button>
             </Stack>
           </form>
 
-          <Alert icon={<IconAlertCircle size={16} />} color="orange" mt="xl" variant="light">
-            <Text size="xs">
-              <strong>Security Notice:</strong><br />
-              This admin key grants access to the Conduit WebUI. It controls access to virtual key management, 
-              provider configuration, and system monitoring.
-            </Text>
-          </Alert>
-
-          <Text c="dimmed" size="xs" ta="center" mt="md">
-            Conduit AI Gateway v2.0 - Secure access required
+          <Text size="xs" c="dimmed" ta="center">
+            This is the administrative interface for Conduit. Only authorized personnel should access this system.
           </Text>
-        </Paper>
-      </Container>
-    </div>
+        </Stack>
+      </Paper>
+    </Container>
   );
 }

@@ -11,7 +11,7 @@ interface AuthenticatedLayoutProps {
   children: React.ReactNode;
 }
 
-const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/login', '/sign-in', '/sign-up'];
 
 function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   return (

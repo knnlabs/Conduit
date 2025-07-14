@@ -17,6 +17,7 @@
     "pre-commit": "lint-staged"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.24.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
     "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
