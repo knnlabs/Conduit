@@ -82,15 +82,20 @@ namespace ConduitLLM.Tests.Configuration.Services
         [Fact]
         public async Task GetConfigurationAsync_LoadsFromConfiguration_WhenNotInDatabase()
         {
-            // Arrange
-            var configSection = new Mock<IConfigurationSection>();
-            configSection.Setup(x => x.Exists()).Returns(true);
-            configSection.Setup(x => x.GetValue<bool>("Enabled", It.IsAny<bool>())).Returns(true);
-            configSection.Setup(x => x.GetValue<int>("Priority", It.IsAny<int>())).Returns(75);
-            configSection.Setup(x => x.GetValue<int?>("DefaultTtlSeconds")).Returns(900);
+            // Arrange - use ConfigurationBuilder to create a real configuration section
+            var configData = new Dictionary<string, string>
+            {
+                [$"Cache:Regions:{CacheRegions.RateLimits}:Enabled"] = "true",
+                [$"Cache:Regions:{CacheRegions.RateLimits}:Priority"] = "75",
+                [$"Cache:Regions:{CacheRegions.RateLimits}:DefaultTtlSeconds"] = "900"
+            };
+
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(configData)
+                .Build();
 
             _mockConfiguration.Setup(x => x.GetSection($"Cache:Regions:{CacheRegions.RateLimits}"))
-                .Returns(configSection.Object);
+                .Returns(configuration.GetSection($"Cache:Regions:{CacheRegions.RateLimits}"));
 
             // Act
             var result = await _service.GetConfigurationAsync(CacheRegions.RateLimits);

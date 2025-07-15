@@ -36,15 +36,11 @@ namespace ConduitLLM.Tests.HealthChecks
             _configurationMock = new Mock<IConfiguration>();
             _loggerMock = new Mock<ILogger<RabbitMQHealthCheck>>();
 
-            // Setup configuration
+            // Setup configuration - create real configuration section instead of mocking extension method
             var configSection = new Mock<IConfigurationSection>();
-            configSection.Setup(x => x.Get<ConduitLLM.Configuration.RabbitMqConfiguration>())
-                .Returns(new ConduitLLM.Configuration.RabbitMqConfiguration
-                {
-                    Host = "localhost",
-                    Username = "guest",
-                    Password = "guest"
-                });
+            configSection.Setup(x => x["Host"]).Returns("localhost");
+            configSection.Setup(x => x["Username"]).Returns("guest");
+            configSection.Setup(x => x["Password"]).Returns("guest");
             _configurationMock.Setup(x => x.GetSection("ConduitLLM:RabbitMQ"))
                 .Returns(configSection.Object);
 
