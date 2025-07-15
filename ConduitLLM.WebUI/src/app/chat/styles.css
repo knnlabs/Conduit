@@ -1,12 +1,33 @@
+/* Chat-specific styling */
+.chat-message-user {
+  background: var(--mantine-color-conduit-blue-1) !important;
+  border-color: var(--mantine-color-conduit-blue-3) !important;
+}
+
+.chat-message-user:hover {
+  background: var(--mantine-color-conduit-blue-0) !important;
+  border-color: var(--mantine-color-conduit-blue-4) !important;
+}
+
+.chat-message-assistant {
+  background: var(--mantine-color-conduit-gray-1) !important;
+  border-color: var(--mantine-color-conduit-gray-3) !important;
+}
+
+.chat-message-assistant:hover {
+  background: var(--mantine-color-conduit-gray-0) !important;
+  border-color: var(--mantine-color-conduit-gray-4) !important;
+}
+
 .hover-card {
   transition: all 0.2s ease;
-  border: 1px solid var(--mantine-color-gray-3);
+  border: 1px solid var(--mantine-color-conduit-gray-3);
 }
 
 .hover-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-color: var(--mantine-color-blue-5);
+  box-shadow: var(--mantine-shadow-md);
+  border-color: var(--mantine-color-conduit-blue-5);
 }
 
 .markdown-content {
@@ -40,10 +61,12 @@
 }
 
 .markdown-content code {
-  background-color: var(--mantine-color-gray-1);
+  background-color: var(--mantine-color-conduit-gray-2);
+  color: var(--mantine-color-conduit-gray-8);
   padding: 0.125em 0.25em;
-  border-radius: 0.25em;
+  border-radius: var(--mantine-radius-xs);
   font-size: 0.875em;
+  border: 1px solid var(--mantine-color-conduit-gray-3);
 }
 
 .markdown-content pre {
@@ -58,32 +81,39 @@
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid var(--mantine-color-gray-4);
+  border-left: 4px solid var(--mantine-color-conduit-blue-5);
   padding-left: 1em;
   margin: 0.75em 0;
-  color: var(--mantine-color-gray-7);
+  color: var(--mantine-color-conduit-gray-7);
+  background: var(--mantine-color-conduit-blue-0);
+  border-radius: var(--mantine-radius-xs);
+  padding: 0.75rem;
 }
 
 .markdown-content table {
   border-collapse: collapse;
   margin: 0.75em 0;
   width: 100%;
+  border: 1px solid var(--mantine-color-conduit-gray-3);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
 }
 
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid var(--mantine-color-gray-3);
+  border: 1px solid var(--mantine-color-conduit-gray-3);
   padding: 0.5em;
   text-align: left;
 }
 
 .markdown-content th {
-  background-color: var(--mantine-color-gray-1);
+  background-color: var(--mantine-color-conduit-gray-1);
   font-weight: 600;
+  color: var(--mantine-color-conduit-gray-8);
 }
 
 .markdown-content a {
-  color: var(--mantine-color-blue-6);
+  color: var(--mantine-color-conduit-blue-6);
   text-decoration: none;
 }
 

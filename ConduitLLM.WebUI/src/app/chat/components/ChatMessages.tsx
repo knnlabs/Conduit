@@ -32,10 +32,8 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
         key={message.id}
         p="md"
         radius="md"
+        className={isUser ? 'chat-message-user' : 'chat-message-assistant'}
         style={{
-          backgroundColor: isUser 
-            ? 'var(--mantine-color-blue-0)' 
-            : 'var(--mantine-color-gray-0)',
           alignSelf: isUser ? 'flex-end' : 'flex-start',
           maxWidth: '80%',
         }}
