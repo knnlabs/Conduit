@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // GET /api/config/routing - Get routing configuration
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();
@@ -43,10 +37,6 @@ export async function GET(req: NextRequest) {
 
 // PATCH /api/config/routing - Update routing configuration
 export async function PATCH(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();
@@ -72,10 +62,6 @@ export async function PATCH(req: NextRequest) {
 
 // PUT /api/config/routing - Update provider priorities
 export async function PUT(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

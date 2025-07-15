@@ -25,16 +25,12 @@ import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { getServerCoreClient } from '@/lib/server/coreClient';
 import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
-import { requireAdmin } from '@/lib/auth/server-auth-check';
 
 // Force dynamic rendering to ensure health check runs at request time
 export const dynamic = 'force-dynamic';
 
 // Server Component - fetches data server-side
 export default async function HomePage() {
-  // Ensure user is admin before showing the page
-  await requireAdmin();
-  
   // Fetch health status server-side
   const healthData = await getHealthStatus();
   

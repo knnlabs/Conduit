@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerCoreClient } from '@/lib/server/coreClient';
 import { DiscoveryService } from '@knn_labs/conduit-core-client';
 
 // GET /api/discovery/models - Get discovered models with capabilities
 export async function GET(request: NextRequest) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const coreClient = await getServerCoreClient();

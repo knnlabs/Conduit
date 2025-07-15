@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // GET /api/config/caching/[cacheId]/entries - Get cache entries for a region
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ cacheId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

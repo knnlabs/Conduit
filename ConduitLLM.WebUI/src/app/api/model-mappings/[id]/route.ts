@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/model-mappings/[id] - Get a single model mapping
@@ -9,10 +8,6 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { id } = await params;
@@ -29,10 +24,6 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { id } = await params;
@@ -130,10 +121,6 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { id } = await params;

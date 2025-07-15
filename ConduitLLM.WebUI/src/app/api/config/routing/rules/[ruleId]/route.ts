@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // PATCH /api/config/routing/rules/[ruleId] - Update a routing rule
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ ruleId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();
@@ -57,10 +51,6 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ ruleId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

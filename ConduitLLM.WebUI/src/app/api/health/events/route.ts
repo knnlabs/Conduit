@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
 // TODO: Remove this mock data when SDK provides health event endpoints
@@ -54,10 +53,6 @@ function generateMockEvents(limit: number) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { searchParams } = new URL(req.url);

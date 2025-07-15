@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
 /**
@@ -10,10 +9,6 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
  * This allows validating API keys and endpoints without saving.
  */
 export async function POST(request: NextRequest) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const body = await request.json();

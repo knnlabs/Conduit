@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // PUT /api/settings/batch - Update multiple settings
 export async function PUT(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

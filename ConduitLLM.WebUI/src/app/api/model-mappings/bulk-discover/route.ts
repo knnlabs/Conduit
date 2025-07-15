@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // POST /api/model-mappings/bulk-discover - Discover models from a specific provider with capabilities
 export async function POST(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

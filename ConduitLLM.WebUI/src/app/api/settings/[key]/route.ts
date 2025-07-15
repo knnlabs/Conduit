@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // GET /api/settings/[key] - Get a single setting
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { key } = await params;
@@ -28,10 +22,6 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { key } = await params;

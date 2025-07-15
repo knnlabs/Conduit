@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // GET /api/audio-configuration/[providerId] - Get specific audio provider
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     // Audio configuration is not yet available in the current SDK version
@@ -27,10 +21,6 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     // Audio configuration is not yet available in the current SDK version
@@ -46,10 +36,6 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     // Audio configuration is not yet available in the current SDK version

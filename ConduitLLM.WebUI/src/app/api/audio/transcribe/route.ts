@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // POST /api/audio/transcribe - Transcribe audio using Core SDK
 export async function POST(request: NextRequest) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const formData = await request.formData();

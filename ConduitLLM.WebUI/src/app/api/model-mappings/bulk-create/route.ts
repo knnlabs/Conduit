@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 interface BulkCreateRequest {
   models: Array<{
     modelId: string;
@@ -28,10 +26,6 @@ interface BulkCreateRequest {
 
 // POST /api/model-mappings/bulk-create - Create multiple model mappings at once
 export async function POST(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const adminClient = getServerAdminClient();

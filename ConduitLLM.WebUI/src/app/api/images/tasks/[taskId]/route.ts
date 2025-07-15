@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerCoreClient } from '@/lib/server/coreClient';
 
 // GET /api/images/tasks/[taskId] - Get image generation task status
@@ -8,10 +7,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { taskId } = await params;
@@ -31,10 +26,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { taskId } = await params;

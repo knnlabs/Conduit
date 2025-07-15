@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
 // Mock request logs data - in production this would come from the Admin API
@@ -75,10 +74,6 @@ function generateMockLogs(count: number = 100) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { searchParams } = new URL(req.url);

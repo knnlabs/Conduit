@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // GET /api/export/status/[exportId] - Get export status
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ exportId: string }> }
 ) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { exportId } = await params;

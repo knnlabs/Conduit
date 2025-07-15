@@ -2,7 +2,6 @@
 // These hooks provide a clean interface for components to interact with the backend
 // through the WebUI's API routes, which in turn use the SDK clients.
 
-export { useAuthApi } from '../useAuthApi';
 export { useCoreApi } from '../useCoreApi';
 export { useSecurityApi } from '../useSecurityApi';
 export { useConfigurationApi } from '../useConfigurationApi';

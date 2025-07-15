@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
-
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const body = await request.json();
