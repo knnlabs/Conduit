@@ -156,8 +156,6 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Session encryption key
-      SESSION_SECRET: your-session-secret-key-change-in-production
       # Redis configuration for session storage
       REDIS_URL: "redis://redis:6379"
       REDIS_SESSION_PREFIX: "conduit:session:"

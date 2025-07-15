@@ -1,5 +1,5 @@
 export interface AuthUser {
-  masterKey: string;
+  adminPassword: string;
   virtualKey?: string;
   isAuthenticated: boolean;
   loginTime: Date;
@@ -11,14 +11,14 @@ export interface AuthState {
   error: string | null;
   
   // Actions
-  login: (masterKey: string, rememberMe?: boolean) => Promise<boolean>;
+  login: (adminPassword: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
   clearError: () => void;
 }
 
 export interface LoginCredentials {
-  masterKey: string;
+  adminPassword: string;
   rememberMe: boolean;
 }
 

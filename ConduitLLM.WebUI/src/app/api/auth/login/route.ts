@@ -6,11 +6,11 @@ import { authConfig } from '@/lib/auth/config';
 // POST /api/auth/login - Admin login endpoint
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json();
+    const { adminPassword } = await request.json();
 
-    if (!password) {
+    if (!adminPassword) {
       return NextResponse.json(
-        { error: 'Password is required' },
+        { error: 'Admin password is required' },
         { status: 400 }
       );
     }
@@ -24,12 +24,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate the password using auth config service
-    const isValid = authConfig.verifyAdminPassword(password);
+    // Validate the admin password using auth config service
+    const isValid = authConfig.verifyAdminPassword(adminPassword);
 
     if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid password' },
+        { error: 'Invalid admin password' },
         { status: 401 }
       );
     }

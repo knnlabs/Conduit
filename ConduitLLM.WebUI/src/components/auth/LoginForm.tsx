@@ -18,7 +18,6 @@ import { useForm } from '@mantine/form';
 import { IconKey, IconAlertCircle } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { LoginCredentials } from '@/types/auth';
-import { validateMasterKeyFormat } from '@/lib/auth/client-validation';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -30,11 +29,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   const form = useForm<LoginCredentials>({
     initialValues: {
-      masterKey: '',
+      adminPassword: '',
       rememberMe: false,
-    },
-    validate: {
-      masterKey: (value) => validateMasterKeyFormat(value),
     },
   });
 
@@ -44,7 +40,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     clearError();
 
     try {
-      const success = await login(values.masterKey, values.rememberMe);
+      const success = await login(values.adminPassword, values.rememberMe);
       
       if (success) {
         onSuccess?.();
@@ -94,11 +90,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               <Stack gap="md">
                 <Stack gap="xs">
                   <PasswordInput
-                    label="Master Key"
-                    placeholder="Enter your master key"
+                    label="Admin Password"
+                    placeholder="Enter your admin password"
                     required
                     disabled={loading}
-                    {...form.getInputProps('masterKey')}
+                    {...form.getInputProps('adminPassword')}
                   />
                 </Stack>
 

@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { adminKey } = await request.json();
+    const { adminPassword, rememberMe } = await request.json();
 
-    if (!adminKey) {
+    if (!adminPassword) {
       return NextResponse.json(
-        { error: 'Admin key is required' },
+        { error: 'Admin password is required' },
         { status: 400 }
       );
     }
@@ -42,19 +42,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate the admin key using auth config service
-    const isValid = authConfig.verifyAdminPassword(adminKey);
+    // Validate the admin password using auth config service
+    const isValid = authConfig.verifyAdminPassword(adminPassword);
 
     if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid admin key' },
+        { error: 'Invalid admin password' },
         { status: 401 }
       );
     }
 
     // Generate session data
     const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    const sessionDuration = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 30 days or 24 hours
+    const expiresAt = new Date(Date.now() + sessionDuration).toISOString();
 
     // After successful auth, get WebUI virtual key from Admin SDK
     let virtualKey: string | undefined;
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true, // Prevent XSS
       secure: process.env.NODE_ENV === 'production', // HTTPS only in production
       sameSite: 'strict', // CSRF protection
-      maxAge: 24 * 60 * 60, // 24 hours in seconds
+      maxAge: sessionDuration / 1000, // Convert milliseconds to seconds
     });
 
     return response;

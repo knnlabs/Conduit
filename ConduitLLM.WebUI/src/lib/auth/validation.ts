@@ -6,9 +6,9 @@ export interface ValidateMasterKeyResult {
   virtualKey?: string;
 }
 
-export async function validateMasterKey(masterKey: string): Promise<ValidateMasterKeyResult> {
+export async function validateAdminPassword(adminPassword: string): Promise<ValidateMasterKeyResult> {
   try {
-    if (!masterKey || masterKey.trim().length === 0) {
+    if (!adminPassword || adminPassword.trim().length === 0) {
       return { isValid: false };
     }
 
@@ -21,7 +21,7 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          adminKey: masterKey.trim()
+          adminPassword: adminPassword.trim()
         }),
         credentials: 'include',
       });
@@ -40,7 +40,7 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
     // Server-side validation - create a temporary client with the provided key
     const adminClient = new ConduitAdminClient({
       baseUrl: SDK_CONFIG.adminBaseURL,
-      masterKey: masterKey,
+      masterKey: adminPassword,
       timeout: SDK_CONFIG.timeout,
       retries: SDK_CONFIG.maxRetries,
     });
@@ -67,37 +67,37 @@ export async function validateMasterKey(masterKey: string): Promise<ValidateMast
   }
 }
 
-export function sanitizeMasterKey(masterKey: string): string {
-  return masterKey.trim();
+export function sanitizeAdminPassword(adminPassword: string): string {
+  return adminPassword.trim();
 }
 
-export function validateMasterKeyFormat(masterKey: string): string | null {
-  const sanitized = sanitizeMasterKey(masterKey);
+export function validateAdminPasswordFormat(adminPassword: string): string | null {
+  const sanitized = sanitizeAdminPassword(adminPassword);
   
   if (!sanitized) {
-    return 'Master key is required';
+    return 'Admin password is required';
   }
   
-  // Allow shorter keys for development/WebUI auth
+  // Allow shorter passwords for development/WebUI auth
   if (sanitized.length < 4) {
-    return 'Master key must be at least 4 characters';
+    return 'Admin password must be at least 4 characters';
   }
   
   if (sanitized.length > 100) {
-    return 'Master key is too long (maximum 100 characters)';
+    return 'Admin password is too long (maximum 100 characters)';
   }
   
-  // Check for common patterns that indicate weak keys
+  // Check for common patterns that indicate weak passwords
   if (/^[a-z]+$/.test(sanitized)) {
-    return 'Master key should contain mixed case, numbers, or special characters';
+    return 'Admin password should contain mixed case, numbers, or special characters';
   }
   
   if (/^[0-9]+$/.test(sanitized)) {
-    return 'Master key should not be only numbers';
+    return 'Admin password should not be only numbers';
   }
   
   if (/^(.)\1+$/.test(sanitized)) {
-    return 'Master key should not contain repeated characters';
+    return 'Admin password should not contain repeated characters';
   }
   
   // Common weak patterns
@@ -109,24 +109,24 @@ export function validateMasterKeyFormat(masterKey: string): string | null {
   const lowerKey = sanitized.toLowerCase();
   for (const pattern of weakPatterns) {
     if (lowerKey.includes(pattern)) {
-      return 'Master key appears to contain common patterns - please use a stronger key';
+      return 'Admin password appears to contain common patterns - please use a stronger password';
     }
   }
   
   return null;
 }
 
-export function getMasterKeyStrength(masterKey: string): { 
+export function getAdminPasswordStrength(adminPassword: string): { 
   score: number; 
   label: string; 
   suggestions: string[] 
 } {
-  const sanitized = sanitizeMasterKey(masterKey);
+  const sanitized = sanitizeAdminPassword(adminPassword);
   let score = 0;
   const suggestions: string[] = [];
   
   if (!sanitized) {
-    return { score: 0, label: 'Very Weak', suggestions: ['Enter a master key'] };
+    return { score: 0, label: 'Very Weak', suggestions: ['Enter an admin password'] };
   }
   
   // Length scoring

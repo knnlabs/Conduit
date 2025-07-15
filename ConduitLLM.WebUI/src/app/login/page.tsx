@@ -25,7 +25,7 @@ import {
 } from '@tabler/icons-react';
 
 export default function LoginPage() {
-  const [adminKey, setAdminKey] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +46,8 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!adminKey.trim()) {
-      setError('Admin key is required');
+    if (!adminPassword.trim()) {
+      setError('Admin password is required');
       return;
     }
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          password: adminKey,
+          adminPassword: adminPassword,
           rememberMe,
         }),
         credentials: 'include',
@@ -120,8 +120,8 @@ export default function LoginPage() {
                 label="Admin Password"
                 placeholder="Enter admin password"
                 required
-                value={adminKey}
-                onChange={(e) => setAdminKey(e.currentTarget.value)}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.currentTarget.value)}
                 leftSection={<IconKey size={16} />}
                 disabled={loading}
                 autoFocus

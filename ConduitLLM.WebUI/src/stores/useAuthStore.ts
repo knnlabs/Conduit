@@ -1,36 +1,36 @@
 import { create } from 'zustand';
 import { AuthState, AuthUser } from '@/types/auth';
 import { authStorage, StoredAuth } from '@/lib/auth/storage';
-import { sanitizeMasterKey } from '@/lib/auth/client-validation';
-import { validateMasterKey } from '@/lib/auth/validation';
+import { sanitizeAdminPassword } from '@/lib/auth/client-validation';
+import { validateAdminPassword } from '@/lib/auth/validation';
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
   error: null,
 
-  login: async (masterKey: string, rememberMe: boolean = false): Promise<boolean> => {
+  login: async (adminPassword: string, rememberMe: boolean = false): Promise<boolean> => {
     set({ isLoading: true, error: null });
 
     try {
-      const sanitizedKey = sanitizeMasterKey(masterKey);
+      const sanitizedPassword = sanitizeAdminPassword(adminPassword);
       
-      if (!sanitizedKey) {
-        set({ error: 'Master key is required', isLoading: false });
+      if (!sanitizedPassword) {
+        set({ error: 'Admin password is required', isLoading: false });
         return false;
       }
 
-      // Validate the master key with the admin API
-      const validationResult = await validateMasterKey(sanitizedKey);
+      // Validate the admin password with the admin API
+      const validationResult = await validateAdminPassword(sanitizedPassword);
       
       if (!validationResult.isValid) {
-        set({ error: 'Invalid master key', isLoading: false });
+        set({ error: 'Invalid admin password', isLoading: false });
         return false;
       }
 
       // Create user object
       const user: AuthUser = {
-        masterKey: sanitizedKey,
+        adminPassword: sanitizedPassword,
         virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: new Date(),
@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       // Save to storage
       const storedAuth: StoredAuth = {
-        masterKey: sanitizedKey,
+        masterKey: sanitizedPassword,
         virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: user.loginTime.toISOString(),
@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const user: AuthUser = {
-        masterKey: stored.masterKey,
+        adminPassword: stored.masterKey,
         virtualKey: stored.virtualKey,
         isAuthenticated: true,
         loginTime: new Date(stored.loginTime),

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { AuthState, AuthUser } from '@/types/auth';
 import { authStorage, StoredAuth } from '@/lib/auth/storage';
-import { sanitizeMasterKey } from '@/lib/auth/client-validation';
-import { validateMasterKey } from '@/lib/auth/validation';
+import { sanitizeAdminPassword } from '@/lib/auth/client-validation';
+import { validateAdminPassword } from '@/lib/auth/validation';
 import { getAuthMode } from '@/lib/auth/auth-mode';
 import { isClerkAuthenticated } from '@/lib/auth/clerk-helpers';
 
@@ -18,7 +18,7 @@ export const useUnifiedAuthStore = create<UnifiedAuthState>((set, get) => ({
   authMode: getAuthMode(),
   clerkUser: null,
 
-  login: async (masterKey: string, rememberMe: boolean = false): Promise<boolean> => {
+  login: async (adminPassword: string, rememberMe: boolean = false): Promise<boolean> => {
     const { authMode } = get();
     
     if (authMode === 'clerk') {
@@ -29,24 +29,24 @@ export const useUnifiedAuthStore = create<UnifiedAuthState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const sanitizedKey = sanitizeMasterKey(masterKey);
+      const sanitizedPassword = sanitizeAdminPassword(adminPassword);
       
-      if (!sanitizedKey) {
-        set({ error: 'Master key is required', isLoading: false });
+      if (!sanitizedPassword) {
+        set({ error: 'Admin password is required', isLoading: false });
         return false;
       }
 
-      // Validate the master key with the admin API
-      const validationResult = await validateMasterKey(sanitizedKey);
+      // Validate the admin password with the admin API
+      const validationResult = await validateAdminPassword(sanitizedPassword);
       
       if (!validationResult.isValid) {
-        set({ error: 'Invalid master key', isLoading: false });
+        set({ error: 'Invalid admin password', isLoading: false });
         return false;
       }
 
       // Create user object
       const user: AuthUser = {
-        masterKey: sanitizedKey,
+        adminPassword: sanitizedPassword,
         virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: new Date(),
@@ -54,7 +54,7 @@ export const useUnifiedAuthStore = create<UnifiedAuthState>((set, get) => ({
 
       // Save to storage
       const storedAuth: StoredAuth = {
-        masterKey: sanitizedKey,
+        masterKey: sanitizedPassword,
         virtualKey: validationResult.virtualKey,
         isAuthenticated: true,
         loginTime: user.loginTime.toISOString(),
@@ -118,11 +118,11 @@ export const useUnifiedAuthStore = create<UnifiedAuthState>((set, get) => ({
       
       if (storedAuth && storedAuth.isAuthenticated) {
         // Validate the stored auth is still valid
-        const validationResult = await validateMasterKey(storedAuth.masterKey);
+        const validationResult = await validateAdminPassword(storedAuth.masterKey);
         
         if (validationResult.isValid) {
           const user: AuthUser = {
-            masterKey: storedAuth.masterKey,
+            adminPassword: storedAuth.masterKey,
             virtualKey: validationResult.virtualKey || storedAuth.virtualKey,
             isAuthenticated: true,
             loginTime: new Date(storedAuth.loginTime),
@@ -164,11 +164,11 @@ export const useUnifiedAuthStore = create<UnifiedAuthState>((set, get) => ({
       
       if (storedAuth && storedAuth.isAuthenticated) {
         // Validate the stored auth is still valid
-        const validationResult = await validateMasterKey(storedAuth.masterKey);
+        const validationResult = await validateAdminPassword(storedAuth.masterKey);
         
         if (validationResult.isValid) {
           const user: AuthUser = {
-            masterKey: storedAuth.masterKey,
+            adminPassword: storedAuth.masterKey,
             virtualKey: validationResult.virtualKey || storedAuth.virtualKey,
             isAuthenticated: true,
             loginTime: new Date(storedAuth.loginTime),
