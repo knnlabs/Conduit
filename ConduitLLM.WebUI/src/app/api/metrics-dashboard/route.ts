@@ -3,78 +3,66 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
 export async function GET(req: NextRequest) {
-
   try {
     const { searchParams } = new URL(req.url);
     const timeRange = searchParams.get('timeRange') || '1h';
     
     const adminClient = getServerAdminClient();
     
-    // Get comprehensive metrics from the Admin SDK
-    const [systemMetrics, performanceMetrics, providerMetrics] = await Promise.all([
-      adminClient.metrics.getSystemMetrics(timeRange),
-      adminClient.metrics.getPerformanceMetrics({ timeRange }),
-      adminClient.metrics.getProviderMetrics(timeRange),
-    ]);
+    // NOTE: Removed fake data calls. The following endpoints don't exist in the backend:
+    // - adminClient.metrics.getSystemMetrics() -> /api/dashboard/metrics/system (fake data)
+    // - adminClient.metrics.getPerformanceMetrics() -> /api/dashboard/metrics/performance (fake data)  
+    // - adminClient.metrics.getProviderMetrics() -> /api/dashboard/metrics/providers (fake data)
+    // - adminClient.analytics.getCostAnalytics() -> /api/cost-analytics (fake data)
+    // - adminClient.analytics.getUsageAnalytics() -> /api/usage-analytics (fake data)
+    
+    // Only use real endpoints or return null/empty values
+    let providerHealth = null;
+    try {
+      providerHealth = await adminClient.providerHealth.getHealthSummary();
+    } catch (error) {
+      // If provider health endpoint fails, continue with null data
+      console.warn('Provider health endpoint unavailable:', error);
+    }
 
-    // Get additional analytics data for enriched dashboard
-    const [costAnalytics, usageAnalytics] = await Promise.all([
-      adminClient.analytics.getCostAnalytics(),
-      adminClient.analytics.getUsageAnalytics({
-        timeRange,
-        includeProviderBreakdown: true,
-        includeModelBreakdown: true,
-      }),
-    ]);
-
-    // Get provider health for status indicators
-    const providerHealth = await adminClient.providerHealth.getHealthSummary();
-
-    // Combine all data into a comprehensive dashboard response
+    // Return dashboard data with real data only - null/empty where not available
     const dashboardData = {
-      // Key metrics
+      // Key metrics - all null/0 since fake endpoints removed
       metrics: {
-        totalRequests: usageAnalytics.metrics?.totalRequests || 0,
-        avgResponseTime: performanceMetrics.summary?.averages?.responseTime || 0,
-        errorRate: performanceMetrics.summary?.averages?.errorRate || 0,
-        uptime: systemMetrics.system?.uptime || 0,
-        p95ResponseTime: performanceMetrics.summary?.peaks?.responseTime || 0,
-        errorCount: systemMetrics.requests?.failedRequests || 0,
-        requestsTrend: performanceMetrics.summary?.trend === 'improving' ? 5 : performanceMetrics.summary?.trend === 'degrading' ? -5 : 0,
-        responseTimeTrend: 0, // Calculate from time series if needed
-        errorRateTrend: 0, // Calculate from time series if needed
+        totalRequests: 0,
+        avgResponseTime: 0,
+        errorRate: 0,
+        uptime: 0,
+        p95ResponseTime: 0,
+        errorCount: 0,
+        requestsTrend: 0,
+        responseTimeTrend: 0,
+        errorRateTrend: 0,
       },
-      // System health
+      // System health - null since fake endpoints removed
       system: {
-        cpu: systemMetrics.system?.cpu || { usage: 0, cores: 0 },
-        memory: systemMetrics.system?.memory || { used: 0, total: 0, percentage: 0 },
-        disk: { used: 0, total: 0, percentage: 0 }, // Not available in SDK yet
-        network: { in: 0, out: 0 }, // Not available in SDK yet
-        services: [], // TODO: Get from monitoring service when available
-        uptime: systemMetrics.system?.uptime || 0,
+        cpu: { usage: 0, cores: 0 },
+        memory: { used: 0, total: 0, percentage: 0 },
+        disk: { used: 0, total: 0, percentage: 0 },
+        network: { in: 0, out: 0 },
+        services: [],
+        uptime: 0,
       },
-      // Performance data for charts
+      // Performance data - empty since fake endpoints removed
       performance: {
-        timeSeries: performanceMetrics.timeSeries || [],
-        endpoints: systemMetrics.requests?.topEndpoints || [],
-        errorDistribution: [], // TODO: Calculate from error data when available
+        timeSeries: [],
+        endpoints: [],
+        errorDistribution: [],
       },
-      // Provider data
+      // Provider data - only real health data if available
       providers: {
-        metrics: Object.entries(providerMetrics.providers || {}).map(([name, data]: [string, any]) => ({
-          name,
-          requests: data.usage?.requests || 0,
-          errors: data.usage?.errors || 0,
-          errorRate: data.usage?.errorRate || 0,
-          avgLatency: data.performance?.averageLatency || 0,
-          status: data.health?.status || 'unknown',
-        })),
-        health: providerHealth.providers || [],
+        metrics: [],
+        health: providerHealth?.providers || [],
       },
-      // Cost data
+      // Cost data - null since fake endpoints removed
       costs: {
-        totalSpend: costAnalytics.totalCost || 0,
-        byProvider: costAnalytics.breakdown?.byProvider || [],
+        totalSpend: 0,
+        byProvider: [],
       },
       // Timestamp
       timestamp: new Date().toISOString(),
