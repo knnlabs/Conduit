@@ -11,22 +11,7 @@ export async function GET(
     return auth.response!;
   }
 
-  try {
-    const adminClient = getServerAdminClient();
-    const { queueName: rawQueueName, messageId: rawMessageId } = await params;
-    const queueName = decodeURIComponent(rawQueueName);
-    const messageId = decodeURIComponent(rawMessageId);
-    
-    const result = await adminClient.errorQueues.getErrorMessage(queueName, messageId);
-    
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Error fetching error message:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch error message' },
-      { status: error.statusCode || 500 }
-    );
-  }
+  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }
 
 export async function DELETE(
@@ -38,15 +23,5 @@ export async function DELETE(
     return auth.response!;
   }
 
-  try {
-    // TODO: Implement delete message endpoint in Admin API
-    // For now, return a mock response
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error deleting error message:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to delete error message' },
-      { status: error.statusCode || 500 }
-    );
-  }
+  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }

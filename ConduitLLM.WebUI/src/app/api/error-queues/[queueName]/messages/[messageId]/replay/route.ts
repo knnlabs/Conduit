@@ -11,15 +11,5 @@ export async function POST(
     return auth.response!;
   }
 
-  try {
-    // TODO: Implement replay message endpoint in Admin API
-    // For now, return a mock response
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error replaying message:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to replay message' },
-      { status: error.statusCode || 500 }
-    );
-  }
+  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }

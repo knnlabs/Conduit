@@ -8,16 +8,5 @@ export async function GET(request: NextRequest) {
     return auth.response!;
   }
 
-  try {
-    const adminClient = getServerAdminClient();
-    const result = await adminClient.errorQueues.getHealth();
-    
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Error fetching error queue health:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch error queue health' },
-      { status: error.statusCode || 500 }
-    );
-  }
+  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }

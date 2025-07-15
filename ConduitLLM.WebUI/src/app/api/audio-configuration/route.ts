@@ -11,10 +11,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const adminClient = getServerAdminClient();
-    const providers = await adminClient.audio.getProviders();
-    
-    return NextResponse.json(providers);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error fetching audio providers:', error);
     return handleSDKError(error);
@@ -29,12 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const adminClient = getServerAdminClient();
-    const body = await req.json();
-    
-    const provider = await adminClient.audio.createProvider(body);
-    
-    return NextResponse.json(provider);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error creating audio provider:', error);
     return handleSDKError(error);

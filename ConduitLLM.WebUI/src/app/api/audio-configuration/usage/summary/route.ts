@@ -11,37 +11,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const adminClient = getServerAdminClient();
-    const searchParams = req.nextUrl.searchParams;
-    
-    // Build filters from query params
-    const filters: any = {};
-    
-    // Default to last 30 days if no dates provided
-    if (searchParams.has('startDate')) {
-      filters.startDate = searchParams.get('startDate');
-    } else {
-      filters.startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    }
-    
-    if (searchParams.has('endDate')) {
-      filters.endDate = searchParams.get('endDate');
-    } else {
-      filters.endDate = new Date().toISOString();
-    }
-    if (searchParams.has('providerId')) {
-      filters.providerId = searchParams.get('providerId');
-    }
-    if (searchParams.has('virtualKeyId')) {
-      filters.virtualKeyId = searchParams.get('virtualKeyId');
-    }
-    if (searchParams.has('groupBy')) {
-      filters.groupBy = searchParams.getAll('groupBy');
-    }
-    
-    const summary = await adminClient.audio.getUsageSummary(filters);
-    
-    return NextResponse.json(summary);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error fetching audio usage summary:', error);
     return handleSDKError(error);

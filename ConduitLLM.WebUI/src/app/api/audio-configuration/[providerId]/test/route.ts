@@ -14,11 +14,8 @@ export async function POST(
   }
 
   try {
-    const { providerId } = await params;
-    const adminClient = getServerAdminClient();
-    const result = await adminClient.audio.testProvider(providerId);
-    
-    return NextResponse.json(result);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error testing audio provider:', error);
     return handleSDKError(error);

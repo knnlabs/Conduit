@@ -11,15 +11,5 @@ export async function DELETE(
     return auth.response!;
   }
 
-  try {
-    // TODO: Implement clear queue endpoint in Admin API
-    // For now, return a mock response
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error clearing queue:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to clear queue' },
-      { status: error.statusCode || 500 }
-    );
-  }
+  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }

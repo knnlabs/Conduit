@@ -14,11 +14,8 @@ export async function GET(
   }
 
   try {
-    const { providerId } = await params;
-    const adminClient = getServerAdminClient();
-    const provider = await adminClient.audio.getProvider(providerId);
-    
-    return NextResponse.json(provider);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error fetching audio provider:', error);
     return handleSDKError(error);
@@ -36,13 +33,8 @@ export async function PUT(
   }
 
   try {
-    const { providerId } = await params;
-    const adminClient = getServerAdminClient();
-    const body = await req.json();
-    
-    const provider = await adminClient.audio.updateProvider(providerId, body);
-    
-    return NextResponse.json(provider);
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error updating audio provider:', error);
     return handleSDKError(error);
@@ -60,11 +52,8 @@ export async function DELETE(
   }
 
   try {
-    const { providerId } = await params;
-    const adminClient = getServerAdminClient();
-    await adminClient.audio.deleteProvider(providerId);
-    
-    return NextResponse.json({ success: true });
+    // Audio configuration is not yet available in the current SDK version
+    return NextResponse.json({ error: 'Audio configuration not available' }, { status: 501 });
   } catch (error) {
     console.error('Error deleting audio provider:', error);
     return handleSDKError(error);
