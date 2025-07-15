@@ -1,7 +1,6 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import { ResponseParser } from '../client/FetchOptions';
 import { ConduitError, RateLimitError, NetworkError } from '../utils/errors';
-import { CircuitBreaker, ErrorRecoveryManager } from '../client/ErrorRecovery';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -13,13 +12,6 @@ class TestClient extends FetchBasedClient {
     return this.request<T>(url, options);
   }
   
-  public getCircuitBreaker(): CircuitBreaker {
-    return this.circuitBreaker;
-  }
-  
-  public getErrorRecovery(): ErrorRecoveryManager {
-    return this.errorRecovery;
-  }
 }
 
 describe('FetchBasedClient', () => {
@@ -219,45 +211,6 @@ describe('FetchBasedClient', () => {
     });
   });
 
-  describe('Circuit Breaker', () => {
-    it('should open circuit after threshold failures', async () => {
-      const circuitBreaker = client.getCircuitBreaker();
-      
-      // Simulate multiple failures
-      mockFetch.mockResolvedValue(
-        new Response('Server error', { status: 500 })
-      );
-
-      // Make requests until circuit opens (default threshold is 5)
-      const promises = [];
-      for (let i = 0; i < 5; i++) {
-        promises.push(
-          client.testRequest('/test').catch(() => {/* Expected to fail */})
-        );
-      }
-      await Promise.all(promises);
-
-      // Circuit should be open now
-      expect(circuitBreaker.getState()).toBe('open');
-      
-      // Next request should fail immediately
-      await expect(client.testRequest('/test')).rejects.toThrow('Circuit breaker is open');
-    }, 10000);
-
-    it('should close circuit after successful request', async () => {
-      const circuitBreaker = client.getCircuitBreaker();
-      
-      mockFetch.mockResolvedValueOnce(
-        new Response(JSON.stringify({ success: true }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      );
-
-      await client.testRequest('/test');
-      expect(circuitBreaker.getState()).toBe('closed');
-    });
-  });
 
   describe('Error Recovery', () => {
     it('should recover from rate limit errors', async () => {

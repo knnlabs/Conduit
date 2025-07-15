@@ -9,7 +9,6 @@ import {
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
-import { CircuitBreaker } from './ErrorRecovery';
 import { HttpMethod } from './HttpMethod';
 
 /**
@@ -21,7 +20,6 @@ export abstract class FetchBasedClient {
     Pick<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>;
   protected readonly retryConfig: RetryConfig;
   protected readonly retryDelays: number[];
-  protected readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: ClientConfig) {
     this.config = {
@@ -46,7 +44,6 @@ export abstract class FetchBasedClient {
     };
 
     this.retryDelays = this.config.retryDelay;
-    this.circuitBreaker = new CircuitBreaker();
   }
 
   /**
@@ -80,12 +77,6 @@ export abstract class FetchBasedClient {
         await this.config.onRequest(requestConfig);
       }
 
-      // Check circuit breaker
-      if (!this.circuitBreaker.shouldAllowRequest()) {
-        throw new NetworkError('Circuit breaker is open - too many failures', {
-          code: 'CIRCUIT_BREAKER_OPEN',
-        });
-      }
 
       if (this.config.debug) {
         console.debug(`[Conduit] ${requestConfig.method} ${requestConfig.url}`);
@@ -241,10 +232,8 @@ export abstract class FetchBasedClient {
       }
 
       // Parse response using ResponseParser
-      this.circuitBreaker.recordSuccess();
       return await ResponseParser.parse<TResponse>(response, init.responseType || options.responseType);
     } catch (error) {
-      this.circuitBreaker.recordFailure();
       
       // Check if we've exceeded max retries
       if (attempt > this.retryConfig.maxRetries) {
