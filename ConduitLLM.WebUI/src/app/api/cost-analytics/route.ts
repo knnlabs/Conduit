@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
       provider: provider.name,
       cost: provider.cost,
       usage: provider.percentage || 0,
-      trend: 0, // TODO: Calculate trend from historical data
+      trend: 0, // Default trend value since not available in current SDK
     })) || [];
 
     // Format model usage
@@ -91,8 +91,9 @@ export async function GET(req: NextRequest) {
     const response = {
       totalSpend: costAnalytics.totalCost,
       averageDailyCost,
-      projectedMonthlySpend,
-      monthlyBudget: 5000, // TODO: Get from settings when available
+      projectedMonthlySpend: costAnalytics.projections?.monthly || projectedMonthlySpend,
+      monthlyBudget: null, // Budget feature not yet available in SDK
+      projectedTrend: costAnalytics.trends?.length > 0 ? costAnalytics.trends[costAnalytics.trends.length - 1]?.changePercentage : null,
       providerCosts,
       modelUsage,
       dailyCosts,

@@ -79,7 +79,7 @@ export default function CostDashboard() {
 
   // Use real data from API or fallback values
   const totalSpend = costData?.totalSpend || 0;
-  const monthlyBudget = costData?.monthlyBudget || 5000;
+  const monthlyBudget = costData?.monthlyBudget || null;
   const projectedSpend = costData?.projectedMonthlySpend || 0;
   const averageDailyCost = costData?.averageDailyCost || 0;
   const providerCosts: ProviderCost[] = costData?.providerCosts || [];
@@ -149,7 +149,7 @@ export default function CostDashboard() {
         cost: selectedProvider ? (day.providers[selectedProvider] || 0) : 0,
       }));
 
-  const budgetUsagePercent = (totalSpend / monthlyBudget) * 100;
+  const budgetUsagePercent = monthlyBudget ? (totalSpend / monthlyBudget) * 100 : 0;
   const budgetStatusColor = budgetUsagePercent > 90 ? 'red' : budgetUsagePercent > 70 ? 'yellow' : 'green';
 
   if (error) {
@@ -244,19 +244,27 @@ export default function CostDashboard() {
                 <Text size="sm" c="dimmed" fw={600} tt="uppercase">
                   Budget Usage
                 </Text>
-                <Text size="xl" fw={700} mt={4}>
-                  {budgetUsagePercent.toFixed(1)}%
-                </Text>
-                <Progress
-                  value={budgetUsagePercent}
-                  color={budgetStatusColor}
-                  size="sm"
-                  radius="md"
-                  mt={8}
-                />
+                {monthlyBudget ? (
+                  <>
+                    <Text size="xl" fw={700} mt={4}>
+                      {budgetUsagePercent.toFixed(1)}%
+                    </Text>
+                    <Progress
+                      value={budgetUsagePercent}
+                      color={budgetStatusColor}
+                      size="sm"
+                      radius="md"
+                      mt={8}
+                    />
+                  </>
+                ) : (
+                  <Text size="xl" fw={700} mt={4} c="dimmed">
+                    No budget set
+                  </Text>
+                )}
               </div>
               <ThemeIcon
-                color={budgetStatusColor}
+                color={monthlyBudget ? budgetStatusColor : 'gray'}
                 variant="light"
                 size={48}
                 radius="md"
@@ -277,12 +285,18 @@ export default function CostDashboard() {
                 <Text size="xl" fw={700} mt={4}>
                   ${projectedSpend.toFixed(2)}
                 </Text>
-                <Group gap={4} mt={8}>
-                  <IconTrendingUp size={16} color="var(--mantine-color-yellow-6)" />
-                  <Text size="xs" c="yellow">
-                    +20% from last month
-                  </Text>
-                </Group>
+                {costData?.projectedTrend && (
+                  <Group gap={4} mt={8}>
+                    {costData.projectedTrend > 0 ? (
+                      <IconTrendingUp size={16} color="var(--mantine-color-red-6)" />
+                    ) : (
+                      <IconTrendingDown size={16} color="var(--mantine-color-green-6)" />
+                    )}
+                    <Text size="xs" c={costData.projectedTrend > 0 ? "red" : "green"}>
+                      {costData.projectedTrend > 0 ? '+' : ''}{costData.projectedTrend.toFixed(1)}% from last month
+                    </Text>
+                  </Group>
+                )}
               </div>
               <ThemeIcon
                 color="yellow"
@@ -425,7 +439,7 @@ export default function CostDashboard() {
         </Grid.Col>
       </Grid>
 
-      {projectedSpend > monthlyBudget && (
+      {monthlyBudget && projectedSpend > monthlyBudget && (
         <Alert
           icon={<IconAlertCircle size={16} />}
           title="Budget Alert"
