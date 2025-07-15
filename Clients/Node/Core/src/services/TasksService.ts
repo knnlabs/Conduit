@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { RequestOptions } from '../client/types';
 import type { TaskResult } from '../models/common-types';
 import { ConduitError } from '../utils/errors';
@@ -9,8 +9,11 @@ import { API_ENDPOINTS, TASK_STATUS } from '../constants';
  * Service for general task management operations using the Conduit Core API
  */
 export class TasksService {
+  private readonly clientAdapter: IFetchBasedClientAdapter;
 
-  constructor(private readonly client: FetchBasedClient) {}
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Gets the status of any task by its ID
@@ -24,12 +27,9 @@ export class TasksService {
         throw new Error('Task ID is required');
       }
 
-      const response = await this.client['request']<TaskStatusResponse>(
+      const response = await this.clientAdapter.get<TaskStatusResponse>(
         API_ENDPOINTS.V1.TASKS.BY_ID(taskId),
-        {
-          method: HttpMethod.GET,
-          ...options
-        }
+        options
       );
 
       return response;
@@ -55,13 +55,10 @@ export class TasksService {
         throw new Error('Task ID is required');
       }
 
-      await this.client['request']<void>(
+      await this.clientAdapter.post<void>(
         API_ENDPOINTS.V1.TASKS.CANCEL(taskId),
-        {
-          method: HttpMethod.POST,
-          body: {},
-          ...options
-        }
+        {},
+        options
       );
     } catch (error) {
       if (error instanceof ConduitError) {
@@ -156,13 +153,10 @@ export class TasksService {
     try {
       const request = { older_than_hours: olderThanHours };
 
-      const response = await this.client['request']<CleanupTasksResponse>(
+      const response = await this.clientAdapter.post<CleanupTasksResponse>(
         API_ENDPOINTS.V1.TASKS.CLEANUP,
-        {
-          method: HttpMethod.POST,
-          body: request,
-          ...options
-        }
+        request,
+        options
       );
 
       return response.tasks_removed;

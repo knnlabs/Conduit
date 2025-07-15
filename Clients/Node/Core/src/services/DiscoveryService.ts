@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { RequestOptions } from '../client/types';
 import type { 
   ModelsDiscoveryResponse, 
@@ -19,19 +19,19 @@ import type {
  */
 export class DiscoveryService {
   private readonly baseEndpoint = '/v1/discovery';
+  private readonly clientAdapter: IFetchBasedClientAdapter;
 
-  constructor(private readonly client: FetchBasedClient) {}
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Gets all discovered models and their capabilities.
    */
   async getModels(options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
-    const response = await this.client['request']<ModelsDiscoveryResponse>(
+    const response = await this.clientAdapter.get<ModelsDiscoveryResponse>(
       `${this.baseEndpoint}/models`,
-      {
-        method: HttpMethod.GET,
-        ...options
-      }
+      options
     );
     return response;
   }
@@ -44,12 +44,9 @@ export class DiscoveryService {
       throw new Error('Provider name is required');
     }
 
-    const response = await this.client['request']<ProviderModelsDiscoveryResponse>(
+    const response = await this.clientAdapter.get<ProviderModelsDiscoveryResponse>(
       `${this.baseEndpoint}/providers/${encodeURIComponent(provider)}/models`,
-      {
-        method: HttpMethod.GET,
-        ...options
-      }
+      options
     );
     return response;
   }
@@ -66,12 +63,9 @@ export class DiscoveryService {
       throw new Error('Model name is required');
     }
 
-    const response = await this.client['request']<CapabilityTestResponse>(
+    const response = await this.clientAdapter.get<CapabilityTestResponse>(
       `${this.baseEndpoint}/models/${encodeURIComponent(model)}/capabilities/${capability}`,
-      {
-        method: HttpMethod.GET,
-        ...options
-      }
+      options
     );
     return response;
   }
@@ -88,13 +82,10 @@ export class DiscoveryService {
       throw new Error('At least one test is required');
     }
     
-    const response = await this.client['request']<BulkCapabilityTestResponse>(
+    const response = await this.clientAdapter.post<BulkCapabilityTestResponse, BulkCapabilityTestRequest>(
       `${this.baseEndpoint}/bulk/capabilities`,
-      {
-        method: HttpMethod.POST,
-        body: request,
-        ...options
-      }
+      request,
+      options
     );
     return response;
   }
@@ -111,13 +102,10 @@ export class DiscoveryService {
       throw new Error('At least one model is required');
     }
     
-    const response = await this.client['request']<BulkModelDiscoveryResponse>(
+    const response = await this.clientAdapter.post<BulkModelDiscoveryResponse, BulkModelDiscoveryRequest>(
       `${this.baseEndpoint}/bulk/models`,
-      {
-        method: HttpMethod.POST,
-        body: request,
-        ...options
-      }
+      request,
+      options
     );
     return response;
   }
@@ -127,12 +115,10 @@ export class DiscoveryService {
    * Requires admin/master key access.
    */
   async refreshCapabilities(options?: RequestOptions): Promise<void> {
-    await this.client['request'](
+    await this.clientAdapter.post(
       `${this.baseEndpoint}/refresh`,
-      {
-        method: HttpMethod.POST,
-        ...options
-      }
+      undefined,
+      options
     );
   }
 

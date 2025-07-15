@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type {
   MetricsSnapshot,
   DatabaseMetrics,
@@ -19,7 +19,11 @@ import type {
  * Service for accessing system metrics and performance data from the Conduit Core API
  */
 export class MetricsService {
-  constructor(private client: FetchBasedClient) {}
+  private readonly clientAdapter: IFetchBasedClientAdapter;
+
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Gets the current comprehensive metrics snapshot
@@ -27,11 +31,8 @@ export class MetricsService {
    * @returns Promise<MetricsSnapshot> A complete snapshot of current system metrics
    */
   async getCurrentMetrics(): Promise<MetricsSnapshot> {
-    const response = await this.client['request']<MetricsSnapshot>(
-      '/metrics',
-      {
-        method: HttpMethod.GET,
-      }
+    const response = await this.clientAdapter.get<MetricsSnapshot>(
+      '/metrics'
     );
     return response;
   }
@@ -42,11 +43,8 @@ export class MetricsService {
    * @returns Promise<DatabaseMetrics> Database connection pool metrics
    */
   async getDatabasePoolMetrics(): Promise<DatabaseMetrics> {
-    const response = await this.client['request']<DatabaseMetrics>(
-      '/metrics/database/pool',
-      {
-        method: HttpMethod.GET,
-      }
+    const response = await this.clientAdapter.get<DatabaseMetrics>(
+      '/metrics/database/pool'
     );
     return response;
   }
@@ -57,10 +55,9 @@ export class MetricsService {
    * @returns Promise<string> Prometheus-formatted metrics as a string
    */
   async getPrometheusMetrics(): Promise<string> {
-    const response = await this.client['request']<string>(
+    const response = await this.clientAdapter.get<string>(
       '/metrics',
       {
-        method: HttpMethod.GET,
         headers: {
           'Accept': 'text/plain'
         }
@@ -76,12 +73,9 @@ export class MetricsService {
    * @returns Promise<HistoricalMetricsResponse> Historical metrics data
    */
   async getHistoricalMetrics(request: HistoricalMetricsRequest): Promise<HistoricalMetricsResponse> {
-    const response = await this.client['request']<HistoricalMetricsResponse>(
+    const response = await this.clientAdapter.post<HistoricalMetricsResponse, HistoricalMetricsRequest>(
       '/metrics/historical',
-      {
-        method: HttpMethod.POST,
-        body: request
-      }
+      request
     );
     return response;
   }

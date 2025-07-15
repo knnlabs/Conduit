@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type {
   BatchSpendUpdateRequest,
   BatchVirtualKeyUpdateRequest,
@@ -19,7 +19,11 @@ import { BatchOperationStatusEnum } from '../models/batchOperations';
  * Service for performing batch operations on the Conduit Core API
  */
 export class BatchOperationsService {
-  constructor(private client: FetchBasedClient) {}
+  private readonly clientAdapter: IFetchBasedClientAdapter;
+
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Performs a batch spend update operation
@@ -53,12 +57,9 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch spend update request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>(
+    return this.clientAdapter.post<BatchOperationStartResponse>(
       '/v1/batch/spend-updates',
-      {
-        method: HttpMethod.POST,
-        body: request,
-      }
+      request
     );
   }
 
@@ -93,12 +94,9 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch virtual key update request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>(
+    return this.clientAdapter.post<BatchOperationStartResponse>(
       '/v1/batch/virtual-key-updates',
-      {
-        method: HttpMethod.POST,
-        body: request,
-      }
+      request
     );
   }
 
@@ -137,12 +135,9 @@ export class BatchOperationsService {
       throw new Error('Cannot create empty batch webhook send request');
     }
 
-    return this.client['request']<BatchOperationStartResponse>(
+    return this.clientAdapter.post<BatchOperationStartResponse>(
       '/v1/batch/webhook-sends',
-      {
-        method: HttpMethod.POST,
-        body: request,
-      }
+      request
     );
   }
 
@@ -169,11 +164,8 @@ export class BatchOperationsService {
    * ```
    */
   async getOperationStatus(operationId: string): Promise<BatchOperationStatusResponse> {
-    return this.client['request']<BatchOperationStatusResponse>(
-      `/v1/batch/operations/${operationId}`,
-      {
-        method: HttpMethod.GET,
-      }
+    return this.clientAdapter.get<BatchOperationStatusResponse>(
+      `/v1/batch/operations/${operationId}`
     );
   }
 
@@ -191,12 +183,9 @@ export class BatchOperationsService {
    * ```
    */
   async cancelOperation(operationId: string): Promise<BatchOperationStatusResponse> {
-    return this.client['request']<BatchOperationStatusResponse>(
+    return this.clientAdapter.post<BatchOperationStatusResponse>(
       `/v1/batch/operations/${operationId}/cancel`,
-      {
-        method: HttpMethod.POST,
-        body: {},
-      }
+      {}
     );
   }
 

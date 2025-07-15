@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { RequestOptions } from '../client/types';
 
 /**
@@ -7,8 +7,11 @@ import type { RequestOptions } from '../client/types';
  */
 export class ProviderModelsService {
   private readonly baseEndpoint = '/api/provider-models';
+  private readonly clientAdapter: IFetchBasedClientAdapter;
 
-  constructor(private readonly client: FetchBasedClient) {}
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Gets available models for a specified provider.
@@ -27,12 +30,9 @@ export class ProviderModelsService {
 
     const queryParams = forceRefresh ? '?forceRefresh=true' : '';
     
-    const response = await this.client['request']<string[]>(
+    const response = await this.clientAdapter.get<string[]>(
       `${this.baseEndpoint}/${encodeURIComponent(providerName)}${queryParams}`,
-      {
-        method: HttpMethod.GET,
-        ...options
-      }
+      options
     );
 
     return response;

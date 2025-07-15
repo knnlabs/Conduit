@@ -1,5 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
-import { HttpMethod } from '../client/HttpMethod';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type {
   EmbeddingRequest,
   EmbeddingResponse
@@ -17,7 +17,11 @@ import { API_ENDPOINTS } from '../constants/endpoints';
  * Service for creating text embeddings using the Conduit Core API
  */
 export class EmbeddingsService {
-  constructor(private readonly client: FetchBasedClient) {}
+  private readonly clientAdapter: IFetchBasedClientAdapter;
+
+  constructor(client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   /**
    * Creates embeddings for the given input text(s)
@@ -45,13 +49,10 @@ export class EmbeddingsService {
     try {
       validateEmbeddingRequest(request);
 
-      const response = await this.client['request']<EmbeddingResponse>(
+      const response = await this.clientAdapter.post<EmbeddingResponse, EmbeddingRequest>(
         API_ENDPOINTS.V1.EMBEDDINGS.BASE,
-        {
-          method: HttpMethod.POST,
-          body: request,
-          ...options
-        }
+        request,
+        options
       );
 
       return response;
