@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ queueName: string; messageId: string }> }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
+  try {
+    const { queueName, messageId } = await params;
+    
+    const adminClient = getServerAdminClient();
+    const response = await adminClient.errorQueues.getErrorMessage(queueName, messageId);
+    
+    return NextResponse.json(response);
+  } catch (error) {
+    return handleSDKError(error);
   }
-
-  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ queueName: string; messageId: string }> }
 ) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
-
-  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
+  // Management operations not available in Admin SDK yet
+  return NextResponse.json({ error: 'Message deletion not implemented - Admin SDK management operations needed' }, { status: 501 });
 }

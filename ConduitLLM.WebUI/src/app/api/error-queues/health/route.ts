@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { requireAuth } from '@/lib/auth/simple-auth';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 export async function GET(request: NextRequest) {
-  const auth = requireAuth(request);
-  if (!auth.isValid) {
-    return auth.response!;
+  try {
+    const adminClient = getServerAdminClient();
+    const response = await adminClient.errorQueues.getHealth();
+    
+    return NextResponse.json(response);
+  } catch (error) {
+    return handleSDKError(error);
   }
-
-  return NextResponse.json({ error: 'Error queue management not available' }, { status: 501 });
 }
