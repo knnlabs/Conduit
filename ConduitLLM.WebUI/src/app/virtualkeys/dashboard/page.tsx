@@ -197,14 +197,16 @@ export default function VirtualKeysDashboardPage() {
             <Text size="xl" fw={700}>
               {formatters.number(totalRequests as number)}
             </Text>
-            <Group gap="xs" mt={4}>
-              <Text size="xs" c="green" fw={500}>
-                <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {requestsGrowth}%
-              </Text>
-              <Text size="xs" c="dimmed">
-                vs last period
-              </Text>
-            </Group>
+            {requestsGrowth !== null && (
+              <Group gap="xs" mt={4}>
+                <Text size="xs" c="green" fw={500}>
+                  <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {requestsGrowth}%
+                </Text>
+                <Text size="xs" c="dimmed">
+                  vs last period
+                </Text>
+              </Group>
+            )}
           </Card>
         </Grid.Col>
 
@@ -221,14 +223,16 @@ export default function VirtualKeysDashboardPage() {
             <Text size="xl" fw={700}>
               {formatters.currency(totalCost as number)}
             </Text>
-            <Group gap="xs" mt={4}>
-              <Text size="xs" c="green" fw={500}>
-                <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {costGrowth}%
-              </Text>
-              <Text size="xs" c="dimmed">
-                vs last period
-              </Text>
-            </Group>
+            {costGrowth !== null && (
+              <Group gap="xs" mt={4}>
+                <Text size="xs" c="green" fw={500}>
+                  <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {costGrowth}%
+                </Text>
+                <Text size="xs" c="dimmed">
+                  vs last period
+                </Text>
+              </Group>
+            )}
           </Card>
         </Grid.Col>
 
@@ -245,14 +249,16 @@ export default function VirtualKeysDashboardPage() {
             <Text size="xl" fw={700}>
               {activeKeys}
             </Text>
-            <Group gap="xs" mt={4}>
-              <Text size="xs" c="green" fw={500}>
-                <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {activeKeysGrowth}%
-              </Text>
-              <Text size="xs" c="dimmed">
-                new this month
-              </Text>
-            </Group>
+            {activeKeysGrowth !== null && (
+              <Group gap="xs" mt={4}>
+                <Text size="xs" c="green" fw={500}>
+                  <IconTrendingUp size={14} style={{ verticalAlign: 'middle' }} /> {activeKeysGrowth}%
+                </Text>
+                <Text size="xs" c="dimmed">
+                  new this month
+                </Text>
+              </Group>
+            )}
           </Card>
         </Grid.Col>
 
@@ -287,15 +293,18 @@ export default function VirtualKeysDashboardPage() {
             <YAxis yAxisId="right" orientation="right" />
             <RechartsTooltip />
             <Legend />
-            <Area
-              yAxisId="left"
-              type="monotone"
-              dataKey="requests"
-              stroke="#3b82f6"
-              fill="#3b82f6"
-              fillOpacity={0.6}
-              name="Requests"
-            />
+            {/* Only show requests if data is available */}
+            {timeSeriesData.some((d: any) => d.requests !== null) && (
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="requests"
+                stroke="#3b82f6"
+                fill="#3b82f6"
+                fillOpacity={0.6}
+                name="Requests"
+              />
+            )}
             <Area
               yAxisId="right"
               type="monotone"
@@ -330,39 +339,49 @@ export default function VirtualKeysDashboardPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {virtualKeys.map((key) => (
-                    <Table.Tr key={key.id}>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <ThemeIcon size="xs" variant="light">
-                            <IconKey size={12} />
-                          </ThemeIcon>
-                          <div>
-                            <Text size="sm" fw={500}>{key.name}</Text>
-                            <Text size="xs" c="dimmed">{key.id}</Text>
-                          </div>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge variant="light" color={getStatusColor(key.status)}>
-                          {key.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>{formatters.number(key.requests)}</Table.Td>
-                      <Table.Td>{formatters.currency(key.cost)}</Table.Td>
-                      <Table.Td>{formatters.currency(key.budget)}</Table.Td>
-                      <Table.Td>
-                        <Stack gap={4}>
-                          <Progress 
-                            value={key.budgetUsed} 
-                            color={getBudgetColor(key.budgetUsed)}
-                            size="sm"
-                          />
-                          <Text size="xs" c="dimmed">{formatters.percentage(key.budgetUsed)}</Text>
-                        </Stack>
+                  {virtualKeys.length > 0 ? (
+                    virtualKeys.map((key) => (
+                      <Table.Tr key={key.id}>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <ThemeIcon size="xs" variant="light">
+                              <IconKey size={12} />
+                            </ThemeIcon>
+                            <div>
+                              <Text size="sm" fw={500}>{key.name}</Text>
+                              <Text size="xs" c="dimmed">{key.id}</Text>
+                            </div>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge variant="light" color={getStatusColor(key.status)}>
+                            {key.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>{formatters.number(key.requests)}</Table.Td>
+                        <Table.Td>{formatters.currency(key.cost)}</Table.Td>
+                        <Table.Td>{formatters.currency(key.budget)}</Table.Td>
+                        <Table.Td>
+                          <Stack gap={4}>
+                            <Progress 
+                              value={key.budgetUsed} 
+                              color={getBudgetColor(key.budgetUsed)}
+                              size="sm"
+                            />
+                            <Text size="xs" c="dimmed">{formatters.percentage(key.budgetUsed)}</Text>
+                          </Stack>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))
+                  ) : (
+                    <Table.Tr>
+                      <Table.Td colSpan={6}>
+                        <Text c="dimmed" ta="center" py="xl">
+                          No virtual keys found
+                        </Text>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
+                  )}
                 </Table.Tbody>
               </Table>
             </ScrollArea>
@@ -373,46 +392,54 @@ export default function VirtualKeysDashboardPage() {
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card withBorder h="100%">
             <Text fw={600} mb="md">Model Usage Distribution</Text>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={modelUsage}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.model}: ${entry.percentage}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="percentage"
-                >
-                  {modelUsage.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            {modelUsage.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={modelUsage}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.model}: ${entry.percentage}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="percentage"
+                    >
+                      {modelUsage.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                <Stack gap="xs" mt="md">
+                  {modelUsage.map((model, index) => (
+                    <Group key={model.name} justify="space-between">
+                      <Group gap="xs">
+                        <div
+                          style={{
+                            width: 12,
+                            height: 12,
+                            backgroundColor: COLORS[index % COLORS.length],
+                            borderRadius: 2,
+                          }}
+                        />
+                        <Text size="sm">{model.name}</Text>
+                      </Group>
+                      <Text size="sm" c="dimmed">
+                        {formatters.number(model.value)} requests
+                      </Text>
+                    </Group>
                   ))}
-                </Pie>
-                <RechartsTooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            
-            <Stack gap="xs" mt="md">
-              {modelUsage.map((model, index) => (
-                <Group key={model.name} justify="space-between">
-                  <Group gap="xs">
-                    <div
-                      style={{
-                        width: 12,
-                        height: 12,
-                        backgroundColor: COLORS[index % COLORS.length],
-                        borderRadius: 2,
-                      }}
-                    />
-                    <Text size="sm">{model.name}</Text>
-                  </Group>
-                  <Text size="sm" c="dimmed">
-                    {formatters.number(model.value)} requests
-                  </Text>
-                </Group>
-              ))}
-            </Stack>
+                </Stack>
+              </>
+            ) : (
+              <Text c="dimmed" ta="center" mt="xl">
+                No model usage data available
+              </Text>
+            )}
           </Card>
         </Grid.Col>
       </Grid>
@@ -426,36 +453,42 @@ export default function VirtualKeysDashboardPage() {
           </Badge>
         </Group>
         <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }}>
-          {virtualKeys
-            .filter(k => k.budgetUsed > 50)
-            .sort((a, b) => b.budgetUsed - a.budgetUsed)
-            .map((key) => (
-              <Paper key={key.id} p="md" withBorder>
-                <Group justify="space-between" mb="xs">
-                  <Text fw={500}>{key.name}</Text>
-                  <Badge 
-                    variant="light" 
+          {virtualKeys.length > 0 ? (
+            virtualKeys
+              .filter(k => k.budgetUsed > 50)
+              .sort((a, b) => b.budgetUsed - a.budgetUsed)
+              .map((key) => (
+                <Paper key={key.id} p="md" withBorder>
+                  <Group justify="space-between" mb="xs">
+                    <Text fw={500}>{key.name}</Text>
+                    <Badge 
+                      variant="light" 
+                      color={getBudgetColor(key.budgetUsed)}
+                    >
+                      {formatters.percentage(key.budgetUsed)} used
+                    </Badge>
+                  </Group>
+                  <Progress 
+                    value={key.budgetUsed} 
                     color={getBudgetColor(key.budgetUsed)}
-                  >
-                    {formatters.percentage(key.budgetUsed)} used
-                  </Badge>
-                </Group>
-                <Progress 
-                  value={key.budgetUsed} 
-                  color={getBudgetColor(key.budgetUsed)}
-                  size="lg"
-                  mb="xs"
-                />
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">
-                    {formatters.currency(key.cost)} / {formatters.currency(key.budget)}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {formatters.currency(key.budget - key.cost)} remaining
-                  </Text>
-                </Group>
-              </Paper>
-            ))}
+                    size="lg"
+                    mb="xs"
+                  />
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      {formatters.currency(key.cost)} / {formatters.currency(key.budget)}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatters.currency(key.budget - key.cost)} remaining
+                    </Text>
+                  </Group>
+                </Paper>
+              ))
+          ) : (
+            <Text c="dimmed" ta="center" py="xl" style={{ gridColumn: '1 / -1' }}>
+              No budget alerts at this time
+            </Text>
+          )}
         </SimpleGrid>
       </Card>
       

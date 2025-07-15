@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { requireAuth } from '@/lib/auth/simple-auth';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
-  if (!auth.isValid) {
-    return auth.response!;
-  }
 
   try {
     const { searchParams } = new URL(req.url);
@@ -77,16 +72,16 @@ export async function GET(req: NextRequest) {
       : 0;
     
     // Calculate growth rates (comparing to previous period)
-    // TODO: SDK should provide these comparisons
-    const requestsGrowth = 12.5; // Placeholder
-    const costGrowth = 8.3; // Placeholder
-    const activeKeysGrowth = 15; // Placeholder
+    // Note: Growth rates not available from SDK yet, using null values
+    const requestsGrowth = null;
+    const costGrowth = null;
+    const activeKeysGrowth = null;
     
     // Generate time series data for charts
     const timeSeriesData = costAnalytics.trends?.map((trend: any) => ({
       date: new Date(trend.period).toLocaleDateString(),
-      requests: Math.floor(totalRequests / costAnalytics.trends.length), // Distribute evenly as placeholder
-      cost: trend.cost,
+      requests: trend.requests || null, // Use real requests if available
+      cost: trend.cost || 0,
     })) || [];
     
     // Model usage distribution from analytics
