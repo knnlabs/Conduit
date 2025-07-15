@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { ColorSchemeScript } from '@mantine/core';
 import { MantineProvider } from '@/lib/providers/MantineProvider';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
-import { ConditionalAuthProvider } from '@/lib/providers/ConditionalAuthProvider';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AppWrapper } from '@/components/layout/AppWrapper';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -35,8 +34,7 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <MantineProvider>
-              <ConditionalAuthProvider>
-                <SessionRefreshProvider>
+              <SessionRefreshProvider>
                   <ErrorBoundary>
                     <ErrorHandlerInitializer />
                     <EnvironmentValidator />
@@ -45,7 +43,6 @@ export default function RootLayout({
                     </AppWrapper>
                   </ErrorBoundary>
                 </SessionRefreshProvider>
-              </ConditionalAuthProvider>
             </MantineProvider>
           </ThemeProvider>
         </QueryProvider>

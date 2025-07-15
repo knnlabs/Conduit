@@ -1,130 +1,118 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  ScrollArea,
-  NavLink,
-  Text,
-  Divider,
-  Stack,
-  Badge,
-  Group,
-  ThemeIcon,
-  Collapse,
-  UnstyledButton,
-  Box,
-} from '@mantine/core';
-import { IconChevronRight } from '@tabler/icons-react';
+import { ScrollArea, NavLink, Stack, ThemeIcon, Text, Divider } from '@mantine/core';
+import { 
+  IconDashboard, 
+  IconKey, 
+  IconSettings,
+  IconChartBar,
+  IconRoute,
+  IconServer,
+  IconDatabase,
+  IconBugOff,
+  IconShield,
+  IconMicrophone,
+  IconPhoto,
+  IconVideo,
+  IconMessage,
+  IconActivity,
+  IconFileText,
+  IconCoin,
+  IconInfoCircle
+} from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useNavigationStore } from '@/stores/useNavigationStore';
-import { NavigationSection, NavigationItem } from '@/types/navigation';
+
+const navigationSections = [
+  {
+    title: 'Core Management',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', href: '/', icon: IconDashboard },
+      { id: 'virtualkeys', label: 'Virtual Keys', href: '/virtualkeys', icon: IconKey },
+      { id: 'virtualkeys-dashboard', label: 'Virtual Keys Dashboard', href: '/virtualkeys/dashboard', icon: IconChartBar },
+      { id: 'virtual-keys-analytics', label: 'Virtual Keys Analytics', href: '/virtual-keys-analytics', icon: IconChartBar },
+    ]
+  },
+  {
+    title: 'Provider & Model Management',
+    items: [
+      { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
+      { id: 'provider-health', label: 'Provider Health', href: '/provider-health', icon: IconActivity },
+      { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
+      { id: 'routing-settings', label: 'Routing Settings', href: '/routing-settings', icon: IconSettings },
+    ]
+  },
+  {
+    title: 'Caching & Performance',
+    items: [
+      { id: 'caching-settings', label: 'Caching Settings', href: '/caching-settings', icon: IconDatabase },
+      { id: 'cache-monitoring', label: 'Cache Monitoring', href: '/cache-monitoring', icon: IconDatabase },
+      { id: 'error-queues', label: 'Error Queues', href: '/error-queues', icon: IconBugOff },
+    ]
+  },
+  {
+    title: 'Security & Monitoring',
+    items: [
+      { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
+      { id: 'request-logs', label: 'Request Logs', href: '/request-logs', icon: IconFileText },
+      { id: 'health-monitoring', label: 'Health Monitoring', href: '/health-monitoring', icon: IconActivity },
+      { id: 'system-performance', label: 'System Performance', href: '/system-performance', icon: IconActivity },
+      { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
+    ]
+  },
+  {
+    title: 'Media & Communication',
+    items: [
+      { id: 'audio-providers', label: 'Audio Providers', href: '/audio-providers', icon: IconMicrophone },
+      { id: 'audio-processing', label: 'Audio Processing', href: '/audio-processing', icon: IconMicrophone },
+      { id: 'audio-usage', label: 'Audio Usage', href: '/audio-usage', icon: IconMicrophone },
+      { id: 'images', label: 'Images', href: '/images', icon: IconPhoto },
+      { id: 'videos', label: 'Videos', href: '/videos', icon: IconVideo },
+      { id: 'chat', label: 'Chat', href: '/chat', icon: IconMessage },
+    ]
+  },
+  {
+    title: 'Analytics & Reporting',
+    items: [
+      { id: 'usage-analytics', label: 'Usage Analytics', href: '/usage-analytics', icon: IconChartBar },
+      { id: 'cost-dashboard', label: 'Cost Dashboard', href: '/cost-dashboard', icon: IconCoin },
+      { id: 'metrics-dashboard', label: 'Metrics Dashboard', href: '/metrics-dashboard', icon: IconChartBar },
+      { id: 'configuration', label: 'Configuration', href: '/configuration', icon: IconSettings },
+    ]
+  }
+];
 
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { sections, activeItem, setActiveItem, toggleSection: _toggleSection } = useNavigationStore();
-  const [openSections, setOpenSections] = useState<Set<string>>(
-    new Set(sections.map(s => s.id))
-  );
 
-  const handleItemClick = (item: NavigationItem) => {
-    if (item.disabled) return;
-    
-    setActiveItem(item.id);
-    router.push(item.href);
-  };
-
-  const handleSectionToggle = (sectionId: string) => {
-    setOpenSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) {
-        newSet.delete(sectionId);
-      } else {
-        newSet.add(sectionId);
-      }
-      return newSet;
-    });
-  };
-
-  const isItemActive = (item: NavigationItem) => {
-    return pathname === item.href || activeItem === item.id;
-  };
-
-  const renderNavigationItem = (item: NavigationItem) => {
-    const active = isItemActive(item);
-    
-    return (
-      <NavLink
-        key={item.id}
-        label={item.label}
-        leftSection={
-          <ThemeIcon 
-            size="sm" 
-            variant={active ? 'filled' : 'light'} 
-            color={item.color || 'blue'}
-          >
-            <item.icon size={16} />
-          </ThemeIcon>
-        }
-        rightSection={
-          item.badge && (
-            <Badge size="xs" variant="light" color={item.color || 'blue'}>
-              {item.badge}
-            </Badge>
-          )
-        }
-        active={active}
-        disabled={item.disabled}
-        onClick={() => handleItemClick(item)}
-        style={{
-          opacity: item.disabled ? 0.5 : 1,
-          cursor: item.disabled ? 'not-allowed' : 'pointer',
-        }}
-      />
-    );
-  };
-
-  const renderSection = (section: NavigationSection) => {
-    const isOpen = openSections.has(section.id);
-    
-    return (
-      <Box key={section.id}>
-        <UnstyledButton
-          onClick={() => handleSectionToggle(section.id)}
-          w="100%"
-          p="xs"
-          style={{ borderRadius: 4 }}
-        >
-          <Group justify="space-between" wrap="nowrap">
-            <Text size="sm" fw={600} c="dimmed" tt="uppercase" lts={0.5}>
-              {section.label}
-            </Text>
-            <IconChevronRight
-              size={14}
-              style={{
-                transform: isOpen ? 'rotate(90deg)' : 'none',
-                transition: 'transform 200ms ease',
-              }}
-            />
-          </Group>
-        </UnstyledButton>
-
-        <Collapse in={isOpen}>
-          <Stack gap={2} mt="xs">
-            {section.items.map(renderNavigationItem)}
-          </Stack>
-        </Collapse>
-      </Box>
-    );
+  const handleItemClick = (href: string) => {
+    router.push(href);
   };
 
   return (
     <ScrollArea h="100%" p="md">
       <Stack gap="lg">
-        {sections.map((section, index) => (
-          <div key={section.id}>
-            {renderSection(section)}
-            {index < sections.length - 1 && <Divider />}
+        {navigationSections.map((section, sectionIndex) => (
+          <div key={section.title}>
+            <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs">
+              {section.title}
+            </Text>
+            <Stack gap={2}>
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.id}
+                  label={item.label}
+                  leftSection={
+                    <ThemeIcon size="sm" variant={pathname === item.href ? 'filled' : 'light'}>
+                      <item.icon size={16} />
+                    </ThemeIcon>
+                  }
+                  active={pathname === item.href}
+                  onClick={() => handleItemClick(item.href)}
+                />
+              ))}
+            </Stack>
+            {sectionIndex < navigationSections.length - 1 && <Divider mt="md" />}
           </div>
         ))}
       </Stack>
