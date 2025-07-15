@@ -16,6 +16,7 @@ import {
 import { IconTrash, IconGripVertical } from '@tabler/icons-react';
 import { RoutingAction } from '../../../../types/routing';
 import { ACTION_TYPES, getParametersForActionType } from '../../utils/ruleBuilder';
+import { useProviders } from '../../../../hooks/useProviders';
 
 interface ActionRowProps {
   action: RoutingAction;
@@ -25,18 +26,11 @@ interface ActionRowProps {
   canRemove: boolean;
 }
 
-// Mock provider data - in real implementation, this would come from an API
-const MOCK_PROVIDERS = [
-  { value: 'openai-primary', label: 'OpenAI Primary' },
-  { value: 'openai-backup', label: 'OpenAI Backup' },
-  { value: 'anthropic-primary', label: 'Anthropic Primary' },
-  { value: 'azure-openai', label: 'Azure OpenAI' },
-  { value: 'local-llama', label: 'Local Llama' },
-];
 
 export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: ActionRowProps) {
   const [actionConfig, setActionConfig] = useState(ACTION_TYPES.find(a => a.value === action.type));
   const [requiredParameters, setRequiredParameters] = useState(getParametersForActionType(action.type));
+  const { providerOptions, loading: providersLoading } = useProviders();
 
   useEffect(() => {
     const config = ACTION_TYPES.find(a => a.value === action.type);
@@ -118,7 +112,8 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             key={param.name}
             label={param.label}
             placeholder="Select provider"
-            data={MOCK_PROVIDERS}
+            data={providerOptions}
+            disabled={providersLoading}
             value={currentValue}
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
@@ -171,7 +166,8 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
               <Select
                 label="Target Provider"
                 placeholder="Select provider"
-                data={MOCK_PROVIDERS}
+                data={providerOptions}
+            disabled={providersLoading}
                 value={action.target || ''}
                 onChange={(value) => onUpdate({ target: value || '' })}
                 searchable

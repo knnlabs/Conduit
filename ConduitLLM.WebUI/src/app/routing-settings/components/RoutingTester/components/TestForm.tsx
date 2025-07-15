@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useModels } from '../../../hooks/useModels';
 import {
   Card,
   Stack,
@@ -52,20 +53,10 @@ export function TestForm({
   const [customFieldValue, setCustomFieldValue] = useState('');
   const [headerKey, setHeaderKey] = useState('');
   const [headerValue, setHeaderValue] = useState('');
+  const { modelOptions, loading: modelsLoading } = useModels();
 
-  // Common model options
-  const modelOptions = [
-    { value: 'gpt-4', label: 'GPT-4' },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-    { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
-    { value: 'gemini-pro', label: 'Gemini Pro' },
-    { value: 'llama-2-70b', label: 'Llama 2 70B' },
-    { value: 'mixtral-8x7b', label: 'Mixtral 8x7B' },
-  ];
 
+  // Common AWS regions for routing configuration
   const regionOptions = [
     { value: 'us-east-1', label: 'US East (N. Virginia)' },
     { value: 'us-west-2', label: 'US West (Oregon)' },
@@ -167,6 +158,7 @@ export function TestForm({
                 value={request.model}
                 onChange={(value) => onRequestChange({ ...request, model: value || '' })}
                 searchable
+                disabled={modelsLoading}
                 required
                 error={!request.model.trim() ? 'Model is required' : null}
               />

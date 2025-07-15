@@ -266,7 +266,7 @@ export function ProviderRow({
               </Badge>
             </Tooltip>
           )}
-          {provider.statistics.successRate < 90 && (
+          {provider.statistics.usagePercentage > 0 && provider.statistics.successRate < 90 && (
             <Tooltip label="Low success rate" withArrow>
               <Badge color="red" size="xs" variant="filled">
                 Alert

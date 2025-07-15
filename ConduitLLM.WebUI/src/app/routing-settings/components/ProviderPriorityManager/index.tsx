@@ -80,21 +80,33 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
 
   const loadData = async () => {
     try {
-      const [providersData, healthData] = await Promise.all([
+      const [providersData, healthData, providerHealthData] = await Promise.all([
         getProviderPriorities(),
         getLoadBalancerHealth().catch(() => null),
+        fetch('/api/health/providers').then(res => res.json()).catch(() => []),
       ]);
 
+      // Create a map of provider health data
+      const healthMap = new Map(
+        Array.isArray(providerHealthData) 
+          ? providerHealthData.map((h: any) => [h.id, h])
+          : []
+      );
+
       // Transform provider data to include statistics and type
-      const providersWithStats: ProviderDisplay[] = providersData.map(provider => ({
-        ...provider,
-        statistics: {
-          usagePercentage: healthData?.distribution[provider.providerId] || 0,
-          successRate: Math.random() * 15 + 85, // Mock data - would come from real API
-          avgResponseTime: Math.random() * 500 + 200, // Mock data
-        },
-        type: determineProviderType(provider.providerName), // Mock classification
-      }));
+      const providersWithStats: ProviderDisplay[] = providersData.map(provider => {
+        const health = healthMap.get(provider.providerId);
+        
+        return {
+          ...provider,
+          statistics: {
+            usagePercentage: healthData?.distribution[provider.providerId] || 0,
+            successRate: health?.uptime || 0,
+            avgResponseTime: health?.responseTime || 0,
+          },
+          type: determineProviderType(provider.providerName),
+        };
+      });
 
       setProviders(providersWithStats);
       setOriginalProviders(JSON.parse(JSON.stringify(providersWithStats)));
