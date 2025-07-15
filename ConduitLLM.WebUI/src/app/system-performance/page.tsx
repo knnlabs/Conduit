@@ -203,7 +203,7 @@ export default function SystemPerformancePage() {
       <Group justify="space-between">
         <div>
           <Title order={1}>System Performance</Title>
-          <Text c="dimmed">Real-time system metrics and resource utilization</Text>
+          <Text c="dimmed">Live system metrics and resource utilization from Conduit monitoring</Text>
         </div>
         <Group>
           <Select
@@ -238,6 +238,17 @@ export default function SystemPerformancePage() {
           </Button>
         </Group>
       </Group>
+
+      {/* Information Alert */}
+      {!isLoading && (
+        <Alert
+          icon={<IconActivity size={16} />}
+          title="Performance Monitoring"
+          color="blue"
+        >
+          System performance data is retrieved from Conduit's monitoring services. Data availability depends on monitoring configuration and may be limited in some environments.
+        </Alert>
+      )}
 
       {/* Resource Usage Cards */}
       <Grid>
@@ -460,7 +471,7 @@ export default function SystemPerformancePage() {
         <Card.Section inheritPadding py="md">
           {isLoading ? (
             <Skeleton height={300} />
-          ) : (
+          ) : history.length > 0 ? (
             <LineChart
               h={300}
               data={history}
@@ -478,6 +489,19 @@ export default function SystemPerformancePage() {
                 typeof value === 'number' ? value.toFixed(1) : value
               }
             />
+          ) : (
+            <Paper p="xl" h={300} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Stack align="center" gap="md">
+                <ThemeIcon size={48} variant="light" color="gray">
+                  <IconActivity size={24} />
+                </ThemeIcon>
+                <Text size="lg" fw={500} ta="center">No Performance History Available</Text>
+                <Text size="sm" c="dimmed" ta="center" maw={400}>
+                  Performance metrics history is not available for the selected time range. 
+                  This may be due to monitoring service configuration or recent system startup.
+                </Text>
+              </Stack>
+            </Paper>
           )}
         </Card.Section>
       </Card>
@@ -520,7 +544,7 @@ export default function SystemPerformancePage() {
                       <Skeleton height={200} />
                     </Table.Td>
                   </Table.Tr>
-                ) : (
+                ) : services.length > 0 ? (
                   services.map((service) => (
                     <Table.Tr key={service.name}>
                       <Table.Td>
@@ -554,6 +578,19 @@ export default function SystemPerformancePage() {
                       </Table.Td>
                     </Table.Tr>
                   ))
+                ) : (
+                  <Table.Tr>
+                    <Table.Td colSpan={6}>
+                      <Stack align="center" gap="md" py="xl">
+                        <ThemeIcon size={32} variant="light" color="gray">
+                          <IconServer size={18} />
+                        </ThemeIcon>
+                        <Text size="sm" c="dimmed" ta="center">
+                          No service information available from monitoring system
+                        </Text>
+                      </Stack>
+                    </Table.Td>
+                  </Table.Tr>
                 )}
               </Table.Tbody>
             </Table>
