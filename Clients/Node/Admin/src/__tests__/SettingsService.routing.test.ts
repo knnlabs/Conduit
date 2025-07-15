@@ -2,9 +2,7 @@ import { SettingsService } from '../services/SettingsService';
 import { ENDPOINTS } from '../constants';
 import { ValidationError } from '../utils/errors';
 import type { RouterConfigurationDto, RouterRule } from '../models/settings';
-
-// Mock the entire FetchBaseApiClient module
-jest.mock('../client/FetchBaseApiClient');
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 
 describe('SettingsService - Routing Methods', () => {
   let service: SettingsService;
@@ -48,16 +46,25 @@ describe('SettingsService - Routing Methods', () => {
     mockGet = jest.fn();
     mockPut = jest.fn();
     
+    // Mock the FetchBaseApiClient prototype methods
+    jest.spyOn(FetchBaseApiClient.prototype as any, 'get').mockImplementation(mockGet);
+    jest.spyOn(FetchBaseApiClient.prototype as any, 'put').mockImplementation(mockPut);
+    jest.spyOn(FetchBaseApiClient.prototype as any, 'withCache').mockImplementation(async (...args: any[]) => {
+      const fn = args[1];
+      return await fn();
+    });
+    
     service = new SettingsService({
       baseUrl: 'http://test.com',
       masterKey: 'test-key',
     });
     
-    // Mock the protected methods
-    (service as any).get = mockGet;
-    (service as any).put = mockPut;
-    (service as any).withCache = jest.fn((key, fn) => fn());
+    // Mock the invalidateCache method
     (service as any).invalidateCache = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe('getRouterConfiguration', () => {
