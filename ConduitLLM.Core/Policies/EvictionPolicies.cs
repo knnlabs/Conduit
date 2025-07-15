@@ -251,14 +251,14 @@ namespace ConduitLLM.Core.Policies
         /// <summary>
         /// Selects entries for eviction using weighted scores from all policies.
         /// </summary>
-        public override async Task<IEnumerable<ICacheEntry>> SelectForEvictionAsync(
+        public override Task<IEnumerable<ICacheEntry>> SelectForEvictionAsync(
             IEnumerable<ICacheEntry> entries,
             long spaceNeeded,
             CachePolicyContext context,
             CancellationToken cancellationToken = default)
         {
             if (!Policies.Any())
-                return Enumerable.Empty<ICacheEntry>();
+                return Task.FromResult(Enumerable.Empty<ICacheEntry>());
 
             var entriesList = entries.ToList();
             var selectedEntries = new List<ICacheEntry>();
@@ -294,7 +294,7 @@ namespace ConduitLLM.Core.Policies
                     break;
             }
 
-            return selectedEntries;
+            return Task.FromResult((IEnumerable<ICacheEntry>)selectedEntries);
         }
 
         /// <summary>

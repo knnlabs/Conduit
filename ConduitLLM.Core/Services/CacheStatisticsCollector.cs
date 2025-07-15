@@ -479,8 +479,8 @@ namespace ConduitLLM.Core.Services
             public long RemoveCount;
             public long EvictionCount;
             public long ErrorCount;
-            public long EntryCount;
-            public long MemoryUsageBytes;
+            public long EntryCount = 0;
+            public long MemoryUsageBytes = 0;
             public DateTime StartTime { get; } = DateTime.UtcNow;
             public DateTime LastActivityTime { get; set; } = DateTime.UtcNow;
 
