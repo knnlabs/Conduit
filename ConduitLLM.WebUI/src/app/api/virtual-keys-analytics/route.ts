@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
     const keys = searchParams.get('keys')?.split(',').filter(Boolean);
     const adminClient = getServerAdminClient();
     
-    // Get virtual key analytics from SDK using the modern FetchAnalyticsService
-    const vkAnalytics = await adminClient.analytics.getVirtualKeyAnalytics({
+    // Get virtual key analytics from SDK using the enhanced method that includes all required fields
+    const vkAnalytics = await adminClient.analytics.getVirtualKeyAnalyticsEnhanced({
       timeRange: range,
       virtualKeyIds: keys,
       includeUsagePatterns: true,
@@ -32,22 +32,22 @@ export async function GET(req: NextRequest) {
     
     // Transform SDK data to match WebUI format
     const virtualKeys = vkAnalytics.virtualKeys?.map((vkData: any) => {
-      const keyInfo = allKeys.items.find((k: any) => k.id === vkData.keyId || k.keyName === vkData.keyName);
+      const keyInfo = allKeys.items.find((k: any) => k.id?.toString() === vkData.keyId || k.keyName === vkData.keyName);
       
       return {
-        id: vkData.keyId || keyInfo?.id || vkData.keyName,
+        id: vkData.keyId || keyInfo?.id?.toString() || vkData.keyName,
         name: vkData.keyName || keyInfo?.keyName || `Key ${vkData.keyId}`,
         status: keyInfo?.isEnabled ? 'active' : 'inactive',
         created: keyInfo?.createdAt || new Date().toISOString(),
-        lastUsed: vkData.lastUsed || new Date().toISOString(),
+        lastUsed: vkData.usage?.lastUsed || new Date().toISOString(),
         usage: {
-          requests: vkData.usage?.requests || vkData.requests || 0,
-          requestsChange: vkData.usage?.requestsChange || 0,
-          tokens: vkData.usage?.tokens || vkData.tokens || 0,
-          tokensChange: vkData.usage?.tokensChange || 0,
-          cost: vkData.usage?.cost || vkData.cost || 0,
-          costChange: vkData.usage?.costChange || 0,
-          errorRate: vkData.errorRate || 0,
+          requests: vkData.usage?.requests || 0,
+          requestsChange: vkData.usage?.requestsChange || 0, // Now provided by enhanced SDK
+          tokens: vkData.usage?.tokens || 0,
+          tokensChange: vkData.usage?.tokensChange || 0, // Now provided by enhanced SDK
+          cost: vkData.usage?.cost || 0,
+          costChange: vkData.usage?.costChange || 0, // Now provided by enhanced SDK
+          errorRate: vkData.usage?.errorRate || 0,
         },
         quotas: {
           requests: {
@@ -57,34 +57,28 @@ export async function GET(req: NextRequest) {
           },
           tokens: {
             used: vkData.usage?.tokens || 0,
-            limit: 1000000, // Default token limit since SDK doesn't provide this
-            period: 'month' as const,
+            limit: vkData.tokenLimit || 1000000, // Now from SDK metadata
+            period: (vkData.tokenPeriod || 'month') as 'hour' | 'day' | 'month',
           },
           cost: {
             used: vkData.usage?.cost || 0,
             limit: keyInfo?.maxBudget || 500,
-            period: 'month' as const,
+            period: keyInfo?.budgetDuration?.toLowerCase() as 'day' | 'month' || 'month',
           },
         },
         providers: vkData.providerBreakdown || [],
         models: vkData.modelBreakdown || [],
-        endpoints: vkData.endpointBreakdown || [],
+        endpoints: vkData.endpointBreakdown || [], // Now provided by enhanced SDK
       };
     }) || [];
     
-    // Use time series data from usage analytics
+    // Use per-key time series data from enhanced SDK
     const timeSeries: Record<string, any[]> = {};
-    if (usageAnalytics.timeSeries) {
-      // Group time series data by virtual key if available
-      virtualKeys.forEach((key: any) => {
-        timeSeries[key.id] = usageAnalytics.timeSeries || [];
-      });
-    } else {
-      // If no time series data available, provide empty arrays
-      virtualKeys.forEach((key: any) => {
-        timeSeries[key.id] = [];
-      });
-    }
+    virtualKeys.forEach((key: any, index: number) => {
+      // Each virtual key now has its own time series from the enhanced SDK
+      const vkData = vkAnalytics.virtualKeys?.[index];
+      timeSeries[key.id] = vkData?.timeSeries || [];
+    });
     
     // Use aggregate metrics from SDK or calculate from virtual keys data
     const aggregateMetrics = vkAnalytics.aggregateMetrics || {

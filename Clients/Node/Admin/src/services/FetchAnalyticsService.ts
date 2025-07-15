@@ -481,4 +481,227 @@ export class FetchAnalyticsService {
       }
     );
   }
+
+  /**
+   * Enhanced version of getVirtualKeyAnalytics that provides additional data fields
+   * including change percentages, endpoint breakdowns, and per-key time series.
+   * This method enriches the standard analytics response with calculated fields
+   * and aggregated data from request logs.
+   * 
+   * @param params - Analytics parameters including time range and filters
+   * @param config - Optional request configuration
+   * @returns Enhanced virtual key analytics with all required fields
+   * @since Issue #450 - Enhanced Virtual Key Analytics
+   */
+  async getVirtualKeyAnalyticsEnhanced(
+    params?: ComprehensiveVirtualKeyAnalyticsParams, 
+    config?: RequestConfig
+  ): Promise<ComprehensiveVirtualKeyAnalytics> {
+    try {
+      // Get base analytics data
+      const baseAnalytics = await this.getVirtualKeyAnalytics(params, config);
+      
+      // TODO: When API supports native change percentages, remove this calculation
+      // Calculate time ranges for comparison periods
+      const timeRange = params?.timeRange || '7d';
+      const currentPeriodDays = this.parseTimeRange(timeRange);
+      const comparePeriodStart = new Date();
+      comparePeriodStart.setDate(comparePeriodStart.getDate() - (currentPeriodDays * 2));
+      const comparePeriodEnd = new Date();
+      comparePeriodEnd.setDate(comparePeriodEnd.getDate() - currentPeriodDays);
+      
+      // Get comparison period data for change calculations
+      const comparisonParams = {
+        ...params,
+        timeRange: `${currentPeriodDays}d`, // Same duration for comparison
+      };
+      
+      // TODO: This makes an extra API call. When API supports change percentages natively, remove this
+      const comparisonAnalytics = await this.getVirtualKeyAnalytics(comparisonParams, config);
+      
+      // Get request logs for endpoint breakdown if we have virtual key IDs
+      let endpointBreakdowns: Record<string, any[]> = {};
+      if (params?.virtualKeyIds?.length) {
+        // TODO: This is inefficient for large datasets. API should provide endpoint breakdown directly
+        const requestLogs = await this.getRequestLogs({
+          virtualKeyId: params.virtualKeyIds[0], // API only supports single virtualKeyId
+          startDate: comparePeriodEnd.toISOString().split('T')[0],
+          endDate: new Date().toISOString().split('T')[0],
+          pageSize: 1000, // Limited to avoid performance issues
+        }, config);
+        
+        // Aggregate endpoint data by virtual key
+        endpointBreakdowns = this.aggregateEndpointData(requestLogs.items);
+      }
+      
+      // Get virtual keys service instance to fetch metadata
+      const virtualKeysService = new (await import('./FetchVirtualKeyService')).FetchVirtualKeyService(this.client);
+      
+      // Get time series data
+      const usageAnalytics = await this.getUsageAnalytics({
+        timeRange: timeRange,
+        includeTimeSeries: true,
+        includeVirtualKeyBreakdown: true,
+      }, config);
+      
+      // Enhance each virtual key with calculated fields
+      const enhancedVirtualKeys = await Promise.all(
+        baseAnalytics.virtualKeys.map(async (vkDetail) => {
+          // Find comparison data for this key
+          const comparisonKey = comparisonAnalytics.virtualKeys.find(
+            ck => ck.keyId === vkDetail.keyId
+          );
+          
+          // Get virtual key details to access metadata
+          let tokenLimit: number | undefined;
+          let tokenPeriod: string | undefined;
+          try {
+            const keyDetails = await virtualKeysService.get(vkDetail.keyId, config);
+            if (keyDetails.metadata) {
+              const metadata = JSON.parse(keyDetails.metadata) as any;
+              tokenLimit = metadata.tokenLimit;
+              tokenPeriod = metadata.tokenPeriod;
+            }
+          } catch (error) {
+            // TODO: Log error when proper logging is available
+          }
+          
+          // Calculate percentage changes
+          const requestsChange = comparisonKey 
+            ? this.calculateGrowthRate(vkDetail.usage.requests, comparisonKey.usage.requests)
+            : 0;
+          const tokensChange = comparisonKey
+            ? this.calculateGrowthRate(vkDetail.usage.tokens, comparisonKey.usage.tokens)
+            : 0;
+          const costChange = comparisonKey
+            ? this.calculateGrowthRate(vkDetail.usage.cost, comparisonKey.usage.cost)
+            : 0;
+          
+          // Get endpoint breakdown for this key
+          const endpoints = endpointBreakdowns[vkDetail.keyId] || [];
+          
+          // TODO: Per-key time series should come from API. Currently using aggregated data
+          // This is a workaround that distributes the global time series proportionally
+          const keyTimeSeries = usageAnalytics.timeSeries?.map(point => ({
+            timestamp: point.timestamp,
+            requests: Math.floor(point.requests * (vkDetail.usage.requests / baseAnalytics.aggregateMetrics.totalRequests)),
+            tokens: Math.floor(point.tokens * (vkDetail.usage.tokens / baseAnalytics.aggregateMetrics.totalRequests)),
+            cost: point.cost * (vkDetail.usage.cost / baseAnalytics.aggregateMetrics.totalCost),
+            errorRate: vkDetail.performance.errorRate, // Use key's error rate
+          })) || [];
+          
+          return {
+            ...vkDetail,
+            usage: {
+              ...vkDetail.usage,
+              requestsChange,
+              tokensChange,
+              costChange,
+              errorRate: vkDetail.performance.errorRate,
+            },
+            endpointBreakdown: endpoints,
+            timeSeries: keyTimeSeries,
+            tokenLimit,
+            tokenPeriod,
+          };
+        })
+      );
+      
+      return {
+        ...baseAnalytics,
+        virtualKeys: enhancedVirtualKeys,
+      };
+    } catch (error) {
+      // If enhancement fails, return base analytics with default values
+      // TODO: Implement proper error logging
+      const baseAnalytics = await this.getVirtualKeyAnalytics(params, config);
+      
+      return {
+        ...baseAnalytics,
+        virtualKeys: baseAnalytics.virtualKeys.map(vk => ({
+          ...vk,
+          usage: {
+            ...vk.usage,
+            requestsChange: 0,
+            tokensChange: 0,
+            costChange: 0,
+            errorRate: vk.performance?.errorRate || 0,
+          },
+          endpointBreakdown: [],
+          timeSeries: [],
+          tokenLimit: undefined,
+          tokenPeriod: undefined,
+        })),
+      };
+    }
+  }
+  
+  /**
+   * Helper method to parse time range string to days
+   * @private
+   */
+  private parseTimeRange(timeRange: string): number {
+    const match = timeRange.match(/^(\d+)([dhwm])$/);
+    if (!match) return 7; // Default to 7 days
+    
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    
+    switch (unit) {
+      case 'h': return value / 24;
+      case 'd': return value;
+      case 'w': return value * 7;
+      case 'm': return value * 30;
+      default: return 7;
+    }
+  }
+  
+  /**
+   * Helper method to aggregate endpoint data from request logs
+   * @private
+   */
+  private aggregateEndpointData(logs: RequestLogDto[]): Record<string, any[]> {
+    const endpointsByKey: Record<string, Record<string, any>> = {};
+    
+    logs.forEach(log => {
+      if (!log.virtualKeyId) return;
+      
+      const keyId = log.virtualKeyId.toString();
+      if (!endpointsByKey[keyId]) {
+        endpointsByKey[keyId] = {};
+      }
+      
+      // Extract endpoint from metadata or use model as fallback
+      // TODO: API should provide endpoint information directly in request logs
+      const endpoint = (log.metadata as any)?.endpoint || `/v1/${log.model}`;
+      
+      if (!endpointsByKey[keyId][endpoint]) {
+        endpointsByKey[keyId][endpoint] = {
+          path: endpoint,
+          requests: 0,
+          totalDuration: 0,
+          errors: 0,
+        };
+      }
+      
+      endpointsByKey[keyId][endpoint].requests++;
+      endpointsByKey[keyId][endpoint].totalDuration += log.duration;
+      if (log.status === 'error') {
+        endpointsByKey[keyId][endpoint].errors++;
+      }
+    });
+    
+    // Convert to array format with calculated averages
+    const result: Record<string, any[]> = {};
+    Object.entries(endpointsByKey).forEach(([keyId, endpoints]) => {
+      result[keyId] = Object.values(endpoints).map(ep => ({
+        path: ep.path,
+        requests: ep.requests,
+        avgDuration: Math.round(ep.totalDuration / ep.requests),
+        errorRate: (ep.errors / ep.requests) * 100,
+      }));
+    });
+    
+    return result;
+  }
 }

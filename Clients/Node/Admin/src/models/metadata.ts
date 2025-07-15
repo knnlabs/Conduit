@@ -33,6 +33,10 @@ export interface VirtualKeyMetadata extends BaseMetadata {
   contactEmail?: string;
   /** Additional notes */
   notes?: string;
+  /** Token consumption limit */
+  tokenLimit?: number;
+  /** Token limit period (hour, day, month) */
+  tokenPeriod?: 'hour' | 'day' | 'month';
 }
 
 /**
