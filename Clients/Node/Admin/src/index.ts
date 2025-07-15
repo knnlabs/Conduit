@@ -147,7 +147,6 @@ export { FetchConfigurationService } from './services/FetchConfigurationService'
 export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchErrorQueueService } from './services/FetchErrorQueueService';
-export { FetchMetricsService } from './services/FetchMetricsService';
 export { FetchCostDashboardService } from './services/FetchCostDashboardService';
 export type {
   CostDashboardDto,

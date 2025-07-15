@@ -258,13 +258,6 @@ export const navigationSections: NavigationSection[] = [
         description: 'Monitor provider status',
       },
       {
-        id: 'metrics-dashboard',
-        label: 'Metrics Dashboard',
-        icon: IconActivity,
-        href: '/metrics-dashboard',
-        description: 'Performance metrics',
-      },
-      {
         id: 'health-monitoring',
         label: 'Health Monitoring',
         icon: IconHealth,

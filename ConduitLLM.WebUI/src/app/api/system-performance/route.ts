@@ -89,26 +89,8 @@ export async function GET(req: NextRequest) {
       console.warn('Failed to fetch system metrics:', error);
     }
 
-    try {
-      // Try to get performance metrics history
-      const performanceMetrics = await adminClient.metrics.getPerformanceMetrics({
-        timeRange: range,
-        resolution: range === '15m' ? 'minute' : range === '1h' ? 'minute' : 'hour',
-      });
-      
-      if (performanceMetrics?.timeSeries) {
-        history = performanceMetrics.timeSeries.map((point: any) => ({
-          timestamp: point.timestamp,
-          cpu: point.cpuUsage || 0,
-          memory: point.memoryUsage || 0,
-          disk: 0, // Not available in time series
-          network: point.throughput || 0,
-          responseTime: point.responseTime || 0,
-        }));
-      }
-    } catch (error) {
-      console.warn('Failed to fetch performance metrics:', error);
-    }
+    // Performance metrics history not available - endpoints don't exist
+    // history will remain empty array
 
     try {
       // Try to get alerts

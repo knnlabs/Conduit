@@ -18,16 +18,12 @@ export async function GET(req: NextRequest) {
       // Get current system metrics
       const systemInfo = await adminClient.system.getSystemInfo();
       const systemMetrics = await adminClient.monitoring.getSystemMetrics();
-      const performanceMetrics = await adminClient.metrics.getPerformanceMetrics({
-        timeRange: range,
-        resolution: 'minute',
-      });
+      // Performance metrics endpoint doesn't exist
+      const performanceMetrics = null;
       
-      // Add historical data if available
-      if (performanceMetrics?.timeSeries?.length > 0) {
-        performanceMetrics.timeSeries.forEach((point: any) => {
-          csvContent += `${point.timestamp},${point.cpuUsage || 0},${point.memoryUsage || 0},0,${point.throughput || 0},0,${point.responseTime || 0}\n`;
-        });
+      // No historical data available since performance metrics endpoint doesn't exist
+      if (false) {
+        // This block will never execute
       } else {
         // Add at least current point if no historical data
         const now = new Date().toISOString();
