@@ -4,6 +4,7 @@ import { AudioService } from './services/AudioService';
 import { HealthService } from './services/HealthService';
 import { ImagesService } from './services/ImagesService';
 import { VideosService } from './services/VideosService';
+import { DiscoveryService } from './services/DiscoveryService';
 import type { ClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -33,6 +34,7 @@ export class FetchConduitCoreClient extends FetchBasedClient {
   public readonly health: HealthService;
   public readonly images: ImagesService;
   public readonly videos: VideosService;
+  public readonly discovery: DiscoveryService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -43,6 +45,7 @@ export class FetchConduitCoreClient extends FetchBasedClient {
     this.health = new HealthService(config);
     this.images = new ImagesService(this);
     this.videos = new VideosService(this);
+    this.discovery = new DiscoveryService(this);
   }
 
   /**

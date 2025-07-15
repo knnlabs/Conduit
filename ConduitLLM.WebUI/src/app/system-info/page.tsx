@@ -59,12 +59,6 @@ interface ServiceInfo {
   cpu?: string;
 }
 
-interface EnvironmentVariable {
-  key: string;
-  value: string;
-  source: 'env' | 'config' | 'default';
-  sensitive?: boolean;
-}
 
 export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -134,45 +128,77 @@ export default function SystemInfoPage() {
     });
   };
 
-  // Mock data for development
-  const services: ServiceInfo[] = [
-    { name: 'Conduit Core API', version: '1.2.0', status: 'running', uptime: '30d 14h 23m', port: 8080, memory: '512MB', cpu: '2.3%' },
-    { name: 'Admin API', version: '1.2.0', status: 'running', uptime: '30d 14h 23m', port: 8081, memory: '256MB', cpu: '1.1%' },
-    { name: 'Redis Cache', version: '7.2.4', status: 'running', uptime: '45d 2h 15m', port: 6379, memory: '128MB', cpu: '0.5%' },
-    { name: 'PostgreSQL', version: '16.1', status: 'running', uptime: '45d 2h 15m', port: 5432, memory: '1.2GB', cpu: '3.7%' },
-    { name: 'RabbitMQ', version: '3.13.0', status: 'running', uptime: '30d 14h 23m', port: 5672, memory: '384MB', cpu: '1.8%' },
-  ];
+  // Helper function to format uptime from seconds
+  const formatUptime = (uptimeSeconds: number): string => {
+    if (!uptimeSeconds) return 'Unknown';
+    
+    const days = Math.floor(uptimeSeconds / 86400);
+    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
 
-  const systemMetrics: SystemMetric[] = [
-    { name: 'CPU Usage', value: 45, unit: '%', status: 'healthy', description: '8 cores available' },
-    { name: 'Memory Usage', value: 62, unit: '%', status: 'warning', description: '19.8GB / 32GB used' },
-    { name: 'Disk Usage', value: 38, unit: '%', status: 'healthy', description: '152GB / 400GB used' },
-    { name: 'Network I/O', value: '125MB/s', status: 'healthy', description: 'Inbound: 75MB/s, Outbound: 50MB/s' },
-    { name: 'Open Connections', value: 2847, status: 'healthy', description: 'Max: 10,000' },
-    { name: 'Thread Pool', value: '85/100', status: 'warning', description: 'Active threads' },
-  ];
+  // Generate system metrics from real data
+  const systemMetrics: SystemMetric[] = [];
+  
+  if (systemInfo?.runtime?.memoryUsage !== undefined) {
+    const memStatus = systemInfo.runtime.memoryUsage > 80 ? 'critical' : 
+                     systemInfo.runtime.memoryUsage > 60 ? 'warning' : 'healthy';
+    systemMetrics.push({
+      name: 'Memory Usage',
+      value: systemInfo.runtime.memoryUsage,
+      unit: '%',
+      status: memStatus,
+      description: 'System memory utilization'
+    });
+  }
 
-  const environmentVars: EnvironmentVariable[] = [
-    { key: 'NODE_ENV', value: 'production', source: 'env' },
-    { key: 'CONDUIT_API_TO_API_BACKEND_AUTH_KEY', value: '••••••••', source: 'env', sensitive: true },
-    { key: 'CONDUIT_ADMIN_LOGIN_PASSWORD', value: '••••••••', source: 'env', sensitive: true },
-    { key: 'DATABASE_URL', value: 'postgresql://...', source: 'env', sensitive: true },
-    { key: 'REDIS_URL', value: 'redis://localhost:6379', source: 'env' },
-    { key: 'RABBITMQ_URL', value: 'amqp://localhost:5672', source: 'env' },
-    { key: 'LOG_LEVEL', value: 'info', source: 'config' },
-    { key: 'MAX_REQUEST_SIZE', value: '10MB', source: 'config' },
-    { key: 'REQUEST_TIMEOUT', value: '30000', source: 'config' },
-    { key: 'RATE_LIMIT_WINDOW', value: '60000', source: 'default' },
-    { key: 'RATE_LIMIT_MAX_REQUESTS', value: '100', source: 'default' },
-  ];
+  if (systemInfo?.runtime?.cpuUsage !== undefined) {
+    const cpuStatus = systemInfo.runtime.cpuUsage > 80 ? 'critical' : 
+                     systemInfo.runtime.cpuUsage > 60 ? 'warning' : 'healthy';
+    systemMetrics.push({
+      name: 'CPU Usage',
+      value: systemInfo.runtime.cpuUsage,
+      unit: '%',
+      status: cpuStatus,
+      description: 'Processor utilization'
+    });
+  }
 
-  const dependencies = [
-    { name: '@knn_labs/conduit-admin-client', version: '1.0.1-dev.20250709095716', status: 'latest' },
-    { name: '@mantine/core', version: '7.3.2', status: 'latest' },
-    { name: 'next', version: '14.0.4', status: 'outdated', latest: '14.1.0' },
-    { name: 'react', version: '18.2.0', status: 'latest' },
-    { name: 'typescript', version: '5.3.3', status: 'latest' },
-  ];
+  if (systemInfo?.database?.isConnected !== undefined) {
+    systemMetrics.push({
+      name: 'Database Status',
+      value: systemInfo.database.isConnected ? 'Connected' : 'Disconnected',
+      status: systemInfo.database.isConnected ? 'healthy' : 'critical',
+      description: `Provider: ${systemInfo.database.provider || 'Unknown'}`
+    });
+  }
+
+  // Service information from real data
+  const services: ServiceInfo[] = [];
+  if (systemInfo) {
+    services.push({
+      name: 'Conduit Core API',
+      version: systemInfo.version || 'Unknown',
+      status: 'running',
+      uptime: formatUptime(systemInfo.uptime || 0)
+    });
+    
+    if (systemInfo.database?.isConnected) {
+      services.push({
+        name: systemInfo.database.provider || 'Database',
+        version: 'Unknown',
+        status: systemInfo.database.isConnected ? 'running' : 'stopped'
+      });
+    }
+  }
 
   const mapToSystemStatus = (status: string) => {
     switch (status) {
@@ -274,10 +300,10 @@ export default function SystemInfoPage() {
                 Platform
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                Docker
+                {systemInfo?.runtime?.os || 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Linux 5.15.0-91-generic
+                {systemInfo?.runtime?.architecture || 'Unknown Architecture'}
               </Text>
             </div>
             <ThemeIcon color="blue" variant="light" size={48} radius="md">
@@ -290,13 +316,13 @@ export default function SystemInfoPage() {
           <Group justify="space-between">
             <div>
               <Text size="sm" c="dimmed" fw={600} tt="uppercase">
-                Node Version
+                .NET Runtime
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                v20.11.0
+                {systemInfo?.runtime?.dotnetVersion || 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                NPM 10.2.4
+                Environment: {systemInfo?.environment || 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="green" variant="light" size={48} radius="md">
@@ -312,10 +338,10 @@ export default function SystemInfoPage() {
                 System Uptime
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                30d 14h
+                {systemInfo?.uptime ? formatUptime(systemInfo.uptime) : 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Since Dec 11, 2024
+                Version: {systemInfo?.version || 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="teal" variant="light" size={48} radius="md">
@@ -328,17 +354,22 @@ export default function SystemInfoPage() {
           <Group justify="space-between">
             <div>
               <Text size="sm" c="dimmed" fw={600} tt="uppercase">
-                Total Services
+                Database
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                5 / 5
+                {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                All services healthy
+                {systemInfo?.database?.provider || 'Unknown Provider'}
               </Text>
             </div>
-            <ThemeIcon color="green" variant="light" size={48} radius="md">
-              <IconServer size={24} />
+            <ThemeIcon 
+              color={systemInfo?.database?.isConnected ? 'green' : 'red'} 
+              variant="light" 
+              size={48} 
+              radius="md"
+            >
+              <IconDatabase size={24} />
             </ThemeIcon>
           </Group>
         </Card>
@@ -450,42 +481,134 @@ export default function SystemInfoPage() {
 
         <Tabs.Panel value="environment" pt="md">
           <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">Environment Variables</Title>
+            <Title order={4} mb="md">System Configuration</Title>
             <Alert
               icon={<IconLock size={16} />}
               title="Security Notice"
               color="blue"
               mb="md"
             >
-              Sensitive values are masked for security. Edit configuration files directly to modify these values.
+              Environment variables are not exposed via the API for security reasons. Configuration values are shown below where available.
             </Alert>
             <ScrollArea>
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Variable</Table.Th>
+                    <Table.Th>Setting</Table.Th>
                     <Table.Th>Value</Table.Th>
-                    <Table.Th>Source</Table.Th>
+                    <Table.Th>Status</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {environmentVars.map((env) => (
-                    <Table.Tr key={env.key}>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Environment</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.environment || 'Unknown'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" size="sm" color="blue">
+                        System
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Build Date</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.buildDate || 'Unknown'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" size="sm" color="blue">
+                        System
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>IP Filtering</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.features?.ipFiltering ? 'Enabled' : 'Disabled'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        variant="light" 
+                        size="sm" 
+                        color={systemInfo?.features?.ipFiltering ? 'green' : 'gray'}
+                      >
+                        Feature
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Provider Health</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.features?.providerHealth ? 'Enabled' : 'Disabled'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        variant="light" 
+                        size="sm" 
+                        color={systemInfo?.features?.providerHealth ? 'green' : 'gray'}
+                      >
+                        Feature
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Cost Tracking</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.features?.costTracking ? 'Enabled' : 'Disabled'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        variant="light" 
+                        size="sm" 
+                        color={systemInfo?.features?.costTracking ? 'green' : 'gray'}
+                      >
+                        Feature
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Audio Support</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Code>{systemInfo?.features?.audioSupport ? 'Enabled' : 'Disabled'}</Code>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        variant="light" 
+                        size="sm" 
+                        color={systemInfo?.features?.audioSupport ? 'green' : 'gray'}
+                      >
+                        Feature
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  {systemInfo?.database?.pendingMigrations && systemInfo.database.pendingMigrations.length > 0 && (
+                    <Table.Tr>
                       <Table.Td>
-                        <Code>{env.key}</Code>
+                        <Code>Pending Migrations</Code>
                       </Table.Td>
                       <Table.Td>
-                        <Code c={env.sensitive ? 'dimmed' : undefined}>
-                          {env.value}
-                        </Code>
+                        <Code>{systemInfo.database.pendingMigrations.join(', ')}</Code>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="light" size="sm">
-                          {env.source}
+                        <Badge variant="light" size="sm" color="orange">
+                          Database
                         </Badge>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
+                  )}
                 </Table.Tbody>
               </Table>
             </ScrollArea>
@@ -494,37 +617,61 @@ export default function SystemInfoPage() {
 
         <Tabs.Panel value="dependencies" pt="md">
           <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">Package Dependencies</Title>
+            <Title order={4} mb="md">System Dependencies</Title>
+            <Alert
+              icon={<IconPackage size={16} />}
+              title="Information"
+              color="blue"
+              mb="md"
+            >
+              Package dependency information is not available via the system API. Check package.json files directly for detailed dependency information.
+            </Alert>
             <ScrollArea>
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Package</Table.Th>
-                    <Table.Th>Current Version</Table.Th>
+                    <Table.Th>Component</Table.Th>
+                    <Table.Th>Version</Table.Th>
                     <Table.Th>Status</Table.Th>
-                    <Table.Th>Latest Version</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {dependencies.map((dep) => (
-                    <Table.Tr key={dep.name}>
-                      <Table.Td>
-                        <Code>{dep.name}</Code>
-                      </Table.Td>
-                      <Table.Td>{dep.version}</Table.Td>
-                      <Table.Td>
-                        <Badge
-                          color={dep.status === 'latest' ? 'green' : 'yellow'}
-                          variant="light"
-                        >
-                          {dep.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        {dep.latest || dep.version}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Conduit Core</Code>
+                    </Table.Td>
+                    <Table.Td>{systemInfo?.version || 'Unknown'}</Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" color="green">
+                        Current
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>.NET Runtime</Code>
+                    </Table.Td>
+                    <Table.Td>{systemInfo?.runtime?.dotnetVersion || 'Unknown'}</Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" color="green">
+                        Runtime
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                  <Table.Tr>
+                    <Table.Td>
+                      <Code>Database Provider</Code>
+                    </Table.Td>
+                    <Table.Td>{systemInfo?.database?.provider || 'Unknown'}</Table.Td>
+                    <Table.Td>
+                      <Badge 
+                        variant="light" 
+                        color={systemInfo?.database?.isConnected ? 'green' : 'red'}
+                      >
+                        {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
                 </Table.Tbody>
               </Table>
             </ScrollArea>

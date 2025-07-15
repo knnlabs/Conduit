@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-import { DiscoveryService } from '@knn_labs/conduit-core-client';
 
 // GET /api/discovery/models - Get discovered models with capabilities
 export async function GET(request: NextRequest) {
@@ -11,11 +10,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const capability = searchParams.get('capability');
     
-    // Create discovery service instance
-    const discoveryService = new DiscoveryService(coreClient);
-    
-    // Get all models from discovery service
-    const modelsResponse = await discoveryService.getModels();
+    // Use the discovery service from the Core SDK
+    const modelsResponse = await coreClient.discovery.getModels();
     
     // Filter by capability if specified
     if (capability) {

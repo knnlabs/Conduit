@@ -22,11 +22,10 @@ export async function POST(request: NextRequest) {
           const streamResponse = await coreClient.chat.create({
             ...body,
             stream: true,
-          });
+          }) as any; // Type assertion to work around TypeScript inference issue
           
           // Handle the async iterator from the SDK
-          // TypeScript doesn't properly narrow the overload, so we use type assertion
-          for await (const chunk of (streamResponse as any)) {
+          for await (const chunk of streamResponse) {
             // Format as SSE
             const data = `data: ${JSON.stringify(chunk)}\n\n`;
             await writer.write(encoder.encode(data));
@@ -54,15 +53,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Non-streaming request
       const result = await coreClient.chat.create({
-        messages: body.messages,
-        model: body.model,
-        temperature: body.temperature,
-        max_tokens: body.max_tokens,
-        top_p: body.top_p,
-        frequency_penalty: body.frequency_penalty,
-        presence_penalty: body.presence_penalty,
-        stream: false,
         ...body,
+        stream: false,
       });
       
       return NextResponse.json(result);
