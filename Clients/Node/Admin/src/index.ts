@@ -162,7 +162,10 @@ export type {
   ErrorQueueStatistics,
   HealthStatusCounts,
   HealthIssue,
-  ErrorQueueHealth
+  ErrorQueueHealth,
+  QueueClearResponse,
+  MessageReplayResponse,
+  MessageDeleteResponse
 } from './services/FetchErrorQueueService';
 export { ProviderService } from './services/ProviderService';
 export { ProviderModelsService } from './services/ProviderModelsService';

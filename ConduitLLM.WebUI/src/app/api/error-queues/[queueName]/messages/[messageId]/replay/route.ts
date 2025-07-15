@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ queueName: string; messageId: string }> }
 ) {
-  // Management operations not available in Admin SDK yet
-  return NextResponse.json({ error: 'Message replay not implemented - Admin SDK management operations needed' }, { status: 501 });
+  try {
+    const { queueName, messageId } = await params;
+    const adminClient = getServerAdminClient();
+    
+    const result = await adminClient.errorQueues.replayMessage(queueName, messageId);
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    return handleSDKError(error);
+  }
 }

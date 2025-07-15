@@ -112,6 +112,34 @@ export interface ErrorQueueHealth {
 }
 
 /**
+ * Response from clearing all messages in a queue
+ */
+export interface QueueClearResponse {
+  success: boolean;
+  message: string;
+  deletedCount: number;
+}
+
+/**
+ * Response from replaying messages
+ */
+export interface MessageReplayResponse {
+  success: boolean;
+  message: string;
+  successCount: number;
+  failedCount: number;
+}
+
+/**
+ * Response from deleting a specific message
+ */
+export interface MessageDeleteResponse {
+  success: boolean;
+  message: string;
+  deletedCount: number;
+}
+
+/**
  * Type-safe Error Queue service using native fetch
  */
 export class FetchErrorQueueService {
@@ -238,6 +266,81 @@ export class FetchErrorQueueService {
   async getHealth(config?: RequestConfig): Promise<ErrorQueueHealth> {
     return this.client['get']<ErrorQueueHealth>(
       '/api/admin/error-queues/health',
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Clear all messages from an error queue
+   * @param queueName - Name of the error queue to clear
+   * @param config - Optional request configuration
+   * @returns Response with the number of deleted messages
+   */
+  async clearQueue(queueName: string, config?: RequestConfig): Promise<QueueClearResponse> {
+    return this.client['delete']<QueueClearResponse>(
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Replay a specific failed message
+   * @param queueName - Name of the error queue
+   * @param messageId - ID of the message to replay
+   * @param config - Optional request configuration
+   * @returns Response with replay operation results
+   */
+  async replayMessage(queueName: string, messageId: string, config?: RequestConfig): Promise<MessageReplayResponse> {
+    return this.client['post']<MessageReplayResponse, { messageIds: string[] }>(
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/replay`,
+      { messageIds: [messageId] },
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Replay all messages in a queue or specific messages if IDs provided
+   * @param queueName - Name of the error queue
+   * @param messageIds - Optional array of message IDs to replay. If not provided, all messages are replayed
+   * @param config - Optional request configuration
+   * @returns Response with replay operation results
+   */
+  async replayAllMessages(queueName: string, messageIds?: string[], config?: RequestConfig): Promise<MessageReplayResponse> {
+    const body = messageIds?.length ? { messageIds } : {};
+    
+    return this.client['post']<MessageReplayResponse, { messageIds?: string[] }>(
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/replay`,
+      body,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Delete a specific message from an error queue
+   * @param queueName - Name of the error queue
+   * @param messageId - ID of the message to delete
+   * @param config - Optional request configuration
+   * @returns Response with deletion results
+   */
+  async deleteMessage(queueName: string, messageId: string, config?: RequestConfig): Promise<MessageDeleteResponse> {
+    return this.client['delete']<MessageDeleteResponse>(
+      `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages/${encodeURIComponent(messageId)}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,

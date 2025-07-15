@@ -264,6 +264,17 @@ export const ENDPOINTS = {
     COMPLIANCE_REPORT: '/api/admin/security/compliance/report',
   },
 
+  // Error Queue Management
+  ERROR_QUEUES: {
+    BASE: '/api/admin/error-queues',
+    MESSAGES: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages`,
+    MESSAGE_BY_ID: (queueName: string, messageId: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages/${encodeURIComponent(messageId)}`,
+    STATISTICS: '/api/admin/error-queues/statistics',
+    HEALTH: '/api/admin/error-queues/health',
+    REPLAY: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/replay`,
+    CLEAR: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages`,
+  },
+
   // Configuration (Routing and Caching)
   CONFIGURATION: {
     // Routing
