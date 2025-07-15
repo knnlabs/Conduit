@@ -198,15 +198,6 @@ export default function ProviderHealthPage() {
 
   return (
     <Stack gap="xl">
-      <Alert
-        icon={<IconAlertCircle size="1rem" />}
-        title="Limited SDK Functionality"
-        color="yellow"
-        variant="light"
-      >
-        Some provider health metrics are simulated when SDK methods are not available. Real provider status is fetched when possible,
-        but detailed metrics like response times, model-specific health, and historical data may be simulated.
-      </Alert>
 
       <Group justify="space-between">
         <div>
