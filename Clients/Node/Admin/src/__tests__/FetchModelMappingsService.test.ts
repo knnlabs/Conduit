@@ -1,21 +1,16 @@
+import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchModelMappingsService } from '../services/FetchModelMappingsService';
-import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+
 import { ENDPOINTS } from '../constants';
 
 describe('FetchModelMappingsService', () => {
-  let mockClient: FetchBaseApiClient;
+  let mockClient: MockClient;
   let service: FetchModelMappingsService;
 
   beforeEach(() => {
-    mockClient = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      request: jest.fn(),
-    } as any;
+    mockClient = createMockClient();
 
-    service = new FetchModelMappingsService(mockClient);
+    service = new FetchModelMappingsService(mockClient as any);
   });
 
   describe('list', () => {
@@ -27,7 +22,7 @@ describe('FetchModelMappingsService', () => {
         pageSize: 10,
         totalPages: 0,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.list();
 
@@ -50,7 +45,7 @@ describe('FetchModelMappingsService', () => {
         pageSize: 20,
         totalPages: 0,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.list(2, 20);
 
@@ -78,7 +73,7 @@ describe('FetchModelMappingsService', () => {
         supportsVision: true,
         supportsStreaming: true,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockMapping);
+      mockClient.get.mockResolvedValue(mockMapping);
 
       const result = await service.getById(1);
 
@@ -109,7 +104,7 @@ describe('FetchModelMappingsService', () => {
         createdAt: '2025-01-11T10:00:00Z',
         updatedAt: '2025-01-11T10:00:00Z',
       };
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.post.mockResolvedValue(mockResponse);
 
       const result = await service.create(createData);
 
@@ -134,7 +129,7 @@ describe('FetchModelMappingsService', () => {
         isEnabled: false,
         priority: 2,
       };
-      (mockClient.put as jest.Mock).mockResolvedValue(undefined);
+      mockClient.put.mockResolvedValue(undefined);
 
       await service.update(1, updateData);
 
@@ -152,7 +147,7 @@ describe('FetchModelMappingsService', () => {
 
   describe('deleteById', () => {
     it('should delete a model mapping', async () => {
-      (mockClient.delete as jest.Mock).mockResolvedValue(undefined);
+      mockClient.delete.mockResolvedValue(undefined);
 
       await service.deleteById(1);
 
@@ -182,7 +177,7 @@ describe('FetchModelMappingsService', () => {
           },
         },
       ];
-      (mockClient.get as jest.Mock).mockResolvedValue(mockModels);
+      mockClient.get.mockResolvedValue(mockModels);
 
       const result = await service.discoverModels();
 
@@ -213,8 +208,8 @@ describe('FetchModelMappingsService', () => {
         testedAt: '2025-01-11T10:00:00Z',
       };
       
-      (mockClient.get as jest.Mock).mockResolvedValueOnce(mockMapping);
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResult);
+      mockClient.get.mockResolvedValueOnce(mockMapping);
+      mockClient.post.mockResolvedValue(mockResult);
 
       const result = await service.testCapability(1, 'vision');
 
@@ -301,7 +296,7 @@ describe('FetchModelMappingsService', () => {
         updated: [],
         failed: [],
       };
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.post.mockResolvedValue(mockResponse);
 
       const result = await service.bulkCreate(mappings);
 

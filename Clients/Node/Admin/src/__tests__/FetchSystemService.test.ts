@@ -1,21 +1,16 @@
+import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchSystemService } from '../services/FetchSystemService';
-import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+
 import { ENDPOINTS } from '../constants';
 
 describe('FetchSystemService', () => {
-  let mockClient: FetchBaseApiClient;
+  let mockClient: MockClient;
   let service: FetchSystemService;
 
   beforeEach(() => {
-    mockClient = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      request: jest.fn(),
-    } as any;
+    mockClient = createMockClient();
 
-    service = new FetchSystemService(mockClient);
+    service = new FetchSystemService(mockClient as any);
   });
 
   describe('getSystemInfo', () => {
@@ -43,7 +38,7 @@ describe('FetchSystemService', () => {
           isConnected: true,
         },
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSystemInfo);
+      mockClient.get.mockResolvedValue(mockSystemInfo);
 
       const result = await service.getSystemInfo();
 
@@ -76,7 +71,7 @@ describe('FetchSystemService', () => {
         },
         totalDuration: 7,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockHealth);
+      mockClient.get.mockResolvedValue(mockHealth);
 
       const result = await service.getHealth();
 
@@ -100,7 +95,7 @@ describe('FetchSystemService', () => {
         value: 'vk_webui_existing',
         description: 'Virtual key for WebUI Core API access',
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSetting);
+      mockClient.get.mockResolvedValue(mockSetting);
 
       const result = await service.getWebUIVirtualKey();
 
@@ -117,7 +112,7 @@ describe('FetchSystemService', () => {
 
     it('should create new WebUI virtual key if not exists', async () => {
       // First call to get setting fails (not found)
-      (mockClient.get as jest.Mock).mockRejectedValueOnce(new Error('Not found'));
+      mockClient.get.mockRejectedValueOnce(new Error('Not found'));
       
       // Create virtual key response
       const mockCreateResponse = {
@@ -128,7 +123,7 @@ describe('FetchSystemService', () => {
           isEnabled: true,
         },
       };
-      (mockClient.post as jest.Mock).mockResolvedValueOnce(mockCreateResponse);
+      mockClient.post.mockResolvedValueOnce(mockCreateResponse);
       
       // Create global setting response
       const mockSettingResponse = {
@@ -136,7 +131,7 @@ describe('FetchSystemService', () => {
         key: 'WebUI_VirtualKey',
         value: 'vk_webui_new_123456',
       };
-      (mockClient.post as jest.Mock).mockResolvedValueOnce(mockSettingResponse);
+      mockClient.post.mockResolvedValueOnce(mockSettingResponse);
 
       const result = await service.getWebUIVirtualKey();
 

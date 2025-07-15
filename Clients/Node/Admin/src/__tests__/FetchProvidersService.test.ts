@@ -1,21 +1,14 @@
 import { FetchProvidersService } from '../services/FetchProvidersService';
-import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../constants';
+import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 
 describe('FetchProvidersService', () => {
-  let mockClient: FetchBaseApiClient;
+  let mockClient: MockClient;
   let service: FetchProvidersService;
 
   beforeEach(() => {
-    mockClient = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      request: jest.fn(),
-    } as any;
-
-    service = new FetchProvidersService(mockClient);
+    mockClient = createMockClient();
+    service = new FetchProvidersService(mockClient as any);
   });
 
   describe('list', () => {
@@ -27,7 +20,7 @@ describe('FetchProvidersService', () => {
         pageSize: 10,
         totalPages: 0,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.list();
 
@@ -50,7 +43,7 @@ describe('FetchProvidersService', () => {
         pageSize: 20,
         totalPages: 0,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.list(2, 20);
 
@@ -74,7 +67,7 @@ describe('FetchProvidersService', () => {
         apiKey: 'test-key',
         isEnabled: true,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockProvider);
+      mockClient.get.mockResolvedValue(mockProvider);
 
       const result = await service.getById(1);
 
@@ -103,7 +96,7 @@ describe('FetchProvidersService', () => {
         createdAt: '2025-01-11T10:00:00Z',
         updatedAt: '2025-01-11T10:00:00Z',
       };
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.post.mockResolvedValue(mockResponse);
 
       const result = await service.create(createData);
 
@@ -133,7 +126,7 @@ describe('FetchProvidersService', () => {
         apiKey: 'new-key',
         isEnabled: false,
       };
-      (mockClient.put as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.put.mockResolvedValue(mockResponse);
 
       const result = await service.update(1, updateData);
 
@@ -152,7 +145,7 @@ describe('FetchProvidersService', () => {
 
   describe('deleteById', () => {
     it('should delete a provider', async () => {
-      (mockClient.delete as jest.Mock).mockResolvedValue(undefined);
+      mockClient.delete.mockResolvedValue(undefined);
 
       await service.deleteById(1);
 
@@ -174,12 +167,12 @@ describe('FetchProvidersService', () => {
         message: 'Connection successful',
         latency: 150,
       };
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResult);
+      mockClient.post.mockResolvedValue(mockResult);
 
       const result = await service.testConnectionById(1);
 
       expect(mockClient.post).toHaveBeenCalledWith(
-        `${ENDPOINTS.PROVIDERS.BASE}/1/test`,
+        ENDPOINTS.PROVIDERS.TEST_BY_ID(1),
         undefined,
         {
           signal: undefined,
@@ -202,7 +195,7 @@ describe('FetchProvidersService', () => {
         success: true,
         message: 'Configuration is valid',
       };
-      (mockClient.post as jest.Mock).mockResolvedValue(mockResult);
+      mockClient.post.mockResolvedValue(mockResult);
 
       const result = await service.testConfig(config);
 

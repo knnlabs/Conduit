@@ -1,10 +1,11 @@
+import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchSettingsService } from '../services/FetchSettingsService';
-import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+
 import { ENDPOINTS } from '../constants';
 import type { GlobalSettingDto } from '../models/settings';
 
 describe('FetchSettingsService', () => {
-  let mockClient: FetchBaseApiClient;
+  let mockClient: MockClient;
   let service: FetchSettingsService;
 
   const mockSetting: GlobalSettingDto = {
@@ -43,20 +44,14 @@ describe('FetchSettingsService', () => {
   ];
 
   beforeEach(() => {
-    mockClient = {
-      get: jest.fn(),
-      post: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      request: jest.fn(),
-    } as any;
+    mockClient = createMockClient();
 
-    service = new FetchSettingsService(mockClient);
+    service = new FetchSettingsService(mockClient as any);
   });
 
   describe('getGlobalSettings', () => {
     it('should get all global settings', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSettings);
+      mockClient.get.mockResolvedValue(mockSettings);
 
       const result = await service.getGlobalSettings();
 
@@ -83,7 +78,7 @@ describe('FetchSettingsService', () => {
         pageSize: 10,
         totalPages: 1,
       };
-      (mockClient.get as jest.Mock).mockResolvedValue(mockResponse);
+      mockClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.listGlobalSettings(1, 10);
 
@@ -101,7 +96,7 @@ describe('FetchSettingsService', () => {
 
   describe('getGlobalSetting', () => {
     it('should get a specific setting by key', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSetting);
+      mockClient.get.mockResolvedValue(mockSetting);
 
       const result = await service.getGlobalSetting('rate_limit');
 
@@ -127,7 +122,7 @@ describe('FetchSettingsService', () => {
         category: 'Test',
       };
       const created = { ...createData, createdAt: '2025-01-11T10:00:00Z', updatedAt: '2025-01-11T10:00:00Z' };
-      (mockClient.post as jest.Mock).mockResolvedValue(created);
+      mockClient.post.mockResolvedValue(created);
 
       const result = await service.createGlobalSetting(createData);
 
@@ -146,7 +141,7 @@ describe('FetchSettingsService', () => {
 
   describe('updateGlobalSetting', () => {
     it('should update a setting', async () => {
-      (mockClient.put as jest.Mock).mockResolvedValue(undefined);
+      mockClient.put.mockResolvedValue(undefined);
 
       await service.updateGlobalSetting('rate_limit', {
         value: '200',
@@ -170,7 +165,7 @@ describe('FetchSettingsService', () => {
 
   describe('deleteGlobalSetting', () => {
     it('should delete a setting', async () => {
-      (mockClient.delete as jest.Mock).mockResolvedValue(undefined);
+      mockClient.delete.mockResolvedValue(undefined);
 
       await service.deleteGlobalSetting('old_setting');
 
@@ -191,7 +186,7 @@ describe('FetchSettingsService', () => {
         { key: 'rate_limit', value: 200 },
         { key: 'enable_logging', value: false },
       ];
-      (mockClient.post as jest.Mock).mockResolvedValue(undefined);
+      mockClient.post.mockResolvedValue(undefined);
 
       await service.batchUpdateSettings(updates);
 
@@ -209,7 +204,7 @@ describe('FetchSettingsService', () => {
 
   describe('getSettingsByCategory', () => {
     it('should get settings grouped by category', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSettings);
+      mockClient.get.mockResolvedValue(mockSettings);
 
       const result = await service.getSettingsByCategory();
 
@@ -225,22 +220,22 @@ describe('FetchSettingsService', () => {
 
   describe('helper methods', () => {
     it('settingExists should check if setting exists', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSetting);
+      mockClient.get.mockResolvedValue(mockSetting);
 
       const exists = await service.settingExists('rate_limit');
       expect(exists).toBe(true);
 
-      (mockClient.get as jest.Mock).mockRejectedValue({ statusCode: 404 });
+      mockClient.get.mockRejectedValue({ statusCode: 404 });
       const notExists = await service.settingExists('non_existent');
       expect(notExists).toBe(false);
     });
 
     it('getTypedSettingValue should return typed values', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValueOnce(mockSetting);
+      mockClient.get.mockResolvedValueOnce(mockSetting);
       const numberValue = await service.getTypedSettingValue<number>('rate_limit');
       expect(numberValue).toBe(100);
 
-      (mockClient.get as jest.Mock).mockResolvedValueOnce(mockSettings[1]);
+      mockClient.get.mockResolvedValueOnce(mockSettings[1]);
       const boolValue = await service.getTypedSettingValue<boolean>('enable_logging');
       expect(boolValue).toBe(true);
 
@@ -249,31 +244,31 @@ describe('FetchSettingsService', () => {
         dataType: 'json',
         value: '{"key": "value"}',
       };
-      (mockClient.get as jest.Mock).mockResolvedValueOnce(jsonSetting);
+      mockClient.get.mockResolvedValueOnce(jsonSetting);
       const jsonValue = await service.getTypedSettingValue<{ key: string }>('json_setting');
       expect(jsonValue).toEqual({ key: 'value' });
     });
 
     it('updateTypedSetting should update with type conversion', async () => {
-      (mockClient.put as jest.Mock).mockResolvedValue(undefined);
+      mockClient.put.mockResolvedValue(undefined);
 
       await service.updateTypedSetting('rate_limit', 150);
       expect(mockClient.put).toHaveBeenCalledWith(
         ENDPOINTS.SETTINGS.GLOBAL_BY_KEY('rate_limit'),
         { value: '150', description: undefined },
-        undefined
+        { signal: undefined, timeout: undefined, headers: undefined }
       );
 
       await service.updateTypedSetting('config', { foo: 'bar' }, 'JSON config');
       expect(mockClient.put).toHaveBeenCalledWith(
         ENDPOINTS.SETTINGS.GLOBAL_BY_KEY('config'),
         { value: '{"foo":"bar"}', description: 'JSON config' },
-        undefined
+        { signal: undefined, timeout: undefined, headers: undefined }
       );
     });
 
     it('getSecretSettings should return only secret settings', async () => {
-      (mockClient.get as jest.Mock).mockResolvedValue(mockSettings);
+      mockClient.get.mockResolvedValue(mockSettings);
 
       const secrets = await service.getSecretSettings();
       expect(secrets).toHaveLength(1);

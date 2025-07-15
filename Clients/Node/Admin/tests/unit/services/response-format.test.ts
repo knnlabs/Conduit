@@ -12,9 +12,7 @@ describe('SDK Response Format Verification', () => {
   }));
 
   beforeAll(() => {
-    jest.mock('fetch', () => ({
-      create: mockHTTPCreate,
-    }));
+    // Mock is already defined above, no need to mock 'fetch' module
   });
 
   describe('Admin SDK Response Formats', () => {

@@ -1,3 +1,4 @@
+import { createMockClient, type MockClient } from '../../__tests__/helpers/mockClient.helper';
 import { FetchConfigurationService } from '../FetchConfigurationService';
 import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
@@ -23,19 +24,13 @@ import type {
   CreateCachePolicyDto,
   TestResult,
 } from '../../models/configuration';
-
-jest.mock('../../client/FetchBaseApiClient');
-
 describe('FetchConfigurationService', () => {
   let service: FetchConfigurationService;
-  let mockClient: jest.Mocked<FetchBaseApiClient>;
+  let mockClient: MockClient;
 
   beforeEach(() => {
-    mockClient = new FetchBaseApiClient({
-      baseUrl: 'https://api.test.com',
-      masterKey: 'test-key'
-    }) as jest.Mocked<FetchBaseApiClient>;
-    service = new FetchConfigurationService(mockClient);
+    mockClient = createMockClient();
+    service = new FetchConfigurationService(mockClient as any);
   });
 
   afterEach(() => {
@@ -58,11 +53,11 @@ describe('FetchConfigurationService', () => {
         maxConcurrentRequests: 100
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockConfig);
+      mockClient.get = jest.fn().mockResolvedValue(mockConfig);
 
       const result = await service.getRoutingConfig();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         '/api/config/routing',
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -89,11 +84,11 @@ describe('FetchConfigurationService', () => {
         maxConcurrentRequests: 100
       };
 
-      (mockClient as any).put = jest.fn().mockResolvedValue(mockResponse);
+      mockClient.put = jest.fn().mockResolvedValue(mockResponse);
 
       const result = await service.updateRoutingConfig(updateData);
 
-      expect((mockClient as any).put).toHaveBeenCalledWith(
+      expect(mockClient.put).toHaveBeenCalledWith(
         '/api/config/routing',
         updateData,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -111,11 +106,11 @@ describe('FetchConfigurationService', () => {
         errors: []
       };
 
-      (mockClient as any).post = jest.fn().mockResolvedValue(mockResult);
+      mockClient.post = jest.fn().mockResolvedValue(mockResult);
 
       const result = await service.testRoutingConfig();
 
-      expect((mockClient as any).post).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.ROUTING_TEST,
         {},
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -135,11 +130,11 @@ describe('FetchConfigurationService', () => {
         }
       ];
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockRules);
+      mockClient.get = jest.fn().mockResolvedValue(mockRules);
 
       const result = await service.getRoutingRules();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.ROUTING_RULES,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -158,14 +153,16 @@ describe('FetchConfigurationService', () => {
       const mockRule: ExtendedRoutingRule = {
         id: 'rule-2',
         ...createData,
+        priority: 1, // Add default priority
+        enabled: createData.enabled ?? true, // Ensure enabled is always set
         stats: { matchCount: 0 }
       };
 
-      (mockClient as any).post = jest.fn().mockResolvedValue(mockRule);
+      mockClient.post = jest.fn().mockResolvedValue(mockRule);
 
       const result = await service.createRoutingRule(createData);
 
-      expect((mockClient as any).post).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.ROUTING_RULES,
         createData,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -174,11 +171,11 @@ describe('FetchConfigurationService', () => {
     });
 
     it('should delete routing rule', async () => {
-      (mockClient as any).delete = jest.fn().mockResolvedValue(undefined);
+      mockClient.delete = jest.fn().mockResolvedValue(undefined);
 
       await service.deleteRoutingRule('rule-1');
 
-      expect((mockClient as any).delete).toHaveBeenCalledWith(
+      expect(mockClient.delete).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.ROUTING_RULE_BY_ID('rule-1'),
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -200,11 +197,11 @@ describe('FetchConfigurationService', () => {
         }
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockConfig);
+      mockClient.get = jest.fn().mockResolvedValue(mockConfig);
 
       const result = await service.getCacheConfig();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.CACHE_CONFIG,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -224,11 +221,11 @@ describe('FetchConfigurationService', () => {
         errors: []
       };
 
-      (mockClient as any).post = jest.fn().mockResolvedValue(mockResult);
+      mockClient.post = jest.fn().mockResolvedValue(mockResult);
 
       const result = await service.clearCache(params);
 
-      expect((mockClient as any).post).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
         '/api/config/cache/clear',
         params,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -250,11 +247,11 @@ describe('FetchConfigurationService', () => {
         topKeys: []
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockStats);
+      mockClient.get = jest.fn().mockResolvedValue(mockStats);
 
       const result = await service.getCacheStats();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.CACHE_STATS,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -273,14 +270,15 @@ describe('FetchConfigurationService', () => {
 
       const mockPolicy: CachePolicy = {
         id: 'policy-1',
-        ...createData
+        ...createData,
+        enabled: createData.enabled ?? true // Ensure enabled is always set
       };
 
-      (mockClient as any).post = jest.fn().mockResolvedValue(mockPolicy);
+      mockClient.post = jest.fn().mockResolvedValue(mockPolicy);
 
       const result = await service.createCachePolicy(createData);
 
-      expect((mockClient as any).post).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.CACHE_POLICIES,
         createData,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -306,11 +304,11 @@ describe('FetchConfigurationService', () => {
         }
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockConfig);
+      mockClient.get = jest.fn().mockResolvedValue(mockConfig);
 
       const result = await service.getLoadBalancerConfig();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.LOAD_BALANCER,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -339,11 +337,11 @@ describe('FetchConfigurationService', () => {
         }
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockHealth);
+      mockClient.get = jest.fn().mockResolvedValue(mockHealth);
 
       const result = await service.getLoadBalancerHealth();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         '/api/config/loadbalancer/health',
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -378,11 +376,11 @@ describe('FetchConfigurationService', () => {
         }
       };
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockConfig);
+      mockClient.get = jest.fn().mockResolvedValue(mockConfig);
 
       const result = await service.getPerformanceConfig();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.PERFORMANCE,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -414,11 +412,11 @@ describe('FetchConfigurationService', () => {
         recommendations: ['Consider increasing connection pool size']
       };
 
-      (mockClient as any).post = jest.fn().mockResolvedValue(mockResult);
+      mockClient.post = jest.fn().mockResolvedValue(mockResult);
 
       const result = await service.runPerformanceTest(params);
 
-      expect((mockClient as any).post).toHaveBeenCalledWith(
+      expect(mockClient.post).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.PERFORMANCE_TEST,
         params,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -440,11 +438,11 @@ describe('FetchConfigurationService', () => {
         }
       ];
 
-      (mockClient as any).get = jest.fn().mockResolvedValue(mockFlags);
+      mockClient.get = jest.fn().mockResolvedValue(mockFlags);
 
       const result = await service.getFeatureFlags();
 
-      expect((mockClient as any).get).toHaveBeenCalledWith(
+      expect(mockClient.get).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.FEATURES,
         { signal: undefined, timeout: undefined, headers: undefined }
       );
@@ -465,11 +463,11 @@ describe('FetchConfigurationService', () => {
         lastModified: '2024-01-01T00:00:00Z'
       };
 
-      (mockClient as any).put = jest.fn().mockResolvedValue(mockFlag);
+      mockClient.put = jest.fn().mockResolvedValue(mockFlag);
 
       const result = await service.updateFeatureFlag('new-ui', updateData);
 
-      expect((mockClient as any).put).toHaveBeenCalledWith(
+      expect(mockClient.put).toHaveBeenCalledWith(
         ENDPOINTS.CONFIGURATION.FEATURE_BY_KEY('new-ui'),
         updateData,
         { signal: undefined, timeout: undefined, headers: undefined }
@@ -606,7 +604,15 @@ describe('FetchConfigurationService', () => {
             p99Latency: 5000,
             throughput: 90
           },
-          timeline: [],
+          timeline: [
+            {
+              timestamp: '2025-01-11T10:00:00Z',
+              requestsPerSecond: 100,
+              avgLatency: 1500,
+              errorRate: 0.1,
+              activeConnections: 50
+            }
+          ],
           errors: [
             { type: 'timeout', count: 500, message: 'Request timeout', firstOccurred: '', lastOccurred: '' }
           ],

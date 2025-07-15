@@ -304,8 +304,8 @@ describe('ConfigurationService - Extended Routing Methods', () => {
     it('should warn about unimplemented subscriptions', () => {
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
       
-      const unsubscribe1 = service.subscriptions.subscribeToRoutingStatus(() => {});
-      const unsubscribe2 = service.subscriptions.subscribeToHealthStatus(() => {});
+      const unsubscribe1 = service.subscriptions.subscribeToRoutingStatus();
+      const unsubscribe2 = service.subscriptions.subscribeToHealthStatus();
 
       expect(consoleWarnSpy).toHaveBeenCalledWith('Real-time subscriptions not yet implemented');
       expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
