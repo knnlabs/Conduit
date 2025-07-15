@@ -119,6 +119,13 @@ export class SignalRService {
   }
 
   /**
+   * Checks if SignalR service is connected.
+   */
+  isConnected(): boolean {
+    return this.areAllConnectionsEstablished();
+  }
+
+  /**
    * Subscribes to a task across all relevant hubs.
    */
   async subscribeToTask(taskId: string, taskType?: string): Promise<void> {

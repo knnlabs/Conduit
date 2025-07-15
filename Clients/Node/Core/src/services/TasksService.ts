@@ -92,7 +92,8 @@ export class TasksService {
     const startTime = Date.now();
     let currentInterval = opts.intervalMs;
 
-    while (true) {
+    // Poll until task completes or fails
+    for (;;) {
       // Check timeout
       if (Date.now() - startTime > opts.timeoutMs) {
         throw new ConduitError(
@@ -141,6 +142,9 @@ export class TasksService {
         currentInterval = Math.min(currentInterval * 2, opts.maxIntervalMs);
       }
     }
+    
+    // This should never be reached due to the loop structure
+    throw new ConduitError('Unexpected end of polling loop');
   }
 
   /**

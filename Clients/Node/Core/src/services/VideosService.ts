@@ -1,4 +1,5 @@
-import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { VideoApiRequest, AsyncVideoApiRequest } from '../models/common-types';
 import type {
   VideoGenerationRequest,
@@ -22,13 +23,13 @@ import type { VideoWebhookMetadata } from '../models/metadata';
 /**
  * Service for video generation operations using the Conduit Core API
  */
-export class VideosService extends FetchBasedClient {
+export class VideosService {
   // Note: /v1/videos/generations endpoint does not exist - only async generation is supported
   private static readonly ASYNC_GENERATIONS_ENDPOINT = '/v1/videos/generations/async';
+  private readonly clientAdapter: IFetchBasedClientAdapter;
 
   constructor(client: FetchBasedClient) {
-    // Type assertion to access protected config property
-    super((client as any).config);
+    this.clientAdapter = createClientAdapter(client);
   }
 
   /**
@@ -50,7 +51,7 @@ export class VideosService extends FetchBasedClient {
       // Convert to API request format
       const apiRequest = this.convertToAsyncApiRequest(request);
 
-      const response = await this.post<AsyncVideoGenerationResponse, AsyncVideoApiRequest>(
+      const response = await this.clientAdapter.post<AsyncVideoGenerationResponse, AsyncVideoApiRequest>(
         VideosService.ASYNC_GENERATIONS_ENDPOINT,
         apiRequest,
         options
@@ -81,7 +82,7 @@ export class VideosService extends FetchBasedClient {
 
       const endpoint = `/v1/videos/generations/tasks/${encodeURIComponent(taskId)}`;
 
-      const response = await this.get<AsyncVideoGenerationResponse>(
+      const response = await this.clientAdapter.get<AsyncVideoGenerationResponse>(
         endpoint,
         options
       );
@@ -111,7 +112,7 @@ export class VideosService extends FetchBasedClient {
 
       const endpoint = `/v1/videos/generations/${encodeURIComponent(taskId)}`;
 
-      await this.delete<void>(
+      await this.clientAdapter.delete<void>(
         endpoint,
         options
       );
@@ -149,7 +150,8 @@ export class VideosService extends FetchBasedClient {
 
     // Note: Starting to poll task
 
-    while (true) {
+    // Poll until task completes or fails
+    for (;;) {
       // Check if operation was cancelled
       if (options?.signal?.aborted) {
         throw new ConduitError('Operation was cancelled');
@@ -193,7 +195,7 @@ export class VideosService extends FetchBasedClient {
 
         default:
           throw new ConduitError(
-            `Unknown task status: ${status.status}`
+            `Unknown task status: ${status.status as unknown as string}`
           );
       }
 
@@ -205,6 +207,9 @@ export class VideosService extends FetchBasedClient {
         currentInterval = Math.min(currentInterval * 2, opts.maxIntervalMs);
       }
     }
+    
+    // This should never be reached due to the loop structure
+    throw new ConduitError('Unexpected end of polling loop');
   }
 
   /**

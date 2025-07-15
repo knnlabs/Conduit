@@ -8,80 +8,51 @@ import type {
 
 export class ConversationService extends BaseService {
   async list(params?: ConversationListParams): Promise<Conversation[]> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: '/conversations',
-      query: params
+    if (!params) {
+      return this.clientAdapter.get<Conversation[]>('/conversations');
+    }
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        query.append(key, String(value));
+      }
     });
-    return response;
+    const queryString = query.toString();
+    const url = queryString ? `/conversations?${queryString}` : '/conversations';
+    return this.clientAdapter.get<Conversation[]>(url);
   }
 
   async get(id: string): Promise<Conversation> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/conversations/${id}`
-    });
-    return response;
+    return this.clientAdapter.get<Conversation>(`/conversations/${id}`);
   }
 
   async create(conversation: Partial<Conversation>): Promise<Conversation> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: '/conversations',
-      body: conversation
-    });
-    return response;
+    return this.clientAdapter.post<Conversation>('/conversations', conversation);
   }
 
   async update(id: string, updates: Partial<Conversation>): Promise<Conversation> {
-    const response = await this.client.request({
-      method: 'PATCH',
-      path: `/conversations/${id}`,
-      body: updates
-    });
-    return response;
+    return this.clientAdapter.patch<Conversation>(`/conversations/${id}`, updates);
   }
 
   async delete(id: string): Promise<void> {
-    await this.client.request({
-      method: 'DELETE',
-      path: `/conversations/${id}`
-    });
+    await this.clientAdapter.delete<void>(`/conversations/${id}`);
   }
 
   async export(id: string, params: ConversationExportParams): Promise<Blob> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: `/conversations/${id}/export`,
-      body: params,
-      responseType: 'blob'
-    });
-    return response;
+    return this.clientAdapter.post<Blob>(`/conversations/${id}/export`, params, { responseType: 'blob' });
   }
 
   async search(query: string, limit?: number): Promise<Conversation[]> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: '/conversations/search',
-      query: { q: query, limit }
-    });
-    return response;
+    const params = new URLSearchParams({ q: query });
+    if (limit !== undefined) params.append('limit', String(limit));
+    return this.clientAdapter.get<Conversation[]>(`/conversations/search?${params.toString()}`);
   }
 
   async getTokenUsage(id: string): Promise<TokenUsage> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/conversations/${id}/usage`
-    });
-    return response;
+    return this.clientAdapter.get<TokenUsage>(`/conversations/${id}/usage`);
   }
 
   async fork(id: string, fromMessageId: string): Promise<Conversation> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: `/conversations/${id}/fork`,
-      body: { fromMessageId }
-    });
-    return response;
+    return this.clientAdapter.post<Conversation>(`/conversations/${id}/fork`, { fromMessageId });
   }
 }

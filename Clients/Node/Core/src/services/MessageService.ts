@@ -4,55 +4,31 @@ import type { ChatCompletionCreateParams } from '../models/chat';
 
 export class MessageService extends BaseService {
   async get(messageId: string): Promise<ChatMessage> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/messages/${messageId}`
-    });
-    return response;
+    return this.clientAdapter.get<ChatMessage>(`/messages/${messageId}`);
   }
 
   async edit(messageId: string, params: MessageEditParams): Promise<ChatMessage> {
-    const response = await this.client.request({
-      method: 'PATCH',
-      path: `/messages/${messageId}`,
-      body: params
-    });
-    return response;
+    return this.clientAdapter.patch<ChatMessage>(`/messages/${messageId}`, params);
   }
 
   async delete(messageId: string): Promise<void> {
-    await this.client.request({
-      method: 'DELETE',
-      path: `/messages/${messageId}`
-    });
+    await this.clientAdapter.delete<void>(`/messages/${messageId}`);
   }
 
   async regenerate(
     messageId: string,
     options?: Partial<ChatCompletionCreateParams>
   ): Promise<ChatMessage> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: `/messages/${messageId}/regenerate`,
-      body: options
-    });
-    return response;
+    return this.clientAdapter.post<ChatMessage>(`/messages/${messageId}/regenerate`, options);
   }
 
   async copy(messageId: string): Promise<string> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/messages/${messageId}/copy`
-    });
+    const response = await this.clientAdapter.get<{ content: string }>(`/messages/${messageId}/copy`);
     return response.content;
   }
 
   async getBranches(messageId: string): Promise<ChatMessage[]> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/messages/${messageId}/branches`
-    });
-    return response;
+    return this.clientAdapter.get<ChatMessage[]>(`/messages/${messageId}/branches`);
   }
 
   async createBranch(
@@ -60,11 +36,6 @@ export class MessageService extends BaseService {
     content: string,
     options?: Partial<ChatCompletionCreateParams>
   ): Promise<ChatMessage> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: `/messages/${messageId}/branch`,
-      body: { content, ...options }
-    });
-    return response;
+    return this.clientAdapter.post<ChatMessage>(`/messages/${messageId}/branch`, { content, ...options });
   }
 }

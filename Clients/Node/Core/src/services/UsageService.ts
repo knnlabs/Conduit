@@ -9,39 +9,23 @@ import type {
 
 export class UsageService extends BaseService {
   async getTokenCount(messages: ChatCompletionMessage[]): Promise<TokenEstimate> {
-    const response = await this.client.request({
-      method: 'POST',
-      path: '/usage/estimate',
-      body: { messages }
-    });
-    return response;
+    return this.clientAdapter.post<TokenEstimate>('/usage/estimate', { messages });
   }
 
   async getConversationStats(conversationId: string): Promise<ConversationStats> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/usage/conversations/${conversationId}`
-    });
-    return response;
+    return this.clientAdapter.get<ConversationStats>(`/usage/conversations/${conversationId}`);
   }
 
   async getUserUsage(startDate?: Date, endDate?: Date): Promise<UserUsageStats> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: '/usage/user',
-      query: {
-        start: startDate?.toISOString(),
-        end: endDate?.toISOString()
-      }
-    });
-    return response;
+    const query = new URLSearchParams();
+    if (startDate) query.append('start', startDate.toISOString());
+    if (endDate) query.append('end', endDate.toISOString());
+    const queryString = query.toString();
+    const url = queryString ? `/usage/user?${queryString}` : '/usage/user';
+    return this.clientAdapter.get<UserUsageStats>(url);
   }
 
   async getModelUsage(model: string): Promise<ModelUsageStats> {
-    const response = await this.client.request({
-      method: 'GET',
-      path: `/usage/models/${model}`
-    });
-    return response;
+    return this.clientAdapter.get<ModelUsageStats>(`/usage/models/${model}`);
   }
 }

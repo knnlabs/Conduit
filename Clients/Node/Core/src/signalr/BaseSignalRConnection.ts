@@ -100,21 +100,21 @@ export abstract class BaseSignalRConnection {
     this.connection = builder.build();
 
     // Set up event handlers
-    this.connection.onclose(async (error) => {
+    this.connection.onclose((error) => {
       if (this.onDisconnected) {
-        await this.onDisconnected(error);
+        void this.onDisconnected(error);
       }
     });
 
-    this.connection.onreconnecting(async (error) => {
+    this.connection.onreconnecting((error) => {
       if (this.onReconnecting) {
-        await this.onReconnecting(error);
+        void this.onReconnecting(error);
       }
     });
 
-    this.connection.onreconnected(async (connectionId) => {
+    this.connection.onreconnected((connectionId) => {
       if (this.onReconnected) {
-        await this.onReconnected(connectionId);
+        void this.onReconnected(connectionId);
       }
     });
 

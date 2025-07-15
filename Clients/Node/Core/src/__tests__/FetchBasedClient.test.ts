@@ -45,7 +45,7 @@ describe('FetchBasedClient', () => {
           method: 'GET',
           headers: expect.objectContaining({
             'Authorization': 'Bearer test-key',
-          }),
+          }) as Record<string, unknown>,
         })
       );
       expect(result).toEqual(mockResponse);
@@ -267,7 +267,7 @@ describe('FetchBasedClient', () => {
           statusText: '',
           config: expect.objectContaining({
             url: 'https://api.test.com/test',
-          }),
+          }) as Record<string, unknown>,
         })
       );
     });

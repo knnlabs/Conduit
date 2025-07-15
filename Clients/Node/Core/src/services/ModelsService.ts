@@ -1,6 +1,5 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
-import { HttpMethod } from '../client/HttpMethod';
 import type { RequestOptions } from '../client/types';
 import type { Model, ModelsResponse } from '../models/models';
 

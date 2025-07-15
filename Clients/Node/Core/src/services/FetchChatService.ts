@@ -158,7 +158,8 @@ export class FetchChatService extends FetchBasedClient {
       }
     }
 
-    // Create new request without legacy properties
+    // Remove legacy function properties from the request
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { functions, function_call, ...cleanRequest } = legacyRequest;
     
     return {
@@ -171,10 +172,10 @@ export class FetchChatService extends FetchBasedClient {
   /**
    * Count tokens in messages (placeholder - actual implementation would use tiktoken)
    */
-  async countTokens(
+  countTokens(
     messages: ChatCompletionRequest['messages'],
     _model: string = 'gpt-4'
-  ): Promise<number> {
+  ): number {
     // Rough estimation: 4 characters per token
     const text = messages.map(m => 
       typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
@@ -185,11 +186,11 @@ export class FetchChatService extends FetchBasedClient {
   /**
    * Validate that a request fits within model context limits
    */
-  async validateContextLength(
+  validateContextLength(
     request: ChatCompletionRequest,
     maxTokens?: number
-  ): Promise<{ valid: boolean; tokens: number; limit: number }> {
-    const tokens = await this.countTokens(request.messages, request.model);
+  ): { valid: boolean; tokens: number; limit: number } {
+    const tokens = this.countTokens(request.messages, request.model);
     const limit = maxTokens || 8192; // Default limit
     
     return {

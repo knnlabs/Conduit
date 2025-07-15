@@ -14,6 +14,7 @@ import type {
   NotificationSubscription,
   NotificationOptions,
 } from '../models/notifications';
+import { HubConnectionState } from '../models/signalr';
 
 /**
  * Service for managing real-time notifications through SignalR
@@ -40,16 +41,16 @@ export class NotificationsService {
   /**
    * Subscribe to video generation progress events
    */
-  async onVideoProgress(
+  onVideoProgress(
     callback: VideoProgressCallback,
     options?: NotificationOptions
-  ): Promise<NotificationSubscription> {
+  ): NotificationSubscription {
     // Ensure video hub client is initialized
     if (!this.videoHubClient) {
       this.videoHubClient = this.signalRService.getVideoGenerationHubClient();
       
       // Set up event handlers
-      this.videoHubClient.onVideoGenerationProgress = async (event) => {
+      this.videoHubClient.onVideoGenerationProgress = (event) => {
         // Notify all video progress callbacks
         for (const [subId, cb] of this.videoCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -68,9 +69,10 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
       
-      this.videoHubClient.onVideoGenerationCompleted = async (event) => {
+      this.videoHubClient.onVideoGenerationCompleted = (event) => {
         // Notify all video progress callbacks
         for (const [subId, cb] of this.videoCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -89,9 +91,10 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
       
-      this.videoHubClient.onVideoGenerationFailed = async (event) => {
+      this.videoHubClient.onVideoGenerationFailed = (event) => {
         // Notify all video progress callbacks
         for (const [subId, cb] of this.videoCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -110,6 +113,7 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
     }
 
@@ -135,16 +139,16 @@ export class NotificationsService {
   /**
    * Subscribe to image generation progress events
    */
-  async onImageProgress(
+  onImageProgress(
     callback: ImageProgressCallback,
     options?: NotificationOptions
-  ): Promise<NotificationSubscription> {
+  ): NotificationSubscription {
     // Ensure image hub client is initialized
     if (!this.imageHubClient) {
       this.imageHubClient = this.signalRService.getImageGenerationHubClient();
       
       // Set up event handlers
-      this.imageHubClient.onImageGenerationProgress = async (event) => {
+      this.imageHubClient.onImageGenerationProgress = (event) => {
         // Notify all image progress callbacks
         for (const [subId, cb] of this.imageCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -162,9 +166,10 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
       
-      this.imageHubClient.onImageGenerationCompleted = async (event) => {
+      this.imageHubClient.onImageGenerationCompleted = (event) => {
         // Notify all image progress callbacks
         for (const [subId, cb] of this.imageCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -183,9 +188,10 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
       
-      this.imageHubClient.onImageGenerationFailed = async (event) => {
+      this.imageHubClient.onImageGenerationFailed = (event) => {
         // Notify all image progress callbacks
         for (const [subId, cb] of this.imageCallbacks) {
           const subscription = this.subscriptions.get(subId);
@@ -204,6 +210,7 @@ export class NotificationsService {
           
           cb(notificationEvent);
         }
+        return Promise.resolve();
       };
     }
 
@@ -228,10 +235,10 @@ export class NotificationsService {
   /**
    * Subscribe to spend update events
    */
-  async onSpendUpdate(
+  onSpendUpdate(
     callback: SpendUpdateCallback,
     options?: NotificationOptions
-  ): Promise<NotificationSubscription> {
+  ): NotificationSubscription {
     // Ensure task hub client is initialized
     if (!this.taskHubClient) {
       this.taskHubClient = this.signalRService.getTaskHubClient();
@@ -263,10 +270,10 @@ export class NotificationsService {
   /**
    * Subscribe to spend limit alert events
    */
-  async onSpendLimitAlert(
+  onSpendLimitAlert(
     callback: SpendLimitAlertCallback,
     options?: NotificationOptions
-  ): Promise<NotificationSubscription> {
+  ): NotificationSubscription {
     // Ensure task hub client is initialized
     if (!this.taskHubClient) {
       this.taskHubClient = this.signalRService.getTaskHubClient();
@@ -332,7 +339,7 @@ export class NotificationsService {
       
       // Set up generic task handlers if not already done
       if (!this.taskHubClient.onTaskProgress) {
-        this.taskHubClient.onTaskProgress = async (event) => {
+        this.taskHubClient.onTaskProgress = (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -350,11 +357,12 @@ export class NotificationsService {
               taskInfo.callback(notificationEvent);
             }
           }
+          return Promise.resolve();
         };
       }
       
       if (!this.taskHubClient.onTaskCompleted) {
-        this.taskHubClient.onTaskCompleted = async (event) => {
+        this.taskHubClient.onTaskCompleted = (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -371,11 +379,12 @@ export class NotificationsService {
               taskInfo.callback(notificationEvent);
             }
           }
+          return Promise.resolve();
         };
       }
       
       if (!this.taskHubClient.onTaskFailed) {
-        this.taskHubClient.onTaskFailed = async (event) => {
+        this.taskHubClient.onTaskFailed = (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -392,6 +401,7 @@ export class NotificationsService {
               taskInfo.callback(notificationEvent);
             }
           }
+          return Promise.resolve();
         };
       }
     }
@@ -433,7 +443,7 @@ export class NotificationsService {
   /**
    * Unsubscribe from all notifications
    */
-  async unsubscribeAll(): Promise<void> {
+  unsubscribeAll(): void {
     const subscriptionIds = Array.from(this.subscriptions.keys());
     subscriptionIds.forEach(id => this.unsubscribe(id));
     this.connectionStateCallbacks.clear();
@@ -465,7 +475,7 @@ export class NotificationsService {
    */
   isConnected(): boolean {
     const states = this.signalRService.getConnectionStatus();
-    return Object.values(states).some(state => state === 'Connected');
+    return Object.values(states).some(state => state === HubConnectionState.Connected);
   }
 
   private unsubscribe(subscriptionId: string): void {

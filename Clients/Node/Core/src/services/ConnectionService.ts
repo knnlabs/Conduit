@@ -28,7 +28,7 @@ export class ConnectionService {
     signalr: boolean;
   }> {
     const apiConnected = await this.testConnection();
-    const signalrConnected = this.signalr ? await this.signalr.isConnected() : false;
+    const signalrConnected = this.signalr ? this.signalr.isConnected() : false;
 
     return {
       api: apiConnected,

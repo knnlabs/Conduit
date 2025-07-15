@@ -41,8 +41,9 @@ import { API_ENDPOINTS, CONTENT_TYPES } from '../constants';
  */
 export class ImagesService extends FetchBasedClient {
   constructor(client: FetchBasedClient) {
-    // Type assertion to access protected config property
-    super((client as any).config);
+    // Access the protected config property through inheritance
+    // @ts-expect-error Accessing protected property from another instance
+    super(client.config);
   }
 
   /**
@@ -338,7 +339,7 @@ export class ImagesService extends FetchBasedClient {
     const startTime = Date.now();
     let currentInterval = options.intervalMs;
 
-    while (true) {
+    for (;;) {
       // Check timeout
       if (Date.now() - startTime > options.timeoutMs) {
         throw new Error(`Task polling timed out after ${options.timeoutMs}ms`);
@@ -368,7 +369,7 @@ export class ImagesService extends FetchBasedClient {
           break;
 
         default:
-          throw new Error(`Unknown task status: ${status.status}`);
+          throw new Error(`Unknown task status: ${String(status.status)}`);
       }
 
       // Wait before next poll
