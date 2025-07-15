@@ -148,37 +148,18 @@ export const ENDPOINTS = {
     REQUEST_LOGS: '/api/Logs',
     REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
     
-    // Core analytics endpoints
-    USAGE_ANALYTICS: '/api/usage-analytics',
-    VIRTUAL_KEY_ANALYTICS: '/api/virtual-keys-analytics',
-    MODEL_USAGE_ANALYTICS: '/api/model-usage-analytics',
-    COST_ANALYTICS: '/api/cost-analytics',
-    
-    // Specialized exports
-    EXPORT_USAGE: '/api/analytics/export/usage',
-    EXPORT_COST: '/api/analytics/export/cost',
-    EXPORT_VIRTUAL_KEY: '/api/analytics/export/virtual-key',
-    EXPORT_PROVIDER: '/api/analytics/export/provider',
-    EXPORT_SECURITY: '/api/analytics/export/security',
-    EXPORT_REQUEST_LOGS: '/api/analytics/export/request-logs',
-    EXPORT_AUDIO_USAGE: '/api/analytics/export/audio-usage',
-    
     // Export management
-    EXPORT_SCHEDULES: '/api/analytics/export/schedules',
-    EXPORT_SCHEDULE_BY_ID: (id: string) => `/api/analytics/export/schedules/${id}`,
-    EXPORT_HISTORY: '/api/analytics/export/history',
+    EXPORT_REQUEST_LOGS: '/api/analytics/export/request-logs',
     EXPORT_STATUS: (exportId: string) => `/api/analytics/export/status/${exportId}`,
     EXPORT_DOWNLOAD: (exportId: string) => `/api/analytics/export/download/${exportId}`,
-    
-    // Request log analytics
-    REQUEST_LOG_STATS: '/api/analytics/request-logs/statistics',
-    REQUEST_LOG_SUMMARY: '/api/analytics/request-logs/summary',
-    
-    // System performance
-    SYSTEM_PERFORMANCE: '/api/analytics/system-performance',
-    
-    // Provider health
-    PROVIDER_HEALTH_SUMMARY: '/api/analytics/provider-health',
+  },
+
+  // Cost Dashboard (actual endpoints)
+  COSTS: {
+    SUMMARY: '/api/costs/summary',
+    TRENDS: '/api/costs/trends',
+    MODELS: '/api/costs/models',
+    VIRTUAL_KEYS: '/api/costs/virtualkeys',
   },
 
   // Provider Health

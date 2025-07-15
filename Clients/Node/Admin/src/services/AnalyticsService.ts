@@ -223,46 +223,6 @@ export class AnalyticsService extends FetchBaseApiClient {
     return this.getCostSummary({ startDate, endDate });
   }
 
-  // Specialized export methods
-  async exportUsageAnalytics(params: ExportUsageParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_USAGE,
-      params
-    );
-    return response;
-  }
-
-  async exportCostAnalytics(params: ExportCostParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_COST,
-      params
-    );
-    return response;
-  }
-
-  async exportVirtualKeyAnalytics(params: ExportVirtualKeyParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_VIRTUAL_KEY,
-      params
-    );
-    return response;
-  }
-
-  async exportProviderAnalytics(params: ExportProviderParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_PROVIDER,
-      params
-    );
-    return response;
-  }
-
-  async exportSecurityAnalytics(params: ExportSecurityParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_SECURITY,
-      params
-    );
-    return response;
-  }
 
   // Request logs export and analytics
   async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
@@ -339,49 +299,10 @@ export class AnalyticsService extends FetchBaseApiClient {
     return stats;
   }
 
-  async getRequestLogSummary(params: RequestLogSummaryParams): Promise<RequestLogSummary> {
-    const response = await this.post<RequestLogSummary>(
-      ENDPOINTS.ANALYTICS.REQUEST_LOG_SUMMARY,
-      params
-    );
-    return response;
-  }
 
-  // Scheduled exports
-  async createExportSchedule(schedule: CreateExportScheduleDto): Promise<ExportSchedule> {
-    const response = await this.post<ExportSchedule>(
-      ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES,
-      schedule
-    );
-    return response;
-  }
 
-  async listExportSchedules(): Promise<ExportSchedule[]> {
-    return this.withCache(
-      ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES,
-      () => this.get<ExportSchedule[]>(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES),
-      CACHE_TTL.MEDIUM
-    );
-  }
 
-  async deleteExportSchedule(id: string): Promise<void> {
-    await this.delete(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULE_BY_ID(id));
-    
-    // Invalidate cache
-    if (this.cache) {
-      await this.cache.delete(ENDPOINTS.ANALYTICS.EXPORT_SCHEDULES);
-    }
-  }
 
-  // Export history
-  async getExportHistory(params?: { limit?: number; offset?: number }): Promise<PagedResult<ExportHistory>> {
-    const queryParams = new URLSearchParams();
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.offset) queryParams.append('offset', params.offset.toString());
-
-    const url = `${ENDPOINTS.ANALYTICS.EXPORT_HISTORY}?${queryParams.toString()}`;
-    return this.get<PagedResult<ExportHistory>>(url);
-  }
 
   async getExportStatus(exportId: string): Promise<ExportStatus> {
     return this.get<ExportStatus>(ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId));

@@ -135,29 +135,6 @@ export interface TrendData {
   changePercentage: number;
 }
 
-export interface ModelUsageParams {
-  startDate?: string;
-  endDate?: string;
-  models?: string[];
-  providers?: string[];
-}
-
-export interface ModelUsageAnalytics {
-  models: ModelUsageSummary[];
-  capabilities: CapabilityUsage[];
-  performance: ModelPerformanceMetrics[];
-}
-
-export interface ModelUsageSummary {
-  model: string;
-  provider: string;
-  totalRequests: number;
-  totalTokens: number;
-  totalCost: number;
-  averageLatency: number;
-  successRate: number;
-  popularEndpoints: string[];
-}
 
 export interface CapabilityUsage {
   capability: string;
@@ -178,42 +155,6 @@ export interface ModelPerformanceMetrics {
   timeoutRate: number;
 }
 
-export interface CostParams {
-  startDate?: string;
-  endDate?: string;
-  groupBy?: 'hour' | 'day' | 'week' | 'month';
-}
-
-export interface CostAnalytics {
-  totalCost: number;
-  breakdown: {
-    byProvider: CostBreakdown[];
-    byModel: CostBreakdown[];
-    byVirtualKey: CostBreakdown[];
-  };
-  projections: {
-    daily: number;
-    weekly: number;
-    monthly: number;
-  };
-  trends: CostTrend[];
-}
-
-export interface CostBreakdown {
-  name: string;
-  cost: number;
-  percentage: number;
-  tokens: number;
-  requests: number;
-}
-
-export interface CostTrend {
-  period: string;
-  cost: number;
-  change: number;
-  changePercentage: number;
-  projectedCost: number;
-}
 
 export interface ExportParams {
   format: 'csv' | 'json' | 'excel';
@@ -405,33 +346,6 @@ export interface AnomalyDto {
   resolved: boolean;
 }
 
-// New comprehensive analytics types for WebUI integration
-export interface ComprehensiveUsageAnalyticsParams {
-  timeRange: string; // '24h', '7d', '30d', '90d'
-  includeTimeSeries?: boolean;
-  includeProviderBreakdown?: boolean;
-  includeModelBreakdown?: boolean;
-  includeVirtualKeyBreakdown?: boolean;
-  includeEndpointBreakdown?: boolean;
-}
-
-export interface ComprehensiveUsageAnalytics {
-  metrics: {
-    totalRequests: number;
-    totalCost: number;
-    totalTokens: number;
-    activeVirtualKeys: number;
-    requestsChange: number;  // percentage
-    costChange: number;      // percentage
-    tokensChange: number;    // percentage
-    virtualKeysChange: number; // percentage
-  };
-  timeSeries?: TimeSeriesDataPoint[];
-  providerUsage?: ProviderUsageBreakdown[];
-  modelUsage?: ModelUsageBreakdown[];
-  virtualKeyUsage?: VirtualKeyUsageBreakdown[];
-  endpointUsage?: EndpointUsageBreakdown[];
-}
 
 export interface TimeSeriesDataPoint {
   timestamp: string;
@@ -495,36 +409,6 @@ export interface RequestLogStatistics {
   hourlyDistribution: Array<{ hour: number; requests: number }>;
 }
 
-export interface SystemPerformanceMetricsParams {
-  timeRange?: string; // '1h', '24h', '7d'
-  includeServiceHealth?: boolean;
-  includeQueueMetrics?: boolean;
-  includeDatabaseMetrics?: boolean;
-}
-
-export interface SystemPerformanceMetrics {
-  cpu: {
-    usage: number;
-    cores: number;
-    trend: number; // percentage change
-  };
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
-    trend: number;
-  };
-  disk: {
-    used: number;
-    total: number;
-    percentage: number;
-    trend: number;
-  };
-  services?: ServiceHealthMetrics[];
-  queues?: QueueMetrics[];
-  database?: DatabaseMetrics;
-  alerts: SystemAlert[];
-}
 
 export interface ServiceHealthMetrics {
   name: string;
@@ -564,20 +448,6 @@ export interface SystemAlert {
   service?: string;
 }
 
-export interface ProviderHealthSummaryParams {
-  includeHistory?: boolean;
-  historyDays?: number;
-  includeIncidents?: boolean;
-}
-
-export interface ProviderHealthAnalyticsSummary {
-  providers: ProviderHealthDetails[];
-  overallHealth: 'healthy' | 'partial' | 'unhealthy';
-  healthyCount: number;
-  degradedCount: number;
-  unhealthyCount: number;
-  incidents?: ProviderIncident[];
-}
 
 export interface ProviderHealthDetails {
   provider: string;
@@ -616,29 +486,6 @@ export interface ProviderIncident {
   impact: string;
 }
 
-export interface ComprehensiveVirtualKeyAnalyticsParams {
-  timeRange?: string; // '24h', '7d', '30d', '90d'
-  virtualKeyIds?: string[];
-  includeUsagePatterns?: boolean;
-  includeQuotaStatus?: boolean;
-}
-
-export interface ComprehensiveVirtualKeyAnalytics {
-  virtualKeys: VirtualKeyDetail[];
-  aggregateMetrics: {
-    totalKeys: number;
-    activeKeys: number;
-    totalRequests: number;
-    totalCost: number;
-    averageUtilization: number;
-  };
-  usagePatterns?: {
-    peakHours: Array<{ hour: number; requests: number }>;
-    topModels: Array<{ model: string; requests: number; cost: number }>;
-    topProviders: Array<{ provider: string; requests: number; cost: number }>;
-  };
-  quotaAlerts: QuotaAlert[];
-}
 
 export interface VirtualKeyDetail {
   keyId: string;

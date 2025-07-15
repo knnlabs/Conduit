@@ -128,22 +128,39 @@ interface AnalyticsService {
   getRequestLogs(params?: RequestLogParams): Promise<RequestLog[]>;
   exportRequestLogs(params: ExportParams): Promise<ExportResult>;
   
-  // Usage analytics
-  getUsageAnalytics(params?: UsageParams): Promise<UsageAnalytics>;
-  exportUsageAnalytics(params: ExportParams): Promise<ExportResult>;
+  // Cost analytics (legacy endpoints)
+  getCostSummary(startDate?: string, endDate?: string): Promise<CostSummaryDto>;
+  getCostByPeriod(period: string, startDate?: string, endDate?: string): Promise<CostByPeriodDto>;
   
-  // Virtual key analytics
-  getVirtualKeyAnalytics(params?: VirtualKeyParams): Promise<VirtualKeyAnalytics>;
-  exportVirtualKeyAnalytics(params: ExportParams): Promise<ExportResult>;
+  // NOTE: The following methods were removed as their backend endpoints don't exist:
+  // - getUsageAnalytics() - /api/usage-analytics endpoint not implemented
+  // - getVirtualKeyAnalytics() - /api/virtual-keys-analytics endpoint not implemented
+  // - getCostAnalytics() - /api/cost-analytics endpoint not implemented
 }
 ```
 
 **Used in API routes**:
 - `/api/request-logs/*` - Request logging endpoints
-- `/api/usage-analytics/*` - Usage analytics endpoints
-- `/api/virtual-keys-analytics/*` - Virtual key analytics
+- `/api/usage-analytics/*` - Stub route (backend endpoint doesn't exist)
+- `/api/virtual-keys-analytics/*` - Stub route (backend endpoint doesn't exist)
 
-### 7. Provider Health Service (`adminClient.providerHealth`)
+### 7. Cost Dashboard Service (`adminClient.costDashboard`)
+
+**Priority**: 🟡 Important - Cost tracking and budget monitoring
+
+```typescript
+interface CostDashboardService {
+  getCostSummary(timeframe: 'daily' | 'weekly' | 'monthly', startDate?: string, endDate?: string): Promise<CostDashboardDto>;
+  getCostTrends(period: 'daily' | 'weekly' | 'monthly', startDate?: string, endDate?: string): Promise<CostTrendDto[]>;
+  getModelCosts(startDate?: string, endDate?: string): Promise<ModelCostDataDto[]>;
+  getVirtualKeyCosts(startDate?: string, endDate?: string): Promise<VirtualKeyCostDataDto[]>;
+}
+```
+
+**Used in API routes**:
+- `/api/cost-analytics` - Cost dashboard data (uses real /api/costs endpoints)
+
+### 8. Provider Health Service (`adminClient.providerHealth`)
 
 **Priority**: 🟡 Important - Monitoring
 
@@ -162,17 +179,17 @@ interface ProviderHealthService {
 
 These services are referenced in the code but not actively used:
 
-### 8. Security Service (`adminClient.security`)
+### 9. Security Service (`adminClient.security`)
 - IP filtering
 - Security events
 - Threat detection
 
-### 9. Configuration Service (`adminClient.configuration`)
+### 10. Configuration Service (`adminClient.configuration`)
 - Routing configuration
 - Caching settings
 - Advanced configurations
 
-### 10. Monitoring Service (`adminClient.monitoring`)
+### 11. Monitoring Service (`adminClient.monitoring`)
 - Real-time monitoring
 - Alerts and notifications
 - Performance tracking

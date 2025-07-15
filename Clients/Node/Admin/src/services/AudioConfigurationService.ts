@@ -344,51 +344,6 @@ export class AudioConfigurationService {
 
   // #endregion
 
-  // #region Export
-
-  /**
-   * Exports audio usage data in the specified format
-   */
-  async exportAudioUsage(params: {
-    startDate: string;
-    endDate: string;
-    format: 'csv' | 'json';
-    virtualKey?: string;
-    provider?: string;
-    operationType?: string;
-  }): Promise<ExportResult> {
-    if (!params.startDate || !params.endDate) {
-      throw new Error('Start date and end date are required for audio usage export');
-    }
-
-    if (!params.format) {
-      throw new Error('Export format is required');
-    }
-
-    if (new Date(params.startDate) >= new Date(params.endDate)) {
-      throw new Error('Start date must be before end date');
-    }
-
-    const requestBody = {
-      format: params.format,
-      dateRange: {
-        startDate: params.startDate,
-        endDate: params.endDate,
-      },
-      filters: {
-        virtualKey: params.virtualKey,
-        provider: params.provider,
-        operationType: params.operationType,
-      },
-    };
-
-    return this.client['post']<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_AUDIO_USAGE,
-      requestBody
-    );
-  }
-
-  // #endregion
 }
 
 /**

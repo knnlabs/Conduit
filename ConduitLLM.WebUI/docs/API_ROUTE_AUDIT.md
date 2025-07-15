@@ -13,10 +13,10 @@ This document provides a comprehensive audit of all API routes in the Conduit We
 - **Special Cases**: 5 (8%)
 
 ### After Cleanup:
-- **Total Routes**: 42 (19 routes removed)
-- **Fully Compliant**: 37 (88%)
+- **Total Routes**: 38 (23 routes removed)
+- **Fully Compliant**: 31 (82%)
 - **Non-Compliant**: 0 (0%)
-- **Special Cases**: 5 (12%)
+- **Special Cases**: 7 (18%) - includes 2 stub routes for non-existent analytics endpoints
 
 ## Compliance Criteria
 
@@ -90,14 +90,8 @@ A route is considered **fully compliant** if it meets ALL of these criteria:
 
 | Route | Methods | Status | Issues |
 |-------|---------|--------|---------|
-| `/api/system-performance` | GET | ✅ | None |
-| `/api/system-performance/export` | GET | ✅ | None |
-| `/api/virtual-keys-analytics` | GET | ✅ | None |
-| `/api/virtual-keys-analytics/export` | GET | ✅ | None |
-| `/api/usage-analytics` | GET | ✅ | None |
-| `/api/usage-analytics/export` | GET | ✅ | None |
-| `/api/provider-health` | GET | ✅ | None |
-| `/api/provider-health/export` | GET | ✅ | None |
+| `/api/virtual-keys-analytics` | GET | 🚧 | Stub - Backend endpoints don't exist |
+| `/api/usage-analytics` | GET | 🚧 | Stub - Backend endpoints don't exist |
 | `/api/request-logs` | GET | ✅ | None |
 | `/api/request-logs/export` | GET | ✅ | None |
 

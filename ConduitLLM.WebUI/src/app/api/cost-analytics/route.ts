@@ -7,7 +7,6 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const timeRange = searchParams.get('timeRange') || '30d';
-    const groupBy = searchParams.get('groupBy') || 'day';
     
     const adminClient = getServerAdminClient();
     
@@ -32,48 +31,43 @@ export async function GET(req: NextRequest) {
         startDate.setDate(now.getDate() - 30);
     }
     
-    // Get cost analytics from Admin SDK
-    const costAnalytics = await adminClient.analytics.getCostAnalytics({
-      startDate: startDate.toISOString(),
-      endDate: now.toISOString(),
-      groupBy: groupBy as 'hour' | 'day' | 'week' | 'month',
-    });
-
-    // Get model usage analytics
-    const modelAnalytics = await adminClient.analytics.getModelUsageAnalytics({
-      startDate: startDate.toISOString(),
-      endDate: now.toISOString(),
-    });
+    // Get data from actual cost dashboard endpoints
+    const [costSummary, costTrends, modelCosts, virtualKeyCosts] = await Promise.all([
+      adminClient.costDashboard.getCostSummary('daily', startDate.toISOString(), now.toISOString()),
+      adminClient.costDashboard.getCostTrends('daily', startDate.toISOString(), now.toISOString()),
+      adminClient.costDashboard.getModelCosts(startDate.toISOString(), now.toISOString()),
+      adminClient.costDashboard.getVirtualKeyCosts(startDate.toISOString(), now.toISOString()),
+    ]);
 
     // Calculate daily average
     const dayCount = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const averageDailyCost = costAnalytics.totalCost / dayCount;
+    const averageDailyCost = costSummary.totalCost / dayCount;
 
     // Calculate projected monthly spend
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const dayOfMonth = now.getDate();
-    const projectedMonthlySpend = (costAnalytics.totalCost / dayOfMonth) * daysInMonth;
+    const projectedMonthlySpend = (costSummary.totalCost / dayOfMonth) * daysInMonth;
 
-    // Format provider costs
-    const providerCosts = costAnalytics.breakdown?.byProvider?.map(provider => ({
-      provider: provider.name,
+    // Format provider costs from summary
+    const providerCosts = costSummary.topProviders?.map(provider => ({
+      provider: provider.provider,
       cost: provider.cost,
-      usage: provider.percentage || 0,
-      trend: 0, // Default trend value since not available in current SDK
+      usage: (provider.cost / costSummary.totalCost) * 100,
+      trend: 0, // Not available in current data
     })) || [];
 
     // Format model usage
-    const modelUsage = modelAnalytics.models?.map(model => ({
+    const modelUsage = modelCosts?.map(model => ({
       model: model.model,
       provider: model.provider,
-      requests: model.totalRequests,
-      tokensIn: Math.floor(model.totalTokens * 0.6) || 0, // Estimate 60% input tokens
-      tokensOut: Math.floor(model.totalTokens * 0.4) || 0, // Estimate 40% output tokens
-      cost: model.totalCost || 0,
+      requests: model.requestCount,
+      tokensIn: 0, // Not available in current endpoint
+      tokensOut: 0, // Not available in current endpoint
+      cost: model.cost,
     })) || [];
 
-    // Format daily costs
-    const dailyCosts = costAnalytics.trends?.map(trend => {
+    // Format daily costs from trends
+    const dailyCosts = costTrends?.map(trend => {
       const providers: Record<string, number> = {};
       
       // Distribute cost across providers based on breakdown
@@ -88,12 +82,17 @@ export async function GET(req: NextRequest) {
       };
     }) || [];
 
+    // Check if any virtual keys have budgets
+    const monthlyBudget = virtualKeyCosts?.find(vk => vk.budgetUsed !== undefined)
+      ? virtualKeyCosts.reduce((sum, vk) => sum + (vk.budgetUsed || 0) + (vk.budgetRemaining || 0), 0)
+      : null;
+
     const response = {
-      totalSpend: costAnalytics.totalCost,
+      totalSpend: costSummary.totalCost,
       averageDailyCost,
-      projectedMonthlySpend: costAnalytics.projections?.monthly || projectedMonthlySpend,
-      monthlyBudget: null, // Budget feature not yet available in SDK
-      projectedTrend: costAnalytics.trends?.length > 0 ? costAnalytics.trends[costAnalytics.trends.length - 1]?.changePercentage : null,
+      projectedMonthlySpend,
+      monthlyBudget,
+      projectedTrend: costSummary.costChangePercentage,
       providerCosts,
       modelUsage,
       dailyCosts,

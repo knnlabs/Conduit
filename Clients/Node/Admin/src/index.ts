@@ -148,6 +148,16 @@ export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchErrorQueueService } from './services/FetchErrorQueueService';
 export { FetchMetricsService } from './services/FetchMetricsService';
+export { FetchCostDashboardService } from './services/FetchCostDashboardService';
+export type {
+  CostDashboardDto,
+  ModelCostDto as CostModelCostDto,
+  ProviderCostDto,
+  DailyCostDto,
+  CostTrendDto,
+  ModelCostDataDto,
+  VirtualKeyCostDataDto,
+} from './services/FetchCostDashboardService';
 export type {
   ErrorQueueInfo,
   ErrorQueueSummary,
