@@ -368,7 +368,7 @@ export function validateVideoGenerationRequest(request: VideoGenerationRequest):
   if (request.response_format && 
       request.response_format !== VideoResponseFormats.URL && 
       request.response_format !== VideoResponseFormats.BASE64_JSON) {
-    throw new Error(`Response format must be '${VideoResponseFormats.URL}' or '${VideoResponseFormats.BASE64_JSON}'`);
+    throw new Error(`Response format must be '${String(VideoResponseFormats.URL)}' or '${String(VideoResponseFormats.BASE64_JSON)}'`);
   }
 }
 

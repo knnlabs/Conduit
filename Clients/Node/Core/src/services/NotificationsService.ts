@@ -1,7 +1,7 @@
-import { SignalRService } from './SignalRService';
-import { TaskHubClient } from '../signalr/TaskHubClient';
-import { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
-import { ImageGenerationHubClient } from '../signalr/ImageGenerationHubClient';
+import type { SignalRService } from './SignalRService';
+import type { TaskHubClient } from '../signalr/TaskHubClient';
+import type { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
+import type { ImageGenerationHubClient } from '../signalr/ImageGenerationHubClient';
 import type {
   VideoProgressEvent,
   ImageProgressEvent,

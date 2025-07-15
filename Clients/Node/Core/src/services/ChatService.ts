@@ -57,7 +57,7 @@ export class ChatService {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<StreamingResponse<ChatCompletionChunk>> {
-    const response = await this.client['client'].post(API_ENDPOINTS.V1.CHAT.COMPLETIONS, request, {
+    const response = await this.client['client'].post<NodeJS.ReadableStream>(API_ENDPOINTS.V1.CHAT.COMPLETIONS, request, {
       responseType: 'stream',
       signal: options?.signal,
       timeout: 0,

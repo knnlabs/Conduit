@@ -97,7 +97,8 @@ export class ControllableChatStream implements ControllableStream<ChatCompletion
       this.endTime = Date.now();
       // Clean up the base stream if it has a cancel method
       if ('cancel' in this.baseStream && typeof this.baseStream.cancel === 'function') {
-        (this.baseStream as any).cancel();
+        const cancellableStream = this.baseStream as { cancel: () => void };
+        cancellableStream.cancel();
       }
     }
   }

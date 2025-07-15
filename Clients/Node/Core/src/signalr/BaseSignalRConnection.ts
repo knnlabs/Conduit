@@ -205,11 +205,11 @@ export abstract class BaseSignalRConnection {
   /**
    * Invokes a hub method with retry logic.
    */
-  protected async invoke(methodName: string, ...args: any[]): Promise<void> {
+  protected async invoke(methodName: string, ...args: unknown[]): Promise<void> {
     const connection = await this.getConnection();
     
     const maxRetries = 3;
-    let retryDelay = 1000;
+    const retryDelay = 1000;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -229,11 +229,11 @@ export abstract class BaseSignalRConnection {
   /**
    * Invokes a hub method with return value and retry logic.
    */
-  protected async invokeWithResult<T>(methodName: string, ...args: any[]): Promise<T> {
+  protected async invokeWithResult<T>(methodName: string, ...args: unknown[]): Promise<T> {
     const connection = await this.getConnection();
     
     const maxRetries = 3;
-    let retryDelay = 1000;
+    const retryDelay = 1000;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -254,19 +254,21 @@ export abstract class BaseSignalRConnection {
   /**
    * Determines if an error is retryable.
    */
-  private isRetryableError(error: any): boolean {
+  private isRetryableError(error: unknown): boolean {
     if (!error) return false;
     
     // Don't retry on cancellation
-    if (error.name === 'AbortError') return false;
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return false;
     
     // Retry on network errors
-    if (error.message?.includes('network') || error.message?.includes('connection')) {
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && 
+        (error.message.includes('network') || error.message.includes('connection'))) {
       return true;
     }
     
     // Retry on server errors
-    if (error.statusCode >= 500) {
+    if (error && typeof error === 'object' && 'statusCode' in error && 
+        typeof error.statusCode === 'number' && error.statusCode >= 500) {
       return true;
     }
     

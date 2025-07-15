@@ -51,7 +51,7 @@ export class AudioService extends FetchBasedClient {
       '/v1/audio/transcriptions',
       {
         method: HttpMethod.POST,
-        body: formData as any,
+        body: formData as BodyInit,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -83,7 +83,7 @@ export class AudioService extends FetchBasedClient {
       '/v1/audio/translations',
       {
         method: HttpMethod.POST,
-        body: formData as any,
+        body: formData as BodyInit,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -153,7 +153,7 @@ export class AudioService extends FetchBasedClient {
       '/v1/audio/hybrid/process',
       {
         method: HttpMethod.POST,
-        body: formData as any,
+        body: formData as BodyInit,
         headers: {
           'Content-Type': 'multipart/form-data',
         },

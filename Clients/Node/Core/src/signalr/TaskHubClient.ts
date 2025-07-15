@@ -1,7 +1,6 @@
-import * as signalR from '@microsoft/signalr';
+import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import { 
-  SignalREndpoints,
+import type {
   ITaskHubServer,
   TaskStartedEvent,
   TaskProgressEvent,
@@ -9,6 +8,9 @@ import {
   TaskFailedEvent,
   TaskCancelledEvent,
   TaskTimedOutEvent
+} from '../models/signalr';
+import { 
+  SignalREndpoints
 } from '../models/signalr';
 
 /**
@@ -36,10 +38,10 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
    * Configures the hub-specific event handlers.
    */
   protected configureHubHandlers(connection: signalR.HubConnection): void {
-    connection.on('TaskStarted', async (taskId: string, taskType: string, metadata: any) => {
+    connection.on('TaskStarted', async (taskId: string, taskType: string, metadata: unknown) => {
       console.debug(`Task started: ${taskId}, Type: ${taskType}`);
       if (this.onTaskStarted) {
-        await this.onTaskStarted({ eventType: 'TaskStarted', taskId, taskType, metadata });
+        await this.onTaskStarted({ eventType: 'TaskStarted', taskId, taskType, metadata: metadata as Record<string, unknown> });
       }
     });
 
@@ -50,10 +52,10 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
       }
     });
 
-    connection.on('TaskCompleted', async (taskId: string, result: any) => {
+    connection.on('TaskCompleted', async (taskId: string, result: unknown) => {
       console.debug(`Task completed: ${taskId}`);
       if (this.onTaskCompleted) {
-        await this.onTaskCompleted({ eventType: 'TaskCompleted', taskId, result });
+        await this.onTaskCompleted({ eventType: 'TaskCompleted', taskId, result: result as Record<string, unknown> });
       }
     });
 

@@ -1,12 +1,11 @@
-import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
-import {
+import type {
   BatchSpendUpdateRequest,
   BatchVirtualKeyUpdateRequest,
   BatchWebhookSendRequest,
   BatchOperationStartResponse,
   BatchOperationStatusResponse,
-  BatchOperationStatusEnum,
   SpendUpdateDto,
   VirtualKeyUpdateDto,
   WebhookSendDto,
@@ -14,6 +13,7 @@ import {
   BatchValidationOptions,
   BatchValidationResult
 } from '../models/batchOperations';
+import { BatchOperationStatusEnum } from '../models/batchOperations';
 
 /**
  * Service for performing batch operations on the Conduit Core API

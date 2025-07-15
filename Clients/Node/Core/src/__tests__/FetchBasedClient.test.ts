@@ -1,6 +1,5 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import { ResponseParser } from '../client/FetchOptions';
-import { ConduitError, RateLimitError, NetworkError } from '../utils/errors';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -8,7 +7,7 @@ global.fetch = jest.fn();
 // Test implementation of FetchBasedClient
 class TestClient extends FetchBasedClient {
   // Expose protected methods for testing
-  public testRequest<T>(url: string, options?: any): Promise<T> {
+  public testRequest<T>(url: string, options?: Parameters<FetchBasedClient['request']>[1]): Promise<T> {
     return this.request<T>(url, options);
   }
   
@@ -38,7 +37,7 @@ describe('FetchBasedClient', () => {
         })
       );
 
-      const result = await client.testRequest('/test');
+      const result = await client.testRequest<{ data: string }>('/test');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.test.com/test',
@@ -63,7 +62,7 @@ describe('FetchBasedClient', () => {
         })
       );
 
-      const result = await client.testRequest('/test', {
+      const result = await client.testRequest<{ id: number; name: string }>('/test', {
         method: 'POST',
         body: requestBody,
       });

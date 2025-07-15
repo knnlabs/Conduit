@@ -96,7 +96,7 @@ export function parseMetadata<T extends Record<string, unknown>>(
   // If string, try to parse as JSON
   if (typeof metadata === 'string') {
     try {
-      const parsed = JSON.parse(metadata);
+      const parsed = JSON.parse(metadata) as unknown;
       if (isValidMetadata(parsed)) {
         return parsed as T;
       }

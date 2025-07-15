@@ -1,6 +1,5 @@
 import type { StreamingResponse, StreamOptions } from '../models/streaming';
 import { StreamError } from './errors';
-import { STREAM_CONSTANTS } from '../constants';
 import { createStreamingResponse } from './stream-response';
 
 /**

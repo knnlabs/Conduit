@@ -1,13 +1,13 @@
-import * as signalR from '@microsoft/signalr';
+import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import { 
-  SignalREndpoints,
+import type { 
   IImageGenerationHubServer,
   ImageGenerationStartedEvent,
   ImageGenerationProgressEvent,
   ImageGenerationCompletedEvent,
   ImageGenerationFailedEvent
 } from '../models/signalr';
+import { SignalREndpoints } from '../models/signalr';
 
 /**
  * SignalR client for the Image Generation Hub, providing real-time image generation notifications.
@@ -46,10 +46,10 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
       }
     });
 
-    connection.on('ImageGenerationCompleted', async (taskId: string, imageUrl: string, metadata: any) => {
+    connection.on('ImageGenerationCompleted', async (taskId: string, imageUrl: string, metadata: unknown) => {
       console.debug(`Image generation completed: ${taskId}`);
       if (this.onImageGenerationCompleted) {
-        await this.onImageGenerationCompleted({ eventType: 'ImageGenerationCompleted', taskId, imageUrl, metadata });
+        await this.onImageGenerationCompleted({ eventType: 'ImageGenerationCompleted', taskId, imageUrl, metadata: metadata as Record<string, unknown> });
       }
     });
 

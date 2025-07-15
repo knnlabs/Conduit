@@ -60,10 +60,11 @@ export class ResponseParser {
             throw new Error('Response body is not a stream');
           }
           return response.body as T;
-        default:
+        default: {
           // TypeScript exhaustiveness check
           const _exhaustive: never = responseType;
-          throw new Error(`Unknown response type: ${_exhaustive}`);
+          throw new Error(`Unknown response type: ${String(_exhaustive)}`);
+        }
       }
     }
     
@@ -93,6 +94,7 @@ export class ResponseParser {
    * Creates a clean RequestInit object without custom properties
    */
   static cleanRequestInit(init: ExtendedRequestInit): RequestInit {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { responseType, timeout, metadata, ...standardInit } = init;
     return standardInit;
   }

@@ -1,12 +1,14 @@
-import * as signalR from '@microsoft/signalr';
+import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import { 
-  SignalREndpoints,
+import type {
   IVideoGenerationHubServer,
   VideoGenerationStartedEvent,
   VideoGenerationProgressEvent,
   VideoGenerationCompletedEvent,
   VideoGenerationFailedEvent
+} from '../models/signalr';
+import { 
+  SignalREndpoints
 } from '../models/signalr';
 
 /**
@@ -63,11 +65,11 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       taskId: string, 
       videoUrl: string, 
       duration: number, 
-      metadata: any
+      metadata: unknown
     ) => {
       console.debug(`Video generation completed: ${taskId}, Duration: ${duration}s`);
       if (this.onVideoGenerationCompleted) {
-        await this.onVideoGenerationCompleted({ eventType: 'VideoGenerationCompleted', taskId, videoUrl, duration, metadata });
+        await this.onVideoGenerationCompleted({ eventType: 'VideoGenerationCompleted', taskId, videoUrl, duration, metadata: metadata as Record<string, unknown> });
       }
     });
 

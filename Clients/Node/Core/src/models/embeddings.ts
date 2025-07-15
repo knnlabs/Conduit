@@ -164,7 +164,7 @@ export function validateEmbeddingRequest(request: EmbeddingRequest): void {
   if (request.encoding_format && 
       request.encoding_format !== EmbeddingEncodingFormats.FLOAT &&
       request.encoding_format !== EmbeddingEncodingFormats.BASE64) {
-    throw new Error(`Encoding format must be '${EmbeddingEncodingFormats.FLOAT}' or '${EmbeddingEncodingFormats.BASE64}'`);
+    throw new Error(`Encoding format must be '${String(EmbeddingEncodingFormats.FLOAT)}' or '${String(EmbeddingEncodingFormats.BASE64)}'`);
   }
 
   if (request.dimensions !== undefined && request.dimensions <= 0) {

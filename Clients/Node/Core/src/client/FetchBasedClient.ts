@@ -8,7 +8,8 @@ import {
   createErrorFromResponse
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
-import { ExtendedRequestInit, ResponseParser } from './FetchOptions';
+import type { ExtendedRequestInit } from './FetchOptions';
+import { ResponseParser } from './FetchOptions';
 import { HttpMethod } from './HttpMethod';
 
 /**

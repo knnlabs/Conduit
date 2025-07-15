@@ -1,10 +1,14 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import type { SignalRService } from './SignalRService';
+import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 
 export class ConnectionService {
   private signalr?: SignalRService;
+  private clientAdapter: IFetchBasedClientAdapter;
 
-  constructor(private client: FetchBasedClient) {}
+  constructor(private client: FetchBasedClient) {
+    this.clientAdapter = createClientAdapter(client);
+  }
 
   initializeSignalR(signalr: SignalRService): void {
     this.signalr = signalr;
@@ -12,7 +16,7 @@ export class ConnectionService {
 
   async testConnection(): Promise<boolean> {
     try {
-      await this.client['get']('/health');
+      await this.clientAdapter.get('/health');
       return true;
     } catch {
       return false;

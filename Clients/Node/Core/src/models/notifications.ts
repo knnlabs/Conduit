@@ -61,7 +61,7 @@ export interface TaskUpdateEvent {
   taskType: 'video' | 'image' | 'batch' | 'other';
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress?: number;
-  result?: any;
+  result?: unknown;
   error?: string;
   metadata?: NotificationMetadata;
 }

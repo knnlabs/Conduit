@@ -1,8 +1,8 @@
-import { BaseSignalRConnection } from '../signalr/BaseSignalRConnection';
+import type { BaseSignalRConnection } from '../signalr/BaseSignalRConnection';
 import { TaskHubClient } from '../signalr/TaskHubClient';
 import { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
 import { ImageGenerationHubClient } from '../signalr/ImageGenerationHubClient';
-import { HubConnectionState } from '../models/signalr';
+import type { HubConnectionState } from '../models/signalr';
 
 /**
  * Service for managing SignalR hub connections for real-time notifications.

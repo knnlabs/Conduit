@@ -1,6 +1,6 @@
-import { FetchBasedClient } from '../client/FetchBasedClient';
+import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
-import {
+import type {
   MetricsSnapshot,
   DatabaseMetrics,
   HttpMetrics,

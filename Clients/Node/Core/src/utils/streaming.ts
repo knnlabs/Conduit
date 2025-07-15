@@ -1,7 +1,7 @@
 import type { SSEMessage, StreamEvent, StreamingResponse, StreamOptions, ProgressEvent } from '../models/streaming';
 import type { ChatCompletionChunk } from '../models/chat';
 import { StreamError } from './errors';
-import { STREAM_CONSTANTS, StreamingHelpers } from '../constants';
+import { StreamingHelpers } from '../constants';
 import { createStreamingResponse } from './stream-response';
 
 export function parseSSEMessage(line: string): SSEMessage | null {

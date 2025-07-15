@@ -1,8 +1,8 @@
-import type { ChatCompletionRequest, MessageContent, TextContent, ImageContent } from '../models/chat';
+import type { ChatCompletionRequest, TextContent, ImageContent } from '../models/chat';
 import type { ImageGenerationRequest } from '../models/images';
 import { ValidationError } from './errors';
 import { IMAGE_MODEL_CAPABILITIES } from '../models/images';
-import { CHAT_ROLES, ChatRoleHelpers, ImageValidationHelpers } from '../constants';
+import { ChatRoleHelpers, ImageValidationHelpers } from '../constants';
 
 /**
  * Validates multi-modal content array
@@ -15,7 +15,6 @@ function validateMultiModalContent(content: Array<TextContent | ImageContent>, m
     );
   }
 
-  let hasTextContent = false;
   let imageCount = 0;
 
   for (let j = 0; j < content.length; j++) {
@@ -36,16 +35,15 @@ function validateMultiModalContent(content: Array<TextContent | ImageContent>, m
     }
 
     if (part.type === 'text') {
-      const textPart = part as TextContent;
+      const textPart = part;
       if (typeof textPart.text !== 'string') {
         throw new ValidationError(
           `Text content at index ${j} in message ${messageIndex} must have a string 'text' property`,
           'messages'
         );
       }
-      hasTextContent = true;
     } else if (part.type === 'image_url') {
-      const imagePart = part as ImageContent;
+      const imagePart = part;
       if (!imagePart.image_url || typeof imagePart.image_url !== 'object') {
         throw new ValidationError(
           `Image content at index ${j} in message ${messageIndex} must have an 'image_url' object`,
@@ -117,7 +115,7 @@ export function validateChatCompletionRequest(request: ChatCompletionRequest): v
 
     if (!ChatRoleHelpers.isValidRole(message.role)) {
       throw new ValidationError(
-        `Invalid role '${message.role}' at index ${i}. Must be one of: ${ChatRoleHelpers.getAllRoles().join(', ')}`,
+        `Invalid role '${String(message.role)}' at index ${i}. Must be one of: ${ChatRoleHelpers.getAllRoles().join(', ')}`,
         'messages'
       );
     }
@@ -203,14 +201,14 @@ export function validateImageGenerationRequest(request: ImageGenerationRequest):
       );
     }
 
-    if (request.size && !capabilities.supportedSizes.includes(request.size as any)) {
+    if (request.size && !capabilities.supportedSizes.includes(request.size)) {
       throw new ValidationError(
         `Size '${request.size}' is not supported for model ${request.model}. Supported sizes: ${capabilities.supportedSizes.join(', ')}`,
         'size'
       );
     }
 
-    if (request.quality && !capabilities.supportedQualities.includes(request.quality as any)) {
+    if (request.quality && !capabilities.supportedQualities.includes(request.quality)) {
       throw new ValidationError(
         `Quality '${request.quality}' is not supported for model ${request.model}. Supported qualities: ${capabilities.supportedQualities.join(', ')}`,
         'quality'
