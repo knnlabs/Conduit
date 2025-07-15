@@ -1,6 +1,5 @@
 import { createMockClient, type MockClient } from '../../__tests__/helpers/mockClient.helper';
 import { FetchSecurityService } from '../FetchSecurityService';
-import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
 import type {
   IpWhitelistDto,

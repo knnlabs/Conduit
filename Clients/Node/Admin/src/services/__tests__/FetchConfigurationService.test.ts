@@ -1,6 +1,5 @@
 import { createMockClient, type MockClient } from '../../__tests__/helpers/mockClient.helper';
 import { FetchConfigurationService } from '../FetchConfigurationService';
-import { FetchBaseApiClient } from '../../client/FetchBaseApiClient';
 import { ENDPOINTS } from '../../constants';
 import type {
   RoutingConfigDto,

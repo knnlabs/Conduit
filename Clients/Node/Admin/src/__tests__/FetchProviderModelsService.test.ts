@@ -3,10 +3,7 @@ import { FetchProviderModelsService } from '../services/FetchProviderModelsServi
 
 import { ENDPOINTS } from '../constants';
 import type { 
-  ModelDto, 
-  ModelDetailsDto, 
-  ModelSearchFilters, 
-  ModelCapabilities 
+  ModelDto
 } from '../models/providerModels';
 
 describe('FetchProviderModelsService', () => {
