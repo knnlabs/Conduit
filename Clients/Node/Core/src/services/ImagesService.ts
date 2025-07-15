@@ -15,16 +15,68 @@ import { DEFAULT_POLLING_OPTIONS } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
 import { API_ENDPOINTS, CONTENT_TYPES } from '../constants';
 
+/**
+ * Service for image generation, editing, and variation operations.
+ * Provides OpenAI-compatible image API endpoints for DALL-E and other image models.
+ * 
+ * @example
+ * ```typescript
+ * // Initialize the service
+ * const images = client.images;
+ * 
+ * // Generate an image
+ * const result = await images.generate({
+ *   prompt: 'A sunset over mountains',
+ *   size: '1024x1024',
+ *   quality: 'hd'
+ * });
+ * 
+ * // Edit an image
+ * const edited = await images.edit({
+ *   image: imageFile,
+ *   prompt: 'Add a rainbow to the sky',
+ *   mask: maskFile
+ * });
+ * ```
+ */
 export class ImagesService extends FetchBasedClient {
   constructor(client: FetchBasedClient) {
-    super(client['config']);
+    // Type assertion to access protected config property
+    super((client as any).config);
   }
 
   /**
    * Creates an image given a text prompt.
-   * @param request The image generation request
-   * @param options Optional request options
+   * Supports various sizes, styles, and quality settings based on the model.
+   * 
+   * @param request - The image generation request
+   * @param options - Optional request options
    * @returns Promise resolving to image generation response
+   * 
+   * @example
+   * ```typescript
+   * // Basic image generation
+   * const result = await images.generate({
+   *   prompt: 'A serene lake at sunset',
+   *   n: 1
+   * });
+   * console.log(result.data[0].url);
+   * 
+   * // High quality with specific size
+   * const hdResult = await images.generate({
+   *   prompt: 'A futuristic city skyline',
+   *   model: 'dall-e-3',
+   *   size: '1792x1024',
+   *   quality: 'hd',
+   *   style: 'vivid'
+   * });
+   * 
+   * // Get base64 encoded image
+   * const base64Result = await images.generate({
+   *   prompt: 'Abstract art',
+   *   response_format: 'b64_json'
+   * });
+   * ```
    */
   async generate(
     request: ImageGenerationRequest,
@@ -41,9 +93,29 @@ export class ImagesService extends FetchBasedClient {
 
   /**
    * Creates an edited or extended image given an original image and a prompt.
-   * @param request The image edit request
-   * @param options Optional request options
+   * The mask specifies which areas should be edited. Transparent areas in the mask indicate where edits should be applied.
+   * 
+   * @param request - The image edit request
+   * @param options - Optional request options
    * @returns Promise resolving to image edit response
+   * 
+   * @example
+   * ```typescript
+   * // Edit with a mask
+   * const edited = await images.edit({
+   *   image: originalImageFile,
+   *   mask: maskFile,
+   *   prompt: 'Replace the sky with a starry night',
+   *   n: 1
+   * });
+   * 
+   * // Edit using image transparency as mask
+   * const result = await images.edit({
+   *   image: transparentPngFile,
+   *   prompt: 'Add a garden in the transparent area',
+   *   size: '512x512'
+   * });
+   * ```
    */
   async edit(
     request: ImageEditRequest,
@@ -87,9 +159,28 @@ export class ImagesService extends FetchBasedClient {
 
   /**
    * Creates a variation of a given image.
-   * @param request The image variation request
-   * @param options Optional request options
+   * Generates new images that maintain the same general composition but with variations.
+   * 
+   * @param request - The image variation request
+   * @param options - Optional request options
    * @returns Promise resolving to image variation response
+   * 
+   * @example
+   * ```typescript
+   * // Create variations
+   * const variations = await images.createVariation({
+   *   image: originalImageFile,
+   *   n: 3,
+   *   size: '1024x1024'
+   * });
+   * 
+   * // Get variations as base64
+   * const base64Variations = await images.createVariation({
+   *   image: imageFile,
+   *   n: 2,
+   *   response_format: 'b64_json'
+   * });
+   * ```
    */
   async createVariation(
     request: ImageVariationRequest,
@@ -204,10 +295,35 @@ export class ImagesService extends FetchBasedClient {
 
   /**
    * Polls an async image generation task until completion or timeout.
-   * @param taskId The task identifier
-   * @param pollingOptions Polling configuration options
-   * @param requestOptions Optional request options
+   * Automatically handles retries with configurable intervals and backoff.
+   * 
+   * @param taskId - The task identifier
+   * @param pollingOptions - Polling configuration options
+   * @param requestOptions - Optional request options
    * @returns Promise resolving to the final generation result
+   * 
+   * @example
+   * ```typescript
+   * // Start async generation
+   * const task = await images.generateAsync({
+   *   prompt: 'Complex artistic scene',
+   *   quality: 'hd',
+   *   size: '1792x1024'
+   * });
+   * 
+   * // Poll until complete with default settings
+   * const result = await images.pollTaskUntilCompletion(task.task_id);
+   * 
+   * // Custom polling configuration
+   * const customResult = await images.pollTaskUntilCompletion(
+   *   task.task_id,
+   *   {
+   *     intervalMs: 2000,
+   *     timeoutMs: 300000, // 5 minutes
+   *     useExponentialBackoff: true
+   *   }
+   * );
+   * ```
    */
   async pollTaskUntilCompletion(
     taskId: string,

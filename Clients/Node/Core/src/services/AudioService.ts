@@ -19,7 +19,27 @@ import type {
 } from '../models/audio';
 
 /**
- * Service for audio operations including speech-to-text, text-to-speech, and audio translation
+ * Service for audio operations including speech-to-text, text-to-speech, and audio translation.
+ * Provides OpenAI-compatible audio API endpoints for transcription, translation, and speech synthesis.
+ * 
+ * @example
+ * ```typescript
+ * // Initialize the service
+ * const audio = client.audio;
+ * 
+ * // Transcribe audio
+ * const transcription = await audio.transcribe({
+ *   file: AudioUtils.fromBuffer(audioBuffer, 'speech.mp3'),
+ *   model: 'whisper-1'
+ * });
+ * 
+ * // Generate speech
+ * const speech = await audio.generateSpeech({
+ *   model: 'tts-1',
+ *   input: 'Hello, world!',
+ *   voice: 'alloy'
+ * });
+ * ```
  */
 export class AudioService extends FetchBasedClient {
   constructor(config: ClientConfig) {
@@ -28,9 +48,30 @@ export class AudioService extends FetchBasedClient {
 
   /**
    * Transcribes audio to text using speech-to-text models.
-   * @param request The transcription request
-   * @param options Optional request options
+   * Supports multiple audio formats and languages with customizable output formats.
+   * 
+   * @param request - The transcription request
+   * @param options - Optional request options
    * @returns Promise resolving to transcription response
+   * 
+   * @example
+   * ```typescript
+   * // Basic transcription
+   * const result = await audio.transcribe({
+   *   file: AudioUtils.fromBuffer(audioBuffer, 'audio.mp3'),
+   *   model: 'whisper-1'
+   * });
+   * console.log(result.text);
+   * 
+   * // With language and timestamps
+   * const detailed = await audio.transcribe({
+   *   file: AudioUtils.fromBuffer(audioBuffer, 'audio.mp3'),
+   *   model: 'whisper-1',
+   *   language: 'en',
+   *   response_format: 'verbose_json',
+   *   timestamp_granularities: ['word', 'segment']
+   * });
+   * ```
    */
   async transcribe(
     request: AudioTranscriptionRequest,
@@ -94,9 +135,33 @@ export class AudioService extends FetchBasedClient {
 
   /**
    * Generates speech from text using text-to-speech models.
-   * @param request The speech generation request
-   * @param options Optional request options
+   * Supports multiple voices and audio formats with adjustable speed.
+   * 
+   * @param request - The speech generation request
+   * @param options - Optional request options
    * @returns Promise resolving to speech response with audio data
+   * 
+   * @example
+   * ```typescript
+   * // Generate speech with default settings
+   * const speech = await audio.generateSpeech({
+   *   model: 'tts-1',
+   *   input: 'Welcome to our service!',
+   *   voice: 'nova'
+   * });
+   * 
+   * // High quality with specific format
+   * const hdSpeech = await audio.generateSpeech({
+   *   model: 'tts-1-hd',
+   *   input: 'This is high quality audio.',
+   *   voice: 'alloy',
+   *   response_format: 'mp3',
+   *   speed: 1.0
+   * });
+   * 
+   * // Save to file
+   * fs.writeFileSync('output.mp3', speech.audio);
+   * ```
    */
   async generateSpeech(
     request: TextToSpeechRequest,
@@ -409,7 +474,20 @@ export class AudioService extends FetchBasedClient {
 }
 
 /**
- * Audio utility functions
+ * Audio utility functions for working with audio files.
+ * Provides helper methods for creating AudioFile objects from various sources.
+ * 
+ * @example
+ * ```typescript
+ * // From Buffer (Node.js)
+ * const audioFile = AudioUtils.fromBuffer(buffer, 'audio.mp3', 'audio/mpeg');
+ * 
+ * // From Blob (Browser)
+ * const audioFile = AudioUtils.fromBlob(blob, 'recording.wav');
+ * 
+ * // From Base64
+ * const audioFile = AudioUtils.fromBase64(base64String, 'speech.mp3');
+ * ```
  */
 export class AudioUtils {
   /**

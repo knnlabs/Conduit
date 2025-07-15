@@ -27,7 +27,8 @@ export class VideosService extends FetchBasedClient {
   private static readonly ASYNC_GENERATIONS_ENDPOINT = '/v1/videos/generations/async';
 
   constructor(client: FetchBasedClient) {
-    super(client['config']);
+    // Type assertion to access protected config property
+    super((client as any).config);
   }
 
   /**
