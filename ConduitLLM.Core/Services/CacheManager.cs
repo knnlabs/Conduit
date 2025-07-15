@@ -305,13 +305,28 @@ namespace ConduitLLM.Core.Services
             return await RemoveManyAsync(keys, region, cancellationToken);
         }
 
+        /// <summary>
+        /// Clears all cache entries for the specified region.
+        /// 
+        /// LIMITATION: This method is not fully implemented due to architectural constraints.
+        /// IMemoryCache does not provide native enumeration support, and we do not currently
+        /// track keys per region. As a result, this method will not clear any entries.
+        /// 
+        /// TODO: To implement proper region clearing, we need to either:
+        /// 1. Add key tracking per region (ConcurrentDictionary&lt;CacheRegion, HashSet&lt;string&gt;&gt;)
+        /// 2. Use separate IMemoryCache instances per region
+        /// 3. Implement a custom cache wrapper with enumeration support
+        /// 
+        /// For now, this method only resets statistics for the region.
+        /// </summary>
         public async Task ClearRegionAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
             
             try
             {
-                // Clear from memory cache (simplified - in production we'd track keys per region)
+                // LIMITATION: ListKeysAsync always returns empty due to lack of key tracking
+                // Clear from memory cache (requires key enumeration - not currently supported)
                 var keys = await ListKeysAsync(region, null, int.MaxValue, cancellationToken);
                 foreach (var key in keys)
                 {
@@ -321,8 +336,14 @@ namespace ConduitLLM.Core.Services
                 // Clear from distributed cache if available
                 if (_useDistributedCache && _distributedCache != null)
                 {
-                    // This would need implementation based on the specific distributed cache
+                    // TODO: Implement distributed cache clearing based on specific cache provider
                     _logger.LogWarning("Distributed cache clear not fully implemented for region {Region}", region);
+                }
+
+                // Log limitation for visibility
+                if (!keys.Any())
+                {
+                    _logger.LogWarning("ClearRegionAsync for region {Region} did not clear any entries due to missing key enumeration support", region);
                 }
 
                 _logger.LogInformation("Cleared cache region {Region}", region);
@@ -380,14 +401,12 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            // Fallback to internal statistics
-            if (!_statistics.TryGetValue(region, out var stats))
-            {
-                stats = new CacheRegionStatistics { Region = region, LastResetTime = DateTime.UtcNow };
-                _statistics[region] = stats;
-            }
-
-            return stats;
+            // Fallback to internal statistics - use GetOrAdd to avoid overwriting accumulated data
+            return _statistics.GetOrAdd(region, r => new CacheRegionStatistics 
+            { 
+                Region = r, 
+                LastResetTime = DateTime.UtcNow 
+            });
         }
 
         public async Task<Dictionary<CacheRegion, CacheRegionStatistics>> GetAllStatisticsAsync(CancellationToken cancellationToken = default)
@@ -593,6 +612,7 @@ namespace ConduitLLM.Core.Services
                     stats = new CacheRegionStatistics { Region = region, LastResetTime = DateTime.UtcNow };
                     _statistics[region] = stats;
                 }
+                
 
                 // Update operation counts
                 var opKey = success ? operation : $"{operation}_Failed";

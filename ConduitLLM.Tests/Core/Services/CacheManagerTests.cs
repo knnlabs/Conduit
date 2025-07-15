@@ -48,24 +48,35 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var distributedValue = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes("distributed-value");
+            
+            // Mock needs to match the exact key format: "region:key"
+            var expectedKey = $"{CacheRegion.ProviderHealth}:test-key";
+            _distributedCacheMock.Setup(x => x.GetAsync(expectedKey, default))
+                .ReturnsAsync(distributedValue);
+                
+            // Also setup the broader mock to catch any key variations
             _distributedCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), default))
                 .ReturnsAsync(distributedValue);
 
             var cacheManager = new CacheManager(_memoryCache, _distributedCacheMock.Object, _loggerMock.Object);
             const string key = "test-key";
-            const CacheRegion region = CacheRegion.Default;
+            const CacheRegion region = CacheRegion.ProviderHealth; // This region supports distributed cache
+
+            // Debug: Check if distributed cache is enabled
+            var config = cacheManager.GetRegionConfig(region);
+            var debugMsg = $"UseDistributedCache: {config.UseDistributedCache}, DistCache!=null: {_distributedCacheMock.Object != null}";
 
             // Act
             var result = await cacheManager.GetAsync<string>(key, region);
 
             // Assert
-            Assert.Equal("distributed-value", result);
-            _distributedCacheMock.Verify(x => x.GetAsync(It.IsAny<string>(), default), Times.Once);
+            Assert.True(result == "distributed-value", $"Expected 'distributed-value', got '{result}'. Debug: {debugMsg}");
+            _distributedCacheMock.Verify(x => x.GetAsync(expectedKey, default), Times.Once);
 
             // Verify memory cache was populated
             var memoryCachedValue = await cacheManager.GetAsync<string>(key, region);
             Assert.Equal("distributed-value", memoryCachedValue);
-            _distributedCacheMock.Verify(x => x.GetAsync(It.IsAny<string>(), default), Times.Once); // Still only once
+            _distributedCacheMock.Verify(x => x.GetAsync(expectedKey, default), Times.Once); // Still only once
         }
 
         [Fact]
@@ -211,16 +222,20 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task Statistics_TracksHitsAndMisses()
         {
             // Arrange
+            // Setup distributed cache to return null for cache misses (to avoid exceptions)
+            _distributedCacheMock.Setup(x => x.GetAsync(It.IsAny<string>(), default))
+                .ReturnsAsync((byte[]?)null);
+                
             var cacheManager = new CacheManager(_memoryCache, _distributedCacheMock.Object, _loggerMock.Object);
             const CacheRegion region = CacheRegion.ProviderHealth;
 
             // Act
             // Cache miss
-            await cacheManager.GetAsync<string>("missing-key", region);
+            var missResult = await cacheManager.GetAsync<string>("missing-key", region);
             
             // Cache hit
             await cacheManager.SetAsync("existing-key", "value", region);
-            await cacheManager.GetAsync<string>("existing-key", region);
+            var hitResult = await cacheManager.GetAsync<string>("existing-key", region);
 
             // Get statistics
             var stats = await cacheManager.GetRegionStatisticsAsync(region);
