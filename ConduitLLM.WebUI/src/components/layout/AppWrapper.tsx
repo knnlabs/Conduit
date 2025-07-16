@@ -7,7 +7,7 @@ interface AppWrapperProps {
 }
 
 export function AppWrapper({ children }: AppWrapperProps) {
-  // All routes now use the main layout - no authentication required
+  // No auth logic needed - middleware handles everything
   return (
     <MainLayout>
       {children}

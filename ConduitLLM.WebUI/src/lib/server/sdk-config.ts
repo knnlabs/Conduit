@@ -5,7 +5,6 @@ import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
 function validateEnvironment() {
   const requiredEnvVars = {
     CONDUIT_API_TO_API_BACKEND_AUTH_KEY: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY,
-    CONDUIT_ADMIN_LOGIN_PASSWORD: process.env.CONDUIT_ADMIN_LOGIN_PASSWORD,
   };
 
   for (const [key, value] of Object.entries(requiredEnvVars)) {
