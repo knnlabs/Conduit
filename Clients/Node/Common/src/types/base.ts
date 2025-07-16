@@ -26,11 +26,7 @@ export interface ErrorResponse {
   statusCode?: number;
 }
 
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: ErrorResponse;
-}
+// NOTE: ApiResponse moved to http/types.ts
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -51,13 +47,7 @@ export interface DateRange {
   endDate: string;
 }
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-
-export interface RequestOptions {
-  timeout?: number;
-  retries?: number;
-  headers?: Record<string, string>;
-}
+// NOTE: HttpMethod and RequestOptions moved to http/types.ts
 
 /**
  * Common usage tracking interface

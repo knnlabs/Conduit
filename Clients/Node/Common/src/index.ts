@@ -10,3 +10,9 @@ export * from './types/pagination';
 
 // Capability types
 export * from './types/capabilities';
+
+// Error types and utilities
+export * from './errors';
+
+// HTTP types and utilities
+export * from './http';

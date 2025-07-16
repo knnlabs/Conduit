@@ -1,8 +1,15 @@
+// Import shared HTTP constants from Common package
+import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS as COMMON_HTTP_STATUS } from '@knn_labs/conduit-common';
+
+// Re-export for backward compatibility
+export { HTTP_HEADERS, CONTENT_TYPES };
+
 export const API_VERSION = 'v1';
 export const API_PREFIX = '/api';
 
 /**
  * HTTP method constants for type-safe method specification.
+ * @deprecated Use HttpMethod enum from '@knn_labs/conduit-common' instead
  */
 export const HTTP_METHODS = {
   GET: 'GET',
@@ -10,29 +17,6 @@ export const HTTP_METHODS = {
   PUT: 'PUT',
   DELETE: 'DELETE',
   PATCH: 'PATCH',
-} as const;
-
-
-/**
- * HTTP header name constants.
- */
-export const HTTP_HEADERS = {
-  CONTENT_TYPE: 'Content-Type',
-  X_API_KEY: 'X-API-Key',
-  USER_AGENT: 'User-Agent',
-  X_CORRELATION_ID: 'X-Correlation-Id',
-  ACCEPT: 'Accept',
-  CACHE_CONTROL: 'Cache-Control',
-} as const;
-
-/**
- * Content type constants.
- */
-export const CONTENT_TYPES = {
-  JSON: 'application/json',
-  FORM_DATA: 'multipart/form-data',
-  FORM_URLENCODED: 'application/x-www-form-urlencoded',
-  TEXT_PLAIN: 'text/plain',
 } as const;
 
 /**
@@ -287,20 +271,11 @@ export const CACHE_TTL = {
   VERY_LONG: 86400,  // 24 hours
 } as const;
 
+// Re-export HTTP_STATUS with backward compatibility aliases
 export const HTTP_STATUS = {
-  OK: 200,
-  CREATED: 201,
-  NO_CONTENT: 204,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  RATE_LIMITED: 429,
-  INTERNAL_ERROR: 500,
-  BAD_GATEWAY: 502,
-  SERVICE_UNAVAILABLE: 503,
-  GATEWAY_TIMEOUT: 504,
+  ...COMMON_HTTP_STATUS,
+  RATE_LIMITED: COMMON_HTTP_STATUS.TOO_MANY_REQUESTS, // Alias for backward compatibility
+  INTERNAL_ERROR: COMMON_HTTP_STATUS.INTERNAL_SERVER_ERROR, // Alias for backward compatibility
 } as const;
 
 export const BUDGET_DURATION = {

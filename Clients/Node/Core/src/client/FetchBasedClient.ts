@@ -5,7 +5,7 @@ import {
   AuthError, 
   RateLimitError, 
   NetworkError,
-  createErrorFromResponse
+  createErrorFromResponseLegacy
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 import type { ExtendedRequestInit } from './FetchOptions';
@@ -286,7 +286,7 @@ export abstract class FetchBasedClient {
         errorData?.error?.code || 'bad_request'
       );
     } else if (errorData?.error) {
-      return createErrorFromResponse(errorData, status);
+      return createErrorFromResponseLegacy(errorData, status);
     } else {
       return new ConduitError(
         `Request failed with status ${status}`,
