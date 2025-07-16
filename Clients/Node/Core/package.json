@@ -55,6 +55,7 @@
   },
   "homepage": "https://github.com/knnlabs/Conduit#readme",
   "dependencies": {
+    "@knn_labs/conduit-common": "file:../Common",
     "@microsoft/signalr": "^8.0.7",
     "zod": "^4.0.5"
   },

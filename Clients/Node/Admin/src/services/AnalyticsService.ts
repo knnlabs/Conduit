@@ -42,7 +42,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     const cacheKey = this.getCacheKey('cost-summary', dateRange);
     return this.withCache(
       cacheKey,
-      () => super.get<CostSummaryDto>(ENDPOINTS.ANALYTICS.COST_SUMMARY, dateRange),
+      () => super.get<CostSummaryDto>(ENDPOINTS.ANALYTICS.COST_SUMMARY, { ...dateRange }),
       CACHE_TTL.SHORT
     );
   }
@@ -81,7 +81,7 @@ export class AnalyticsService extends FetchBaseApiClient {
       cacheKey,
       () => super.get<{ models: ModelUsageDto[]; totalCost: number }>(
         ENDPOINTS.ANALYTICS.COST_BY_MODEL,
-        dateRange
+        { ...dateRange }
       ),
       CACHE_TTL.SHORT
     );
@@ -102,7 +102,7 @@ export class AnalyticsService extends FetchBaseApiClient {
       cacheKey,
       () => super.get<{ keys: KeyUsageDto[]; totalCost: number }>(
         ENDPOINTS.ANALYTICS.COST_BY_KEY,
-        dateRange
+        { ...dateRange }
       ),
       CACHE_TTL.SHORT
     );
@@ -160,7 +160,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     const cacheKey = this.getCacheKey('usage-metrics', dateRange);
     return this.withCache(
       cacheKey,
-      () => super.get<UsageMetricsDto>('/api/analytics/usage-metrics', dateRange),
+      () => super.get<UsageMetricsDto>('/api/analytics/usage-metrics', { ...dateRange }),
       CACHE_TTL.SHORT
     );
   }

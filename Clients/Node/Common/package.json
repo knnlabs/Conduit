@@ -1,0 +1,40 @@
+{
+  "name": "@knn_labs/conduit-common",
+  "version": "0.1.0",
+  "description": "Common types and utilities for Conduit SDK clients",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "conduit",
+    "llm",
+    "types",
+    "sdk"
+  ],
+  "author": "KNN Labs",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.2"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  }
+}
