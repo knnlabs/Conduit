@@ -11,7 +11,6 @@ import {
   IconDatabase,
   IconBugOff,
   IconShield,
-  IconMicrophone,
   IconPhoto,
   IconVideo,
   IconMessage,
@@ -62,9 +61,6 @@ const navigationSections = [
   {
     title: 'Media & Communication',
     items: [
-      { id: 'audio-providers', label: 'Audio Providers', href: '/audio-providers', icon: IconMicrophone },
-      { id: 'audio-processing', label: 'Audio Processing', href: '/audio-processing', icon: IconMicrophone },
-      { id: 'audio-usage', label: 'Audio Usage', href: '/audio-usage', icon: IconMicrophone },
       { id: 'images', label: 'Images', href: '/images', icon: IconPhoto },
       { id: 'videos', label: 'Videos', href: '/videos', icon: IconVideo },
       { id: 'chat', label: 'Chat', href: '/chat', icon: IconMessage },
