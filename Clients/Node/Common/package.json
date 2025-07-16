@@ -36,5 +36,8 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7"
   }
 }

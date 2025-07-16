@@ -16,3 +16,6 @@ export * from './errors';
 
 // HTTP types and utilities
 export * from './http';
+
+// SignalR types and base classes
+export * from './signalr';

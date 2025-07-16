@@ -1,13 +1,21 @@
-/**
- * SignalR connection state.
- */
-export enum HubConnectionState {
-  Disconnected = 'Disconnected',
-  Connecting = 'Connecting',
-  Connected = 'Connected',
-  Disconnecting = 'Disconnecting',
-  Reconnecting = 'Reconnecting'
-}
+// Import common SignalR types from Common package
+import {
+  HubConnectionState,
+  HttpTransportType,
+  DefaultTransports,
+  SignalRConnectionOptions,
+  SignalRLogLevel
+} from '@knn_labs/conduit-common';
+
+// Re-export for backward compatibility
+export {
+  HubConnectionState,
+  HttpTransportType,
+  DefaultTransports,
+  SignalRLogLevel
+};
+
+export type { SignalRConnectionOptions };
 
 /**
  * SignalR hub endpoints.
@@ -18,67 +26,6 @@ export const SignalREndpoints = {
   ImageGenerationHub: '/hubs/image-generation',
   NavigationStateHub: '/hubs/navigation-state'
 } as const;
-
-/**
- * SignalR transport types.
- */
-export enum HttpTransportType {
-  None = 0,
-  WebSockets = 1,
-  ServerSentEvents = 2,
-  LongPolling = 4
-}
-
-/**
- * Default transport configuration.
- */
-export const DefaultTransports = 
-  HttpTransportType.WebSockets | 
-  HttpTransportType.ServerSentEvents | 
-  HttpTransportType.LongPolling;
-
-/**
- * SignalR connection options.
- */
-export interface SignalRConnectionOptions {
-  /**
-   * Access token for authentication.
-   */
-  accessTokenFactory?: () => string | Promise<string>;
-  
-  /**
-   * Transport types to use.
-   */
-  transport?: HttpTransportType;
-  
-  /**
-   * Logging level.
-   */
-  logLevel?: SignalRLogLevel;
-  
-  /**
-   * Close timeout in milliseconds.
-   */
-  closeTimeout?: number;
-  
-  /**
-   * Headers to include with requests.
-   */
-  headers?: Record<string, string>;
-}
-
-/**
- * SignalR logging levels.
- */
-export enum SignalRLogLevel {
-  Trace = 0,
-  Debug = 1,
-  Information = 2,
-  Warning = 3,
-  Error = 4,
-  Critical = 5,
-  None = 6
-}
 
 /**
  * Task hub server interface.

@@ -1,44 +1,20 @@
-/**
- * SignalR hub connection states
- */
-export enum HubConnectionState {
-  Disconnected = 'Disconnected',
-  Connecting = 'Connecting',
-  Connected = 'Connected',
-  Disconnecting = 'Disconnecting',
-  Reconnecting = 'Reconnecting',
-}
+// Import common SignalR types from Common package
+import {
+  HubConnectionState,
+  SignalRLogLevel,
+  HttpTransportType,
+  DefaultTransports,
+  SignalRConnectionOptions
+} from '@knn_labs/conduit-common';
 
-/**
- * SignalR logging levels
- */
-export enum SignalRLogLevel {
-  Trace = 0,
-  Debug = 1,
-  Information = 2,
-  Warning = 3,
-  Error = 4,
-  Critical = 5,
-  None = 6,
-}
-
-/**
- * HTTP transport types for SignalR
- */
-export enum HttpTransportType {
-  None = 0,
-  WebSockets = 1,
-  ServerSentEvents = 2,
-  LongPolling = 4,
-}
-
-/**
- * Default transport configuration
- */
-export const DefaultTransports = 
-  HttpTransportType.WebSockets | 
-  HttpTransportType.ServerSentEvents | 
-  HttpTransportType.LongPolling;
+// Re-export for backward compatibility
+export {
+  HubConnectionState,
+  SignalRLogLevel,
+  HttpTransportType,
+  DefaultTransports,
+  SignalRConnectionOptions
+};
 
 /**
  * SignalR endpoints for Admin API
@@ -47,16 +23,6 @@ export const SignalREndpoints = {
   NavigationState: '/hubs/navigation-state',
   AdminNotifications: '/hubs/admin-notifications',
 } as const;
-
-/**
- * SignalR connection options
- */
-export interface SignalRConnectionOptions {
-  logLevel?: SignalRLogLevel;
-  transport?: HttpTransportType;
-  headers?: Record<string, string>;
-  reconnectionDelay?: number[];
-}
 
 /**
  * Navigation state update event
