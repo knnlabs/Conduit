@@ -50,11 +50,11 @@ export async function POST(req: NextRequest) {
     
     // Transform frontend data to match SDK DTO expectations
     const transformedBody = {
-      modelId: body.modelAlias,
-      providerModelId: body.providerModelName,
+      modelId: body.modelId,
+      providerModelId: body.providerModelId,
       providerId: body.providerId.toString(), // Backend expects string
-      priority: body.priority || 0,
-      isEnabled: true, // Default to enabled
+      priority: body.priority || 100,
+      isEnabled: body.isEnabled ?? true, // Default to enabled
       supportsVision: body.supportsVision || false,
       supportsImageGeneration: body.supportsImageGeneration || false,
       supportsAudioTranscription: body.supportsAudioTranscription || false,
@@ -62,9 +62,12 @@ export async function POST(req: NextRequest) {
       supportsRealtimeAudio: body.supportsRealtimeAudio || false,
       supportsFunctionCalling: body.supportsFunctionCalling || false,
       supportsStreaming: body.supportsStreaming || false,
-      maxContextLength: body.maxInputTokens || null,
+      supportsVideoGeneration: body.supportsVideoGeneration || false,
+      supportsEmbeddings: body.supportsEmbeddings || false,
+      maxContextLength: body.maxContextLength || null,
       maxOutputTokens: body.maxOutputTokens || null,
-      metadata: body.notes || null,
+      metadata: body.metadata || null,
+      isDefault: body.isDefault || false,
     };
     
     console.log('[Model Mappings] Transformed data:', JSON.stringify(transformedBody, null, 2));

@@ -4,12 +4,23 @@ import { ENDPOINTS } from '../constants';
 
 // Response types based on the C# DTOs
 export interface CostDashboardDto {
+  timeFrame: string;
+  startDate: string;
+  endDate: string;
+  last24HoursCost: number;
+  last7DaysCost: number;
+  last30DaysCost: number;
   totalCost: number;
-  costChange: number;
-  costChangePercentage: number;
-  topModels: ModelCostDto[];
-  topProviders: ProviderCostDto[];
-  costByDay: DailyCostDto[];
+  topModelsBySpend: DetailedCostDataDto[];
+  topProvidersBySpend: DetailedCostDataDto[];
+  topVirtualKeysBySpend: DetailedCostDataDto[];
+  costChangePercentage?: number; // Optional for backward compatibility
+}
+
+export interface DetailedCostDataDto {
+  name: string;
+  cost: number;
+  percentage: number;
 }
 
 export interface ModelCostDto {
@@ -36,18 +47,22 @@ export interface DailyCostDto {
 
 export interface CostTrendDto {
   period: string;
+  startDate: string;
+  endDate: string;
+  data: CostTrendDataDto[];
+}
+
+export interface CostTrendDataDto {
+  date: string;
   cost: number;
-  requestCount: number;
-  tokenCount: number;
-  avgCostPerRequest: number;
-  avgTokensPerRequest: number;
 }
 
 export interface ModelCostDataDto {
   model: string;
-  provider: string;
   cost: number;
+  totalTokens: number;
   requestCount: number;
+  costPerToken: number;
   averageCostPerRequest: number;
 }
 
@@ -105,12 +120,12 @@ export class FetchCostDashboardService {
     startDate?: string,
     endDate?: string,
     config?: RequestConfig
-  ): Promise<CostTrendDto[]> {
+  ): Promise<CostTrendDto> {
     const queryParams = new URLSearchParams({ period });
     if (startDate) queryParams.append('startDate', startDate);
     if (endDate) queryParams.append('endDate', endDate);
 
-    return this.client['get']<CostTrendDto[]>(
+    return this.client['get']<CostTrendDto>(
       `${ENDPOINTS.COSTS.TRENDS}?${queryParams.toString()}`,
       {
         signal: config?.signal,

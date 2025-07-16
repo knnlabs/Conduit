@@ -156,6 +156,73 @@ export default function CostDashboard() {
     return <ErrorDisplay error={error} title="Failed to load cost data" variant="card" onRetry={() => window.location.reload()} />;
   }
 
+  // Check if this is a no-data scenario (first-time setup)
+  const hasNoCostData = !isLoading && costData && totalSpend === 0 && providerCosts.length === 0;
+
+  if (hasNoCostData) {
+    return (
+      <Stack>
+        <Card shadow="sm" p="md" radius="md">
+          <Group justify="space-between" align="center">
+            <div>
+              <Title order={2}>Cost Dashboard</Title>
+              <Text size="sm" c="dimmed" mt={4}>
+                Monitor and analyze your API usage costs
+              </Text>
+            </div>
+          </Group>
+        </Card>
+
+        <Alert
+          icon={<IconChartBar size="1.5rem" />}
+          title="No Cost Data Available"
+          color="blue"
+          variant="light"
+          p="xl"
+        >
+          <Stack gap="md">
+            <Text size="md">
+              Cost tracking will begin after your first API requests. Your dashboard will show detailed usage analytics once you start using the system.
+            </Text>
+            
+            <div>
+              <Text size="sm" fw={600} mb="xs">To get started:</Text>
+              <Stack gap="xs" ml="md">
+                <Group gap="xs">
+                  <Text size="sm" c="blue" fw={500}>1.</Text>
+                  <Text size="sm">Create virtual keys in the <Text component="span" fw={500}>Virtual Keys</Text> page</Text>
+                </Group>
+                <Group gap="xs">
+                  <Text size="sm" c="blue" fw={500}>2.</Text>
+                  <Text size="sm">Configure LLM providers in the <Text component="span" fw={500}>LLM Providers</Text> page</Text>
+                </Group>
+                <Group gap="xs">
+                  <Text size="sm" c="blue" fw={500}>3.</Text>
+                  <Text size="sm">Make API requests using your virtual keys</Text>
+                </Group>
+                <Group gap="xs">
+                  <Text size="sm" c="blue" fw={500}>4.</Text>
+                  <Text size="sm">Return here to view your usage costs and analytics</Text>
+                </Group>
+              </Stack>
+            </div>
+
+            <Group gap="sm" mt="md">
+              <Button
+                variant="light"
+                leftSection={<IconRefresh size={16} />}
+                onClick={handleRefresh}
+                loading={isLoading}
+              >
+                Check Again
+              </Button>
+            </Group>
+          </Stack>
+        </Alert>
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       {!costData && !isLoading && (
@@ -451,7 +518,6 @@ export default function CostDashboard() {
         </Alert>
       )}
 
-      <LoadingOverlay visible={isLoading} />
     </Stack>
   );
 }

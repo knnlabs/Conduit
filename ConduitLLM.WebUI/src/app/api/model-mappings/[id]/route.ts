@@ -38,10 +38,10 @@ export async function PUT(
     console.log('[PUT /api/model-mappings] Existing mapping:', existingMapping);
     
     // Transform frontend data to match SDK UpdateModelProviderMappingDto
-    // Backend requires id and modelId fields even for updates
+    // The backend expects the ID in the body to match the route ID
     const transformedBody: UpdateModelProviderMappingDto = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
-      modelId: body.modelId || existingMapping.modelId, // Allow modelId to be updated if provided
+      modelId: body.modelId || existingMapping.modelId, // Backend requires modelId even for updates
     };
     
     if (body.providerId !== undefined) {
@@ -76,6 +76,12 @@ export async function PUT(
     }
     if (body.supportsStreaming !== undefined) {
       transformedBody.supportsStreaming = body.supportsStreaming;
+    }
+    if (body.supportsVideoGeneration !== undefined) {
+      transformedBody.supportsVideoGeneration = body.supportsVideoGeneration;
+    }
+    if (body.supportsEmbeddings !== undefined) {
+      transformedBody.supportsEmbeddings = body.supportsEmbeddings;
     }
     if (body.maxContextLength !== undefined && body.maxContextLength !== null) {
       transformedBody.maxContextLength = body.maxContextLength;

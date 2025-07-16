@@ -26,6 +26,10 @@ export interface ModelProviderMappingDto {
   supportsFunctionCalling: boolean;
   /** Whether this model supports streaming responses */
   supportsStreaming: boolean;
+  /** Whether this model supports video generation capabilities */
+  supportsVideoGeneration: boolean;
+  /** Whether this model supports embeddings generation */
+  supportsEmbeddings: boolean;
   
   // Extended Metadata Fields
   /** Optional model capabilities (e.g., vision, function-calling) */
@@ -66,6 +70,8 @@ export interface CreateModelProviderMappingDto {
   supportsRealtimeAudio?: boolean;
   supportsFunctionCalling?: boolean;
   supportsStreaming?: boolean;
+  supportsVideoGeneration?: boolean;
+  supportsEmbeddings?: boolean;
   
   // Extended Metadata Fields
   capabilities?: string;
@@ -108,6 +114,8 @@ export interface UpdateModelProviderMappingDto {
   supportsRealtimeAudio?: boolean;
   supportsFunctionCalling?: boolean;
   supportsStreaming?: boolean;
+  supportsVideoGeneration?: boolean;
+  supportsEmbeddings?: boolean;
   
   // Extended Metadata Fields
   /**

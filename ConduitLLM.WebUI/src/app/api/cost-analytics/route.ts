@@ -49,17 +49,17 @@ export async function GET(req: NextRequest) {
     const projectedMonthlySpend = (costSummary.totalCost / dayOfMonth) * daysInMonth;
 
     // Format provider costs from summary
-    const providerCosts = costSummary.topProviders?.map(provider => ({
-      provider: provider.provider,
+    const providerCosts = costSummary.topProvidersBySpend?.map(provider => ({
+      provider: provider.name,
       cost: provider.cost,
-      usage: (provider.cost / costSummary.totalCost) * 100,
+      usage: provider.percentage,
       trend: 0, // Not available in current data
     })) || [];
 
     // Format model usage
     const modelUsage = modelCosts?.map(model => ({
       model: model.model,
-      provider: model.provider,
+      provider: model.model.includes('/') ? model.model.split('/')[0] : 'unknown',
       requests: model.requestCount,
       tokensIn: 0, // Not available in current endpoint
       tokensOut: 0, // Not available in current endpoint
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     })) || [];
 
     // Format daily costs from trends
-    const dailyCosts = costTrends?.map(trend => {
+    const dailyCosts = costTrends?.data?.map(trend => {
       const providers: Record<string, number> = {};
       
       // Distribute cost across providers based on breakdown
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       });
 
       return {
-        date: trend.period,
+        date: trend.date,
         cost: trend.cost,
         providers,
       };

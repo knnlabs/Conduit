@@ -258,6 +258,8 @@ export class FetchModelMappingsService {
     if (mapping.supportsRealtimeAudio) capabilities.push('realtime-audio');
     if (mapping.supportsFunctionCalling) capabilities.push('function-calling');
     if (mapping.supportsStreaming) capabilities.push('streaming');
+    if (mapping.supportsVideoGeneration) capabilities.push('video-generation');
+    if (mapping.supportsEmbeddings) capabilities.push('embeddings');
     
     return capabilities;
   }
@@ -288,6 +290,10 @@ export class FetchModelMappingsService {
         return mapping.supportsFunctionCalling;
       case 'streaming':
         return mapping.supportsStreaming;
+      case 'video-generation':
+        return mapping.supportsVideoGeneration;
+      case 'embeddings':
+        return mapping.supportsEmbeddings;
       default:
         return false;
     }

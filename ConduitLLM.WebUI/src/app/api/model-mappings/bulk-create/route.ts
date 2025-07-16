@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
           supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
           supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
           supportsStreaming: model.capabilities.supportsStreaming,
+          supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
+          supportsEmbeddings: model.capabilities.supportsEmbeddings,
           maxContextLength: model.capabilities.maxContextLength || undefined,
           maxOutputTokens: model.capabilities.maxOutputTokens || undefined,
           // Don't set capabilities string - let backend derive from boolean flags
@@ -75,8 +77,6 @@ export async function POST(req: NextRequest) {
           // Store additional metadata in notes
           metadata: JSON.stringify({
             displayName: model.displayName,
-            supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
-            supportsEmbeddings: model.capabilities.supportsEmbeddings,
             bulkImported: true,
             importedAt: new Date().toISOString()
           }),
