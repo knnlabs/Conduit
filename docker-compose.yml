@@ -156,13 +156,13 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Redis configuration for session storage
+      # Redis configuration
       REDIS_URL: "redis://redis:6379"
-      REDIS_SESSION_PREFIX: "conduit:session:"
-      # Admin login password for human users to access WebUI dashboard
-      CONDUIT_ADMIN_LOGIN_PASSWORD: alpha
-      # Optional Clerk authentication (comment out to use password auth above)
+      # Clerk authentication for WebUI access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
+      # Users must have siteadmin: true in their public metadata to access the WebUI
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
+      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
     ports:
       - "3000:3000"
     restart: on-failure

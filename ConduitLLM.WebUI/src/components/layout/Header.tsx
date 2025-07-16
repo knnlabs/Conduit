@@ -5,19 +5,12 @@ import {
   Burger,
   Text,
   ActionIcon,
-  Menu,
-  Avatar,
-  UnstyledButton,
-  rem,
   Divider,
 } from '@mantine/core';
 import {
   IconBell,
-  IconSettings,
-  IconUser,
-  IconChevronDown,
 } from '@tabler/icons-react';
-import { useRouter } from 'next/navigation';
+import { UserButton } from '@clerk/nextjs';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -34,12 +27,6 @@ export function Header({
   toggleMobile,
   toggleDesktop,
 }: HeaderProps) {
-  const router = useRouter();
-
-  const handleSettings = () => {
-    router.push('/configuration');
-  };
-
   return (
     <Group h="100%" px="md" justify="space-between">
       <Group>
@@ -72,30 +59,7 @@ export function Header({
           <IconBell size={18} />
         </ActionIcon>
 
-        <Menu shadow="md" width={200} position="bottom-end">
-          <Menu.Target>
-            <UnstyledButton>
-              <Group gap="xs">
-                <Avatar size="sm" color="blue">
-                  <IconUser size={16} />
-                </Avatar>
-                <Text size="sm" fw={500}>
-                  Admin
-                </Text>
-                <IconChevronDown size={12} />
-              </Group>
-            </UnstyledButton>
-          </Menu.Target>
-
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<IconSettings style={{ width: rem(14), height: rem(14) }} />}
-              onClick={handleSettings}
-            >
-              Settings
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <UserButton />
       </Group>
     </Group>
   );

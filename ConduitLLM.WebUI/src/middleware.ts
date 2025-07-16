@@ -1,17 +1,30 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  
-  // Add basic security headers only
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  
-  return response;
-}
+// Only the access-denied page is public
+const isPublicRoute = createRouteMatcher(['/access-denied']);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    // Get auth state
+    const { userId, sessionClaims, redirectToSignIn } = await auth();
+    
+    // If not authenticated, redirect to sign-in
+    if (!userId) {
+      return redirectToSignIn();
+    }
+    
+    // Check if user has admin access
+    const metadata = sessionClaims?.metadata as { siteadmin?: boolean } | undefined;
+    const isAdmin = metadata?.siteadmin === true;
+    
+    // If not admin, redirect to access-denied
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL('/access-denied', req.url));
+    }
+  }
+});
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+};

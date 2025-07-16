@@ -80,14 +80,11 @@ export const config = {
   // Authentication
   auth: {
     masterKey: isServer ? getOptionalEnv('CONDUIT_API_TO_API_BACKEND_AUTH_KEY', '') : '',
-    sessionSecret: isServer ? getOptionalEnv('SESSION_SECRET', '') : '',
-    sessionMaxAge: getNumberEnv('SESSION_MAX_AGE', 24 * 60 * 60 * 1000), // 24 hours
   },
 
   // Redis Configuration
   redis: {
     url: isServer ? getOptionalEnv('REDIS_URL', 'redis://localhost:6379') : '',
-    sessionPrefix: getOptionalEnv('REDIS_SESSION_PREFIX', 'conduit:session:'),
   },
 
   // Server Configuration
@@ -138,9 +135,6 @@ export function validateEnvironment(): void {
     // Authentication is required on server
     if (!config.auth.masterKey) {
       errors.push('CONDUIT_API_TO_API_BACKEND_AUTH_KEY is required for server-side operations');
-    }
-    if (!config.auth.sessionSecret || config.auth.sessionSecret === 'your-session-secret-key-change-in-production') {
-      errors.push('SESSION_SECRET must be set to a secure value in production');
     }
   }
 
