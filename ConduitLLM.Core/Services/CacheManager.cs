@@ -28,6 +28,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICacheStatisticsCollector? _statisticsCollector;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionConfig> _regionConfigs;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionStatistics> _statistics;
+        private readonly ConcurrentDictionary<CacheRegion, ConcurrentDictionary<string, byte>> _regionKeys;
         private readonly SemaphoreSlim _statisticsLock = new(1, 1);
         private readonly Timer _statisticsTimer;
         private readonly bool _useDistributedCache;
@@ -52,6 +53,7 @@ namespace ConduitLLM.Core.Services
 
             _regionConfigs = new ConcurrentDictionary<CacheRegion, CacheRegionConfig>();
             _statistics = new ConcurrentDictionary<CacheRegion, CacheRegionStatistics>();
+            _regionKeys = new ConcurrentDictionary<CacheRegion, ConcurrentDictionary<string, byte>>();
 
             // Initialize default configurations
             InitializeDefaultConfigurations(options?.Value);
@@ -184,6 +186,10 @@ namespace ConduitLLM.Core.Services
                     };
 
                     _memoryCache.Set(fullKey, value, memoryCacheOptions);
+                    
+                    // Track the key for this region
+                    var regionKeys = _regionKeys.GetOrAdd(region, _ => new ConcurrentDictionary<string, byte>());
+                    regionKeys.TryAdd(key, 0);
                 }
 
                 // Set in distributed cache if enabled
@@ -277,6 +283,12 @@ namespace ConduitLLM.Core.Services
 
                 if (removed)
                 {
+                    // Remove the key from tracking
+                    if (_regionKeys.TryGetValue(region, out var regionKeys))
+                    {
+                        regionKeys.TryRemove(key, out _);
+                    }
+                    
                     _logger.LogDebug("Removed key {Key} from region {Region}", key, region);
                     await UpdateStatisticsAsync(region, "Remove", stopwatch.Elapsed, true);
                 }
@@ -307,17 +319,6 @@ namespace ConduitLLM.Core.Services
 
         /// <summary>
         /// Clears all cache entries for the specified region.
-        /// 
-        /// LIMITATION: This method is not fully implemented due to architectural constraints.
-        /// IMemoryCache does not provide native enumeration support, and we do not currently
-        /// track keys per region. As a result, this method will not clear any entries.
-        /// 
-        /// TODO: To implement proper region clearing, we need to either:
-        /// 1. Add key tracking per region (ConcurrentDictionary&lt;CacheRegion, HashSet&lt;string&gt;&gt;)
-        /// 2. Use separate IMemoryCache instances per region
-        /// 3. Implement a custom cache wrapper with enumeration support
-        /// 
-        /// For now, this method only resets statistics for the region.
         /// </summary>
         public async Task ClearRegionAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
@@ -325,12 +326,19 @@ namespace ConduitLLM.Core.Services
             
             try
             {
-                // LIMITATION: ListKeysAsync always returns empty due to lack of key tracking
-                // Clear from memory cache (requires key enumeration - not currently supported)
-                var keys = await ListKeysAsync(region, null, int.MaxValue, cancellationToken);
-                foreach (var key in keys)
+                var clearedCount = 0;
+                
+                // Clear from memory cache using tracked keys
+                if (_regionKeys.TryGetValue(region, out var regionKeys))
                 {
-                    _memoryCache.Remove(BuildKey(key, region));
+                    var keysList = regionKeys.Keys.ToList();
+                    foreach (var key in keysList)
+                    {
+                        var fullKey = BuildKey(key, region);
+                        _memoryCache.Remove(fullKey);
+                        regionKeys.TryRemove(key, out _);
+                        clearedCount++;
+                    }
                 }
 
                 // Clear from distributed cache if available
@@ -340,13 +348,7 @@ namespace ConduitLLM.Core.Services
                     _logger.LogWarning("Distributed cache clear not fully implemented for region {Region}", region);
                 }
 
-                // Log limitation for visibility
-                if (!keys.Any())
-                {
-                    _logger.LogWarning("ClearRegionAsync for region {Region} did not clear any entries due to missing key enumeration support", region);
-                }
-
-                _logger.LogInformation("Cleared cache region {Region}", region);
+                _logger.LogInformation("Cleared {Count} entries from cache region {Region}", clearedCount, region);
                 await UpdateStatisticsAsync(region, "Clear", stopwatch.Elapsed, true);
 
                 // Reset statistics for the region
@@ -435,9 +437,27 @@ namespace ConduitLLM.Core.Services
 
         public async Task<IEnumerable<string>> ListKeysAsync(CacheRegion region, string? pattern = null, int maxCount = 100, CancellationToken cancellationToken = default)
         {
-            // This is a simplified implementation. In production, we'd need to track keys per region
-            _logger.LogWarning("ListKeysAsync is not fully implemented - returning empty list");
-            return await Task.FromResult(Enumerable.Empty<string>());
+            if (!_regionKeys.TryGetValue(region, out var regionKeys))
+            {
+                return await Task.FromResult(Enumerable.Empty<string>());
+            }
+
+            var keys = regionKeys.Keys.AsEnumerable();
+
+            // Apply pattern filtering if provided
+            if (!string.IsNullOrEmpty(pattern))
+            {
+                // Simple wildcard pattern matching (supports * and ?)
+                var regex = new System.Text.RegularExpressions.Regex(
+                    "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                        .Replace("\\*", ".*")
+                        .Replace("\\?", ".") + "$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                
+                keys = keys.Where(k => regex.IsMatch(k));
+            }
+
+            return await Task.FromResult(keys.Take(maxCount).ToList());
         }
 
         public async Task<IEnumerable<CacheEntry<object>>> GetEntriesAsync(CacheRegion region, int skip = 0, int take = 100, CancellationToken cancellationToken = default)
@@ -558,6 +578,7 @@ namespace ConduitLLM.Core.Services
 
                 _regionConfigs[region] = config;
                 _statistics[region] = new CacheRegionStatistics { Region = region, LastResetTime = DateTime.UtcNow };
+                _regionKeys[region] = new ConcurrentDictionary<string, byte>();
             }
         }
 
@@ -589,6 +610,12 @@ namespace ConduitLLM.Core.Services
                     EvictionReason.Replaced => CacheEvictionReason.Replaced,
                     _ => CacheEvictionReason.PolicyTriggered
                 };
+
+                // Remove from key tracking
+                if (_regionKeys.TryGetValue(region, out var regionKeys))
+                {
+                    regionKeys.TryRemove(originalKey, out _);
+                }
 
                 EntryEvicted?.Invoke(this, new CacheEvictionEventArgs
                 {
