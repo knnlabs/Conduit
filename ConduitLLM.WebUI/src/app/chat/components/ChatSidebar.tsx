@@ -92,7 +92,7 @@ export function ChatSidebar() {
     if (!session) return;
 
     const dataStr = JSON.stringify(session, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const dataUri = `data:application/json;charset=utf-8,${ encodeURIComponent(dataStr)}`;
     
     const exportFileDefaultName = `chat-${session.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
     

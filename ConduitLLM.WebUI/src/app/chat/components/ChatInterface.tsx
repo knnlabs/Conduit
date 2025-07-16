@@ -176,8 +176,8 @@ export function ChatInterface() {
         if (!reader) throw new Error('No response body reader');
         
         let fullContent = '';
-        let startTime = Date.now();
-        let finalMetrics: Partial<StreamingPerformanceMetrics & UsageData & MetricsEventData> = {};
+        const startTime = Date.now();
+        const finalMetrics: Partial<StreamingPerformanceMetrics & UsageData & MetricsEventData> = {};
 
         // Process SSE stream with proper event parsing
         for await (const event of parseSSEStream(reader)) {

@@ -124,7 +124,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
 
       <Table.Td>
         <Group gap={4}>
-          {provider.models && provider.models.slice(0, 2).map((model, idx) => (
+          {provider.models?.slice(0, 2).map((model, idx) => (
             <Badge key={idx} size="xs" variant="light">
               {model}
             </Badge>

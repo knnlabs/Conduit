@@ -83,7 +83,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     
     // Check capabilities string for additional features (if it exists in response)
     if ('capabilities' in mapping && mapping.capabilities) {
-      const caps = mapping.capabilities as string;
+      const caps = mapping.capabilities;
       if (caps.includes('function-calling') && !mapping.supportsFunctionCalling) {
         capabilities.push({ label: 'Functions', color: 'green' });
       }
@@ -154,7 +154,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
             
             let stringCaps = 0;
             if ('capabilities' in mapping && mapping.capabilities) {
-              const caps = mapping.capabilities as string;
+              const caps = mapping.capabilities;
               // Count unique capabilities in string that aren't already counted
               const capsInString = caps.split(',').filter(c => c.trim());
               if (caps.includes('embeddings')) stringCaps++;

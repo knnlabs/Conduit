@@ -46,7 +46,7 @@ export function useRoutingTest() {
   // Mock data generation functions
   const generateMockEvaluationSteps = (request: TestRequest): EvaluationStep[] => {
     const steps: EvaluationStep[] = [];
-    let timestamp = Date.now();
+    const timestamp = Date.now();
     
     steps.push({
       timestamp: timestamp,

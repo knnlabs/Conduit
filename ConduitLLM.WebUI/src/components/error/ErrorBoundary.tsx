@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 {process.env.NODE_ENV === 'development' && error && (
                   <Code block color="red" style={{ textAlign: 'left', fontSize: '0.8rem' }}>
                     {error.message}
-                    {error.stack && '\n\n' + error.stack}
+                    {error.stack && `\n\n${  error.stack}`}
                   </Code>
                 )}
               </Stack>

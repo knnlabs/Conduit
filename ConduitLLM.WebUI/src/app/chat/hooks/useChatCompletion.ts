@@ -94,7 +94,7 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
           let buffer = '';
           let fullContent = '';
           let functionCall: any = null;
-          let toolCalls: any[] = [];
+          const toolCalls: any[] = [];
 
           while (reader) {
             const { done, value } = await reader.read();

@@ -53,7 +53,7 @@ function generateMockLogs(count: number = 100) {
         temperature: 0.7,
       } : undefined,
       responseBody: !isError && Math.random() < 0.5 ? {
-        id: 'chatcmpl-' + Math.random().toString(36).substr(2, 9),
+        id: `chatcmpl-${  Math.random().toString(36).substr(2, 9)}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         choices: [

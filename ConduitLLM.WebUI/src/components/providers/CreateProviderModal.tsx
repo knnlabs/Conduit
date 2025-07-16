@@ -176,7 +176,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
 
   const getProviderHelp = (providerType: string) => {
     const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
-    if (!config || !config.helpText) {
+    if (!config?.helpText) {
       return null;
     }
 

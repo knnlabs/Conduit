@@ -162,7 +162,7 @@ export const formatters = {
    */
   percentage: (
     value: number | null | undefined,
-    total?: number | null | undefined,
+    total?: number | null  ,
     options: { decimals?: number; locale?: string } = {}
   ): string => {
     const { decimals = 1, locale = 'en-US' } = options;

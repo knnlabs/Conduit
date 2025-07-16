@@ -21,7 +21,7 @@ export function exportToCSV<T extends Record<string, unknown>>(
     headers.join(','),
     ...data.map(row => 
       keys.map(key => {
-        const value = row[key as keyof T];
+        const value = row[key];
         // Handle different value types
         if (value === null || value === undefined) {
           return '';

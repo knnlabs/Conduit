@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (password === process.env.CONDUIT_ADMIN_LOGIN_PASSWORD) {
     const response = NextResponse.redirect(new URL('/', request.url));
     response.cookies.set('conduit_session', JSON.stringify({
-      id: 'session_' + Date.now(),
+      id: `session_${  Date.now()}`,
       isAdmin: true,
       isAuthenticated: true,
       expiresAt: Date.now() + 86400000,

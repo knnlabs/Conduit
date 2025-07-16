@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const adminClient = getServerAdminClient();
     
     // Initialize empty response structure
-    let metrics = {
+    const metrics = {
       cpu: { usage: 0, cores: 0, loadAverage: [], temperature: null },
       memory: { total: 0, used: 0, percentage: 0, swap: { total: 0, used: 0 } },
       disk: { total: 0, used: 0, percentage: 0, io: { read: 0, write: 0 } },
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       processCount: 0,
       threadCount: 0,
     };
-    let history: any[] = [];
+    const history: any[] = [];
     let services: any[] = [];
     let transformedAlerts: any[] = [];
 

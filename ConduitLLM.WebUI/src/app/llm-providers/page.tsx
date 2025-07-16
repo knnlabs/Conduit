@@ -158,7 +158,7 @@ export default function ProvidersPage() {
       provider.name.toLowerCase().includes(query) ||
       provider.id.toLowerCase().includes(query) ||
       (provider.type && provider.type.toLowerCase().includes(query)) ||
-      (provider.endpoint && provider.endpoint.toLowerCase().includes(query))
+      (provider.endpoint?.toLowerCase().includes(query))
     );
   });
 

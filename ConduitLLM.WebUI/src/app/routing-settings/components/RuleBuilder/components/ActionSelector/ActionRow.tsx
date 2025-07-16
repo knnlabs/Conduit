@@ -72,11 +72,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
           <NumberInput
             key={param.name}
             label={param.label}
-            placeholder={(param as any).placeholder}
+            placeholder={(param).placeholder}
             value={typeof currentValue === 'number' ? currentValue : undefined}
             onChange={(value) => handleParameterChange(param.name, value)}
-            min={(param as any).min}
-            max={(param as any).max}
+            min={(param).min}
+            max={(param).max}
             required={param.required}
           />
         );
@@ -86,7 +86,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
           <Switch
             key={param.name}
             label={param.label}
-            description={(param as any).description}
+            description={(param).description}
             checked={Boolean(currentValue)}
             onChange={(e) => handleParameterChange(param.name, e.target.checked)}
           />
@@ -97,11 +97,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
           <Select
             key={param.name}
             label={param.label}
-            placeholder={(param as any).placeholder}
-            data={(param as any).options || []}
+            placeholder={(param).placeholder}
+            data={(param).options || []}
             value={currentValue}
             onChange={(value) => handleParameterChange(param.name, value)}
-            searchable={(param as any).searchable}
+            searchable={(param).searchable}
             required={param.required}
           />
         );
@@ -126,7 +126,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
           <TextInput
             key={param.name}
             label={param.label}
-            placeholder={(param as any).placeholder}
+            placeholder={(param).placeholder}
             value={currentValue || ''}
             onChange={(e) => handleParameterChange(param.name, e.target.value)}
             required={param.required}
