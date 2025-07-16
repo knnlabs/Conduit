@@ -23,8 +23,8 @@ export const ProviderCredentialSchema = IdSchema.extend({
     tokensPerMinute: z.number().int().positive().optional(),
     concurrentRequests: z.number().int().positive().optional(),
   }).optional(),
-  customHeaders: z.record(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  customHeaders: z.record(z.string(), z.string()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   status: ProviderStatusSchema,
   healthCheckInterval: z.number().int().positive().optional(),
   lastHealthCheck: z.string().datetime().optional(),
@@ -53,8 +53,8 @@ export const CreateProviderRequestSchema = z.object({
     tokensPerMinute: z.number().int().positive().optional(),
     concurrentRequests: z.number().int().positive().optional(),
   }).optional(),
-  customHeaders: z.record(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  customHeaders: z.record(z.string(), z.string()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CreateProviderRequest = z.infer<typeof CreateProviderRequestSchema>;

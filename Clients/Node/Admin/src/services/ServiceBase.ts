@@ -22,7 +22,7 @@ export const defaultValidationOptions: ValidationOptions = {
   throwOnError: false,
   onValidationError: (error, response) => {
     console.warn('API response validation failed:', {
-      errors: error.errors,
+      errors: error.issues,
       response,
     });
   },

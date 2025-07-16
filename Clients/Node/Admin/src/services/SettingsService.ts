@@ -34,7 +34,7 @@ const audioConfigSchema = z.object({
   defaultModel: z.string().optional(),
   maxDuration: z.number().positive().optional(),
   allowedVoices: z.array(z.string()).optional(),
-  customSettings: z.record(z.any()).optional(),
+  customSettings: z.record(z.string(), z.any()).optional(),
 });
 
 export class SettingsService extends FetchBaseApiClient {

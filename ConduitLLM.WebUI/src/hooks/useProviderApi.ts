@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
-import type { ProviderCredentialDto } from '@/types/api-types';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
 
 // Use UIProvider from mappers for consistency

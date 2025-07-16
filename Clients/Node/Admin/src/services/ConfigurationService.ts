@@ -77,7 +77,7 @@ const createCachePolicySchema = z.object({
   maxSizeMB: z.number().positive().optional(),
   strategy: z.enum(['memory', 'redis', 'hybrid']),
   enabled: z.boolean().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -112,7 +112,7 @@ const createRoutingRuleSchema = z.object({
   actions: z.array(z.object({
     type: z.enum(['route', 'transform', 'cache', 'rate_limit', 'log']),
     target: z.string().optional(),
-    parameters: z.record(z.any()).optional(),
+    parameters: z.record(z.string(), z.any()).optional(),
   })),
   enabled: z.boolean().optional(),
 });
@@ -143,7 +143,7 @@ export class ConfigurationService extends SettingsService {
       const parsed = updateRoutingSchema.safeParse(config);
       if (!parsed.success) {
         throw new ValidationError('Invalid routing configuration', {
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -202,7 +202,7 @@ export class ConfigurationService extends SettingsService {
       const parsed = updateCachingSchema.safeParse(config);
       if (!parsed.success) {
         throw new ValidationError('Invalid caching configuration', {
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -234,7 +234,7 @@ export class ConfigurationService extends SettingsService {
       const parsed = createCachePolicySchema.safeParse(policy);
       if (!parsed.success) {
         throw new ValidationError('Invalid cache policy', {
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -339,7 +339,7 @@ export class ConfigurationService extends SettingsService {
       const parsed = updateExtendedRoutingSchema.safeParse(config);
       if (!parsed.success) {
         throw new ValidationError('Invalid extended routing configuration', {
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -371,7 +371,7 @@ export class ConfigurationService extends SettingsService {
       const parsed = createRoutingRuleSchema.safeParse(rule);
       if (!parsed.success) {
         throw new ValidationError('Invalid routing rule', {
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }

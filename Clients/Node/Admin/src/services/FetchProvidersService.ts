@@ -310,7 +310,7 @@ export class FetchProvidersService {
             lastChecked: healthData.lastChecked || new Date().toISOString(),
             responseTime: healthData.avgLatency || 0,
             uptime: healthData.uptime?.percentage || 0,
-            errorRate: healthData.metrics?.errors?.rate || 0,
+            errorRate: healthData.metrics?.issues?.rate || 0,
             details: healthData.lastIncident ? {
               lastError: healthData.lastIncident.message,
               consecutiveFailures: 0,

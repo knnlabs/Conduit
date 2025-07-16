@@ -19,7 +19,7 @@ import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { UIModelMapping, UIProvider } from '@/lib/types/mappers';
-import type { UpdateModelProviderMappingDto } from '@/types/api-types';
+import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -42,9 +42,12 @@ interface FormValues {
   supportsRealtimeAudio: boolean;
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;
+  supportsVideoGeneration: boolean;
+  supportsEmbeddings: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
+  isDefault: boolean;
 }
 
 export function EditModelMappingModal({
@@ -71,8 +74,11 @@ export function EditModelMappingModal({
       supportsRealtimeAudio: false,
       supportsFunctionCalling: false,
       supportsStreaming: false,
+      supportsVideoGeneration: false,
+      supportsEmbeddings: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
+      isDefault: false,
     },
     validate: {
       modelId: (value) => {
@@ -120,8 +126,11 @@ export function EditModelMappingModal({
         supportsRealtimeAudio: mapping.supportsRealtimeAudio || false,
         supportsFunctionCalling: mapping.supportsFunctionCalling || false,
         supportsStreaming: mapping.supportsStreaming || false,
+        supportsVideoGeneration: mapping.supportsVideoGeneration || false,
+        supportsEmbeddings: mapping.supportsEmbeddings || false,
         maxContextLength: mapping.maxContextLength,
         maxOutputTokens: mapping.maxOutputTokens,
+        isDefault: mapping.isDefault || false,
       };
       console.log('[EditModal] Form data to set:', formData);
       form.setValues(formData);
@@ -147,8 +156,11 @@ export function EditModelMappingModal({
       supportsRealtimeAudio: values.supportsRealtimeAudio,
       supportsFunctionCalling: values.supportsFunctionCalling,
       supportsStreaming: values.supportsStreaming,
+      supportsVideoGeneration: values.supportsVideoGeneration,
+      supportsEmbeddings: values.supportsEmbeddings,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
+      isDefault: values.isDefault,
     };
 
     console.log('[EditModal] Update data:', updateData);
@@ -252,9 +264,20 @@ export function EditModelMappingModal({
             />
           </Group>
 
+          <Group grow>
+            <Switch
+              label="Realtime Audio"
+              {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Video Generation"
+              {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
+            />
+          </Group>
+
           <Switch
-            label="Realtime Audio"
-            {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
+            label="Embeddings"
+            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
           />
 
           <Divider label="Context Limits" labelPosition="center" />

@@ -26,7 +26,7 @@ import {
 } from '@/hooks/useModelMappingsApi';
 import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
 import { toUIModelMapping } from '@/lib/types/mappers';
-import type { ModelProviderMappingDto } from '@/types/api-types';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface ModelMappingsTableProps {
   onRefresh?: () => void;
@@ -74,10 +74,8 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     if (mapping.supportsTextToSpeech) capabilities.push({ label: 'TTS', color: 'violet' });
     if (mapping.supportsRealtimeAudio) capabilities.push({ label: 'Realtime', color: 'orange' });
     
-    // These fields exist in type definitions but may not be in actual SDK response
-    if ('supportsVideoGeneration' in mapping && mapping.supportsVideoGeneration) {
-      capabilities.push({ label: 'Video', color: 'grape' });
-    }
+    if (mapping.supportsVideoGeneration) capabilities.push({ label: 'Video', color: 'grape' });
+    if (mapping.supportsEmbeddings) capabilities.push({ label: 'Embeddings', color: 'indigo' });
     if (mapping.supportsFunctionCalling) capabilities.push({ label: 'Functions', color: 'green' });
     if (mapping.supportsStreaming) capabilities.push({ label: 'Streaming', color: 'cyan' });
     
@@ -90,7 +88,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       if (caps.includes('streaming') && !mapping.supportsStreaming) {
         capabilities.push({ label: 'Streaming', color: 'cyan' });
       }
-      if (caps.includes('embeddings')) {
+      if (caps.includes('embeddings') && !mapping.supportsEmbeddings) {
         capabilities.push({ label: 'Embeddings', color: 'indigo' });
       }
     }
@@ -132,7 +130,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       
       <Table.Td>
         <Text size="sm">
-          {mapping.providerName || mapping.providerId}
+          {mapping.providerId}
         </Text>
       </Table.Td>
 

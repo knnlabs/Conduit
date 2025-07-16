@@ -19,7 +19,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
-import type { CreateModelProviderMappingDto } from '@/types/api-types';
+import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import type { UIProvider } from '@/lib/types/mappers';
 
 interface CreateModelMappingModalProps {
@@ -42,9 +42,12 @@ interface FormValues {
   supportsRealtimeAudio: boolean;
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;
+  supportsVideoGeneration: boolean;
+  supportsEmbeddings: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
+  isDefault: boolean;
 }
 
 export function CreateModelMappingModal({ 
@@ -69,8 +72,11 @@ export function CreateModelMappingModal({
       supportsRealtimeAudio: false,
       supportsFunctionCalling: false,
       supportsStreaming: true, // Most models support streaming
+      supportsVideoGeneration: false,
+      supportsEmbeddings: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
+      isDefault: false,
     },
     validate: {
       modelId: (value) => !value?.trim() ? 'Model ID is required' : null,
@@ -94,8 +100,11 @@ export function CreateModelMappingModal({
       supportsRealtimeAudio: values.supportsRealtimeAudio,
       supportsFunctionCalling: values.supportsFunctionCalling,
       supportsStreaming: values.supportsStreaming,
+      supportsVideoGeneration: values.supportsVideoGeneration,
+      supportsEmbeddings: values.supportsEmbeddings,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
+      isDefault: values.isDefault,
     };
 
     await createMapping.mutateAsync(createData);
@@ -222,9 +231,20 @@ export function CreateModelMappingModal({
             />
           </Group>
 
+          <Group grow>
+            <Switch
+              label="Realtime Audio"
+              {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Video Generation"
+              {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
+            />
+          </Group>
+
           <Switch
-            label="Realtime Audio"
-            {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
+            label="Embeddings"
+            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
           />
 
           <Divider label="Context Limits (Optional)" labelPosition="center" />

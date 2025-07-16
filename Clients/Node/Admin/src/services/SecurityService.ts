@@ -23,7 +23,7 @@ const createSecurityEventSchema = z.object({
   source: z.string().min(1),
   virtualKeyId: z.string().optional(),
   ipAddress: z.string().optional(),
-  details: z.record(z.any()),
+  details: z.record(z.string(), z.any()),
   statusCode: z.number().optional(),
 });
 
@@ -64,7 +64,7 @@ export class SecurityService extends FetchBaseApiClient {
       const parsed = securityEventFiltersSchema.safeParse(params);
       if (!parsed.success) {
         throw new ValidationError('Invalid security event filters', { 
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -96,7 +96,7 @@ export class SecurityService extends FetchBaseApiClient {
     const parsed = createSecurityEventSchema.safeParse(event);
     if (!parsed.success) {
       throw new ValidationError('Invalid security event data', { 
-        validationErrors: parsed.error.errors,
+        validationErrors: parsed.error.issues,
         issues: parsed.error.format()
       });
     }
@@ -117,7 +117,7 @@ export class SecurityService extends FetchBaseApiClient {
       const parsed = securityEventFiltersSchema.safeParse(filters);
       if (!parsed.success) {
         throw new ValidationError('Invalid security event filters', { 
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }
@@ -151,7 +151,7 @@ export class SecurityService extends FetchBaseApiClient {
       const parsed = threatFiltersSchema.safeParse(params);
       if (!parsed.success) {
         throw new ValidationError('Invalid threat filters', { 
-          validationErrors: parsed.error.errors,
+          validationErrors: parsed.error.issues,
           issues: parsed.error.format()
         });
       }

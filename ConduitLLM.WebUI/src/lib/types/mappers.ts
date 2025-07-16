@@ -4,7 +4,7 @@ import type {
   ModelProviderMappingDto,
   ProviderHealthStatusDto,
   BudgetDuration
-} from '@/types/api-types';
+} from '@knn_labs/conduit-admin-client';
 
 // Types that aren't in api-types.ts yet
 interface HealthStatusDto {

@@ -6,7 +6,7 @@ import type {
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
   DiscoveredModel
-} from '@/types/api-types';
+} from '@knn_labs/conduit-admin-client';
 
 const QUERY_KEY = 'model-mappings';
 

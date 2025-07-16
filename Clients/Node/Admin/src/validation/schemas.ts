@@ -88,7 +88,7 @@ export const SystemInfoDtoSchema = z.object({
   environment: z.string(),
   uptime: z.string(),
   serverTime: z.string(),
-  features: z.record(z.boolean()),
+  features: z.record(z.string(), z.boolean()),
   database: z.object({
     type: z.string(),
     version: z.string(),
@@ -106,10 +106,10 @@ export const SystemInfoDtoSchema = z.object({
 
 export const HealthStatusDtoSchema = z.object({
   status: z.enum(['Healthy', 'Unhealthy', 'Degraded']),
-  checks: z.record(z.object({
+  checks: z.record(z.string(), z.object({
     status: z.enum(['Healthy', 'Unhealthy', 'Degraded']),
     description: z.string().optional(),
-    data: z.record(z.any()).optional(),
+    data: z.record(z.string(), z.any()).optional(),
   })),
   totalDuration: z.string(),
   timestamp: z.string(),
@@ -219,7 +219,7 @@ export const defaultValidationOptions: ValidationOptions = {
   throwOnError: false,
   onValidationError: (error, response) => {
     console.warn('API response validation failed:', {
-      errors: error.errors,
+      errors: error.issues,
       response,
     });
   },

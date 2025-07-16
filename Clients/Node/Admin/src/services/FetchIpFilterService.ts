@@ -33,7 +33,7 @@ const createFilterSchema = z.object({
 });
 
 const ipCheckSchema = z.object({
-  ipAddress: z.string().ip(),
+  ipAddress: z.string().ipv4().or(z.string().ipv6()),
   endpoint: z.string().optional(),
 });
 

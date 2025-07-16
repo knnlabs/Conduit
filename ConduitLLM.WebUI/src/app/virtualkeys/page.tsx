@@ -39,7 +39,7 @@ import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport
 import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { VirtualKeyDto } from '@/types/api-types';
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { UIVirtualKey, mapVirtualKeyFromSDK } from '@/lib/types/mappers';
 
 export default function VirtualKeysPage() {

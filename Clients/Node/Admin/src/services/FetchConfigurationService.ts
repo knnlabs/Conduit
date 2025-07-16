@@ -1482,7 +1482,7 @@ export class FetchConfigurationService {
     }
 
     // Error pattern recommendations
-    const errorTypes = result.errors.map(e => e.type);
+    const errorTypes = result.errors.map((e: any) => e.type);
     if (errorTypes.includes('timeout')) {
       recommendations.push('Timeout errors detected. Consider increasing timeout values or optimizing slow endpoints.');
     }
