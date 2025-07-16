@@ -19,3 +19,6 @@ export * from './http';
 
 // SignalR types and base classes
 export * from './signalr';
+
+// Client configuration types
+export * from './client';

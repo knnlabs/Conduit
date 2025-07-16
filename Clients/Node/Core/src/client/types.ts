@@ -1,47 +1,13 @@
-import type { SignalRLogLevel, HttpTransportType } from '../models/signalr';
+// Import common client configuration types
+import {
+  SignalRConfig,
+  RetryConfig as CommonRetryConfig,
+  RequestConfigInfo as CommonRequestConfig,
+  ResponseInfo as CommonResponseInfo
+} from '@knn_labs/conduit-common';
 
-export interface SignalRConfig {
-  /**
-   * Whether SignalR is enabled
-   * @default true
-   */
-  enabled?: boolean;
-  
-  /**
-   * Whether to automatically connect on client initialization
-   * @default true
-   */
-  autoConnect?: boolean;
-  
-  /**
-   * Reconnection delays in milliseconds (exponential backoff)
-   * @default [0, 2000, 10000, 30000]
-   */
-  reconnectDelay?: number[];
-  
-  /**
-   * SignalR logging level
-   * @default SignalRLogLevel.Information
-   */
-  logLevel?: SignalRLogLevel;
-  
-  /**
-   * HTTP transport type
-   * @default HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling
-   */
-  transport?: HttpTransportType;
-  
-  /**
-   * Custom headers for SignalR connections
-   */
-  headers?: Record<string, string>;
-  
-  /**
-   * Connection timeout in milliseconds
-   * @default 30000
-   */
-  connectionTimeout?: number;
-}
+// Re-export for backward compatibility
+export type { SignalRConfig };
 
 export interface ClientConfig {
   apiKey: string;
@@ -78,21 +44,23 @@ export interface RequestOptions {
   responseType?: 'json' | 'text' | 'arraybuffer' | 'blob';
 }
 
-export interface RetryConfig {
+// Core SDK specific RetryConfig (uses exponential backoff)
+export interface RetryConfig extends CommonRetryConfig {
   maxRetries: number;
-  initialDelay: number;
-  maxDelay: number;
-  factor: number;
+  initialDelay: number;  // Initial delay for exponential backoff
+  maxDelay: number;      // Maximum delay between retries
+  factor: number;        // Backoff multiplication factor
 }
 
-export interface RequestConfig {
+// Use common types with Core SDK naming
+export interface RequestConfig extends CommonRequestConfig {
   method: string;
   url: string;
   headers: Record<string, string>;
   data?: unknown;
 }
 
-export interface ResponseInfo {
+export interface ResponseInfo extends CommonResponseInfo {
   status: number;
   statusText: string;
   headers: Record<string, string>;

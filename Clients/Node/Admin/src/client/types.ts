@@ -1,84 +1,25 @@
-export interface Logger {
-  debug(message: string, ...args: unknown[]): void;
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string, ...args: unknown[]): void;
-}
+// Import common client configuration types
+import {
+  Logger,
+  CacheProvider,
+  HttpError,
+  RetryConfig as CommonRetryConfig,
+  SignalRConfig,
+  RequestConfigInfo,
+  ResponseInfo as CommonResponseInfo
+} from '@knn_labs/conduit-common';
 
-export interface CacheProvider {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  delete(key: string): Promise<void>;
-  clear(): Promise<void>;
-}
+// Re-export for backward compatibility
+export { Logger, CacheProvider, HttpError, SignalRConfig, RequestConfigInfo };
 
-// Type definition for HTTP errors
-export interface HttpError {
-  code?: string;
-  message: string;
-  response?: {
-    status: number;
-    data: unknown;
-    headers: Record<string, string>;
-  };
-  request?: unknown;
-  config?: {
-    url?: string;
-    method?: string;
-    _retry?: number;
-  };
-}
-
-export interface RetryConfig {
+// Admin SDK specific RetryConfig (uses fixed delay)
+export interface RetryConfig extends CommonRetryConfig {
   maxRetries: number;
-  retryDelay: number;
+  retryDelay: number;  // Fixed delay between retries
   retryCondition?: (error: unknown) => boolean;
 }
 
-import type { SignalRLogLevel, HttpTransportType } from '../models/signalr';
-
-export interface SignalRConfig {
-  /**
-   * Whether SignalR is enabled
-   * @default true
-   */
-  enabled?: boolean;
-  
-  /**
-   * Whether to automatically connect on client initialization
-   * @default true
-   */
-  autoConnect?: boolean;
-  
-  /**
-   * Reconnection delays in milliseconds (exponential backoff)
-   * @default [0, 2000, 10000, 30000]
-   */
-  reconnectDelay?: number[];
-  
-  /**
-   * SignalR logging level
-   * @default SignalRLogLevel.Information
-   */
-  logLevel?: SignalRLogLevel;
-  
-  /**
-   * HTTP transport type
-   * @default HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling
-   */
-  transport?: HttpTransportType;
-  
-  /**
-   * Custom headers for SignalR connections
-   */
-  headers?: Record<string, string>;
-  
-  /**
-   * Connection timeout in milliseconds
-   * @default 30000
-   */
-  connectionTimeout?: number;
-}
+// SignalRConfig now imported from Common package above
 
 export interface ConduitConfig {
   masterKey: string;
@@ -137,14 +78,8 @@ export interface ApiClientConfig {
   onResponse?: (response: ResponseInfo) => void | Promise<void>;
 }
 
-export interface RequestConfigInfo {
-  method: string;
-  url: string;
-  headers: Record<string, string>;
-  data?: unknown;
-}
-
-export interface ResponseInfo {
+// Extend ResponseInfo to maintain compatibility
+export interface ResponseInfo extends CommonResponseInfo {
   status: number;
   statusText: string;
   headers: Record<string, string>;
