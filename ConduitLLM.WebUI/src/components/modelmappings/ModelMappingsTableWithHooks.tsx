@@ -25,7 +25,6 @@ import {
   useDeleteModelMapping
 } from '@/hooks/useModelMappingsApi';
 import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
-import { toUIModelMapping } from '@/lib/types/mappers';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface ModelMappingsTableProps {
@@ -238,7 +237,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
 
       {editingMapping && (
         <EditModelMappingModal
-          mapping={toUIModelMapping(editingMapping)}
+          mapping={editingMapping}
           isOpen={!!editingMapping}
           onClose={() => setEditingMapping(null)}
           onSave={async () => {

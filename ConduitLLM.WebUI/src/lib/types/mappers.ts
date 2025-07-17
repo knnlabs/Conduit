@@ -55,17 +55,7 @@ interface ProviderHealthSummaryDto {
 
 // NOTE: UIProvider interface has been removed - Providers now use ProviderCredentialDto directly with UI extensions
 
-export interface UIModelMapping extends Omit<ModelProviderMappingDto, 'id' | 'modelId' | 'isEnabled' | 'createdAt' | 'updatedAt' | 'metadata' | 'providerId'> {
-  id: string;
-  sourceModel: string;
-  targetProvider: string;
-  targetModel: string;
-  isActive: boolean;
-  metadata?: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
-  // All capability fields are inherited from ModelProviderMappingDto
-}
+// NOTE: UIModelMapping interface has been removed - Model Mappings now use ModelProviderMappingDto directly with UI extensions
 
 export interface UIProviderHealth extends Omit<ProviderHealthStatusDto, 'providerId' | 'lastCheckTime' | 'responseTimeMs' | 'errorMessage'> {
   providerId: string;
@@ -130,50 +120,7 @@ export interface UIRequestLog {
   };
 }
 
-// NOTE: Virtual Key and Provider mapping functions have been removed - use SDK types directly
-
-export function mapModelMappingFromSDK(sdk: ModelProviderMappingDto): UIModelMapping {
-  let parsedMetadata: Record<string, unknown> | undefined;
-  if (sdk.metadata) {
-    try {
-      parsedMetadata = JSON.parse(sdk.metadata);
-    } catch (e) {
-      console.warn('[mapModelMappingFromSDK] Failed to parse metadata:', sdk.metadata, e);
-      parsedMetadata = { raw: sdk.metadata };
-    }
-  }
-  
-  return {
-    ...sdk,
-    id: sdk.id.toString(),
-    sourceModel: sdk.modelId,
-    targetProvider: sdk.providerId,
-    targetModel: sdk.providerModelId,
-    isActive: sdk.isEnabled,
-    metadata: parsedMetadata,
-    createdDate: sdk.createdAt,
-    modifiedDate: sdk.updatedAt,
-  };
-}
-
-export function mapModelMappingToSDK(ui: UIModelMapping): Partial<ModelProviderMappingDto> {
-  const { id, sourceModel, targetProvider, targetModel, isActive, metadata, createdDate, modifiedDate, ...rest } = ui;
-  
-  return {
-    ...rest,
-    id: parseInt(id, 10),
-    modelId: sourceModel,
-    providerId: targetProvider,
-    providerModelId: targetModel,
-    isEnabled: isActive,
-    metadata: metadata ? JSON.stringify(metadata) : undefined,
-    createdAt: createdDate,
-    updatedAt: modifiedDate,
-  };
-}
-
-// Convenience alias for mapModelMappingFromSDK
-export const toUIModelMapping = mapModelMappingFromSDK;
+// NOTE: Virtual Key, Provider, and Model Mapping functions have been removed - use SDK types directly
 
 export function mapProviderHealthFromSDK(sdk: ProviderHealthStatusDto): UIProviderHealth {
   const sdkAny = sdk as any;

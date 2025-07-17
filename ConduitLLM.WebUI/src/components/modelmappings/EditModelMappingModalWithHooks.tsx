@@ -18,14 +18,13 @@ import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { UIModelMapping } from '@/lib/types/mappers';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto, ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mapping: UIModelMapping | null;
+  mapping: ModelProviderMappingDto | null;
   onSave?: () => void;
 }
 
@@ -87,7 +86,7 @@ export function EditModelMappingModal({
         
         // Check for duplicates, but exclude the current mapping being edited
         const duplicate = mappings.find(m => 
-          m.modelId === value && m.id !== parseInt(mapping?.id || '0', 10)
+          m.modelId === value && m.id !== (mapping?.id || 0)
         );
         
         if (duplicate) {
@@ -106,20 +105,20 @@ export function EditModelMappingModal({
       console.log('[EditModal] Available providers:', providers);
       
       // Find the provider name from the ID  
-      const provider = providers.find(p => p.id.toString() === mapping.targetProvider);
-      const providerName = provider?.providerName || mapping.targetProvider;
+      const provider = providers.find(p => p.id.toString() === mapping.providerId);
+      const providerName = provider?.providerName || mapping.providerId;
       
       console.log('[EditModal] Mapped provider ID to name:', { 
-        providerId: mapping.targetProvider, 
+        providerId: mapping.providerId, 
         providerName 
       });
       
       const formData = {
-        modelId: mapping.sourceModel,
-        providerId: mapping.targetProvider.toString(), // Convert numeric ID to string for form
-        providerModelId: mapping.targetModel,
+        modelId: mapping.modelId,
+        providerId: mapping.providerId.toString(), // Convert numeric ID to string for form
+        providerModelId: mapping.providerModelId,
         priority: mapping.priority || 100,
-        isEnabled: mapping.isActive,
+        isEnabled: mapping.isEnabled,
         supportsVision: mapping.supportsVision || false,
         supportsImageGeneration: mapping.supportsImageGeneration || false,
         supportsAudioTranscription: mapping.supportsAudioTranscription || false,
@@ -168,7 +167,7 @@ export function EditModelMappingModal({
 
     try {
       await updateMapping.mutateAsync({
-        id: parseInt(mapping.id, 10),
+        id: mapping.id,
         data: updateData,
       });
 

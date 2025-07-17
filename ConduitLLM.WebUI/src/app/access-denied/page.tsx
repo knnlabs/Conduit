@@ -2,8 +2,14 @@ import { Container, Title, Text, Button, Group, Paper } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import Link from 'next/link';
 import { SignOutButton } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 
 export default function AccessDeniedPage() {
+  // Check for redirect URL in environment variable
+  const redirectUrl = process.env.NEXT_PUBLIC_ACCESS_DENIED_REDIRECT;
+  if (redirectUrl) {
+    redirect(redirectUrl);
+  }
   return (
     <Container size="sm" style={{ paddingTop: 100 }}>
       <Paper shadow="md" p="xl" withBorder>
