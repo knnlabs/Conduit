@@ -161,6 +161,11 @@ services:
       # Clerk authentication for WebUI access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
       # Users must have siteadmin: true in their public metadata to access the WebUI
+      
+      # Optional: Configure a redirect URL for users without admin access
+      # If set, users without proper permissions will be redirected to this URL
+      # instead of seeing the access denied page
+      # Example: ACCESS_DENIED_REDIRECT: "https://your-main-site.com"
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
     ports:

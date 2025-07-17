@@ -1,3 +1,18 @@
+/**
+ * Access Denied Page
+ * 
+ * This page is shown when a user without admin privileges attempts to access the admin WebUI.
+ * 
+ * Feature: External Redirect
+ * If the ACCESS_DENIED_REDIRECT environment variable is set, users will be automatically
+ * redirected to the specified URL instead of seeing this access denied page.
+ * 
+ * Configuration:
+ * - Set ACCESS_DENIED_REDIRECT in your environment with a valid URL
+ * - Example: ACCESS_DENIED_REDIRECT="https://your-main-site.com"
+ * - Can be configured in docker-compose.yml or .env files
+ */
+
 import { Container, Title, Text, Button, Group, Paper } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import Link from 'next/link';
@@ -6,9 +21,20 @@ import { redirect } from 'next/navigation';
 
 export default function AccessDeniedPage() {
   // Check for redirect URL in environment variable
-  const redirectUrl = process.env.NEXT_PUBLIC_ACCESS_DENIED_REDIRECT;
+  const redirectUrl = process.env.ACCESS_DENIED_REDIRECT;
+  
+  // If a redirect URL is configured, use it
   if (redirectUrl) {
-    redirect(redirectUrl);
+    // You can add URL validation here if needed
+    // For example, to only allow specific domains
+    try {
+      // Basic URL validation
+      new URL(redirectUrl);
+      redirect(redirectUrl);
+    } catch (error) {
+      console.error('Invalid redirect URL:', redirectUrl);
+      // Continue to the access denied page if URL is invalid
+    }
   }
   return (
     <Container size="sm" style={{ paddingTop: 100 }}>
