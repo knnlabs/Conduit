@@ -12,11 +12,15 @@ WORKDIR /app
 # Otherwise npm will timeout trying to fetch these packages from the registry
 COPY . .
 
-# Build Admin SDK first (no external dependencies on other local packages)
+# Build Common package first (base dependency for other packages)
+WORKDIR /app/Clients/Node/Common
+RUN npm install --no-audit --no-fund && npm run build
+
+# Build Admin SDK next (depends on Common package)
 WORKDIR /app/Clients/Node/Admin
 RUN npm install --no-audit --no-fund && npm run build
 
-# Build Core SDK next (no external dependencies on other local packages)
+# Build Core SDK next (depends on Common package)
 WORKDIR /app/Clients/Node/Core
 RUN npm install --no-audit --no-fund && npm run build
 
@@ -50,7 +54,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
 
 # IMPORTANT: We must also copy the SDK packages because WebUI's node_modules contains
 # symlinks to these local packages (due to file: references in package.json)
-# Without these, the runtime will fail to resolve @knn_labs/conduit-admin-client and @knn_labs/conduit-core-client
+# Without these, the runtime will fail to resolve the packages
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Common /app/Clients/Node/Common
 COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Admin /app/Clients/Node/Admin
 COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Core /app/Clients/Node/Core
 
