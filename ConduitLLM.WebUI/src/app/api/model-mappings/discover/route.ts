@@ -26,9 +26,16 @@ export async function POST(req: NextRequest) {
             // Map capabilities from discovered model
             supportsVision: model.capabilities?.vision ?? false,
             supportsImageGeneration: model.capabilities?.imageGeneration ?? false,
+            supportsAudioTranscription: false, // Not in discovered capabilities
+            supportsTextToSpeech: false, // Not in discovered capabilities
+            supportsRealtimeAudio: false, // Not in discovered capabilities
             supportsFunctionCalling: model.capabilities?.functionCalling ?? false,
             supportsStreaming: model.capabilities?.chatStream ?? false,
+            supportsVideoGeneration: model.capabilities?.videoGeneration ?? false,
+            supportsEmbeddings: model.capabilities?.embeddings ?? false,
             maxContextLength: model.capabilities?.maxTokens,
+            maxOutputTokens: model.capabilities?.maxOutputTokens,
+            isDefault: false,
           };
           await adminClient.modelMappings.create(mapping);
           results.push({ ...model, created: true });

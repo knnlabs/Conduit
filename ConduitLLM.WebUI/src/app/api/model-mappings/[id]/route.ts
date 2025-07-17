@@ -89,6 +89,9 @@ export async function PUT(
     if (body.maxOutputTokens !== undefined && body.maxOutputTokens !== null) {
       transformedBody.maxOutputTokens = body.maxOutputTokens;
     }
+    if (body.isDefault !== undefined) {
+      transformedBody.isDefault = body.isDefault;
+    }
     
     // Don't build capabilities string - let backend handle individual boolean fields
     // The capabilities field is legacy and the backend should derive it from the boolean flags

@@ -92,6 +92,16 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Whether this model supports function calling
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports streaming responses
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model
         /// </summary>
         public string? TokenizerType { get; set; }

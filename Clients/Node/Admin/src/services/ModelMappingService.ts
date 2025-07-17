@@ -20,16 +20,60 @@ const createMappingSchema = z.object({
   providerId: z.string().min(1),
   providerModelId: z.string().min(1),
   isEnabled: z.boolean().optional(),
-  priority: z.number().min(0).max(100).optional(),
+  priority: z.number().min(0).max(1000).optional(),
   metadata: z.string().optional(),
+  // Model Capability Flags
+  supportsVision: z.boolean().optional(),
+  supportsImageGeneration: z.boolean().optional(),
+  supportsAudioTranscription: z.boolean().optional(),
+  supportsTextToSpeech: z.boolean().optional(),
+  supportsRealtimeAudio: z.boolean().optional(),
+  supportsFunctionCalling: z.boolean().optional(),
+  supportsStreaming: z.boolean().optional(),
+  supportsVideoGeneration: z.boolean().optional(),
+  supportsEmbeddings: z.boolean().optional(),
+  // Extended Metadata Fields
+  capabilities: z.string().optional(),
+  maxContextLength: z.number().optional(),
+  maxOutputTokens: z.number().optional(),
+  supportedLanguages: z.string().optional(),
+  supportedVoices: z.string().optional(),
+  supportedFormats: z.string().optional(),
+  tokenizerType: z.string().optional(),
+  // Advanced Routing Fields
+  isDefault: z.boolean().optional(),
+  defaultCapabilityType: z.string().optional(),
 });
 
 const updateMappingSchema = z.object({
+  id: z.number().optional(),
+  modelId: z.string().min(1).optional(),
   providerId: z.string().min(1).optional(),
   providerModelId: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),
-  priority: z.number().min(0).max(100).optional(),
+  priority: z.number().min(0).max(1000).optional(),
   metadata: z.string().optional(),
+  // Model Capability Flags
+  supportsVision: z.boolean().optional(),
+  supportsImageGeneration: z.boolean().optional(),
+  supportsAudioTranscription: z.boolean().optional(),
+  supportsTextToSpeech: z.boolean().optional(),
+  supportsRealtimeAudio: z.boolean().optional(),
+  supportsFunctionCalling: z.boolean().optional(),
+  supportsStreaming: z.boolean().optional(),
+  supportsVideoGeneration: z.boolean().optional(),
+  supportsEmbeddings: z.boolean().optional(),
+  // Extended Metadata Fields
+  capabilities: z.string().optional(),
+  maxContextLength: z.number().optional(),
+  maxOutputTokens: z.number().optional(),
+  supportedLanguages: z.string().optional(),
+  supportedVoices: z.string().optional(),
+  supportedFormats: z.string().optional(),
+  tokenizerType: z.string().optional(),
+  // Advanced Routing Fields
+  isDefault: z.boolean().optional(),
+  defaultCapabilityType: z.string().optional(),
 });
 
 export class ModelMappingService extends FetchBaseApiClient {

@@ -107,6 +107,16 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports function calling.
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports streaming responses.
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
         /// </summary>
         [MaxLength(50)]
