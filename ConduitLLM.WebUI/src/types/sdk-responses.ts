@@ -3,12 +3,7 @@
  * SDK types are imported from @knn_labs/conduit-admin-client and @knn_labs/conduit-core-client
  */
 
-// Import UI types from mappers (excluding UIVirtualKey, UIProvider, and UIModelMapping which have been removed)
-import type {
-  UIProviderHealth,
-  UISystemHealth,
-  UIRequestLog,
-} from '@/lib/types/mappers';
+// All UI types have been removed - use SDK types directly
 
 // Import SDK types
 export type {
@@ -108,20 +103,7 @@ export type {
   StatusType
 } from '@knn_labs/conduit-admin-client';
 
-// Import mapped UI types (excluding UIVirtualKey, UIProvider, and UIModelMapping which have been removed)
-export type {
-  UIProviderHealth,
-  UISystemHealth,
-  UIRequestLog
-} from '@/lib/types/mappers';
-
-// Re-export mapping functions for convenience (excluding Virtual Key, Provider, and Model Mapping functions which have been removed)
-export {
-  mapProviderHealthFromSDK,
-  mapSystemHealthFromSDK,
-  mapRequestLogFromSDK,
-  mapProviderHealthSummaryFromSDK
-} from '@/lib/types/mappers';
+// All UI types and mapping functions have been removed - use SDK types directly
 
 // WebUI-specific types that don't exist in SDK
 export interface ProviderIncident {
