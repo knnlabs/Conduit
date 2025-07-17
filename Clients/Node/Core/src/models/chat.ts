@@ -59,6 +59,13 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   temperature?: number;
   top_p?: number;
+  /**
+   * Limits the number of tokens to consider for each step of generation.
+   * Only the top K most likely tokens are considered for sampling.
+   * @minimum 1
+   * @maximum 100
+   */
+  top_k?: number;
   tools?: Tool[];
   tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
   user?: string;

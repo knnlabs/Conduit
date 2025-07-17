@@ -739,11 +739,29 @@ namespace ConduitLLM.Providers
                 Messages = messages,
                 MaxTokens = request.MaxTokens,
                 Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null,
+                TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                N = request.N,
+                Stop = request.Stop,
+                PresencePenalty = request.PresencePenalty.HasValue ? (float?)request.PresencePenalty.Value : null,
+                FrequencyPenalty = request.FrequencyPenalty.HasValue ? (float?)request.FrequencyPenalty.Value : null,
+                LogitBias = ConvertLogitBias(request.LogitBias),
+                User = request.User,
+                Seed = request.Seed,
                 Tools = openAiTools,
                 ToolChoice = openAiToolChoice,
-                ResponseFormat = new OpenAIModels.ResponseFormat { Type = "text" },
+                ResponseFormat = request.ResponseFormat != null ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } : new OpenAIModels.ResponseFormat { Type = "text" },
                 Stream = request.Stream ?? false
             };
+        }
+
+        /// <summary>
+        /// Converts LogitBias from Dictionary&lt;string, int&gt; to Dictionary&lt;string, float&gt;.
+        /// </summary>
+        /// <param name="logitBias">The LogitBias dictionary to convert.</param>
+        /// <returns>A converted dictionary with float values, or null if input is null.</returns>
+        private static Dictionary<string, float>? ConvertLogitBias(Dictionary<string, int>? logitBias)
+        {
+            return logitBias?.ToDictionary(kvp => kvp.Key, kvp => (float)kvp.Value);
         }
 
         /// <summary>
