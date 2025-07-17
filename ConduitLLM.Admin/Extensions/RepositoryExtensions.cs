@@ -201,8 +201,6 @@ namespace ConduitLLM.Admin.Extensions
                 ApiKey = "********", // Mask API key in DTOs
                 IsEnabled = credential.IsEnabled,
                 Organization = null, // Organization not available in entity
-                ModelEndpoint = null, // ModelEndpoint not available in entity
-                AdditionalConfig = null, // AdditionalConfig not available in entity
                 CreatedAt = credential.CreatedAt,
                 UpdatedAt = credential.UpdatedAt
             };
@@ -246,7 +244,7 @@ namespace ConduitLLM.Admin.Extensions
                 BaseUrl = dto.ApiBase,
                 ApiVersion = null, // Not in the DTO
                 IsEnabled = dto.IsEnabled,
-                // Organization, ModelEndpoint, and AdditionalConfig are not available in entity
+                // Organization is not available in entity
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -282,7 +280,7 @@ namespace ConduitLLM.Admin.Extensions
             }
 
             entity.IsEnabled = dto.IsEnabled;
-            // Organization, ModelEndpoint, and AdditionalConfig are not available in entity
+            // Organization is not available in entity
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

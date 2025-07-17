@@ -499,8 +499,8 @@ namespace ConduitLLM.Admin.Services
                 if (existingCredential.IsEnabled != providerCredential.IsEnabled)
                     changedProperties.Add(nameof(existingCredential.IsEnabled));
                     
-                // Note: Organization, ModelEndpoint, and AdditionalConfig are not mapped to the entity yet
-                // They are only in the DTOs, so we skip them for now
+                // Note: Organization is not mapped to the entity yet
+                // It is only in the DTO, so we skip it for now
 
                 // Update entity
                 existingCredential.UpdateFrom(providerCredential);

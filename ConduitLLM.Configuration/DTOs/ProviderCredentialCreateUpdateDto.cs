@@ -34,16 +34,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional organization ID for providers that support it
         /// </summary>
         public string? Organization { get; set; }
-
-        /// <summary>
-        /// Optional model endpoint for providers with custom endpoints
-        /// </summary>
-        public string? ModelEndpoint { get; set; }
-
-        /// <summary>
-        /// Optional additional configuration for the provider
-        /// </summary>
-        public string? AdditionalConfig { get; set; }
     }
 
     /// <summary>
@@ -80,16 +70,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional organization ID for providers that support it
         /// </summary>
         public string? Organization { get; set; }
-
-        /// <summary>
-        /// Optional model endpoint for providers with custom endpoints
-        /// </summary>
-        public string? ModelEndpoint { get; set; }
-
-        /// <summary>
-        /// Optional additional configuration for the provider
-        /// </summary>
-        public string? AdditionalConfig { get; set; }
     }
 
     /// <summary>

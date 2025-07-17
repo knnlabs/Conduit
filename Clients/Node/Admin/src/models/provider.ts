@@ -5,9 +5,8 @@ export interface ProviderCredentialDto {
   id: number;
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -16,26 +15,23 @@ export interface ProviderCredentialDto {
 export interface CreateProviderCredentialDto {
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled?: boolean;
 }
 
 export interface UpdateProviderCredentialDto {
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled?: boolean;
 }
 
 export interface ProviderConnectionTestRequest {
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
 }
 
 export interface ProviderConnectionTestResultDto {
