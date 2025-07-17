@@ -46,7 +46,7 @@ export interface ConversationMetadata {
   maxTokens?: number;
   systemPrompt?: string;
   tags?: string[];
-  [key: string]: any;
+  [key: string]: string | number | boolean | string[] | undefined;
 }
 
 export interface TokenUsage {
