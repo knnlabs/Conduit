@@ -20,7 +20,7 @@ import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import type { UIProvider } from '@/lib/types/mappers';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -113,9 +113,9 @@ export function CreateModelMappingModal({
     onClose();
   };
 
-  const providerOptions = providers?.map((p: UIProvider) => ({
+  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
     value: p.id.toString(),
-    label: p.name,
+    label: p.providerName,
   })) || [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {

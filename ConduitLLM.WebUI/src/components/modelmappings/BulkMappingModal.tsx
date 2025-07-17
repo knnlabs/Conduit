@@ -130,7 +130,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     if (!provider) return;
     
     try {
-      const result = await discoverModels(providerId, provider.name);
+      const result = await discoverModels(providerId, provider.providerName);
       setDiscoveredModels(result.models);
       
       // Auto-select models without conflicts
@@ -229,7 +229,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
           placeholder="Choose a provider to discover models"
           data={providers?.map(p => ({
             value: p.id.toString(),
-            label: p.name,
+            label: p.providerName,
           })) || []}
           value={selectedProviderId}
           onChange={handleProviderSelect}

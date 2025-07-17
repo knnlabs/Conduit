@@ -5,10 +5,9 @@ import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
 
-// Use UIProvider from mappers for consistency
-type Provider = UIProvider;
+// Use SDK types directly
+type Provider = ProviderCredentialDto;
 
 interface ProviderHealth {
   providerId: string;
@@ -322,8 +321,8 @@ export function useProviders() {
         throw new Error(error.message || 'Failed to fetch providers');
       }
       const data = await response.json() as ProviderCredentialDto[];
-      // Map SDK response to UI types
-      return data.map(mapProviderFromSDK);
+      // Use SDK types directly
+      return data;
     },
   });
 

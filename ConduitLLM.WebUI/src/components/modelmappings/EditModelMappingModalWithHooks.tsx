@@ -18,7 +18,8 @@ import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { UIModelMapping, UIProvider } from '@/lib/types/mappers';
+import type { UIModelMapping } from '@/lib/types/mappers';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface EditModelMappingModalProps {
@@ -104,9 +105,9 @@ export function EditModelMappingModal({
       console.log('[EditModal] Setting form values from mapping:', mapping);
       console.log('[EditModal] Available providers:', providers);
       
-      // Find the provider name from the ID
-      const provider = providers.find(p => p.id === mapping.targetProvider);
-      const providerName = provider?.name || mapping.targetProvider;
+      // Find the provider name from the ID  
+      const provider = providers.find(p => p.id.toString() === mapping.targetProvider);
+      const providerName = provider?.providerName || mapping.targetProvider;
       
       console.log('[EditModal] Mapped provider ID to name:', { 
         providerId: mapping.targetProvider, 
@@ -178,9 +179,9 @@ export function EditModelMappingModal({
     }
   };
 
-  const providerOptions = providers?.map((p: UIProvider) => ({
+  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
     value: p.id.toString(), // Backend expects numeric provider ID
-    label: p.name,
+    label: p.providerName,
   })) || [];
 
   return (

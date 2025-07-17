@@ -24,19 +24,12 @@ import {
   PROVIDER_DISPLAY_NAMES, 
   PROVIDER_CONFIG_REQUIREMENTS 
 } from '@/lib/constants/providers';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
-interface Provider {
-  id: string;
-  name: string;
-  type: string;
-  isEnabled: boolean;
+// Use SDK types directly with health extensions
+interface Provider extends ProviderCredentialDto {
   healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  endpoint?: string;
-  supportedModels: string[];
-  configuration: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
   models?: string[];
 }
 
@@ -79,10 +72,20 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   // Update form when provider changes
   useEffect(() => {
     if (provider) {
+      // Parse additionalConfig if needed
+      let additionalConfig = {};
+      if (provider.additionalConfig) {
+        try {
+          additionalConfig = JSON.parse(provider.additionalConfig);
+        } catch (e) {
+          console.warn('Failed to parse additionalConfig:', e);
+        }
+      }
+
       form.setValues({
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.endpoint || '',
-        organizationId: (provider.configuration?.organizationId as string) || '',
+        apiEndpoint: provider.apiEndpoint || '',
+        organizationId: provider.organizationId || '',
         isEnabled: provider.isEnabled,
       });
     }
@@ -142,9 +145,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     return null;
   }
 
-  const providerDisplayName = provider.type 
-    ? PROVIDER_DISPLAY_NAMES[provider.type as ProviderType] 
-    : provider.type;
+  const providerDisplayName = provider.providerName 
+    ? PROVIDER_DISPLAY_NAMES[provider.providerName as ProviderType] 
+    : provider.providerName;
   const getHealthIcon = (status?: string) => {
     switch (status) {
       case 'healthy':
@@ -165,7 +168,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerDisplayName || provider.type || 'Unknown'}</Badge>
+                <Badge>{providerDisplayName || provider.providerName || 'Unknown'}</Badge>
               </Group>
               {provider.healthStatus && (
                 <Group justify="space-between">
@@ -200,7 +203,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
           <TextInput
             label="Provider Name"
-            value={provider.name}
+            value={provider.providerName}
             disabled
             description="Provider name cannot be changed"
           />
@@ -213,7 +216,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.type as ProviderType];
+            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.providerName as ProviderType];
             if (!config) return null;
 
             return (
@@ -229,7 +232,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 {config.requiresOrganizationId && (
                   <TextInput
                     label="Organization ID"
-                    placeholder={provider.type === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    placeholder={provider.providerName === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
                     {...form.getInputProps('organizationId')}
                   />
                 )}

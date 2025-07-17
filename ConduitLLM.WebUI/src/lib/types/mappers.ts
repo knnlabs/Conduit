@@ -53,16 +53,7 @@ interface ProviderHealthSummaryDto {
 
 // NOTE: UIVirtualKey interface has been removed - Virtual Keys now use VirtualKeyDto directly with UI extensions
 
-export interface UIProvider extends Omit<ProviderCredentialDto, 'id' | 'providerName' | 'apiEndpoint' | 'additionalConfig' | 'createdAt' | 'updatedAt'> {
-  id: string;
-  name: string;
-  type: string;
-  endpoint?: string;
-  supportedModels: string[];
-  configuration: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
-}
+// NOTE: UIProvider interface has been removed - Providers now use ProviderCredentialDto directly with UI extensions
 
 export interface UIModelMapping extends Omit<ModelProviderMappingDto, 'id' | 'modelId' | 'isEnabled' | 'createdAt' | 'updatedAt' | 'metadata' | 'providerId'> {
   id: string;
@@ -139,41 +130,7 @@ export interface UIRequestLog {
   };
 }
 
-// NOTE: Virtual Key mapping functions have been removed - Virtual Keys now use VirtualKeyDto directly
-
-export function mapProviderFromSDK(sdk: ProviderCredentialDto): UIProvider {
-  const additionalConfig = sdk.additionalConfig ? JSON.parse(sdk.additionalConfig) : {};
-  return {
-    ...sdk,
-    id: sdk.id.toString(),
-    name: sdk.providerName,
-    type: sdk.providerName.toLowerCase(),
-    endpoint: sdk.apiEndpoint,
-    supportedModels: [], // Not available in SDK, would need to fetch separately
-    configuration: {
-      ...additionalConfig,
-      ...(sdk.organizationId && { organizationId: sdk.organizationId }),
-    },
-    createdDate: sdk.createdAt,
-    modifiedDate: sdk.updatedAt,
-  };
-}
-
-export function mapProviderToSDK(ui: UIProvider): Partial<ProviderCredentialDto> {
-  const { id, name, type, endpoint, supportedModels, configuration, createdDate, modifiedDate, ...rest } = ui;
-  const { organizationId, ...additionalConfig } = configuration;
-  
-  return {
-    ...rest,
-    id: parseInt(id, 10),
-    providerName: name,
-    apiEndpoint: endpoint,
-    organizationId: organizationId as string | undefined,
-    additionalConfig: Object.keys(additionalConfig).length > 0 ? JSON.stringify(additionalConfig) : undefined,
-    createdAt: createdDate,
-    updatedAt: modifiedDate,
-  };
-}
+// NOTE: Virtual Key and Provider mapping functions have been removed - use SDK types directly
 
 export function mapModelMappingFromSDK(sdk: ModelProviderMappingDto): UIModelMapping {
   let parsedMetadata: Record<string, unknown> | undefined;

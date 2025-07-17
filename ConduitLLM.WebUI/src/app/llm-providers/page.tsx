@@ -39,9 +39,9 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { ProviderCredentialDto, ProviderHealthStatusDto } from '@knn_labs/conduit-admin-client';
-import { UIProvider, mapProviderFromSDK } from '@/lib/types/mappers';
 
-interface ProviderWithHealth extends UIProvider {
+// Use SDK types directly with health extensions
+interface ProviderWithHealth extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
@@ -76,15 +76,15 @@ export default function ProvidersPage() {
       const providersList = Array.isArray(data) ? data : (data.items || data.providers || []);
       console.log('Providers list:', providersList);
       
-      // Map providers and add health status (would need separate health fetch in real app)
-      const mappedProviders: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
-        ...mapProviderFromSDK(p),
+      // Use SDK types directly and add health status (would need separate health fetch in real app)
+      const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
+        ...p,
         healthStatus: 'unknown' as const,
         models: []
       }));
       
-      console.log('Mapped providers:', mappedProviders);
-      setProviders(mappedProviders);
+      console.log('Providers with health:', providersWithHealth);
+      setProviders(providersWithHealth);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -155,10 +155,10 @@ export default function ProvidersPage() {
     
     const query = searchQuery.toLowerCase();
     return (
-      provider.name.toLowerCase().includes(query) ||
-      provider.id.toLowerCase().includes(query) ||
-      (provider.type && provider.type.toLowerCase().includes(query)) ||
-      (provider.endpoint?.toLowerCase().includes(query))
+      provider.providerName.toLowerCase().includes(query) ||
+      provider.id.toString().toLowerCase().includes(query) ||
+      provider.providerName.toLowerCase().includes(query) ||
+      (provider.apiEndpoint?.toLowerCase().includes(query))
     );
   });
 
@@ -195,14 +195,14 @@ export default function ProvidersPage() {
     }
 
     const exportData = filteredProviders.map((provider) => ({
-      name: provider.name,
-      type: provider.type || '',
+      name: provider.providerName,
+      type: provider.providerName,
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
       health: provider.healthStatus,
-      endpoint: provider.endpoint || '',
+      endpoint: provider.apiEndpoint || '',
       models: provider.models?.join('; ') || '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-      createdAt: formatDateForExport(provider.createdDate),
+      createdAt: formatDateForExport(provider.createdAt),
     }));
 
     exportToCSV(

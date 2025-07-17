@@ -26,20 +26,12 @@ import {
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import { notifications } from '@mantine/notifications';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
-// Use the same interface as the page component
-interface Provider {
-  id: string;
-  name: string;
-  type: string;
-  isEnabled: boolean;
+// Use SDK types directly with health extensions  
+interface Provider extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
-  endpoint?: string;
-  supportedModels: string[];
-  configuration: Record<string, unknown>;
-  createdDate: string;
-  modifiedDate: string;
   models?: string[];
 }
 
@@ -59,12 +51,12 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {provider.name}? This action cannot be undone.
+          Are you sure you want to delete {provider.providerName}? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => onDelete?.(provider.id),
+      onConfirm: () => onDelete?.(provider.id.toString()),
     });
   };
 
@@ -94,10 +86,8 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     <Table.Tr key={provider.id}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{provider.name}</Text>
-          {provider.type && (
-            <Text size="xs" c="dimmed">Type: {provider.type}</Text>
-          )}
+          <Text fw={500}>{provider.providerName}</Text>
+          <Text size="xs" c="dimmed">Type: {provider.providerName}</Text>
         </Stack>
       </Table.Td>
 
@@ -139,7 +129,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
 
       <Table.Td>
         <Text size="sm" c="dimmed">
-          {provider.createdDate ? formatters.date(provider.createdDate) : '-'}
+          {provider.createdAt ? formatters.date(provider.createdAt) : '-'}
         </Text>
       </Table.Td>
 
@@ -160,10 +150,10 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => onTest?.(provider.id)}
-                disabled={testingProviders.has(provider.id)}
+                onClick={() => onTest?.(provider.id.toString())}
+                disabled={testingProviders.has(provider.id.toString())}
               >
-                {testingProviders.has(provider.id) ? 'Testing...' : 'Test Connection'}
+                {testingProviders.has(provider.id.toString()) ? 'Testing...' : 'Test Connection'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
