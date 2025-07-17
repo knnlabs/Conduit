@@ -73,5 +73,21 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="modelCosts">The list of model costs to import</param>
         /// <returns>The number of model costs imported</returns>
         Task<int> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts);
+
+        /// <summary>
+        /// Exports model costs in the specified format
+        /// </summary>
+        /// <param name="format">The export format (json or csv)</param>
+        /// <param name="providerName">Optional provider name to filter by</param>
+        /// <returns>The exported data as a string</returns>
+        Task<string> ExportModelCostsAsync(string format, string? providerName = null);
+
+        /// <summary>
+        /// Imports model costs from data in the specified format
+        /// </summary>
+        /// <param name="data">The data to import</param>
+        /// <param name="format">The import format (json or csv)</param>
+        /// <returns>The bulk import result</returns>
+        Task<BulkImportResult> ImportModelCostsAsync(string data, string format);
     }
 }
