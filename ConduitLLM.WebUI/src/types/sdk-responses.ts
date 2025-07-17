@@ -3,9 +3,8 @@
  * SDK types are imported from @knn_labs/conduit-admin-client and @knn_labs/conduit-core-client
  */
 
-// Import UI types from mappers
+// Import UI types from mappers (excluding UIVirtualKey which has been removed)
 import type {
-  UIVirtualKey,
   UIProvider,
   UIModelMapping,
   UIProviderHealth,
@@ -111,9 +110,8 @@ export type {
   StatusType
 } from '@knn_labs/conduit-admin-client';
 
-// Import mapped UI types
+// Import mapped UI types (excluding UIVirtualKey which has been removed)
 export type {
-  UIVirtualKey,
   UIProvider,
   UIModelMapping,
   UIProviderHealth,
@@ -121,10 +119,8 @@ export type {
   UIRequestLog
 } from '@/lib/types/mappers';
 
-// Re-export mapping functions for convenience
+// Re-export mapping functions for convenience (excluding Virtual Key functions which have been removed)
 export {
-  mapVirtualKeyFromSDK,
-  mapVirtualKeyToSDK,
   mapProviderFromSDK,
   mapProviderToSDK,
   mapModelMappingFromSDK,

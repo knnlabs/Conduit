@@ -51,21 +51,7 @@ interface ProviderHealthSummaryDto {
   providers?: ProviderHealthStatusDto[];
 }
 
-// UI-specific types that extend SDK types
-export interface UIVirtualKey extends Omit<VirtualKeyDto, 'keyName' | 'budgetDuration' | 'apiKey' | 'maxBudget' | 'isEnabled' | 'createdAt' | 'updatedAt' | 'expiresAt' | 'lastUsedAt' | 'metadata'> {
-  name: string;
-  key: string;
-  isActive: boolean;
-  budget: number;
-  budgetPeriod: 'daily' | 'monthly' | 'total';
-  allowedProviders: string[] | null;
-  expirationDate: string | null;
-  createdDate: string;
-  modifiedDate: string;
-  lastUsedDate: string | null;
-  metadata: Record<string, unknown> | null;
-  // Note: allowedModels is inherited from VirtualKeyDto as a string
-}
+// NOTE: UIVirtualKey interface has been removed - Virtual Keys now use VirtualKeyDto directly with UI extensions
 
 export interface UIProvider extends Omit<ProviderCredentialDto, 'id' | 'providerName' | 'apiEndpoint' | 'additionalConfig' | 'createdAt' | 'updatedAt'> {
   id: string;
@@ -153,53 +139,7 @@ export interface UIRequestLog {
   };
 }
 
-// Mapping functions
-export function mapVirtualKeyFromSDK(sdk: VirtualKeyDto): UIVirtualKey {
-  return {
-    ...sdk,
-    name: sdk.keyName,
-    // TODO: SDK should include keyHash or masked key for display purposes
-    // Currently apiKey is only returned on creation, afterwards it's not available
-    // Using keyPrefix as a workaround for display
-    key: sdk.keyPrefix || sdk.apiKey || `key_${sdk.id}`, 
-    isActive: sdk.isEnabled,
-    budget: sdk.maxBudget || 0,
-    budgetPeriod: (sdk.budgetDuration || 'Total').toLowerCase() as 'daily' | 'monthly' | 'total',
-    // TODO: SDK should include allowedProviders field
-    allowedProviders: null, // Not available in SDK
-    expirationDate: sdk.expiresAt || null,
-    createdDate: sdk.createdAt,
-    modifiedDate: sdk.updatedAt,
-    lastUsedDate: sdk.lastUsedAt || null,
-    metadata: (() => {
-      if (!sdk.metadata) return null;
-      try {
-        return JSON.parse(sdk.metadata);
-      } catch (e) {
-        console.warn('[mapVirtualKeyFromSDK] Failed to parse metadata:', sdk.metadata, e);
-        // Return the raw string if parsing fails
-        return { raw: sdk.metadata };
-      }
-    })(),
-  };
-}
-
-export function mapVirtualKeyToSDK(ui: UIVirtualKey): Partial<VirtualKeyDto> {
-  const { name, key, isActive, budget, budgetPeriod, expirationDate, createdDate, modifiedDate, lastUsedDate, metadata, allowedProviders, ...rest } = ui;
-  return {
-    ...rest,
-    keyName: name,
-    apiKey: key,
-    isEnabled: isActive,
-    maxBudget: budget,
-    budgetDuration: (budgetPeriod.charAt(0).toUpperCase() + budgetPeriod.slice(1)) as BudgetDuration,
-    expiresAt: expirationDate || undefined,
-    createdAt: createdDate,
-    updatedAt: modifiedDate,
-    lastUsedAt: lastUsedDate || undefined,
-    metadata: metadata ? JSON.stringify(metadata) : undefined,
-  };
-}
+// NOTE: Virtual Key mapping functions have been removed - Virtual Keys now use VirtualKeyDto directly
 
 export function mapProviderFromSDK(sdk: ProviderCredentialDto): UIProvider {
   const additionalConfig = sdk.additionalConfig ? JSON.parse(sdk.additionalConfig) : {};

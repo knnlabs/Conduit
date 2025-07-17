@@ -33,17 +33,14 @@ import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-interface VirtualKey {
-  id: string;
-  name: string;
+// Use SDK types directly for Virtual Keys
+interface DashboardVirtualKey extends VirtualKeyDto {
   status: string;
-  requests: number;
-  cost: number;
-  budget: number;
   budgetUsed: number;
 }
 
@@ -76,7 +73,7 @@ export default function VirtualKeysDashboardPage() {
   });
 
   // Use real data from API or fallback values
-  const virtualKeys: VirtualKey[] = dashboardData?.virtualKeys || [];
+  const virtualKeys: DashboardVirtualKey[] = dashboardData?.virtualKeys || [];
   const totalRequests = dashboardData?.summary?.totalRequests || 0;
   const totalCost = dashboardData?.summary?.totalCost || 0;
   const averageBudgetUsed = dashboardData?.summary?.averageBudgetUsed || 0;
@@ -348,7 +345,7 @@ export default function VirtualKeysDashboardPage() {
                               <IconKey size={12} />
                             </ThemeIcon>
                             <div>
-                              <Text size="sm" fw={500}>{key.name}</Text>
+                              <Text size="sm" fw={500}>{key.keyName}</Text>
                               <Text size="xs" c="dimmed">{key.id}</Text>
                             </div>
                           </Group>
@@ -358,9 +355,9 @@ export default function VirtualKeysDashboardPage() {
                             {key.status}
                           </Badge>
                         </Table.Td>
-                        <Table.Td>{formatters.number(key.requests)}</Table.Td>
-                        <Table.Td>{formatters.currency(key.cost)}</Table.Td>
-                        <Table.Td>{formatters.currency(key.budget)}</Table.Td>
+                        <Table.Td>{formatters.number(key.requestCount || 0)}</Table.Td>
+                        <Table.Td>{formatters.currency(key.currentSpend)}</Table.Td>
+                        <Table.Td>{formatters.currency(key.maxBudget || 0)}</Table.Td>
                         <Table.Td>
                           <Stack gap={4}>
                             <Progress 
@@ -460,7 +457,7 @@ export default function VirtualKeysDashboardPage() {
               .map((key) => (
                 <Paper key={key.id} p="md" withBorder>
                   <Group justify="space-between" mb="xs">
-                    <Text fw={500}>{key.name}</Text>
+                    <Text fw={500}>{key.keyName}</Text>
                     <Badge 
                       variant="light" 
                       color={getBudgetColor(key.budgetUsed)}
@@ -476,10 +473,10 @@ export default function VirtualKeysDashboardPage() {
                   />
                   <Group justify="space-between">
                     <Text size="sm" c="dimmed">
-                      {formatters.currency(key.cost)} / {formatters.currency(key.budget)}
+                      {formatters.currency(key.currentSpend)} / {formatters.currency(key.maxBudget || 0)}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {formatters.currency(key.budget - key.cost)} remaining
+                      {formatters.currency((key.maxBudget || 0) - key.currentSpend)} remaining
                     </Text>
                   </Group>
                 </Paper>
