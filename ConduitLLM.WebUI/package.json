@@ -19,7 +19,8 @@
   "dependencies": {
     "@clerk/nextjs": "^6.24.0",
     "@hello-pangea/dnd": "^18.0.1",
-    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
+    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin/knn_labs-conduit-admin-client-1.0.1-dev.20250718000000.tgz",
+    "@knn_labs/conduit-common": "file:../Clients/Node/Common/knn_labs-conduit-common-0.1.0.tgz",
     "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
     "@mantine/carousel": "^8.1.2",
     "@mantine/charts": "^8.1.2",

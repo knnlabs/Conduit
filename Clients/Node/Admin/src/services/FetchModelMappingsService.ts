@@ -16,15 +16,6 @@ import type {
 // Type aliases for better readability - using generated types where available
 type BulkModelMappingRequest = components['schemas']['BulkModelMappingRequest'];
 
-// Define inline types for responses that aren't in the generated schemas
-interface ModelMappingListResponseDto {
-  items: ModelProviderMappingDto[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
 /**
  * Type-safe Model Mappings service using native fetch
  */
@@ -32,20 +23,18 @@ export class FetchModelMappingsService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
   /**
-   * Get all model mappings with optional pagination
+   * Get all model mappings
+   * Note: The backend currently returns a plain array, not a paginated response
    */
   async list(
     page: number = 1,
     pageSize: number = 10,
     config?: RequestConfig
-  ): Promise<ModelMappingListResponseDto> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-
-    return this.client['get']<ModelMappingListResponseDto>(
-      `${ENDPOINTS.MODEL_MAPPINGS.BASE}?${params.toString()}`,
+  ): Promise<ModelProviderMappingDto[]> {
+    // Backend doesn't support pagination yet, so we ignore the params
+    // but keep them in the signature for future compatibility
+    return this.client['get']<ModelProviderMappingDto[]>(
+      ENDPOINTS.MODEL_MAPPINGS.BASE,
       {
         signal: config?.signal,
         timeout: config?.timeout,

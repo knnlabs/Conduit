@@ -10,29 +10,10 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') ?? '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') ?? '50', 10);
     
-    // SDK returns paginated response
+    // SDK now returns an array directly (backend doesn't support pagination yet)
     const response = await adminClient.modelMappings.list(page, pageSize);
     
-    console.log('[Model Mappings] List response:', {
-      isArray: Array.isArray(response),
-      hasItems: !!response?.items,
-      itemsLength: response?.items?.length ?? 0,
-      responseKeys: response ? Object.keys(response) : [],
-    });
-    
-    // Handle both array and paginated response formats
-    if (Array.isArray(response)) {
-      // If response is already an array, return it directly
-      return NextResponse.json(response);
-    } else if (response?.items) {
-      // If response has items property, return just the items array
-      // Components expect an array, not a paginated response
-      return NextResponse.json(response.items);
-    } else {
-      // Fallback to empty array
-      console.warn('[Model Mappings] Unexpected response format:', response);
-      return NextResponse.json([]);
-    }
+    return NextResponse.json(response);
   } catch (error) {
     return handleSDKError(error);
   }
@@ -52,7 +33,7 @@ export async function POST(req: NextRequest) {
     const transformedBody = {
       modelId: body.modelId,
       providerModelId: body.providerModelId,
-      providerId: body.providerId.toString(), // Backend expects string
+      providerId: body.providerId, // Frontend now sends provider name directly
       priority: body.priority ?? 100,
       isEnabled: body.isEnabled ?? true, // Default to enabled
       supportsVision: body.supportsVision ?? false,
