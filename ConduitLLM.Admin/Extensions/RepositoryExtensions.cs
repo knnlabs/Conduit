@@ -529,6 +529,12 @@ namespace ConduitLLM.Admin.Extensions
                 OutputTokenCost = modelCost.OutputTokenCost,
                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
+                VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -553,6 +559,12 @@ namespace ConduitLLM.Admin.Extensions
                 OutputTokenCost = dto.OutputTokenCost,
                 EmbeddingTokenCost = dto.EmbeddingTokenCost,
                 ImageCostPerImage = dto.ImageCostPerImage,
+                AudioCostPerMinute = dto.AudioCostPerMinute,
+                AudioCostPerKCharacters = dto.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = dto.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute,
+                VideoCostPerSecond = dto.VideoCostPerSecond,
+                VideoResolutionMultipliers = dto.VideoResolutionMultipliers,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -581,6 +593,12 @@ namespace ConduitLLM.Admin.Extensions
             entity.OutputTokenCost = dto.OutputTokenCost;
             entity.EmbeddingTokenCost = dto.EmbeddingTokenCost;
             entity.ImageCostPerImage = dto.ImageCostPerImage;
+            entity.AudioCostPerMinute = dto.AudioCostPerMinute;
+            entity.AudioCostPerKCharacters = dto.AudioCostPerKCharacters;
+            entity.AudioInputCostPerMinute = dto.AudioInputCostPerMinute;
+            entity.AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute;
+            entity.VideoCostPerSecond = dto.VideoCostPerSecond;
+            entity.VideoResolutionMultipliers = dto.VideoResolutionMultipliers;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

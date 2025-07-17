@@ -84,6 +84,20 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per minute for real-time audio output in USD, if applicable
         /// </summary>
         public decimal? AudioOutputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per second for video generation in USD, if applicable
+        /// </summary>
+        public decimal? VideoCostPerSecond { get; set; }
+
+        /// <summary>
+        /// Resolution-based cost multipliers for video generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
+        /// </remarks>
+        public string? VideoResolutionMultipliers { get; set; }
     }
 
     /// <summary>
@@ -142,6 +156,20 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per minute for real-time audio output in USD, if applicable
         /// </summary>
         public decimal? AudioOutputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per second for video generation in USD, if applicable
+        /// </summary>
+        public decimal? VideoCostPerSecond { get; set; }
+
+        /// <summary>
+        /// Resolution-based cost multipliers for video generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
+        /// </remarks>
+        public string? VideoResolutionMultipliers { get; set; }
     }
 
     /// <summary>
@@ -205,6 +233,20 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per minute for real-time audio output in USD, if applicable
         /// </summary>
         public decimal? AudioOutputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per second for video generation in USD, if applicable
+        /// </summary>
+        public decimal? VideoCostPerSecond { get; set; }
+
+        /// <summary>
+        /// Resolution-based cost multipliers for video generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
+        /// </remarks>
+        public string? VideoResolutionMultipliers { get; set; }
     }
 
     /// <summary>

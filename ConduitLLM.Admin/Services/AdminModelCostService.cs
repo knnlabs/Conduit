@@ -297,7 +297,13 @@ namespace ConduitLLM.Admin.Services
                                 InputTokenCost = modelCost.InputTokenCost,
                                 OutputTokenCost = modelCost.OutputTokenCost,
                                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
-                                ImageCostPerImage = modelCost.ImageCostPerImage
+                                ImageCostPerImage = modelCost.ImageCostPerImage,
+                                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
+                                VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers
                             };
 
                             existingModelCost.UpdateFrom(updateDto);
