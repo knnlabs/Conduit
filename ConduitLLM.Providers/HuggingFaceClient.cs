@@ -799,5 +799,56 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
+
+        #region Capabilities
+
+        /// <inheritdoc />
+        public override Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            var isImageGeneration = IsImageGenerationModel(model);
+
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = true, // HuggingFace supports top-k
+                    Stop = true,
+                    PresencePenalty = false, // HuggingFace doesn't support presence penalty
+                    FrequencyPenalty = false, // HuggingFace doesn't support frequency penalty
+                    LogitBias = false, // HuggingFace doesn't support logit bias
+                    N = false, // HuggingFace doesn't support multiple choices
+                    User = false, // HuggingFace doesn't support user parameter
+                    Seed = true, // HuggingFace supports seed
+                    ResponseFormat = false, // HuggingFace doesn't support response format
+                    Tools = false, // HuggingFace doesn't support tools
+                    Constraints = new ParameterConstraints
+                    {
+                        TemperatureRange = new Range<double>(0.0, 2.0),
+                        TopPRange = new Range<double>(0.0, 1.0),
+                        TopKRange = new Range<int>(1, 100),
+                        MaxStopSequences = 10,
+                        MaxTokenLimit = 4096 // Default fallback
+                    }
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = false, // HuggingFace simulates streaming
+                    Embeddings = true, // HuggingFace supports embeddings
+                    ImageGeneration = isImageGeneration,
+                    VisionInput = false, // Most HuggingFace models don't support vision
+                    FunctionCalling = false, // HuggingFace doesn't support function calling
+                    AudioTranscription = false, // HuggingFace doesn't provide audio transcription
+                    TextToSpeech = false // HuggingFace doesn't provide text-to-speech
+                }
+            });
+        }
+
+        #endregion
     }
 }

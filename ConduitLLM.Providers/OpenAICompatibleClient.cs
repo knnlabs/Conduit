@@ -1341,6 +1341,53 @@ namespace ConduitLLM.Providers
             // client.DefaultRequestHeaders.Add("OpenAI-Version", "2023-05-15");
         }
 
+        /// <inheritdoc />
+        public override Task<Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            
+            // For OpenAI-compatible providers, we provide sensible defaults
+            // Individual providers can override this with more specific capabilities
+            return Task.FromResult(new Core.Models.ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new Core.Models.ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = false, // Most OpenAI-compatible APIs don't support top-k
+                    Stop = true,
+                    PresencePenalty = true,
+                    FrequencyPenalty = true,
+                    LogitBias = true,
+                    N = true,
+                    User = true,
+                    Seed = true,
+                    ResponseFormat = true,
+                    Tools = true,
+                    Constraints = new Core.Models.ParameterConstraints
+                    {
+                        TemperatureRange = new Core.Models.Range<double>(0.0, 2.0),
+                        TopPRange = new Core.Models.Range<double>(0.0, 1.0),
+                        MaxStopSequences = 4,
+                        MaxTokenLimit = 4096 // Conservative default
+                    }
+                },
+                Features = new Core.Models.FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = false, // Usually separate models
+                    ImageGeneration = false, // Usually separate models
+                    VisionInput = false, // Provider-specific
+                    FunctionCalling = true,
+                    AudioTranscription = false, // Provider-specific
+                    TextToSpeech = false // Provider-specific
+                }
+            });
+        }
+
         /// <summary>
         /// Extracts a more helpful error message from exception details.
         /// </summary>

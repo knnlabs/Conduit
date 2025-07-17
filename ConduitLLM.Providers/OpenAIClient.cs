@@ -891,6 +891,77 @@ namespace ConduitLLM.Providers
 
         #endregion
 
+        #region Capabilities
+
+        /// <inheritdoc />
+        public override Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            var isGpt4Vision = model.Contains("vision", StringComparison.OrdinalIgnoreCase) || 
+                               model.Contains("gpt-4o", StringComparison.OrdinalIgnoreCase) ||
+                               model.Contains("gpt-4-turbo", StringComparison.OrdinalIgnoreCase);
+            var isDalleModel = model.StartsWith("dall-e", StringComparison.OrdinalIgnoreCase);
+            var isEmbeddingModel = model.Contains("embedding", StringComparison.OrdinalIgnoreCase) ||
+                                   model.Contains("ada", StringComparison.OrdinalIgnoreCase);
+
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = false, // OpenAI doesn't support top-k
+                    Stop = true,
+                    PresencePenalty = true,
+                    FrequencyPenalty = true,
+                    LogitBias = true,
+                    N = true,
+                    User = true,
+                    Seed = true,
+                    ResponseFormat = true,
+                    Tools = !isDalleModel && !isEmbeddingModel, // Most models support tools except DALL-E and embedding models
+                    Constraints = new ParameterConstraints
+                    {
+                        TemperatureRange = new Range<double>(0.0, 2.0),
+                        TopPRange = new Range<double>(0.0, 1.0),
+                        MaxStopSequences = 4,
+                        MaxTokenLimit = GetModelMaxTokens(model)
+                    }
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = !isDalleModel && !isEmbeddingModel,
+                    Embeddings = isEmbeddingModel,
+                    ImageGeneration = isDalleModel,
+                    VisionInput = isGpt4Vision,
+                    FunctionCalling = !isDalleModel && !isEmbeddingModel,
+                    AudioTranscription = !isDalleModel && !isEmbeddingModel,
+                    TextToSpeech = !isDalleModel && !isEmbeddingModel
+                }
+            });
+        }
+
+        private int GetModelMaxTokens(string model)
+        {
+            return model.ToLowerInvariant() switch
+            {
+                var m when m.Contains("gpt-4o") => 128000,
+                var m when m.Contains("gpt-4-turbo") => 128000,
+                var m when m.Contains("gpt-4") => 8192,
+                var m when m.Contains("gpt-3.5-turbo") => 16385,
+                var m when m.Contains("text-davinci") => 4097,
+                var m when m.Contains("text-curie") => 2049,
+                var m when m.Contains("text-babbage") => 2049,
+                var m when m.Contains("text-ada") => 2049,
+                _ => 4096 // Default fallback
+            };
+        }
+
+        #endregion
+
         #region Configuration Helpers
 
         /// <summary>

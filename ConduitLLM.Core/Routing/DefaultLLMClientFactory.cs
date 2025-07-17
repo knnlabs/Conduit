@@ -359,6 +359,13 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
 
             return Task.FromResult(models);
         }
+
+        public Task<ConduitLLM.Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            // Return basic capabilities for placeholder - using default constructor
+            var capabilities = new ConduitLLM.Core.Models.ProviderCapabilities();
+            return Task.FromResult(capabilities);
+        }
     }
 
     /// <summary>
