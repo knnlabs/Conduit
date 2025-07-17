@@ -45,6 +45,7 @@ interface ProviderWithHealth extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
+  endpoint?: string;
 }
 
 export default function ProvidersPage() {
@@ -74,6 +75,8 @@ export default function ProvidersPage() {
       
       // Check if data is an array or if it's wrapped in a response object
       const providersList = Array.isArray(data) ? data : (data.items || data.providers || []);
+      console.log('Provider object structure:', JSON.stringify(providersList[0], null, 2));
+      console.log('Provider object structure:', JSON.stringify(providersList[0], null, 2));
       console.log('Providers list:', providersList);
       
       // Use SDK types directly and add health status (would need separate health fetch in real app)
@@ -157,7 +160,7 @@ export default function ProvidersPage() {
     return (
       provider.providerName.toLowerCase().includes(query) ||
       provider.id.toString().toLowerCase().includes(query) ||
-      (provider.apiBase?.toLowerCase().includes(query))
+      (provider.endpoint?.toLowerCase().includes(query))
     );
   });
 
@@ -198,7 +201,7 @@ export default function ProvidersPage() {
       type: provider.providerName,
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
       health: provider.healthStatus,
-      endpoint: provider.apiBase || '',
+      endpoint: provider.endpoint || '',
       models: provider.models?.join('; ') || '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
       createdAt: formatDateForExport(provider.createdAt),

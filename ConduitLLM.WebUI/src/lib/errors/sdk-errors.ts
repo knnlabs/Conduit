@@ -1,37 +1,30 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
 import { 
-  HttpError
+  ConduitError
 } from '@knn_labs/conduit-admin-client';
 
 // Map SDK errors to appropriate HTTP responses
 export function handleSDKError(error: unknown): NextResponse {
   const errorInfo = {
     error: error instanceof Error ? error.message : 'Unknown error',
-    type: error instanceof HttpError ? error.response?.status : 'unknown',
+    type: error instanceof ConduitError ? error.statusCode : 'unknown',
     stack: error instanceof Error ? error.stack : undefined,
   };
   logger.error('SDK operation failed', errorInfo);
 
-  // Handle HttpError from the SDK
-  if (error instanceof HttpError) {
-    // Parse the error details if they exist
+  // Handle ConduitError from the SDK
+  if (error instanceof ConduitError) {
+    // Use the error message and details from ConduitError
     let errorMessage = error.message || 'An error occurred';
-    let errorDetails: any = {};
+    let errorDetails: Record<string, unknown> = {};
     
-    try {
-      // Try to parse the response data if it exists
-      if (error.response?.data && typeof error.response.data === 'string') {
-        const parsed = JSON.parse(error.response.data);
-        errorMessage = parsed.message || parsed.error || errorMessage;
-        errorDetails = parsed;
-      } else if (error.response?.data && typeof error.response.data === 'object') {
-        const data = error.response.data as any;
-        errorMessage = data.message || data.error || errorMessage;
-        errorDetails = data;
-      }
-    } catch (e) {
-      // If parsing fails, use the original message
+    // ConduitError has details and context properties
+    if (error.details) {
+      errorDetails = typeof error.details === 'object' ? error.details as Record<string, unknown> : { details: error.details };
+    }
+    if (error.context) {
+      errorDetails = { ...errorDetails, ...error.context };
     }
 
     return NextResponse.json(
@@ -39,10 +32,10 @@ export function handleSDKError(error: unknown): NextResponse {
         error: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { 
           details: errorDetails,
-          statusCode: error.response?.status
+          statusCode: error.statusCode
         })
       },
-      { status: error.response?.status || 500 }
+      { status: error.statusCode || 500 }
     );
   }
 
@@ -73,7 +66,7 @@ export function handleSDKError(error: unknown): NextResponse {
 // Legacy alias for backward compatibility
 export const mapSDKErrorToResponse = handleSDKError;
 
-// Re-export SDK error types for convenience
-export {
-  HttpError
-};
+// Re-export ConduitError for convenience
+export { ConduitError };
+// For backward compatibility with code expecting HttpError
+export { ConduitError as HttpError };

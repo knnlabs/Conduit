@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
+import { type ChatCompletionChunk } from '@knn_labs/conduit-core-client';
+
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {
 
@@ -19,15 +21,17 @@ export async function POST(request: NextRequest) {
       (async () => {
         try {
           // Create the request with explicit stream: true type
-          const streamResponse = await coreClient.chat.create({
+          const streamResponse = (await coreClient.chat.create({
             ...body,
             stream: true,
-          }) as any; // Type assertion to work around TypeScript inference issue
+          })) as unknown as AsyncIterable<ChatCompletionChunk>;
           
           // Handle the async iterator from the SDK
           for await (const chunk of streamResponse) {
             // Format as SSE
-            const data = `data: ${JSON.stringify(chunk)}\n\n`;
+            const data = `data: ${JSON.stringify(chunk)}
+
+`;
             await writer.write(encoder.encode(data));
           }
           
@@ -35,7 +39,9 @@ export async function POST(request: NextRequest) {
           await writer.write(encoder.encode('data: [DONE]\n\n'));
         } catch (error: any) {
           console.error('Streaming error:', error);
-          const errorData = `data: ${JSON.stringify({ error: error.message })}\n\n`;
+          const errorData = `data: ${JSON.stringify({ error: error.message })}
+
+`;
           await writer.write(encoder.encode(errorData));
         } finally {
           await writer.close();

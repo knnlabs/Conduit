@@ -42,7 +42,6 @@ interface FormValues {
   supportsRealtimeAudio: boolean;
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;
-  supportsVideoGeneration: boolean;
   supportsEmbeddings: boolean;
   // Metadata
   maxContextLength?: number;
@@ -72,7 +71,6 @@ export function CreateModelMappingModal({
       supportsRealtimeAudio: false,
       supportsFunctionCalling: false,
       supportsStreaming: true, // Most models support streaming
-      supportsVideoGeneration: false,
       supportsEmbeddings: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
@@ -104,7 +102,6 @@ export function CreateModelMappingModal({
       supportsRealtimeAudio: values.supportsRealtimeAudio,
       supportsFunctionCalling: values.supportsFunctionCalling,
       supportsStreaming: values.supportsStreaming,
-      supportsVideoGeneration: values.supportsVideoGeneration,
       supportsEmbeddings: values.supportsEmbeddings,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
@@ -235,16 +232,10 @@ export function CreateModelMappingModal({
             />
           </Group>
 
-          <Group grow>
-            <Switch
-              label="Realtime Audio"
-              {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
-            />
-            <Switch
-              label="Video Generation"
-              {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
-            />
-          </Group>
+          <Switch
+            label="Realtime Audio"
+            {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
+          />
 
           <Switch
             label="Embeddings"
