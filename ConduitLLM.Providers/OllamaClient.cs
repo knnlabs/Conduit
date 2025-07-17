@@ -529,13 +529,14 @@ namespace ConduitLLM.Providers
             // Map options - only map supported ones from Core request
             OllamaOptions? options = null;
             if (coreRequest.Temperature.HasValue || coreRequest.MaxTokens.HasValue || coreRequest.TopP.HasValue ||
-                (coreRequest.Stop != null && coreRequest.Stop.Any()))
+                coreRequest.TopK.HasValue || (coreRequest.Stop != null && coreRequest.Stop.Any()))
             {
                 options = new OllamaOptions
                 {
                     Temperature = (float?)coreRequest.Temperature,
                     NumPredict = coreRequest.MaxTokens,
                     TopP = (float?)coreRequest.TopP,
+                    TopK = coreRequest.TopK,
                     Stop = coreRequest.Stop?.ToList()
                 };
             }

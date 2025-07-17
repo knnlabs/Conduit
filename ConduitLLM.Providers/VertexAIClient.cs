@@ -585,7 +585,8 @@ namespace ConduitLLM.Providers
                 {
                     Temperature = (float?)request.Temperature,
                     MaxOutputTokens = request.MaxTokens,
-                    TopP = (float?)request.TopP
+                    TopP = (float?)request.TopP,
+                    TopK = request.TopK
                 }
             };
         }
@@ -629,7 +630,8 @@ namespace ConduitLLM.Providers
                 {
                     Temperature = (float?)(request.Temperature ?? 0.7f),
                     MaxOutputTokens = request.MaxTokens ?? 1024,
-                    TopP = (float?)(request.TopP ?? 0.95f)
+                    TopP = (float?)(request.TopP ?? 0.95f),
+                    TopK = request.TopK
                 }
             };
         }

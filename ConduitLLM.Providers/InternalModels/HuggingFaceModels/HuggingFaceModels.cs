@@ -44,6 +44,9 @@ public class HuggingFaceParameters
     [JsonPropertyName("stop")]
     public List<string>? Stop { get; set; }
 
+    [JsonPropertyName("seed")]
+    public int? Seed { get; set; }
+
     [JsonPropertyName("return_full_text")]
     public bool? ReturnFullText { get; set; }
 }

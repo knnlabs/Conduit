@@ -727,8 +727,10 @@ namespace ConduitLLM.Providers
                 MaxTokens = request.MaxTokens ?? 4096, // Default max tokens if not specified
                 Temperature = (float?)request.Temperature,
                 TopP = (float?)request.TopP,
+                TopK = request.TopK,
                 Stream = request.Stream ?? false,
-                StopSequences = request.Stop
+                StopSequences = request.Stop,
+                Metadata = request.User != null ? new AnthropicMetadata { UserId = request.User } : null
             };
 
             return anthropicRequest;

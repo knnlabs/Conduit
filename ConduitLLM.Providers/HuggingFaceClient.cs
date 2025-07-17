@@ -114,6 +114,9 @@ namespace ConduitLLM.Providers
                         MaxNewTokens = request.MaxTokens,
                         Temperature = request.Temperature,
                         TopP = request.TopP,
+                        TopK = request.TopK,
+                        Stop = request.Stop?.ToList(),
+                        Seed = request.Seed,
                         DoSample = true,
                         ReturnFullText = false
                     },

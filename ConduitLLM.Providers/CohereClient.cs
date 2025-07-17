@@ -507,6 +507,13 @@ namespace ConduitLLM.Providers
                 MaxTokens = request.MaxTokens,
                 // Map top_p to Cohere's p parameter if provided
                 P = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                // Map TopK to Cohere's K parameter
+                K = request.TopK,
+                // Map penalty parameters
+                PresencePenalty = request.PresencePenalty.HasValue ? (float?)request.PresencePenalty.Value : null,
+                FrequencyPenalty = request.FrequencyPenalty.HasValue ? (float?)request.FrequencyPenalty.Value : null,
+                // Map seed for deterministic generation
+                Seed = request.Seed,
                 // Map stop to Cohere's stop_sequences if provided
                 StopSequences = request.Stop
             };

@@ -619,7 +619,7 @@ namespace ConduitLLM.Providers
                 {
                     Temperature = (float?)coreRequest.Temperature,
                     TopP = (float?)coreRequest.TopP,
-                    // TopK = coreRequest.TopK, // Map if added to Core model
+                    TopK = coreRequest.TopK,
                     CandidateCount = coreRequest.N, // Map N to candidateCount
                     MaxOutputTokens = coreRequest.MaxTokens,
                     StopSequences = coreRequest.Stop
