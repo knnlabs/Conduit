@@ -214,19 +214,19 @@ namespace ConduitLLM.Providers
         /// </summary>
         /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
         /// <returns>The provider capabilities.</returns>
-        public virtual Task<ConduitLLM.Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        public virtual Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
             // Return basic capabilities by default
-            return Task.FromResult(new ConduitLLM.Core.Models.ProviderCapabilities
+            return Task.FromResult(new ProviderCapabilities
             {
                 Provider = ProviderName,
                 ModelId = modelId ?? ProviderModelId,
-                ChatParameters = new ConduitLLM.Core.Models.ChatParameterSupport
+                ChatParameters = new ChatParameterSupport
                 {
                     Temperature = true,
                     MaxTokens = true
                 },
-                Features = new ConduitLLM.Core.Models.FeatureSupport
+                Features = new FeatureSupport
                 {
                     Streaming = true
                 }

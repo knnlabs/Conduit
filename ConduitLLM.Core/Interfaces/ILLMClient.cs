@@ -210,6 +210,6 @@ public interface ILLMClient
     /// Otherwise, the capabilities will be for the provider or default model.
     /// </para>
     /// </remarks>
-    Task<ConduitLLM.Core.Models.ProviderCapabilities> GetCapabilitiesAsync(
+    Task<ProviderCapabilities> GetCapabilitiesAsync(
         string? modelId = null);
 }

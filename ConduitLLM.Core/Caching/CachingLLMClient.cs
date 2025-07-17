@@ -342,7 +342,7 @@ namespace ConduitLLM.Core.Caching
         /// <summary>
         /// Gets the capabilities supported by the provider.
         /// </summary>
-        public Task<ConduitLLM.Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
             // No caching needed for capabilities
             return _innerClient.GetCapabilitiesAsync(modelId);

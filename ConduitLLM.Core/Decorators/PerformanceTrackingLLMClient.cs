@@ -224,7 +224,7 @@ namespace ConduitLLM.Core.Decorators
         /// <summary>
         /// Gets the capabilities supported by the provider.
         /// </summary>
-        public Task<ConduitLLM.Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
             // No performance tracking needed for capabilities
             return _innerClient.GetCapabilitiesAsync(modelId);

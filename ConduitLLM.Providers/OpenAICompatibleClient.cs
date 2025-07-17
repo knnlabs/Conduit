@@ -1342,17 +1342,17 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override Task<Core.Models.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        public override Task<CoreModels.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
             var model = modelId ?? ProviderModelId;
             
             // For OpenAI-compatible providers, we provide sensible defaults
             // Individual providers can override this with more specific capabilities
-            return Task.FromResult(new Core.Models.ProviderCapabilities
+            return Task.FromResult(new CoreModels.ProviderCapabilities
             {
                 Provider = ProviderName,
                 ModelId = model,
-                ChatParameters = new Core.Models.ChatParameterSupport
+                ChatParameters = new CoreModels.ChatParameterSupport
                 {
                     Temperature = true,
                     MaxTokens = true,
@@ -1367,15 +1367,15 @@ namespace ConduitLLM.Providers
                     Seed = true,
                     ResponseFormat = true,
                     Tools = true,
-                    Constraints = new Core.Models.ParameterConstraints
+                    Constraints = new CoreModels.ParameterConstraints
                     {
-                        TemperatureRange = new Core.Models.Range<double>(0.0, 2.0),
-                        TopPRange = new Core.Models.Range<double>(0.0, 1.0),
+                        TemperatureRange = new CoreModels.Range<double>(0.0, 2.0),
+                        TopPRange = new CoreModels.Range<double>(0.0, 1.0),
                         MaxStopSequences = 4,
                         MaxTokenLimit = 4096 // Conservative default
                     }
                 },
-                Features = new Core.Models.FeatureSupport
+                Features = new CoreModels.FeatureSupport
                 {
                     Streaming = true,
                     Embeddings = false, // Usually separate models
