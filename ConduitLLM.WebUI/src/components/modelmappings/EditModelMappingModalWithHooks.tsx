@@ -104,18 +104,18 @@ export function EditModelMappingModal({
       console.log('[EditModal] Setting form values from mapping:', mapping);
       console.log('[EditModal] Available providers:', providers);
       
-      // Find the provider name from the ID  
-      const provider = providers.find(p => p.id.toString() === mapping.providerId);
-      const providerName = provider?.providerName || mapping.providerId;
+      // The mapping.providerId is the provider name (string), we need to find the numeric ID
+      const provider = providers.find(p => p.providerName === mapping.providerId);
+      const providerIdForForm = provider?.id.toString() || '';
       
-      console.log('[EditModal] Mapped provider ID to name:', { 
-        providerId: mapping.providerId, 
-        providerName 
+      console.log('[EditModal] Mapped provider name to ID:', { 
+        providerName: mapping.providerId, 
+        providerIdForForm 
       });
       
       const formData = {
         modelId: mapping.modelId,
-        providerId: mapping.providerId.toString(), // Convert numeric ID to string for form
+        providerId: providerIdForForm, // Use the numeric ID for the form
         providerModelId: mapping.providerModelId,
         priority: mapping.priority || 100,
         isEnabled: mapping.isEnabled,
@@ -143,9 +143,13 @@ export function EditModelMappingModal({
     console.log('[EditModal] Form values:', values);
     console.log('[EditModal] Mapping:', mapping);
 
+    // Convert the numeric provider ID back to provider name for the backend
+    const provider = providers?.find(p => p.id.toString() === values.providerId);
+    const providerName = provider?.providerName || values.providerId;
+
     const updateData: UpdateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: values.providerId, // This is now the numeric ID as string
+      providerId: providerName, // Backend expects provider name, not numeric ID
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,
@@ -179,7 +183,7 @@ export function EditModelMappingModal({
   };
 
   const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
-    value: p.id.toString(), // Backend expects numeric provider ID
+    value: p.id.toString(), // Form uses numeric ID, but we convert to provider name on submit
     label: p.providerName,
   })) || [];
 

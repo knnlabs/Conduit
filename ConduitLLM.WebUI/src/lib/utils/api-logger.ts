@@ -5,6 +5,12 @@ import { NextRequest } from 'next/server';
  * In development, logs everything to console
  * In production, could send to a proper logging service
  */
+type ApiHandler = (
+  req: NextRequest,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ...args: any[]
+) => Promise<Response | undefined> | Promise<Response>;
+
 export class ApiLogger {
   private routeName: string;
   private startTime: number;
@@ -14,38 +20,40 @@ export class ApiLogger {
     this.startTime = Date.now();
   }
 
-  logRequest(request: NextRequest, body?: any) {
+    logRequest(request: NextRequest, body?: unknown) {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`\n=== API REQUEST: ${this.routeName} ===`);
-      console.log(`Method: ${request.method}`);
-      console.log(`URL: ${request.url}`);
-      console.log(`Headers:`, Object.fromEntries(request.headers.entries()));
+            console.warn(`\n=== API REQUEST: ${this.routeName} ===`);
+            console.warn(`Method: ${request.method}`);
+            console.warn(`URL: ${request.url}`);
+            console.warn(`Headers:`, Object.fromEntries(request.headers.entries()));
       if (body) {
-        console.log(`Body:`, JSON.stringify(body, null, 2));
+                console.warn(`Body:`, JSON.stringify(body, null, 2));
       }
-      console.log(`=================================\n`);
+            console.warn(`=================================\n`);
     }
   }
 
-  logResponse(status: number, body?: any) {
+    logResponse(status: number, body?: unknown) {
     if (process.env.NODE_ENV === 'development') {
       const duration = Date.now() - this.startTime;
-      console.log(`\n=== API RESPONSE: ${this.routeName} ===`);
-      console.log(`Status: ${status}`);
-      console.log(`Duration: ${duration}ms`);
+            console.warn(`\n=== API RESPONSE: ${this.routeName} ===`);
+            console.warn(`Status: ${status}`);
+            console.warn(`Duration: ${duration}ms`);
       if (body) {
-        console.log(`Body:`, JSON.stringify(body, null, 2));
+                console.warn(`Body:`, JSON.stringify(body, null, 2));
       }
-      console.log(`==================================\n`);
+            console.warn(`==================================\n`);
     }
   }
 
-  logError(error: any) {
+    logError(error: unknown) {
     const duration = Date.now() - this.startTime;
     console.error(`\n=== API ERROR: ${this.routeName} ===`);
     console.error(`Duration: ${duration}ms`);
     console.error(`Error:`, error);
-    console.error(`Stack:`, error?.stack);
+        if (error instanceof Error) {
+      console.error(`Stack:`, error.stack);
+    }
     console.error(`================================\n`);
   }
 }
@@ -53,10 +61,10 @@ export class ApiLogger {
 /**
  * Middleware wrapper that logs all requests/responses
  */
-export function withLogging(routeName: string, handler: Function) {
-  return async (...args: any[]) => {
+export function withLogging(routeName: string, handler: ApiHandler) {
+      return async (req: NextRequest, ...args: unknown[]) => {
     const logger = new ApiLogger(routeName);
-    const request = args[0] as NextRequest;
+        const request = req;
     
     try {
       // Log request
@@ -71,7 +79,7 @@ export function withLogging(routeName: string, handler: Function) {
       logger.logRequest(request, body);
       
       // Execute handler
-      const response = await handler(...args);
+            const response = await handler(req, ...args);
       
       // Log response
       if (response instanceof Response) {

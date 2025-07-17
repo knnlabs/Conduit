@@ -20,6 +20,7 @@ import {
   isNotFoundError,
   isRateLimitError,
   isNetworkError,
+  isTimeoutError,
 } from '@knn_labs/conduit-admin-client';
 
 export type ErrorType = 'network' | 'auth' | 'timeout' | 'validation' | 'permission' | 'notFound' | 'server' | 'generic';
@@ -51,7 +52,7 @@ export class ErrorClassifier {
       return 'permission';
     }
     
-    if (error instanceof TimeoutError) {
+    if (isTimeoutError(error)) {
       return 'timeout';
     }
     

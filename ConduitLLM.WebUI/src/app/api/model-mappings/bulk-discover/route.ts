@@ -42,7 +42,7 @@ if (Array.isArray(existingMappingsResponse)) {
     // Enhance discovered models with conflict information
     const enhancedModels = discoveredModels.map(model => ({
       ...model,
-      providerId: providerId, // Use provider ID, not name
+      providerId: providerName, // Backend expects provider name, not numeric ID
       hasConflict: existingModelIds.has(model.modelId),
       existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) ?? null,
       // Map capabilities to frontend expected format

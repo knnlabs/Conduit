@@ -157,8 +157,7 @@ export default function ProvidersPage() {
     return (
       provider.providerName.toLowerCase().includes(query) ||
       provider.id.toString().toLowerCase().includes(query) ||
-      provider.providerName.toLowerCase().includes(query) ||
-      (provider.apiEndpoint?.toLowerCase().includes(query))
+      (provider.apiBase?.toLowerCase().includes(query))
     );
   });
 
@@ -199,7 +198,7 @@ export default function ProvidersPage() {
       type: provider.providerName,
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
       health: provider.healthStatus,
-      endpoint: provider.apiEndpoint || '',
+      endpoint: provider.apiBase || '',
       models: provider.models?.join('; ') || '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
       createdAt: formatDateForExport(provider.createdAt),

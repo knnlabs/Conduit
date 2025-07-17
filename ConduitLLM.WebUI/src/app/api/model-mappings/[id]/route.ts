@@ -45,7 +45,7 @@ export async function PUT(
     };
     
     if (body.providerId !== undefined) {
-      transformedBody.providerId = body.providerId; // Already a string (provider name)
+      transformedBody.providerId = body.providerId; // Frontend now sends provider name directly
     }
     if (body.providerModelId !== undefined) {
       transformedBody.providerModelId = body.providerModelId;

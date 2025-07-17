@@ -87,9 +87,13 @@ export function CreateModelMappingModal({
   });
 
   const handleSubmit = async (values: FormValues) => {
+    // Convert the numeric provider ID to provider name for the backend
+    const provider = providers?.find(p => p.id.toString() === values.providerId);
+    const providerName = provider?.providerName || values.providerId;
+
     const createData: CreateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: values.providerId,
+      providerId: providerName, // Backend expects provider name, not numeric ID
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,

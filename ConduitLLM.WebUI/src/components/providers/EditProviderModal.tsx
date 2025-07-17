@@ -72,20 +72,12 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   // Update form when provider changes
   useEffect(() => {
     if (provider) {
-      // Parse additionalConfig if needed
-      let additionalConfig = {};
-      if (provider.additionalConfig) {
-        try {
-          additionalConfig = JSON.parse(provider.additionalConfig);
-        } catch (e) {
-          console.warn('Failed to parse additionalConfig:', e);
-        }
-      }
+      // Skip additionalConfig parsing as it's not in ProviderCredentialDto
 
       form.setValues({
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.apiEndpoint || '',
-        organizationId: provider.organizationId || '',
+        apiEndpoint: provider.apiBase || '',
+        organizationId: provider.organization || '',
         isEnabled: provider.isEnabled,
       });
     }

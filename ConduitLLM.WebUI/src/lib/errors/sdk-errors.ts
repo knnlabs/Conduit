@@ -1,117 +1,48 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
 import { 
-  ConduitError, 
-  AuthError,
-  AuthenticationError,
-  AuthorizationError,
-  ValidationError,
-  NotFoundError,
-  ConflictError,
-  RateLimitError,
-  ServerError,
-  NetworkError,
-  TimeoutError,
-  isConduitError,
-  isAuthError,
-  isValidationError,
-  isNotFoundError,
-  isRateLimitError,
-  isNetworkError
+  HttpError
 } from '@knn_labs/conduit-admin-client';
 
 // Map SDK errors to appropriate HTTP responses
 export function handleSDKError(error: unknown): NextResponse {
   const errorInfo = {
     error: error instanceof Error ? error.message : 'Unknown error',
-    type: error instanceof ConduitError ? error.code : 'unknown',
-    context: error instanceof ConduitError ? error.context : undefined,
+    type: error instanceof HttpError ? error.response?.status : 'unknown',
     stack: error instanceof Error ? error.stack : undefined,
   };
   logger.error('SDK operation failed', errorInfo);
 
-  // Handle specific SDK error types
-  if (isRateLimitError(error)) {
-    return NextResponse.json(
-      { 
-        error: error.message || 'Rate limit exceeded',
-        retryAfter: error.retryAfter 
-      },
-      { status: 429 }
-    );
-  }
+  // Handle HttpError from the SDK
+  if (error instanceof HttpError) {
+    // Parse the error details if they exist
+    let errorMessage = error.message || 'An error occurred';
+    let errorDetails: any = {};
+    
+    try {
+      // Try to parse the response data if it exists
+      if (error.response?.data && typeof error.response.data === 'string') {
+        const parsed = JSON.parse(error.response.data);
+        errorMessage = parsed.message || parsed.error || errorMessage;
+        errorDetails = parsed;
+      } else if (error.response?.data && typeof error.response.data === 'object') {
+        const data = error.response.data as any;
+        errorMessage = data.message || data.error || errorMessage;
+        errorDetails = data;
+      }
+    } catch (e) {
+      // If parsing fails, use the original message
+    }
 
-  if (isAuthError(error)) {
     return NextResponse.json(
-      { error: error.message || 'Authentication failed' },
-      { status: 401 }
-    );
-  }
-
-  if (error instanceof AuthorizationError) {
-    return NextResponse.json(
-      { error: error.message || 'Access denied' },
-      { status: 403 }
-    );
-  }
-
-  if (isValidationError(error)) {
-    return NextResponse.json(
-      { 
-        error: error.message || 'Validation failed',
-        field: error.field,
-        details: error.details
-      },
-      { status: 400 }
-    );
-  }
-
-  if (isNotFoundError(error)) {
-    return NextResponse.json(
-      { error: error.message || 'Resource not found' },
-      { status: 404 }
-    );
-  }
-
-  if (error instanceof ConflictError) {
-    return NextResponse.json(
-      { error: error.message || 'Resource conflict' },
-      { status: 409 }
-    );
-  }
-
-  if (isNetworkError(error)) {
-    return NextResponse.json(
-      { error: error.message || 'Network error occurred' },
-      { status: 503 }
-    );
-  }
-
-  if (error instanceof TimeoutError) {
-    return NextResponse.json(
-      { error: error.message || 'Request timed out' },
-      { status: 504 }
-    );
-  }
-
-  if (error instanceof ServerError) {
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-
-  if (isConduitError(error)) {
-    return NextResponse.json(
-      { 
-        error: error.message,
-        code: error.code,
+      {
+        error: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { 
-          context: error.context,
-          details: error.details
+          details: errorDetails,
+          statusCode: error.response?.status
         })
       },
-      { status: error.statusCode || 500 }
+      { status: error.response?.status || 500 }
     );
   }
 
@@ -144,21 +75,5 @@ export const mapSDKErrorToResponse = handleSDKError;
 
 // Re-export SDK error types for convenience
 export {
-  ConduitError,
-  AuthError,
-  AuthenticationError,
-  AuthorizationError,
-  ValidationError,
-  NotFoundError,
-  ConflictError,
-  RateLimitError,
-  ServerError,
-  NetworkError,
-  TimeoutError,
-  isConduitError,
-  isAuthError,
-  isValidationError,
-  isNotFoundError,
-  isRateLimitError,
-  isNetworkError
+  HttpError
 };
