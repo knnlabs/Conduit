@@ -21,18 +21,18 @@ export async function POST(req: NextRequest) {
             modelId: model.modelId,
             providerId: model.provider,
             providerModelId: model.modelId,
-            isEnabled: body.enableNewMappings || false,
+            isEnabled: body.enableNewMappings ?? false,
             priority: 50,
             // Map capabilities from discovered model
-            supportsVision: model.capabilities?.vision || false,
-            supportsImageGeneration: model.capabilities?.imageGeneration || false,
-            supportsFunctionCalling: model.capabilities?.functionCalling || false,
-            supportsStreaming: model.capabilities?.chatStream || false,
+            supportsVision: model.capabilities?.vision ?? false,
+            supportsImageGeneration: model.capabilities?.imageGeneration ?? false,
+            supportsFunctionCalling: model.capabilities?.functionCalling ?? false,
+            supportsStreaming: model.capabilities?.chatStream ?? false,
             maxContextLength: model.capabilities?.maxTokens,
           };
-          const created = await adminClient.modelMappings.create(mapping);
+          await adminClient.modelMappings.create(mapping);
           results.push({ ...model, created: true });
-        } catch (err) {
+        } catch {
           // If mapping already exists or fails, just mark as not created
           results.push({ ...model, created: false });
         }

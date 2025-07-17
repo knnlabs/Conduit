@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();

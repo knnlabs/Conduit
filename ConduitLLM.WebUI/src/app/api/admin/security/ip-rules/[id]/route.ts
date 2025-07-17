@@ -8,8 +8,6 @@ export async function GET(
 ) {
 
   try {
-    const { id } = await params;
-    
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });
   } catch (error) {
@@ -24,8 +22,7 @@ export async function PATCH(
 ) {
 
   try {
-    const { id } = await params;
-    const body = await req.json();
+    await req.json();
     
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });
@@ -41,8 +38,6 @@ export async function DELETE(
 ) {
 
   try {
-    const { id } = await params;
-    
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });
   } catch (error) {

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const headersList = headers();
+
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
 
     if (!apiKey) {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/health`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,

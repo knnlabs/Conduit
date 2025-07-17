@@ -15,7 +15,6 @@
 
 import { Container, Title, Text, Button, Group, Paper } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
-import Link from 'next/link';
 import { SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 
@@ -31,7 +30,7 @@ export default function AccessDeniedPage() {
       // Basic URL validation
       new URL(redirectUrl);
       redirect(redirectUrl);
-    } catch (error) {
+    } catch (_error) {
       console.error('Invalid redirect URL:', redirectUrl);
       // Continue to the access denied page if URL is invalid
     }
@@ -48,7 +47,7 @@ export default function AccessDeniedPage() {
         </Title>
         
         <Text ta="center" mb="xl" c="dimmed">
-          You don't have permission to access this application. 
+          You don&apos;t have permission to access this application. 
           Only administrators with proper authorization can use the Conduit WebUI.
         </Text>
         

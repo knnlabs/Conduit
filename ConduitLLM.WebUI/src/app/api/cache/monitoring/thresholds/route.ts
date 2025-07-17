@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const headersList = headers();
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;

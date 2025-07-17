@@ -5,7 +5,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 export async function POST(req: NextRequest) {
 
   try {
-    const body = await req.json();
+    await req.json();
     
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });

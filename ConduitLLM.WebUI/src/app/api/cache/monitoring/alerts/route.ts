@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const count = searchParams.get('count') || '10';
+    const count = searchParams.get('count') ?? '10';
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts?count=${count}`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
-    const headersList = headers();
+    headers(); // Keep the headers() call for side effects if needed
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
 
     if (!apiKey) {
@@ -56,7 +56,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts`, {
       method: 'DELETE',
       headers: {

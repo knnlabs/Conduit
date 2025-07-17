@@ -17,16 +17,24 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    console.log('[Bulk Discover] Starting discovery for provider:', providerName);
+    console.warn('[Bulk Discover] Starting discovery for provider:', providerName);
     
     // Discover all models from the provider
     const discoveredModels = await adminClient.modelMappings.discoverProviderModels(providerName);
     
     // Get existing mappings to check for conflicts
     const existingMappingsResponse = await adminClient.modelMappings.list();
-    const existingMappings: ModelProviderMappingDto[] = Array.isArray(existingMappingsResponse) 
-      ? existingMappingsResponse 
-      : (existingMappingsResponse as any).items || [];
+    let existingMappings: ModelProviderMappingDto[] = [];
+if (Array.isArray(existingMappingsResponse)) {
+  existingMappings = existingMappingsResponse;
+} else if (
+  typeof existingMappingsResponse === 'object' &&
+  existingMappingsResponse !== null &&
+  'items' in existingMappingsResponse &&
+  Array.isArray((existingMappingsResponse as { items: unknown }).items)
+) {
+  existingMappings = (existingMappingsResponse as { items: ModelProviderMappingDto[] }).items ?? [];
+}
     
     // Create a set of existing model IDs for quick lookup
     const existingModelIds = new Set(existingMappings.map((m: ModelProviderMappingDto) => m.modelId));
@@ -36,24 +44,24 @@ export async function POST(req: NextRequest) {
       ...model,
       providerId: providerId, // Use provider ID, not name
       hasConflict: existingModelIds.has(model.modelId),
-      existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) || null,
+      existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) ?? null,
       // Map capabilities to frontend expected format
       capabilities: {
-        supportsVision: model.capabilities?.vision || false,
-        supportsImageGeneration: model.capabilities?.imageGeneration || false,
+        supportsVision: model.capabilities?.vision ?? false,
+        supportsImageGeneration: model.capabilities?.imageGeneration ?? false,
         supportsAudioTranscription: false, // Not in discovered capabilities
         supportsTextToSpeech: false, // Not in discovered capabilities
         supportsRealtimeAudio: false, // Not in discovered capabilities
-        supportsFunctionCalling: model.capabilities?.functionCalling || false,
-        supportsStreaming: model.capabilities?.chatStream || false,
-        supportsVideoGeneration: model.capabilities?.videoGeneration || false,
-        supportsEmbeddings: model.capabilities?.embeddings || false,
-        maxContextLength: model.capabilities?.maxTokens || null,
-        maxOutputTokens: model.capabilities?.maxOutputTokens || null,
+        supportsFunctionCalling: model.capabilities?.functionCalling ?? false,
+        supportsStreaming: model.capabilities?.chatStream ?? false,
+        supportsVideoGeneration: model.capabilities?.videoGeneration ?? false,
+        supportsEmbeddings: model.capabilities?.embeddings ?? false,
+        maxContextLength: model.capabilities?.maxTokens ?? null,
+        maxOutputTokens: model.capabilities?.maxOutputTokens ?? null,
       }
     }));
     
-    console.log(`[Bulk Discover] Found ${enhancedModels.length} models, ${enhancedModels.filter(m => m.hasConflict).length} have conflicts`);
+    console.warn(`[Bulk Discover] Found ${enhancedModels.length} models, ${enhancedModels.filter(m => m.hasConflict).length} have conflicts`);
     
     return NextResponse.json({
       providerId,
