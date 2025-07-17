@@ -15,6 +15,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 // Use explicit namespaces to avoid ambiguity
@@ -725,8 +726,8 @@ namespace ConduitLLM.Providers
                 Messages = userAndAssistantMessages,
                 SystemPrompt = !string.IsNullOrEmpty(systemPrompt) ? systemPrompt : null,
                 MaxTokens = request.MaxTokens ?? 4096, // Default max tokens if not specified
-                Temperature = (float?)request.Temperature,
-                TopP = (float?)request.TopP,
+                Temperature = ParameterConverter.ToTemperature(request.Temperature),
+                TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
                 TopK = request.TopK,
                 Stream = request.Stream ?? false,
                 StopSequences = request.Stop,

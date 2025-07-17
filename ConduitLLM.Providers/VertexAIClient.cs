@@ -18,6 +18,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Helpers;
+using ConduitLLM.Providers.Utilities;
 using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
@@ -583,9 +584,9 @@ namespace ConduitLLM.Providers
                 Contents = contents,
                 GenerationConfig = new VertexAIGenerationConfig
                 {
-                    Temperature = (float?)request.Temperature,
+                    Temperature = ParameterConverter.ToTemperature(request.Temperature),
                     MaxOutputTokens = request.MaxTokens,
-                    TopP = (float?)request.TopP,
+                    TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
                     TopK = request.TopK
                 }
             };
@@ -628,9 +629,9 @@ namespace ConduitLLM.Providers
                 },
                 Parameters = new VertexAIParameters
                 {
-                    Temperature = (float?)(request.Temperature ?? 0.7f),
+                    Temperature = ParameterConverter.ToTemperature(request.Temperature) ?? 0.7f,
                     MaxOutputTokens = request.MaxTokens ?? 1024,
-                    TopP = (float?)(request.TopP ?? 0.95f),
+                    TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0) ?? 0.95f,
                     TopK = request.TopK
                 }
             };

@@ -17,6 +17,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -533,9 +534,9 @@ namespace ConduitLLM.Providers
             {
                 options = new OllamaOptions
                 {
-                    Temperature = (float?)coreRequest.Temperature,
+                    Temperature = ParameterConverter.ToTemperature(coreRequest.Temperature),
                     NumPredict = coreRequest.MaxTokens,
-                    TopP = (float?)coreRequest.TopP,
+                    TopP = ParameterConverter.ToProbability(coreRequest.TopP, 0.0, 1.0),
                     TopK = coreRequest.TopK,
                     Stop = coreRequest.Stop?.ToList()
                 };

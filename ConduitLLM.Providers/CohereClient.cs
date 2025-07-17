@@ -16,6 +16,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -502,16 +503,16 @@ namespace ConduitLLM.Providers
                 Model = ProviderModelId,
                 Message = userMessage,
                 ChatHistory = history.Count > 0 ? history : null,
-                Temperature = (float?)request.Temperature,
+                Temperature = ParameterConverter.ToTemperature(request.Temperature),
                 Preamble = preamble,
                 MaxTokens = request.MaxTokens,
                 // Map top_p to Cohere's p parameter if provided
-                P = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                P = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
                 // Map TopK to Cohere's K parameter
                 K = request.TopK,
                 // Map penalty parameters
-                PresencePenalty = request.PresencePenalty.HasValue ? (float?)request.PresencePenalty.Value : null,
-                FrequencyPenalty = request.FrequencyPenalty.HasValue ? (float?)request.FrequencyPenalty.Value : null,
+                PresencePenalty = ParameterConverter.ToProbability(request.PresencePenalty),
+                FrequencyPenalty = ParameterConverter.ToProbability(request.FrequencyPenalty),
                 // Map seed for deterministic generation
                 Seed = request.Seed,
                 // Map stop to Cohere's stop_sequences if provided

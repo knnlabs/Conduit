@@ -18,6 +18,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -617,8 +618,8 @@ namespace ConduitLLM.Providers
                 Contents = contents,
                 GenerationConfig = new GeminiGenerationConfig
                 {
-                    Temperature = (float?)coreRequest.Temperature,
-                    TopP = (float?)coreRequest.TopP,
+                    Temperature = ParameterConverter.ToTemperature(coreRequest.Temperature),
+                    TopP = ParameterConverter.ToProbability(coreRequest.TopP, 0.0, 1.0),
                     TopK = coreRequest.TopK,
                     CandidateCount = coreRequest.N, // Map N to candidateCount
                     MaxOutputTokens = coreRequest.MaxTokens,

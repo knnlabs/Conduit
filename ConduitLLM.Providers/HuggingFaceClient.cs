@@ -17,6 +17,7 @@ using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.InternalModels.HuggingFaceModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -112,8 +113,8 @@ namespace ConduitLLM.Providers
                     Parameters = new HuggingFaceParameters
                     {
                         MaxNewTokens = request.MaxTokens,
-                        Temperature = request.Temperature,
-                        TopP = request.TopP,
+                        Temperature = ParameterConverter.ToTemperature(request.Temperature),
+                        TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
                         TopK = request.TopK,
                         Stop = request.Stop?.ToList(),
                         Seed = request.Seed,
