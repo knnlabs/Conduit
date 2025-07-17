@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Modal,
   TextInput,
@@ -12,17 +13,18 @@ import {
   Alert,
   Divider,
   Textarea,
+  Text,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ModelCost, UpdateModelCostDto } from '@/hooks/useModelCostsApi';
-import { useModelCostsApi } from '@/hooks/useModelCostsApi';
+import { notifications } from '@mantine/notifications';
+import { useModelCostsApi } from '../hooks/useModelCostsApi';
+import { CreateModelCostDto } from '../types/modelCost';
 import { PatternPreview } from './PatternPreview';
 
-interface EditModelCostModalProps {
+interface CreateModelCostModalProps {
   isOpen: boolean;
-  modelCost: ModelCost;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -48,32 +50,29 @@ interface FormValues {
   isActive: boolean;
 }
 
-export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: EditModelCostModalProps) {
+export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModelCostModalProps) {
   const queryClient = useQueryClient();
-  const { updateModelCost } = useModelCostsApi();
-
-  // Convert backend data to form values
-  const initialValues: FormValues = {
-    modelIdPattern: modelCost.modelIdPattern,
-    modelType: modelCost.modelType,
-    // Convert from per million to per 1K for display
-    inputCostPer1K: (modelCost.inputCostPerMillionTokens || 0) / 1000,
-    outputCostPer1K: (modelCost.outputCostPerMillionTokens || 0) / 1000,
-    embeddingCostPer1K: 0, // Backend doesn't have this field yet
-    imageCostPerImage: modelCost.costPerImage || 0,
-    audioCostPerMinute: 0, // Backend missing audio fields
-    audioCostPerKCharacters: 0,
-    audioInputCostPerMinute: 0,
-    audioOutputCostPerMinute: 0,
-    videoCostPerSecond: modelCost.costPerSecond || 0,
-    videoResolutionMultipliers: '', // Backend missing this field
-    priority: modelCost.priority,
-    description: '', // Backend missing description field
-    isActive: modelCost.isActive,
-  };
+  const { createModelCost } = useModelCostsApi();
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const form = useForm<FormValues>({
-    initialValues,
+    initialValues: {
+      modelIdPattern: '',
+      modelType: 'chat',
+      inputCostPer1K: 0,
+      outputCostPer1K: 0,
+      embeddingCostPer1K: 0,
+      imageCostPerImage: 0,
+      audioCostPerMinute: 0,
+      audioCostPerKCharacters: 0,
+      audioInputCostPerMinute: 0,
+      audioOutputCostPerMinute: 0,
+      videoCostPerSecond: 0,
+      videoResolutionMultipliers: '',
+      priority: 0,
+      description: '',
+      isActive: true,
+    },
     validate: {
       modelIdPattern: (value) => !value?.trim() ? 'Model pattern is required' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
@@ -86,72 +85,35 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: UpdateModelCostDto) => updateModelCost(modelCost.id, data),
+  const createMutation = useMutation({
+    mutationFn: async (data: CreateModelCostDto) => createModelCost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      form.reset();
       onSuccess?.();
       onClose();
     },
   });
 
   const handleSubmit = (values: FormValues) => {
-    // Only send changed fields
-    const updates: UpdateModelCostDto = {};
-    
-    if (values.modelIdPattern !== modelCost.modelIdPattern) {
-      updates.modelIdPattern = values.modelIdPattern;
-    }
-    
-    // Convert token costs back to per million
-    const inputTokenCost = values.inputCostPer1K * 1000;
-    const outputTokenCost = values.outputCostPer1K * 1000;
-    
-    if (inputTokenCost !== modelCost.inputCostPerMillionTokens) {
-      updates.inputTokenCost = inputTokenCost;
-    }
-    if (outputTokenCost !== modelCost.outputCostPerMillionTokens) {
-      updates.outputTokenCost = outputTokenCost;
-    }
-    
-    if (values.embeddingCostPer1K > 0) {
-      updates.embeddingTokenCost = values.embeddingCostPer1K * 1000;
-    }
-    
-    if (values.imageCostPerImage !== modelCost.costPerImage) {
-      updates.imageCostPerImage = values.imageCostPerImage || undefined;
-    }
-    
-    if (values.audioCostPerMinute > 0) {
-      updates.audioCostPerMinute = values.audioCostPerMinute;
-    }
-    if (values.audioCostPerKCharacters > 0) {
-      updates.audioCostPerKCharacters = values.audioCostPerKCharacters;
-    }
-    if (values.audioInputCostPerMinute > 0) {
-      updates.audioInputCostPerMinute = values.audioInputCostPerMinute;
-    }
-    if (values.audioOutputCostPerMinute > 0) {
-      updates.audioOutputCostPerMinute = values.audioOutputCostPerMinute;
-    }
-    
-    if (values.videoCostPerSecond !== modelCost.costPerSecond) {
-      updates.videoCostPerSecond = values.videoCostPerSecond || undefined;
-    }
-    
-    if (values.videoResolutionMultipliers) {
-      updates.videoResolutionMultipliers = values.videoResolutionMultipliers;
-    }
-    
-    if (values.priority !== modelCost.priority) {
-      updates.priority = values.priority;
-    }
-    
-    if (values.description) {
-      updates.description = values.description;
-    }
+    const data: CreateModelCostDto = {
+      modelIdPattern: values.modelIdPattern,
+      // Convert from per 1K to per 1M tokens for backend
+      inputTokenCost: values.inputCostPer1K * 1000,
+      outputTokenCost: values.outputCostPer1K * 1000,
+      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000 : undefined,
+      imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
+      audioCostPerMinute: values.audioCostPerMinute > 0 ? values.audioCostPerMinute : undefined,
+      audioCostPerKCharacters: values.audioCostPerKCharacters > 0 ? values.audioCostPerKCharacters : undefined,
+      audioInputCostPerMinute: values.audioInputCostPerMinute > 0 ? values.audioInputCostPerMinute : undefined,
+      audioOutputCostPerMinute: values.audioOutputCostPerMinute > 0 ? values.audioOutputCostPerMinute : undefined,
+      videoCostPerSecond: values.videoCostPerSecond > 0 ? values.videoCostPerSecond : undefined,
+      videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
+      priority: values.priority,
+      description: values.description || undefined,
+    };
 
-    updateMutation.mutate(updates);
+    createMutation.mutate(data);
   };
 
   const modelType = form.values.modelType;
@@ -160,13 +122,14 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     <Modal
       opened={isOpen}
       onClose={onClose}
-      title="Edit Model Pricing"
+      title="Add Model Pricing"
       size="lg"
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Update pricing for {modelCost.modelIdPattern}. Token costs are displayed per 1,000 tokens.
+            Configure pricing for AI models. Use patterns like &quot;openai/gpt-4*&quot; to match multiple models.
+            Token costs are entered per 1,000 tokens for convenience.
           </Alert>
 
           <TextInput
@@ -189,7 +152,6 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               { value: 'video', label: 'Video Generation' },
             ]}
             required
-            disabled
             {...form.getInputProps('modelType')}
           />
 
@@ -344,8 +306,8 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
             <Button variant="subtle" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={updateMutation.isPending}>
-              Update Pricing
+            <Button type="submit" loading={createMutation.isPending}>
+              Create Pricing
             </Button>
           </Group>
         </Stack>

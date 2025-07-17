@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh, IconFileImport, IconFileExport } from '@tabler/icons-react';
-import { ModelCostsTable } from '@/components/modelcosts/ModelCostsTable';
-import { CreateModelCostModal } from '@/components/modelcosts/CreateModelCostModal';
-import { ImportModelCostsModal } from '@/components/modelcosts/ImportModelCostsModal';
-import { useModelCostsApi } from '@/hooks/useModelCostsApi';
+import { ModelCostsTable } from './components/ModelCostsTable';
+import { CreateModelCostModal } from './components/CreateModelCostModal';
+import { ImportModelCostsModal } from './components/ImportModelCostsModal';
+import { useModelCostsApi } from './hooks/useModelCostsApi';
 
 export default function ModelCostsPage() {
   const [refreshKey, setRefreshKey] = useState(0);

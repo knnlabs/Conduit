@@ -10,8 +10,9 @@ import {
   Card,
   Code,
 } from '@mantine/core';
-import { ModelCost } from '@/hooks/useModelCostsApi';
+import { ModelCost } from '../types/modelCost';
 import { formatters } from '@/lib/utils/formatters';
+import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ViewModelCostModalProps {
   isOpen: boolean;

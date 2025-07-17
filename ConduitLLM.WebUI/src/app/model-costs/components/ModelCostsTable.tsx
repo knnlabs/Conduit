@@ -26,10 +26,12 @@ import {
   IconEye,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { useModelCostsApi, ModelCost } from '@/hooks/useModelCostsApi';
+import { useModelCostsApi } from '../hooks/useModelCostsApi';
+import { ModelCost } from '../types/modelCost';
 import { EditModelCostModal } from './EditModelCostModal';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
+import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ModelCostsTableProps {
   onRefresh?: () => void;
