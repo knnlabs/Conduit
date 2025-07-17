@@ -1,16 +1,77 @@
 // Import common client configuration types
 import {
-  Logger,
-  CacheProvider,
-  HttpError,
   RetryConfig as CommonRetryConfig,
-  SignalRConfig,
-  RequestConfigInfo,
   ResponseInfo as CommonResponseInfo
 } from '@knn_labs/conduit-common';
 
-// Re-export for backward compatibility
-export { Logger, CacheProvider, HttpError, SignalRConfig, RequestConfigInfo };
+// Define types locally to avoid bundler issues with type-only exports
+/**
+ * Logger interface for client logging
+ */
+export interface Logger {
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
+}
+
+/**
+ * Cache provider interface for client-side caching
+ */
+export interface CacheProvider {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+  clear(): Promise<void>;
+}
+
+/**
+ * HTTP error class
+ */
+export class HttpError extends Error {
+  public code?: string;
+  public response?: {
+    status: number;
+    data: unknown;
+    headers: Record<string, string>;
+  };
+  public request?: unknown;
+  public config?: {
+    url?: string;
+    method?: string;
+    _retry?: number;
+  };
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.code = code;
+  }
+}
+
+/**
+ * SignalR client configuration
+ */
+export interface SignalRConfig {
+  enabled?: boolean;
+  autoConnect?: boolean;
+  reconnectDelay?: number[];
+  logLevel?: any; // SignalRLogLevel from Common
+  transport?: any; // HttpTransportType from Common
+  headers?: Record<string, string>;
+  connectionTimeout?: number;
+}
+
+/**
+ * Request configuration info for callbacks
+ */
+export interface RequestConfigInfo {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  data?: unknown;
+  params?: Record<string, unknown>;
+}
 
 // Admin SDK specific RetryConfig (uses fixed delay)
 export interface RetryConfig extends CommonRetryConfig {

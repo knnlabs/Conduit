@@ -18,15 +18,17 @@ import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
 import { useState, useEffect } from 'react';
 
-import { UIVirtualKey } from '@/lib/types/mappers';
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 
-// Legacy type alias for compatibility
-type VirtualKey = UIVirtualKey;
+// Extend VirtualKeyDto with UI-specific fields added by the API
+interface VirtualKeyWithUI extends VirtualKeyDto {
+  displayKey: string;
+}
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
-  virtualKey: VirtualKey | null;
+  virtualKey: VirtualKeyWithUI | null;
   onSuccess?: () => void;
 }
 
@@ -75,10 +77,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         : ['*']; // Default to all models if none specified
       
       form.setValues({
-        keyName: virtualKey.name,
+        keyName: virtualKey.keyName,
         description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
-        maxBudget: virtualKey.budget,
-        isEnabled: virtualKey.isActive,
+        maxBudget: virtualKey.maxBudget,
+        isEnabled: virtualKey.isEnabled,
         allowedModels: models,
       });
     }
@@ -172,7 +174,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         <Alert icon={<IconAlertCircle size={16} />} color="blue">
           <Text size="sm" fw={500}>Key Hash</Text>
           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-            {virtualKey.key}
+            {virtualKey.displayKey}
           </Text>
         </Alert>
 

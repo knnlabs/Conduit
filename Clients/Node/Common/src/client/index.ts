@@ -12,3 +12,6 @@ export {
 
 // SignalR configuration
 export { SignalRConfig } from './signalr-config';
+
+// Re-export SignalR connection options from the main SignalR module
+export { SignalRConnectionOptions } from '../signalr/types';

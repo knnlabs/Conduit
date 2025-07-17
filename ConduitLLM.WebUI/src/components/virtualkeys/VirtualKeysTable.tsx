@@ -24,12 +24,17 @@ import {
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-import { UIVirtualKey } from '@/lib/types/mappers';
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+
+// Extend VirtualKeyDto with UI-specific fields added by the API
+interface VirtualKeyWithUI extends VirtualKeyDto {
+  displayKey: string;
+}
 
 interface VirtualKeysTableProps {
-  onEdit?: (key: UIVirtualKey) => void;
-  onView?: (key: UIVirtualKey) => void;
-  data?: UIVirtualKey[];
+  onEdit?: (key: VirtualKeyWithUI) => void;
+  onView?: (key: VirtualKeyWithUI) => void;
+  data?: VirtualKeyWithUI[];
   onDelete?: (keyId: string) => void;
 }
 
@@ -45,12 +50,12 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
     });
   };
 
-  const handleDelete = (key: UIVirtualKey) => {
+  const handleDelete = (key: VirtualKeyWithUI) => {
     modals.openConfirmModal({
       title: 'Delete Virtual Key',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the virtual key &quot;{key.name}&quot;? 
+          Are you sure you want to delete the virtual key &quot;{key.keyName}&quot;? 
           This action cannot be undone and will immediately revoke access for this key.
         </Text>
       ),
@@ -72,14 +77,14 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
   };
 
   const rows = virtualKeys.map((key) => {
-    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.budget);
-    const budgetUsageColor = key.budget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
+    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
+    const budgetUsageColor = key.maxBudget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
 
     return (
       <Table.Tr key={key.id}>
         <Table.Td>
           <Stack gap={4}>
-            <Text fw={500}>{key.name}</Text>
+            <Text fw={500}>{key.keyName}</Text>
             {key.metadata && (
               <Text size="xs" c="dimmed">{JSON.stringify(key.metadata)}</Text>
             )}
@@ -89,13 +94,13 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         <Table.Td>
           <Group gap="xs">
             <Text size="sm" style={{ fontFamily: 'monospace' }}>
-              {key.key.substring(0, 12)}...
+              {key.displayKey.substring(0, 12)}...
             </Text>
             <Tooltip label="Copy full key">
               <ActionIcon
                 variant="subtle"
                 size="xs"
-                onClick={() => handleCopyKey(key.key)}
+                onClick={() => handleCopyKey(key.displayKey)}
               >
                 <IconCopy size={14} />
               </ActionIcon>
@@ -107,13 +112,13 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
           <Stack gap={4}>
             <Text size="sm" fw={500}>
               ${key.currentSpend.toFixed(2)}
-              {key.budget && (
+              {key.maxBudget && (
                 <Text component="span" size="sm" c="dimmed">
-                  {' '}/ ${key.budget.toFixed(2)}
+                  {' '}/ ${key.maxBudget.toFixed(2)}
                 </Text>
               )}
             </Text>
-            {key.budget && (
+            {key.maxBudget && (
               <Progress
                 value={budgetUsagePercentage}
                 color={budgetUsageColor}
@@ -130,17 +135,17 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
 
         <Table.Td>
           <Badge
-            color={key.isActive ? 'green' : 'gray'}
+            color={key.isEnabled ? 'green' : 'gray'}
             variant="light"
             size="sm"
           >
-            {key.isActive ? 'Active' : 'Inactive'}
+            {key.isEnabled ? 'Active' : 'Inactive'}
           </Badge>
         </Table.Td>
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {key.lastUsedDate ? formatters.date(key.lastUsedDate) : 'Never'}
+            {key.lastUsedAt ? formatters.date(key.lastUsedAt) : 'Never'}
           </Text>
         </Table.Td>
 

@@ -61,22 +61,27 @@ export interface RetryConfig {
 }
 
 /**
- * HTTP error interface
+ * HTTP error class
  */
-export interface HttpError {
-  code?: string;
-  message: string;
-  response?: {
+export class HttpError extends Error {
+  public code?: string;
+  public response?: {
     status: number;
     data: unknown;
     headers: Record<string, string>;
   };
-  request?: unknown;
-  config?: {
+  public request?: unknown;
+  public config?: {
     url?: string;
     method?: string;
     _retry?: number;
   };
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.code = code;
+  }
 }
 
 /**

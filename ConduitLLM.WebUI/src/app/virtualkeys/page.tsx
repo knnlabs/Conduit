@@ -40,15 +40,19 @@ import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
-import { UIVirtualKey, mapVirtualKeyFromSDK } from '@/lib/types/mappers';
+
+// Extend VirtualKeyDto with UI-specific fields added by the API
+interface VirtualKeyWithUI extends VirtualKeyDto {
+  displayKey: string;
+}
 
 export default function VirtualKeysPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
-  const [selectedKey, setSelectedKey] = useState<UIVirtualKey | null>(null);
+  const [selectedKey, setSelectedKey] = useState<VirtualKeyWithUI | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [virtualKeys, setVirtualKeys] = useState<UIVirtualKey[]>([]);
+  const [virtualKeys, setVirtualKeys] = useState<VirtualKeyWithUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -85,7 +89,7 @@ export default function VirtualKeysPage() {
       console.log('[VirtualKeys] Fetched data:', data);
       
       // Handle both array and paginated response formats
-      let virtualKeysData: VirtualKeyDto[];
+      let virtualKeysData: VirtualKeyWithUI[];
       if (Array.isArray(data)) {
         virtualKeysData = data;
       } else if (data.items && Array.isArray(data.items)) {
@@ -94,8 +98,7 @@ export default function VirtualKeysPage() {
         virtualKeysData = [];
       }
       
-      const mappedKeys = virtualKeysData.map(mapVirtualKeyFromSDK);
-      setVirtualKeys(mappedKeys);
+      setVirtualKeys(virtualKeysData);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -109,8 +112,8 @@ export default function VirtualKeysPage() {
     
     const query = searchQuery.toLowerCase();
     return (
-      key.name.toLowerCase().includes(query) ||
-      key.key.toLowerCase().includes(query) ||
+      key.keyName.toLowerCase().includes(query) ||
+      key.displayKey.toLowerCase().includes(query) ||
       key.id.toString().toLowerCase().includes(query) ||
       (key.metadata && JSON.stringify(key.metadata).toLowerCase().includes(query))
     );
@@ -129,17 +132,17 @@ export default function VirtualKeysPage() {
   // Calculate statistics based on filtered data (not paginated)
   const stats = filteredKeys ? {
     totalKeys: filteredKeys.length,
-    activeKeys: filteredKeys.filter((k) => k.isActive).length,
+    activeKeys: filteredKeys.filter((k) => k.isEnabled).length,
     totalSpend: filteredKeys.reduce((sum: number, k) => sum + k.currentSpend, 0),
     totalRequests: filteredKeys.reduce((sum: number, k) => sum + (k.requestCount || 0), 0),
   } : null;
 
-  const handleEdit = (key: UIVirtualKey) => {
+  const handleEdit = (key: VirtualKeyWithUI) => {
     setSelectedKey(key);
     openEditModal();
   };
 
-  const handleView = (key: UIVirtualKey) => {
+  const handleView = (key: VirtualKeyWithUI) => {
     setSelectedKey(key);
     openViewModal();
   };
@@ -186,18 +189,18 @@ export default function VirtualKeysPage() {
     }
 
     const exportData = filteredKeys.map((key) => ({
-      name: key.name,
-      keyHash: key.key,
-      status: key.isActive ? 'Active' : 'Disabled',
+      name: key.keyName,
+      keyHash: key.displayKey,
+      status: key.isEnabled ? 'Active' : 'Disabled',
       currentSpend: formatCurrencyForExport(key.currentSpend),
-      maxBudget: key.budget ? formatCurrencyForExport(key.budget) : '',
+      maxBudget: key.maxBudget ? formatCurrencyForExport(key.maxBudget) : '',
       requestCount: key.requestCount || 0,
-      createdAt: formatDateForExport(key.createdDate),
-      lastUsed: key.lastUsedDate ? formatDateForExport(key.lastUsedDate) : '',
+      createdAt: formatDateForExport(key.createdAt),
+      lastUsed: key.lastUsedAt ? formatDateForExport(key.lastUsedAt) : '',
       allowedModels: key.allowedModels || '',
-      allowedProviders: key.allowedProviders?.join('; ') || '',
-      budgetPeriod: key.budgetPeriod || '',
-      expirationDate: key.expirationDate ? formatDateForExport(key.expirationDate) : '',
+      allowedProviders: '', // TODO: SDK should include allowedProviders field
+      budgetPeriod: key.budgetDuration || '',
+      expirationDate: key.expiresAt ? formatDateForExport(key.expiresAt) : '',
     }));
 
     exportToCSV(

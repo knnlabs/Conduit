@@ -3,8 +3,7 @@ import {
   HubConnectionState,
   SignalRLogLevel,
   HttpTransportType,
-  DefaultTransports,
-  SignalRConnectionOptions
+  DefaultTransports
 } from '@knn_labs/conduit-common';
 
 // Re-export for backward compatibility
@@ -12,9 +11,27 @@ export {
   HubConnectionState,
   SignalRLogLevel,
   HttpTransportType,
-  DefaultTransports,
-  SignalRConnectionOptions
+  DefaultTransports
 };
+
+// Define SignalRConnectionOptions locally to avoid bundler issues
+export interface SignalRConnectionOptions {
+  hubUrl: string;
+  masterKey?: string;
+  virtualKey?: string;
+  accessToken?: string | (() => string | Promise<string>);
+  transport?: HttpTransportType;
+  logLevel?: SignalRLogLevel;
+  withCredentials?: boolean;
+  headers?: Record<string, string>;
+  skipNegotiation?: boolean;
+  reconnectDelay?: number[];
+  connectionTimeout?: number;
+  onConnectionStateChanged?: (state: HubConnectionState) => void;
+  onReconnecting?: (error?: Error) => void;
+  onReconnected?: (connectionId?: string) => void;
+  onClose?: (error?: Error) => void;
+}
 
 /**
  * SignalR endpoints for Admin API

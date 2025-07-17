@@ -51,25 +51,43 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // TODO: Fix SDK - The Admin API is returning a raw array instead of VirtualKeyListResponseDto
-    // The SDK's FetchVirtualKeyService.list() method expects the API to return:
-    // { items: VirtualKeyDto[], totalCount: number, page: number, pageSize: number, totalPages: number }
-    // But the actual API is returning just VirtualKeyDto[]
-    // This should be fixed either in the SDK type definitions or the Admin API response format
+    // Handle both array and paginated response formats
+    let virtualKeys: any[];
+    let paginatedResponse: any;
+    
     if (Array.isArray(response)) {
       console.log('[VirtualKeys GET] Response is array, wrapping in paginated format');
-      const paginatedResponse = {
-        items: response,
-        totalCount: response.length,
+      virtualKeys = response;
+      paginatedResponse = {
+        items: virtualKeys,
+        totalCount: virtualKeys.length,
         page: page,
         pageSize: pageSize,
-        totalPages: Math.ceil(response.length / pageSize)
+        totalPages: Math.ceil(virtualKeys.length / pageSize)
       };
-      return NextResponse.json(paginatedResponse);
+    } else if (response && typeof response === 'object' && 'items' in response) {
+      virtualKeys = response.items;
+      paginatedResponse = response;
+    } else {
+      // Fallback for unexpected response format
+      return NextResponse.json(response);
     }
     
-    // Return the response as-is (includes items array and pagination info)
-    return NextResponse.json(response);
+    // Process virtual keys to parse metadata and add display key
+    const processedKeys = virtualKeys.map((key: any) => ({
+      ...key,
+      // Parse metadata JSON if it's a string
+      metadata: key.metadata ? (typeof key.metadata === 'string' ? JSON.parse(key.metadata) : key.metadata) : null,
+      // Add display key field for UI (since apiKey is only returned on creation)
+      displayKey: key.keyPrefix || `key_${key.id}`
+    }));
+    
+    // Return the processed response
+    const finalResponse = Array.isArray(response) 
+      ? { ...paginatedResponse, items: processedKeys }
+      : { ...paginatedResponse, items: processedKeys };
+      
+    return NextResponse.json(finalResponse);
   } catch (error) {
     console.error('[VirtualKeys GET] Error:', error);
     return handleSDKError(error);

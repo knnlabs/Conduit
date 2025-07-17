@@ -22,3 +22,9 @@ export * from './signalr';
 
 // Client configuration types
 export * from './client';
+
+// Explicit exports for types that might get tree-shaken
+export type { Logger, CacheProvider, RequestConfigInfo, ResponseInfo } from './client/types';
+export { HttpError } from './client/types';
+export type { SignalRConfig } from './client/signalr-config';
+export type { SignalRConnectionOptions } from './signalr/types';
