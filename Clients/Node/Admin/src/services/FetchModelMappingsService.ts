@@ -27,12 +27,9 @@ export class FetchModelMappingsService {
    * Note: The backend currently returns a plain array, not a paginated response
    */
   async list(
-    page: number = 1,
-    pageSize: number = 10,
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto[]> {
-    // Backend doesn't support pagination yet, so we ignore the params
-    // but keep them in the signature for future compatibility
+    // Backend doesn't support pagination yet
     return this.client['get']<ModelProviderMappingDto[]>(
       ENDPOINTS.MODEL_MAPPINGS.BASE,
       {

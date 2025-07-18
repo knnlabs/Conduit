@@ -3,7 +3,6 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import {
   ModelCost,
-  ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
   ModelCostOverview,
