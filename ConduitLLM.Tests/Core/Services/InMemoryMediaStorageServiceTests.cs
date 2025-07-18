@@ -48,7 +48,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(result.StorageKey);
             Assert.StartsWith("image/", result.StorageKey);
             Assert.EndsWith(".jpg", result.StorageKey);
-            Assert.Equal(16, result.SizeBytes); // "fake image data" length
+            Assert.Equal(15, result.SizeBytes); // "fake image data" length
             Assert.NotNull(result.ContentHash);
             Assert.NotNull(result.Url);
             Assert.Contains("/v1/media/", result.Url);
@@ -581,7 +581,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(session.StorageKey, result.StorageKey);
-            Assert.Equal(21, result.SizeBytes); // "part 1 part 2 part 3" length
+            Assert.Equal(20, result.SizeBytes); // "part 1 part 2 part 3" length
             Assert.NotNull(result.ContentHash);
 
             // Verify the combined content

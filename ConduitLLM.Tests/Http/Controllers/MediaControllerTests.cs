@@ -36,7 +36,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange
             var storageKey = "image/2023/01/01/test-hash.jpg";
             var testContent = "test image content";
-            var contentStream = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
+            var contentBytes = Encoding.UTF8.GetBytes(testContent);
+            var contentStream = new MemoryStream(contentBytes, false);
             
             var mediaInfo = new MediaInfo
             {
@@ -53,6 +54,12 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             _mockStorageService.Setup(x => x.GetStreamAsync(storageKey))
                 .ReturnsAsync(contentStream);
+
+            // Setup controller context
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
 
             // Act
             var result = await _controller.GetMedia(storageKey);
@@ -443,9 +450,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.CheckMediaExists(storageKey);
 
             // Assert
-            Assert.IsType<ObjectResult>(result);
-            var objectResult = result as ObjectResult;
-            Assert.Equal(500, objectResult.StatusCode);
+            var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+            Assert.Equal(500, statusCodeResult.StatusCode);
         }
 
         #endregion
@@ -565,7 +571,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var result = await _controller.GetMedia(storageKey);
 
             // Assert
-            Assert.IsType<BadRequestObjectResult>(result);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(416, objectResult.StatusCode);
         }
 
         [Fact]
@@ -705,8 +712,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         [InlineData("bytes=0-invalid")]
         [InlineData("bytes=invalid-999")]
         [InlineData("range=0-999")]
-        [InlineData("")]
-        public async Task ParseRangeHeader_WithInvalidRanges_ShouldReturnBadRequest(string rangeHeader)
+        public async Task ParseRangeHeader_WithInvalidRanges_ShouldReturn416RangeNotSatisfiable(string rangeHeader)
         {
             // Arrange
             var storageKey = "video/2023/01/01/test-hash.mp4";
@@ -729,6 +735,39 @@ namespace ConduitLLM.Tests.Http.Controllers
                 HttpContext = new DefaultHttpContext()
             };
             _controller.Request.Headers["Range"] = rangeHeader;
+
+            // Act
+            var result = await _controller.GetMedia(storageKey);
+
+            // Assert
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(416, objectResult.StatusCode);
+        }
+
+        [Fact]
+        public async Task ParseRangeHeader_WithEmptyRange_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var storageKey = "video/2023/01/01/test-hash.mp4";
+            var mediaInfo = new MediaInfo
+            {
+                StorageKey = storageKey,
+                ContentType = "video/mp4",
+                SizeBytes = 1000,
+                FileName = "test.mp4",
+                MediaType = MediaType.Video,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _mockStorageService.Setup(x => x.GetInfoAsync(storageKey))
+                .ReturnsAsync(mediaInfo);
+
+            // Setup controller context with empty Range header
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
+            _controller.Request.Headers["Range"] = "";
 
             // Act
             var result = await _controller.GetMedia(storageKey);

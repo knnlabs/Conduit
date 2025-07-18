@@ -178,19 +178,40 @@ namespace ConduitLLM.Core.Services
                 var response = await _s3Client.GetObjectMetadataAsync(metadataRequest);
 
                 var mediaType = MediaType.Other;
-                if (response.Metadata.Keys.Contains("media-type"))
+                
+                // AWS SDK prefixes custom metadata with "x-amz-meta-" when returned
+                if (response.Metadata.Keys.Contains("x-amz-meta-media-type"))
                 {
-                    Enum.TryParse<MediaType>(response.Metadata["media-type"], out mediaType);
+                    Enum.TryParse<MediaType>(response.Metadata["x-amz-meta-media-type"], true, out mediaType);
+                }
+                else if (response.Metadata.Keys.Contains("media-type"))
+                {
+                    // Fallback for direct key access (might be used in some scenarios)
+                    Enum.TryParse<MediaType>(response.Metadata["media-type"], true, out mediaType);
                 }
 
                 var customMetadata = new Dictionary<string, string>();
+                // AWS SDK prefixes custom metadata with "x-amz-meta-"
+                foreach (var key in response.Metadata.Keys.Where(k => k.StartsWith("x-amz-meta-custom-")))
+                {
+                    // Remove "x-amz-meta-custom-" prefix to get the original key
+                    customMetadata[key.Substring(18)] = response.Metadata[key];
+                }
+                // Fallback for direct custom- keys (might be used in some scenarios)
                 foreach (var key in response.Metadata.Keys.Where(k => k.StartsWith("custom-")))
                 {
                     customMetadata[key.Substring(7)] = response.Metadata[key];
                 }
 
                 DateTime? expiresAt = null;
-                if (response.Metadata.Keys.Contains("expires-at"))
+                if (response.Metadata.Keys.Contains("x-amz-meta-expires-at"))
+                {
+                    if (DateTime.TryParse(response.Metadata["x-amz-meta-expires-at"], out var expires))
+                    {
+                        expiresAt = expires;
+                    }
+                }
+                else if (response.Metadata.Keys.Contains("expires-at"))
                 {
                     if (DateTime.TryParse(response.Metadata["expires-at"], out var expires))
                     {
@@ -198,14 +219,22 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
+                string fileName = "";
+                if (response.Metadata.Keys.Contains("x-amz-meta-original-filename"))
+                {
+                    fileName = response.Metadata["x-amz-meta-original-filename"];
+                }
+                else if (response.Metadata.Keys.Contains("original-filename"))
+                {
+                    fileName = response.Metadata["original-filename"];
+                }
+
                 return new MediaInfo
                 {
                     StorageKey = storageKey,
                     ContentType = response.Headers.ContentType,
                     SizeBytes = response.ContentLength,
-                    FileName = response.Metadata.Keys.Contains("original-filename") 
-                        ? response.Metadata["original-filename"] 
-                        : "",
+                    FileName = fileName,
                     MediaType = mediaType,
                     CreatedAt = response.LastModified ?? DateTime.UtcNow,
                     ExpiresAt = expiresAt,

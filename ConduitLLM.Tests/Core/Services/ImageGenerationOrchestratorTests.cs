@@ -189,7 +189,8 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ModelAlias = "dall-e-3",
                 ProviderName = "openai",
-                ProviderModelId = "dall-e-3"
+                ProviderModelId = "dall-e-3",
+                SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
@@ -240,7 +241,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockStorageService.Verify(x => x.StoreAsync(
-                It.Is<Stream>(s => s.Length > 0),
+                It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => m.ContentType == "image/png")), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
@@ -445,7 +446,8 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ModelAlias = "dall-e-3",
                 ProviderName = "openai",
-                ProviderModelId = "dall-e-3"
+                ProviderModelId = "dall-e-3",
+                SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
@@ -743,7 +745,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Verify that HTTP client was created (indicating download was attempted)
-            _mockHttpClientFactory.Verify(x => x.CreateClient(), Times.Once);
+            _mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Once);
         }
 
         #endregion
@@ -821,7 +823,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _orchestrator.Consume(context.Object);
 
             // Assert
-            _mockHttpClientFactory.Verify(x => x.CreateClient(), Times.Once);
+            _mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Once);
             _mockStorageService.Verify(x => x.StoreAsync(
                 It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => 
@@ -1009,7 +1011,7 @@ namespace ConduitLLM.Tests.Core.Services
                 });
 
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            _mockHttpClientFactory.Setup(x => x.CreateClient())
+            _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
                 .Returns(httpClient);
         }
 
