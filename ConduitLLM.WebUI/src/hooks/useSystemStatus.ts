@@ -61,7 +61,6 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
   const {
     autoRefresh = true,
     refreshInterval = 30000, // 30 seconds
-    includeMetrics = false,
   } = options;
 
   const { status: connectionStatus } = useConnectionStore();
@@ -70,8 +69,8 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
 
   // Status configuration mapping
-  const getStatusConfig = useCallback((status: SystemStatusType, context?: string): StatusConfig => {
-    const baseConfig = badgeHelpers.getStatusConfig(status, context as any);
+  const getStatusConfig = useCallback((status: SystemStatusType): StatusConfig => {
+    const baseConfig = badgeHelpers.getStatusConfig(status);
     
     const statusConfigs: Record<SystemStatusType, Partial<StatusConfig>> = {
       healthy: {
@@ -155,11 +154,11 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
     
     return {
       type: status,
-      color: baseConfig.color || 'gray',
-      label: baseConfig.label || status,
-      icon: specificConfig.icon || 'help-circle',
+      color: baseConfig.color ?? 'gray',
+      label: baseConfig.label ?? status,
+      icon: specificConfig.icon ?? 'help-circle',
       description: specificConfig.description,
-      priority: specificConfig.priority || 'low',
+      priority: specificConfig.priority ?? 'low',
       ...specificConfig,
     };
   }, []);
@@ -203,7 +202,7 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
   }, [getStatusConfig]);
 
   // Map connection store status to our status types
-  const mapConnectionStatus = useCallback((status: any): SystemStatusType => {
+  const mapConnectionStatus = useCallback((status: string | undefined): SystemStatusType => {
     if (!status) return 'unknown';
     
     switch (status) {
@@ -262,10 +261,10 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
 
   // Auto-refresh effect
   useEffect(() => {
-    refreshStatus();
+    void refreshStatus();
 
     if (autoRefresh && refreshInterval > 0) {
-      const interval = setInterval(refreshStatus, refreshInterval);
+      const interval = setInterval(() => void refreshStatus(), refreshInterval);
       return () => clearInterval(interval);
     }
   }, [refreshStatus, autoRefresh, refreshInterval]);

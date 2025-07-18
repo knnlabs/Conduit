@@ -1,14 +1,11 @@
 import { Select, Group, Text, Badge, Stack } from '@mantine/core';
 import { 
-  IconBrain, 
   IconEye, 
   IconTool, 
-  IconCode,
   IconBraces
 } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
 import { useModels } from '../hooks/useModels';
-import { ModelWithCapabilities } from '../types';
 
 export function ModelSelector() {
   const { data: models, isLoading } = useModels();
@@ -21,7 +18,7 @@ export function ModelSelector() {
     }
   };
 
-  const renderSelectOption: any = ({ option }: any) => {
+  const renderSelectOption = ({ option }: { option: { value: string; label: string } }) => {
     const model = models?.find(m => m.id === option.value);
     if (!model) return option.label;
     
@@ -55,30 +52,16 @@ export function ModelSelector() {
     );
   };
 
-  const renderValue = (value: string) => {
-    const model = models?.find(m => m.id === value);
-    if (!model) return value;
-
-    return (
-      <Group gap="xs">
-        <IconBrain size={16} />
-        <Text size="sm">{model.id}</Text>
-        <Badge size="xs" variant="light">
-          {model.providerId}
-        </Badge>
-      </Group>
-    );
-  };
 
   return (
     <Select
       placeholder="Select a model"
-      value={activeSession?.model || null}
+      value={activeSession?.model ?? null}
       onChange={handleModelChange}
       data={models?.map(model => ({
         value: model.id,
         label: model.id
-      })) || []}
+      })) ?? []}
       renderOption={renderSelectOption}
       searchable
       maxDropdownHeight={400}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Stack,
@@ -8,8 +8,6 @@ import {
   Button,
   Text,
   Alert,
-  Center,
-  Loader,
   Title,
   SimpleGrid,
 } from '@mantine/core';
@@ -20,26 +18,20 @@ import {
   IconActivity,
   IconSettings,
 } from '@tabler/icons-react';
-import { ProviderPriorityList } from './ProviderPriorityList';
 import { ProviderPriorityManager } from '../ProviderPriorityManager';
 import { useProviderPriorities } from '../../hooks/useProviderPriorities';
-import { ProviderPriority, RoutingConfiguration, LoadBalancerHealth } from '../../types/routing';
+import { RoutingConfiguration } from '../../types/routing';
 
 interface ProvidersTabProps {
   onLoadingChange: (loading: boolean) => void;
 }
 
 export function ProvidersTab({ onLoadingChange }: ProvidersTabProps) {
-  const [providers, setProviders] = useState<ProviderPriority[]>([]);
   const [config, setConfig] = useState<RoutingConfiguration | null>(null);
-  const [health, setHealth] = useState<LoadBalancerHealth | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
   const {
-    getProviderPriorities,
-    updateProviderPriorities,
     getRoutingConfiguration,
-    updateRoutingConfiguration,
     getLoadBalancerHealth,
     isLoading,
     error,
@@ -49,46 +41,27 @@ export function ProvidersTab({ onLoadingChange }: ProvidersTabProps) {
     onLoadingChange(isLoading);
   }, [isLoading, onLoadingChange]);
 
-  useEffect(() => {
-    loadData();
-  }, [refreshKey]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [providersData, configData, healthData] = await Promise.all([
-        getProviderPriorities(),
+      const [configData] = await Promise.all([
         getRoutingConfiguration(),
         getLoadBalancerHealth().catch(() => null), // Health endpoint might not be available
       ]);
-      setProviders(providersData);
       setConfig(configData);
-      setHealth(healthData);
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
-  };
+  }, [getRoutingConfiguration, getLoadBalancerHealth]);
+
+  useEffect(() => {
+    void loadData();
+  }, [refreshKey, loadData]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
   };
 
-  const handleUpdateProviders = async (updatedProviders: ProviderPriority[]) => {
-    try {
-      await updateProviderPriorities(updatedProviders);
-      setProviders(updatedProviders);
-    } catch (err) {
-      // Error is handled by the hook
-    }
-  };
 
-  const handleUpdateConfig = async (updatedConfig: Partial<RoutingConfiguration>) => {
-    try {
-      const newConfig = await updateRoutingConfiguration(updatedConfig);
-      setConfig(newConfig);
-    } catch (err) {
-      // Error is handled by the hook
-    }
-  };
 
   if (error) {
     return (

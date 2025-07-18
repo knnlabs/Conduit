@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 // GET /api/admin/security/ip-rules/[id]
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-
+export async function GET() {
   try {
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });
@@ -17,10 +13,8 @@ export async function GET(
 
 // PATCH /api/admin/security/ip-rules/[id]
 export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest
 ) {
-
   try {
     await req.json();
     
@@ -32,11 +26,7 @@ export async function PATCH(
 }
 
 // DELETE /api/admin/security/ip-rules/[id]
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-
+export async function DELETE() {
   try {
     // IP filtering is not yet available in the current SDK version
     return NextResponse.json({ error: 'IP filtering not available' }, { status: 501 });

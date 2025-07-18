@@ -45,7 +45,7 @@ export function useProviderPriorities() {
 
       if (!response.ok) {
         const result = await response.json();
-        throw new Error(result.error || 'Failed to update provider priorities');
+        throw new Error(result.error ?? 'Failed to update provider priorities');
       }
 
       const updatedProviders = await response.json();
@@ -109,7 +109,7 @@ export function useProviderPriorities() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing configuration');
+        throw new Error(result.error ?? 'Failed to update routing configuration');
       }
 
       notifications.show({

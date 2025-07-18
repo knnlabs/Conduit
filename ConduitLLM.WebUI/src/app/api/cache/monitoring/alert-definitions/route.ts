@@ -13,10 +13,10 @@ export async function GET() {
 
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alert-definitions`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'X-Master-Key': apiKey,
-      },
+      headers: new Headers([
+        ['Authorization', `Bearer ${apiKey}`],
+        ['X-Master-Key', apiKey],
+      ]),
     });
 
     if (!response.ok) {
@@ -28,7 +28,7 @@ export async function GET() {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in alert definitions route:', error);

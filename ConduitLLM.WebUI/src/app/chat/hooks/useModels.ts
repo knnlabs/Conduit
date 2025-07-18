@@ -11,15 +11,22 @@ export function useModels() {
         throw new Error('Failed to fetch model mappings');
       }
       
-      const mappings = await response.json();
+      interface ModelMapping {
+        modelId: string;
+        providerId: string;
+        maxContextTokens?: number;
+        supportsVision?: boolean;
+      }
       
-      const models: ModelWithCapabilities[] = mappings.map((mapping: any) => {
+      const mappings = await response.json() as ModelMapping[];
+      
+      const models: ModelWithCapabilities[] = mappings.map((mapping: ModelMapping) => {
         return {
           id: mapping.modelId,
           providerId: mapping.providerId,
           displayName: `${mapping.modelId} (${mapping.providerId})`,
           maxContextTokens: mapping.maxContextTokens,
-          supportsVision: mapping.supportsVision || false,
+          supportsVision: mapping.supportsVision ?? false,
           // Function calling support will need to be detected at runtime
           // since it's not stored in the database
           supportsFunctionCalling: false,

@@ -1,7 +1,7 @@
 'use client';
 
-import { Badge, Group, Tooltip, Text, Indicator } from '@mantine/core';
-import { IconWifi, IconWifiOff, IconRefresh } from '@tabler/icons-react';
+import { Badge, Group, Tooltip, Text } from '@mantine/core';
+import { IconWifi, IconWifiOff } from '@tabler/icons-react';
 import type { WebSocketStatus } from '../hooks/useWebSocketChat';
 
 interface ConnectionStatusProps {

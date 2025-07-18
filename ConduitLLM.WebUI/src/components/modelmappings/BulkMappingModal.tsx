@@ -17,13 +17,11 @@ import {
   LoadingOverlay,
   ScrollArea,
   Tooltip,
-  ActionIcon,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { 
   IconAlertCircle, 
   IconCheck, 
-  IconX,
   IconBrain,
   IconEye,
   IconPhoto,
@@ -34,7 +32,6 @@ import {
   IconPlayerPlay,
   IconVideo,
   IconVectorBezier,
-  IconInfoCircle,
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
@@ -50,7 +47,7 @@ interface DiscoveredModel {
   displayName: string;
   providerId: string;
   hasConflict: boolean;
-  existingMapping: any | null;
+  existingMapping: Record<string, unknown> | null;
   capabilities: {
     supportsVision: boolean;
     supportsImageGeneration: boolean;
@@ -131,7 +128,10 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     
     try {
       const result = await discoverModels(providerId, provider.providerName);
-      setDiscoveredModels(result.models);
+      setDiscoveredModels(result.models.map(model => ({
+        ...model,
+        existingMapping: model.existingMapping as Record<string, unknown> | null
+      })));
       
       // Auto-select models without conflicts
       const newSelected = new Set<string>();
@@ -150,7 +150,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
           icon: <IconAlertCircle />,
         });
       }
-    } catch (error) {
+    } catch {
       // Error handled by hook
       setDiscoveredModels([]);
     }
@@ -207,7 +207,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
       });
       
       onSuccess();
-    } catch (error) {
+    } catch {
       // Error handled by hook
     }
   };
@@ -232,7 +232,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
             label: p.providerName,
           })) || []}
           value={selectedProviderId}
-          onChange={handleProviderSelect}
+          onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}
           leftSection={<IconBrain size={16} />}
         />
@@ -347,7 +347,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
             Cancel
           </Button>
           <Button
-            onClick={handleCreateMappings}
+            onClick={() => { void handleCreateMappings(); }}
             disabled={selectedModels.size === 0}
             loading={isCreating}
             leftSection={<IconCheck size={16} />}

@@ -59,7 +59,7 @@ export default function QueueDetailPage() {
   const queueName = decodeURIComponent(params.queueName as string);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const pageSize = 20;
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [showReplayConfirm, setShowReplayConfirm] = useState(false);
@@ -69,7 +69,17 @@ export default function QueueDetailPage() {
   const replayAllMutation = useReplayAllMessages();
   const clearQueueMutation = useClearQueue();
 
-  const queue = queuesData?.queues.find((q: any) => q.queueName === queueName);
+  interface QueueData {
+    queueName: string;
+    status: 'critical' | 'warning' | 'ok';
+    messageCount: number;
+    messageBytes: number;
+    oldestMessageTimestamp?: string;
+    messageRate: number;
+  }
+  
+  const typedQueuesData = queuesData as { queues: QueueData[] } | undefined;
+  const queue = typedQueuesData?.queues.find((q: QueueData) => q.queueName === queueName);
 
   if (isLoading) {
     return (
@@ -101,7 +111,7 @@ export default function QueueDetailPage() {
           title="Queue not found"
           color="red"
         >
-          The error queue "{queueName}" was not found.
+          The error queue &quot;{queueName}&quot; was not found.
         </Alert>
       </Container>
     );
@@ -119,7 +129,7 @@ export default function QueueDetailPage() {
   };
 
   const getStatusColor = () => {
-    switch (queue.status) {
+    switch (queue?.status) {
       case 'critical':
         return 'red';
       case 'warning':
@@ -146,10 +156,10 @@ export default function QueueDetailPage() {
                 Back to Error Queues
               </Button>
             </Group>
-            <Title order={2}>{queue.queueName}</Title>
+            <Title order={2}>{queue?.queueName}</Title>
           </div>
           <Badge size="lg" variant="light" color={getStatusColor()}>
-            {queue.status.toUpperCase()}
+            {queue?.status.toUpperCase()}
           </Badge>
         </Group>
 
@@ -159,17 +169,17 @@ export default function QueueDetailPage() {
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
               <InfoItem
                 label="Total Messages"
-                value={queue.messageCount.toLocaleString()}
+                value={queue?.messageCount.toLocaleString() ?? '0'}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-              <InfoItem label="Size" value={formatBytes(queue.messageBytes)} />
+              <InfoItem label="Size" value={formatBytes(queue?.messageBytes ?? 0)} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
               <InfoItem
                 label="Oldest Message"
                 value={
-                  queue.oldestMessageTimestamp
+                  queue?.oldestMessageTimestamp
                     ? formatDateTime(queue.oldestMessageTimestamp)
                     : 'N/A'
                 }
@@ -178,7 +188,7 @@ export default function QueueDetailPage() {
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
               <InfoItem
                 label="Message Rate"
-                value={`${queue.messageRate.toFixed(1)}/min`}
+                value={`${queue?.messageRate.toFixed(1) ?? '0'}/min`}
               />
             </Grid.Col>
           </Grid>
@@ -196,7 +206,7 @@ export default function QueueDetailPage() {
               variant="filled"
               color="blue"
               onClick={() => setShowReplayConfirm(true)}
-              disabled={queue.messageCount === 0}
+              disabled={queue?.messageCount === 0}
             >
               Replay All Messages
             </Button>
@@ -205,7 +215,7 @@ export default function QueueDetailPage() {
               variant="filled"
               color="red"
               onClick={() => setShowClearConfirm(true)}
-              disabled={queue.messageCount === 0}
+              disabled={queue?.messageCount === 0}
             >
               Clear Queue
             </Button>
@@ -249,12 +259,12 @@ export default function QueueDetailPage() {
         />
 
         {/* Pagination */}
-        {queue.messageCount > pageSize && (
+        {(queue?.messageCount ?? 0) > pageSize && (
           <Center>
             <Pagination
               value={page}
               onChange={setPage}
-              total={Math.ceil(queue.messageCount / pageSize)}
+              total={Math.ceil((queue?.messageCount ?? 0) / pageSize)}
               boundaries={1}
               siblings={2}
             />
@@ -266,9 +276,9 @@ export default function QueueDetailPage() {
       <ConfirmationModal
         opened={showReplayConfirm}
         onClose={() => setShowReplayConfirm(false)}
-        onConfirm={handleReplayAll}
+        onConfirm={() => void handleReplayAll()}
         title="Replay All Messages"
-        message={`Are you sure you want to replay all ${queue.messageCount} messages in this queue? They will be re-queued for processing.`}
+        message={`Are you sure you want to replay all ${queue?.messageCount ?? 0} messages in this queue? They will be re-queued for processing.`}
         confirmText="Replay All"
         confirmColor="blue"
         loading={replayAllMutation.isPending}
@@ -277,9 +287,9 @@ export default function QueueDetailPage() {
       <ConfirmationModal
         opened={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
-        onConfirm={handleClearQueue}
+        onConfirm={() => void handleClearQueue()}
         title="Clear Error Queue"
-        message={`Are you sure you want to delete all ${queue.messageCount} messages from this queue? This action cannot be undone.`}
+        message={`Are you sure you want to delete all ${queue?.messageCount ?? 0} messages from this queue? This action cannot be undone.`}
         confirmText="Clear Queue"
         confirmColor="red"
         loading={clearQueueMutation.isPending}

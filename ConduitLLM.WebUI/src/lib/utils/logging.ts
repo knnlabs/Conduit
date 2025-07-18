@@ -64,7 +64,7 @@ export function safeLog(message: string, ...args: unknown[]) {
   }
   
   const sanitizedArgs = args.map(arg => sanitizeObject(arg));
-  console.log(`[Conduit] ${message}`, ...sanitizedArgs);
+  console.warn(`[Conduit DEBUG] ${message}`, ...sanitizedArgs);
 }
 
 /**

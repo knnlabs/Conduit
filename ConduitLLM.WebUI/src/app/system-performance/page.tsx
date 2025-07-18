@@ -7,7 +7,6 @@ import {
   Group,
   Grid,
   Card,
-  RingProgress,
   Progress,
   Badge,
   ThemeIcon,
@@ -22,7 +21,6 @@ import {
 } from '@mantine/core';
 import {
   LineChart,
-  AreaChart,
 } from '@mantine/charts';
 import {
   IconCpu,
@@ -35,8 +33,6 @@ import {
   IconDownload,
   IconAlertTriangle,
   IconCircleCheck,
-  IconBolt,
-  IconWifi,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
@@ -135,10 +131,10 @@ export default function SystemPerformancePage() {
   }, [timeRange]);
 
   useEffect(() => {
-    fetchPerformanceData();
+    void fetchPerformanceData();
     
     if (autoRefresh) {
-      const interval = setInterval(fetchPerformanceData, 10000); // Refresh every 10 seconds
+      const interval = setInterval(() => void fetchPerformanceData(), 10000); // Refresh every 10 seconds
       return () => clearInterval(interval);
     }
   }, [fetchPerformanceData, autoRefresh]);
@@ -208,7 +204,7 @@ export default function SystemPerformancePage() {
         <Group>
           <Select
             value={timeRange}
-            onChange={(value) => setTimeRange(value || '1h')}
+            onChange={(value) => setTimeRange(value ?? '1h')}
             data={[
               { value: '15m', label: 'Last 15 Minutes' },
               { value: '1h', label: 'Last Hour' },
@@ -224,14 +220,14 @@ export default function SystemPerformancePage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchPerformanceData}
+            onClick={() => void fetchPerformanceData()}
             loading={isLoading}
           >
             Refresh
@@ -246,7 +242,7 @@ export default function SystemPerformancePage() {
           title="Performance Monitoring"
           color="blue"
         >
-          System performance data is retrieved from Conduit's monitoring services. Data availability depends on monitoring configuration and may be limited in some environments.
+          System performance data is retrieved from Conduit&apos;s monitoring services. Data availability depends on monitoring configuration and may be limited in some environments.
         </Alert>
       )}
 
@@ -261,24 +257,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   CPU Usage
                 </Text>
-                <ThemeIcon color={getCPUColor(metrics?.cpu.usage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getCPUColor(metrics?.cpu.usage ?? 0)} variant="light" size="sm">
                   <IconCpu size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.cpu.usage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.cpu.usage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {metrics?.cpu.cores || 0} cores
+                  {metrics?.cpu.cores ?? 0} cores
                 </Text>
               </Group>
               <Progress
-                value={metrics?.cpu.usage || 0}
-                color={getCPUColor(metrics?.cpu.usage || 0)}
+                value={metrics?.cpu.usage ?? 0}
+                color={getCPUColor(metrics?.cpu.usage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                Load: {metrics?.cpu.loadAverage?.join(', ') || 'N/A'}
+                Load: {metrics?.cpu.loadAverage?.join(', ') ?? 'N/A'}
               </Text>
             </Card>
           )}
@@ -293,24 +289,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   Memory Usage
                 </Text>
-                <ThemeIcon color={getMemoryColor(metrics?.memory.percentage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getMemoryColor(metrics?.memory.percentage ?? 0)} variant="light" size="sm">
                   <IconDatabase size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.memory.percentage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.memory.percentage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {formatters.fileSize(metrics?.memory.used || 0)} / {formatters.fileSize(metrics?.memory.total || 0)}
+                  {formatters.fileSize(metrics?.memory.used ?? 0)} / {formatters.fileSize(metrics?.memory.total ?? 0)}
                 </Text>
               </Group>
               <Progress
-                value={metrics?.memory.percentage || 0}
-                color={getMemoryColor(metrics?.memory.percentage || 0)}
+                value={metrics?.memory.percentage ?? 0}
+                color={getMemoryColor(metrics?.memory.percentage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                Swap: {formatters.fileSize(metrics?.memory.swap.used || 0)} / {formatters.fileSize(metrics?.memory.swap.total || 0)}
+                Swap: {formatters.fileSize(metrics?.memory.swap.used ?? 0)} / {formatters.fileSize(metrics?.memory.swap.total ?? 0)}
               </Text>
             </Card>
           )}
@@ -325,24 +321,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   Disk Usage
                 </Text>
-                <ThemeIcon color={getDiskColor(metrics?.disk.percentage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getDiskColor(metrics?.disk.percentage ?? 0)} variant="light" size="sm">
                   <IconServer size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.disk.percentage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.disk.percentage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {formatters.fileSize(metrics?.disk.used || 0)} / {formatters.fileSize(metrics?.disk.total || 0)}
+                  {formatters.fileSize(metrics?.disk.used ?? 0)} / {formatters.fileSize(metrics?.disk.total ?? 0)}
                 </Text>
               </Group>
               <Progress
-                value={metrics?.disk.percentage || 0}
-                color={getDiskColor(metrics?.disk.percentage || 0)}
+                value={metrics?.disk.percentage ?? 0}
+                color={getDiskColor(metrics?.disk.percentage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                I/O: ↓{formatters.fileSize(metrics?.disk.io.read || 0)}/s ↑{formatters.fileSize(metrics?.disk.io.write || 0)}/s
+                I/O: ↓{formatters.fileSize(metrics?.disk.io.read ?? 0)}/s ↑{formatters.fileSize(metrics?.disk.io.write ?? 0)}/s
               </Text>
             </Card>
           )}
@@ -363,10 +359,10 @@ export default function SystemPerformancePage() {
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
                 <Text size="lg" fw={700}>
-                  ↓{formatters.fileSize(metrics?.network.in || 0)}/s
+                  ↓{formatters.fileSize(metrics?.network.in ?? 0)}/s
                 </Text>
                 <Text size="lg" fw={700}>
-                  ↑{formatters.fileSize(metrics?.network.out || 0)}/s
+                  ↑{formatters.fileSize(metrics?.network.out ?? 0)}/s
                 </Text>
               </Group>
               <Progress
@@ -376,7 +372,7 @@ export default function SystemPerformancePage() {
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                {metrics?.network.connections || 0} connections • {metrics?.network.latency || 0}ms latency
+                {metrics?.network.connections ?? 0} connections • {metrics?.network.latency ?? 0}ms latency
               </Text>
             </Card>
           )}
@@ -399,15 +395,15 @@ export default function SystemPerformancePage() {
               <Stack gap="xs">
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Uptime</Text>
-                  <Text size="sm" fw={500}>{formatters.duration(metrics?.uptime || 0, { format: 'long' })}</Text>
+                  <Text size="sm" fw={500}>{formatters.duration(metrics?.uptime ?? 0, { format: 'long' })}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Processes</Text>
-                  <Text size="sm" fw={500}>{metrics?.processCount || 0}</Text>
+                  <Text size="sm" fw={500}>{metrics?.processCount ?? 0}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Threads</Text>
-                  <Text size="sm" fw={500}>{metrics?.threadCount || 0}</Text>
+                  <Text size="sm" fw={500}>{metrics?.threadCount ?? 0}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">CPU Temperature</Text>

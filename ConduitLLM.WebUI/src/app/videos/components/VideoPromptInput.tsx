@@ -9,7 +9,7 @@ interface VideoPromptInputProps {
   models: VideoModel[];
 }
 
-export default function VideoPromptInput({ models }: VideoPromptInputProps) {
+export default function VideoPromptInput(props: VideoPromptInputProps) {
   const [prompt, setPrompt] = useState('');
   const { settings, currentTask, setError } = useVideoStore();
   const { generateVideo, isGenerating } = useVideoGeneration();
@@ -38,26 +38,27 @@ export default function VideoPromptInput({ models }: VideoPromptInputProps) {
       setPrompt('');
     } catch (error) {
       // Error is handled in the hook
+      console.error('Error in VideoPromptInput:', error);
     }
   }, [prompt, settings, generateVideo, setError]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      void handleSubmit(e as React.FormEvent);
     }
   };
 
   const isDisabled = isGenerating || !!currentTask;
 
   return (
-    <form onSubmit={handleSubmit} className="video-prompt-section">
+    <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }} className="video-prompt-section">
       <textarea
         className="video-prompt-input"
         placeholder="Describe the video you want to generate..."
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => void handleKeyDown(e)}
         disabled={isDisabled}
         rows={4}
       />

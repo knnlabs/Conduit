@@ -51,7 +51,7 @@ export default function VideoQueue() {
           
           {isActive && (
             <button
-              onClick={() => cancelGeneration(currentTask.id)}
+              onClick={() => void cancelGeneration(currentTask.id)}
               className="btn btn-secondary btn-sm"
               title="Cancel generation"
             >

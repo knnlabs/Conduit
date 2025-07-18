@@ -23,7 +23,7 @@ export default function ImagePromptInput() {
     if (!localPrompt.trim()) {
       return;
     }
-    await generateImages();
+    void generateImages();
   };
 
   const handleClear = () => {
@@ -33,7 +33,7 @@ export default function ImagePromptInput() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      handleGenerate();
+      void handleGenerate();
     }
   };
 
@@ -74,7 +74,7 @@ export default function ImagePromptInput() {
           )}
           
           <button
-            onClick={handleGenerate}
+            onClick={() => void handleGenerate()}
             disabled={!localPrompt.trim() || isGenerating}
             className="btn btn-primary"
           >

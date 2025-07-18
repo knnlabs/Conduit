@@ -85,7 +85,7 @@ export const getPatternSpecificity = (pattern: string): number => {
     return 100;
   }
   
-  const wildcardCount = (pattern.match(/\*/g) || []).length;
+  const wildcardCount = (pattern.match(/\*/g) ?? []).length;
   const firstWildcardPos = pattern.indexOf('*');
   const positionWeight = firstWildcardPos === 0 ? 20 : Math.max(0, 20 - firstWildcardPos);
   

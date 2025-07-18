@@ -65,7 +65,7 @@ export default function VirtualKeysPage() {
       await fetchVirtualKeys();
     };
     
-    loadVirtualKeys();
+    void loadVirtualKeys();
     
     return () => {
       cancelled = true;
@@ -85,9 +85,9 @@ export default function VirtualKeysPage() {
       }
       
       // Parse the response directly
-      const data = await response.json();
-      console.log('[VirtualKeys] Fetched data:', data);
-      
+      const result = await response.json() as unknown;
+      const data = result as { items?: VirtualKeyWithUI[] } | VirtualKeyWithUI[];
+        
       // Handle both array and paginated response formats
       let virtualKeysData: VirtualKeyWithUI[];
       if (Array.isArray(data)) {
@@ -134,7 +134,7 @@ export default function VirtualKeysPage() {
     totalKeys: filteredKeys.length,
     activeKeys: filteredKeys.filter((k) => k.isEnabled).length,
     totalSpend: filteredKeys.reduce((sum: number, k) => sum + k.currentSpend, 0),
-    totalRequests: filteredKeys.reduce((sum: number, k) => sum + (k.requestCount || 0), 0),
+    totalRequests: filteredKeys.reduce((sum: number, k) => sum + (k.requestCount ?? 0), 0),
   } : null;
 
   const handleEdit = (key: VirtualKeyWithUI) => {
@@ -160,8 +160,8 @@ export default function VirtualKeysPage() {
         message: 'Virtual key deleted successfully',
         color: 'green',
       });
-      fetchVirtualKeys(); // Refresh the list
-    } catch (err) {
+      void fetchVirtualKeys(); // Refresh the list
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to delete virtual key',
@@ -194,7 +194,7 @@ export default function VirtualKeysPage() {
       status: key.isEnabled ? 'Active' : 'Disabled',
       currentSpend: formatCurrencyForExport(key.currentSpend),
       maxBudget: key.maxBudget ? formatCurrencyForExport(key.maxBudget) : '',
-      requestCount: key.requestCount || 0,
+      requestCount: key.requestCount ?? 0,
       createdAt: formatDateForExport(key.createdAt),
       lastUsed: key.lastUsedAt ? formatDateForExport(key.lastUsedAt) : '',
       allowedModels: key.allowedModels || '',
@@ -383,7 +383,12 @@ export default function VirtualKeysPage() {
 
         <Card.Section p="md" pt={0} style={{ position: 'relative' }}>
           <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-          <VirtualKeysTable onEdit={handleEdit} onView={handleView} data={paginatedData} onDelete={handleDelete} />
+          <VirtualKeysTable 
+            onEdit={handleEdit} 
+            onView={handleView} 
+            data={paginatedData} 
+            onDelete={(id: string) => { void handleDelete(id); }} 
+          />
           {filteredKeys.length > 0 && (
             <TablePagination
               total={totalItems}
@@ -400,14 +405,14 @@ export default function VirtualKeysPage() {
       <CreateVirtualKeyModal
         opened={createModalOpened}
         onClose={closeCreateModal}
-        onSuccess={fetchVirtualKeys}
+        onSuccess={() => void fetchVirtualKeys()}
       />
 
       <EditVirtualKeyModal
         opened={editModalOpened}
         onClose={closeEditModal}
         virtualKey={selectedKey}
-        onSuccess={fetchVirtualKeys}
+        onSuccess={() => void fetchVirtualKeys()}
       />
 
       <ViewVirtualKeyModal

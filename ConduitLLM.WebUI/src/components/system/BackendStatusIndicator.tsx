@@ -52,6 +52,12 @@ export function BackendStatusIndicator({
     return <IconWifiOff size={16} />;
   };
 
+  const getStatusText = () => {
+    if (isHealthy) return 'Online';
+    if (isDegraded) return 'Degraded';
+    return 'Offline';
+  };
+
   const getOverallStatus = () => {
     if (isHealthy) return 'All systems operational';
     if (isDegraded) return 'Some services degraded';
@@ -73,11 +79,11 @@ export function BackendStatusIndicator({
           variant="light"
           leftSection={getStatusIcon()}
         >
-          {isHealthy ? 'Online' : isDegraded ? 'Degraded' : 'Offline'}
+          {getStatusText()}
         </Badge>
         {!isHealthy && (
           <Tooltip label="Refresh status">
-            <ActionIcon size="sm" variant="subtle" onClick={refetch}>
+            <ActionIcon size="sm" variant="subtle" onClick={() => void refetch()}>
               <IconRefresh size={14} />
             </ActionIcon>
           </Tooltip>
@@ -104,7 +110,7 @@ export function BackendStatusIndicator({
           
           <Group gap="xs">
             <Tooltip label="Refresh status">
-              <ActionIcon variant="subtle" onClick={refetch}>
+              <ActionIcon variant="subtle" onClick={() => void refetch()}>
                 <IconRefresh size={16} />
               </ActionIcon>
             </Tooltip>
@@ -179,7 +185,7 @@ export function BackendStatusIndicator({
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Admin API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.adminApiDetails as { status?: string })?.status || 'Unknown'}<br/>
+                    Status: {(healthStatus.adminApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>
@@ -189,7 +195,7 @@ export function BackendStatusIndicator({
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Core API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.coreApiDetails as { status?: string })?.status || 'Unknown'}<br/>
+                    Status: {(healthStatus.coreApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
                     Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
                   </Text>
                 </Card>

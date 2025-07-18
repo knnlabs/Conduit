@@ -8,19 +8,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const { providerId, providerName } = await req.json();
+    const body = await req.json() as { providerId: string; providerName: string };
     
-    if (!providerId || !providerName) {
+    if (!body.providerId || !body.providerName) {
       return NextResponse.json(
         { error: 'Provider ID and name are required' },
         { status: 400 }
       );
     }
     
-    console.warn('[Bulk Discover] Starting discovery for provider:', providerName);
+    console.warn('[Bulk Discover] Starting discovery for provider:', body.providerName);
     
     // Discover all models from the provider
-    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(providerName);
+    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(body.providerName);
     
     // Get existing mappings to check for conflicts
     const existingMappingsResponse = await adminClient.modelMappings.list();
@@ -42,7 +42,7 @@ if (Array.isArray(existingMappingsResponse)) {
     // Enhance discovered models with conflict information
     const enhancedModels = discoveredModels.map(model => ({
       ...model,
-      providerId: providerName, // Backend expects provider name, not numeric ID
+      providerId: body.providerName, // Backend expects provider name, not numeric ID
       hasConflict: existingModelIds.has(model.modelId),
       existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) ?? null,
       // Map capabilities to frontend expected format
@@ -64,8 +64,8 @@ if (Array.isArray(existingMappingsResponse)) {
     console.warn(`[Bulk Discover] Found ${enhancedModels.length} models, ${enhancedModels.filter(m => m.hasConflict).length} have conflicts`);
     
     return NextResponse.json({
-      providerId,
-      providerName,
+      providerId: body.providerId,
+      providerName: body.providerName,
       models: enhancedModels,
       totalModels: enhancedModels.length,
       conflictCount: enhancedModels.filter(m => m.hasConflict).length

@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
   override render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return <>{this.props.fallback}</>;
+        return this.props.fallback;
       }
 
       const { error } = this.state;

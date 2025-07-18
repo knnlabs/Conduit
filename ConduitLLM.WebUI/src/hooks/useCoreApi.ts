@@ -32,11 +32,71 @@ interface TextToSpeechRequest {
   speed?: number;
 }
 
+interface ImageGenerationResponse {
+  id: string;
+  url: string;
+  prompt: string;
+  model: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface VideoGenerationResponse {
+  id: string;
+  url?: string;
+  prompt: string;
+  model: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress?: number;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface AudioTranscriptionResponse {
+  text: string;
+  language: string;
+  duration: number;
+  segments?: Array<{
+    id: number;
+    start: number;
+    end: number;
+    text: string;
+  }>;
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface ChatCompletionOptions {
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+}
+
+interface ChatCompletionResponse {
+  id: string;
+  choices: Array<{
+    index: number;
+    message: ChatMessage;
+    finishReason?: string;
+  }>;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+}
+
 export function useCoreApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateImage = useCallback(async (data: ImageGenerationRequest): Promise<any> => {
+  const generateImage = useCallback(async (data: ImageGenerationRequest): Promise<ImageGenerationResponse> => {
     setIsLoading(true);
     setError(null);
     
@@ -49,10 +109,11 @@ export function useCoreApi() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Image generation failed');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Image generation failed');
       }
 
       notifications.show({
@@ -61,7 +122,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result;
+      return result as ImageGenerationResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Image generation failed';
       setError(message);
@@ -76,7 +137,7 @@ export function useCoreApi() {
     }
   }, []);
 
-  const generateVideo = useCallback(async (data: VideoGenerationRequest): Promise<any> => {
+  const generateVideo = useCallback(async (data: VideoGenerationRequest): Promise<VideoGenerationResponse> => {
     setIsLoading(true);
     setError(null);
     
@@ -89,10 +150,11 @@ export function useCoreApi() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Video generation failed');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Video generation failed');
       }
 
       notifications.show({
@@ -101,7 +163,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result;
+      return result as VideoGenerationResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Video generation failed';
       setError(message);
@@ -116,7 +178,7 @@ export function useCoreApi() {
     }
   }, []);
 
-  const transcribeAudio = useCallback(async (data: AudioTranscriptionRequest): Promise<any> => {
+  const transcribeAudio = useCallback(async (data: AudioTranscriptionRequest): Promise<AudioTranscriptionResponse> => {
     setIsLoading(true);
     setError(null);
     
@@ -132,10 +194,11 @@ export function useCoreApi() {
         body: formData,
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Audio transcription failed');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Audio transcription failed');
       }
 
       notifications.show({
@@ -144,7 +207,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result;
+      return result as AudioTranscriptionResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Audio transcription failed';
       setError(message);
@@ -173,8 +236,9 @@ export function useCoreApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Speech generation failed');
+        const errorData = await response.json() as unknown;
+        const error = errorData as { error?: string };
+        throw new Error(error.error ?? 'Speech generation failed');
       }
 
       const blob = await response.blob();
@@ -200,7 +264,7 @@ export function useCoreApi() {
     }
   }, []);
 
-  const chatCompletion = useCallback(async (messages: any[], options?: any): Promise<any> => {
+  const chatCompletion = useCallback(async (messages: ChatMessage[], options?: ChatCompletionOptions): Promise<ChatCompletionResponse> => {
     setIsLoading(true);
     setError(null);
     
@@ -216,13 +280,14 @@ export function useCoreApi() {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Chat completion failed');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Chat completion failed');
       }
 
-      return result;
+      return result as ChatCompletionResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Chat completion failed';
       setError(message);

@@ -70,15 +70,15 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       continue; // Skip malformed rows
     }
 
-    const row: any = {};
+    const row: Record<string, string> = {};
     headers.forEach((header, index) => {
       row[header] = values[index];
     });
 
     const cost: ParsedModelCost = {
-      modelPattern: row['model pattern'] || '',
-      provider: row['provider'] || '',
-      modelType: row['model type'] || 'chat',
+      modelPattern: row['model pattern'] ?? '',
+      provider: row['provider'] ?? '',
+      modelType: row['model type'] ?? 'chat',
       inputCostPer1K: parseFloat(row['input cost (per 1k tokens)']) || 0,
       outputCostPer1K: parseFloat(row['output cost (per 1k tokens)']) || 0,
       embeddingCostPer1K: parseFloat(row['embedding cost (per 1k tokens)']) || undefined,

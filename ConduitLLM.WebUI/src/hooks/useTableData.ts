@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 
 // Simple data fetching result interface (React Query alternative)
@@ -12,14 +11,14 @@ export interface DataResult<T> {
 }
 
 // Simple mutation result interface (React Query alternative)
-export interface MutationResult<TData, TError, TVariables> {
+export interface MutationResult<TData, TVariables> {
   mutateAsync: (variables: TVariables) => Promise<TData>;
   isPending: boolean;
 }
 
 export interface UseTableDataOptions<T> {
   queryResult: DataResult<T[]>;
-  deleteMutation?: MutationResult<void, Error, string>;
+  deleteMutation?: MutationResult<void, string>;
   refreshMessage?: string;
   deleteSuccessMessage?: string;
   deleteErrorMessage?: string;
@@ -45,7 +44,7 @@ export function useTableData<T>({
   const { data, isLoading, error, refetch } = queryResult;
   
   const handleRefresh = () => {
-    refetch();
+    void refetch();
     notifications.show({
       title: 'Refreshing',
       message: refreshMessage,
@@ -66,7 +65,7 @@ export function useTableData<T>({
         color: 'green',
       });
       // Refresh data after successful delete
-      refetch();
+      void refetch();
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -83,7 +82,7 @@ export function useTableData<T>({
     error,
     handleRefresh,
     handleDelete,
-    isDeleting: deleteMutation?.isPending || false,
+    isDeleting: deleteMutation?.isPending ?? false,
   };
 }
 

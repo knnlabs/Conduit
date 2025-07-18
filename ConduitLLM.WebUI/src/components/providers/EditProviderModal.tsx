@@ -52,6 +52,12 @@ interface EditProviderForm {
 export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getHealthStatusColor = (status: string) => {
+    if (status === 'healthy') return 'green';
+    if (status === 'unhealthy') return 'red';
+    return 'gray';
+  };
+
   const form = useForm<EditProviderForm>({
     initialValues: {
       apiKey: '',
@@ -76,12 +82,12 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
       form.setValues({
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.apiBase || '',
-        organizationId: provider.organization || '',
+        apiEndpoint: provider.apiBase ?? '',
+        organizationId: provider.organization ?? '',
         isEnabled: provider.isEnabled,
       });
     }
-  }, [provider]);
+  }, [provider, form]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;
@@ -89,9 +95,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     setIsSubmitting(true);
     try {
       const payload = {
-        apiKey: values.apiKey || undefined, // Only send if changed
-        apiEndpoint: values.apiEndpoint || undefined,
-        organizationId: values.organizationId || undefined,
+        apiKey: values.apiKey ?? undefined, // Only send if changed
+        apiEndpoint: values.apiEndpoint ?? undefined,
+        organizationId: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
@@ -167,10 +173,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                   <Text size="sm" c="dimmed">Health Status</Text>
                   <Group gap="xs">
                     {getHealthIcon(provider.healthStatus)}
-                    <Text size="sm" fw={500} c={
-                      provider.healthStatus === 'healthy' ? 'green' :
-                      provider.healthStatus === 'unhealthy' ? 'red' : 'gray'
-                    }>
+                    <Text size="sm" fw={500} c={getHealthStatusColor(provider.healthStatus)}>
                       {provider.healthStatus}
                     </Text>
                   </Group>
@@ -224,7 +227,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 {config.requiresOrganizationId && (
                   <TextInput
                     label="Organization ID"
-                    placeholder={provider.providerName === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    placeholder={provider.providerName === ProviderType.OpenAI.toString() ? "Optional OpenAI organization ID" : "Organization ID"}
                     {...form.getInputProps('organizationId')}
                   />
                 )}

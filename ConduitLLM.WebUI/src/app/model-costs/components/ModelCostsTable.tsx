@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
@@ -31,7 +31,6 @@ import { ModelCost } from '../types/modelCost';
 import { EditModelCostModal } from './EditModelCostModal';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
-import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ModelCostsTableProps {
   onRefresh?: () => void;
@@ -58,8 +57,12 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['model-costs', page, pageSize, providerFilter, activeFilter],
     queryFn: () => fetchModelCosts(page, pageSize, {
-      provider: providerFilter || undefined,
-      isActive: activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
+      provider: providerFilter ?? undefined,
+      isActive: (() => {
+        if (activeFilter === 'true') return true;
+        if (activeFilter === 'false') return false;
+        return undefined;
+      })(),
     }),
   });
 
@@ -67,7 +70,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   const deleteMutation = useMutation({
     mutationFn: deleteModelCost,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      void queryClient.invalidateQueries({ queryKey: ['model-costs'] });
       onRefresh?.();
     },
   });
@@ -81,10 +84,10 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
       cost.providerName.toLowerCase().includes(search) ||
       cost.modelType.toLowerCase().includes(search)
     );
-  }) || [];
+  }) ?? [];
 
   // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(data?.items.map(c => c.providerName) || []));
+  const uniqueProviders = Array.from(new Set(data?.items.map(c => c.providerName) ?? []));
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
@@ -118,10 +121,10 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
       return (
         <Stack gap={2}>
           <Text size="xs">
-            Input: {formatters.currency((cost.inputCostPerMillionTokens / 1000), { currency: 'USD', precision: 4 })}/1K
+            Input: {formatters.currency(((cost.inputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
           <Text size="xs">
-            Output: {formatters.currency((cost.outputCostPerMillionTokens / 1000), { currency: 'USD', precision: 4 })}/1K
+            Output: {formatters.currency(((cost.outputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
         </Stack>
       );
@@ -142,7 +145,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           <Group justify="space-between">
             <Text fw={600}>Model Pricing Configurations</Text>
             <Text size="sm" c="dimmed">
-              {data?.totalCount || 0} total configurations
+              {data?.totalCount ?? 0} total configurations
             </Text>
           </Group>
         </Card.Section>
@@ -302,7 +305,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           onClose={() => setEditingCost(null)}
           onSuccess={() => {
             setEditingCost(null);
-            refetch();
+            void refetch();
             onRefresh?.();
           }}
         />

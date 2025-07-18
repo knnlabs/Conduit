@@ -18,20 +18,20 @@ function validateEnvironment() {
 export const SDK_CONFIG = {
   // Master key for backend communication
   get masterKey() { 
-    return process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || '';
+    return process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY ?? '';
   },
   
   // Base URLs
   get adminBaseURL() {
     return process.env.NODE_ENV === 'production' 
       ? 'http://admin:8080' 
-      : (process.env.CONDUIT_ADMIN_API_BASE_URL || 'http://localhost:5002');
+      : (process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002');
   },
     
   get coreBaseURL() {
     return process.env.NODE_ENV === 'production' 
       ? 'http://api:8080' 
-      : (process.env.CONDUIT_API_BASE_URL || 'http://localhost:5000');
+      : (process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000');
   },
   
   // Common settings
@@ -74,7 +74,7 @@ export async function getServerCoreClient(): Promise<ConduitCoreClient> {
       try {
         const adminApi = getServerAdminClient();
         webuiVirtualKey = await adminApi.system.getWebUIVirtualKey();
-        console.log('[SDK] WebUI virtual key fetched successfully');
+        console.error('[SDK] WebUI virtual key fetched successfully');
       } catch (error) {
         console.error('[SDK] Failed to fetch WebUI virtual key, falling back to master key:', error);
         // Fallback to master key if we can't get the virtual key
@@ -99,7 +99,7 @@ export async function initializeSDKClients(): Promise<void> {
   try {
     getServerAdminClient();
     await getServerCoreClient();
-    console.log('[SDK] Clients initialized successfully');
+    console.error('[SDK] Clients initialized successfully');
   } catch (error) {
     console.error('[SDK] Failed to initialize clients:', error);
     throw error;
@@ -114,5 +114,5 @@ export async function cleanupSDKClients(): Promise<void> {
   adminClient = null;
   coreClient = null;
   webuiVirtualKey = null;
-  console.log('[SDK] Clients cleaned up successfully');
+  console.error('[SDK] Clients cleaned up successfully');
 }

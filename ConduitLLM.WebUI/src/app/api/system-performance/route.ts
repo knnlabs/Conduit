@@ -1,12 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const range = searchParams.get('range') || '1h';
-    
     const adminClient = getServerAdminClient();
     
     // Initialize empty response structure
@@ -19,9 +16,32 @@ export async function GET(req: NextRequest) {
       processCount: 0,
       threadCount: 0,
     };
-    const history: any[] = [];
-    let services: any[] = [];
-    let transformedAlerts: any[] = [];
+    interface HistoryPoint {
+      timestamp: string;
+      cpu: number;
+      memory: number;
+      disk: number;
+      network: { in: number; out: number; };
+    }
+    const history: HistoryPoint[] = [];
+    interface ServiceStatus {
+      name: string;
+      status: string;
+      uptime: number;
+      memory: number;
+      cpu: number;
+      lastCheck: string;
+    }
+    let services: ServiceStatus[] = [];
+    interface Alert {
+      id: string;
+      type: string;
+      severity: string;
+      message: string;
+      timestamp: string;
+      resolved: boolean;
+    }
+    let transformedAlerts: Alert[] = [];
 
     try {
       // Try to get system info first (this is most likely to work)
@@ -83,7 +103,7 @@ export async function GET(req: NextRequest) {
         };
         
         metrics.processCount = systemMetrics.processes?.length || 0;
-        metrics.threadCount = systemMetrics.processes?.reduce((sum: number, p: any) => sum + (p.threads || 0), 0) || 0;
+        metrics.threadCount = systemMetrics.processes?.reduce((sum: number, p: { threads?: number }) => sum + (p.threads ?? 0), 0) ?? 0;
       }
     } catch (error) {
       console.warn('Failed to fetch system metrics:', error);
@@ -99,11 +119,11 @@ export async function GET(req: NextRequest) {
       });
       
       if (alerts?.data) {
-        transformedAlerts = alerts.data.map((alert: any) => ({
+        transformedAlerts = alerts.data.map((alert) => ({
           id: alert.id,
-          type: alert.type || 'system',
+          type: alert.condition?.type ?? 'system',
           severity: alert.severity,
-          message: alert.message,
+          message: alert.name || 'System alert',
           timestamp: alert.createdAt,
           resolved: alert.status === 'resolved',
         }));
@@ -117,7 +137,7 @@ export async function GET(req: NextRequest) {
       history,
       services,
       alerts: transformedAlerts,
-      _info: 'Data availability depends on monitoring service configuration',
+      info: 'Data availability depends on monitoring service configuration',
     });
   } catch (error) {
     return handleSDKError(error);

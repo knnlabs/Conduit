@@ -31,8 +31,7 @@ function LoadingFallback({ message }: { message?: string }) {
 export function AsyncBoundary({ 
   children, 
   loadingMessage = 'Loading...', 
-  fallback,
-  onError 
+  fallback
 }: AsyncBoundaryProps) {
   return (
     <ErrorBoundary fallback={fallback}>

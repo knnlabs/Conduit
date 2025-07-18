@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Select,
   TextInput,
   Group,
   ActionIcon,
   Loader,
-  Text,
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -45,7 +44,7 @@ export function ProviderModelSelect({
   const [isLoading, setIsLoading] = useState(false);
   const [useCustomInput, setUseCustomInput] = useState(false);
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     if (!providerId) {
       setModels([]);
       return;
@@ -57,7 +56,7 @@ export function ProviderModelSelect({
       if (!response.ok) {
         throw new Error('Failed to fetch models');
       }
-      const data = await response.json();
+      const data = await response.json() as ProviderModel[];
       setModels(data);
       
       // If current value is not in the fetched models, switch to custom input
@@ -75,14 +74,14 @@ export function ProviderModelSelect({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [providerId, value]);
 
   useEffect(() => {
-    fetchModels();
-  }, [providerId]);
+    void fetchModels();
+  }, [providerId, fetchModels]);
 
   const handleRefresh = () => {
-    fetchModels();
+    void fetchModels();
   };
 
   const detectCapabilities = (modelId: string) => {

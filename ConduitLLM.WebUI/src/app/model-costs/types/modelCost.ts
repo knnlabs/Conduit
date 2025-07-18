@@ -32,7 +32,9 @@ export interface CreateModelCostDto {
   priority?: number;
 }
 
-export interface UpdateModelCostDto extends Partial<CreateModelCostDto> {}
+export interface UpdateModelCostDto extends Partial<CreateModelCostDto> {
+  id?: number;
+}
 
 export interface ModelCostListResponse {
   items: ModelCost[];

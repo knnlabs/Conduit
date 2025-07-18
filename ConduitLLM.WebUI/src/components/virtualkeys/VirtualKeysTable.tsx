@@ -39,10 +39,10 @@ interface VirtualKeysTableProps {
 }
 
 export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeysTableProps) {
-  const virtualKeys = data || [];
+  const virtualKeys = data ?? [];
 
   const handleCopyKey = (keyHash: string) => {
-    navigator.clipboard.writeText(keyHash);
+    void navigator.clipboard.writeText(keyHash);
     notifications.show({
       title: 'Copied',
       message: 'Key hash copied to clipboard',
@@ -130,7 +130,7 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         </Table.Td>
 
         <Table.Td>
-          <Text size="sm">{key.requestCount?.toLocaleString() || '0'}</Text>
+          <Text size="sm">{key.requestCount?.toLocaleString() ?? '0'}</Text>
         </Table.Td>
 
         <Table.Td>

@@ -34,19 +34,32 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
       const response = await fetch('/api/admin/system/health');
       
       if (response.ok) {
-        const health = await response.json();
+        const health = await response.json() as unknown;
+        const healthData = health as {
+          status?: string;
+          overallStatus?: string;
+          adminApiDetails?: unknown;
+          coreApiDetails?: unknown;
+          coreApiMessage?: string;
+          coreApiChecks?: {
+            name: string;
+            status: string;
+            description?: string;
+            data?: unknown;
+          }[];
+        };
         
         // Determine status based on the health response
-        const isHealthy = health.status === 'healthy' || health.overallStatus === 'healthy';
+        const isHealthy = healthData.status === 'healthy' || healthData.overallStatus === 'healthy';
         
         setHealthStatus({
           adminApi: isHealthy ? 'healthy' : 'degraded',
           coreApi: isHealthy ? 'healthy' : 'degraded',
           lastChecked: new Date(),
-          adminApiDetails: health.adminApiDetails,
-          coreApiDetails: health.coreApiDetails,
-          coreApiMessage: health.coreApiMessage,
-          coreApiChecks: health.coreApiChecks,
+          adminApiDetails: healthData.adminApiDetails,
+          coreApiDetails: healthData.coreApiDetails,
+          coreApiMessage: healthData.coreApiMessage,
+          coreApiChecks: healthData.coreApiChecks,
         });
       } else {
         setHealthStatus({
@@ -71,10 +84,12 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
   useEffect(() => {
     if (autoRefresh) {
       // Initial check
-      checkHealth();
+      void checkHealth();
 
       // Set up interval
-      const interval = setInterval(checkHealth, refreshInterval);
+      const interval = setInterval(() => {
+        void checkHealth();
+      }, refreshInterval);
 
       return () => clearInterval(interval);
     }

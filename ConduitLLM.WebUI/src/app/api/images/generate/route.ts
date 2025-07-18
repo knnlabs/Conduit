@@ -2,53 +2,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
 
+interface AsyncImageGenerationRequest {
+  prompt: string;
+  model?: string;
+  n?: number;
+  quality?: string;
+  responseFormat?: string;
+  size?: string;
+  style?: string;
+  user?: string;
+  webhookUrl?: string;
+  async?: boolean;
+  [key: string]: unknown;
+}
+
+interface ImageGenerationRequest {
+  prompt: string;
+  model?: string;
+  n?: number;
+  quality?: string;
+  responseFormat?: string;
+  size?: string;
+  style?: string;
+  user?: string;
+  [key: string]: unknown;
+}
+
 // POST /api/images/generate - Generate images using Core SDK
 export async function POST(request: NextRequest) {
 
   try {
-    const body = await request.json();
-    console.log('[Images API] Request body:', JSON.stringify(body, null, 2));
+    const body = await request.json() as AsyncImageGenerationRequest;
     
     const coreClient = await getServerCoreClient();
-    console.log('[Images API] Core client obtained successfully');
     
     // Check if async generation is requested
     if (body.async === true) {
       // Use async generation
-      console.log('[Images API] Using async generation');
-      const result = await coreClient.images.generateAsync({
-        prompt: body.prompt,
-        model: body.model,
-        n: body.n,
-        quality: body.quality,
-        response_format: body.response_format,
-        size: body.size,
-        style: body.style,
-        user: body.user,
-        webhook_url: body.webhook_url,
-        // Pass through any additional parameters
-        ...body
-      });
-      
-      console.log('[Images API] Async generation result:', result);
+      const result = await coreClient.images.generateAsync(body as AsyncImageGenerationRequest);
       return NextResponse.json(result);
     } else {
       // Use synchronous generation (default)
-      console.log('[Images API] Using synchronous generation');
-      const result = await coreClient.images.generate({
+      const syncRequest: ImageGenerationRequest = {
         prompt: body.prompt,
         model: body.model,
         n: body.n,
         quality: body.quality,
-        response_format: body.response_format,
+        responseFormat: body.responseFormat,
         size: body.size,
         style: body.style,
-        user: body.user,
-        // Pass through any additional parameters
-        ...body
-      });
+        user: body.user
+      };
       
-      console.log('[Images API] Sync generation result:', result);
+      const result = await coreClient.images.generate(syncRequest as any);
+      
       return NextResponse.json(result);
     }
   } catch (error) {

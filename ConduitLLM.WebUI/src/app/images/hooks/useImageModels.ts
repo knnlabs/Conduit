@@ -17,12 +17,19 @@ export function useImageModels() {
         throw new Error('Failed to fetch model mappings');
       }
       
-      const mappings = await response.json();
+      interface ModelMapping {
+        modelId: string;
+        providerId: string;
+        supportsImageGeneration: boolean;
+        maxContextLength?: number;
+      }
+      
+      const mappings = await response.json() as ModelMapping[];
       
       // Filter for image generation models only
       const imageModels: ImageModel[] = mappings
-        .filter((mapping: any) => mapping.supportsImageGeneration)
-        .map((mapping: any) => ({
+        .filter((mapping: ModelMapping) => mapping.supportsImageGeneration)
+        .map((mapping: ModelMapping) => ({
           id: mapping.modelId,
           providerId: mapping.providerId,
           displayName: `${mapping.modelId} (${mapping.providerId})`,

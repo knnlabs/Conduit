@@ -7,24 +7,25 @@ import { type ChatCompletionChunk } from '@knn_labs/conduit-core-client';
 export async function POST(request: NextRequest) {
 
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
     const coreClient = await getServerCoreClient();
     
     // Check if streaming is requested
-    if (body.stream === true) {
+    if (typeof body === 'object' && body !== null && 'stream' in body && (body as { stream?: boolean }).stream === true) {
       // Create a TransformStream for SSE
       const encoder = new TextEncoder();
       const stream = new TransformStream();
       const writer = stream.writable.getWriter();
       
       // Start the streaming request
-      (async () => {
+      void (async () => {
         try {
           // Create the request with explicit stream: true type
-          const streamResponse = (await coreClient.chat.create({
-            ...body,
+          const requestData = {
+            ...(body as Record<string, unknown>),
             stream: true,
-          })) as unknown as AsyncIterable<ChatCompletionChunk>;
+          } as Record<string, unknown>;
+          const streamResponse = (await coreClient.chat.create(requestData as unknown as Parameters<typeof coreClient.chat.create>[0])) as unknown as AsyncIterable<ChatCompletionChunk>;
           
           // Handle the async iterator from the SDK
           for await (const chunk of streamResponse) {
@@ -37,9 +38,10 @@ export async function POST(request: NextRequest) {
           
           // Send the [DONE] message
           await writer.write(encoder.encode('data: [DONE]\n\n'));
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Streaming error:', error);
-          const errorData = `data: ${JSON.stringify({ error: error.message })}
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const errorData = `data: ${JSON.stringify({ error: errorMessage })}
 
 `;
           await writer.write(encoder.encode(errorData));
@@ -50,18 +52,19 @@ export async function POST(request: NextRequest) {
       
       // Return SSE response
       return new Response(stream.readable, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
+        headers: new Headers([
+          ['Content-Type', 'text/event-stream'],
+          ['Cache-Control', 'no-cache'],
+          ['Connection', 'keep-alive'],
+        ]),
       });
     } else {
       // Non-streaming request
-      const result = await coreClient.chat.create({
-        ...body,
+      const requestData = {
+        ...(body as Record<string, unknown>),
         stream: false,
-      });
+      } as Record<string, unknown>;
+      const result = await coreClient.chat.create(requestData as unknown as Parameters<typeof coreClient.chat.create>[0]);
       
       return NextResponse.json(result);
     }

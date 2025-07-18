@@ -59,6 +59,12 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
     }).format(amount);
   };
 
+  const getSpendColor = (percentage: number) => {
+    if (percentage > 90) return 'red';
+    if (percentage > 75) return 'orange';
+    return 'blue';
+  };
+
   return (
     <Modal
       opened={opened}
@@ -138,7 +144,7 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
                 <IconActivity size={20} color="var(--mantine-color-blue-6)" />
                 <Text size="xs" c="dimmed">Requests</Text>
               </Group>
-              <Text size="xl" fw={700}>{virtualKey.requestCount?.toLocaleString() || '0'}</Text>
+              <Text size="xl" fw={700}>{virtualKey.requestCount?.toLocaleString() ?? '0'}</Text>
             </Stack>
           </Card>
 
@@ -165,7 +171,7 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
               </Group>
               <Progress 
                 value={spendPercentage} 
-                color={spendPercentage > 90 ? 'red' : spendPercentage > 75 ? 'orange' : 'blue'}
+                color={getSpendColor(spendPercentage)}
                 size="lg"
               />
               <Text size="xs" c="dimmed" ta="center">

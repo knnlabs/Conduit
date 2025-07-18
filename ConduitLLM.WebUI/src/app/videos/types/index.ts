@@ -4,7 +4,7 @@ export interface VideoSettings {
   size: string;
   fps: number;
   style?: string;
-  response_format: 'url' | 'b64_json';
+  responseFormat: 'url' | 'b64_json';
 }
 
 export interface VideoTask {
@@ -30,43 +30,43 @@ export interface VideoGenerationResult {
 
 export interface VideoData {
   url?: string;
-  b64_json?: string;
-  revised_prompt?: string;
+  b64Json?: string;
+  revisedPrompt?: string;
   metadata?: VideoMetadata;
 }
 
 export interface VideoUsage {
-  prompt_tokens: number;
-  total_tokens: number;
-  duration_seconds?: number;
-  processing_time_seconds?: number;
+  promptTokens: number;
+  totalTokens: number;
+  durationSeconds?: number;
+  processingTimeSeconds?: number;
 }
 
 export interface VideoMetadata {
   duration?: number;
   resolution?: string;
   fps?: number;
-  file_size_bytes?: number;
+  fileSizeBytes?: number;
   format?: string;
   codec?: string;
-  audio_codec?: string;
+  audioCodec?: string;
   bitrate?: number;
-  mime_type?: string;
+  mimeType?: string;
   seed?: number;
 }
 
 export interface VideoModel {
   id: string;
   provider: string;
-  display_name?: string;
+  displayName?: string;
   capabilities: {
-    video_generation: boolean;
-    max_duration?: number;
-    supported_resolutions?: string[];
-    supported_fps?: number[];
-    supports_custom_styles?: boolean;
-    supports_seed?: boolean;
-    max_videos?: number;
+    videoGeneration: boolean;
+    maxDuration?: number;
+    supportedResolutions?: string[];
+    supportedFps?: number[];
+    supportsCustomStyles?: boolean;
+    supportsSeed?: boolean;
+    maxVideos?: number;
   };
 }
 

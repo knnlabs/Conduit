@@ -11,7 +11,6 @@ import {
   IconShield as IconHealth,
   IconDatabase,
   IconRoute,
-  IconCloud,
   IconActivity,
   IconFileText,
   IconCreditCard,

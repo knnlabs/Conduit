@@ -21,7 +21,7 @@ export default function ModelCostsPage() {
   const handleExport = async () => {
     try {
       await exportModelCosts();
-    } catch (error) {
+    } catch {
       // Error handling is done in the hook
     }
   };
@@ -40,7 +40,7 @@ export default function ModelCostsPage() {
             <Button
               leftSection={<IconFileExport size={16} />}
               variant="light"
-              onClick={handleExport}
+              onClick={() => void handleExport()}
               loading={isExporting}
             >
               Export CSV

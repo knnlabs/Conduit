@@ -7,10 +7,10 @@ export const validators = {
     !value?.trim() ? `${fieldName} is required` : null,
 
   minLength: (fieldName: string, min: number) => (value: string | undefined) =>
-    (value?.length || 0) < min ? `${fieldName} must be at least ${min} characters` : null,
+    (value?.length ?? 0) < min ? `${fieldName} must be at least ${min} characters` : null,
 
   maxLength: (fieldName: string, max: number) => (value: string | undefined) =>
-    (value?.length || 0) > max ? `${fieldName} must be no more than ${max} characters` : null,
+    (value?.length ?? 0) > max ? `${fieldName} must be no more than ${max} characters` : null,
 
   positiveNumber: (fieldName: string) => (value: number | undefined) =>
     (value !== undefined && value < 0) ? `${fieldName} must be positive` : null,

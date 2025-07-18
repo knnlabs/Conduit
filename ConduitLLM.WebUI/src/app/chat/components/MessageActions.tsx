@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Group, Menu, CopyButton, Tooltip, Text } from '@mantine/core';
+import { ActionIcon, Group, Menu, CopyButton, Tooltip } from '@mantine/core';
 import {
   IconEdit,
   IconTrash,
@@ -59,7 +59,7 @@ export function MessageActions({
           <ActionIcon
             variant="subtle"
             color="gray"
-            onClick={() => onEdit?.(message.id!)}
+            onClick={() => onEdit?.(message.id ?? '')}
             size="sm"
           >
             <IconEdit size={16} />
@@ -72,7 +72,7 @@ export function MessageActions({
           <ActionIcon
             variant="subtle"
             color="gray"
-            onClick={() => onRegenerate?.(message.id!)}
+            onClick={() => onRegenerate?.(message.id ?? '')}
             size="sm"
           >
             <IconRefresh size={16} />
@@ -85,7 +85,7 @@ export function MessageActions({
           <ActionIcon
             variant="subtle"
             color="gray"
-            onClick={() => onBranch?.(message.id!)}
+            onClick={() => onBranch?.(message.id ?? '')}
             size="sm"
           >
             <IconGitBranch size={16} />
@@ -104,7 +104,7 @@ export function MessageActions({
           {showEdit && message.role === 'user' && (
             <Menu.Item
               leftSection={<IconEdit size={14} />}
-              onClick={() => onEdit?.(message.id!)}
+              onClick={() => onEdit?.(message.id ?? '')}
             >
               Edit message
             </Menu.Item>
@@ -113,7 +113,7 @@ export function MessageActions({
           {showRegenerate && message.role === 'assistant' && (
             <Menu.Item
               leftSection={<IconRefresh size={14} />}
-              onClick={() => onRegenerate?.(message.id!)}
+              onClick={() => onRegenerate?.(message.id ?? '')}
             >
               Regenerate response
             </Menu.Item>
@@ -122,7 +122,7 @@ export function MessageActions({
           {showBranch && (
             <Menu.Item
               leftSection={<IconGitBranch size={14} />}
-              onClick={() => onBranch?.(message.id!)}
+              onClick={() => onBranch?.(message.id ?? '')}
             >
               Create branch
             </Menu.Item>
@@ -133,7 +133,7 @@ export function MessageActions({
           <Menu.Item
             color="red"
             leftSection={<IconTrash size={14} />}
-            onClick={() => onDelete?.(message.id!)}
+            onClick={() => onDelete?.(message.id ?? '')}
           >
             Delete message
           </Menu.Item>

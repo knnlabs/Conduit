@@ -7,10 +7,14 @@ export function setupGlobalErrorHandler() {
   // Handle unhandled promise rejections
   if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason as unknown;
+      const reasonMessage = reason instanceof Error ? reason.message : undefined;
+      const reasonStack = reason instanceof Error ? reason.stack : undefined;
+      
       console.error('Unhandled promise rejection:', {
-        reason: event.reason,
-        message: event.reason?.message,
-        stack: event.reason?.stack,
+        reason,
+        message: reasonMessage,
+        stack: reasonStack,
         timestamp: new Date().toISOString(),
         url: window.location.href,
         type: event.type,
@@ -53,13 +57,16 @@ export function setupGlobalErrorHandler() {
 
     // Handle uncaught errors
     window.addEventListener('error', (event) => {
+      const errorObj = event.error as unknown;
+      const errorStack = errorObj instanceof Error ? errorObj.stack : undefined;
+      
       console.error('Uncaught error:', {
         message: event.message,
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
-        error: event.error,
-        stack: event.error?.stack,
+        error: errorObj,
+        stack: errorStack,
         timestamp: new Date().toISOString(),
         url: window.location.href,
       });
@@ -72,7 +79,7 @@ export function setupGlobalErrorHandler() {
           source: event.filename,
           lineno: event.lineno,
           colno: event.colno,
-          error: event.error,
+          error: errorObj,
         });
       }
     });

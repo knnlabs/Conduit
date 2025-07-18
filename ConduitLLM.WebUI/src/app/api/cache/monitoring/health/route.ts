@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
@@ -15,10 +14,10 @@ export async function GET() {
 
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/health`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'X-Master-Key': apiKey,
-      },
+      headers: new Headers([
+        ['Authorization', `Bearer ${apiKey}`],
+        ['X-Master-Key', apiKey],
+      ]),
     });
 
     if (!response.ok) {
@@ -30,7 +29,7 @@ export async function GET() {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in cache health route:', error);

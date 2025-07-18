@@ -1,8 +1,7 @@
 'use client';
 
 import { useVideoStore } from '../hooks/useVideoStore';
-import { VideoResolutions } from '../types';
-import type { VideoModel } from '../types';
+import { VideoResolutions, type VideoModel } from '../types';
 
 interface VideoSettingsProps {
   models: VideoModel[];
@@ -29,7 +28,7 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
           >
             {models.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.display_name}
+                {model.displayName}
               </option>
             ))}
           </select>
@@ -39,15 +38,15 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
         <div className="setting-group">
           <label htmlFor="video-duration">
             Duration (seconds)
-            {capabilities?.max_duration && (
-              <span className="label-hint"> (max: {capabilities.max_duration}s)</span>
+            {capabilities?.maxDuration && (
+              <span className="label-hint"> (max: {capabilities.maxDuration}s)</span>
             )}
           </label>
           <input
             id="video-duration"
             type="number"
             min="1"
-            max={capabilities?.max_duration || 60}
+            max={capabilities?.maxDuration ?? 60}
             value={settings.duration}
             onChange={(e) => updateSettings({ duration: parseInt(e.target.value) || 5 })}
             className="form-input"
@@ -63,8 +62,8 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
             onChange={(e) => updateSettings({ size: e.target.value })}
             className="form-select"
           >
-            {capabilities?.supported_resolutions ? (
-              capabilities.supported_resolutions.map((res) => (
+            {capabilities?.supportedResolutions ? (
+              capabilities.supportedResolutions.map((res) => (
                 <option key={res} value={res}>
                   {res} {getResolutionLabel(res)}
                 </option>
@@ -88,8 +87,8 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
             onChange={(e) => updateSettings({ fps: parseInt(e.target.value) })}
             className="form-select"
           >
-            {capabilities?.supported_fps ? (
-              capabilities.supported_fps.map((fps) => (
+            {capabilities?.supportedFps ? (
+              capabilities.supportedFps.map((fps) => (
                 <option key={fps} value={fps}>
                   {fps} FPS
                 </option>
@@ -105,13 +104,13 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
         </div>
 
         {/* Style */}
-        {capabilities?.supports_custom_styles !== false && (
+        {capabilities?.supportsCustomStyles !== false && (
           <div className="setting-group">
             <label htmlFor="video-style">Style (optional)</label>
             <input
               id="video-style"
               type="text"
-              value={settings.style || ''}
+              value={settings.style ?? ''}
               onChange={(e) => updateSettings({ style: e.target.value || undefined })}
               placeholder="e.g., cinematic, anime, realistic"
               className="form-input"
@@ -124,8 +123,8 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
           <label htmlFor="video-format">Response Format</label>
           <select
             id="video-format"
-            value={settings.response_format}
-            onChange={(e) => updateSettings({ response_format: e.target.value as 'url' | 'b64_json' })}
+            value={settings.responseFormat}
+            onChange={(e) => updateSettings({ responseFormat: e.target.value as 'url' | 'b64_json' })}
             className="form-select"
           >
             <option value="url">URL (Recommended)</option>
@@ -138,13 +137,13 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
 }
 
 function getResolutionLabel(resolution: string): string {
-  const labels: Record<string, string> = {
-    '1280x720': '(HD)',
-    '1920x1080': '(Full HD)',
-    '720x1280': '(Vertical HD)',
-    '1080x1920': '(Vertical Full HD)',
-    '720x720': '(Square)',
-    '720x480': '(SD)'
-  };
-  return labels[resolution] || '';
+  const resolutionLabels = new Map([
+    ['1280x720', '(HD)'],
+    ['1920x1080', '(Full HD)'],
+    ['720x1280', '(Vertical HD)'],
+    ['1080x1920', '(Vertical Full HD)'],
+    ['720x720', '(Square)'],
+    ['720x480', '(SD)']
+  ]);
+  return resolutionLabels.get(resolution) ?? '';
 }

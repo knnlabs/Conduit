@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     // In production, this would use the Admin SDK to export logs
@@ -15,12 +15,11 @@ export async function GET(req: NextRequest) {
 2024-01-10T10:27:00Z,POST,/v1/chat/completions,429,100ms,Customer A,OpenAI,gpt-4,-,-,Rate limit exceeded
 2024-01-10T10:26:00Z,POST,/v1/embeddings,200,200ms,Production API,OpenAI,text-embedding-3-small,500,$0.0001,`;
 
-    return new NextResponse(csv, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="request-logs-${new Date().toISOString()}.csv"`,
-      },
-    });
+    const responseHeaders: Record<string, string> = {};
+    responseHeaders['Content-Type'] = 'text/csv';
+    responseHeaders['Content-Disposition'] = `attachment; filename="request-logs-${new Date().toISOString()}.csv"`;
+    
+    return new NextResponse(csv, { headers: responseHeaders });
   } catch (error) {
     return handleSDKError(error);
   }

@@ -37,15 +37,6 @@ export function ProviderList({
   onProviderUpdate, 
   isLoading 
 }: ProviderListProps) {
-  const getProviderTypeColor = (type: string) => {
-    switch (type) {
-      case 'primary': return 'blue';
-      case 'backup': return 'orange';
-      case 'special': return 'green';
-      default: return 'gray';
-    }
-  };
-
   const getProviderOriginalIndex = (provider: ProviderDisplay) => {
     return originalProviders.findIndex(p => p.providerId === provider.providerId);
   };
@@ -78,7 +69,7 @@ export function ProviderList({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {providers.map((provider, index) => {
+              {providers.map((provider) => {
                 const originalIndex = getProviderOriginalIndex(provider);
                 return (
                   <ProviderRow

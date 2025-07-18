@@ -86,21 +86,21 @@ export default function HealthMonitoringPage() {
       // Fetch provider health
       const providersResponse = await fetch('/api/health/providers');
       if (providersResponse.ok) {
-        const providersData = await providersResponse.json();
+        const providersData = await providersResponse.json() as ProviderHealth[];
         setProviders(providersData);
       }
 
       // Fetch system health
       const systemResponse = await fetch('/api/health/system');
       if (systemResponse.ok) {
-        const systemData = await systemResponse.json();
+        const systemData = await systemResponse.json() as SystemHealth;
         setSystemHealth(systemData);
       }
 
       // Fetch recent health events
       const eventsResponse = await fetch('/api/health/events?limit=10');
       if (eventsResponse.ok) {
-        const eventsData = await eventsResponse.json();
+        const eventsData = await eventsResponse.json() as HealthEvent[];
         setHealthEvents(eventsData);
       }
     } catch (error) {
@@ -116,10 +116,10 @@ export default function HealthMonitoringPage() {
   }, []);
 
   useEffect(() => {
-    fetchHealthData();
+    void fetchHealthData();
 
     if (autoRefresh) {
-      const interval = setInterval(fetchHealthData, 30000); // Refresh every 30 seconds
+      const interval = setInterval(() => void fetchHealthData(), 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [fetchHealthData, autoRefresh]);
@@ -216,7 +216,7 @@ export default function HealthMonitoringPage() {
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchHealthData}
+            onClick={() => void fetchHealthData()}
             loading={isLoading}
           >
             Refresh
@@ -369,18 +369,20 @@ export default function HealthMonitoringPage() {
               {healthEvents.map((event) => (
                 <Timeline.Item
                   key={event.id}
-                  bullet={
-                    event.severity === 'error' ? (
-                      <IconCircleX size={16} />
-                    ) : event.severity === 'warning' ? (
-                      <IconAlertCircle size={16} />
-                    ) : (
-                      <IconCircleCheck size={16} />
-                    )
-                  }
-                  color={
-                    event.severity === 'error' ? 'red' : event.severity === 'warning' ? 'yellow' : 'green'
-                  }
+                  bullet={(() => {
+                    if (event.severity === 'error') {
+                      return <IconCircleX size={16} />;
+                    }
+                    if (event.severity === 'warning') {
+                      return <IconAlertCircle size={16} />;
+                    }
+                    return <IconCircleCheck size={16} />;
+                  })()}
+                  color={(() => {
+                    if (event.severity === 'error') return 'red';
+                    if (event.severity === 'warning') return 'yellow';
+                    return 'green';
+                  })()}
                 >
                   <Text size="sm" fw={500}>
                     {event.message}

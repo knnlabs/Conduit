@@ -15,21 +15,12 @@ import {
   Select,
   Switch,
   Progress,
-  Skeleton,
   Timeline,
   RingProgress,
-  Tooltip,
-  ActionIcon,
   Modal,
-  Code,
-  Tabs,
-  Alert,
-  LoadingOverlay,
-  Center,
   Paper,
 } from '@mantine/core';
 import {
-  LineChart,
   AreaChart,
 } from '@mantine/charts';
 import {
@@ -38,14 +29,6 @@ import {
   IconAlertTriangle,
   IconRefresh,
   IconDownload,
-  IconClock,
-  IconActivity,
-  IconApi,
-  IconBolt,
-  IconWifi,
-  IconInfoCircle,
-  IconChartLine,
-  IconServer,
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
@@ -53,7 +36,6 @@ import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { CardSkeleton } from '@/components/common/LoadingState';
 import { formatters } from '@/lib/utils/formatters';
-import { StatusIndicator } from '@/components/common/StatusIndicator';
 
 interface ProviderHealthData {
   id: string;
@@ -110,7 +92,7 @@ export default function ProviderHealthPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [providers, setProviders] = useState<ProviderHealthData[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ProviderHealthData | null>(null);
-  const [healthHistory, setHealthHistory] = useState<Record<string, HealthHistory[]>>({});
+  const [, setHealthHistory] = useState<Record<string, HealthHistory[]>>({});
   const [incidents, setIncidents] = useState<HealthIncident[]>([]);
   const [providerMetrics, setProviderMetrics] = useState<Record<string, ProviderMetrics>>({});
   const [opened, { open, close }] = useDisclosure(false);
@@ -122,12 +104,17 @@ export default function ProviderHealthPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch provider health');
       }
-      const data = await response.json();
+      const data = await response.json() as {
+        providers?: ProviderHealthData[];
+        history?: Record<string, HealthHistory[]>;
+        incidents?: HealthIncident[];
+        metrics?: Record<string, ProviderMetrics>;
+      };
       
-      setProviders(data.providers || []);
-      setHealthHistory(data.history || {});
-      setIncidents(data.incidents || []);
-      setProviderMetrics(data.metrics || {});
+      setProviders(data.providers ?? []);
+      setHealthHistory(data.history ?? {});
+      setIncidents(data.incidents ?? []);
+      setProviderMetrics(data.metrics ?? {});
     } catch (error) {
       console.error('Error fetching provider health:', error);
       notifications.show({
@@ -141,10 +128,12 @@ export default function ProviderHealthPage() {
   }, [timeRange]);
 
   useEffect(() => {
-    fetchProviderHealth();
+    void fetchProviderHealth();
     
     if (autoRefresh) {
-      const interval = setInterval(fetchProviderHealth, 30000);
+      const interval = setInterval(() => {
+        void fetchProviderHealth();
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [fetchProviderHealth, autoRefresh]);
@@ -207,7 +196,7 @@ export default function ProviderHealthPage() {
         <Group>
           <Select
             value={timeRange}
-            onChange={(value) => setTimeRange(value || '24h')}
+            onChange={(value) => setTimeRange(value ?? '24h')}
             data={[
               { value: '1h', label: 'Last Hour' },
               { value: '24h', label: 'Last 24 Hours' },
@@ -223,14 +212,14 @@ export default function ProviderHealthPage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchProviderHealth}
+            onClick={() => void fetchProviderHealth()}
             loading={isLoading}
           >
             Refresh
@@ -418,7 +407,11 @@ export default function ProviderHealthPage() {
                     <ThemeIcon
                       size={24}
                       variant="light"
-                      color={incident.severity === 'high' ? 'red' : incident.severity === 'medium' ? 'orange' : 'yellow'}
+                      color={(() => {
+                        if (incident.severity === 'high') return 'red';
+                        if (incident.severity === 'medium') return 'orange';
+                        return 'yellow';
+                      })()}
                     >
                       <IconAlertCircle size={14} />
                     </ThemeIcon>
@@ -497,7 +490,11 @@ export default function ProviderHealthPage() {
                         <Table.Td>{model.name}</Table.Td>
                         <Table.Td>
                           <Badge
-                            color={model.status === 'available' ? 'green' : model.status === 'maintenance' ? 'orange' : 'red'}
+                            color={(() => {
+                              if (model.status === 'available') return 'green';
+                              if (model.status === 'maintenance') return 'orange';
+                              return 'red';
+                            })()}
                             variant="light"
                           >
                             {model.status}

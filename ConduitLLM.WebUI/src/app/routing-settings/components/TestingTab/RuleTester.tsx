@@ -7,25 +7,18 @@ import {
   Group,
   TextInput,
   Select,
-  Textarea,
+  JsonInput,
   Button,
   Text,
   Badge,
-  Code,
-  Divider,
   Alert,
   Title,
-  Table,
-  ScrollArea,
-  JsonInput,
 } from '@mantine/core';
 import {
   IconPlayerPlay,
+  IconAlertTriangle,
   IconCheck,
   IconX,
-  IconClock,
-  IconRoute,
-  IconAlertTriangle,
 } from '@tabler/icons-react';
 import { RouteTestRequest, RouteTestResult } from '../../types/routing';
 
@@ -93,9 +86,9 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
 
   const handleSampleSelect = (sample: typeof sampleRequests[0]) => {
     setTestRequest(sample.request);
-    setHeadersText(JSON.stringify(sample.request.headers || {}, null, 2));
-    setBodyText(JSON.stringify(sample.request.body || {}, null, 2));
-    setMetadataText(JSON.stringify(sample.request.metadata || {}, null, 2));
+    setHeadersText(JSON.stringify(sample.request.headers ?? {}, null, 2));
+    setBodyText(JSON.stringify(sample.request.body ?? {}, null, 2));
+    setMetadataText(JSON.stringify(sample.request.metadata ?? {}, null, 2));
   };
 
   const handleTest = () => {
@@ -148,7 +141,7 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
             label="HTTP Method"
             data={httpMethods}
             value={testRequest.method}
-            onChange={(value) => setTestRequest(prev => ({ ...prev, method: value as any }))}
+            onChange={(value) => value && setTestRequest(prev => ({ ...prev, method: value as 'GET' | 'POST' | 'PUT' | 'DELETE' }))}
           />
           <TextInput
             label="Path"
@@ -159,7 +152,7 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
           <TextInput
             label="Model"
             placeholder="gpt-4"
-            value={testRequest.model || ''}
+            value={testRequest.model ?? ''}
             onChange={(e) => setTestRequest(prev => ({ ...prev, model: e.target.value }))}
           />
         </Group>
@@ -269,7 +262,7 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
             <Card withBorder p="sm" mb="md">
               <Text fw={500} size="sm" mb="xs">Matched Rules ({testResult.matchedRules.length})</Text>
               <Stack gap="xs">
-                {testResult.matchedRules.map((rule, index) => (
+                {testResult.matchedRules.map((rule) => (
                   <Group key={rule.id} justify="space-between">
                     <Group>
                       <Badge variant="dot" color="green" size="xs">
@@ -297,7 +290,7 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
             >
               <Stack gap="xs">
                 {testResult.errors.map((error, index) => (
-                  <Text key={index} size="sm">{error}</Text>
+                  <Text key={`error-${error}-${index}`} size="sm">{error}</Text>
                 ))}
               </Stack>
             </Alert>

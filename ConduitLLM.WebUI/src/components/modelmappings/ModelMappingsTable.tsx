@@ -16,11 +16,27 @@ import {
   IconArrowRight,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
+
+interface ModelMapping {
+  id: string;
+  modelName: string;
+  providerModelId: string;
+  providerName: string;
+  priority: number;
+  isEnabled: boolean;
+  supportsVision?: boolean;
+  supportsFunctionCalling?: boolean;
+  supportsStreaming?: boolean;
+  supportsImageGeneration?: boolean;
+  supportsAudioTranscription?: boolean;
+  supportsTextToSpeech?: boolean;
+  supportsRealtimeAudio?: boolean;
+  capabilities?: string;
+}
 
 interface ModelMappingsTableProps {
-  data: any[];
-  onEdit?: (mapping: any) => void;
+  data: ModelMapping[];
+  onEdit?: (mapping: ModelMapping) => void;
   onDelete?: (mappingId: string) => void;
 }
 
@@ -29,12 +45,12 @@ export function ModelMappingsTable({
   onEdit,
   onDelete,
 }: ModelMappingsTableProps) {
-  const handleDelete = (mapping: any) => {
+  const handleDelete = (mapping: ModelMapping) => {
     modals.openConfirmModal({
       title: 'Delete Model Mapping',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the mapping for model "{mapping.modelName}"?
+          Are you sure you want to delete the mapping for model &quot;{mapping.modelName}&quot;?
           This action cannot be undone.
         </Text>
       ),
@@ -44,7 +60,7 @@ export function ModelMappingsTable({
     });
   };
 
-  const getCapabilityBadges = (mapping: any) => {
+  const getCapabilityBadges = (mapping: ModelMapping) => {
     const capabilities = [];
     if (mapping.supportsVision) capabilities.push({ label: 'Vision', color: 'blue' });
     if (mapping.supportsFunctionCalling) capabilities.push({ label: 'Functions', color: 'green' });
@@ -54,8 +70,8 @@ export function ModelMappingsTable({
     if (mapping.supportsTextToSpeech) capabilities.push({ label: 'TTS', color: 'violet' });
     if (mapping.supportsRealtimeAudio) capabilities.push({ label: 'Realtime', color: 'orange' });
     
-    return capabilities.slice(0, 3).map((cap, index) => (
-      <Badge key={index} size="xs" variant="dot" color={cap.color}>
+    return capabilities.slice(0, 3).map((cap) => (
+      <Badge key={`${cap.label}-${cap.color}`} size="xs" variant="dot" color={cap.color}>
         {cap.label}
       </Badge>
     ));
@@ -82,7 +98,7 @@ export function ModelMappingsTable({
       </Table.Td>
       
       <Table.Td>
-        <Text size="sm">{mapping.providerName || 'Unknown'}</Text>
+        <Text size="sm">{mapping.providerName ?? 'Unknown'}</Text>
       </Table.Td>
 
       <Table.Td>

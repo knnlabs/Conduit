@@ -30,7 +30,7 @@ export function useModelCostsApi() {
     if (!response.ok) {
       throw new Error('Failed to fetch model costs');
     }
-    return response.json();
+    return response.json() as Promise<ModelCostListResponse>;
   };
 
   const createModelCost = async (data: CreateModelCostDto): Promise<ModelCost> => {
@@ -43,11 +43,11 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create model cost');
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to create model cost');
       }
 
-      const result = await response.json();
+      const result = await response.json() as ModelCost;
       
       notifications.show({
         title: 'Success',
@@ -78,11 +78,11 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update model cost');
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to update model cost');
       }
 
-      const result = await response.json();
+      const result = await response.json() as ModelCost;
       
       notifications.show({
         title: 'Success',
@@ -111,8 +111,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to delete model cost');
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to delete model cost');
       }
 
       notifications.show({
@@ -132,7 +132,7 @@ export function useModelCostsApi() {
     }
   };
 
-  const importModelCosts = async (costs: CreateModelCostDto[]): Promise<any> => {
+  const importModelCosts = async (costs: CreateModelCostDto[]): Promise<{ imported?: number }> => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/model-costs/import', {
@@ -142,15 +142,15 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to import model costs');
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to import model costs');
       }
 
-      const result = await response.json();
+      const result = await response.json() as { imported?: number };
       
       notifications.show({
         title: 'Success',
-        message: `Successfully imported ${result.imported || costs.length} model costs`,
+        message: `Successfully imported ${result.imported ?? costs.length} model costs`,
         color: 'green',
       });
 
@@ -206,7 +206,7 @@ export function useModelCostsApi() {
         }
         throw new Error('Failed to fetch model cost by pattern');
       }
-      return response.json();
+      return response.json() as Promise<ModelCost>;
     } catch (error) {
       console.error('Error fetching model cost by pattern:', error);
       return null;
@@ -219,7 +219,7 @@ export function useModelCostsApi() {
       if (!response.ok) {
         throw new Error('Failed to fetch model costs by provider');
       }
-      return response.json();
+      return response.json() as Promise<ModelCost[]>;
     } catch (error) {
       console.error('Error fetching model costs by provider:', error);
       return [];

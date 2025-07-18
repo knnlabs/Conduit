@@ -13,13 +13,11 @@ import {
   Text,
   Badge,
   LoadingOverlay,
-  Center,
   Card,
 } from '@mantine/core';
-import { IconUpload, IconFileTypeCsv, IconAlertCircle, IconCheck } from '@tabler/icons-react';
+import { IconFileTypeCsv, IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { CreateModelCostDto } from '../types/modelCost';
 import { parseCSVContent, convertParsedToDto, ParsedModelCost } from '../utils/csvHelpers';
 
 interface ImportModelCostsModalProps {
@@ -60,7 +58,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
     setParseError(null);
     
     if (newFile) {
-      parseCSV(newFile);
+      void parseCSV(newFile);
     }
   };
 
@@ -85,7 +83,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
       onClose();
       setFile(null);
       setParsedData([]);
-    } catch (error) {
+    } catch {
       // Error handling is done in the hook
     } finally {
       setIsImporting(false);
@@ -160,7 +158,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                 </Table.Thead>
                 <Table.Tbody>
                   {parsedData.map((cost, index) => (
-                    <Table.Tr key={index} style={{ 
+                    <Table.Tr key={`${cost.modelPattern}-${cost.provider}-${index}`} style={{ 
                       backgroundColor: cost.isValid ? undefined : 'var(--mantine-color-red-0)' 
                     }}>
                       <Table.Td>
@@ -229,7 +227,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
             Cancel
           </Button>
           <Button 
-            onClick={handleImport}
+            onClick={() => void handleImport()}
             loading={isImporting}
             disabled={validCount === 0}
           >

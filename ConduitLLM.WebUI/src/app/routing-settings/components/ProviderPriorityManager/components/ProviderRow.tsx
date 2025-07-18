@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Table,
   NumberInput,
@@ -11,7 +11,6 @@ import {
   Group,
   Tooltip,
   ActionIcon,
-  Alert,
 } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const headersList = headers();
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
 
     if (!apiKey) {
@@ -18,10 +16,10 @@ export async function GET(request: NextRequest) {
 
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts?count=${count}`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'X-Master-Key': apiKey,
-      },
+      headers: new Headers([
+        ['Authorization', `Bearer ${apiKey}`],
+        ['X-Master-Key', apiKey],
+      ]),
     });
 
     if (!response.ok) {
@@ -33,7 +31,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in cache alerts route:', error);
@@ -46,7 +44,6 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   try {
-    headers(); // Keep the headers() call for side effects if needed
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
 
     if (!apiKey) {
@@ -59,10 +56,10 @@ export async function DELETE() {
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'X-Master-Key': apiKey,
-      },
+      headers: new Headers([
+        ['Authorization', `Bearer ${apiKey}`],
+        ['X-Master-Key', apiKey],
+      ]),
     });
 
     if (!response.ok) {
@@ -74,7 +71,7 @@ export async function DELETE() {
       );
     }
 
-    const data = await response.json();
+    const data: unknown = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in cache alerts clear route:', error);

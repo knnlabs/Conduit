@@ -4,20 +4,13 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-
-// Use SDK types directly
-type Provider = ProviderCredentialDto;
-
-interface ProviderHealth {
-  providerId: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  lastCheck: string;
-  responseTime: number;
-  successRate: number;
-  errorCount: number;
-  issues?: string[];
-}
+import type { 
+  ProviderCredentialDto, 
+  CreateProviderCredentialDto, 
+  UpdateProviderCredentialDto,
+  ProviderHealthStatusDto
+} from '@knn_labs/conduit-admin-client';
+// Error utilities are handled inline with proper typing
 
 interface ProviderModel {
   id: string;
@@ -52,10 +45,11 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderCredentialDto[];
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch providers');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to fetch providers');
       }
 
       return result;
@@ -68,7 +62,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProvider = useCallback(async (id: string): Promise<Provider> => {
+  const getProvider = useCallback(async (id: string): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -77,10 +71,11 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderCredentialDto;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to fetch provider');
       }
 
       return result;
@@ -93,7 +88,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const createProvider = useCallback(async (provider: Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>): Promise<Provider> => {
+  const createProvider = useCallback(async (provider: CreateProviderCredentialDto): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -106,10 +101,11 @@ export function useProviderApi() {
         body: JSON.stringify(provider),
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderCredentialDto;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create provider');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to create provider');
       }
 
       notifications.show({
@@ -133,7 +129,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const updateProvider = useCallback(async (id: string, updates: Partial<Provider>): Promise<Provider> => {
+  const updateProvider = useCallback(async (id: string, updates: UpdateProviderCredentialDto): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -146,10 +142,11 @@ export function useProviderApi() {
         body: JSON.stringify(updates),
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderCredentialDto;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update provider');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to update provider');
       }
 
       notifications.show({
@@ -183,8 +180,8 @@ export function useProviderApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete provider');
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error ?? 'Failed to delete provider');
       }
 
       notifications.show({
@@ -219,10 +216,10 @@ export function useProviderApi() {
         body: JSON.stringify(request),
       });
 
-      const result = await response.json();
+      const result = await response.json() as { success: boolean; message: string; error?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || 'Provider test failed');
+        throw new Error(result.error ?? 'Provider test failed');
       }
 
       notifications.show({
@@ -231,7 +228,7 @@ export function useProviderApi() {
         color: result.success ? 'green' : 'red',
       });
 
-      return result;
+      return { success: result.success, message: result.message };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Provider test failed';
       setError(message);
@@ -246,7 +243,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealth> => {
+  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealthStatusDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -255,10 +252,11 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderHealthStatusDto;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider health');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to fetch provider health');
       }
 
       return result;
@@ -280,10 +278,11 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as ProviderModel[];
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider models');
+        const errorResult = result as unknown as { error?: string };
+        throw new Error(errorResult.error ?? 'Failed to fetch provider models');
       }
 
       return result;
@@ -317,8 +316,8 @@ export function useProviders() {
     queryFn: async () => {
       const response = await fetch('/api/providers');
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch providers');
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to fetch providers');
       }
       const data = await response.json() as ProviderCredentialDto[];
       // Use SDK types directly
@@ -327,7 +326,7 @@ export function useProviders() {
   });
 
   return {
-    providers: providers || [],
+    providers: providers ?? [],
     isLoading,
     error,
     refetch,

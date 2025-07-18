@@ -1,46 +1,48 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
+import { HttpError } from '@knn_labs/conduit-admin-client';
 import { 
-  ConduitError
-} from '@knn_labs/conduit-admin-client';
+  getErrorStatusCode, 
+  getErrorMessage, 
+  getCombinedErrorDetails, 
+  isHttpError 
+} from '@/lib/utils/error-utils';
 
 // Map SDK errors to appropriate HTTP responses
 export function handleSDKError(error: unknown): NextResponse {
+  const errorMessage = getErrorMessage(error);
+  const statusCode = getErrorStatusCode(error);
+  const errorType = statusCode ? String(statusCode) : 'unknown';
+  const errorStack = error instanceof Error ? error.stack : undefined;
+  
   const errorInfo = {
-    error: error instanceof Error ? error.message : 'Unknown error',
-    type: error instanceof ConduitError ? error.statusCode : 'unknown',
-    stack: error instanceof Error ? error.stack : undefined,
+    error: errorMessage,
+    type: errorType,
+    stack: errorStack,
   };
   logger.error('SDK operation failed', errorInfo);
 
-  // Handle ConduitError from the SDK
-  if (error instanceof ConduitError) {
-    // Use the error message and details from ConduitError
-    let errorMessage = error.message || 'An error occurred';
-    let errorDetails: Record<string, unknown> = {};
-    
-    // ConduitError has details and context properties
-    if (error.details) {
-      errorDetails = typeof error.details === 'object' ? error.details as Record<string, unknown> : { details: error.details };
-    }
-    if (error.context) {
-      errorDetails = { ...errorDetails, ...error.context };
-    }
+  // Handle HttpError from the SDK
+  if (isHttpError(error)) {
+    const errorDetails = getCombinedErrorDetails(error);
+    const responseStatusCode = getErrorStatusCode(error) ?? 500;
 
     return NextResponse.json(
       {
         error: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { 
           details: errorDetails,
-          statusCode: error.statusCode
+          statusCode: responseStatusCode
         })
       },
-      { status: error.statusCode || 500 }
+      { status: responseStatusCode }
     );
   }
 
   // Handle non-SDK errors (e.g., network errors from fetch)
-  const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+  const errorCode = error && typeof error === 'object' && 'code' in error 
+    ? (error as { code: string }).code 
+    : null;
   if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
     return NextResponse.json(
       { error: 'Service temporarily unavailable' },
@@ -66,7 +68,7 @@ export function handleSDKError(error: unknown): NextResponse {
 // Legacy alias for backward compatibility
 export const mapSDKErrorToResponse = handleSDKError;
 
-// Re-export ConduitError for convenience
-export { ConduitError };
-// For backward compatibility with code expecting HttpError
-export { ConduitError as HttpError };
+// Re-export HttpError for convenience
+export { HttpError };
+// For backward compatibility with code expecting ConduitError
+export { HttpError as ConduitError };

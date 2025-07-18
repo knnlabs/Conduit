@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const body: BulkCreateRequest = await req.json();
+    const body = await req.json() as BulkCreateRequest;
     
     if (!body.models || body.models.length === 0) {
       return NextResponse.json(
@@ -38,12 +38,16 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    console.log(`[Bulk Create] Creating ${body.models.length} model mappings`);
     
     // Create mappings one by one using the SDK since bulk create has issues
+    interface MappingResult {
+      modelId: string;
+      error: string;
+    }
+    
     const results: {
-      created: any[];
-      failed: Array<{ modelId: string; error: string }>;
+      created: unknown[];
+      failed: MappingResult[];
     } = {
       created: [],
       failed: []
@@ -69,8 +73,8 @@ export async function POST(req: NextRequest) {
           supportsStreaming: model.capabilities.supportsStreaming,
           supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
           supportsEmbeddings: model.capabilities.supportsEmbeddings,
-          maxContextLength: model.capabilities.maxContextLength || undefined,
-          maxOutputTokens: model.capabilities.maxOutputTokens || undefined,
+          maxContextLength: model.capabilities.maxContextLength ?? undefined,
+          maxOutputTokens: model.capabilities.maxOutputTokens ?? undefined,
           // Don't set capabilities string - let backend derive from boolean flags
           // isDefault is required by the SDK
           isDefault: false,
@@ -82,35 +86,19 @@ export async function POST(req: NextRequest) {
           }),
         };
         
-        console.log('[Bulk Create] Creating mapping with full data:', JSON.stringify(createData, null, 2));
         
         // Use the regular create method with full data
         const mapping = await adminClient.modelMappings.create(createData);
         
         results.created.push(mapping);
-      } catch (error: any) {
-        console.error(`[Bulk Create] Failed to create mapping for ${model.modelId}:`, error);
-        console.error('[Bulk Create] Error details:', {
-          modelId: model.modelId,
-          providerId: model.providerId,
-          errorMessage: error.message,
-          errorStack: error.stack,
-          errorResponse: error.response,
-          errorContext: error.context,
-          errorDetails: error.details,
-          fullError: JSON.stringify(error, null, 2),
-        });
+      } catch (error: unknown) {
         
         // Extract more detailed error message
         let errorMessage = 'Unknown error';
-        if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response?.data) {
-          errorMessage = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
-        } else if (error.details) {
-          errorMessage = error.details;
-        } else if (error.message) {
+        if (error instanceof Error) {
           errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
         }
         
         results.failed.push({
@@ -120,7 +108,6 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    console.log(`[Bulk Create] Created: ${results.created.length}, Failed: ${results.failed.length}`);
     
     // Return detailed results
     return NextResponse.json({

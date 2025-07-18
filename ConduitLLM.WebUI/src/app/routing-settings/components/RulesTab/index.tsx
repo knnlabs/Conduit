@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Stack,
@@ -48,18 +48,18 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
     onLoadingChange(isLoading);
   }, [isLoading, onLoadingChange]);
 
-  useEffect(() => {
-    loadRules();
-  }, [refreshKey]);
-
-  const loadRules = async () => {
+  const loadRules = useCallback(async () => {
     try {
       const data = await getRules();
       setRules(data);
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
-  };
+  }, [getRules]);
+
+  useEffect(() => {
+    void loadRules();
+  }, [refreshKey, loadRules]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -84,7 +84,7 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
       }
       setIsEditorOpen(false);
       handleRefresh();
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -93,7 +93,7 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
     try {
       await deleteRule(id);
       handleRefresh();
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -102,7 +102,7 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
     try {
       await toggleRule(id, enabled);
       handleRefresh();
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -154,45 +154,55 @@ export function RulesTab({ onLoadingChange }: RulesTabProps) {
       </Card>
 
       {/* Rules List */}
-      {isLoading && rules.length === 0 ? (
-        <Center h={200}>
-          <Loader />
-        </Center>
-      ) : rules.length === 0 ? (
-        <Card shadow="sm" p="xl" radius="md" withBorder>
-          <Center h={200}>
-            <Stack align="center" gap="md">
-              <IconRoute size={48} stroke={1.5} color="gray" />
-              <div style={{ textAlign: 'center' }}>
-                <Text size="lg" fw={500}>No routing rules found</Text>
-                <Text c="dimmed" size="sm" mt={4}>
-                  Create your first routing rule to control how requests are handled
-                </Text>
-              </div>
-              <Button
-                leftSection={<IconPlus size={16} />}
-                onClick={handleCreateRule}
-              >
-                Create First Rule
-              </Button>
-            </Stack>
-          </Center>
-        </Card>
-      ) : (
-        <RulesList
-          rules={rules}
-          onEdit={handleEditRule}
-          onDelete={handleDeleteRule}
-          onToggle={handleToggleRule}
-        />
-      )}
+      {(() => {
+        if (isLoading && rules.length === 0) {
+          return (
+            <Center h={200}>
+              <Loader />
+            </Center>
+          );
+        }
+        
+        if (rules.length === 0) {
+          return (
+            <Card shadow="sm" p="xl" radius="md" withBorder>
+              <Center h={200}>
+                <Stack align="center" gap="md">
+                  <IconRoute size={48} stroke={1.5} color="gray" />
+                  <div style={{ textAlign: 'center' }}>
+                    <Text size="lg" fw={500}>No routing rules found</Text>
+                    <Text c="dimmed" size="sm" mt={4}>
+                      Create your first routing rule to control how requests are handled
+                    </Text>
+                  </div>
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    onClick={handleCreateRule}
+                  >
+                    Create First Rule
+                  </Button>
+                </Stack>
+              </Center>
+            </Card>
+          );
+        }
+        
+        return (
+          <RulesList
+            rules={rules}
+            onEdit={handleEditRule}
+            onDelete={(id: string) => void handleDeleteRule(id)}
+            onToggle={(id: string, enabled: boolean) => void handleToggleRule(id, enabled)}
+          />
+        );
+      })()}
 
       {/* Rule Builder Modal */}
       <RuleBuilder
         isOpen={isEditorOpen}
         rule={selectedRule}
         onClose={() => setIsEditorOpen(false)}
-        onSave={handleSaveRule}
+        onSave={(ruleData) => void handleSaveRule(ruleData)}
       />
     </Stack>
   );

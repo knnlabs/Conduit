@@ -1,31 +1,52 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoModel } from '../types';
 
+interface ApiModelResponse {
+  data: ApiModel[];
+}
+
+interface ApiModel {
+  id: string;
+  provider: string;
+  displayName?: string;
+  capabilities?: {
+    videoGeneration?: boolean;
+    maxVideoDurationSeconds?: number;
+    supportedVideoResolutions?: string[];
+    supportedFps?: number[];
+    supportsCustomStyles?: boolean;
+    supportsSeed?: boolean;
+    maxVideos?: number;
+  };
+}
+
 async function fetchVideoModels(): Promise<VideoModel[]> {
   const response = await fetch('/api/discovery/models?capability=video_generation');
   if (!response.ok) {
     throw new Error(`Failed to fetch video models: ${response.statusText}`);
   }
   
-  const data = await response.json();
+  const data = await response.json() as ApiModelResponse;
   
   // Filter and transform models that support video generation
   return data.data
-    .filter((model: any) => model.capabilities?.video_generation === true)
-    .map((model: any) => ({
-      id: model.id,
-      provider: model.provider,
-      display_name: model.display_name || model.id,
-      capabilities: {
-        video_generation: model.capabilities.video_generation,
-        max_duration: model.capabilities.max_video_duration_seconds,
-        supported_resolutions: model.capabilities.supported_video_resolutions,
-        supported_fps: model.capabilities.supported_fps,
-        supports_custom_styles: model.capabilities.supports_custom_styles,
-        supports_seed: model.capabilities.supports_seed,
-        max_videos: model.capabilities.max_videos || 1,
-      },
-    }));
+    .filter((model: ApiModel) => model.capabilities?.videoGeneration === true)
+    .map((model: ApiModel) => {
+      return {
+        id: model.id,
+        provider: model.provider,
+        displayName: model.displayName ?? model.id,
+        capabilities: {
+          videoGeneration: model.capabilities?.videoGeneration ?? false,
+          maxDuration: model.capabilities?.maxVideoDurationSeconds,
+          supportedResolutions: model.capabilities?.supportedVideoResolutions,
+          supportedFps: model.capabilities?.supportedFps,
+          supportsCustomStyles: model.capabilities?.supportsCustomStyles,
+          supportsSeed: model.capabilities?.supportsSeed,
+          maxVideos: model.capabilities?.maxVideos ?? 1,
+        },
+      };
+    });
 }
 
 export function useVideoModels() {

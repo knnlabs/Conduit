@@ -49,13 +49,21 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
   };
 
   const removeCondition = (index: number) => {
-    const updatedConditions = conditions.filter((_, i) => i !== index);
+    const updatedConditions = conditions.filter((unusedItem, i) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const unused = unusedItem;
+      return i !== index;
+    });
     onUpdate(updatedConditions);
 
     // Remove the corresponding logical operator
     if (index > 0) {
       // Remove the operator before this condition
-      setLogicalOperators(logicalOperators.filter((_, i) => i !== index - 1));
+      setLogicalOperators(logicalOperators.filter((unusedOp, i) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const unused = unusedOp;
+        return i !== index - 1;
+      }));
     } else if (logicalOperators.length > 0) {
       // Remove the first operator if removing the first condition
       setLogicalOperators(logicalOperators.slice(1));
@@ -110,7 +118,7 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
                 No conditions defined yet
               </Text>
               <Text size="sm" c="dimmed" ta="center">
-                Click "Add Condition" to define when this rule should be triggered
+                Click &quot;Add Condition&quot; to define when this rule should be triggered
               </Text>
               <Button
                 leftSection={<IconPlus size={16} />}
@@ -124,7 +132,7 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
           </Card>
         ) : (
           conditions.map((condition, index) => (
-            <div key={index}>
+            <div key={`condition-${condition.type}-${index}`}>
               <ConditionRow
                 condition={condition}
                 index={index}
@@ -161,7 +169,7 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
             </Text>
             <Text size="sm" c="dimmed">
               {conditions.map((condition, index) => {
-                const conditionText = `${condition.type} ${condition.operator} "${condition.value}"`;
+                const conditionText = `${condition.type} ${condition.operator} &quot;${Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value)}&quot;`;
                 const operator = index < logicalOperators.length ? ` ${logicalOperators[index]} ` : '';
                 return conditionText + operator;
               }).join('')}

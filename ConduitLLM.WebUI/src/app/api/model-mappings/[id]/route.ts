@@ -28,20 +28,17 @@ export async function PUT(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json();
+    const body = await req.json() as Partial<UpdateModelProviderMappingDto>;
     
-    console.log('[PUT /api/model-mappings] Request body:', JSON.stringify(body, null, 2));
-    console.log('[PUT /api/model-mappings] Mapping ID:', id);
     
     // First get the existing mapping to preserve the modelId
     const existingMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
-    console.log('[PUT /api/model-mappings] Existing mapping:', existingMapping);
     
     // Transform frontend data to match SDK UpdateModelProviderMappingDto
     // The backend expects the ID in the body to match the route ID
     const transformedBody: UpdateModelProviderMappingDto = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
-      modelId: body.modelId || existingMapping.modelId, // Backend requires modelId even for updates
+      modelId: body.modelId ?? existingMapping.modelId, // Backend requires modelId even for updates
     };
     
     if (body.providerId !== undefined) {
@@ -95,26 +92,13 @@ export async function PUT(
       transformedBody.metadata = body.metadata;
     }
     
-    console.log('[PUT /api/model-mappings] Transformed body:', JSON.stringify(transformedBody, null, 2));
     
     // Update returns void (204 No Content), so we need to fetch the updated mapping
     await adminClient.modelMappings.update(parseInt(id, 10), transformedBody);
     const updatedMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     
-    console.log('[PUT /api/model-mappings] Update successful:', updatedMapping);
     return NextResponse.json(updatedMapping);
-  } catch (error: any) {
-    console.error('[PUT /api/model-mappings] Error:', error);
-    console.error('[PUT /api/model-mappings] Error type:', error?.constructor?.name);
-    console.error('[PUT /api/model-mappings] Error message:', error?.message);
-    console.error('[PUT /api/model-mappings] Error response:', error?.response);
-    console.error('[PUT /api/model-mappings] Error details:', error?.details);
-    
-    // Check if it's a validation error from the SDK
-    if (error?.response?.status === 400) {
-      const responseText = await error.response.text();
-      console.error('[PUT /api/model-mappings] 400 response text:', responseText);
-    }
+  } catch (error: unknown) {
     
     return handleSDKError(error);
   }

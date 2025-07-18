@@ -51,7 +51,7 @@ export function useRoutingRules() {
 
       if (!response.ok) {
         const result = await response.json();
-        throw new Error(result.error || 'Failed to create routing rule');
+        throw new Error(result.error ?? 'Failed to create routing rule');
       }
 
       const newRule = await response.json();
@@ -93,7 +93,7 @@ export function useRoutingRules() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing rule');
+        throw new Error(result.error ?? 'Failed to update routing rule');
       }
 
       notifications.show({
@@ -128,7 +128,7 @@ export function useRoutingRules() {
 
       if (!response.ok) {
         const result = await response.json();
-        throw new Error(result.error || 'Failed to delete routing rule');
+        throw new Error(result.error ?? 'Failed to delete routing rule');
       }
 
       notifications.show({
@@ -169,7 +169,7 @@ export function useRoutingRules() {
 
       if (!response.ok) {
         const result = await response.json();
-        throw new Error(result.error || 'Failed to test routing rules');
+        throw new Error(result.error ?? 'Failed to test routing rules');
       }
 
       const result = await response.json();
@@ -199,7 +199,7 @@ export function useRoutingRules() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing rules');
+        throw new Error(result.error ?? 'Failed to update routing rules');
       }
 
       notifications.show({

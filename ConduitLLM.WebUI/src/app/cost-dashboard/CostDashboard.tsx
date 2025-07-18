@@ -8,7 +8,6 @@ import {
   Button,
   Card,
   Grid,
-  SimpleGrid,
   Select,
   Badge,
   Progress,
@@ -16,7 +15,6 @@ import {
   Paper,
   Table,
   ScrollArea,
-  LoadingOverlay,
   Alert,
 } from '@mantine/core';
 import {
@@ -30,34 +28,13 @@ import {
   IconCalendar,
   IconFilter,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { safeLog } from '@/lib/utils/logging';
 import { useQuery } from '@tanstack/react-query';
-
-interface ProviderCost {
-  provider: string;
-  cost: number;
-  usage: number;
-  trend: number;
-}
-
-interface ModelUsage {
-  model: string;
-  provider: string;
-  requests: number;
-  tokensIn: number;
-  tokensOut: number;
-  cost: number;
-}
-
-interface DailyCost {
-  date: string;
-  cost: number;
-  providers: Record<string, number>;
-}
+// Types are defined inline in the queryFn to match the actual API response structure
 
 export default function CostDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
@@ -72,19 +49,46 @@ export default function CostDashboard() {
       if (!response.ok) {
         throw new Error('Failed to fetch cost data');
       }
-      return response.json();
+      return await response.json() as {
+        totalSpend: number;
+        averageDailyCost: number;
+        projectedMonthlySpend: number;
+        monthlyBudget: number | null;
+        projectedTrend: number;
+        providerCosts: Array<{
+          provider: string;
+          cost: number;
+          usage: number;
+          trend: number;
+        }>;
+        modelUsage: Array<{
+          model: string;
+          provider: string;
+          requests: number;
+          tokensIn: number;
+          tokensOut: number;
+          cost: number;
+        }>;
+        dailyCosts: Array<{
+          date: string;
+          cost: number;
+          providers: Record<string, number>;
+        }>;
+        timeRange: string;
+        lastUpdated: string;
+      };
     },
     refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   // Use real data from API or fallback values
-  const totalSpend = costData?.totalSpend || 0;
-  const monthlyBudget = costData?.monthlyBudget || null;
-  const projectedSpend = costData?.projectedMonthlySpend || 0;
-  const averageDailyCost = costData?.averageDailyCost || 0;
-  const providerCosts: ProviderCost[] = costData?.providerCosts || [];
-  const modelUsage: ModelUsage[] = costData?.modelUsage || [];
-  const dailyCosts: DailyCost[] = costData?.dailyCosts || [];
+  const totalSpend = costData?.totalSpend ?? 0;
+  const monthlyBudget = costData?.monthlyBudget ?? null;
+  const projectedSpend = costData?.projectedMonthlySpend ?? 0;
+  const averageDailyCost = costData?.averageDailyCost ?? 0;
+  const providerCosts = costData?.providerCosts ?? [];
+  const modelUsage = costData?.modelUsage ?? [];
+  const dailyCosts = costData?.dailyCosts ?? [];
 
   const handleRefresh = async () => {
     try {
@@ -146,11 +150,16 @@ export default function CostDashboard() {
     ? dailyCosts 
     : dailyCosts.map(day => ({
         ...day,
-        cost: selectedProvider ? (day.providers[selectedProvider] || 0) : 0,
+        cost: selectedProvider ? (day.providers[selectedProvider] ?? 0) : 0,
       }));
 
   const budgetUsagePercent = monthlyBudget ? (totalSpend / monthlyBudget) * 100 : 0;
-  const budgetStatusColor = budgetUsagePercent > 90 ? 'red' : budgetUsagePercent > 70 ? 'yellow' : 'green';
+  let budgetStatusColor = 'green';
+  if (budgetUsagePercent > 90) {
+    budgetStatusColor = 'red';
+  } else if (budgetUsagePercent > 70) {
+    budgetStatusColor = 'yellow';
+  }
 
   if (error) {
     return <ErrorDisplay error={error} title="Failed to load cost data" variant="card" onRetry={() => window.location.reload()} />;
@@ -211,7 +220,7 @@ export default function CostDashboard() {
               <Button
                 variant="light"
                 leftSection={<IconRefresh size={16} />}
-                onClick={handleRefresh}
+                onClick={() => void handleRefresh()}
                 loading={isLoading}
               >
                 Check Again
@@ -248,7 +257,7 @@ export default function CostDashboard() {
           <Group>
             <Select
               value={timeRange}
-              onChange={(value) => setTimeRange(value || '30d')}
+              onChange={(value) => setTimeRange(value ?? '30d')}
               data={[
                 { value: '7d', label: 'Last 7 Days' },
                 { value: '30d', label: 'Last 30 Days' },
@@ -260,7 +269,7 @@ export default function CostDashboard() {
             <Button
               variant="light"
               leftSection={<IconRefresh size={16} />}
-              onClick={handleRefresh}
+              onClick={() => void handleRefresh()}
               loading={isLoading}
             >
               Refresh
@@ -268,7 +277,7 @@ export default function CostDashboard() {
             <Button
               variant="filled"
               leftSection={<IconDownload size={16} />}
-              onClick={handleExport}
+              onClick={() => void handleExport()}
               loading={isExporting}
             >
               Export

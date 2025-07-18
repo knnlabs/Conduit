@@ -12,7 +12,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
     quality: 'standard',
     style: 'vivid',
     n: 1,
-    response_format: 'url',
+    responseFormat: 'url',
   },
   status: 'idle',
   results: [],
@@ -58,7 +58,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         
         try {
-          const errorData = await response.json();
+          const errorData = await response.json() as { error?: string };
           if (errorData?.error) {
             errorMessage = errorData.error;
           }
@@ -78,10 +78,10 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      const result = await response.json() as { data?: unknown[] };
       set({ 
         status: 'completed', 
-        results: result.data || [],
+        results: result.data ?? [],
         error: undefined 
       });
     } catch (error) {

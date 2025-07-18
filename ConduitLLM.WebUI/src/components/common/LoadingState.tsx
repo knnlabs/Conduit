@@ -9,8 +9,8 @@ interface CardSkeletonProps {
 export function CardSkeleton({ count = 3, height = 120 }: CardSkeletonProps) {
   return (
     <Stack gap="md">
-      {Array.from({ length: count }).map((_, index) => (
-        <Card key={index} withBorder>
+      {Array.from({ length: count }, (item, index) => `card-${count}-${height}-${index}`).map((key) => (
+        <Card key={key} withBorder>
           <Stack gap="sm">
             <Group justify="space-between">
               <Skeleton height={20} width="30%" />
@@ -34,18 +34,18 @@ export function TableSkeleton({ rows = 5, columns = 4 }: TableSkeletonProps) {
     <Table>
       <Table.Thead>
         <Table.Tr>
-          {Array.from({ length: columns }).map((_, index) => (
-            <Table.Th key={index}>
+          {Array.from({ length: columns }, (item, index) => `header-${columns}-${index}`).map((key) => (
+            <Table.Th key={key}>
               <Skeleton height={16} width="80%" />
             </Table.Th>
           ))}
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {Array.from({ length: rows }).map((_, rowIndex) => (
-          <Table.Tr key={rowIndex}>
-            {Array.from({ length: columns }).map((_, colIndex) => (
-              <Table.Td key={colIndex}>
+        {Array.from({ length: rows }, (item, rowIndex) => `row-${rows}-${rowIndex}`).map((rowKey, rowIndex) => (
+          <Table.Tr key={rowKey}>
+            {Array.from({ length: columns }, (item, colIndex) => `cell-${rows}-${columns}-${rowIndex}-${colIndex}`).map((cellKey) => (
+              <Table.Td key={cellKey}>
                 <Skeleton height={16} width={colIndex === 0 ? '60%' : '40%'} />
               </Table.Td>
             ))}
@@ -63,8 +63,8 @@ interface FormSkeletonProps {
 export function FormSkeleton({ fields = 4 }: FormSkeletonProps) {
   return (
     <Stack gap="md">
-      {Array.from({ length: fields }).map((_, index) => (
-        <div key={index}>
+      {Array.from({ length: fields }, (item, index) => `field-${fields}-${index}`).map((key) => (
+        <div key={key}>
           <Skeleton height={12} width="20%" mb={8} />
           <Skeleton height={36} />
         </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 // GET /api/config/routing - Get routing configuration
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
@@ -40,18 +40,18 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const config = await req.json();
+    const config: unknown = await req.json();
     
     try {
-      const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config);
+      const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config as never);
       return NextResponse.json(updatedConfig);
     } catch (error) {
       console.warn('Failed to update routing configuration:', error);
       
       // Return success with the requested config if SDK doesn't support it yet
       return NextResponse.json({
-        ...config,
-        _warning: 'Configuration updated locally (SDK support pending)'
+        ...(config as object),
+        warning: 'Configuration updated locally (SDK support pending)'
       });
     }
   } catch (error) {
@@ -64,8 +64,13 @@ export async function PATCH(req: NextRequest) {
 export async function PUT(req: NextRequest) {
 
   try {
-    const adminClient = getServerAdminClient();
-    const { providers } = await req.json();
+    const body: unknown = await req.json();
+    
+    if (typeof body !== 'object' || body === null || !('providers' in body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    
+    const { providers } = body as { providers: unknown };
     
     // Return the requested priorities if SDK doesn't support it yet
     return NextResponse.json(providers);

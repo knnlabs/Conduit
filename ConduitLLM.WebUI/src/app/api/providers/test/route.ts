@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { ProviderConnectionTestRequest, ProviderConnectionTestResultDto } from '@knn_labs/conduit-admin-client';
+
+interface TestProviderRequestBody {
+  providerName: string;
+  apiKey: string;
+  apiEndpoint?: string;
+  organizationId?: string;
+  additionalConfig?: Record<string, unknown>;
+}
+
+interface TestProviderResponse {
+  success: boolean;
+  message: string;
+  details: ProviderConnectionTestResultDto;
+  tested: boolean;
+  timestamp: string;
+}
+
+interface TestProviderErrorResponse {
+  error: string;
+  details: string;
+}
 
 /**
  * POST /api/providers/test
@@ -8,10 +30,10 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
  * Tests a provider configuration before creating it.
  * This allows validating API keys and endpoints without saving.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse | any>> {
 
   try {
-    const body = await request.json();
+    const body: TestProviderRequestBody = await request.json() as TestProviderRequestBody;
     
     // Validate required fields
     if (!body.providerName || !body.apiKey) {
@@ -27,13 +49,14 @@ export async function POST(request: NextRequest) {
     const adminClient = getServerAdminClient();
     
     // Use the SDK's testConfig method
-    const testResult = await adminClient.providers.testConfig({
+    const testRequest: ProviderConnectionTestRequest = {
       providerName: body.providerName,
       apiKey: body.apiKey,
-      baseUrl: body.apiEndpoint, // SDK expects baseUrl, but we receive apiEndpoint
-      organizationId: body.organizationId,
-      additionalConfig: body.additionalConfig,
-    });
+      apiBase: body.apiEndpoint, // SDK expects apiBase, but we receive apiEndpoint
+      organization: body.organizationId,
+    };
+    
+    const testResult: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest as any);
     
     return NextResponse.json({
       success: testResult.success,

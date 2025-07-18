@@ -57,15 +57,15 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     modelIdPattern: modelCost.modelIdPattern,
     modelType: modelCost.modelType,
     // Convert from per million to per 1K for display
-    inputCostPer1K: (modelCost.inputCostPerMillionTokens || 0) / 1000,
-    outputCostPer1K: (modelCost.outputCostPerMillionTokens || 0) / 1000,
+    inputCostPer1K: (modelCost.inputCostPerMillionTokens ?? 0) / 1000,
+    outputCostPer1K: (modelCost.outputCostPerMillionTokens ?? 0) / 1000,
     embeddingCostPer1K: 0, // Backend doesn't have this field yet
-    imageCostPerImage: modelCost.costPerImage || 0,
+    imageCostPerImage: modelCost.costPerImage ?? 0,
     audioCostPerMinute: 0, // Backend missing audio fields
     audioCostPerKCharacters: 0,
     audioInputCostPerMinute: 0,
     audioOutputCostPerMinute: 0,
-    videoCostPerSecond: modelCost.costPerSecond || 0,
+    videoCostPerSecond: modelCost.costPerSecond ?? 0,
     videoResolutionMultipliers: '', // Backend missing this field
     priority: modelCost.priority,
     description: '', // Backend missing description field
@@ -89,7 +89,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateModelCostDto) => updateModelCost(modelCost.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      void queryClient.invalidateQueries({ queryKey: ['model-costs'] });
       onSuccess?.();
       onClose();
     },

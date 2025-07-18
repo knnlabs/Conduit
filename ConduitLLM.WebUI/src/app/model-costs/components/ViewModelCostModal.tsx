@@ -12,7 +12,6 @@ import {
 } from '@mantine/core';
 import { ModelCost } from '../types/modelCost';
 import { formatters } from '@/lib/utils/formatters';
-import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ViewModelCostModalProps {
   isOpen: boolean;
@@ -122,7 +121,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Image</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerImage!, { currency: 'USD' })}
+                  {formatters.currency(modelCost.costPerImage ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
             </Card>
@@ -136,7 +135,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Second</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerSecond!, { currency: 'USD' })}
+                  {formatters.currency(modelCost.costPerSecond ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
             </Card>

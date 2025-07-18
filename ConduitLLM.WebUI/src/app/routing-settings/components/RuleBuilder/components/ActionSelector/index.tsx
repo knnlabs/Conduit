@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import {
   Card,
   Stack,
@@ -41,7 +41,11 @@ export function ActionSelector({ actions, onUpdate, errors }: ActionSelectorProp
   };
 
   const removeAction = (index: number) => {
-    const updatedActions = actions.filter((_, i) => i !== index);
+    const updatedActions = actions.filter((unusedItem, i) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const unused = unusedItem;
+      return i !== index;
+    });
     onUpdate(updatedActions);
   };
 
@@ -87,7 +91,7 @@ export function ActionSelector({ actions, onUpdate, errors }: ActionSelectorProp
                 No actions defined yet
               </Text>
               <Text size="sm" c="dimmed" ta="center">
-                Click "Add Action" to define what happens when this rule is triggered
+                Click &ldquo;Add Action&rdquo; to define what happens when this rule is triggered
               </Text>
               <Button
                 leftSection={<IconPlus size={16} />}
@@ -102,7 +106,7 @@ export function ActionSelector({ actions, onUpdate, errors }: ActionSelectorProp
         ) : (
           actions.map((action, index) => (
             <ActionRow
-              key={index}
+              key={`action-${action.type}-${index}`}
               action={action}
               index={index}
               onUpdate={(updates) => updateAction(index, updates)}

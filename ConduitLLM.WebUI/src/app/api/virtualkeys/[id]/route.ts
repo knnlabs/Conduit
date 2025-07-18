@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { 
+  VirtualKeyDto, 
+  UpdateVirtualKeyRequest 
+} from '@knn_labs/conduit-admin-client';
 
 // GET /api/virtualkeys/[id] - Get a single virtual key
 export async function GET(
@@ -26,27 +30,27 @@ export async function PUT(
 
   try {
     const { id } = await params;
-    const body = await req.json();
-    console.log('[VirtualKeys] Updating virtual key:', { id, body });
+    const body = await req.json() as UpdateVirtualKeyRequest;
+    console.error('[VirtualKeys] Updating virtual key:', { id, body });
     
     const adminClient = getServerAdminClient();
     const virtualKey = await adminClient.virtualKeys.update(id, body);
     
-    console.log('[VirtualKeys] Virtual key updated successfully:', virtualKey);
+    console.error('[VirtualKeys] Virtual key updated successfully:', virtualKey);
     
     // TODO: Fix SDK - The virtualKeys.update() method should return the updated VirtualKeyDto
     // Currently it returns undefined, which forces us to make an additional GET request
     // This is inconsistent with typical REST API patterns where PUT/PATCH returns the updated resource
     // The Admin API might be returning the updated key, but the SDK isn't properly handling the response
     if (!virtualKey) {
-      console.log('[VirtualKeys] Update returned undefined, fetching updated key');
+      console.error('[VirtualKeys] Update returned undefined, fetching updated key');
       const updatedKey = await adminClient.virtualKeys.get(id);
       return NextResponse.json(updatedKey);
     }
     
     // Ensure we only return serializable data
     // The SDK might return an object with methods or other non-serializable properties
-    const serializedKey = JSON.parse(JSON.stringify(virtualKey));
+    const serializedKey = JSON.parse(JSON.stringify(virtualKey)) as VirtualKeyDto;
     return NextResponse.json(serializedKey);
   } catch (error) {
     console.error('[VirtualKeys] Error updating virtual key:', error);

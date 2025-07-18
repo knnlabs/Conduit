@@ -81,7 +81,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         if (condition.operator === 'regex' && condition.value) {
           try {
             new RegExp(condition.value.toString());
-          } catch (e) {
+          } catch {
             newErrors.push(`Condition ${index + 1}: Invalid regular expression`);
           }
         }
@@ -106,7 +106,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         if (action.parameters) {
           // Validate timeout parameter
           if (action.parameters.timeout !== undefined) {
-            const timeout = parseFloat(action.parameters.timeout);
+            const timeout = parseFloat(String(action.parameters.timeout));
             if (isNaN(timeout) || timeout <= 0) {
               newErrors.push(`Action ${index + 1}: Timeout must be a positive number`);
             } else if (timeout > 300000) { // 5 minutes max
@@ -116,7 +116,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
 
           // Validate weight parameter
           if (action.parameters.weight !== undefined) {
-            const weight = parseFloat(action.parameters.weight);
+            const weight = parseFloat(String(action.parameters.weight));
             if (isNaN(weight) || weight < 0 || weight > 100) {
               newErrors.push(`Action ${index + 1}: Weight must be between 0 and 100`);
             }
@@ -124,7 +124,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
 
           // Validate max_retries parameter
           if (action.parameters.max_retries !== undefined) {
-            const retries = parseInt(action.parameters.max_retries);
+            const retries = parseInt(String(action.parameters.max_retries));
             if (isNaN(retries) || retries < 0 || retries > 10) {
               newErrors.push(`Action ${index + 1}: Max retries must be between 0 and 10`);
             }
@@ -148,18 +148,19 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
     validate();
   }, [validate]);
 
-  const validateField = useCallback((field: keyof CreateRoutingRuleRequest, value: any) => {
+  const validateField = useCallback((field: keyof CreateRoutingRuleRequest, value: unknown) => {
     const fieldErrors: string[] = [];
 
     switch (field) {
       case 'name':
-        if (!value || value.trim() === '') {
+        const nameValue = typeof value === 'string' ? value : String(value || '');
+        if (!nameValue || nameValue.trim() === '') {
           fieldErrors.push('Rule name is required');
-        } else if (value.length < 3) {
+        } else if (nameValue.length < 3) {
           fieldErrors.push('Rule name must be at least 3 characters long');
-        } else if (value.length > 100) {
+        } else if (nameValue.length > 100) {
           fieldErrors.push('Rule name must be less than 100 characters');
-        } else if (!/^[a-zA-Z0-9\s\-_]+$/.test(value)) {
+        } else if (!/^[a-zA-Z0-9\s\-_]+$/.test(nameValue)) {
           fieldErrors.push('Rule name can only contain letters, numbers, spaces, hyphens, and underscores');
         }
         break;
@@ -167,13 +168,17 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
       case 'priority':
         if (value === undefined || value === null) {
           fieldErrors.push('Priority is required');
-        } else if (value < 1 || value > 1000) {
-          fieldErrors.push('Priority must be between 1 and 1000');
+        } else {
+          const priorityValue = typeof value === 'number' ? value : Number(value);
+          if (isNaN(priorityValue) || priorityValue < 1 || priorityValue > 1000) {
+            fieldErrors.push('Priority must be between 1 and 1000');
+          }
         }
         break;
 
       case 'description':
-        if (value && value.length > 500) {
+        const descValue = typeof value === 'string' ? value : String(value || '');
+        if (descValue && descValue.length > 500) {
           fieldErrors.push('Description must be less than 500 characters');
         }
         break;

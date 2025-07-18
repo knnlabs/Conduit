@@ -65,7 +65,7 @@ export function CostChart({
           <LineChart
             h={height}
             data={data}
-            dataKey={timeKey || nameKey}
+            dataKey={timeKey ?? nameKey}
             series={[{ name: valueKey, color: 'blue.6' }]}
             valueFormatter={formatChartCurrency}
             xAxisProps={{
@@ -124,7 +124,7 @@ export function CostChart({
               {timeKey && (
                 <Select
                   value={timeRange}
-                  onChange={(value) => setTimeRange(value || '7d')}
+                  onChange={(value) => setTimeRange(value ?? '7d')}
                   data={timeRangeOptions}
                   size="xs"
                   w={150}

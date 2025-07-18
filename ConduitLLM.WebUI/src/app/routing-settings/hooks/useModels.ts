@@ -33,7 +33,7 @@ export function useModels() {
         const modelsData = await response.json();
         
         // Extract models array from response
-        const modelsArray = modelsData.data || modelsData.items || modelsData;
+        const modelsArray = modelsData.data ?? modelsData.items ?? modelsData;
         setModels(Array.isArray(modelsArray) ? modelsArray : []);
       } catch (err) {
         console.error('Error fetching models:', err);
@@ -44,13 +44,13 @@ export function useModels() {
       }
     }
 
-    fetchModels();
+    void fetchModels();
   }, []);
 
   // Convert models to select options format
   const modelOptions: ModelOption[] = models.map(model => ({
     value: model.id,
-    label: model.name || model.id,
+    label: model.name ?? model.id,
   }));
 
   return {

@@ -57,7 +57,7 @@ export default function ImageInterface() {
                 <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
                   <li>Configure providers (OpenAI, MiniMax, etc.) in <strong>LLM Providers</strong></li>
                   <li>Add image generation models in <strong>Model Mappings</strong></li>
-                  <li>Enable the <strong>"Supports Image Generation"</strong> checkbox for those models</li>
+                  <li>Enable the <strong>&quot;Supports Image Generation&quot;</strong> checkbox for those models</li>
                 </ol>
                 <p style={{ marginTop: '0.5rem' }}>
                   Example models: <code>dall-e-2</code>, <code>dall-e-3</code>, <code>minimax-image</code>
@@ -98,7 +98,11 @@ export default function ImageInterface() {
 
       {/* Status Display */}
       {status !== 'idle' && (
-        <div className={`image-generation-status ${status === 'generating' ? 'status-generating' : status === 'completed' ? 'status-completed' : 'status-error'}`}>
+        <div className={`image-generation-status ${(() => {
+          if (status === 'generating') return 'status-generating';
+          if (status === 'completed') return 'status-completed';
+          return 'status-error';
+        })()}`}>
           {status === 'generating' && '🎨 Generating images...'}
           {status === 'completed' && '✅ Images generated successfully!'}
           {status === 'error' && error && `❌ ${error}`}

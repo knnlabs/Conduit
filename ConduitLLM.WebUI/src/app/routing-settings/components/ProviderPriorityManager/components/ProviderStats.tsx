@@ -41,8 +41,6 @@ interface ProviderStatsProps {
 export function ProviderStats({ providers }: ProviderStatsProps) {
   const enabledProviders = providers.filter(p => p.isEnabled);
   const disabledProviders = providers.filter(p => !p.isEnabled);
-  
-  const totalUsage = providers.reduce((sum, p) => sum + p.statistics.usagePercentage, 0);
   const avgSuccessRate = providers.length > 0 
     ? providers.reduce((sum, p) => sum + p.statistics.successRate, 0) / providers.length 
     : 0;
@@ -138,8 +136,11 @@ export function ProviderStats({ providers }: ProviderStatsProps) {
               size="sm"
               mt="xs"
             >
-              {avgResponseTime <= 300 ? 'Excellent' : 
-               avgResponseTime <= 500 ? 'Good' : 'Needs Attention'}
+              {(() => {
+                if (avgResponseTime <= 300) return 'Excellent';
+                if (avgResponseTime <= 500) return 'Good';
+                return 'Needs Attention';
+              })()}
             </Badge>
           </div>
           <IconClock size={22} color={getResponseTimeColor(avgResponseTime)} />
@@ -158,7 +159,11 @@ export function ProviderStats({ providers }: ProviderStatsProps) {
                 <Group key={type} justify="space-between">
                   <Badge 
                     variant="light" 
-                    color={type === 'primary' ? 'blue' : type === 'backup' ? 'orange' : 'green'}
+                    color={(() => {
+                      if (type === 'primary') return 'blue';
+                      if (type === 'backup') return 'orange';
+                      return 'green';
+                    })()}
                     size="sm"
                   >
                     {type}
@@ -184,7 +189,11 @@ export function ProviderStats({ providers }: ProviderStatsProps) {
                     <Text fw={500} size="sm">{provider.providerName}</Text>
                     <Badge 
                       variant="light" 
-                      color={index === 0 ? 'gold' : index === 1 ? 'gray' : 'orange'}
+                      color={(() => {
+                        if (index === 0) return 'gold';
+                        if (index === 1) return 'gray';
+                        return 'orange';
+                      })()}
                       size="xs"
                     >
                       #{index + 1}

@@ -84,27 +84,23 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         allowedModels: models,
       });
     }
-  }, [virtualKey]);
+  }, [virtualKey, form]);
 
   const handleSubmit = async (values: EditVirtualKeyForm) => {
     if (!virtualKey) return;
 
     setIsSubmitting(true);
     try {
-      console.log('[EditVirtualKey] Form values:', values);
-      console.log('[EditVirtualKey] Virtual key being edited:', virtualKey);
       
       const payload = {
         keyName: values.keyName.trim(),
-        maxBudget: values.maxBudget || undefined,
+        maxBudget: values.maxBudget ?? undefined,
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         // Note: description is stored in metadata for virtual keys
-        metadata: values.description?.trim() || undefined,
+        metadata: values.description?.trim() ?? undefined,
       };
 
-      console.log('[EditVirtualKey] Updating virtual key ID:', virtualKey.id);
-      console.log('[EditVirtualKey] Update payload:', JSON.stringify(payload, null, 2));
       
       const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
         method: 'PUT',
@@ -114,28 +110,22 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         body: JSON.stringify(payload),
       });
 
-      console.log('[EditVirtualKey] Response status:', response.status);
-      console.log('[EditVirtualKey] Response headers:', response.headers);
       
       const responseText = await response.text();
-      console.log('[EditVirtualKey] Response body:', responseText);
       
       if (!response.ok) {
-        console.error('[EditVirtualKey] Error response:', responseText);
         let errorMessage = 'Failed to update virtual key';
         try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (e) {
+          const errorData = JSON.parse(responseText) as { message?: string; error?: string };
+          errorMessage = errorData.message ?? errorData.error ?? errorMessage;
+        } catch {
           // If not JSON, use the text as is
           errorMessage = responseText || errorMessage;
         }
         throw new Error(errorMessage);
       }
       
-      // Parse the successful response
-      const result = JSON.parse(responseText);
-      console.log('[EditVirtualKey] Success response:', result);
+      // Response was successful
 
       notifications.show({
         title: 'Success',
@@ -212,7 +202,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         <Alert icon={<IconAlertCircle size={16} />} color="gray">
           <Text size="sm">
             Current spend: ${virtualKey.currentSpend.toFixed(2)} | 
-            Requests: {virtualKey.requestCount?.toLocaleString() || '0'}
+            Requests: {virtualKey.requestCount?.toLocaleString() ?? '0'}
           </Text>
         </Alert>
         

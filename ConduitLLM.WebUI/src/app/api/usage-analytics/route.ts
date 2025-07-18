@@ -6,7 +6,7 @@ import { getServerCoreClient } from '@/lib/server/coreClient';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const timeRange = searchParams.get('range') || '7d';
+    const timeRange = searchParams.get('range') ?? '7d';
     
     const adminClient = getServerAdminClient();
     
@@ -64,8 +64,12 @@ export async function GET(req: NextRequest) {
         ).catch(() => null), // Allow this to fail gracefully
         
         // Real-time metrics from Core SDK (with fallback - check if metrics service exists)
-        (coreClient && 'metrics' in coreClient) ? (coreClient as any).metrics.getCurrentMetrics().catch(() => null) : Promise.resolve(null),
-        (coreClient && 'metrics' in coreClient) ? (coreClient as any).metrics.getKPISummary().catch(() => null) : Promise.resolve(null)
+        (coreClient && 'metrics' in coreClient) ? 
+          (coreClient as { metrics: { getCurrentMetrics: () => Promise<unknown> } }).metrics.getCurrentMetrics().catch(() => null) : 
+          Promise.resolve(null),
+        (coreClient && 'metrics' in coreClient) ? 
+          (coreClient as { metrics: { getKPISummary: () => Promise<unknown> } }).metrics.getKPISummary().catch(() => null) : 
+          Promise.resolve(null)
       ];
 
       const [
@@ -76,42 +80,82 @@ export async function GET(req: NextRequest) {
         kpiSummary
       ] = await Promise.all(promises);
 
+      // Import types for proper typing
+      type CostSummaryDto = { 
+        totalCost: number; 
+        totalInputTokens?: number; 
+        totalOutputTokens?: number;
+        costByKey: Array<{ requestCount: number }>;
+      };
+      type RequestLogPage = { totalCount: number; items: Array<{ 
+        virtualKeyName?: string;
+        timestamp: string;
+        cost?: number;
+        inputTokens?: number;
+        outputTokens?: number;
+        provider?: string;
+        model?: string;
+        status?: string;
+        duration?: number;
+      }> };
+      type KPISummary = { 
+        business?: { 
+          activeVirtualKeys?: number;
+          costBurnRatePerHour?: number;
+          averageCostPerRequest?: number;
+        };
+        systemHealth?: {
+          overallHealthPercentage?: number;
+          errorRate?: number;
+          responseTimeP95?: number;
+          activeConnections?: number;
+        };
+        performance?: {
+          requestsPerSecond?: number;
+          activeRequests?: number;
+          averageResponseTime?: number;
+        };
+      };
+
       // Calculate main metrics from available data, enhanced with real-time metrics
-      const totalRequests = currentRequestLogs.totalCount || currentRequestLogs.items?.length || 0;
-      const totalCost = currentCostSummary.totalCost;
-      const totalTokens = currentCostSummary.totalInputTokens + currentCostSummary.totalOutputTokens;
+      const totalRequests = (currentRequestLogs as RequestLogPage)?.totalCount ?? (currentRequestLogs as RequestLogPage)?.items?.length ?? 0;
+      const totalCost = (currentCostSummary as CostSummaryDto)?.totalCost ?? 0;
+      const totalTokens = ((currentCostSummary as CostSummaryDto)?.totalInputTokens ?? 0) + ((currentCostSummary as CostSummaryDto)?.totalOutputTokens ?? 0);
       
       // Get unique virtual keys count (enhanced with real-time data if available)
       const uniqueKeysFromLogs = new Set(
-        currentRequestLogs.items
-          .filter((log: any) => log.virtualKeyName)
-          .map((log: any) => log.virtualKeyName)
+        ((currentRequestLogs as RequestLogPage)?.items ?? [])
+          .filter((log) => log.virtualKeyName)
+          .map((log) => log.virtualKeyName)
       ).size;
       
       // Use real-time active virtual keys count if available, otherwise fall back to log data
-      const activeVirtualKeys = (kpiSummary?.business?.activeVirtualKeys) ?? uniqueKeysFromLogs;
+      const activeVirtualKeys = ((kpiSummary as KPISummary)?.business?.activeVirtualKeys) ?? uniqueKeysFromLogs;
 
       // Calculate change percentages (derive from cost summary data)
       let requestsChange = 0;
-      if (previousCostSummary && currentCostSummary.costByKey.length > 0 && previousCostSummary.costByKey.length > 0) {
-        const currentTotalRequests = currentCostSummary.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0);
-        const previousTotalRequests = previousCostSummary.costByKey.reduce((sum: number, key: any) => sum + key.requestCount, 0);
+      const typedPreviousCostSummary = previousCostSummary as CostSummaryDto | null;
+      const typedCurrentCostSummary = currentCostSummary as CostSummaryDto;
+      
+      if (typedPreviousCostSummary && typedCurrentCostSummary.costByKey.length > 0 && typedPreviousCostSummary.costByKey.length > 0) {
+        const currentTotalRequests = typedCurrentCostSummary.costByKey.reduce((sum: number, key: { requestCount: number }) => sum + key.requestCount, 0);
+        const previousTotalRequests = typedPreviousCostSummary.costByKey.reduce((sum: number, key: { requestCount: number }) => sum + key.requestCount, 0);
         if (previousTotalRequests > 0) {
           requestsChange = ((currentTotalRequests - previousTotalRequests) / previousTotalRequests) * 100;
         }
       }
       
-      const costChange = previousCostSummary 
-        ? ((totalCost - previousCostSummary.totalCost) / previousCostSummary.totalCost) * 100 
+      const costChange = (typedPreviousCostSummary && typedPreviousCostSummary.totalCost > 0)
+        ? ((totalCost - typedPreviousCostSummary.totalCost) / typedPreviousCostSummary.totalCost) * 100 
         : 0;
-      const tokensChange = previousCostSummary 
-        ? (((currentCostSummary.totalInputTokens + currentCostSummary.totalOutputTokens) - 
-            (previousCostSummary.totalInputTokens + previousCostSummary.totalOutputTokens)) / 
-           (previousCostSummary.totalInputTokens + previousCostSummary.totalOutputTokens)) * 100 
+      const previousTokens = (typedPreviousCostSummary?.totalInputTokens ?? 0) + (typedPreviousCostSummary?.totalOutputTokens ?? 0);
+      const tokensChange = (typedPreviousCostSummary && previousTokens > 0)
+        ? ((totalTokens - previousTokens) / previousTokens) * 100 
         : 0;
       const virtualKeysChange = 0; // This would require historical tracking
 
       // Build metrics object with real-time enhancements
+      const typedKpiSummary = kpiSummary as KPISummary | null;
       const metrics = {
         totalRequests,
         totalCost,
@@ -122,53 +166,68 @@ export async function GET(req: NextRequest) {
         tokensChange: isFinite(tokensChange) ? tokensChange : 0,
         virtualKeysChange,
         // Add real-time system health indicators if available
-        ...(kpiSummary && {
+        ...(typedKpiSummary ? {
           systemHealth: {
-            overallHealthPercentage: kpiSummary.systemHealth?.overallHealthPercentage,
-            errorRate: kpiSummary.systemHealth?.errorRate,
-            responseTimeP95: kpiSummary.systemHealth?.responseTimeP95,
-            activeConnections: kpiSummary.systemHealth?.activeConnections
+            overallHealthPercentage: typedKpiSummary.systemHealth?.overallHealthPercentage,
+            errorRate: typedKpiSummary.systemHealth?.errorRate,
+            responseTimeP95: typedKpiSummary.systemHealth?.responseTimeP95,
+            activeConnections: typedKpiSummary.systemHealth?.activeConnections
           }
-        }),
+        } : {}),
         // Add real-time performance metrics if available
-        ...(kpiSummary && {
+        ...(typedKpiSummary ? {
           realTimeMetrics: {
-            requestsPerSecond: kpiSummary.performance?.requestsPerSecond,
-            activeRequests: kpiSummary.performance?.activeRequests,
-            averageResponseTime: kpiSummary.performance?.averageResponseTime,
-            costBurnRatePerHour: kpiSummary.business?.costBurnRatePerHour,
-            averageCostPerRequest: kpiSummary.business?.averageCostPerRequest
+            requestsPerSecond: typedKpiSummary.performance?.requestsPerSecond,
+            activeRequests: typedKpiSummary.performance?.activeRequests,
+            averageResponseTime: typedKpiSummary.performance?.averageResponseTime,
+            costBurnRatePerHour: typedKpiSummary.business?.costBurnRatePerHour,
+            averageCostPerRequest: typedKpiSummary.business?.averageCostPerRequest
           }
-        })
+        } : {})
       };
 
       // Generate time series data by grouping request logs by time buckets
-      const timeSeriesMap = new Map();
+      interface TimeBucket {
+        requests: number;
+        cost: number;
+        tokens: number;
+      }
+      const timeSeriesMap = new Map<number, TimeBucket>();
       const bucketSize = timeRange === '24h' ? 3600000 : 86400000; // 1 hour or 1 day in ms
       
-      currentRequestLogs.items.forEach((log: any) => {
+      const typedRequestLogs = currentRequestLogs as RequestLogPage;
+      typedRequestLogs.items.forEach((log) => {
         const bucketTime = Math.floor(new Date(log.timestamp).getTime() / bucketSize) * bucketSize;
-        const bucket = timeSeriesMap.get(bucketTime) || { requests: 0, cost: 0, tokens: 0 };
+        const bucket: TimeBucket = timeSeriesMap.get(bucketTime) ?? { requests: 0, cost: 0, tokens: 0 };
         bucket.requests += 1;
-        bucket.cost += log.cost;
-        bucket.tokens += log.inputTokens + log.outputTokens;
+        bucket.cost += log.cost ?? 0;
+        bucket.tokens += (log.inputTokens ?? 0) + (log.outputTokens ?? 0);
         timeSeriesMap.set(bucketTime, bucket);
       });
 
       const timeSeries = Array.from(timeSeriesMap.entries())
         .sort(([a], [b]) => a - b)
-        .map(([timestamp, data]) => ({
+        .map(([timestamp, data]: [number, TimeBucket]) => ({
           timestamp: new Date(timestamp).toISOString(),
           ...data
         }));
 
       // Enhanced provider usage calculation with statistical analysis
-      const providerMap = new Map();
-      const providerErrorMap = new Map(); // Track errors by provider
+      interface ProviderStats {
+        requests: number;
+        cost: number;
+        tokens: number;
+        errors: number;
+        totalDuration: number;
+        minCost: number;
+        maxCost: number;
+        avgResponseTime: number;
+      }
+      const providerMap = new Map<string, ProviderStats>();
       
-      currentRequestLogs.items.forEach((log: any) => {
-        const provider = log.provider || 'unknown';
-        const existing = providerMap.get(provider) || { 
+      typedRequestLogs.items.forEach((log) => {
+        const provider = log.provider ?? 'unknown';
+        const existing: ProviderStats = providerMap.get(provider) ?? { 
           requests: 0, 
           cost: 0, 
           tokens: 0, 
@@ -180,9 +239,9 @@ export async function GET(req: NextRequest) {
         };
         
         existing.requests += 1;
-        existing.cost += log.cost || 0;
-        existing.tokens += (log.inputTokens || 0) + (log.outputTokens || 0);
-        existing.totalDuration += log.duration || 0;
+        existing.cost += log.cost ?? 0;
+        existing.tokens += (log.inputTokens ?? 0) + (log.outputTokens ?? 0);
+        existing.totalDuration += log.duration ?? 0;
         
         // Track cost statistics
         if (log.cost) {
@@ -199,11 +258,11 @@ export async function GET(req: NextRequest) {
       });
 
       // Calculate totals for percentage calculations
-      const totalProviderRequests = Array.from(providerMap.values()).reduce((sum: number, p: any) => sum + p.requests, 0);
-      const totalProviderCost = Array.from(providerMap.values()).reduce((sum: number, p: any) => sum + p.cost, 0);
+      const totalProviderRequests = Array.from(providerMap.values()).reduce((sum: number, p: ProviderStats) => sum + p.requests, 0);
+      const totalProviderCost = Array.from(providerMap.values()).reduce((sum: number, p: ProviderStats) => sum + p.cost, 0);
       
       // Enhanced provider usage with statistics
-      const providerUsage = Array.from(providerMap.entries()).map(([provider, data]: [string, any]) => ({
+      const providerUsage = Array.from(providerMap.entries()).map(([provider, data]: [string, ProviderStats]) => ({
         provider,
         requests: data.requests,
         cost: data.cost,
@@ -218,12 +277,24 @@ export async function GET(req: NextRequest) {
       })).sort((a, b) => b.requests - a.requests); // Sort by usage
 
       // Enhanced model usage calculation with performance metrics
-      const modelMap = new Map();
-      currentRequestLogs.items.forEach((log: any) => {
-        const model = log.model || 'unknown';
-        const provider = log.provider || 'unknown';
+      interface ModelStats {
+        requests: number;
+        cost: number;
+        tokens: number;
+        provider: string;
+        model: string;
+        errors: number;
+        totalDuration: number;
+        inputTokens: number;
+        outputTokens: number;
+        successfulRequests: number;
+      }
+      const modelMap = new Map<string, ModelStats>();
+      typedRequestLogs.items.forEach((log) => {
+        const model = log.model ?? 'unknown';
+        const provider = log.provider ?? 'unknown';
         const key = `${provider}/${model}`;
-        const existing = modelMap.get(key) || { 
+        const existing: ModelStats = modelMap.get(key) ?? { 
           requests: 0, 
           cost: 0, 
           tokens: 0, 
@@ -237,11 +308,11 @@ export async function GET(req: NextRequest) {
         };
         
         existing.requests += 1;
-        existing.cost += log.cost || 0;
-        existing.inputTokens += log.inputTokens || 0;
-        existing.outputTokens += log.outputTokens || 0;
+        existing.cost += log.cost ?? 0;
+        existing.inputTokens += log.inputTokens ?? 0;
+        existing.outputTokens += log.outputTokens ?? 0;
         existing.tokens = existing.inputTokens + existing.outputTokens;
-        existing.totalDuration += log.duration || 0;
+        existing.totalDuration += log.duration ?? 0;
         
         // Track success/error rates
         if (log.status === 'success' || log.status === '200') {
@@ -253,9 +324,9 @@ export async function GET(req: NextRequest) {
         modelMap.set(key, existing);
       });
 
-      // Enhanced model usage with performance statistics
+      // Enhanced model usage with performance statistics      
       const modelUsage = Array.from(modelMap.values())
-        .map((model: any) => ({
+        .map((model: ModelStats) => ({
           model: model.model,
           provider: model.provider,
           requests: model.requests,
@@ -274,10 +345,22 @@ export async function GET(req: NextRequest) {
         .slice(0, 10); // Top 10 models by usage
 
       // Enhanced virtual key usage calculation with performance analytics
-      const keyMap = new Map();
-      currentRequestLogs.items.forEach((log: any) => {
+      interface VirtualKeyStats {
+        requests: number;
+        cost: number;
+        tokens: number;
+        lastUsed: string;
+        firstUsed: string;
+        errors: number;
+        totalDuration: number;
+        uniqueModels: Set<string>;
+        uniqueProviders: Set<string>;
+        successfulRequests: number;
+      }
+      const keyMap = new Map<string, VirtualKeyStats>();
+      typedRequestLogs.items.forEach((log) => {
         if (!log.virtualKeyName) return;
-        const existing = keyMap.get(log.virtualKeyName) || { 
+        const existing: VirtualKeyStats = keyMap.get(log.virtualKeyName) ?? { 
           requests: 0, 
           cost: 0, 
           tokens: 0, 
@@ -285,15 +368,15 @@ export async function GET(req: NextRequest) {
           firstUsed: log.timestamp,
           errors: 0,
           totalDuration: 0,
-          uniqueModels: new Set(),
-          uniqueProviders: new Set(),
+          uniqueModels: new Set<string>(),
+          uniqueProviders: new Set<string>(),
           successfulRequests: 0
         };
         
         existing.requests += 1;
-        existing.cost += log.cost || 0;
-        existing.tokens += (log.inputTokens || 0) + (log.outputTokens || 0);
-        existing.totalDuration += log.duration || 0;
+        existing.cost += log.cost ?? 0;
+        existing.tokens += (log.inputTokens ?? 0) + (log.outputTokens ?? 0);
+        existing.totalDuration += log.duration ?? 0;
         
         // Track usage patterns
         if (log.model) existing.uniqueModels.add(log.model);
@@ -319,7 +402,7 @@ export async function GET(req: NextRequest) {
 
       // Enhanced virtual key usage with analytics
       const virtualKeyUsage = Array.from(keyMap.entries())
-        .map(([keyName, data]: [string, any]) => {
+        .map(([keyName, data]: [string, VirtualKeyStats]) => {
           const daysSinceFirstUsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(data.firstUsed).getTime()) / (1000 * 60 * 60 * 24)));
           const avgRequestsPerDay = data.requests / daysSinceFirstUsed;
           
@@ -345,21 +428,30 @@ export async function GET(req: NextRequest) {
         .slice(0, 10); // Top 10 virtual keys by usage
 
       // Enhanced endpoint performance analysis
-      const endpointMap = new Map();
-      currentRequestLogs.items.forEach((log: any) => {
+      interface EndpointStats {
+        requests: number;
+        totalDuration: number;
+        errors: number;
+        successfulRequests: number;
+        minDuration: number;
+        maxDuration: number;
+        durations: number[];
+      }
+      const endpointMap = new Map<string, EndpointStats>();
+      typedRequestLogs.items.forEach((log) => {
         const endpoint = '/chat/completions'; // Most requests go to this endpoint
-        const existing = endpointMap.get(endpoint) || {
+        const existing: EndpointStats = endpointMap.get(endpoint) ?? {
           requests: 0,
           totalDuration: 0,
           errors: 0,
           successfulRequests: 0,
           minDuration: Infinity,
           maxDuration: 0,
-          durations: [] as number[]
+          durations: []
         };
         
         existing.requests += 1;
-        const duration = log.duration || 0;
+        const duration = log.duration ?? 0;
         existing.totalDuration += duration;
         
         if (duration > 0) {
@@ -379,12 +471,12 @@ export async function GET(req: NextRequest) {
 
       // Calculate advanced endpoint metrics
       const endpointUsage = Array.from(endpointMap.entries())
-        .map(([endpoint, data]: [string, any]) => {
+        .map(([endpoint, data]: [string, EndpointStats]) => {
           // Calculate percentiles
           const sortedDurations = data.durations.sort((a: number, b: number) => a - b);
-          const p50 = sortedDurations[Math.floor(sortedDurations.length * 0.5)] || 0;
-          const p95 = sortedDurations[Math.floor(sortedDurations.length * 0.95)] || 0;
-          const p99 = sortedDurations[Math.floor(sortedDurations.length * 0.99)] || 0;
+          const p50 = sortedDurations[Math.floor(sortedDurations.length * 0.5)] ?? 0;
+          const p95 = sortedDurations[Math.floor(sortedDurations.length * 0.95)] ?? 0;
+          const p99 = sortedDurations[Math.floor(sortedDurations.length * 0.99)] ?? 0;
           
           return {
             endpoint,
@@ -399,8 +491,8 @@ export async function GET(req: NextRequest) {
             successRate: data.requests > 0 ? (data.successfulRequests / data.requests) * 100 : 0,
             requestsPerMinute: data.requests / ((now.getTime() - startDate.getTime()) / (1000 * 60)),
             // Use real-time metrics if available for comparison
-            realTimeAvgDuration: kpiSummary?.performance?.averageResponseTime,
-            realTimeErrorRate: kpiSummary?.systemHealth?.errorRate
+            realTimeAvgDuration: typedKpiSummary?.performance?.averageResponseTime,
+            realTimeErrorRate: typedKpiSummary?.systemHealth?.errorRate
           };
         })
         .slice(0, 5); // Top 5 endpoints
@@ -430,7 +522,7 @@ export async function GET(req: NextRequest) {
       
       // Try to get at least basic data if possible
       let partialData = null;
-      let errorDetails = {
+      const errorDetails = {
         type: 'partial_failure',
         message: 'Unable to fetch some analytics data',
         timestamp: new Date().toISOString(),
@@ -451,16 +543,16 @@ export async function GET(req: NextRequest) {
         );
         
         partialData = {
-          totalCost: fallbackCostSummary.totalCost || 0,
-          totalTokens: (fallbackCostSummary.totalInputTokens || 0) + (fallbackCostSummary.totalOutputTokens || 0),
+          totalCost: fallbackCostSummary.totalCost ?? 0,
+          totalTokens: (fallbackCostSummary.totalInputTokens ?? 0) + (fallbackCostSummary.totalOutputTokens ?? 0),
           // Basic provider data from cost summary
-          providerUsage: fallbackCostSummary.costByProvider?.map((provider: any) => ({
-            provider: provider.providerName || provider.providerId,
+          providerUsage: fallbackCostSummary.costByProvider?.map((provider: { providerName?: string; providerId?: string; requestCount: number; cost: number }) => ({
+            provider: provider.providerName ?? provider.providerId,
             requests: provider.requestCount,
             cost: provider.cost,
             tokens: 0,
             percentage: 0 // Will be calculated if we have total requests
-          })) || []
+          })) ?? []
         };
         
         errorDetails.services.adminSDK = true;
@@ -476,8 +568,8 @@ export async function GET(req: NextRequest) {
       const response = {
         metrics: {
           totalRequests: 0,
-          totalCost: partialData?.totalCost || 0,
-          totalTokens: partialData?.totalTokens || 0,
+          totalCost: partialData?.totalCost ?? 0,
+          totalTokens: partialData?.totalTokens ?? 0,
           activeVirtualKeys: 0,
           requestsChange: 0,
           costChange: 0,
@@ -485,7 +577,7 @@ export async function GET(req: NextRequest) {
           virtualKeysChange: 0
         },
         timeSeries: [],
-        providerUsage: partialData?.providerUsage || [],
+        providerUsage: partialData?.providerUsage ?? [],
         modelUsage: [],
         virtualKeyUsage: [],
         endpointUsage: [],

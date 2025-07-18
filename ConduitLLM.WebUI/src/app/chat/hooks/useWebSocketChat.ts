@@ -49,8 +49,8 @@ export interface WebSocketChatReturn {
 
 export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatReturn {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected');
-  const [activeUsers, setActiveUsers] = useState<string[]>([]);
-  const [providerStatuses, setProviderStatuses] = useState<Record<string, 'online' | 'offline'>>({});
+  const [activeUsers] = useState<string[]>([]);
+  const [providerStatuses] = useState<Record<string, 'online' | 'offline'>>({});
   
   // Refs for stable callbacks
   const optionsRef = useRef(options);
@@ -58,7 +58,6 @@ export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatRe
 
   useEffect(() => {
     // TODO: Initialize WebSocket connection
-    console.log('[WebSocket] Stub: Would connect to conversation:', options.conversationId);
     
     // TODO: Set up SignalR hub connection
     // const connection = new signalR.HubConnectionBuilder()
@@ -86,13 +85,12 @@ export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatRe
     return () => {
       clearTimeout(timer);
       // TODO: Clean up WebSocket connection
-      console.log('[WebSocket] Stub: Would disconnect from conversation');
     };
   }, [options.conversationId]);
 
   const sendMessage = (content: string) => {
     // TODO: Send message via WebSocket
-    console.log('[WebSocket] Stub: Would send message:', content);
+    void content; // Acknowledge parameter until implemented
     
     // In real implementation:
     // connection.invoke('SendMessage', conversationId, content);
@@ -100,7 +98,7 @@ export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatRe
 
   const sendTypingIndicator = (isTyping: boolean) => {
     // TODO: Send typing indicator via WebSocket
-    console.log('[WebSocket] Stub: Would send typing indicator:', isTyping);
+    void isTyping; // Acknowledge parameter until implemented
     
     // In real implementation:
     // connection.invoke('SendTypingIndicator', conversationId, isTyping);
@@ -108,7 +106,6 @@ export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatRe
 
   const reconnect = () => {
     // TODO: Manually reconnect WebSocket
-    console.log('[WebSocket] Stub: Would attempt reconnection');
     setStatus('connecting');
     
     // In real implementation:
@@ -117,7 +114,6 @@ export function useWebSocketChat(options: WebSocketChatOptions): WebSocketChatRe
 
   const disconnect = () => {
     // TODO: Disconnect WebSocket
-    console.log('[WebSocket] Stub: Would disconnect');
     setStatus('disconnected');
     
     // In real implementation:

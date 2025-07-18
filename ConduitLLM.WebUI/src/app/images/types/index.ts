@@ -4,13 +4,13 @@ export interface ImageGenerationSettings {
   quality?: 'standard' | 'hd';
   style?: 'vivid' | 'natural';
   n: number;
-  response_format: 'url' | 'b64_json';
+  responseFormat: 'url' | 'b64_json';
 }
 
 export interface GeneratedImage {
   url?: string;
-  b64_json?: string;
-  revised_prompt?: string;
+  b64Json?: string;
+  revisedPrompt?: string;
   id?: string;
 }
 

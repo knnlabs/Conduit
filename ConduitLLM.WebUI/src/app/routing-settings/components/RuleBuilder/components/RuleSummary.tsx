@@ -25,7 +25,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showJson, setShowJson] = useState(false);
 
-  const formatConditionText = (condition: any, index: number) => {
+  const formatConditionText = (condition: { type: string; field?: string; operator: string; value: string | number | boolean | string[] | number[] }) => {
     const { type, field, operator, value } = condition;
     
     let conditionText = '';
@@ -41,17 +41,18 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
     conditionText += ` ${operator} `;
     
     if (operator === 'in_list') {
-      conditionText += `[${value}]`;
+      const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+      conditionText += `[${displayValue}]`;
     } else if (operator === 'exists') {
       conditionText += '(exists)';
     } else {
-      conditionText += `"${value}"`;
+      conditionText += `"${String(value)}"`;
     }
     
     return conditionText;
   };
 
-  const formatActionText = (action: any) => {
+  const formatActionText = (action: { type: string; target?: string; parameters?: Record<string, unknown> }) => {
     const { type, target, parameters } = action;
     
     let actionText = type;
@@ -62,8 +63,12 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
     
     if (parameters && Object.keys(parameters).length > 0) {
       const paramTexts = Object.entries(parameters)
-        .filter(([_, value]) => value !== undefined && value !== '')
-        .map(([key, value]) => `${key}: ${value}`);
+        .filter(([unusedKey, value]) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const unused = unusedKey;
+          return value !== undefined && value !== '';
+        })
+        .map(([key, value]) => `${key}: ${String(value)}`);
       
       if (paramTexts.length > 0) {
         actionText += ` (${paramTexts.join(', ')})`;
@@ -82,10 +87,10 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
     if (rule.conditions.length === 0) {
       ruleText += 'no conditions are met';
     } else if (rule.conditions.length === 1) {
-      ruleText += formatConditionText(rule.conditions[0], 0);
+      ruleText += formatConditionText(rule.conditions[0]);
     } else {
       ruleText += rule.conditions
-        .map((condition, index) => formatConditionText(condition, index))
+        .map((condition) => formatConditionText(condition))
         .join(' AND '); // TODO: Use actual logical operators
     }
     
@@ -150,7 +155,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
           {/* Human-readable rule */}
           <Card withBorder p="sm" bg="blue.0">
             <Text size="sm" style={{ fontStyle: 'italic' }}>
-              "{generateHumanReadableRule()}"
+              &quot;{generateHumanReadableRule()}&quot;
             </Text>
           </Card>
 
@@ -165,7 +170,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
                     PRIORITY
                   </Text>
                   <Badge variant="outline" size="sm">
-                    {rule.priority || 10}
+                    {rule.priority ?? 10}
                   </Badge>
                 </div>
                 <div>
@@ -206,8 +211,8 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
                   </Text>
                   <Stack gap={4}>
                     {rule.conditions.map((condition, index) => (
-                      <Text key={index} size="sm" c="dark.6">
-                        {index + 1}. {formatConditionText(condition, index)}
+                      <Text key={`condition-${condition.type}-${index}`} size="sm" c="dark.6">
+                        {index + 1}. {formatConditionText(condition)}
                       </Text>
                     ))}
                   </Stack>
@@ -222,7 +227,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
                   </Text>
                   <Stack gap={4}>
                     {rule.actions.map((action, index) => (
-                      <Text key={index} size="sm" c="dark.6">
+                      <Text key={`action-${action.type}-${index}`} size="sm" c="dark.6">
                         {index + 1}. {formatActionText(action)}
                       </Text>
                     ))}

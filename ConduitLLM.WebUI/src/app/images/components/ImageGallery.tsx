@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useImageStore } from '../hooks/useImageStore';
 import { GeneratedImage } from '../types';
 
@@ -19,9 +20,9 @@ export default function ImageGallery() {
         const blob = await response.blob();
         imageData = URL.createObjectURL(blob);
         filename = `generated-image-${index + 1}.png`;
-      } else if (image.b64_json) {
+      } else if (image.b64Json) {
         // Convert base64 to blob
-        const byteCharacters = atob(image.b64_json);
+        const byteCharacters = atob(image.b64Json);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -55,8 +56,8 @@ export default function ImageGallery() {
   const getImageSrc = (image: GeneratedImage): string => {
     if (image.url) {
       return image.url;
-    } else if (image.b64_json) {
-      return `data:image/png;base64,${image.b64_json}`;
+    } else if (image.b64Json) {
+      return `data:image/png;base64,${image.b64Json}`;
     }
     return '';
   };
@@ -73,7 +74,7 @@ export default function ImageGallery() {
     return (
       <div className="image-gallery">
         <div className="text-center text-gray-500 py-8">
-          Generated images will appear here. Enter a prompt and click "Generate Images" to get started.
+          Generated images will appear here. Enter a prompt and click &quot;Generate Images&quot; to get started.
         </div>
       </div>
     );
@@ -83,25 +84,27 @@ export default function ImageGallery() {
     <>
       <div className="image-gallery">
         {results.map((image, index) => (
-          <div key={index} className="image-card">
-            <img
+          <div key={`image-${image.id ?? index}`} className="image-card">
+            <Image
               src={getImageSrc(image)}
-              alt={image.revised_prompt || `Generated image ${index + 1}`}
+              alt={image.revisedPrompt ?? `Generated image ${index + 1}`}
               onClick={() => handleImageClick(image)}
               className="cursor-pointer"
               loading="lazy"
+              width={300}
+              height={300}
             />
             <div className="image-card-actions">
               <div className="text-sm text-gray-600">
                 Image {index + 1}
-                {image.revised_prompt && (
-                  <div className="text-xs text-gray-500 mt-1 truncate" title={image.revised_prompt}>
-                    {image.revised_prompt}
+                {image.revisedPrompt && (
+                  <div className="text-xs text-gray-500 mt-1 truncate" title={image.revisedPrompt}>
+                    {image.revisedPrompt}
                   </div>
                 )}
               </div>
               <button
-                onClick={() => handleDownload(image, index)}
+                onClick={() => void handleDownload(image, index)}
                 className="btn btn-secondary text-sm"
                 title="Download image"
               >
@@ -119,11 +122,13 @@ export default function ImageGallery() {
           onClick={closeModal}
         >
           <div className="relative max-w-full max-h-full">
-            <img
+            <Image
               src={getImageSrc(selectedImage)}
-              alt={selectedImage.revised_prompt || 'Generated image'}
+              alt={selectedImage.revisedPrompt ?? 'Generated image'}
               className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()}
+              width={800}
+              height={600}
             />
             <button
               onClick={closeModal}
@@ -131,10 +136,10 @@ export default function ImageGallery() {
             >
               ✕
             </button>
-            {selectedImage.revised_prompt && (
+            {selectedImage.revisedPrompt && (
               <div className="absolute bottom-4 left-4 right-4 text-white bg-black bg-opacity-75 p-2 rounded">
                 <div className="text-sm">
-                  <strong>Revised Prompt:</strong> {selectedImage.revised_prompt}
+                  <strong>Revised Prompt:</strong> {selectedImage.revisedPrompt}
                 </div>
               </div>
             )}

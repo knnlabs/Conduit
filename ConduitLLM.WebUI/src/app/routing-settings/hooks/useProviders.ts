@@ -41,13 +41,13 @@ export function useProviders() {
       }
     }
 
-    fetchProviders();
+    void fetchProviders();
   }, []);
 
   // Convert providers to select options format
   const providerOptions: ProviderOption[] = providers.map(provider => ({
     value: provider.id,
-    label: provider.displayName || provider.name || provider.id,
+    label: provider.displayName ?? provider.name ?? provider.id,
   }));
 
   return {

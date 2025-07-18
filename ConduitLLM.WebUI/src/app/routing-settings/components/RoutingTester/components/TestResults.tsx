@@ -8,7 +8,6 @@ import {
   Title,
   Badge,
   Alert,
-  Progress,
   Accordion,
   Table,
   Tooltip,
@@ -22,7 +21,7 @@ import {
   IconTarget,
   IconListCheck,
 } from '@tabler/icons-react';
-import { TestResult, TestRequest, MatchedRule, ConditionMatch } from '../../../types/routing';
+import { TestResult, TestRequest, MatchedRule } from '../../../types/routing';
 
 interface TestResultsProps {
   result: TestResult;
@@ -46,7 +45,9 @@ export function TestResults({ result, request }: TestResultsProps) {
     return success ? 'green' : 'red';
   };
 
-  const formatConditionValue = (condition: any, actualValue: any) => {
+  const formatConditionValue = (condition: unknown, actualValue: unknown): string => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const unusedCondition = condition;
     if (actualValue === undefined || actualValue === null) {
       return 'N/A';
     }
@@ -55,7 +56,11 @@ export function TestResults({ result, request }: TestResultsProps) {
       return JSON.stringify(actualValue);
     }
     
-    return String(actualValue);
+    if (typeof actualValue === 'string' || typeof actualValue === 'number' || typeof actualValue === 'boolean') {
+      return String(actualValue);
+    }
+    
+    return JSON.stringify(actualValue);
   };
 
   const getRuleStatusBadge = (rule: MatchedRule) => {
@@ -102,8 +107,8 @@ export function TestResults({ result, request }: TestResultsProps) {
         {result.errors && result.errors.length > 0 && (
           <Alert icon={<IconAlertTriangle size="1rem" />} title="Errors" color="red">
             <Stack gap="xs">
-              {result.errors.map((error, index) => (
-                <Text key={index} size="sm">• {error}</Text>
+              {result.errors.map((error) => (
+                <Text key={`error-${error.slice(0, 50)}`} size="sm">• {error}</Text>
               ))}
             </Stack>
           </Alert>
@@ -132,7 +137,7 @@ export function TestResults({ result, request }: TestResultsProps) {
               Selected Provider
             </Text>
             <Text fw={700} size="lg">
-              {result.selectedProvider?.name || 'None'}
+              {result.selectedProvider?.name ?? 'None'}
             </Text>
           </Card>
         </Group>
@@ -152,11 +157,11 @@ export function TestResults({ result, request }: TestResultsProps) {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack gap="md">
-                  {result.matchedRules.map((matchedRule, index) => {
+                  {result.matchedRules.map((matchedRule, ruleIndex) => {
                     const allMatched = matchedRule.matchedConditions.every(c => c.matched);
                     
                     return (
-                      <Card key={index} withBorder p="md" bg={allMatched ? 'green.0' : 'gray.0'}>
+                      <Card key={matchedRule.rule.id ?? `rule-${ruleIndex}`} withBorder p="md" bg={allMatched ? 'green.0' : 'gray.0'}>
                         <Stack gap="sm">
                           {/* Rule Header */}
                           <Group justify="space-between" align="center">
@@ -192,7 +197,7 @@ export function TestResults({ result, request }: TestResultsProps) {
                               </Table.Thead>
                               <Table.Tbody>
                                 {matchedRule.matchedConditions.map((condition, condIndex) => (
-                                  <Table.Tr key={condIndex}>
+                                  <Table.Tr key={`condition-${condIndex}`}>
                                     <Table.Td>
                                       <Tooltip label={condition.matched ? 'Matched' : 'Not matched'}>
                                         {getConditionIcon(condition.matched)}
@@ -235,7 +240,7 @@ export function TestResults({ result, request }: TestResultsProps) {
                               <Group gap="xs">
                                 {matchedRule.rule.actions.map((action, actionIndex) => (
                                   <Badge
-                                    key={actionIndex}
+                                    key={`action-${actionIndex}`}
                                     variant={matchedRule.applied ? 'filled' : 'light'}
                                     color={matchedRule.applied ? 'green' : 'gray'}
                                   >

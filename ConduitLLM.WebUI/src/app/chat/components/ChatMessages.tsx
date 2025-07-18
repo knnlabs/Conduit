@@ -47,26 +47,26 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
                 <IconRobot size={16} />
               )}
               <Text fw={600} size="sm">
-                {isUser ? 'You' : message.model || 'Assistant'}
+                {isUser ? 'You' : message.model ?? 'Assistant'}
               </Text>
             </Group>
             
-            {!isUser && (message.metadata || (isStreaming && tokensPerSecond)) && (
+            {!isUser && (message.metadata ?? (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
-                {message.metadata?.tokensUsed && (
+                {message.metadata?.tokensUsed !== null && message.metadata?.tokensUsed !== undefined && (
                   <Badge size="xs" variant="light">
                     {message.metadata.tokensUsed} tokens
                   </Badge>
                 )}
-                {(message.metadata?.tokensPerSecond || (isStreaming && tokensPerSecond)) && (
+                {(message.metadata?.tokensPerSecond ?? (isStreaming && tokensPerSecond)) && (
                   <Badge size="xs" variant="light" color="green">
                     <Group gap={4}>
                       <IconBolt size={12} />
-                      {(message.metadata?.tokensPerSecond || tokensPerSecond)?.toFixed(1)} t/s
+                      {(message.metadata?.tokensPerSecond ?? tokensPerSecond)?.toFixed(1)} t/s
                     </Group>
                   </Badge>
                 )}
-                {message.metadata?.latency && (
+                {message.metadata?.latency !== null && message.metadata?.latency !== undefined && (
                   <Badge size="xs" variant="light" color="blue">
                     <Group gap={4}>
                       <IconClock size={12} />
@@ -95,8 +95,8 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
           {message.toolCalls && message.toolCalls.length > 0 && (
             <Stack gap="xs">
               <Text size="xs" fw={600}>Tool Calls:</Text>
-              {message.toolCalls.map((tool, index) => (
-                <Paper key={index} p="xs" radius="sm" withBorder>
+              {message.toolCalls.map((tool) => (
+                <Paper key={tool.id || tool.function.name} p="xs" radius="sm" withBorder>
                   <Text size="xs" c="green" fw={500}>{tool.function.name}</Text>
                   <Code block mt={4} style={{ fontSize: '0.75rem' }}>
                     {tool.function.arguments}
@@ -110,27 +110,36 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
             <ReactMarkdown
               components={{
                 code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '');
+                  const match = /language-(\w+)/.exec(className ?? '');
                   const inline = !className;
+                  
+                  const getChildrenText = (node: React.ReactNode): string => {
+                    if (typeof node === 'string') return node;
+                    if (typeof node === 'number') return node.toString();
+                    if (Array.isArray(node)) return node.map(getChildrenText).join('');
+                    return '';
+                  };
+                  
+                  const childText = getChildrenText(children);
                   
                   return !inline && match ? (
                     <SyntaxHighlighter
                       style={vscDarkPlus}
                       language={match[1]}
                       PreTag="div"
-                      {...props as any}
+                      {...(props as Record<string, unknown>)}
                     >
-                      {String(children).replace(/\n$/, '')}
+                      {childText.replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (
                     <code className={className} {...props}>
-                      {children}
+                      {childText}
                     </code>
                   );
                 },
               }}
             >
-              {content || ''}
+              {content ?? ''}
             </ReactMarkdown>
           </div>
         </Stack>

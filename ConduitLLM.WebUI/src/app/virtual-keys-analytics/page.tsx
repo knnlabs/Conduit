@@ -15,29 +15,22 @@ import {
   Select,
   MultiSelect,
   RingProgress,
-  Progress,
   Skeleton,
   Tooltip,
-  ActionIcon,
   Tabs,
   Code,
 } from '@mantine/core';
 import {
   AreaChart,
-  BarChart,
   DonutChart,
 } from '@mantine/charts';
 import {
   IconKey,
   IconTrendingUp,
   IconApi,
-  IconCoins,
-  IconClock,
   IconRefresh,
   IconDownload,
   IconFilter,
-  IconAlertTriangle,
-  IconCircleCheck,
   IconArrowUpRight,
   IconArrowDownRight,
   IconEye,
@@ -46,6 +39,16 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
 import { formatters } from '@/lib/utils/formatters';
+
+function getErrorRateColor(errorRate: number): string {
+  if (errorRate > 5) {
+    return 'red';
+  }
+  if (errorRate > 2) {
+    return 'orange';
+  }
+  return 'green';
+}
 
 interface VirtualKeyAnalytics {
   id: string;
@@ -108,13 +111,28 @@ interface TimeSeriesData {
   errorRate: number;
 }
 
+interface AggregateMetrics {
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number;
+  activeKeys: number;
+  avgErrorRate: number;
+  topKey: string;
+}
+
+interface VirtualKeysAnalyticsResponse {
+  virtualKeys: VirtualKeyAnalytics[];
+  timeSeries: Record<string, TimeSeriesData[]>;
+  aggregateMetrics: AggregateMetrics;
+}
+
 export default function VirtualKeysAnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyAnalytics[]>([]);
   const [timeSeries, setTimeSeries] = useState<Record<string, TimeSeriesData[]>>({});
-  const [aggregateMetrics, setAggregateMetrics] = useState({
+  const [aggregateMetrics, setAggregateMetrics] = useState<AggregateMetrics>({
     totalRequests: 0,
     totalTokens: 0,
     totalCost: 0,
@@ -135,7 +153,7 @@ export default function VirtualKeysAnalyticsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch analytics');
       }
-      const data = await response.json();
+      const data = await response.json() as VirtualKeysAnalyticsResponse;
       
       setVirtualKeys(data.virtualKeys);
       setTimeSeries(data.timeSeries);
@@ -148,7 +166,7 @@ export default function VirtualKeysAnalyticsPage() {
   }, [timeRange, selectedKeys]);
 
   useEffect(() => {
-    fetchAnalytics();
+    void fetchAnalytics();
   }, [fetchAnalytics]);
 
   const getStatusColor = (status: string): string => {
@@ -220,7 +238,7 @@ export default function VirtualKeysAnalyticsPage() {
           />
           <Select
             value={timeRange}
-            onChange={(value) => setTimeRange(value || '7d')}
+            onChange={(value) => setTimeRange(value ?? '7d')}
             data={[
               { value: '24h', label: 'Last 24 Hours' },
               { value: '7d', label: 'Last 7 Days' },
@@ -231,14 +249,14 @@ export default function VirtualKeysAnalyticsPage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchAnalytics}
+            onClick={() => void fetchAnalytics()}
             loading={isLoading}
           >
             Refresh
@@ -327,7 +345,7 @@ export default function VirtualKeysAnalyticsPage() {
                 Top Key
               </Text>
               <Text size="sm" fw={700} truncate>
-                {aggregateMetrics.topKey || 'N/A'}
+                {aggregateMetrics.topKey ?? 'N/A'}
               </Text>
             </Card>
           )}
@@ -360,22 +378,28 @@ export default function VirtualKeysAnalyticsPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {isLoading ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={8}>
-                      <Skeleton height={200} />
-                    </Table.Td>
-                  </Table.Tr>
-                ) : virtualKeys.length === 0 ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={8}>
-                      <Text ta="center" c="dimmed" py="xl">
-                        No virtual keys found
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : (
-                  virtualKeys.map((key) => (
+                {(() => {
+                  if (isLoading) {
+                    return (
+                      <Table.Tr>
+                        <Table.Td colSpan={8}>
+                          <Skeleton height={200} />
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  }
+                  if (virtualKeys.length === 0) {
+                    return (
+                      <Table.Tr>
+                        <Table.Td colSpan={8}>
+                          <Text ta="center" c="dimmed" py="xl">
+                            No virtual keys found
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  }
+                  return virtualKeys.map((key) => (
                     <Table.Tr key={key.id}>
                       <Table.Td>
                         <Group gap="xs">
@@ -440,7 +464,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Table.Td>
                       <Table.Td>
                         <Badge 
-                          color={key.usage.errorRate > 5 ? 'red' : key.usage.errorRate > 2 ? 'orange' : 'green'}
+                          color={getErrorRateColor(key.usage.errorRate)}
                           variant="light"
                         >
                           {key.usage.errorRate.toFixed(1)}%
@@ -484,8 +508,8 @@ export default function VirtualKeysAnalyticsPage() {
                         <Text size="sm">{formatters.date(key.lastUsed, { relativeDays: 3 })}</Text>
                       </Table.Td>
                     </Table.Tr>
-                  ))
-                )}
+                  ));
+                })()}
               </Table.Tbody>
             </Table>
           </ScrollArea>
@@ -557,7 +581,7 @@ export default function VirtualKeysAnalyticsPage() {
                           'Anthropic': 'orange.6',
                           'Azure': 'cyan.6',
                           'Google': 'green.6',
-                        }[p.name] || 'gray.6'
+                        }[p.name] ?? 'gray.6'
                       }))}
                       withLabelsLine
                       withLabels
@@ -599,8 +623,8 @@ export default function VirtualKeysAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {key.models.map((model, idx) => (
-                        <Table.Tr key={idx}>
+                      {key.models.map((model) => (
+                        <Table.Tr key={`model-${key.id}-${model.name}`}>
                           <Table.Td>{model.name}</Table.Td>
                           <Table.Td>
                             <Badge size="sm" variant="light">{model.provider}</Badge>
@@ -627,14 +651,14 @@ export default function VirtualKeysAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {key.endpoints.map((endpoint, idx) => (
-                        <Table.Tr key={idx}>
+                      {key.endpoints.map((endpoint) => (
+                        <Table.Tr key={`endpoint-${key.id}-${endpoint.path}`}>
                           <Table.Td><Code>{endpoint.path}</Code></Table.Td>
                           <Table.Td>{formatters.number(endpoint.requests)}</Table.Td>
                           <Table.Td>{endpoint.avgDuration}ms</Table.Td>
                           <Table.Td>
                             <Badge 
-                              color={endpoint.errorRate > 5 ? 'red' : endpoint.errorRate > 2 ? 'orange' : 'green'}
+                              color={getErrorRateColor(endpoint.errorRate)}
                               variant="light"
                             >
                               {endpoint.errorRate.toFixed(1)}%

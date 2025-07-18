@@ -34,7 +34,7 @@ export interface ErrorAction {
 }
 
 export interface ErrorDisplayProps {
-  error: Error | string | unknown;
+  error: Error | string;
   variant?: 'inline' | 'card' | 'fullscreen';
   size?: 'sm' | 'md' | 'lg';
   showDetails?: boolean;
@@ -153,9 +153,9 @@ export function ErrorDisplay({
   const automaticActions = getAutomaticActions();
   const allActions = [...automaticActions, ...actions];
   const hasActions = allActions.length > 0;
-  const hasDetails = showDetails && (errorInstance.stack || errorInstance.name !== 'Error');
+  const hasDetails = showDetails && (errorInstance.stack ?? errorInstance.name !== 'Error');
   
-  const errorTitle = title || `${classification.type.charAt(0).toUpperCase() + classification.type.slice(1)} Error`;
+  const errorTitle = title ?? `${classification.type.charAt(0).toUpperCase() + classification.type.slice(1)} Error`;
 
   // Error content
   const errorContent = (
@@ -222,12 +222,12 @@ export function ErrorDisplay({
 
           {hasActions && (
             <Group gap="sm" mt="sm">
-              {allActions.map((action, index) => (
+              {allActions.map((action) => (
                 <Button
-                  key={index}
+                  key={`error-action-${action.label}-${action.color ?? 'blue'}-${action.variant ?? 'light'}`}
                   size={size}
-                  variant={action.variant || 'light'}
-                  color={action.color || 'blue'}
+                  variant={action.variant ?? 'light'}
+                  color={action.color ?? 'blue'}
                   leftSection={action.leftSection}
                   onClick={action.onClick}
                 >

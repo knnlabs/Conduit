@@ -11,18 +11,13 @@ import {
   Switch,
   Button,
   Select,
-  Divider,
   Title,
   Progress,
-  Tooltip,
-  ActionIcon,
 } from '@mantine/core';
 import {
   IconGripVertical,
   IconDeviceFloppy,
-  IconSettings,
   IconActivity,
-  IconAlertCircle,
 } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { notifications } from '@mantine/notifications';
@@ -44,10 +39,10 @@ export function ProviderPriorityList({
   onUpdateConfig,
 }: ProviderPriorityListProps) {
   const [localProviders, setLocalProviders] = useState<ProviderPriority[]>(providers);
-  const [localConfig, setLocalConfig] = useState<Partial<RoutingConfiguration>>(config || {});
+  const [localConfig, setLocalConfig] = useState<Partial<RoutingConfiguration>>(config ?? {});
   const [hasChanges, setHasChanges] = useState(false);
 
-  const handleProviderChange = (index: number, field: keyof ProviderPriority, value: any) => {
+  const handleProviderChange = (index: number, field: keyof ProviderPriority, value: number | boolean | string) => {
     const updated = localProviders.map((provider, i) =>
       i === index ? { ...provider, [field]: value } : provider
     );
@@ -55,13 +50,13 @@ export function ProviderPriorityList({
     setHasChanges(true);
   };
 
-  const handleConfigChange = (field: keyof RoutingConfiguration, value: any) => {
+  const handleConfigChange = (field: keyof RoutingConfiguration, value: number | boolean | string) => {
     const updated = { ...localConfig, [field]: value };
     setLocalConfig(updated);
     setHasChanges(true);
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: { destination?: { index: number } | null; source: { index: number } }) => {
     if (!result.destination) return;
 
     const items = Array.from(localProviders);
@@ -80,9 +75,9 @@ export function ProviderPriorityList({
 
   const handleSave = async () => {
     try {
-      await onUpdateProviders(localProviders);
+      onUpdateProviders(localProviders);
       if (Object.keys(localConfig).length > 0) {
-        await onUpdateConfig(localConfig);
+        onUpdateConfig(localConfig);
       }
       setHasChanges(false);
       notifications.show({
@@ -90,21 +85,21 @@ export function ProviderPriorityList({
         message: 'Provider settings saved successfully',
         color: 'green',
       });
-    } catch (err) {
+    } catch {
       // Error handling is done in the hook
     }
   };
 
   const handleReset = () => {
     setLocalProviders(providers);
-    setLocalConfig(config || {});
+    setLocalConfig(config ?? {});
     setHasChanges(false);
   };
 
   const getHealthStatus = (providerId: string) => {
     if (!health) return null;
     const node = health.nodes.find(n => n.id === providerId);
-    return node?.status || null;
+    return node?.status ?? null;
   };
 
   const getHealthColor = (status: string | null) => {
@@ -130,8 +125,8 @@ export function ProviderPriorityList({
               { value: 'cost_optimized', label: 'Cost Optimized' },
               { value: 'priority', label: 'Priority Based' },
             ]}
-            value={localConfig.defaultStrategy || config?.defaultStrategy}
-            onChange={(value) => handleConfigChange('defaultStrategy', value)}
+            value={localConfig.defaultStrategy ?? config?.defaultStrategy}
+            onChange={(value) => value && handleConfigChange('defaultStrategy', value)}
           />
           <div>
             <Text size="sm" fw={500} mb="xs">Fallback Enabled</Text>
@@ -144,7 +139,7 @@ export function ProviderPriorityList({
         <Group grow mt="md">
           <NumberInput
             label="Timeout (ms)"
-            value={localConfig.timeoutMs || config?.timeoutMs}
+            value={localConfig.timeoutMs ?? config?.timeoutMs}
             onChange={(value) => handleConfigChange('timeoutMs', Number(value))}
             min={1000}
             max={60000}
@@ -152,7 +147,7 @@ export function ProviderPriorityList({
           />
           <NumberInput
             label="Max Concurrent Requests"
-            value={localConfig.maxConcurrentRequests || config?.maxConcurrentRequests}
+            value={localConfig.maxConcurrentRequests ?? config?.maxConcurrentRequests}
             onChange={(value) => handleConfigChange('maxConcurrentRequests', Number(value))}
             min={1}
             max={1000}
@@ -169,7 +164,7 @@ export function ProviderPriorityList({
               <Button variant="subtle" onClick={handleReset}>
                 Reset
               </Button>
-              <Button leftSection={<IconDeviceFloppy size={16} />} onClick={handleSave}>
+              <Button leftSection={<IconDeviceFloppy size={16} />} onClick={() => void handleSave()}>
                 Save Changes
               </Button>
             </Group>
@@ -263,7 +258,7 @@ export function ProviderPriorityList({
                               </Group>
                             </Group>
 
-                            {health && health.distribution[provider.providerId] && (
+                            {health?.distribution[provider.providerId] && (
                               <div style={{ marginTop: 8 }}>
                                 <Text size="xs" c="dimmed" mb={4}>
                                   Traffic Distribution: {health.distribution[provider.providerId]}%

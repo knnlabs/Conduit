@@ -48,7 +48,7 @@ export function RuleBuilder({ isOpen, rule, onClose, onSave }: RuleBuilderProps)
     if (rule) {
       setFormData({
         name: rule.name,
-        description: rule.description || '',
+        description: rule.description ?? '',
         priority: rule.priority,
         conditions: rule.conditions.map(c => ({ ...c, logicalOperator: undefined })),
         actions: rule.actions,
@@ -90,7 +90,7 @@ export function RuleBuilder({ isOpen, rule, onClose, onSave }: RuleBuilderProps)
       setFormData({
         name: template.name,
         description: template.description,
-        priority: template.priority || 10,
+        priority: template.priority ?? 10,
         conditions: template.conditions,
         actions: template.actions,
         enabled: true,
@@ -183,8 +183,8 @@ export function RuleBuilder({ isOpen, rule, onClose, onSave }: RuleBuilderProps)
             variant="light"
           >
             <Stack gap={4}>
-              {errors.map((error, index) => (
-                <Text key={index} size="sm">
+              {errors.map((error) => (
+                <Text key={`error-${error.slice(0, 50)}`} size="sm">
                   • {error}
                 </Text>
               ))}

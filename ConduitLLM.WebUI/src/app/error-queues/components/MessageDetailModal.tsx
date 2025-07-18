@@ -5,6 +5,7 @@ import { IconFileCode, IconList, IconBug, IconHistory, IconCopy, IconReload, Ico
 import { useErrorMessage, useReplayMessage, useDeleteMessage } from '@/hooks/useErrorQueues';
 import { formatDateTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
+import type { ErrorMessageDetail } from '@knn_labs/conduit-admin-client';
 
 interface MessageDetailModalProps {
   queueName: string;
@@ -19,7 +20,8 @@ export function MessageDetailModal({
   opened,
   onClose,
 }: MessageDetailModalProps) {
-  const { data: message, isLoading } = useErrorMessage(queueName, messageId);
+  const { data, isLoading } = useErrorMessage(queueName, messageId);
+  const message = data as ErrorMessageDetail | undefined;
   const replayMutation = useReplayMessage();
   const deleteMutation = useDeleteMessage();
 
@@ -44,7 +46,7 @@ export function MessageDetailModal({
 
   const handleCopyJson = () => {
     if (message) {
-      navigator.clipboard.writeText(JSON.stringify(message, null, 2));
+      void navigator.clipboard.writeText(JSON.stringify(message, null, 2));
       notifications.show({
         title: 'Copied',
         message: 'Message JSON copied to clipboard',
@@ -61,12 +63,17 @@ export function MessageDetailModal({
       size="xl"
       padding="lg"
     >
-      {isLoading ? (
-        <Center h={400}>
-          <Loader size="lg" />
-        </Center>
-      ) : message ? (
-        <Stack>
+      {(() => {
+        if (isLoading) {
+          return (
+            <Center h={400}>
+              <Loader size="lg" />
+            </Center>
+          );
+        }
+        if (message) {
+          return (
+            <Stack>
           <Group justify="space-between" align="flex-start">
             <Stack gap="xs">
               <Text size="sm" c="dimmed">
@@ -78,7 +85,7 @@ export function MessageDetailModal({
               <Button
                 leftSection={<IconReload size={16} />}
                 variant="light"
-                onClick={handleReplay}
+                onClick={() => void handleReplay()}
                 loading={replayMutation.isPending}
               >
                 Replay
@@ -94,7 +101,7 @@ export function MessageDetailModal({
                 leftSection={<IconTrash size={16} />}
                 variant="light"
                 color="red"
-                onClick={handleDelete}
+                onClick={() => void handleDelete()}
                 loading={deleteMutation.isPending}
               >
                 Delete
@@ -137,7 +144,7 @@ export function MessageDetailModal({
                         {key}:
                       </Text>
                       <Code style={{ maxWidth: '70%', overflow: 'auto' }}>
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
                       </Code>
                     </Group>
                   ))}
@@ -199,7 +206,11 @@ export function MessageDetailModal({
                   <Badge
                     size="lg"
                     variant="light"
-                    color={message.retryCount === 0 ? 'gray' : message.retryCount < 3 ? 'yellow' : 'red'}
+                    color={(() => {
+                      if (message.retryCount === 0) return 'gray';
+                      if (message.retryCount < 3) return 'yellow';
+                      return 'red';
+                    })()}
                   >
                     {message.retryCount} retries
                   </Badge>
@@ -213,8 +224,8 @@ export function MessageDetailModal({
                     <Text size="sm">Message was originally sent</Text>
                   </Timeline.Item>
                   
-                  {Array.from({ length: message.retryCount }).map((_, index) => (
-                    <Timeline.Item key={index} title={`Retry ${index + 1}`} color="red">
+                  {Array.from({ length: message.retryCount }).map((unused, index) => (
+                    <Timeline.Item key={`retry-${message.messageId}-attempt-${index + 1}`} title={`Retry ${index + 1}`} color="red">
                       <Text size="sm">Failed with: {message.error.exceptionType}</Text>
                     </Timeline.Item>
                   ))}
@@ -240,10 +251,11 @@ export function MessageDetailModal({
               </Stack>
             </Tabs.Panel>
           </Tabs>
-        </Stack>
-      ) : (
-        <Text c="dimmed">Message not found</Text>
-      )}
+            </Stack>
+          );
+        }
+        return <Text c="dimmed">Message not found</Text>;
+      })()}
     </Modal>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 interface SecurityEvent {
   id: string;
@@ -9,7 +10,7 @@ interface SecurityEvent {
   eventType: string;
   severity: 'info' | 'warning' | 'critical';
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface Threat {
@@ -67,13 +68,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as { events: SecurityEvent[]; total: number } | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch security events');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch security events');
       }
 
-      return result;
+      return result as { events: SecurityEvent[]; total: number };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch security events';
       setError(message);
@@ -99,13 +100,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as Threat[] | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch threats');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch threats');
       }
 
-      return result;
+      return result as Threat[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch threats';
       setError(message);
@@ -124,13 +125,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as IpRule[] | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch IP rules');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch IP rules');
       }
 
-      return result;
+      return result as IpRule[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch IP rules';
       setError(message);
@@ -153,10 +154,10 @@ export function useSecurityApi() {
         body: JSON.stringify(rule),
       });
 
-      const result = await response.json();
+      const result = await response.json() as IpRule | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create IP rule');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to create IP rule');
       }
 
       notifications.show({
@@ -165,7 +166,7 @@ export function useSecurityApi() {
         color: 'green',
       });
 
-      return result;
+      return result as IpRule;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create IP rule';
       setError(message);
@@ -193,10 +194,10 @@ export function useSecurityApi() {
         body: JSON.stringify(rule),
       });
 
-      const result = await response.json();
+      const result = await response.json() as IpRule | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update IP rule');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to update IP rule');
       }
 
       notifications.show({
@@ -205,7 +206,7 @@ export function useSecurityApi() {
         color: 'green',
       });
 
-      return result;
+      return result as IpRule;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update IP rule';
       setError(message);
@@ -230,8 +231,8 @@ export function useSecurityApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete IP rule');
+        const result = await response.json() as ErrorResponse;
+        throw new Error(result.error ?? 'Failed to delete IP rule');
       }
 
       notifications.show({
@@ -262,13 +263,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as IpStats | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch IP stats');
+        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch IP stats');
       }
 
-      return result;
+      return result as IpStats;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch IP stats';
       setError(message);

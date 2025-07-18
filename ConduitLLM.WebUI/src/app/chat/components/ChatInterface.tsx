@@ -5,25 +5,22 @@ import {
   Container, 
   Paper, 
   Stack, 
-  Grid,
-  Text,
   Center,
   Loader,
   Alert,
   Select,
   Group,
   Badge,
-  ScrollArea,
   Collapse,
   ActionIcon
 } from '@mantine/core';
-import { IconAlertCircle, IconRobot, IconUser, IconBolt, IconClock, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
 import { v4 as uuidv4 } from 'uuid';
 import { ContentHelpers, type TextContent, type ImageContent } from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
-import { ImageAttachment, ChatParameters } from '../types';
+import { ImageAttachment, ChatParameters, ChatCompletionResponse } from '../types';
 import { StreamingPerformanceMetrics, UsageData, MessageMetrics, SSEEventType, MetricsEventData } from '../types/metrics';
 import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
@@ -52,9 +49,7 @@ export function ChatInterface() {
   const performanceSettings = usePerformanceSettings();
   const { 
     getActiveSession, 
-    createSession, 
-    setActiveSession,
-    sessions,
+    createSession,
     activeSessionId 
   } = useChatStore();
 
@@ -66,11 +61,16 @@ export function ChatInterface() {
         if (!response.ok) {
           throw new Error('Failed to fetch models');
         }
-        const data = await response.json();
-        const modelOptions = data.map((m: any) => ({
+        interface ModelMapping {
+          modelId: string;
+          providerId: string;
+          supportsVision?: boolean;
+        }
+        const data = await response.json() as ModelMapping[];
+        const modelOptions = data.map((m) => ({
           value: m.modelId,
           label: `${m.modelId} (${m.providerId})`,
-          supportsVision: m.supportsVision || false
+          supportsVision: m.supportsVision ?? false
         }));
         setModels(modelOptions);
         if (modelOptions.length > 0) {
@@ -84,7 +84,7 @@ export function ChatInterface() {
       }
     };
 
-    fetchModels();
+    void fetchModels();
   }, []);
 
   // Ensure we have an active session
@@ -113,11 +113,10 @@ export function ChatInterface() {
 
     try {
       // Convert message format for API
-      const messageContent = buildMessageContent(inputMessage, images);
       
       // Get session parameters
       const activeSession = getActiveSession();
-      const sessionParams = activeSession?.parameters || {} as Partial<ChatParameters>;
+      const sessionParams = activeSession?.parameters ?? {} as Partial<ChatParameters>;
       
       // Build messages array with optional system prompt
       const allMessages = [...messages, userMessage];
@@ -134,26 +133,34 @@ export function ChatInterface() {
         apiMessages.unshift({ role: 'system' as const, content: sessionParams.systemPrompt });
       }
       
-      const requestBody = {
+      const requestBody: Record<string, unknown> = {
         messages: apiMessages,
         model: selectedModel,
         stream: sessionParams.stream ?? true,
         // Include all session parameters
         temperature: sessionParams.temperature,
-        max_tokens: sessionParams.maxTokens,
-        top_p: sessionParams.topP,
-        frequency_penalty: sessionParams.frequencyPenalty,
-        presence_penalty: sessionParams.presencePenalty,
-        ...(sessionParams.responseFormat === 'json_object' && { response_format: { type: 'json_object' } }),
         ...(sessionParams.seed !== undefined && { seed: sessionParams.seed }),
         ...(sessionParams.stop && sessionParams.stop.length > 0 && { stop: sessionParams.stop })
       };
       
-      console.log('Sending chat request:', {
-        model: selectedModel,
-        messageCount: requestBody.messages.length,
-        lastMessage: requestBody.messages[requestBody.messages.length - 1]
-      });
+      // Add snake_case properties dynamically to avoid naming convention issues
+      requestBody['max_tokens'] = sessionParams.maxTokens;
+      requestBody['top_p'] = sessionParams.topP;
+      requestBody['frequency_penalty'] = sessionParams.frequencyPenalty;
+      requestBody['presence_penalty'] = sessionParams.presencePenalty;
+      
+      if (sessionParams.responseFormat === 'json_object') {
+        requestBody['response_format'] = { type: 'json_object' };
+      }
+      
+      // Request logged for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Sending chat request:', {
+          model: selectedModel,
+          messageCount: (requestBody.messages as unknown[]).length,
+          lastMessage: (requestBody.messages as unknown[])[(requestBody.messages as unknown[]).length - 1]
+        });
+      }
       
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
@@ -187,9 +194,9 @@ export function ChatInterface() {
           
           const metadata: MessageMetrics | undefined = performanceSettings.trackPerformanceMetrics
             ? {
-                tokensUsed: finalMetrics.total_tokens || finalMetrics.completion_tokens || finalMetrics.tokens_generated || 0,
-                tokensPerSecond: finalMetrics.tokens_per_second || finalMetrics.current_tokens_per_second || 0,
-                latency: finalMetrics.total_latency_ms || duration * 1000,
+                tokensUsed: finalMetrics['total_tokens'] ?? finalMetrics['completion_tokens'] ?? finalMetrics['tokens_generated'] ?? 0,
+                tokensPerSecond: finalMetrics['tokens_per_second'] ?? finalMetrics['current_tokens_per_second'] ?? 0,
+                latency: finalMetrics['total_latency_ms'] ?? duration * 1000,
               }
             : undefined;
           
@@ -210,7 +217,8 @@ export function ChatInterface() {
         switch (event.event) {
           case SSEEventType.Content:
             // Handle content chunks
-            const delta = event.data?.choices?.[0]?.delta;
+            const contentData = event.data as { choices?: Array<{ delta?: { content?: string } }> };
+            const delta = contentData?.choices?.[0]?.delta;
             
             if (delta?.content) {
               fullContent += delta.content;
@@ -218,25 +226,28 @@ export function ChatInterface() {
             }
 
             // Check for inline performance metrics (backward compatibility)
-            if (event.data?.performance && performanceSettings.useServerMetrics) {
-              Object.assign(finalMetrics, event.data.performance);
-              if (event.data.performance.tokens_per_second && performanceSettings.showTokensPerSecond) {
-                setTokensPerSecond(event.data.performance.tokens_per_second);
+            const performanceData = event.data as { performance?: StreamingPerformanceMetrics };
+            if (performanceData?.performance && performanceSettings.useServerMetrics) {
+              Object.assign(finalMetrics, performanceData.performance);
+              if (performanceData.performance['tokens_per_second'] && performanceSettings.showTokensPerSecond) {
+                setTokensPerSecond(performanceData.performance['tokens_per_second']);
               }
             }
             
             // Check for usage data (OpenAI style)
-            if (event.data?.usage) {
-              Object.assign(finalMetrics, event.data.usage);
+            const usageData = event.data as { usage?: UsageData };
+            if (usageData?.usage) {
+              Object.assign(finalMetrics, usageData.usage);
             }
             break;
             
           case SSEEventType.Metrics:
             // Handle live metrics updates
             if (performanceSettings.useServerMetrics) {
-              Object.assign(finalMetrics, event.data);
-              if (event.data.current_tokens_per_second && performanceSettings.showTokensPerSecond) {
-                setTokensPerSecond(event.data.current_tokens_per_second);
+              const metricsData = event.data as MetricsEventData;
+              Object.assign(finalMetrics, metricsData);
+              if (metricsData['current_tokens_per_second'] && performanceSettings.showTokensPerSecond) {
+                setTokensPerSecond(metricsData['current_tokens_per_second']);
               }
             }
             break;
@@ -244,7 +255,8 @@ export function ChatInterface() {
           case SSEEventType.MetricsFinal:
             // Handle final metrics
             if (performanceSettings.useServerMetrics) {
-              Object.assign(finalMetrics, event.data);
+              const finalMetricsData = event.data as MetricsEventData;
+              Object.assign(finalMetrics, finalMetricsData);
             }
             break;
             
@@ -256,13 +268,12 @@ export function ChatInterface() {
       }
       } else {
         // Handle non-streaming response
-        const data = await response.json();
-        const assistantContent = data.choices?.[0]?.message?.content || '';
-        const finishReason = data.choices?.[0]?.finish_reason;
+        const data = await response.json() as ChatCompletionResponse;
+        const assistantContent = data.choices?.[0]?.message?.content ?? '';
         
         const metadata: MessageMetrics | undefined = performanceSettings.trackPerformanceMetrics && data.usage
           ? {
-              tokensUsed: data.usage.total_tokens || 0,
+              tokensUsed: data.usage['total_tokens'] ?? 0,
               tokensPerSecond: 0, // Not applicable for non-streaming
               latency: Date.now() - Date.now(), // Would need to track request start time
             }
@@ -278,9 +289,9 @@ export function ChatInterface() {
         
         setMessages(prev => [...prev, assistantMessage]);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Chat error:', err);
-      const errorMessage = err.message || 'Failed to send message';
+      const errorMessage = (err instanceof Error ? err.message : String(err)) ?? 'Failed to send message';
       setError(errorMessage);
       
       // Show error as a system message in chat
@@ -301,7 +312,7 @@ export function ChatInterface() {
       setStreamingContent('');
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics]);
 
   const buildMessageContent = (text: string, images?: ImageAttachment[]) => {
     if (!images || images.length === 0) {
@@ -402,7 +413,7 @@ export function ChatInterface() {
 
         <Paper p="md" withBorder>
           <ChatInput
-            onSendMessage={sendMessage}
+            onSendMessage={(message, images) => void sendMessage(message, images)}
             isStreaming={isLoading}
             onStopStreaming={() => {}}
             disabled={!selectedModel}

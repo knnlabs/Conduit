@@ -27,10 +27,10 @@ const conduitGray: MantineColorsTuple = [
 ];
 
 export const theme = createTheme({
-  primaryColor: 'conduit-blue',
+  primaryColor: 'conduitBlue',
   colors: {
-    'conduit-blue': conduitBlue,
-    'conduit-gray': conduitGray,
+    conduitBlue,
+    conduitGray,
   },
   fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
   fontFamilyMonospace: 'JetBrains Mono, Consolas, Monaco, monospace',

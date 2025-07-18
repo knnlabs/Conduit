@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { VideoStoreState, VideoTask, VideoSettings } from '../types';
-import { VideoDefaults, VideoResolutions } from '../types';
+import { VideoDefaults, type VideoStoreState, type VideoTask, type VideoSettings } from '../types';
 
 const LOCAL_STORAGE_KEY = 'conduit-video-generation';
 
@@ -19,7 +18,7 @@ export const useVideoStore = create<VideoStoreState>()(
         size: VideoDefaults.RESOLUTION,
         fps: VideoDefaults.FPS,
         style: undefined,
-        response_format: VideoDefaults.RESPONSE_FORMAT,
+        responseFormat: VideoDefaults.RESPONSE_FORMAT,
       },
 
       // Tasks

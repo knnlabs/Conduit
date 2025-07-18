@@ -4,14 +4,14 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 
 export type ExportFormat = 'csv' | 'json' | 'excel';
-export type ExportType = 'analytics' | 'virtual-keys' | 'usage' | 'request-logs' | 'system-performance' | 'provider-health';
+export type ExportType = 'analytics' | 'virtualKeys' | 'usage' | 'requestLogs' | 'systemPerformance' | 'providerHealth';
 
 interface ExportRequest {
   type: ExportType;
   format: ExportFormat;
   startDate?: string;
   endDate?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
 interface ExportStatus {
@@ -48,10 +48,11 @@ export function useExportApi() {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to start export');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to start export');
       }
 
       notifications.show({
@@ -60,7 +61,7 @@ export function useExportApi() {
         color: 'blue',
       });
 
-      return result;
+      return result as { exportId: string };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start export';
       setError(message);
@@ -81,21 +82,23 @@ export function useExportApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as unknown;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to get export status');
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to get export status');
       }
 
+      const statusData = result as { progress?: number };
       // Update progress tracking
-      if (result.progress !== undefined) {
+      if (statusData.progress !== undefined) {
         setExportProgress(prev => ({
           ...prev,
-          [exportId]: result.progress,
+          [exportId]: statusData.progress,
         }));
       }
 
-      return result;
+      return result as ExportStatus;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to get export status';
       setError(message);
@@ -139,7 +142,7 @@ export function useExportApi() {
     }
   }, []);
 
-  const exportAnalytics = useCallback(async (format: ExportFormat, filters?: any): Promise<void> => {
+  const exportAnalytics = useCallback(async (format: ExportFormat, filters?: Record<string, unknown>): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
@@ -156,8 +159,9 @@ export function useExportApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to export analytics');
+        const result = await response.json() as unknown;
+        const errorData = result as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to export analytics');
       }
 
       // For direct download endpoints
@@ -204,12 +208,12 @@ export function useExportApi() {
 
 function getExportEndpoint(type: ExportType): string {
   const endpoints: Record<ExportType, string> = {
-    'analytics': '/api/admin/analytics/export',
-    'virtual-keys': '/api/virtual-keys-analytics/export',
-    'usage': '/api/usage-analytics/export',
-    'request-logs': '/api/request-logs/export',
-    'system-performance': '/api/system-performance/export',
-    'provider-health': '/api/provider-health/export',
+    analytics: '/api/admin/analytics/export',
+    virtualKeys: '/api/virtual-keys-analytics/export',
+    usage: '/api/usage-analytics/export',
+    requestLogs: '/api/request-logs/export',
+    systemPerformance: '/api/system-performance/export',
+    providerHealth: '/api/provider-health/export',
   };
   
   return endpoints[type];

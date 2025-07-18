@@ -6,7 +6,6 @@ import {
   Textarea,
   Switch,
   PasswordInput,
-  Select,
   MultiSelect,
   Stack,
   Group,
@@ -57,7 +56,7 @@ export function FieldGroup({
 
 // Name field component with standard validation
 export interface NameFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   placeholder?: string;
@@ -75,8 +74,6 @@ export function NameField({
   placeholder,
   description,
   required = true,
-  minLength = 3,
-  maxLength = 100,
   disabled = false,
 }: NameFieldProps) {
   return (
@@ -86,7 +83,7 @@ export function NameField({
       required={required}
     >
       <TextInput
-        placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+        placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
         disabled={disabled}
         {...form.getInputProps(fieldName)}
       />
@@ -96,7 +93,7 @@ export function NameField({
 
 // Budget field component with proper number formatting
 export interface BudgetFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   description?: string;
@@ -141,7 +138,7 @@ export function BudgetField({
 
 // Enable/disable switch field
 export interface EnableFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   description?: string;
@@ -182,7 +179,7 @@ export function EnableField({
 
 // Priority field component with standard range
 export interface PriorityFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   description?: string;
@@ -221,7 +218,7 @@ export function PriorityField({
 
 // API Key field component
 export interface ApiKeyFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   placeholder?: string;
@@ -256,7 +253,7 @@ export function ApiKeyField({
 
 // Description field component
 export interface DescriptionFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   placeholder?: string;
@@ -298,7 +295,7 @@ export function DescriptionField({
 
 // Endpoint URL field component
 export interface EndpointFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   placeholder?: string;
@@ -333,7 +330,7 @@ export function EndpointField({
 
 // Capabilities multi-select field
 export interface CapabilitiesFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   description?: string;
@@ -371,7 +368,7 @@ export function CapabilitiesField({
 
 // Rate limit field component
 export interface RateLimitFieldProps {
-  form: UseFormReturnType<any>;
+  form: UseFormReturnType<Record<string, unknown>>;
   fieldName: string;
   label?: string;
   description?: string;
@@ -501,7 +498,7 @@ export function FormCard({
 }: FormCardProps) {
   return (
     <Card withBorder={withBorder} padding={padding}>
-      {(title || description) && (
+      {(title ?? description) && (
         <Card.Section inheritPadding py="sm" withBorder>
           {title && <Text fw={500}>{title}</Text>}
           {description && <Text size="sm" c="dimmed">{description}</Text>}

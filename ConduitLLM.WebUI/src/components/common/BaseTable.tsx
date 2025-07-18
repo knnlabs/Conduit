@@ -10,14 +10,9 @@ import {
   ActionIcon,
   Stack,
   UnstyledButton,
-  Center,
-  TextInput,
-  Button,
-  Collapse,
-  Badge,
 } from '@mantine/core';
-import { IconRefresh, IconChevronUp, IconChevronDown, IconSelector, IconSearch, IconFilter, IconX } from '@tabler/icons-react';
-import { useState, useMemo } from 'react';
+import { IconRefresh, IconChevronUp, IconChevronDown, IconSelector } from '@tabler/icons-react';
+import { useState, useMemo, useCallback } from 'react';
 import { TableActionMenu } from './TableActionMenu';
 import { ErrorDisplay } from './ErrorDisplay';
 import { TablePagination } from './TablePagination';
@@ -36,11 +31,11 @@ export interface ColumnDef<T> {
   width?: string;
   sortable?: boolean;
   sortType?: 'string' | 'number' | 'date' | 'currency' | 'boolean';
-  accessor?: keyof T | ((item: T) => any);
+  accessor?: keyof T | ((item: T) => unknown);
   customSort?: (a: T, b: T, direction: SortDirection) => number;
   filterable?: boolean;
   filterType?: 'text' | 'select' | 'number' | 'date' | 'boolean';
-  filterOptions?: { label: string; value: any }[];
+  filterOptions?: { label: string; value: unknown }[];
 }
 
 export interface ActionDef<T> {
@@ -59,7 +54,7 @@ export interface DeleteConfirmation<T> {
 
 export interface FilterConfig {
   key: string;
-  value: any;
+  value: unknown;
   operator?: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'gt' | 'gte' | 'lt' | 'lte';
 }
 
@@ -112,16 +107,13 @@ export interface BaseTableProps<T> {
   id?: string;
 }
 
-export function BaseTable<T extends Record<string, any>>({
+export function BaseTable<T extends Record<string, unknown>>({
   data,
   isLoading = false,
   error,
   columns,
   minWidth = 800,
   filters = [],
-  onFiltersChange,
-  searchable = false,
-  searchPlaceholder = 'Search...',
   pagination,
   onEdit,
   onDelete,
@@ -129,7 +121,6 @@ export function BaseTable<T extends Record<string, any>>({
   customActions = [],
   emptyMessage = 'No data available',
   loadingMessage = 'Loading...',
-  errorMessage,
   deleteConfirmation,
   withBorder = true,
   radius = 'md',
@@ -140,25 +131,27 @@ export function BaseTable<T extends Record<string, any>>({
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
   
   // Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [localFilters, setLocalFilters] = useState<FilterConfig[]>(filters);
+  const [localFilters] = useState<FilterConfig[]>(filters);
   
   // Sort comparison functions
-  const getSortValue = (item: T, column: ColumnDef<T>) => {
+  const getSortValue = useCallback((item: T, column: ColumnDef<T>) => {
     if (column.accessor) {
       return typeof column.accessor === 'function' 
         ? column.accessor(item) 
         : item[column.accessor];
     }
     return item[column.key];
-  };
+  }, []);
   
-  const compareSortValues = (a: any, b: any, sortType: string, direction: SortDirection): number => {
+  const compareSortValues = useCallback((a: unknown, b: unknown, sortType: string, direction: SortDirection): number => {
     // Handle null/undefined values
-    if (a == null && b == null) return 0;
-    if (a == null) return direction === 'asc' ? -1 : 1;
-    if (b == null) return direction === 'asc' ? 1 : -1;
+    if (a === null || a === undefined) {
+      if (b === null || b === undefined) return 0;
+      return direction === 'asc' ? -1 : 1;
+    }
+    if (b === null || b === undefined) {
+      return direction === 'asc' ? 1 : -1;
+    }
     
     let comparison = 0;
     
@@ -168,34 +161,36 @@ export function BaseTable<T extends Record<string, any>>({
         comparison = Number(a) - Number(b);
         break;
       case 'date':
-        comparison = new Date(a).getTime() - new Date(b).getTime();
+        const dateA = typeof a === 'string' || typeof a === 'number' || a instanceof Date ? new Date(a) : new Date(0);
+        const dateB = typeof b === 'string' || typeof b === 'number' || b instanceof Date ? new Date(b) : new Date(0);
+        comparison = dateA.getTime() - dateB.getTime();
         break;
       case 'boolean':
-        comparison = (a === b) ? 0 : a ? 1 : -1;
+        comparison = getBooleanComparison(a, b);
         break;
       case 'string':
       default:
-        comparison = String(a).localeCompare(String(b), undefined, { numeric: true });
+        comparison = getStringComparison(a, b);
         break;
     }
     
     return direction === 'asc' ? comparison : -comparison;
-  };
+  }, []);
   
   // Filter functions
-  const matchesFilter = (item: T, filter: FilterConfig): boolean => {
+  const matchesFilter = useCallback((item: T, filter: FilterConfig): boolean => {
     const column = columns.find(col => col.key === filter.key);
     if (!column) return true;
     
     const value = getSortValue(item, column);
     const filterValue = filter.value;
     
-    if (value == null || filterValue == null || filterValue === '') return true;
+    if (value === null || value === undefined || filterValue === null || filterValue === undefined || filterValue === '') return true;
     
-    const stringValue = String(value).toLowerCase();
-    const stringFilterValue = String(filterValue).toLowerCase();
+    const stringValue = getStringValue(value).toLowerCase();
+    const stringFilterValue = getStringValue(filterValue).toLowerCase();
     
-    switch (filter.operator || 'contains') {
+    switch (filter.operator ?? 'contains') {
       case 'equals':
         return stringValue === stringFilterValue;
       case 'contains':
@@ -215,26 +210,58 @@ export function BaseTable<T extends Record<string, any>>({
       default:
         return true;
     }
-  };
+  }, [columns, getSortValue]);
   
-  const matchesSearch = (item: T, query: string): boolean => {
-    if (!query) return true;
+  
+  // Helper functions
+  const getBooleanComparison = (a: unknown, b: unknown): number => {
+    if (a === b) return 0;
+    return a ? 1 : -1;
+  };
+
+  const getStringComparison = (a: unknown, b: unknown): number => {
+    let aStr: string;
+    let bStr: string;
     
-    const searchLower = query.toLowerCase();
-    return columns.some(column => {
-      const value = getSortValue(item, column);
-      return String(value).toLowerCase().includes(searchLower);
-    });
+    if (typeof a === 'string') {
+      aStr = a;
+    } else if (a === null || a === undefined) {
+      aStr = '';
+    } else if (typeof a === 'number' || typeof a === 'boolean') {
+      aStr = String(a);
+    } else {
+      aStr = '';
+    }
+    
+    if (typeof b === 'string') {
+      bStr = b;
+    } else if (b === null || b === undefined) {
+      bStr = '';
+    } else if (typeof b === 'number' || typeof b === 'boolean') {
+      bStr = String(b);
+    } else {
+      bStr = '';
+    }
+    
+    return aStr.localeCompare(bStr, undefined, { numeric: true });
   };
-  
+
+  const getStringValue = (value: unknown): string => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return '';
+  };
+
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    let result = data || [];
-    
-    // Apply search
-    if (searchQuery) {
-      result = result.filter(item => matchesSearch(item, searchQuery));
-    }
+    let result = data ?? [];
     
     // Apply filters
     if (localFilters.length > 0) {
@@ -254,7 +281,7 @@ export function BaseTable<T extends Record<string, any>>({
           
           const aValue = getSortValue(a, column);
           const bValue = getSortValue(b, column);
-          const sortType = column.sortType || 'string';
+          const sortType = column.sortType ?? 'string';
           
           return compareSortValues(aValue, bValue, sortType, sortConfig.direction);
         });
@@ -262,7 +289,7 @@ export function BaseTable<T extends Record<string, any>>({
     }
     
     return result;
-  }, [data, searchQuery, localFilters, sortConfig, columns]);
+  }, [data, localFilters, sortConfig, columns, getSortValue, matchesFilter, compareSortValues]);
   
   // Pagination
   const paginatedData = useMemo(() => {
@@ -318,7 +345,7 @@ export function BaseTable<T extends Record<string, any>>({
   }
 
   // Prepare actions for the action menu
-  const hasActions = onEdit || onDelete || customActions.length > 0;
+  const hasActions = onEdit ?? onDelete ?? customActions.length > 0;
   const actions: ActionDef<T>[] = [
     ...customActions,
     ...(onEdit ? [{
@@ -334,29 +361,15 @@ export function BaseTable<T extends Record<string, any>>({
     }] : []),
   ];
 
-  // Handle filter changes
-  const handleFilterChange = (key: string, value: any, operator?: FilterConfig['operator']) => {
-    const newFilters = localFilters.filter(f => f.key !== key);
-    if (value !== null && value !== undefined && value !== '') {
-      newFilters.push({ key, value, operator });
-    }
-    setLocalFilters(newFilters);
-    onFiltersChange?.(newFilters);
-  };
-  
-  const clearAllFilters = () => {
-    setLocalFilters([]);
-    setSearchQuery('');
-    onFiltersChange?.([]);
-  };
+  // Removed unused filter functions
   
   // Get active filter count
-  const activeFilterCount = localFilters.length + (searchQuery ? 1 : 0);
+  const activeFilterCount = localFilters.length;
   
   // Table rows
   const displayData = pagination ? paginatedData : filteredAndSortedData;
   const rows = displayData?.map((item, index) => (
-    <Table.Tr key={item.id || index}>
+    <Table.Tr key={typeof item.id === 'string' ? `${item.id}-${index}` : `item-${index}`}>
       {columns.map((column) => (
         <Table.Td key={column.key} style={{ width: column.width }}>
           {column.render(item)}
@@ -438,7 +451,7 @@ export function BaseTable<T extends Record<string, any>>({
         </Table.ScrollContainer>
 
         {/* Empty state */}
-        {displayData && displayData.length === 0 && !isLoading && (
+        {displayData?.length === 0 && !isLoading && (
           <Box p="xl" style={{ textAlign: 'center' }}>
             <Stack gap="xs" align="center">
               <Text c="dimmed" size="sm">

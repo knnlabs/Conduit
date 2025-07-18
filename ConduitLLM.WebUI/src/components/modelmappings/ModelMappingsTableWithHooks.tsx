@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   Group,
@@ -8,7 +8,6 @@ import {
   Menu,
   rem,
   Box,
-  Tooltip,
   LoadingOverlay,
   Alert,
 } from '@mantine/core';
@@ -39,7 +38,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   // Refresh data when onRefresh changes
   useEffect(() => {
     if (onRefresh) {
-      refetch();
+      void refetch();
     }
   }, [onRefresh, refetch]);
 
@@ -53,15 +52,13 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       title: 'Delete Model Mapping',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the mapping for model "{mapping.modelId}"?
+          Are you sure you want to delete the mapping for model &quot;{mapping.modelId}&quot;?
           This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: async () => {
-        await deleteMapping.mutateAsync(mapping.id);
-      },
+      onConfirm: () => { void deleteMapping.mutateAsync(mapping.id); },
     });
   };
 
@@ -92,8 +89,8 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       }
     }
     
-    return capabilities.slice(0, 3).map((cap, index) => (
-      <Badge key={index} size="xs" variant="dot" color={cap.color}>
+    return capabilities.slice(0, 3).map((cap) => (
+      <Badge key={`${cap.label}-${cap.color}`} size="xs" variant="dot" color={cap.color}>
         {cap.label}
       </Badge>
     ));
@@ -153,7 +150,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
             if ('capabilities' in mapping && mapping.capabilities) {
               const caps = mapping.capabilities;
               // Count unique capabilities in string that aren't already counted
-              const capsInString = caps.split(',').filter(c => c.trim());
               if (caps.includes('embeddings')) stringCaps++;
               if (caps.includes('function-calling') && !mapping.supportsFunctionCalling) stringCaps++;
               if (caps.includes('streaming') && !mapping.supportsStreaming) stringCaps++;
@@ -240,9 +236,9 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
           mapping={editingMapping}
           isOpen={!!editingMapping}
           onClose={() => setEditingMapping(null)}
-          onSave={async () => {
+          onSave={() => {
             setEditingMapping(null);
-            await refetch();
+            void refetch();
           }}
         />
       )}

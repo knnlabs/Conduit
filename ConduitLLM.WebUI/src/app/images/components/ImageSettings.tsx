@@ -30,8 +30,8 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
     updateSettings({ n });
   };
 
-  const handleResponseFormatChange = (response_format: 'url' | 'b64_json') => {
-    updateSettings({ response_format });
+  const handleResponseFormatChange = (responseFormat: 'url' | 'b64_json') => {
+    updateSettings({ responseFormat });
   };
 
   // Get size options based on selected model
@@ -186,7 +186,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
           </label>
           <select
             id="format-select"
-            value={settings.response_format}
+            value={settings.responseFormat}
             onChange={(e) => handleResponseFormatChange(e.target.value as 'url' | 'b64_json')}
             className="w-full p-2 border border-gray-300 rounded"
           >

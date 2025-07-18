@@ -7,8 +7,7 @@ import { NextRequest } from 'next/server';
  */
 type ApiHandler = (
   req: NextRequest,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
+  ...args: unknown[]
 ) => Promise<Response | undefined> | Promise<Response>;
 
 export class ApiLogger {
@@ -68,10 +67,10 @@ export function withLogging(routeName: string, handler: ApiHandler) {
     
     try {
       // Log request
-      let body;
+      let body: unknown;
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         try {
-          body = await request.clone().json();
+          body = await request.clone().json() as unknown;
         } catch {
           // Not JSON body, ignore
         }
@@ -83,7 +82,7 @@ export function withLogging(routeName: string, handler: ApiHandler) {
       
       // Log response
       if (response instanceof Response) {
-        const responseBody = await response.clone().json().catch(() => null);
+        const responseBody: unknown = await response.clone().json().catch(() => null);
         logger.logResponse(response.status, responseBody);
       }
       

@@ -2,16 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 // GET /api/model-mappings - List all model mappings
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
-    const searchParams = req.nextUrl.searchParams;
-    const page = parseInt(searchParams.get('page') ?? '1', 10);
-    const pageSize = parseInt(searchParams.get('pageSize') ?? '50', 10);
     
     // SDK now returns an array directly (backend doesn't support pagination yet)
-    const response = await adminClient.modelMappings.list(page, pageSize);
+    const response = await adminClient.modelMappings.list();
     
     return NextResponse.json(response);
   } catch (error) {
@@ -24,7 +21,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const body = await req.json();
+    const body = await req.json() as {
+      modelId: string;
+      providerModelId: string;
+      providerId: string;
+      priority?: number;
+      isEnabled?: boolean;
+      supportsVision?: boolean;
+      supportsImageGeneration?: boolean;
+      supportsAudioTranscription?: boolean;
+      supportsTextToSpeech?: boolean;
+      supportsRealtimeAudio?: boolean;
+      supportsFunctionCalling?: boolean;
+      supportsStreaming?: boolean;
+      supportsVideoGeneration?: boolean;
+      supportsEmbeddings?: boolean;
+      maxContextLength?: number;
+      maxOutputTokens?: number;
+      isDefault?: boolean;
+      metadata?: string;
+    };
     
     // Log the incoming data for debugging
     console.warn('[Model Mappings] Creating with data:', JSON.stringify(body, null, 2));
@@ -45,9 +61,9 @@ export async function POST(req: NextRequest) {
       supportsStreaming: body.supportsStreaming ?? false,
       supportsVideoGeneration: body.supportsVideoGeneration ?? false,
       supportsEmbeddings: body.supportsEmbeddings ?? false,
-      maxContextLength: body.maxContextLength ?? null,
-      maxOutputTokens: body.maxOutputTokens ?? null,
-      metadata: body.metadata ?? null,
+      maxContextLength: body.maxContextLength ?? undefined,
+      maxOutputTokens: body.maxOutputTokens ?? undefined,
+      metadata: body.metadata ?? undefined,
       isDefault: body.isDefault ?? false,
     };
     

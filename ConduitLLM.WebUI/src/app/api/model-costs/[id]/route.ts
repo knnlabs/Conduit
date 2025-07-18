@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { UpdateModelCostDto } from '@/app/model-costs/types/modelCost';
 
 interface RouteParams {
   params: Promise<{
@@ -20,7 +21,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    console.log('[ModelCosts] GET by ID:', id);
 
     const adminClient = getServerAdminClient();
     const result = await adminClient.modelCosts.getById(id);
@@ -44,13 +44,21 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const body = await req.json();
-    console.log('[ModelCosts] PUT request:', { id, body });
+    const body: unknown = await req.json();
+    
+    // Type guard to ensure body is a valid UpdateModelCostDto
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
+    const updateData = body as UpdateModelCostDto;
 
     const adminClient = getServerAdminClient();
-    const result = await adminClient.modelCosts.update(id, body);
+    const result = await adminClient.modelCosts.update(id, updateData);
 
-    console.log('[ModelCosts] PUT success:', id);
     return NextResponse.json(result);
   } catch (error) {
     console.error('[ModelCosts] PUT error:', error);
@@ -70,12 +78,10 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    console.log('[ModelCosts] DELETE request:', id);
 
     const adminClient = getServerAdminClient();
     await adminClient.modelCosts.deleteById(id);
 
-    console.log('[ModelCosts] DELETE success:', id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('[ModelCosts] DELETE error:', error);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Select,
   Text,
@@ -29,8 +29,6 @@ export function ProviderModelSelect({
   required = false,
   error,
 }: ProviderModelSelectProps) {
-  const [searchValue, setSearchValue] = useState(value);
-
   // For now, just provide a simple text input via Select with creatable
   const commonModels = [
     { value: 'gpt-4', label: 'gpt-4' },
@@ -39,10 +37,6 @@ export function ProviderModelSelect({
     { value: 'claude-3-sonnet', label: 'claude-3-sonnet' },
     { value: 'claude-2.1', label: 'claude-2.1' },
   ];
-
-  useEffect(() => {
-    setSearchValue(value);
-  }, [value]);
 
   return (
     <>

@@ -1,7 +1,6 @@
 'use client';
 
 import { Group, Text } from '@mantine/core';
-import { IconDatabase } from '@tabler/icons-react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { ConnectionStatus } from '@/types/navigation';
 import { CoreApiStatusIndicator } from './CoreApiStatusIndicator';

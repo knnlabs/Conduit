@@ -62,7 +62,7 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   }
 
   const metadata = video.metadata;
-  const downloadUrl = video.url || '';
+  const downloadUrl = video.url ?? '';
   const downloadFilename = `video-${task.id.slice(0, 8)}.mp4`;
 
   const handleDownload = async () => {
@@ -94,14 +94,15 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
             title={task.prompt}
           />
         ) : video.b64_json ? (
-          <VideoPlayer
-            src={`data:video/mp4;base64,${video.b64_json}`}
-            poster={undefined}
-            title={task.prompt}
-          />
-        ) : (
-          <div className="video-placeholder">No video available</div>
-        )}
+            <VideoPlayer
+              src={`data:video/mp4;base64,${video.b64_json}`}
+              poster={undefined}
+              title={task.prompt}
+            />
+          ) : (
+            <div className="video-placeholder">No video available</div>
+          )
+        }
       </div>
       
       <div className="video-card-content">
@@ -122,7 +123,7 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
         
         <div className="video-card-actions">
           <button
-            onClick={handleDownload}
+            onClick={() => void handleDownload()}
             className="btn btn-primary btn-sm"
             disabled={!downloadUrl}
           >

@@ -67,7 +67,7 @@ export function ChatInput({
 
   const addFunction = () => {
     try {
-      const parsed = JSON.parse(newFunctionJson);
+      const parsed = JSON.parse(newFunctionJson) as FunctionDefinition;
       if (parsed.name) {
         setFunctions(prev => [...prev, parsed]);
         setNewFunctionJson('');
@@ -79,10 +79,10 @@ export function ChatInput({
   };
 
   const removeFunction = (index: number) => {
-    setFunctions(prev => prev.filter((_, i) => i !== index));
+    setFunctions(prev => prev.filter((fn, i) => i !== index));
   };
 
-  const supportsFunctions = model?.supportsFunctionCalling || model?.supportsToolUsage;
+  const supportsFunctions = model?.supportsFunctionCalling ?? model?.supportsToolUsage;
   const supportsVision = model?.supportsVision;
 
   return (
@@ -101,15 +101,15 @@ export function ChatInput({
               <Text size="xs" c="dimmed">No functions defined</Text>
             ) : (
               <Group gap="xs">
-                {functions.map((func, index) => (
+                {functions.map((func) => (
                   <Badge
-                    key={index}
+                    key={func.name}
                     variant="light"
                     rightSection={
                       <ActionIcon 
                         size="xs" 
                         variant="subtle" 
-                        onClick={() => removeFunction(index)}
+                        onClick={() => removeFunction(functions.indexOf(func))}
                       >
                         <IconX size={12} />
                       </ActionIcon>
@@ -129,7 +129,7 @@ export function ChatInput({
           <ImageUpload
             images={images}
             onImagesChange={setImages}
-            disabled={disabled || isStreaming}
+            disabled={disabled ?? isStreaming}
           />
           <Divider />
         </>
@@ -146,7 +146,7 @@ export function ChatInput({
           minRows={1}
           maxRows={10}
           autosize
-          disabled={disabled || isStreaming}
+          disabled={disabled ?? isStreaming}
         />
         
         <Group gap="xs">
@@ -182,7 +182,7 @@ export function ChatInput({
             <Button
               size="md"
               onClick={handleSend}
-              disabled={disabled || (!message.trim() && images.length === 0)}
+              disabled={disabled ?? (!message.trim() && images.length === 0)}
               leftSection={<IconSend size={20} />}
             >
               Send
@@ -195,7 +195,7 @@ export function ChatInput({
         <ImageUpload
           images={images}
           onImagesChange={setImages}
-          disabled={disabled || isStreaming}
+          disabled={disabled ?? isStreaming}
         />
       )}
       

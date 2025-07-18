@@ -76,8 +76,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       const payload = {
         providerName: values.providerType, // Use the provider type as-is (e.g., "openai")
         apiKey: values.apiKey,
-        apiEndpoint: values.apiEndpoint || undefined,
-        organizationId: values.organizationId || undefined,
+        apiEndpoint: values.apiEndpoint ?? undefined,
+        organizationId: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
@@ -90,9 +90,9 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
         console.error('Provider creation failed:', errorData);
-        throw new Error(errorData.error || errorData.message || `Failed to create provider: ${response.status}`);
+        throw new Error(errorData.error ?? errorData.message ?? `Failed to create provider: ${response.status}`);
       }
 
       notifications.show({
@@ -145,26 +145,27 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         body: JSON.stringify({
           providerName: form.values.providerType,
           apiKey: form.values.apiKey,
-          apiEndpoint: form.values.apiEndpoint || undefined, // Changed from baseUrl to apiEndpoint
-          organizationId: form.values.organizationId || undefined,
+          apiEndpoint: form.values.apiEndpoint ?? undefined, // Changed from baseUrl to apiEndpoint
+          organizationId: form.values.organizationId ?? undefined,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string; message?: string };
         console.error('Provider test failed:', errorData);
         setTestResult({
           success: false,
-          message: errorData.error || errorData.message || `Connection failed: ${response.status}`,
+          message: errorData.error ?? errorData.message ?? `Connection failed: ${response.status}`,
         });
       } else {
-        const result = await response.json();
+        const result = await response.json() as { success?: boolean; message?: string };
         setTestResult({
-          success: result.success,
-          message: result.message || 'Connection successful',
+          success: result.success ?? false,
+          message: result.message ?? 'Connection successful',
         });
       }
     } catch (error) {
+      console.error('Connection test error:', error);
       setTestResult({
         success: false,
         message: 'Failed to test connection',
@@ -187,7 +188,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             <>
               {config.helpText.split(config.helpUrl)[0]}
               <Text component="span" fw={600}>{config.helpUrl}</Text>
-              {config.helpText.split(config.helpUrl)[1] || ''}
+              {config.helpText.split(config.helpUrl)[1] ?? ''}
             </>
           ) : (
             config.helpText
@@ -262,7 +263,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           <Group justify="space-between">
             <Button
               variant="subtle"
-              onClick={handleTestConnection}
+              onClick={() => void handleTestConnection()}
               loading={isTesting}
               disabled={isSubmitting}
             >

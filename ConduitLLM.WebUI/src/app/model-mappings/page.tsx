@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh, IconWand, IconFileImport } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
 import { ModelMappingsTable } from '@/components/modelmappings/ModelMappingsTableWithHooks';
 import { CreateModelMappingModal } from '@/components/modelmappings/CreateModelMappingModal';
 import { BulkMappingModal } from '@/components/modelmappings/BulkMappingModal';
@@ -24,7 +23,7 @@ export default function ModelMappingsPage() {
       await discoverModels(false, false);
       // Refresh the table to show any new mappings
       handleRefresh();
-    } catch (error) {
+    } catch {
       // Error notifications are handled by the hook
     }
   };
@@ -43,7 +42,7 @@ export default function ModelMappingsPage() {
             <Button
               leftSection={<IconWand size={16} />}
               variant="light"
-              onClick={handleDiscoverModels}
+              onClick={() => void handleDiscoverModels()}
               loading={isDiscovering}
             >
               Discover Models

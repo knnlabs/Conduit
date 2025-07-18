@@ -1,4 +1,4 @@
-import { Stack, Text, Title, ThemeIcon, Button, Group } from '@mantine/core';
+import { Stack, Text, Title, ThemeIcon, Button } from '@mantine/core';
 import { IconDatabaseOff, IconPlus } from '@tabler/icons-react';
 import React from 'react';
 
@@ -32,7 +32,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       {action && (
         <Button
           variant="light"
-          leftSection={action.icon || <IconPlus size={16} />}
+          leftSection={action.icon ?? <IconPlus size={16} />}
           onClick={action.onClick}
         >
           {action.label}

@@ -2,7 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
-function convertToCSV(modelCosts: any[]): string {
+interface ModelCost {
+  modelIdPattern: string;
+  providerName: string;
+  modelType: string;
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
+  embeddingTokenCost?: number;
+  imageCostPerImage?: number;
+  audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
+  videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string;
+  priority?: number;
+  isActive: boolean;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function convertToCSV(modelCosts: ModelCost[]): string {
   if (!modelCosts || modelCosts.length === 0) {
     return '';
   }
@@ -30,9 +51,11 @@ function convertToCSV(modelCosts: any[]): string {
   ];
 
   // Helper function to escape CSV values
-  const escapeCSV = (value: any): string => {
+  const escapeCSV = (value: unknown): string => {
     if (value === null || value === undefined) return '';
-    const str = String(value);
+    const str = typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' 
+      ? String(value) 
+      : JSON.stringify(value);
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
       return `"${str.replace(/"/g, '""')}"`;
     }
@@ -80,13 +103,12 @@ function convertToCSV(modelCosts: any[]): string {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const format = searchParams.get('format') || 'csv';
-    const provider = searchParams.get('provider') || undefined;
-    const isActive = searchParams.get('isActive') 
+    const format = searchParams.get('format') ?? 'csv';
+    const provider = searchParams.get('provider') ?? undefined;
+    const isActive = searchParams.get('isActive')
       ? searchParams.get('isActive') === 'true'
       : undefined;
 
-    console.log('[ModelCosts] Export request:', { format, provider, isActive });
 
     const adminClient = getServerAdminClient();
     
@@ -100,18 +122,17 @@ export async function GET(req: NextRequest) {
 
     if (format === 'json') {
       // Return JSON format
-      return NextResponse.json(response.items || []);
+      return NextResponse.json(response.items ?? []);
     } else {
       // Convert to CSV
-      const csv = convertToCSV(response.items || []);
+      const csv = convertToCSV(response.items ?? []);
       const filename = `model-costs-${new Date().toISOString().split('T')[0]}.csv`;
 
-      return new NextResponse(csv, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      });
+      const headers = new Headers();
+      headers.set('Content-Type', 'text/csv');
+      headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      return new NextResponse(csv, { headers });
     }
   } catch (error) {
     console.error('[ModelCosts] Export error:', error);

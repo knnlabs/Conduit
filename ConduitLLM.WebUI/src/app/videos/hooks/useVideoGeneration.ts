@@ -7,6 +7,46 @@ interface GenerateVideoParams {
   settings: VideoSettings;
 }
 
+interface TaskStatusResponse {
+  status: string;
+  progress: number;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  updatedAt?: string;
+  result?: unknown;
+  error?: string;
+}
+
+interface TaskStatusApiResponse {
+  status: string;
+  progress: number;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  updatedAt?: string;
+  result?: unknown;
+  error?: string;
+}
+
+interface GenerateVideoResponse {
+  taskId: string;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface GenerateVideoApiResponse {
+  taskId: string;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ErrorResponse {
+  error: string;
+}
+
 export function useVideoGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -19,15 +59,26 @@ export function useVideoGeneration() {
         throw new Error(`Failed to get task status: ${response.statusText}`);
       }
       
-      const taskStatus = await response.json();
+      const apiResponse = await response.json() as TaskStatusApiResponse;
+      
+      // Convert API response to camelCase
+      const taskStatus: TaskStatusResponse = {
+        status: apiResponse.status,
+        progress: apiResponse.progress,
+        message: apiResponse.message,
+        estimatedTimeToCompletion: apiResponse.estimatedTimeToCompletion,
+        updatedAt: apiResponse.updatedAt,
+        result: apiResponse.result,
+        error: apiResponse.error,
+      };
       
       // Update task in store
       updateTask(taskId, {
         status: taskStatus.status.toLowerCase(),
         progress: taskStatus.progress,
         message: taskStatus.message,
-        estimatedTimeToCompletion: taskStatus.estimated_time_to_completion,
-        updatedAt: taskStatus.updated_at,
+        estimatedTimeToCompletion: taskStatus.estimatedTimeToCompletion,
+        updatedAt: taskStatus.updatedAt,
       });
 
       // Check if task is complete
@@ -42,9 +93,9 @@ export function useVideoGeneration() {
       } else if (taskStatus.status === 'Failed' || taskStatus.status === 'Cancelled' || taskStatus.status === 'TimedOut') {
         updateTask(taskId, {
           status: 'failed',
-          error: taskStatus.error || `Task ${taskStatus.status.toLowerCase()}`,
+          error: taskStatus.error ?? `Task ${taskStatus.status.toLowerCase()}`,
         });
-        setError(taskStatus.error || `Video generation ${taskStatus.status.toLowerCase()}`);
+        setError(taskStatus.error ?? `Video generation ${taskStatus.status.toLowerCase()}`);
         return true; // Stop polling
       }
       
@@ -78,40 +129,51 @@ export function useVideoGeneration() {
           size: settings.size,
           fps: settings.fps,
           style: settings.style,
-          response_format: settings.response_format,
+          response_format: settings.responseFormat,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `Failed to generate video: ${response.statusText}`);
+        const errorData = await response.json().catch(() => null) as ErrorResponse | null;
+        throw new Error(errorData?.error ?? `Failed to generate video: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const apiData = await response.json() as GenerateVideoApiResponse;
+      
+      // Convert API response to camelCase
+      const data: GenerateVideoResponse = {
+        taskId: apiData.taskId,
+        message: apiData.message,
+        estimatedTimeToCompletion: apiData.estimatedTimeToCompletion,
+        createdAt: apiData.createdAt,
+        updatedAt: apiData.updatedAt,
+      };
       
       // Create new task
       const newTask: VideoTask = {
-        id: data.task_id,
+        id: data.taskId,
         prompt,
         status: 'pending',
         progress: 0,
         message: data.message,
-        estimatedTimeToCompletion: data.estimated_time_to_completion,
-        createdAt: data.created_at || new Date().toISOString(),
-        updatedAt: data.updated_at || new Date().toISOString(),
+        estimatedTimeToCompletion: data.estimatedTimeToCompletion,
+        createdAt: data.createdAt ?? new Date().toISOString(),
+        updatedAt: data.updatedAt ?? new Date().toISOString(),
         settings,
       };
       
       addTask(newTask);
 
       // Start polling for status
-      pollingIntervalRef.current = setInterval(async () => {
-        const shouldStop = await pollTaskStatus(data.task_id);
-        if (shouldStop && pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-          setIsGenerating(false);
-        }
+      pollingIntervalRef.current = setInterval(() => {
+        void (async () => {
+          const shouldStop = await pollTaskStatus(data.taskId);
+          if (shouldStop && pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+            setIsGenerating(false);
+          }
+        })();
       }, 2000); // Poll every 2 seconds
 
     } catch (error) {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
 // GET /api/config/caching/[cacheId]/entries - Get cache entries for a region
 export async function GET(
   req: NextRequest,
@@ -8,13 +7,12 @@ export async function GET(
 ) {
 
   try {
-    const adminClient = getServerAdminClient();
     const { cacheId } = await context.params;
     
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
-    const skip = parseInt(searchParams.get('skip') || '0');
-    const take = parseInt(searchParams.get('take') || '100');
+    const skip = parseInt(searchParams.get('skip') ?? '0');
+    const take = parseInt(searchParams.get('take') ?? '100');
     
     // For now, return mock data since the Admin SDK doesn't have this method yet
     // In a real implementation, this would call: adminClient.configuration.caching.getEntries(cacheId, skip, take)

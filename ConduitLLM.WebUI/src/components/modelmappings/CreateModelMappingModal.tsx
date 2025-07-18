@@ -9,7 +9,6 @@ import {
   NumberInput,
   Button,
   Select,
-  Title,
   Text,
   Divider,
   Alert,
@@ -19,8 +18,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
-import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -87,7 +85,7 @@ export function CreateModelMappingModal({
   const handleSubmit = async (values: FormValues) => {
     // Convert the numeric provider ID to provider name for the backend
     const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName || values.providerId;
+    const providerName = provider?.providerName ?? values.providerId;
 
     const createData: CreateModelProviderMappingDto = {
       modelId: values.modelId,
@@ -157,7 +155,11 @@ export function CreateModelMappingModal({
 
           <Select
             label="Provider"
-            placeholder={providersLoading ? "Loading providers..." : providerOptions.length === 0 ? "No providers configured" : "Select provider"}
+            placeholder={(() => {
+              if (providersLoading) return "Loading providers...";
+              if (providerOptions.length === 0) return "No providers configured";
+              return "Select provider";
+            })()}
             description="The provider that will handle requests for this model"
             data={providerOptions}
             required

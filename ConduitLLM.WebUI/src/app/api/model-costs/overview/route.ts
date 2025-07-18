@@ -5,11 +5,10 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const startDate = searchParams.get('startDate') || undefined;
-    const endDate = searchParams.get('endDate') || undefined;
+    const startDate = searchParams.get('startDate') ?? undefined;
+    const endDate = searchParams.get('endDate') ?? undefined;
     const groupBy = searchParams.get('groupBy') as 'provider' | 'model' | undefined;
 
-    console.log('[ModelCosts] Overview request:', { startDate, endDate, groupBy });
 
     const adminClient = getServerAdminClient();
     const response = await adminClient.modelCosts.getOverview({

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment } from 'react';
+import React from 'react';
 import { Text, Table, Anchor, List, Title, Divider, Blockquote } from '@mantine/core';
 import { CodeBlock } from './CodeBlock';
 
@@ -43,7 +43,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
     if (headerMatch) {
       const level = headerMatch[1].length;
       elements.push(
-        <Title key={key++} order={level as any} mt="md" mb="xs">
+        <Title key={key++} order={level as 1 | 2 | 3 | 4 | 5 | 6} mt="md" mb="xs">
           {parseInline(headerMatch[2])}
         </Title>
       );
@@ -67,8 +67,8 @@ function parseMarkdown(text: string): React.ReactNode[] {
       }
       elements.push(
         <Blockquote key={key++} my="sm">
-          {quoteLines.map((l, idx) => (
-            <Text key={idx}>{parseInline(l)}</Text>
+          {quoteLines.map((l) => (
+            <Text key={`quote-${l.slice(0, 50)}`}>{parseInline(l)}</Text>
           ))}
         </Blockquote>
       );
@@ -87,8 +87,8 @@ function parseMarkdown(text: string): React.ReactNode[] {
       
       elements.push(
         <List key={key++} type={isOrdered ? 'ordered' : 'unordered'} my="sm">
-          {listItems.map((item, idx) => (
-            <List.Item key={idx}>{parseInline(item)}</List.Item>
+          {listItems.map((item) => (
+            <List.Item key={`item-${item.slice(0, 50)}`}>{parseInline(item)}</List.Item>
           ))}
         </List>
       );
@@ -110,16 +110,16 @@ function parseMarkdown(text: string): React.ReactNode[] {
         <Table key={key++} my="sm" withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
-              {headers.map((h, idx) => (
-                <Table.Th key={idx}>{parseInline(h)}</Table.Th>
+              {headers.map((h) => (
+                <Table.Th key={`header-${h.slice(0, 50)}`}>{parseInline(h)}</Table.Th>
               ))}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {rows.map((row, rowIdx) => (
-              <Table.Tr key={rowIdx}>
-                {row.map((cell, cellIdx) => (
-                  <Table.Td key={cellIdx}>{parseInline(cell)}</Table.Td>
+            {rows.map((row) => (
+              <Table.Tr key={`row-${row.join('').slice(0, 50)}`}>
+                {row.map((cell) => (
+                  <Table.Td key={`cell-${cell.slice(0, 50)}`}>{parseInline(cell)}</Table.Td>
                 ))}
               </Table.Tr>
             ))}
@@ -210,7 +210,13 @@ function parseInline(text: string): React.ReactNode {
     elements.push(text.substring(lastIndex));
   }
 
-  return elements.length > 0 ? <Fragment>{elements}</Fragment> : text;
+  if (elements.length > 1) {
+    return elements;
+  }
+  if (elements.length === 1) {
+    return elements[0];
+  }
+  return text;
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {

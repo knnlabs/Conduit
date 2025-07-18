@@ -18,6 +18,25 @@ import { RoutingAction } from '../../../../types/routing';
 import { ACTION_TYPES, getParametersForActionType } from '../../utils/ruleBuilder';
 import { useProviders } from '../../../../hooks/useProviders';
 
+interface ActionParameter {
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  defaultValue?: unknown;
+  description?: string;
+  options?: Array<{ value: string; label: string }>;
+  min?: number;
+  max?: number;
+  placeholder?: string;
+}
+
+interface ActionConfig {
+  value: string;
+  label: string;
+  description?: string;
+}
+
 interface ActionRowProps {
   action: RoutingAction;
   index: number;
@@ -42,28 +61,28 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
     if (!value) return;
     
     const newParameters = getParametersForActionType(value);
-    const resetParameters: Record<string, any> = {};
+    const resetParameters: Record<string, unknown> = {};
     
     // Initialize parameters with default values
-    newParameters.forEach(param => {
+    newParameters.forEach((param: ActionParameter) => {
       if (param.required) {
-        resetParameters[param.name] = (param as any).defaultValue || '';
+        resetParameters[param.name] = param.defaultValue ?? '';
       }
     });
     
     onUpdate({
-      type: value as any,
+      type: value as RoutingAction['type'],
       target: value === 'route' ? action.target : undefined,
       parameters: resetParameters,
     });
   };
 
-  const handleParameterChange = (paramName: string, value: any) => {
+  const handleParameterChange = (paramName: string, value: unknown) => {
     const updatedParameters = { ...action.parameters, [paramName]: value };
     onUpdate({ parameters: updatedParameters });
   };
 
-  const renderParameterInput = (param: any) => {
+  const renderParameterInput = (param: ActionParameter) => {
     const currentValue = action.parameters?.[param.name];
 
     switch (param.type) {
@@ -98,10 +117,10 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             key={param.name}
             label={param.label}
             placeholder={(param).placeholder}
-            data={(param).options || []}
-            value={currentValue}
+            data={(param).options ?? []}
+            value={typeof currentValue === 'string' ? currentValue : null}
             onChange={(value) => handleParameterChange(param.name, value)}
-            searchable={(param).searchable}
+            searchable
             required={param.required}
           />
         );
@@ -114,7 +133,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             placeholder="Select provider"
             data={providerOptions}
             disabled={providersLoading}
-            value={currentValue}
+            value={typeof currentValue === 'string' ? currentValue : null}
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
             required={param.required}
@@ -127,7 +146,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             key={param.name}
             label={param.label}
             placeholder={(param).placeholder}
-            value={currentValue || ''}
+            value={typeof currentValue === 'string' || typeof currentValue === 'number' ? String(currentValue) : ''}
             onChange={(e) => handleParameterChange(param.name, e.target.value)}
             required={param.required}
           />
@@ -168,8 +187,8 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
                 placeholder="Select provider"
                 data={providerOptions}
             disabled={providersLoading}
-                value={action.target || ''}
-                onChange={(value) => onUpdate({ target: value || '' })}
+                value={action.target ?? ''}
+                onChange={(value) => onUpdate({ target: value ?? '' })}
                 searchable
               />
             </div>
@@ -210,7 +229,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
                 Info
               </Badge>
               <span style={{ fontSize: 12, color: '#666' }}>
-                {(actionConfig as any)?.description}
+                {(actionConfig as ActionConfig)?.description ?? 'No description available'}
               </span>
             </Group>
           </Card>

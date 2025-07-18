@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-  Alert,
   Card,
   Center,
   Stack,
@@ -10,7 +9,6 @@ import {
   Title,
   ThemeIcon,
   Button,
-  Group,
   Badge,
 } from '@mantine/core';
 import {
@@ -34,7 +32,6 @@ export function FeatureUnavailable({
   feature,
   title = 'Feature Coming Soon',
   message = 'This feature is currently under development and will be available soon.',
-  showTimeline = true,
   onBack,
 }: FeatureUnavailableProps) {
   const router = useRouter();

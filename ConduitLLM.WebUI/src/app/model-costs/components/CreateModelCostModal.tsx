@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import {
   Modal,
   TextInput,
@@ -13,12 +13,10 @@ import {
   Alert,
   Divider,
   Textarea,
-  Text,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { CreateModelCostDto } from '../types/modelCost';
 import { PatternPreview } from './PatternPreview';
@@ -53,7 +51,6 @@ interface FormValues {
 export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModelCostModalProps) {
   const queryClient = useQueryClient();
   const { createModelCost } = useModelCostsApi();
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -88,7 +85,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
   const createMutation = useMutation({
     mutationFn: async (data: CreateModelCostDto) => createModelCost(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      void queryClient.invalidateQueries({ queryKey: ['model-costs'] });
       form.reset();
       onSuccess?.();
       onClose();
@@ -113,7 +110,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       description: values.description || undefined,
     };
 
-    createMutation.mutate(data);
+    void createMutation.mutate(data);
   };
 
   const modelType = form.values.modelType;

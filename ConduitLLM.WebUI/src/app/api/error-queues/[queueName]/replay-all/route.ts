@@ -13,7 +13,7 @@ export async function POST(
     // Get optional message IDs from request body
     let messageIds: string[] | undefined;
     try {
-      const body = await request.json();
+      const body = await request.json() as { messageIds?: string[] };
       messageIds = body.messageIds;
     } catch {
       // No body or invalid JSON, replay all messages

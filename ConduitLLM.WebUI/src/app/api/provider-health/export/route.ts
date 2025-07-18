@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const range = searchParams.get('range') || '24h';
+    const range = searchParams.get('range') ?? '24h';
     
     // Return empty CSV until provider health endpoints are properly implemented
     const csv = `Provider Health Report - ${range}

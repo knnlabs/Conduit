@@ -11,7 +11,6 @@ import type {
 const QUERY_KEY = 'model-mappings';
 
 export function useModelMappings() {
-  const queryClient = useQueryClient();
   
   const { data: mappings = [], isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY],
@@ -67,14 +66,15 @@ export function useCreateModelMapping() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create model mapping');
+        const result = await response.json() as unknown;
+        const error = result as { message?: string };
+        throw new Error(error.message ?? 'Failed to create model mapping');
       }
 
       return response.json() as Promise<ModelProviderMappingDto>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
         title: 'Success',
         message: 'Model mapping created successfully',
@@ -96,7 +96,6 @@ export function useUpdateModelMapping() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => {
-      console.log('[useUpdateModelMapping] Updating mapping:', { id, data });
       
       const response = await fetch(`/api/model-mappings/${id}`, {
         method: 'PUT',
@@ -106,19 +105,18 @@ export function useUpdateModelMapping() {
         body: JSON.stringify(data),
       });
 
-      console.log('[useUpdateModelMapping] Response status:', response.status);
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('[useUpdateModelMapping] Error response:', error);
+        const result = await response.json() as unknown;
+        const error = result as { message?: string; details?: string };
         
         // Try to parse the details if it's a JSON string
-        let detailsMessage = error.message || 'Failed to update model mapping';
+        let detailsMessage = error.message ?? 'Failed to update model mapping';
         if (error.details) {
           try {
-            const details = JSON.parse(error.details);
-            detailsMessage = details.detail || details.message || detailsMessage;
-          } catch (e) {
+            const details = JSON.parse(error.details) as { detail?: string; message?: string };
+            detailsMessage = details.detail ?? details.message ?? detailsMessage;
+          } catch {
             detailsMessage = error.details;
           }
         }
@@ -127,11 +125,10 @@ export function useUpdateModelMapping() {
       }
 
       const result = await response.json() as ModelProviderMappingDto;
-      console.log('[useUpdateModelMapping] Success result:', result);
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
         title: 'Success',
         message: 'Model mapping updated successfully',
@@ -158,12 +155,13 @@ export function useDeleteModelMapping() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to delete model mapping');
+        const result = await response.json() as unknown;
+        const error = result as { message?: string };
+        throw new Error(error.message ?? 'Failed to delete model mapping');
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
         title: 'Success',
         message: 'Model mapping deleted successfully',
@@ -204,15 +202,16 @@ export function useDiscoverModels() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to discover models');
+        const result = await response.json() as unknown;
+        const error = result as { message?: string };
+        throw new Error(error.message ?? 'Failed to discover models');
       }
 
       const result = await response.json() as DiscoveredModelWithStatus[];
       
       if (autoCreate) {
         // Invalidate cache to show new mappings
-        await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+        void await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
         
         const created = result.filter(m => m.created === true).length;
         notifications.show({
@@ -255,7 +254,7 @@ interface BulkDiscoverResult {
     displayName: string;
     providerId: string;
     hasConflict: boolean;
-    existingMapping: any | null;
+    existingMapping: ModelProviderMappingDto | null;
     capabilities: {
       supportsVision: boolean;
       supportsImageGeneration: boolean;
@@ -292,8 +291,9 @@ export function useBulkDiscoverModels() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to discover models');
+        const result = await response.json() as unknown;
+        const error = result as { message?: string };
+        throw new Error(error.message ?? 'Failed to discover models');
       }
 
       const result = await response.json() as BulkDiscoverResult;
@@ -344,7 +344,7 @@ interface BulkCreateResult {
   created: number;
   failed: number;
   details: {
-    created: any[];
+    created: ModelProviderMappingDto[];
     failed: Array<{
       modelId: string;
       error: string;
@@ -368,14 +368,15 @@ export function useBulkCreateMappings() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create mappings');
+        const result = await response.json() as unknown;
+        const error = result as { message?: string };
+        throw new Error(error.message ?? 'Failed to create mappings');
       }
 
       const result = await response.json() as BulkCreateResult;
       
       // Invalidate cache to show new mappings
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      void await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       
       return result;
     } catch (error) {

@@ -80,7 +80,7 @@ export function RuleMetadata({ formData, onUpdate, errors }: RuleMetadataProps) 
         <Textarea
           label="Description"
           placeholder="Describe what this rule does and when it should be applied"
-          value={formData.description || ''}
+          value={formData.description ?? ''}
           onChange={(e) => onUpdate({ description: e.target.value })}
           autosize
           minRows={2}

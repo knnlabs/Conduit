@@ -45,7 +45,7 @@ export function IpRulesTable({
   onToggle 
 }: IpRulesTableProps) {
   const handleCopyIp = (ipAddress: string) => {
-    navigator.clipboard.writeText(ipAddress);
+    void navigator.clipboard.writeText(ipAddress);
     notifications.show({
       title: 'Copied',
       message: 'IP address copied to clipboard',
@@ -64,13 +64,15 @@ export function IpRulesTable({
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => onDelete?.(rule.id!),
+      onConfirm: () => rule.id && onDelete?.(rule.id),
     });
   };
 
   const handleToggle = (rule: IpRule) => {
     const newState = !(rule.isEnabled ?? true);
-    onToggle?.(rule.id!, newState);
+    if (rule.id) {
+      onToggle?.(rule.id, newState);
+    }
   };
 
   const allSelected = data.length > 0 && selectedRules.length === data.length;
@@ -80,7 +82,7 @@ export function IpRulesTable({
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(data.filter(r => r.id).map(r => r.id!));
+      onSelectionChange(data.filter(r => r.id).map(r => r.id).filter((id): id is string => id !== undefined));
     }
   };
 
@@ -144,7 +146,7 @@ export function IpRulesTable({
 
         <Table.Td>
           <Text size="sm" lineClamp={1}>
-            {rule.description || '-'}
+            {rule.description ?? '-'}
           </Text>
         </Table.Td>
 

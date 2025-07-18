@@ -15,7 +15,7 @@ export interface TextContent {
 
 export interface ImageContent {
   type: 'image_url';
-  image_url?: {
+  imageUrl?: {
     url: string;
     detail?: 'auto' | 'low' | 'high';
   };
