@@ -65,14 +65,24 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
       const [providersData, healthData, providerHealthData] = await Promise.all([
         getProviderPriorities(),
         getLoadBalancerHealth().catch(() => null),
-        fetch('/api/health/providers').then(res => res.json() as Promise<unknown[]>).catch(() => []),
+        fetch('/api/health/providers')
+          .then(res => res.json() as Promise<Array<{
+            id: string;
+            name: string;
+            status: string;
+            lastChecked: string;
+            responseTime: number;
+            uptime: number;
+            errorRate: number;
+            successRate: number;
+            details: unknown;
+          }>>)
+          .catch(() => []),
       ]);
 
       // Create a map of provider health data
       const healthMap = new Map(
-        Array.isArray(providerHealthData) 
-          ? providerHealthData.map((h: Record<string, unknown>) => [h.id as string, h])
-          : []
+        providerHealthData.map(h => [h.id, h])
       );
 
       // Transform provider data to include statistics and type

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { RuleCondition, RuleAction } from '@knn_labs/conduit-admin-client';
 // PATCH /api/config/routing/rules/[ruleId] - Update a routing rule
 export async function PATCH(
   req: NextRequest,
@@ -32,8 +33,8 @@ export async function PATCH(
         name: updates.name,
         priority: updates.priority,
         enabled: updates.enabled,
-        conditions: updates.conditions as Record<string, unknown>,
-        actions: updates.actions as Record<string, unknown>
+        conditions: updates.conditions as RuleCondition[],
+        actions: updates.actions as RuleAction[]
       };
       
       const updatedRule = await adminClient.configuration.updateRoutingRule(ruleId, updateDto);

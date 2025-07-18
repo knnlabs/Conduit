@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderConnectionTestRequest, ProviderConnectionTestResultDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderConnectionTestResultDto, ProviderSettings } from '@knn_labs/conduit-admin-client';
 
-interface TestProviderRequestBody {
+interface TestProviderRequest {
   providerName: string;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
-  additionalConfig?: Record<string, unknown>;
+  additionalConfig?: ProviderSettings;
 }
 
 interface TestProviderResponse {
@@ -33,7 +33,7 @@ interface TestProviderErrorResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse>> {
 
   try {
-    const body: TestProviderRequestBody = await request.json() as TestProviderRequestBody;
+    const body = await request.json() as TestProviderRequest;
     
     // Validate required fields
     if (!body.providerName || !body.apiKey) {
@@ -48,15 +48,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
 
     const adminClient = getServerAdminClient();
     
-    // Use the SDK's testConfig method
-    const testRequest: ProviderConnectionTestRequest = {
+    // Use the SDK's testConfig method with ProviderConfig interface
+    const testResult = await adminClient.providers.testConfig({
       providerName: body.providerName,
       apiKey: body.apiKey,
-      apiBase: body.apiEndpoint, // SDK expects apiBase, but we receive apiEndpoint
-      organization: body.organizationId,
-    };
-    
-    const testResult: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest);
+      baseUrl: body.apiEndpoint,
+      organizationId: body.organizationId,
+      additionalConfig: body.additionalConfig
+    });
     
     return NextResponse.json({
       success: testResult.success,
@@ -67,6 +66,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
     });
     
   } catch (error) {
-    return handleSDKError(error);
+    return handleSDKError(error) as NextResponse<TestProviderErrorResponse>;
   }
 }

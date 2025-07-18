@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
+// Types are inferred from the SDK methods
 
 // GET /api/videos/tasks/[taskId] - Get video generation task status
 export async function GET(

@@ -223,7 +223,7 @@ export const getParametersForActionType = (actionType: string) => {
         ],
       },
     ],
-    rate_limit: [
+    rateLimit: [
       {
         name: 'requests_per_minute',
         label: 'Requests per Minute',
@@ -311,7 +311,7 @@ export const RULE_TEMPLATES = [
         type: 'route' as const, 
         target: 'openai-primary',
         parameters: { 
-          fallback_enabled: true,
+          fallbackEnabled: true,
           timeout: 30000 
         } 
       }
@@ -334,7 +334,7 @@ export const RULE_TEMPLATES = [
         type: 'route' as const, 
         target: 'anthropic-primary',
         parameters: { 
-          fallback_enabled: true 
+          fallbackEnabled: true 
         } 
       }
     ]
@@ -378,8 +378,8 @@ export const RULE_TEMPLATES = [
       { 
         type: 'cache' as const, 
         parameters: { 
-          cache_duration: 3600,
-          cache_key_strategy: 'request_hash' 
+          cacheDuration: 3600,
+          cacheKeyStrategy: 'request_hash' 
         } 
       }
     ]
@@ -400,8 +400,8 @@ export const RULE_TEMPLATES = [
       { 
         type: 'rate_limit' as const, 
         parameters: { 
-          requests_per_minute: 10,
-          burst_limit: 5 
+          requestsPerMinute: 10,
+          burstLimit: 5 
         } 
       }
     ]
@@ -422,8 +422,8 @@ export const RULE_TEMPLATES = [
       { 
         type: 'block' as const, 
         parameters: { 
-          block_reason: 'Suspicious content detected',
-          return_code: '403' 
+          blockReason: 'Suspicious content detected',
+          returnCode: '403' 
         } 
       }
     ]

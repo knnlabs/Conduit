@@ -196,8 +196,8 @@ export function TestResults({ result, request }: TestResultsProps) {
                                 </Table.Tr>
                               </Table.Thead>
                               <Table.Tbody>
-                                {matchedRule.matchedConditions.map((condition, condIndex) => (
-                                  <Table.Tr key={`condition-${condIndex}`}>
+                                {matchedRule.matchedConditions.map((condition) => (
+                                  <Table.Tr key={`condition-${condition.condition.type}-${condition.condition.field ?? 'no-field'}-${condition.condition.operator}`}>
                                     <Table.Td>
                                       <Tooltip label={condition.matched ? 'Matched' : 'Not matched'}>
                                         {getConditionIcon(condition.matched)}
@@ -238,9 +238,9 @@ export function TestResults({ result, request }: TestResultsProps) {
                             <div>
                               <Text size="sm" fw={500} mb="xs">Actions:</Text>
                               <Group gap="xs">
-                                {matchedRule.rule.actions.map((action, actionIndex) => (
+                                {matchedRule.rule.actions.map((action) => (
                                   <Badge
-                                    key={`action-${actionIndex}`}
+                                    key={`action-${action.type}-${action.target ?? 'no-target'}`}
                                     variant={matchedRule.applied ? 'filled' : 'light'}
                                     color={matchedRule.applied ? 'green' : 'gray'}
                                   >

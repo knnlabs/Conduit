@@ -289,8 +289,8 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
               color="red"
             >
               <Stack gap="xs">
-                {testResult.errors.map((error, index) => (
-                  <Text key={`error-${String(error)}-${index}`} size="sm">{error}</Text>
+                {testResult.errors.map((error) => (
+                  <Text key={`error-${String(error).slice(0, 50).replace(/\s+/g, '-')}`} size="sm">{error}</Text>
                 ))}
               </Stack>
             </Alert>

@@ -135,7 +135,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
     }));
   };
 
-  const updateCondition = (index: number, field: keyof RoutingCondition, value: number | boolean | string[] | number[] | RoutingCondition['operator'] | RoutingCondition['logicalOperator'] | RoutingCondition['type'] | RoutingCondition['field'] | RoutingCondition['value']) => {
+  const updateCondition = (index: number, field: keyof RoutingCondition, value: number | string[] | number[] | string | RoutingCondition['value']) => {
     setFormData(prev => ({
       ...prev,
       conditions: prev.conditions.map((condition, i) =>
@@ -147,7 +147,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
   const removeCondition = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      conditions: prev.conditions.filter((_, i) => i !== index)
+      conditions: prev.conditions.filter((condition, i) => i !== index)
     }));
   };
 
@@ -165,7 +165,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
     }));
   };
 
-  const updateAction = (index: number, field: keyof RoutingAction, value: Record<string, unknown> | RoutingAction['type'] | RoutingAction['target'] | RoutingAction['parameters']) => {
+  const updateAction = (index: number, field: keyof RoutingAction, value: Record<string, unknown> | string | RoutingAction['parameters']) => {
     setFormData(prev => ({
       ...prev,
       actions: prev.actions.map((action, i) =>
@@ -177,7 +177,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
   const removeAction = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      actions: prev.actions.filter((_, i) => i !== index)
+      actions: prev.actions.filter((action, i) => i !== index)
     }));
   };
 
@@ -242,7 +242,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
           </Group>
           <Stack gap="sm">
             {formData.conditions.map((condition, index) => (
-              <Card key={`condition-${condition.field || condition.type}-${index}`} withBorder p="sm">
+              <Card key={`${condition.type}-${condition.field ?? ''}-${condition.operator}-${String(condition.value ?? '')}`} withBorder p="sm">
                 <Group align="flex-end">
                   <Select
                     label="Type"
@@ -307,7 +307,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
           </Group>
           <Stack gap="sm">
             {formData.actions.map((action, index) => (
-              <Card key={`action-${action.type}-${index}`} withBorder p="sm">
+              <Card key={`${action.type}-${action.target ?? ''}-${JSON.stringify(action.parameters ?? {})}`} withBorder p="sm">
                 <Group align="flex-end">
                   <Select
                     label="Type"

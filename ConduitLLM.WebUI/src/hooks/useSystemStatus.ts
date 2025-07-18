@@ -341,7 +341,7 @@ export function useSystemStatus(options: UseSystemStatusOptions = {}) {
 }
 
 // Additional utility hook for simple status indicators
-export function useStatusIndicator(status: SystemStatusType | boolean, context?: string) {
+export function useStatusIndicator(status: SystemStatusType | boolean) {
   const { getStatusConfig, getStatusColor, formatStatus } = useSystemStatus({ autoRefresh: false });
   
   if (typeof status === 'boolean') {
@@ -352,7 +352,7 @@ export function useStatusIndicator(status: SystemStatusType | boolean, context?:
     };
   }
   
-  const config = getStatusConfig(status, context);
+  const config = getStatusConfig(status);
   return {
     color: config.color,
     label: config.label,

@@ -107,7 +107,14 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
           // Validate timeout parameter
           if (action.parameters.timeout !== undefined) {
             const timeoutValue = action.parameters.timeout;
-            const timeout = parseFloat(typeof timeoutValue === 'string' ? timeoutValue : String(timeoutValue));
+            let timeout: number;
+            if (typeof timeoutValue === 'number') {
+              timeout = timeoutValue;
+            } else if (typeof timeoutValue === 'string') {
+              timeout = parseFloat(timeoutValue);
+            } else {
+              timeout = NaN;
+            }
             if (isNaN(timeout) || timeout <= 0) {
               newErrors.push(`Action ${index + 1}: Timeout must be a positive number`);
             } else if (timeout > 300000) { // 5 minutes max
@@ -118,7 +125,14 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
           // Validate weight parameter
           if (action.parameters.weight !== undefined) {
             const weightValue = action.parameters.weight;
-            const weight = parseFloat(typeof weightValue === 'string' ? weightValue : String(weightValue));
+            let weight: number;
+            if (typeof weightValue === 'number') {
+              weight = weightValue;
+            } else if (typeof weightValue === 'string') {
+              weight = parseFloat(weightValue);
+            } else {
+              weight = NaN;
+            }
             if (isNaN(weight) || weight < 0 || weight > 100) {
               newErrors.push(`Action ${index + 1}: Weight must be between 0 and 100`);
             }
@@ -127,7 +141,14 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
           // Validate max_retries parameter
           if (action.parameters.maxRetries !== undefined) {
             const retriesValue = action.parameters.maxRetries;
-            const retries = parseInt(typeof retriesValue === 'string' ? retriesValue : String(retriesValue));
+            let retries: number;
+            if (typeof retriesValue === 'number') {
+              retries = retriesValue;
+            } else if (typeof retriesValue === 'string') {
+              retries = parseInt(retriesValue, 10);
+            } else {
+              retries = NaN;
+            }
             if (isNaN(retries) || retries < 0 || retries > 10) {
               newErrors.push(`Action ${index + 1}: Max retries must be between 0 and 10`);
             }
@@ -159,7 +180,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         let nameValue = '';
         if (typeof value === 'string') {
           nameValue = value;
-        } else if (value !== null && value !== undefined) {
+        } else if (value !== null && value !== undefined && (typeof value === 'number' || typeof value === 'boolean')) {
           nameValue = String(value);
         }
         if (!nameValue || nameValue.trim() === '') {
@@ -188,7 +209,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         let descValue = '';
         if (typeof value === 'string') {
           descValue = value;
-        } else if (value !== null && value !== undefined) {
+        } else if (value !== null && value !== undefined && (typeof value === 'number' || typeof value === 'boolean')) {
           descValue = String(value);
         }
         if (descValue && descValue.length > 500) {

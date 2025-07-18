@@ -132,7 +132,7 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
           </Card>
         ) : (
           conditions.map((condition, index) => (
-            <div key={`condition-${condition.type}-${index}`}>
+            <div key={`condition-${condition.type}-${condition.field ?? 'no-field'}-${condition.operator}`}>
               <ConditionRow
                 condition={condition}
                 index={index}

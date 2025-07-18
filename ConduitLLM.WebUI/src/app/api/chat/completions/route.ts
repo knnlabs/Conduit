@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-import { type ChatCompletionChunk } from '@knn_labs/conduit-core-client';
 
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {
 
   try {
-    const body: unknown = await request.json();
+    const body = await request.json() as unknown;
     const coreClient = await getServerCoreClient();
     
     // Check if streaming is requested
@@ -20,12 +19,8 @@ export async function POST(request: NextRequest) {
       // Start the streaming request
       void (async () => {
         try {
-          // Create the request with explicit stream: true type
-          const requestData = {
-            ...(body as Record<string, unknown>),
-            stream: true,
-          } as Record<string, unknown>;
-          const streamResponse = (await coreClient.chat.create(requestData as unknown as Parameters<typeof coreClient.chat.create>[0])) as unknown as AsyncIterable<ChatCompletionChunk>;
+          // Create the streaming request - the SDK will handle validation
+          const streamResponse = await coreClient.chat.create(body as Parameters<typeof coreClient.chat.create>[0]);
           
           // Handle the async iterator from the SDK
           for await (const chunk of streamResponse) {
@@ -60,11 +55,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Non-streaming request
-      const requestData = {
-        ...(body as Record<string, unknown>),
-        stream: false,
-      } as Record<string, unknown>;
-      const result = await coreClient.chat.create(requestData as unknown as Parameters<typeof coreClient.chat.create>[0]);
+      const result = await coreClient.chat.create(body as Parameters<typeof coreClient.chat.create>[0]);
       
       return NextResponse.json(result);
     }

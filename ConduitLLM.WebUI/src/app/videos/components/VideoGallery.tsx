@@ -97,10 +97,10 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
               />
             );
           }
-          if (video.b64_json) {
+          if (video.b64Json) {
             return (
               <VideoPlayer
-                src={`data:video/mp4;base64,${video.b64_json}`}
+                src={`data:video/mp4;base64,${video.b64Json}`}
                 poster={undefined}
                 title={task.prompt}
               />
@@ -120,8 +120,8 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
             {metadata.duration && <span>{metadata.duration}s</span>}
             {metadata.resolution && <span>{metadata.resolution}</span>}
             {metadata.fps && <span>{metadata.fps} FPS</span>}
-            {metadata.file_size_bytes && (
-              <span>{formatFileSize(Number(metadata.file_size_bytes))}</span>
+            {metadata.fileSizeBytes && (
+              <span>{formatFileSize(Number(metadata.fileSizeBytes))}</span>
             )}
           </div>
         )}

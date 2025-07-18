@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderCredentialDto, UpdateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/providers/[id] - Get a single provider
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ProviderCredentialDto | { error: string }>> {
+) {
 
   try {
     const { id } = await params;
@@ -23,13 +23,26 @@ export async function GET(
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ProviderCredentialDto | { error: string }>> {
+) {
 
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body: UpdateProviderCredentialDto = await req.json() as UpdateProviderCredentialDto;
-    const provider: ProviderCredentialDto = await adminClient.providers.update(parseInt(id, 10), body);
+    const body = await req.json() as Record<string, unknown>;
+    
+    // Get the current provider data to merge with updates
+    const currentProvider = await adminClient.providers.getById(parseInt(id, 10));
+    
+    // Build update data ensuring type safety - SDK expects the generated type format
+    const updateData = {
+      id: parseInt(id, 10),
+      apiBase: (body.apiBase as string | undefined) ?? currentProvider.apiBase,
+      apiKey: (body.apiKey as string | undefined) ?? currentProvider.apiKey,
+      isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
+      organization: (body.organization as string | undefined) ?? currentProvider.organization
+    };
+    
+    const provider = await adminClient.providers.update(parseInt(id, 10), updateData);
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);
@@ -40,7 +53,7 @@ export async function PUT(
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<null | { error: string }>> {
+) {
 
   try {
     const { id } = await params;

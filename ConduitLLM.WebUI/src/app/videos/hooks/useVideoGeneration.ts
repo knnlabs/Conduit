@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useVideoStore } from './useVideoStore';
-import type { VideoSettings, VideoTask } from '../types';
+import type { VideoSettings, VideoTask, VideoGenerationResult } from '../types';
 
 interface GenerateVideoParams {
   prompt: string;
@@ -71,7 +71,7 @@ export function useVideoGeneration() {
       
       // Update task in store
       updateTask(taskId, {
-        status: taskStatus.status.toLowerCase(),
+        status: taskStatus.status.toLowerCase() as VideoTask['status'],
         progress: taskStatus.progress,
         message: taskStatus.message,
         estimatedTimeToCompletion: taskStatus.estimatedTimeToCompletion,
@@ -83,7 +83,7 @@ export function useVideoGeneration() {
         if (taskStatus.result) {
           updateTask(taskId, {
             status: 'completed',
-            result: taskStatus.result,
+            result: taskStatus.result as VideoGenerationResult,
           });
         }
         return true; // Stop polling

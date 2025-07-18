@@ -1,32 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderConnectionTestRequest, ProviderConnectionTestResultDto } from '@knn_labs/conduit-admin-client';
+import { ProviderSettings } from '@knn_labs/conduit-admin-client';
 
-interface TestConfigRequestBody {
+interface RequestBody {
   providerName: string;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
-  additionalConfig?: Record<string, unknown>;
+  additionalConfig?: ProviderSettings;
 }
 
 // POST /api/providers/test-config - Test a provider configuration before saving
-export async function POST(req: NextRequest): Promise<NextResponse<ProviderConnectionTestResultDto>> {
-
+export async function POST(req: NextRequest) {
   try {
-    const body: TestConfigRequestBody = await req.json() as TestConfigRequestBody;
+    const body = await req.json() as RequestBody;
     const adminClient = getServerAdminClient();
     
-    // Map the incoming data to SDK expected format
-    const testRequest: ProviderConnectionTestRequest = {
+    const testRequest = {
       providerName: body.providerName,
       apiKey: body.apiKey,
-      apiBase: body.apiEndpoint, // Map apiEndpoint to apiBase
-      organization: body.organizationId,
+      baseUrl: body.apiEndpoint,
+      organizationId: body.organizationId,
+      additionalConfig: body.additionalConfig
     };
     
-    const result: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest);
+    const result = await adminClient.providers.testConfig(testRequest);
     
     return NextResponse.json(result);
   } catch (error) {

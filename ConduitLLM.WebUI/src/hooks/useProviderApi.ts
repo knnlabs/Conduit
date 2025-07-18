@@ -36,7 +36,7 @@ export function useProviderApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProviders = useCallback(async (): Promise<Provider[]> => {
+  const getProviders = useCallback(async (): Promise<ProviderCredentialDto[]> => {
     setIsLoading(true);
     setError(null);
     

@@ -92,9 +92,10 @@ export function useExportApi() {
       const statusData = result as { progress?: number };
       // Update progress tracking
       if (statusData.progress !== undefined) {
+        const progress = statusData.progress;
         setExportProgress(prev => ({
           ...prev,
-          [exportId]: statusData.progress,
+          [exportId]: progress,
         }));
       }
 

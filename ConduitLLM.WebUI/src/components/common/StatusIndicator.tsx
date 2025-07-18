@@ -51,7 +51,6 @@ export interface StatusIndicatorProps {
   status: SystemStatusType | boolean;
   variant?: 'badge' | 'icon' | 'dot' | 'text' | 'detailed';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  context?: string;
   label?: string;
   description?: string;
   showTooltip?: boolean;
@@ -64,7 +63,6 @@ export function StatusIndicator({
   status,
   variant = 'badge',
   size = 'sm',
-  context,
   label,
   description,
   showTooltip = true,
@@ -72,7 +70,7 @@ export function StatusIndicator({
   className,
   testId,
 }: StatusIndicatorProps) {
-  const statusConfig = useStatusIndicator(status, context);
+  const statusConfig = useStatusIndicator(status);
   
   const displayLabel = label ?? statusConfig.label;
   const displayDescription = description ?? statusConfig.description;
@@ -197,14 +195,14 @@ export function HealthStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' }) {
-  return <StatusIndicator {...props} status={status} context="health" />;
+  return <StatusIndicator {...props} status={status} />;
 }
 
 export function ConnectionStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'connected' | 'connecting' | 'disconnected' | 'error' }) {
-  return <StatusIndicator {...props} status={status} context="connection" />;
+  return <StatusIndicator {...props} status={status} />;
 }
 
 export function EnabledStatusIndicator({
@@ -228,7 +226,7 @@ export function TaskStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'pending' | 'processing' | 'completed' | 'failed' }) {
-  return <StatusIndicator {...props} status={status} context="task" animate />;
+  return <StatusIndicator {...props} status={status} animate />;
 }
 
 // Composite status indicator for complex status displays

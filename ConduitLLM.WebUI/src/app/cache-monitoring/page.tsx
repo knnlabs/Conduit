@@ -643,8 +643,8 @@ export default function CacheMonitoringPage() {
                     <>
                       <Text size="xs" fw={500} c="dimmed" mb={4}>Recommended Actions:</Text>
                       <Stack gap={4}>
-                        {def.recommendedActions.map((action, index) => (
-                          <Text key={`action-${action.slice(0, 20)}-${index}`} size="xs" c="dimmed" pl="md">
+                        {def.recommendedActions.map((action) => (
+                          <Text key={`action-${action.slice(0, 30).replace(/\s+/g, '-')}`} size="xs" c="dimmed" pl="md">
                             • {action}
                           </Text>
                         ))}

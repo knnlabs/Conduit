@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
+import type { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
 
 
 export interface ModelOption {
@@ -43,9 +43,9 @@ export function useModels() {
   }, []);
 
   // Convert models to select options format
-  const modelOptions: ModelOption[] = models.map(model => ({
+  const modelOptions: ModelOption[] = models.map((model) => ({
     value: model.id,
-    label: model.displayName ?? model.id,
+    label: model.display_name ?? model.id,
   }));
 
   return {

@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderCredentialDto, CreateProviderCredentialDto, PaginatedResponse } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/providers - List all providers
-export async function GET(): Promise<NextResponse<ProviderCredentialDto[]>> {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
     // The SDK list method expects page and pageSize parameters
-    const response = await adminClient.providers.list(1, 100) as PaginatedResponse<ProviderCredentialDto>; // Get up to 100 providers
+    const response = await adminClient.providers.list(1, 100); // Get up to 100 providers
     
     console.error('SDK providers.list() response:', response);
     
@@ -43,12 +43,22 @@ export async function GET(): Promise<NextResponse<ProviderCredentialDto[]>> {
 }
 
 // POST /api/providers - Create a new provider
-export async function POST(request: Request): Promise<NextResponse<ProviderCredentialDto>> {
+export async function POST(request: Request) {
 
   try {
-    const body: CreateProviderCredentialDto = await request.json() as CreateProviderCredentialDto;
+    const body = await request.json() as Record<string, unknown>;
     const adminClient = getServerAdminClient();
-    const provider: ProviderCredentialDto = await adminClient.providers.create(body);
+    
+    // Ensure isEnabled has a value (default to true if not provided)
+    const createData = {
+      providerName: body.providerName as string,
+      apiBase: body.apiBase as string | undefined,
+      apiKey: body.apiKey as string | undefined,
+      isEnabled: (body.isEnabled as boolean | undefined) ?? true,
+      organization: body.organization as string | undefined
+    };
+    
+    const provider: ProviderCredentialDto = await adminClient.providers.create(createData);
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);

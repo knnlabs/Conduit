@@ -211,7 +211,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
                   </Text>
                   <Stack gap={4}>
                     {rule.conditions.map((condition, index) => (
-                      <Text key={`condition-${condition.type}-${index}`} size="sm" c="dark.6">
+                      <Text key={`condition-${condition.type}-${condition.field ?? 'no-field'}-${condition.operator}`} size="sm" c="dark.6">
                         {index + 1}. {formatConditionText(condition)}
                       </Text>
                     ))}
@@ -227,7 +227,7 @@ export function RuleSummary({ rule }: RuleSummaryProps) {
                   </Text>
                   <Stack gap={4}>
                     {rule.actions.map((action, index) => (
-                      <Text key={`action-${action.type}-${index}`} size="sm" c="dark.6">
+                      <Text key={`action-${action.type}-${action.target ?? 'no-target'}`} size="sm" c="dark.6">
                         {index + 1}. {formatActionText(action)}
                       </Text>
                     ))}

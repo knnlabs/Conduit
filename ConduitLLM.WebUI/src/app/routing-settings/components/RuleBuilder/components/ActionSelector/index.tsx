@@ -106,7 +106,7 @@ export function ActionSelector({ actions, onUpdate, errors }: ActionSelectorProp
         ) : (
           actions.map((action, index) => (
             <ActionRow
-              key={`action-${action.type}-${index}`}
+              key={`${action.type}-${action.target ?? ''}-${JSON.stringify(action.parameters ?? {})}`}
               action={action}
               index={index}
               onUpdate={(updates) => updateAction(index, updates)}

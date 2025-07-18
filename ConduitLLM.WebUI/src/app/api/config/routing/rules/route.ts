@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { RuleCondition, RuleAction } from '@knn_labs/conduit-admin-client';
 
 interface RoutingRule {
   id?: string;
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
         name: ruleData.name,
         priority: ruleData.priority,
         enabled: ruleData.enabled,
-        conditions: ruleData.conditions as Record<string, unknown>[],
-        actions: ruleData.actions as Record<string, unknown>[]
+        conditions: ruleData.conditions as RuleCondition[],
+        actions: ruleData.actions as RuleAction[]
       };
       
       const newRule = await adminClient.configuration.createRoutingRule(createDto);

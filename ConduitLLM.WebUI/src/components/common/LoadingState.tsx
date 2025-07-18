@@ -44,8 +44,8 @@ export function TableSkeleton({ rows = 5, columns = 4 }: TableSkeletonProps) {
       <Table.Tbody>
         {Array.from({ length: rows }, (item, rowIndex) => `row-${rows}-${rowIndex}`).map((rowKey, rowIndex) => (
           <Table.Tr key={rowKey}>
-            {Array.from({ length: columns }, (item, colIndex) => `cell-${rows}-${columns}-${rowIndex}-${colIndex}`).map((cellKey) => (
-              <Table.Td key={cellKey}>
+            {Array.from({ length: columns }, (item, colIndex) => (
+              <Table.Td key={`cell-${rows}-${columns}-${rowIndex}-${colIndex}`}>
                 <Skeleton height={16} width={colIndex === 0 ? '60%' : '40%'} />
               </Table.Td>
             ))}

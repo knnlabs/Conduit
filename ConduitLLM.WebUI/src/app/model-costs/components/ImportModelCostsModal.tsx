@@ -157,8 +157,8 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {parsedData.map((cost, index) => (
-                    <Table.Tr key={`${cost.modelPattern}-${cost.provider}-${index}`} style={{ 
+                  {parsedData.map((cost) => (
+                    <Table.Tr key={`${cost.modelPattern}-${cost.provider}-${cost.isValid ? 'valid' : 'invalid'}`} style={{ 
                       backgroundColor: cost.isValid ? undefined : 'var(--mantine-color-red-0)' 
                     }}>
                       <Table.Td>

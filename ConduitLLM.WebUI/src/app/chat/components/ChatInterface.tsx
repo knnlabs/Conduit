@@ -314,7 +314,7 @@ export function ChatInterface() {
     }
   }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics]);
 
-  const buildMessageContent = (text: string, images?: ImageAttachment[]) => {
+  const buildMessageContent = (text: string, images?: ImageAttachment[]): string | Array<TextContent | ImageContent> => {
     if (!images || images.length === 0) {
       return text;
     }

@@ -42,17 +42,17 @@
       "error",
       {
         "selector": "variable",
-        "format": ["camelCase", "PascalCase", "UPPER_CASE"],
+        "format": ["camelCase", "PascalCase", "UPPER_CASE", "snake_case"],
         "leadingUnderscore": "forbid"
       },
       {
         "selector": "parameter",
-        "format": ["camelCase", "PascalCase"],
+        "format": ["camelCase", "PascalCase", "snake_case"],
         "leadingUnderscore": "forbid"
       },
       {
         "selector": "property",
-        "format": ["camelCase", "PascalCase", "UPPER_CASE"],
+        "format": ["camelCase", "PascalCase", "UPPER_CASE", "snake_case"],
         "leadingUnderscore": "forbid",
         "filter": {
           "regex": "^(Content-Type|Content-Disposition|content-type|content-disposition|max_tokens|top_p|presence_penalty|response_format|aspect_ratio|webhook_url|supportsFunctionCalling|supportsVision|supportsImageGeneration|supportsAudioTranscription|supportsTextToSpeech|supportsRealtimeAudio|supportsStreaming|supportsVideoGeneration|supportsEmbeddings|maxContextLength|maxOutputTokens|isDefault|defaultCapabilityType|_note)$",
