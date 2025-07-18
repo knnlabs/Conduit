@@ -410,7 +410,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "test.mp4",
-                Duration = TimeSpan.FromSeconds(30),
+                Duration = 30,
                 Resolution = "1920x1080",
                 Width = 1920,
                 Height = 1080,
@@ -442,7 +442,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "large.mp4",
-                Duration = TimeSpan.FromSeconds(60),
+                Duration = 60,
                 Resolution = "1920x1080",
                 Width = 1920,
                 Height = 1080,
@@ -469,7 +469,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/webm",
                 FileName = "test.webm",
-                Duration = TimeSpan.FromSeconds(15),
+                Duration = 15,
                 Resolution = "640x480",
                 Width = 640,
                 Height = 480,
@@ -497,7 +497,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "multipart.mp4",
-                Duration = TimeSpan.FromMinutes(5),
+                Duration = 300,
                 Resolution = "1920x1080",
                 Width = 1920,
                 Height = 1080,
@@ -754,7 +754,7 @@ namespace ConduitLLM.Tests.Core.Services
         #region Utility Method Tests
 
         [Fact]
-        public void GetTotalSizeBytes_WithStoredFiles_ShouldReturnCorrectTotal()
+        public async Task GetTotalSizeBytes_WithStoredFiles_ShouldReturnCorrectTotal()
         {
             // Arrange
             var content1 = new MemoryStream(Encoding.UTF8.GetBytes("file1"));
@@ -767,8 +767,8 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             // Act
-            _service.StoreAsync(content1, metadata).Wait();
-            _service.StoreAsync(content2, metadata).Wait();
+            await _service.StoreAsync(content1, metadata);
+            await _service.StoreAsync(content2, metadata);
 
             var totalSize = _service.GetTotalSizeBytes();
 
@@ -777,7 +777,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public void GetItemCount_WithStoredFiles_ShouldReturnCorrectCount()
+        public async Task GetItemCount_WithStoredFiles_ShouldReturnCorrectCount()
         {
             // Arrange
             var content1 = new MemoryStream(Encoding.UTF8.GetBytes("file1"));
@@ -790,8 +790,8 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             // Act
-            _service.StoreAsync(content1, metadata).Wait();
-            _service.StoreAsync(content2, metadata).Wait();
+            await _service.StoreAsync(content1, metadata);
+            await _service.StoreAsync(content2, metadata);
 
             var itemCount = _service.GetItemCount();
 
@@ -800,7 +800,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public void GetItemCount_AfterDeletion_ShouldReturnCorrectCount()
+        public async Task GetItemCount_AfterDeletion_ShouldReturnCorrectCount()
         {
             // Arrange
             var content = new MemoryStream(Encoding.UTF8.GetBytes("file"));
@@ -812,9 +812,9 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             // Act
-            var storeResult = _service.StoreAsync(content, metadata).Result;
+            var storeResult = await _service.StoreAsync(content, metadata);
             var initialCount = _service.GetItemCount();
-            _service.DeleteAsync(storeResult.StorageKey).Wait();
+            await _service.DeleteAsync(storeResult.StorageKey);
             var finalCount = _service.GetItemCount();
 
             // Assert
@@ -827,25 +827,25 @@ namespace ConduitLLM.Tests.Core.Services
         #region Constructor Tests
 
         [Fact]
-        public void Constructor_WithCustomBaseUrl_ShouldTrimTrailingSlash()
+        public async Task Constructor_WithCustomBaseUrl_ShouldTrimTrailingSlash()
         {
             // Arrange
             var baseUrlWithSlash = "http://localhost:8080/";
             var service = new InMemoryMediaStorageService(_mockLogger.Object, baseUrlWithSlash);
 
             // Act
-            var url = service.GenerateUrlAsync("test/key").Result;
+            var url = await service.GenerateUrlAsync("test/key");
 
             // Assert
             Assert.Equal("http://localhost:8080/v1/media/test/key", url);
         }
 
         [Fact]
-        public void Constructor_WithDefaultBaseUrl_ShouldUseDefault()
+        public async Task Constructor_WithDefaultBaseUrl_ShouldUseDefault()
         {
             // Arrange & Act
             var service = new InMemoryMediaStorageService(_mockLogger.Object);
-            var url = service.GenerateUrlAsync("test/key").Result;
+            var url = await service.GenerateUrlAsync("test/key");
 
             // Assert
             Assert.Equal("http://localhost:5000/v1/media/test/key", url);

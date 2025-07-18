@@ -172,9 +172,9 @@ namespace ConduitLLM.Tests.Core.Services
                 req.BucketName == _options.BucketName &&
                 req.ContentType == "image/jpeg" &&
                 req.ServerSideEncryptionMethod == ServerSideEncryptionMethod.AES256 &&
-                req.Metadata.ContainsKey("media-type") &&
+                req.Metadata.Keys.Contains("media-type") &&
                 req.Metadata["media-type"] == "Image" &&
-                req.Metadata.ContainsKey("custom-source") &&
+                req.Metadata.Keys.Contains("custom-source") &&
                 req.Metadata["custom-source"] == "test"
             ), default), Times.Once);
         }
@@ -243,7 +243,7 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Verify expiration metadata was included
             _mockS3Client.Verify(x => x.PutObjectAsync(It.Is<PutObjectRequest>(req => 
-                req.Metadata.ContainsKey("expires-at") &&
+                req.Metadata.Keys.Contains("expires-at") &&
                 req.Metadata["expires-at"] == expiresAt.ToString("O")
             ), default), Times.Once);
         }
@@ -322,18 +322,7 @@ namespace ConduitLLM.Tests.Core.Services
             var metadataResponse = new GetObjectMetadataResponse
             {
                 ContentLength = 1024,
-                LastModified = lastModified,
-                Metadata = new Dictionary<string, string>
-                {
-                    ["media-type"] = "Image",
-                    ["original-filename"] = "test.jpg",
-                    ["custom-source"] = "test-source",
-                    ["expires-at"] = DateTime.UtcNow.AddHours(24).ToString("O")
-                },
-                Headers = new Amazon.Runtime.Internal.ResponseMetadata
-                {
-                    ["Content-Type"] = "image/jpeg"
-                }
+                LastModified = lastModified
             };
 
             // Create a mock that has the Headers property
@@ -583,7 +572,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "test.mp4",
-                Duration = TimeSpan.FromSeconds(30),
+                Duration = 30,
                 Resolution = "1920x1080",
                 Width = 1920,
                 Height = 1080,
@@ -616,13 +605,13 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Verify video-specific metadata was included
             _mockS3Client.Verify(x => x.PutObjectAsync(It.Is<PutObjectRequest>(req =>
-                req.Metadata.ContainsKey("duration") &&
+                req.Metadata.Keys.Contains("duration") &&
                 req.Metadata["duration"] == metadata.Duration.ToString() &&
-                req.Metadata.ContainsKey("resolution") &&
+                req.Metadata.Keys.Contains("resolution") &&
                 req.Metadata["resolution"] == metadata.Resolution &&
-                req.Metadata.ContainsKey("codec") &&
+                req.Metadata.Keys.Contains("codec") &&
                 req.Metadata["codec"] == metadata.Codec &&
-                req.Metadata.ContainsKey("generated-by-model") &&
+                req.Metadata.Keys.Contains("generated-by-model") &&
                 req.Metadata["generated-by-model"] == metadata.GeneratedByModel
             ), default), Times.Once);
         }
@@ -637,7 +626,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "large.mp4",
-                Duration = TimeSpan.FromMinutes(5),
+                Duration = 300,
                 Resolution = "1920x1080",
                 Width = 1920,
                 Height = 1080,
@@ -708,7 +697,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "multipart.mp4",
-                Duration = TimeSpan.FromMinutes(5),
+                Duration = 300,
                 Resolution = "1920x1080",
                 GeneratedByModel = "test-model"
             };
@@ -741,7 +730,7 @@ namespace ConduitLLM.Tests.Core.Services
                 req.BucketName == _options.BucketName &&
                 req.ContentType == "video/mp4" &&
                 req.ServerSideEncryptionMethod == ServerSideEncryptionMethod.AES256 &&
-                req.Metadata.ContainsKey("generated-by-model") &&
+                req.Metadata.Keys.Contains("generated-by-model") &&
                 req.Metadata["generated-by-model"] == "test-model"
             ), default), Times.Once);
         }
@@ -1037,7 +1026,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 ContentType = "video/mp4",
                 FileName = "upload.mp4",
-                Duration = TimeSpan.FromMinutes(2),
+                Duration = 120,
                 Resolution = "1920x1080",
                 GeneratedByModel = "test-model"
             };
@@ -1066,7 +1055,7 @@ namespace ConduitLLM.Tests.Core.Services
                 req.Verb == HttpVerb.PUT &&
                 req.ContentType == "video/mp4" &&
                 req.Protocol == Protocol.HTTPS &&
-                req.Headers.ContainsKey("x-amz-meta-generated-by-model") &&
+                req.Headers.Keys.Contains("x-amz-meta-generated-by-model") &&
                 req.Headers["x-amz-meta-generated-by-model"] == "test-model"
             )), Times.Once);
         }
@@ -1076,7 +1065,7 @@ namespace ConduitLLM.Tests.Core.Services
         #region Private Method Tests
 
         [Fact]
-        public void StorageKeyGeneration_ShouldIncludeDateFolder()
+        public async Task StorageKeyGeneration_ShouldIncludeDateFolder()
         {
             // This test verifies the storage key generation includes date folders
             // We can't directly test the private method, but we can verify the behavior
@@ -1101,7 +1090,7 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(putObjectResponse);
 
             // Act
-            var result = _service.StoreAsync(content, metadata).Result;
+            var result = await _service.StoreAsync(content, metadata);
 
             // Assert
             Assert.NotNull(result.StorageKey);
