@@ -1,0 +1,1740 @@
+
+
+./src/app/api/config/routing/rules/[ruleId]/route.ts
+16:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/api/config/routing/rules/route.ts
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+37:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+56:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+57:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+58:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+59:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+75:11  Error: 'adminClient' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/config/routing/test/route.ts
+8:11  Error: 'adminClient' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+16:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/cost-analytics/export/route.ts
+3:28  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/cost-analytics/route.ts
+9:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:94  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/error-queues/[queueName]/messages/route.ts
+12:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+13:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/error-queues/health/route.ts
+5:27  Error: 'request' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/error-queues/route.ts
+9:68  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+10:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/error-queues/statistics/route.ts
+8:56  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/app/api/health/events/route.ts
+59:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+60:11  Error: 'adminClient' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+66:14  Error: 'sdkError' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/health/providers/[id]/route.ts
+33:19  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/health/providers/route.ts
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/health/system/route.ts
+20:14  Warning: Do not nest ternary expressions.  no-nested-ternary
+53:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+56:11  Error: 'adminClient' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+62:14  Error: 'sdkError' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/images/generate/route.ts
+10:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+13:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+18:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+33:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+37:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+51:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/model-mappings/[id]/route.ts
+33:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+34:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+38:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+44:29  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+100:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+106:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+108:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/api/model-mappings/bulk-create/route.ts
+41:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+45:16  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+72:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+73:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+85:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+91:23  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+123:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/model-mappings/bulk-discover/route.ts
+20:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+29:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+29:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+39:107  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+42:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+43:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+47:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+48:59  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+49:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+50:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+51:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+52:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+56:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/model-mappings/discover/route.ts
+24:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+27:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+28:74  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+29:74  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+30:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+33:17  Error: 'created' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:18  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/model-mappings/route.ts
+10:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+11:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+16:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+49:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+56:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+58:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+59:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+60:67  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+61:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+62:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+63:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+64:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+65:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+66:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+67:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+68:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+69:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+70:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+73:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/provider-health/export/route.ts
+3:10  Error: 'getServerAdminClient' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/provider-health/route.ts
+3:10  Error: 'getServerAdminClient' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:11  Error: 'range' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/provider-models/[providerId]/route.ts
+14:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+18:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+22:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/providers/health-status/route.ts
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/providers/route.ts
+6:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+13:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+23:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+24:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+24:77  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+32:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/request-logs/export/route.ts
+3:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/request-logs/route.ts
+25:24  Warning: Do not nest ternary expressions.  no-nested-ternary
+85:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+86:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+88:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+89:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+90:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+91:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+92:63  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+99:49  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+103:24  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+105:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+105:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+107:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+111:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+111:64  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:50  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:76  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+113:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+113:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+116:26  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+128:42  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+129:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+130:64  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+131:67  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+138:11  Warning: Prefer using an optional chain expression instead, as it's more concise and easier to read.  @typescript-eslint/prefer-optional-chain
+140:50  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/api/settings/route.ts
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+12:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/api/settings/system-info/route.ts
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/system-performance/export/route.ts
+8:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+22:13  Error: 'performanceMetrics' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+53:33  Error: Invalid type "unknown" of template literal expression.  @typescript-eslint/restrict-template-expressions
+
+./src/app/api/system-performance/route.ts
+8:11  Error: 'range' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+22:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+23:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+24:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+86:80  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+86:105  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+102:53  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+104:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/usage-analytics/export/route.ts
+3:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/usage-analytics/route.ts
+8:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+116:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+133:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+134:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+151:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+152:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+154:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+169:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/virtual-keys-analytics/export/route.ts
+3:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/virtual-keys-analytics/route.ts
+2:10  Error: 'handleSDKError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+3:10  Error: 'getServerAdminClient' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+5:27  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/virtualkeys/[id]/route.ts
+30:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+35:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+42:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/api/virtualkeys/dashboard/route.ts
+9:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+35:7  Error: 'allKeys' is never reassigned. Use 'const' instead.  prefer-const
+36:7  Error: 'vkAnalytics' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+36:7  Error: 'vkAnalytics' is never reassigned. Use 'const' instead.  prefer-const
+37:7  Error: 'costAnalytics' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+37:7  Error: 'costAnalytics' is never reassigned. Use 'const' instead.  prefer-const
+40:64  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+47:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+64:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+67:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+90:66  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+96:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/api/virtualkeys/maintenance/route.ts
+6:28  Error: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/virtualkeys/route.ts
+10:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+11:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+13:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+18:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+22:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+23:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+24:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+29:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+34:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+38:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+39:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+42:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+55:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+56:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+59:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+77:49  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+80:17  Warning: Do not nest ternary expressions.  no-nested-ternary
+82:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+102:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+107:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/cache-monitoring/page.tsx
+15:3  Error: 'Switch' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+27:3  Error: 'Center' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+37:3  Error: 'IconHistory' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+39:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+40:3  Error: 'IconDatabase' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+45:3  Error: 'IconX' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+48:31  Error: 'useCallback' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+60:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+76:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+107:10  Error: 'status' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+123:23  Warning: Do not nest ternary expressions.  no-nested-ternary
+124:22  Warning: Do not nest ternary expressions.  no-nested-ternary
+141:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+143:34  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+215:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+246:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+272:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+333:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+340:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+391:86  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+392:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+399:26  Warning: Do not nest ternary expressions.  no-nested-ternary
+420:101  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+421:85  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+428:26  Warning: Do not nest ternary expressions.  no-nested-ternary
+447:100  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+448:84  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+486:26  Warning: Do not use Array index in keys  react/no-array-index-key
+536:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+554:36  Warning: Do not use Array index in keys  react/no-array-index-key
+567:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+594:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+605:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+616:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+625:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+640:32  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+680:38  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/caching-settings/page.tsx
+32:3  Error: 'IconServer2' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+33:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:3  Error: 'IconAlertCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+96:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+107:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+121:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+122:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+188:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+193:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+223:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+280:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+430:37  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+443:36  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+453:36  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+463:36  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+463:105  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+480:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+486:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+492:34  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+554:36  Warning: Do not nest ternary expressions.  no-nested-ternary
+574:36  Warning: Do not nest ternary expressions.  no-nested-ternary
+595:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+617:18  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/chat/components/AdvancedChatControls.tsx
+11:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/chat/components/ChatInput.tsx
+85:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+106:26  Warning: Do not use Array index in keys  react/no-array-index-key
+132:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+149:30  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+185:34  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+198:30  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/components/ChatInterface.tsx
+8:3  Error: 'Grid' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+9:3  Error: 'Text' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+16:3  Error: 'ScrollArea' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:27  Error: 'IconRobot' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:38  Error: 'IconUser' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:48  Error: 'IconBolt' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:58  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:83  Error: 'IconChevronDown' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+56:5  Error: 'setActiveSession' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+57:5  Error: 'sessions' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+70:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+73:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+116:13  Error: 'messageContent' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+120:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+152:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+190:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+190:89  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+190:122  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+191:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+191:107  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+192:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+260:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+261:15  Error: 'finishReason' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+265:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+281:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+283:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+304:6  Error: React Hook useCallback has missing dependencies: 'performanceSettings.showTokensPerSecond', 'performanceSettings.trackPerformanceMetrics', and 'performanceSettings.useServerMetrics'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+405:27  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/chat/components/ChatMessages.tsx
+50:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+54:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+61:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+65:59  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+99:29  Warning: Do not use Array index in keys  react/no-array-index-key
+113:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+121:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+123:31  Error: 'children' may use Object's default stringification format ('[object Object]') when stringified.  @typescript-eslint/no-base-to-string
+133:24  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/components/ChatSettings.tsx
+11:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+200:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+208:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+217:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/components/ChatSidebar.tsx
+10:3  Error: 'Modal' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/chat/components/ConnectionStatus.tsx
+3:39  Error: 'Indicator' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+4:33  Error: 'IconRefresh' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/chat/components/ConversationExport.tsx
+18:38  Error: 'conversation' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/chat/components/ImagePreview.tsx
+26:23  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/chat/components/ImageUpload.tsx
+4:1  Warning: 'react' import is duplicated.  no-duplicate-imports
+14:3  Error: 'ActionIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:10  Error: 'IconUpload' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:22  Error: 'IconX' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+152:33  Error: Expected the Promise rejection reason to be an Error.  @typescript-eslint/prefer-promise-reject-errors
+158:40  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+159:56  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+160:6  Error: React Hook React.useEffect has a missing dependency: 'handlePaste'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+171:6  Error: React Hook React.useEffect has a missing dependency: 'images'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+181:18  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+189:20  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/chat/components/ImageUploadArea.tsx
+10:3  Error: 'CloseButton' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:10  Error: 'IconUpload' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+101:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+119:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+136:28  Warning: Do not use Array index in keys  react/no-array-index-key
+203:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+211:22  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/chat/components/MarkdownRenderer.tsx
+46:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+71:24  Warning: Do not use Array index in keys  react/no-array-index-key
+91:29  Warning: Do not use Array index in keys  react/no-array-index-key
+114:32  Warning: Do not use Array index in keys  react/no-array-index-key
+120:30  Warning: Do not use Array index in keys  react/no-array-index-key
+122:34  Warning: Do not use Array index in keys  react/no-array-index-key
+213:32  Error: Fragments should contain more than one child - otherwise, there’s no need for a Fragment at all.  react/jsx-no-useless-fragment
+
+./src/app/chat/components/MessageActions.tsx
+3:56  Error: 'Text' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+62:37  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+75:43  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+88:39  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+107:39  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+116:45  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+125:41  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+136:39  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/app/chat/components/MessageEditor.tsx
+17:58  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+27:14  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/app/chat/components/ModelSelector.tsx
+6:3  Error: 'IconCode' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+11:10  Error: 'ModelWithCapabilities' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+24:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+24:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+58:9  Error: 'renderValue' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+76:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+81:11  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/components/TokenCounter.tsx
+108:18  Warning: Do not nest ternary expressions.  no-nested-ternary
+125:30  Warning: Do not nest ternary expressions.  no-nested-ternary
+132:18  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/chat/hooks/useChatCompletion.ts
+43:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+44:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+45:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+89:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+96:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+97:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+105:34  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+148:21  Warning: Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.  @typescript-eslint/prefer-nullish-coalescing
+161:23  Warning: Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.  @typescript-eslint/prefer-nullish-coalescing
+201:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+214:23  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+221:34  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/hooks/useChatStore.ts
+67:68  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+178:75  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/hooks/useModels.ts
+16:70  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+22:50  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/hooks/useWebSocketChat.ts
+52:23  Error: 'setActiveUsers' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+53:28  Error: 'setProviderStatuses' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+61:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+89:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+95:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+103:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+111:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+120:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/app/chat/types/index.ts
+81:32  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/chat/types/metrics.ts
+46:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/chat/utils/presets.ts
+8:3  Error: 'IconRocket' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+10:3  Error: 'IconBook' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+11:3  Error: 'IconDatabase' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+154:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+164:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+168:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+175:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/chat/utils/sse-parser.ts
+22:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+71:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/configuration/page.tsx
+83:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+84:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+196:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+229:13  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+230:13  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+362:39  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+372:43  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/cost-dashboard/CostDashboard.tsx
+11:3  Error: 'SimpleGrid' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:3  Error: 'LoadingOverlay' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+33:20  Error: 'useEffect' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+81:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+82:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+83:58  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+84:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+85:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+86:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+153:29  Warning: Do not nest ternary expressions.  no-nested-ternary
+214:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+251:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+263:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+271:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/error-queues/[queueName]/page.tsx
+62:20  Error: 'setPageSize' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+72:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+104:27  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+104:39  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+269:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+280:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/error-queues/components/ErrorQueueCharts.tsx
+68:46  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+75:9  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+140:28  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/error-queues/components/ErrorQueueTable.tsx
+8:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'Loader' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+38:43  Error: 'onRefresh' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+57:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+57:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+58:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+58:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+78:7  Warning: Do not nest ternary expressions.  no-nested-ternary
+232:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/error-queues/components/MessageDetailModal.tsx
+47:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+64:8  Warning: Do not nest ternary expressions.  no-nested-ternary
+81:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+97:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+140:85  Error: 'value' may use Object's default stringification format ('[object Object]') when stringified.  @typescript-eslint/no-base-to-string
+202:28  Warning: Do not nest ternary expressions.  no-nested-ternary
+217:41  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/error-queues/components/MessageList.tsx
+15:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+45:3  Error: 'searchQuery' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+46:3  Error: 'dateFilter' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+80:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+102:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+103:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+112:19  Warning: Do not nest ternary expressions.  no-nested-ternary
+147:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+181:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+203:35  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+217:35  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/error-queues/page.tsx
+34:10  Error: 'formatBytes' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+94:24  Error: 'setIncludeEmpty' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+124:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+128:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+132:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+132:60  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+148:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+167:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+174:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+177:17  Warning: Do not nest ternary expressions.  no-nested-ternary
+177:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+179:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+188:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+191:50  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+237:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/health-monitoring/page.tsx
+119:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+122:36  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+219:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+373:21  Warning: Do not nest ternary expressions.  no-nested-ternary
+382:21  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/images/components/ImageGallery.tsx
+76:71  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+76:87  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+86:21  Warning: Do not use Array index in keys  react/no-array-index-key
+87:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+89:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+104:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+122:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+124:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/images/components/ImageInterface.tsx
+60:42  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+60:68  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+101:52  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/images/components/ImagePromptInput.tsx
+36:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+77:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/images/hooks/useImageModels.ts
+24:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+25:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/images/hooks/useImageStore.ts
+84:30  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/ip-filtering/page.tsx
+53:65  Error: 'getIpStats' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+56:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+57:6  Error: React Hook useEffect has a missing dependency: 'fetchIpRules'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+73:77  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+77:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+88:9  Error: 'handleRefresh' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+89:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+115:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+159:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+191:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+285:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+292:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+299:32  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+306:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+366:27  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+372:27  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+432:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+443:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+454:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+476:31  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+483:31  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+491:31  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+507:26  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+508:26  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/llm-providers/page.tsx
+14:3  Error: 'Badge' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+24:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+41:38  Error: 'ProviderHealthStatusDto' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+62:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+73:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+76:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+76:88  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+77:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+86:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+108:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+114:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+143:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+202:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+203:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+310:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+396:20  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+397:22  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+416:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+424:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/model-mappings/page.tsx
+6:10  Error: 'notifications' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+27:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+46:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/page.tsx
+2:3  Error: 'Title' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+3:3  Error: 'Text' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+4:3  Error: 'Card' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+5:3  Error: 'Group' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+6:3  Error: 'Stack' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+7:3  Error: 'Badge' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+9:3  Error: 'Grid' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+10:3  Error: 'ThemeIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+13:3  Error: 'IconServer' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'IconKey' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+15:3  Error: 'IconChartBar' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+16:3  Error: 'IconMessageChatbot' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:3  Error: 'IconPhoto' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+18:3  Error: 'IconVideo' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:3  Error: 'IconMicrophone' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:3  Error: 'IconSettings' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+21:3  Error: 'IconAlertCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+23:1  Warning: '@mantine/core' import is duplicated.  no-duplicate-imports
+23:10  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:10  Error: 'getServerCoreClient' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+53:25  Warning: Unexpected `await` of a non-Promise (non-"Thenable") value.  @typescript-eslint/await-thenable
+
+./src/app/provider-health/page.tsx
+18:3  Error: 'Skeleton' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+21:3  Error: 'Tooltip' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+22:3  Error: 'ActionIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+24:3  Error: 'Code' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+25:3  Error: 'Tabs' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:3  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+27:3  Error: 'LoadingOverlay' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+28:3  Error: 'Center' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+32:3  Error: 'LineChart' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+41:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+42:3  Error: 'IconActivity' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+43:3  Error: 'IconApi' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+44:3  Error: 'IconBolt' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+45:3  Error: 'IconWifi' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+46:3  Error: 'IconInfoCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+47:3  Error: 'IconChartLine' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+48:3  Error: 'IconServer' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+56:10  Error: 'StatusIndicator' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+113:10  Error: 'healthHistory' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+127:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+128:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+129:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+130:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+144:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+147:36  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+210:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+226:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+233:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+421:30  Warning: Do not nest ternary expressions.  no-nested-ternary
+500:36  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/request-logs/page.tsx
+22:3  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:3  Error: 'IconFilter' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+30:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+31:3  Error: 'IconUser' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+61:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+62:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+106:25  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+128:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+184:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+191:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+222:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+230:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+231:83  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+239:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+240:79  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+252:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+253:81  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+261:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+262:77  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+270:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+278:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+337:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+340:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/ProviderPriorityManager/components/BulkActions.tsx
+86:19  Error: 'config' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+93:20  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/routing-settings/components/ProviderPriorityManager/components/ProviderList.tsx
+40:9  Error: 'getProviderTypeColor' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+81:41  Error: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/routing-settings/components/ProviderPriorityManager/components/ProviderRow.tsx
+3:20  Error: 'useEffect' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/routing-settings/components/ProviderPriorityManager/components/ProviderStats.tsx
+45:9  Error: 'totalUsage' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+141:16  Warning: Do not nest ternary expressions.  no-nested-ternary
+161:28  Warning: Do not nest ternary expressions.  no-nested-ternary
+187:30  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/routing-settings/components/ProviderPriorityManager/index.tsx
+24:28  Error: 'RoutingConfiguration' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+64:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+65:6  Error: React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+92:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+103:76  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+104:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+105:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+114:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+190:66  Error: 'statistics' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+190:78  Error: 'type' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+200:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+278:8  Warning: Do not nest ternary expressions.  no-nested-ternary
+323:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/routing-settings/components/ProviderPriorityManager/utils/priorityHelpers.ts
+26:5  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/app/routing-settings/components/ProvidersTab/ProviderPriorityList.tsx
+14:3  Error: 'Divider' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:3  Error: 'Tooltip' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+18:3  Error: 'ActionIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+23:3  Error: 'IconSettings' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+25:3  Error: 'IconAlertCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+47:88  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+50:86  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+58:73  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+64:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+83:7  Warning: Unexpected `await` of a non-Promise (non-"Thenable") value.  @typescript-eslint/await-thenable
+85:9  Warning: Unexpected `await` of a non-Promise (non-"Thenable") value.  @typescript-eslint/await-thenable
+93:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+100:27  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+107:25  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+133:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+147:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+155:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+172:76  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+266:30  Warning: Prefer using an optional chain expression instead, as it's more concise and easier to read.  @typescript-eslint/prefer-optional-chain
+
+./src/app/routing-settings/components/ProvidersTab/index.tsx
+11:3  Error: 'Center' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+12:3  Error: 'Loader' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+23:10  Error: 'ProviderPriorityList' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+33:10  Error: 'providers' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:10  Error: 'health' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+53:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+54:6  Error: React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+66:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+75:9  Error: 'handleUpdateProviders' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+79:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+84:9  Error: 'handleUpdateConfig' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+88:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/routing-settings/components/RoutingTester/components/RuleEvaluationTrace.tsx
+14:3  Error: 'Tooltip' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+20:3  Error: 'IconArrowRight' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+34:3  Error: 'matchedRules' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+145:24  Warning: Do not use Array index in keys  react/no-array-index-key
+237:36  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/routing-settings/components/RoutingTester/components/TestForm.tsx
+85:20  Error: 'removed' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+109:20  Error: 'removed' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+159:81  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+174:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+175:82  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+205:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+285:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+326:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RoutingTester/components/TestHistory.tsx
+14:3  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+180:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+182:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RoutingTester/components/TestResults.tsx
+11:3  Error: 'Progress' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+25:48  Error: 'ConditionMatch' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+49:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+49:62  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+106:28  Warning: Do not use Array index in keys  react/no-array-index-key
+135:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+159:34  Warning: Do not use Array index in keys  react/no-array-index-key
+195:50  Warning: Do not use Array index in keys  react/no-array-index-key
+238:42  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/components/RoutingTester/hooks/useRoutingTest.ts
+276:77  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RoutingTester/index.tsx
+21:3  Error: 'IconRefresh' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+58:5  Error: 'loadTestCase' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+142:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+185:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+202:25  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/routing-settings/components/RoutingTester/utils/testHelpers.ts
+1:45  Error: 'EvaluationStep' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+156:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+168:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+212:27  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+289:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+289:110  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RuleBuilder/components/ActionSelector/ActionRow.tsx
+45:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+50:49  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+50:67  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+55:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+61:60  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+66:40  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+101:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+130:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+171:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+172:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+213:35  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/routing-settings/components/RuleBuilder/components/ActionSelector/index.tsx
+3:10  Error: 'useState' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+90:23  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+90:34  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+105:20  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/components/RuleBuilder/components/ConditionBuilder/ConditionRow.tsx
+46:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+47:36  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+57:26  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+62:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+105:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+105:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+162:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RuleBuilder/components/ConditionBuilder/index.tsx
+113:23  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+113:37  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+127:23  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/components/RuleBuilder/components/RuleMetadata.tsx
+83:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/components/RuleBuilder/components/RuleSummary.tsx
+28:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+28:48  Error: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+54:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+66:43  Error: Invalid type "unknown" of template literal expression.  @typescript-eslint/restrict-template-expressions
+153:15  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+153:45  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+168:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+209:34  Warning: Do not use Array index in keys  react/no-array-index-key
+225:34  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/components/RuleBuilder/hooks/useRuleValidation.ts
+84:20  Error: 'e' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+151:84  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/routing-settings/components/RuleBuilder/index.tsx
+51:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+187:28  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/components/RulesTab/RuleEditor.tsx
+75:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+138:81  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+168:75  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+245:26  Warning: Do not use Array index in keys  react/no-array-index-key
+258:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+289:46  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+289:60  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+310:26  Warning: Do not use Array index in keys  react/no-array-index-key
+323:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+340:43  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+340:54  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./src/app/routing-settings/components/RulesTab/RulesList.tsx
+13:3  Error: 'Anchor' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+39:52  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+39:64  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./src/app/routing-settings/components/RulesTab/index.tsx
+52:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+53:6  Error: React Hook useEffect has a missing dependency: 'loadRules'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+59:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+87:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+96:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+105:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+157:8  Warning: Do not nest ternary expressions.  no-nested-ternary
+185:20  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+186:20  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+195:16  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/routing-settings/components/TestingTab/RuleTester.tsx
+10:3  Error: 'Textarea' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'Code' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+15:3  Error: 'Divider' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+18:3  Error: 'Table' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:3  Error: 'ScrollArea' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+27:3  Error: 'IconRoute' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+151:86  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+162:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+272:53  Error: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+300:30  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/routing-settings/hooks/useModels.ts
+36:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+36:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+47:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+
+./src/app/routing-settings/hooks/useProviderPriorities.ts
+48:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/hooks/useProviders.ts
+44:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+50:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/hooks/useRoutingRules.ts
+54:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+96:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+131:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+172:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+202:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/routing-settings/page.tsx
+4:63  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+9:3  Error: 'IconSettings' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+10:3  Error: 'IconInfoCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+11:3  Error: 'IconHelp' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/routing-settings/types/routing.ts
+21:10  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+38:31  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+85:10  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+87:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+127:32  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+129:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+135:16  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/system-info/page.tsx
+22:10  Error: 'StatusIndicator' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+25:3  Error: 'IconCpu' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+33:3  Error: 'IconCpu2' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+34:3  Error: 'IconDeviceFloppy' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:3  Error: 'IconNetwork' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+42:10  Error: 'formatters' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+66:48  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+70:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+77:68  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+152:23  Warning: Do not nest ternary expressions.  no-nested-ternary
+164:23  Warning: Do not nest ternary expressions.  no-nested-ternary
+180:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+189:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+191:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+196:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+203:9  Error: 'mapToSystemStatus' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+279:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+303:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+306:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+322:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+325:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+344:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+363:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+467:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+468:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+471:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+471:75  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+508:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+521:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+643:52  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+654:67  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+665:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/system-performance/page.tsx
+10:3  Error: 'RingProgress' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+25:3  Error: 'AreaChart' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+38:3  Error: 'IconBolt' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+39:3  Error: 'IconWifi' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+138:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+141:36  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+211:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+227:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+234:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+249:60  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+264:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+269:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+271:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+275:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+276:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+281:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+296:77  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+301:71  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+303:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+303:113  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+307:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+308:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+313:70  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+313:127  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+328:73  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+333:69  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+335:59  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+335:109  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+339:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+340:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+345:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+345:120  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+366:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+369:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+379:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+379:93  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+402:81  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+406:67  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+410:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+472:12  Warning: Do not nest ternary expressions.  no-nested-ternary
+541:18  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/usage-analytics/page.tsx
+8:3  Error: 'Paper' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+12:3  Error: 'RingProgress' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+23:3  Error: 'LineChart' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+32:3  Error: 'IconCalendar' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+111:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+113:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+114:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+115:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+124:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+166:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+177:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+184:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+205:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+216:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+218:58  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+220:75  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+221:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+240:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+251:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+253:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+255:71  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+256:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+275:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+286:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+288:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+290:73  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+291:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+310:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+321:68  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+323:61  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+325:78  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+326:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+384:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+439:60  Error: 'index' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+522:34  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/videos/components/VideoGallery.tsx
+65:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+90:10  Warning: Do not nest ternary expressions.  no-nested-ternary
+125:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/videos/components/VideoInterface.tsx
+61:42  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+61:68  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./src/app/videos/components/VideoPromptInput.tsx
+12:44  Error: 'models' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+39:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+47:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+47:25  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+54:20  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/videos/components/VideoQueue.tsx
+54:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/videos/components/VideoSettings.tsx
+5:1  Warning: '../types' import is duplicated.  no-duplicate-imports
+50:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+114:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/videos/hooks/useVideoGeneration.ts
+45:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+47:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+100:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+101:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+108:48  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/app/videos/hooks/useVideoModels.ts
+14:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+15:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+18:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+26:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/app/videos/hooks/useVideoStore.ts
+4:1  Warning: '../types' import is duplicated.  no-duplicate-imports
+4:25  Error: 'VideoResolutions' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/virtual-keys-analytics/page.tsx
+18:3  Error: 'Progress' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+21:3  Error: 'ActionIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+27:3  Error: 'BarChart' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+34:3  Error: 'IconCoins' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:3  Error: 'IconClock' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+39:3  Error: 'IconAlertTriangle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+40:3  Error: 'IconCircleCheck' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+151:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+223:53  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+234:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+241:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+363:18  Warning: Do not nest ternary expressions.  no-nested-ternary
+443:34  Warning: Do not nest ternary expressions.  no-nested-ternary
+560:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+603:40  Warning: Do not use Array index in keys  react/no-array-index-key
+631:40  Warning: Do not use Array index in keys  react/no-array-index-key
+637:38  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/app/virtualkeys/dashboard/page.tsx
+76:73  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+77:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+78:55  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+79:71  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+80:65  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+81:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+82:69  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+83:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+84:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+85:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+96:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+157:58  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+168:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+294:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+358:71  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+407:36  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/app/virtualkeys/page.tsx
+68:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+89:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+137:82  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+163:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+164:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+197:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+386:99  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+403:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+410:19  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/components/charts/CostChart.tsx
+68:30  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+127:59  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/common/BaseTable.tsx
+13:3  Error: 'Center' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'TextInput' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+15:3  Error: 'Button' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+16:3  Error: 'Collapse' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+17:3  Error: 'Badge' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:69  Error: 'IconSearch' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:81  Error: 'IconFilter' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+19:93  Error: 'IconX' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+39:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+43:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+62:10  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+115:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+123:3  Error: 'searchable' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+124:3  Error: 'searchPlaceholder' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+132:3  Error: 'errorMessage' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+144:10  Error: 'showFilters' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+144:23  Error: 'setShowFilters' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+157:33  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+157:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+159:11  Error: Expected '===' and instead saw '=='.  eqeqeq
+159:24  Error: Expected '===' and instead saw '=='.  eqeqeq
+160:11  Error: Expected '===' and instead saw '=='.  eqeqeq
+161:11  Error: Expected '===' and instead saw '=='.  eqeqeq
+174:22  Warning: Do not nest ternary expressions.  no-nested-ternary
+193:15  Error: Expected '===' and instead saw '=='.  eqeqeq
+193:38  Error: Expected '===' and instead saw '=='.  eqeqeq
+198:29  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+232:23  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+257:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+265:6  Error: React Hook useMemo has missing dependencies: 'getSortValue', 'matchesFilter', and 'matchesSearch'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+321:29  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+321:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+338:9  Error: 'handleFilterChange' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+338:51  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+347:9  Error: 'clearAllFilters' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+359:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/common/EmptyState.tsx
+1:49  Error: 'Group' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+35:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/common/ErrorDisplay.tsx
+37:27  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+156:58  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+158:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+227:24  Warning: Do not use Array index in keys  react/no-array-index-key
+229:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+230:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/common/FormFields.tsx
+9:3  Error: 'Select' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+60:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+78:3  Error: 'minLength' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+79:3  Error: 'maxLength' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+89:34  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+99:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+144:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+185:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+224:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+259:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+301:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+336:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+374:27  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+504:15  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/common/LoadingState.tsx
+13:20  Warning: Do not use Array index in keys  react/no-array-index-key
+38:28  Warning: Do not use Array index in keys  react/no-array-index-key
+46:26  Warning: Do not use Array index in keys  react/no-array-index-key
+48:30  Warning: Do not use Array index in keys  react/no-array-index-key
+67:19  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/components/common/ProviderModelSelect.tsx
+32:10  Error: 'searchValue' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/common/StatusIndicator.tsx
+70:30  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+71:42  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+124:19  Warning: Do not nest ternary expressions.  no-nested-ternary
+124:39  Warning: Do not nest ternary expressions.  no-nested-ternary
+205:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+205:75  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+239:9  Error: 'primaryConfig' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+240:39  Error: React Hook "useStatusIndicator" is called conditionally. React Hooks must be called in the exact same order in every component render.  react-hooks/rules-of-hooks
+258:38  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+282:34  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/components/common/TableActionMenu.tsx
+23:58  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+83:18  Warning: Do not use Array index in keys  react/no-array-index-key
+97:18  Warning: Do not use Array index in keys  react/no-array-index-key
+119:18  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/components/error/AsyncBoundary.tsx
+35:3  Error: 'onError' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/error/ErrorBoundary.tsx
+48:16  Error: Fragments should contain more than one child - otherwise, there’s no need for a Fragment at all.  react/jsx-no-useless-fragment
+
+./src/components/error/FeatureUnavailable.tsx
+5:3  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+13:3  Error: 'Group' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+37:3  Error: 'showTimeline' is assigned a value but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/error/LazyErrorBoundary.tsx
+4:10  Error: 'Alert' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+47:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+49:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/error/UnifiedErrorBoundary.tsx
+137:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+168:23  Error: 'error' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+168:37  Error: 'errorInfo' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/ip-filtering/IpRuleModal.tsx
+87:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+92:6  Error: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/ip-filtering/IpRulesTable.tsx
+48:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+67:35  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+73:16  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+83:57  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+147:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/ip-filtering/IpTestModal.tsx
+79:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+154:40  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/layout/ConditionalLayout.tsx
+17:12  Error: Fragments should contain more than one child - otherwise, there’s no need for a Fragment at all.  react/jsx-no-useless-fragment
+
+./src/components/layout/ConnectionIndicator.tsx
+4:10  Error: 'IconDatabase' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/layout/CoreApiStatusIndicator.tsx
+60:86  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/modelmappings/BulkMappingModal.tsx
+20:3  Error: 'ActionIcon' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:3  Error: 'IconX' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+37:3  Error: 'IconInfoCircle' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+53:20  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+53:20  Error: 'any' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+153:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+210:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+235:20  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+350:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/components/modelmappings/CreateModelMappingModal.tsx
+12:3  Error: 'Title' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+23:1  Warning: '@knn_labs/conduit-admin-client' import is duplicated.  no-duplicate-imports
+159:26  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/components/modelmappings/EditModelMappingModal.tsx
+19:12  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+19:12  Error: 'any' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+51:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+52:50  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+53:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+54:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+57:6  Error: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/modelmappings/EditModelMappingModalWithHooks.tsx
+12:3  Error: 'MultiSelect' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+13:3  Error: 'Title' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+14:3  Error: 'Text' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+22:1  Warning: '@knn_labs/conduit-admin-client' import is duplicated.  no-duplicate-imports
+89:56  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+104:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+105:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+109:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+111:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+135:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+138:6  Error: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+143:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+144:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+166:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/components/modelmappings/ModelMappingsTable.tsx
+19:10  Error: 'notifications' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+22:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+23:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+32:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+37:65  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+37:85  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+47:41  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+58:19  Warning: Do not use Array index in keys  react/no-array-index-key
+85:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/modelmappings/ModelMappingsTableWithHooks.tsx
+1:31  Error: 'useMemo' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+11:3  Error: 'Tooltip' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+42:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+56:65  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+56:83  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+62:7  Warning: Promise-returning function provided to property where a void return was expected.  @typescript-eslint/no-misused-promises
+96:19  Warning: Do not use Array index in keys  react/no-array-index-key
+156:21  Error: 'capsInString' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+243:18  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/components/modelmappings/ProviderModelSelect.tsx
+10:3  Error: 'Text' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+81:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+82:6  Error: React Hook useEffect has a missing dependency: 'fetchModels'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+85:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+
+./src/components/pages/HomePageClient.tsx
+25:1  Warning: '@mantine/core' import is duplicated.  no-duplicate-imports
+
+./src/components/providers/CreateProviderModal.tsx
+79:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+80:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+95:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+95:62  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+148:48  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+149:54  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+158:36  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+158:57  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+164:35  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+167:14  Error: 'error' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+265:23  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/components/providers/EditProviderModal.tsx
+79:11  Error: 'additionalConfig' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+87:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+88:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+92:6  Error: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+100:31  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+101:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+102:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+179:23  Warning: Do not nest ternary expressions.  no-nested-ternary
+235:34  Error: The two values in this comparison do not have a shared enum type.  @typescript-eslint/no-unsafe-enum-comparison
+
+./src/components/providers/ProvidersTable.tsx
+18:3  Error: 'IconRefresh' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+28:10  Error: 'notifications' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+47:26  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+118:25  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/components/system/BackendStatusIndicator.tsx
+76:12  Warning: Do not nest ternary expressions.  no-nested-ternary
+80:60  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+107:52  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+182:92  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+192:91  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/system/SystemStatusDisplay.tsx
+14:3  Error: 'Timeline' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+26:27  Error: 'HealthStatusIndicator' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+88:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+96:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+125:27  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+135:51  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+146:26  Warning: Do not use Array index in keys  react/no-array-index-key
+230:21  Warning: Promise-returning function provided to attribute where a void return was expected.  @typescript-eslint/no-misused-promises
+241:47  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+255:24  Warning: Do not use Array index in keys  react/no-array-index-key
+
+./src/components/virtualkeys/CreateVirtualKeyModal.tsx
+103:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+108:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+109:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+110:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+124:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+133:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/components/virtualkeys/EditVirtualKeyModal.tsx
+87:6  Error: React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+94:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+95:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+99:37  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+103:46  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+106:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+107:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+117:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+118:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+121:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+128:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+128:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+129:18  Error: 'e' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+138:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+215:66  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/components/virtualkeys/ViewVirtualKeyModal.tsx
+141:83  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+168:24  Warning: Do not nest ternary expressions.  no-nested-ternary
+
+./src/components/virtualkeys/VirtualKeysTable.tsx
+42:28  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+45:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+133:63  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/config/environment.ts
+25:27  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+171:10  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+178:10  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+188:19  Warning: Forbidden non-null assertion.  @typescript-eslint/no-non-null-assertion
+
+./src/hooks/useBackendHealth.ts
+74:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+77:36  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/hooks/useConfigurationApi.ts
+47:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+76:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+141:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+181:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+209:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useCoreApi.ts
+39:83  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+55:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+79:83  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+95:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+119:88  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+138:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+177:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+203:55  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+203:72  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+203:86  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+222:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useErrorQueues.ts
+4:3  Error: 'ErrorQueueListResponse' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+5:3  Error: 'ErrorMessageListResponse' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+6:3  Error: 'ErrorMessageDetail' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+7:3  Error: 'ErrorQueueStatistics' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:3  Error: 'ErrorQueueHealth' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+155:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+188:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+189:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+222:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+223:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+262:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+263:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+
+./src/hooks/useExportApi.ts
+14:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+54:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+87:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+142:78  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+160:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useModelMappingsApi.ts
+14:9  Error: 'queryClient' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+71:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+77:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+99:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+109:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+116:44  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+120:45  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+120:64  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+121:20  Error: 'e' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+130:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+134:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+162:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+166:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+208:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+258:22  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+258:22  Error: 'any' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+296:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+347:14  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+372:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useMonitoringApi.ts
+75:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+96:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+124:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+144:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+163:31  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+170:14  Error: 'err' is defined but never used. Allowed unused caught errors must match /^_/u.  @typescript-eslint/no-unused-vars
+181:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+184:41  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+197:41  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/hooks/useProviderApi.ts
+58:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+83:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+112:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+152:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+187:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+225:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+261:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+286:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+321:39  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+330:26  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useSecurityApi.ts
+12:29  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+73:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+105:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+130:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+159:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+199:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+234:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+268:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useSystemApi.ts
+66:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+91:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+120:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+156:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+180:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+214:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+250:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+274:38  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/hooks/useSystemStatus.ts
+64:5  Error: 'includeMetrics' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+74:72  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+160:33  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+162:41  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+206:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+265:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+268:36  Warning: Promise returned in function argument where a void return was expected.  @typescript-eslint/no-misused-promises
+
+./src/hooks/useTableData.ts
+3:10  Error: 'useState' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+3:20  Error: 'useCallback' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+15:40  Error: 'TError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+48:5  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+69:7  Warning: Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.  @typescript-eslint/no-floating-promises
+86:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/instrumentation.ts
+4:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+9:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/lib/navigation/items.ts
+14:3  Error: 'IconCloud' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/lib/server/sdk-config.ts
+21:60  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+28:49  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+34:43  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+77:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+102:5  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+117:3  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/lib/utils/api-logger.ts
+17:43  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+19:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+20:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+21:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+22:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+24:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+26:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+30:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+33:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+34:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+35:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+37:9  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+39:7  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+43:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+56:57  Error: The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type.  @typescript-eslint/no-unsafe-function-type
+57:26  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/lib/utils/form-validators.ts
+10:20  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+13:20  Warning: Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.  @typescript-eslint/prefer-nullish-coalescing
+
+./src/lib/utils/formatters.ts
+307:27  Error: 'locale' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/lib/utils/lazyLoad.tsx
+4:65  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+14:10  Error: Component definition is missing display name  react/display-name
+22:60  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+32:16  Error: Component definition is missing display name  react/display-name
+34:16  Error: Component definition is missing display name  react/display-name
+37:10  Error: Component definition is missing display name  react/display-name
+
+./src/lib/utils/logging.ts
+67:3  Warning: Unexpected console statement. Only these console methods are allowed: warn, error.  no-console
+
+./src/lib/utils/ui-error-classifier.ts
+7:3  Error: 'ConduitError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+10:3  Error: 'ValidationError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+11:3  Error: 'NotFoundError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+12:3  Error: 'ConflictError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+13:3  Error: 'RateLimitError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+15:3  Error: 'NetworkError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+21:3  Error: 'isRateLimitError' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+40:34  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+92:39  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+101:43  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+127:43  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+147:37  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+167:43  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+182:49  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+219:46  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+226:51  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+233:48  Error: 'unknown' overrides all other types in this union type.  @typescript-eslint/no-redundant-type-constituents
+
+./src/types/chat.ts
+49:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
