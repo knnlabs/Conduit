@@ -3,9 +3,9 @@ import {
   HubConnectionState,
   HttpTransportType,
   DefaultTransports,
-  SignalRConnectionOptions,
   SignalRLogLevel
 } from '@knn_labs/conduit-common';
+import type { SignalRConnectionOptions } from '@knn_labs/conduit-common';
 
 // Re-export for backward compatibility
 export {

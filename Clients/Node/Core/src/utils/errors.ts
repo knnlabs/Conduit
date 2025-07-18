@@ -35,7 +35,8 @@ export {
 } from '@knn_labs/conduit-common';
 
 // Import error classes from Common package for use in legacy function
-import { ConduitError, createErrorFromResponse, type ErrorResponseFormat } from '@knn_labs/conduit-common';
+import { createErrorFromResponse } from '@knn_labs/conduit-common';
+import type { ConduitError, ErrorResponseFormat } from '@knn_labs/conduit-common';
 
 // Legacy compatibility - keep the old import style for createErrorFromResponse
 import type { ErrorResponse } from '../models/common';
