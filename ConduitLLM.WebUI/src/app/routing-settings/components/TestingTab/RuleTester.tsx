@@ -93,9 +93,9 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
 
   const handleTest = () => {
     try {
-      const headers = headersText ? JSON.parse(headersText) : {};
-      const body = bodyText ? JSON.parse(bodyText) : undefined;
-      const metadata = metadataText ? JSON.parse(metadataText) : {};
+      const headers = headersText ? JSON.parse(headersText) as Record<string, string> : {};
+      const body = bodyText ? JSON.parse(bodyText) as Record<string, unknown> : undefined;
+      const metadata = metadataText ? JSON.parse(metadataText) as Record<string, unknown> : {};
 
       const request: RouteTestRequest = {
         ...testRequest,
@@ -290,7 +290,7 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
             >
               <Stack gap="xs">
                 {testResult.errors.map((error, index) => (
-                  <Text key={`error-${error}-${index}`} size="sm">{error}</Text>
+                  <Text key={`error-${String(error)}-${index}`} size="sm">{error}</Text>
                 ))}
               </Stack>
             </Alert>

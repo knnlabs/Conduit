@@ -28,12 +28,12 @@ export async function POST(request: NextRequest) {
       duration: body.duration,
       fps: body.fps,
       resolution: body.resolution,
-      aspect_ratio: body.aspect_ratio,
+      aspectRatio: body.aspect_ratio,
       style: body.style,
       seed: body.seed,
       user: body.user,
-      webhook_url: body.webhook_url,
-    } as any);
+      webhookUrl: body.webhook_url,
+    });
     
     return NextResponse.json(result);
   } catch (error) {

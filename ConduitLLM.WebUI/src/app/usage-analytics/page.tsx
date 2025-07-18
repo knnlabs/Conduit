@@ -84,6 +84,15 @@ interface EndpointUsage {
   errorRate: number;
 }
 
+interface UsageAnalyticsResponse {
+  metrics: UsageMetrics;
+  timeSeries: TimeSeriesData[];
+  providerUsage: ProviderUsage[];
+  modelUsage: ModelUsage[];
+  virtualKeyUsage: VirtualKeyUsage[];
+  endpointUsage: EndpointUsage[];
+}
+
 export default function UsageAnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
   const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +110,7 @@ export default function UsageAnalyticsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch analytics');
       }
-      const data = await response.json();
+      const data = await response.json() as UsageAnalyticsResponse;
       
       setMetrics(data.metrics);
       setTimeSeriesData(data.timeSeries ?? []);

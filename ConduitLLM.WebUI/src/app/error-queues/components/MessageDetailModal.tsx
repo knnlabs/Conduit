@@ -5,7 +5,7 @@ import { IconFileCode, IconList, IconBug, IconHistory, IconCopy, IconReload, Ico
 import { useErrorMessage, useReplayMessage, useDeleteMessage } from '@/hooks/useErrorQueues';
 import { formatDateTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
-import type { ErrorMessageDetail } from '@knn_labs/conduit-admin-client';
+// import type { ErrorMessageDetail } from '@knn_labs/conduit-admin-client';
 
 interface MessageDetailModalProps {
   queueName: string;
@@ -21,7 +21,7 @@ export function MessageDetailModal({
   onClose,
 }: MessageDetailModalProps) {
   const { data, isLoading } = useErrorMessage(queueName, messageId);
-  const message = data as ErrorMessageDetail | undefined;
+  const message = data;
   const replayMutation = useReplayMessage();
   const deleteMutation = useDeleteMessage();
 
@@ -224,7 +224,7 @@ export function MessageDetailModal({
                     <Text size="sm">Message was originally sent</Text>
                   </Timeline.Item>
                   
-                  {Array.from({ length: message.retryCount }).map((unused, index) => (
+                  {Array.from({ length: message.retryCount }).map((item, index) => (
                     <Timeline.Item key={`retry-${message.messageId}-attempt-${index + 1}`} title={`Retry ${index + 1}`} color="red">
                       <Text size="sm">Failed with: {message.error.exceptionType}</Text>
                     </Timeline.Item>

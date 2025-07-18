@@ -30,7 +30,7 @@ interface TestProviderErrorResponse {
  * Tests a provider configuration before creating it.
  * This allows validating API keys and endpoints without saving.
  */
-export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse | any>> {
+export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse>> {
 
   try {
     const body: TestProviderRequestBody = await request.json() as TestProviderRequestBody;
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
       organization: body.organizationId,
     };
     
-    const testResult: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest as any);
+    const testResult: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest);
     
     return NextResponse.json({
       success: testResult.success,

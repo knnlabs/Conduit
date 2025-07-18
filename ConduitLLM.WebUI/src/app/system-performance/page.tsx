@@ -101,6 +101,13 @@ interface PerformanceAlert {
   resolved: boolean;
 }
 
+interface SystemPerformanceResponse {
+  metrics: SystemMetrics;
+  history: PerformanceHistory[];
+  services: ServiceStatus[];
+  alerts: PerformanceAlert[];
+}
+
 export default function SystemPerformancePage() {
   const [timeRange, setTimeRange] = useState('1h');
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -117,7 +124,7 @@ export default function SystemPerformancePage() {
       if (!response.ok) {
         throw new Error('Failed to fetch performance data');
       }
-      const data = await response.json();
+      const data = await response.json() as SystemPerformanceResponse;
       
       setMetrics(data.metrics);
       setHistory(data.history);
@@ -465,40 +472,46 @@ export default function SystemPerformancePage() {
           <Text fw={500}>Performance History</Text>
         </Card.Section>
         <Card.Section inheritPadding py="md">
-          {isLoading ? (
-            <Skeleton height={300} />
-          ) : history.length > 0 ? (
-            <LineChart
-              h={300}
-              data={history}
-              dataKey="timestamp"
-              series={[
-                { name: 'cpu', color: 'blue.6', label: 'CPU %' },
-                { name: 'memory', color: 'green.6', label: 'Memory %' },
-                { name: 'disk', color: 'orange.6', label: 'Disk %' },
-                { name: 'responseTime', color: 'red.6', label: 'Response Time (ms)' },
-              ]}
-              curveType="linear"
-              withLegend
-              legendProps={{ verticalAlign: 'bottom', height: 50 }}
-              valueFormatter={(value) => 
-                typeof value === 'number' ? value.toFixed(1) : value
-              }
-            />
-          ) : (
-            <Paper p="xl" h={300} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Stack align="center" gap="md">
-                <ThemeIcon size={48} variant="light" color="gray">
-                  <IconActivity size={24} />
-                </ThemeIcon>
-                <Text size="lg" fw={500} ta="center">No Performance History Available</Text>
-                <Text size="sm" c="dimmed" ta="center" maw={400}>
-                  Performance metrics history is not available for the selected time range. 
-                  This may be due to monitoring service configuration or recent system startup.
-                </Text>
-              </Stack>
-            </Paper>
-          )}
+{(() => {
+            if (isLoading) {
+              return <Skeleton height={300} />;
+            }
+            if (history.length > 0) {
+              return (
+                <LineChart
+                  h={300}
+                  data={history}
+                  dataKey="timestamp"
+                  series={[
+                    { name: 'cpu', color: 'blue.6', label: 'CPU %' },
+                    { name: 'memory', color: 'green.6', label: 'Memory %' },
+                    { name: 'disk', color: 'orange.6', label: 'Disk %' },
+                    { name: 'responseTime', color: 'red.6', label: 'Response Time (ms)' },
+                  ]}
+                  curveType="linear"
+                  withLegend
+                  legendProps={{ verticalAlign: 'bottom', height: 50 }}
+                  valueFormatter={(value) => 
+                    typeof value === 'number' ? value.toFixed(1) : value
+                  }
+                />
+              );
+            }
+            return (
+              <Paper p="xl" h={300} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Stack align="center" gap="md">
+                  <ThemeIcon size={48} variant="light" color="gray">
+                    <IconActivity size={24} />
+                  </ThemeIcon>
+                  <Text size="lg" fw={500} ta="center">No Performance History Available</Text>
+                  <Text size="sm" c="dimmed" ta="center" maw={400}>
+                    Performance metrics history is not available for the selected time range. 
+                    This may be due to monitoring service configuration or recent system startup.
+                  </Text>
+                </Stack>
+              </Paper>
+            );
+          })()}
         </Card.Section>
       </Card>
 
@@ -534,60 +547,66 @@ export default function SystemPerformancePage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {isLoading ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Skeleton height={200} />
-                    </Table.Td>
-                  </Table.Tr>
-                ) : services.length > 0 ? (
-                  services.map((service) => (
-                    <Table.Tr key={service.name}>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <ThemeIcon 
-                            size="xs" 
-                            color={getServiceStatusColor(service.status)} 
-                            variant="light"
-                          >
-                            {service.status === 'healthy' ? <IconCircleCheck size={14} /> : <IconAlertTriangle size={14} />}
+{(() => {
+                  if (isLoading) {
+                    return (
+                      <Table.Tr>
+                        <Table.Td colSpan={6}>
+                          <Skeleton height={200} />
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  }
+                  if (services.length > 0) {
+                    return services.map((service) => (
+                      <Table.Tr key={service.name}>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <ThemeIcon 
+                              size="xs" 
+                              color={getServiceStatusColor(service.status)} 
+                              variant="light"
+                            >
+                              {service.status === 'healthy' ? <IconCircleCheck size={14} /> : <IconAlertTriangle size={14} />}
+                            </ThemeIcon>
+                            <Text size="sm" fw={500}>{service.name}</Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge color={getServiceStatusColor(service.status)} variant="light">
+                            {service.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.duration(service.uptime, { format: 'compact' })}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{service.cpu}%</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.fileSize(service.memory)}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.date(service.lastCheck, { includeTime: true })}</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ));
+                  }
+                  return (
+                    <Table.Tr>
+                      <Table.Td colSpan={6}>
+                        <Stack align="center" gap="md" py="xl">
+                          <ThemeIcon size={32} variant="light" color="gray">
+                            <IconServer size={18} />
                           </ThemeIcon>
-                          <Text size="sm" fw={500}>{service.name}</Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge color={getServiceStatusColor(service.status)} variant="light">
-                          {service.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.duration(service.uptime, { format: 'compact' })}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{service.cpu}%</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.fileSize(service.memory)}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.date(service.lastCheck, { includeTime: true })}</Text>
+                          <Text size="sm" c="dimmed" ta="center">
+                            No service information available from monitoring system
+                          </Text>
+                        </Stack>
                       </Table.Td>
                     </Table.Tr>
-                  ))
-                ) : (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Stack align="center" gap="md" py="xl">
-                        <ThemeIcon size={32} variant="light" color="gray">
-                          <IconServer size={18} />
-                        </ThemeIcon>
-                        <Text size="sm" c="dimmed" ta="center">
-                          No service information available from monitoring system
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                )}
+                  );
+                })()}
               </Table.Tbody>
             </Table>
           </ScrollArea>

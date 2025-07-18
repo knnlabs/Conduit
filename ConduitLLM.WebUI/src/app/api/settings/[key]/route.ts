@@ -31,7 +31,7 @@ export async function PUT(
     const { key } = await params;
     const adminClient = getServerAdminClient();
     const body = await req.json() as SettingUpdateRequest;
-    await adminClient.settings.updateGlobalSetting(key as string, { value: body.value as string });
+    await adminClient.settings.updateGlobalSetting(key, { value: body.value as string });
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleSDKError(error);

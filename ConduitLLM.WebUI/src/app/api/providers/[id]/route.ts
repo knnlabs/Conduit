@@ -7,7 +7,7 @@ import type { ProviderCredentialDto, UpdateProviderCredentialDto } from '@knn_la
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ProviderCredentialDto | any>> {
+): Promise<NextResponse<ProviderCredentialDto | { error: string }>> {
 
   try {
     const { id } = await params;
@@ -23,13 +23,13 @@ export async function GET(
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ProviderCredentialDto | any>> {
+): Promise<NextResponse<ProviderCredentialDto | { error: string }>> {
 
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
     const body: UpdateProviderCredentialDto = await req.json() as UpdateProviderCredentialDto;
-    const provider: ProviderCredentialDto = await adminClient.providers.update(parseInt(id, 10), body as any);
+    const provider: ProviderCredentialDto = await adminClient.providers.update(parseInt(id, 10), body);
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);
@@ -40,7 +40,7 @@ export async function PUT(
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<null | any>> {
+): Promise<NextResponse<null | { error: string }>> {
 
   try {
     const { id } = await params;

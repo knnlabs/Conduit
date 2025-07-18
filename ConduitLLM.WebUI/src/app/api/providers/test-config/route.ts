@@ -12,7 +12,7 @@ interface TestConfigRequestBody {
 }
 
 // POST /api/providers/test-config - Test a provider configuration before saving
-export async function POST(req: NextRequest): Promise<NextResponse<ProviderConnectionTestResultDto | any>> {
+export async function POST(req: NextRequest): Promise<NextResponse<ProviderConnectionTestResultDto>> {
 
   try {
     const body: TestConfigRequestBody = await req.json() as TestConfigRequestBody;
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ProviderConne
       organization: body.organizationId,
     };
     
-    const result: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest as any);
+    const result: ProviderConnectionTestResultDto = await adminClient.providers.testConfig(testRequest);
     
     return NextResponse.json(result);
   } catch (error) {

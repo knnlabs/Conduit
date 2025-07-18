@@ -106,7 +106,8 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         if (action.parameters) {
           // Validate timeout parameter
           if (action.parameters.timeout !== undefined) {
-            const timeout = parseFloat(String(action.parameters.timeout));
+            const timeoutValue = action.parameters.timeout;
+            const timeout = parseFloat(typeof timeoutValue === 'string' ? timeoutValue : String(timeoutValue));
             if (isNaN(timeout) || timeout <= 0) {
               newErrors.push(`Action ${index + 1}: Timeout must be a positive number`);
             } else if (timeout > 300000) { // 5 minutes max
@@ -116,15 +117,17 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
 
           // Validate weight parameter
           if (action.parameters.weight !== undefined) {
-            const weight = parseFloat(String(action.parameters.weight));
+            const weightValue = action.parameters.weight;
+            const weight = parseFloat(typeof weightValue === 'string' ? weightValue : String(weightValue));
             if (isNaN(weight) || weight < 0 || weight > 100) {
               newErrors.push(`Action ${index + 1}: Weight must be between 0 and 100`);
             }
           }
 
           // Validate max_retries parameter
-          if (action.parameters.max_retries !== undefined) {
-            const retries = parseInt(String(action.parameters.max_retries));
+          if (action.parameters.maxRetries !== undefined) {
+            const retriesValue = action.parameters.maxRetries;
+            const retries = parseInt(typeof retriesValue === 'string' ? retriesValue : String(retriesValue));
             if (isNaN(retries) || retries < 0 || retries > 10) {
               newErrors.push(`Action ${index + 1}: Max retries must be between 0 and 10`);
             }
@@ -153,7 +156,12 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
 
     switch (field) {
       case 'name':
-        const nameValue = typeof value === 'string' ? value : String(value || '');
+        let nameValue = '';
+        if (typeof value === 'string') {
+          nameValue = value;
+        } else if (value !== null && value !== undefined) {
+          nameValue = String(value);
+        }
         if (!nameValue || nameValue.trim() === '') {
           fieldErrors.push('Rule name is required');
         } else if (nameValue.length < 3) {
@@ -177,7 +185,12 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         break;
 
       case 'description':
-        const descValue = typeof value === 'string' ? value : String(value || '');
+        let descValue = '';
+        if (typeof value === 'string') {
+          descValue = value;
+        } else if (value !== null && value !== undefined) {
+          descValue = String(value);
+        }
         if (descValue && descValue.length > 500) {
           fieldErrors.push('Description must be less than 500 characters');
         }

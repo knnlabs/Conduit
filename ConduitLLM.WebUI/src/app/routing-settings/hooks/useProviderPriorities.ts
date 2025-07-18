@@ -19,7 +19,7 @@ export function useProviderPriorities() {
         throw new Error('Failed to fetch provider priorities');
       }
       
-      const providers = await response.json();
+      const providers = await response.json() as ProviderPriority[];
       return providers;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch provider priorities';
@@ -44,11 +44,11 @@ export function useProviderPriorities() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
+        const result = await response.json() as { error?: string };
         throw new Error(result.error ?? 'Failed to update provider priorities');
       }
 
-      const updatedProviders = await response.json();
+      const updatedProviders = await response.json() as ProviderPriority[];
 
       notifications.show({
         title: 'Success',
@@ -82,7 +82,7 @@ export function useProviderPriorities() {
         throw new Error('Failed to fetch routing configuration');
       }
       
-      const config = await response.json();
+      const config = await response.json() as RoutingConfiguration;
       return config;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch routing configuration';
@@ -106,7 +106,7 @@ export function useProviderPriorities() {
         body: JSON.stringify(config),
       });
 
-      const result = await response.json();
+      const result = await response.json() as RoutingConfiguration & { error?: string };
 
       if (!response.ok) {
         throw new Error(result.error ?? 'Failed to update routing configuration');
@@ -144,7 +144,7 @@ export function useProviderPriorities() {
         throw new Error('Failed to fetch load balancer health');
       }
       
-      const health = await response.json();
+      const health = await response.json() as LoadBalancerHealth;
       return health;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch load balancer health';

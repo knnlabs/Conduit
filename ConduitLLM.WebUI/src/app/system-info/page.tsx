@@ -34,6 +34,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
+import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
 
 interface SystemMetric {
   name: string;
@@ -54,33 +55,11 @@ interface ServiceInfo {
 }
 
 
+
 export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [systemInfo, setSystemInfo] = useState<{
-    version?: string;
-    uptime?: number;
-    environment?: string;
-    buildDate?: string;
-    runtime?: {
-      memoryUsage?: number;
-      cpuUsage?: number;
-      os?: string;
-      architecture?: string;
-      dotnetVersion?: string;
-    };
-    database?: {
-      isConnected?: boolean;
-      provider?: string;
-      pendingMigrations?: string[];
-    };
-    features?: {
-      ipFiltering?: boolean;
-      providerHealth?: boolean;
-      costTracking?: boolean;
-      audioSupport?: boolean;
-    };
-  } | null>(null);
+  const [systemInfo, setSystemInfo] = useState<SystemInfoDto | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
 
   useEffect(() => {
@@ -91,7 +70,7 @@ export default function SystemInfoPage() {
     try {
       const response = await fetch('/api/settings/system-info', {
         headers: {
-          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') ?? '',
+          'xAdminAuthKey': localStorage.getItem('adminAuthKey') ?? '',
         },
       });
 
@@ -99,7 +78,7 @@ export default function SystemInfoPage() {
         throw new Error('Failed to fetch system information');
       }
 
-      const data = await response.json();
+      const data = await response.json() as SystemInfoDto;
       setSystemInfo(data);
     } catch (error) {
       console.error('Error fetching system info:', error);

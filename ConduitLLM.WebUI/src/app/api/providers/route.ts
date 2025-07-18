@@ -4,12 +4,12 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { ProviderCredentialDto, CreateProviderCredentialDto, PaginatedResponse } from '@knn_labs/conduit-admin-client';
 
 // GET /api/providers - List all providers
-export async function GET(): Promise<NextResponse<ProviderCredentialDto[] | any>> {
+export async function GET(): Promise<NextResponse<ProviderCredentialDto[]>> {
 
   try {
     const adminClient = getServerAdminClient();
     // The SDK list method expects page and pageSize parameters
-    const response = await adminClient.providers.list(1, 100) as any; // Get up to 100 providers
+    const response = await adminClient.providers.list(1, 100) as PaginatedResponse<ProviderCredentialDto>; // Get up to 100 providers
     
     console.error('SDK providers.list() response:', response);
     
@@ -43,12 +43,12 @@ export async function GET(): Promise<NextResponse<ProviderCredentialDto[] | any>
 }
 
 // POST /api/providers - Create a new provider
-export async function POST(request: Request): Promise<NextResponse<ProviderCredentialDto | any>> {
+export async function POST(request: Request): Promise<NextResponse<ProviderCredentialDto>> {
 
   try {
     const body: CreateProviderCredentialDto = await request.json() as CreateProviderCredentialDto;
     const adminClient = getServerAdminClient();
-    const provider: ProviderCredentialDto = await adminClient.providers.create(body as any);
+    const provider: ProviderCredentialDto = await adminClient.providers.create(body);
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);

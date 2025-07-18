@@ -17,16 +17,6 @@ interface TaskStatusResponse {
   error?: string;
 }
 
-interface TaskStatusApiResponse {
-  status: string;
-  progress: number;
-  message?: string;
-  estimatedTimeToCompletion?: number;
-  updatedAt?: string;
-  result?: unknown;
-  error?: string;
-}
-
 interface GenerateVideoResponse {
   taskId: string;
   message?: string;
@@ -35,12 +25,27 @@ interface GenerateVideoResponse {
   updatedAt?: string;
 }
 
-interface GenerateVideoApiResponse {
-  taskId: string;
-  message?: string;
-  estimatedTimeToCompletion?: number;
-  createdAt?: string;
-  updatedAt?: string;
+// Helper function to convert snake_case API response to camelCase
+function mapTaskStatusResponse(apiResponse: Record<string, unknown>): TaskStatusResponse {
+  return {
+    status: apiResponse.status as string,
+    progress: apiResponse.progress as number,
+    message: apiResponse.message as string | undefined,
+    estimatedTimeToCompletion: apiResponse.estimated_time_to_completion as number | undefined,
+    updatedAt: apiResponse.updated_at as string | undefined,
+    result: apiResponse.result,
+    error: apiResponse.error as string | undefined,
+  };
+}
+
+function mapGenerateVideoResponse(apiResponse: Record<string, unknown>): GenerateVideoResponse {
+  return {
+    taskId: apiResponse.task_id as string,
+    message: apiResponse.message as string | undefined,
+    estimatedTimeToCompletion: apiResponse.estimated_time_to_completion as number | undefined,
+    createdAt: apiResponse.created_at as string | undefined,
+    updatedAt: apiResponse.updated_at as string | undefined,
+  };
 }
 
 interface ErrorResponse {
@@ -59,18 +64,10 @@ export function useVideoGeneration() {
         throw new Error(`Failed to get task status: ${response.statusText}`);
       }
       
-      const apiResponse = await response.json() as TaskStatusApiResponse;
+      const apiResponse = await response.json() as Record<string, unknown>;
       
       // Convert API response to camelCase
-      const taskStatus: TaskStatusResponse = {
-        status: apiResponse.status,
-        progress: apiResponse.progress,
-        message: apiResponse.message,
-        estimatedTimeToCompletion: apiResponse.estimatedTimeToCompletion,
-        updatedAt: apiResponse.updatedAt,
-        result: apiResponse.result,
-        error: apiResponse.error,
-      };
+      const taskStatus = mapTaskStatusResponse(apiResponse);
       
       // Update task in store
       updateTask(taskId, {
@@ -138,16 +135,10 @@ export function useVideoGeneration() {
         throw new Error(errorData?.error ?? `Failed to generate video: ${response.statusText}`);
       }
 
-      const apiData = await response.json() as GenerateVideoApiResponse;
+      const apiData = await response.json() as Record<string, unknown>;
       
       // Convert API response to camelCase
-      const data: GenerateVideoResponse = {
-        taskId: apiData.taskId,
-        message: apiData.message,
-        estimatedTimeToCompletion: apiData.estimatedTimeToCompletion,
-        createdAt: apiData.createdAt,
-        updatedAt: apiData.updatedAt,
-      };
+      const data = mapGenerateVideoResponse(apiData);
       
       // Create new task
       const newTask: VideoTask = {

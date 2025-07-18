@@ -76,8 +76,8 @@ export function getSampleTestRequests(): TestCase[] {
         region: 'us-east-1',
         costThreshold: 0.1,
         customFields: {},
-        headers: { 'X-Priority': 'high' },
-        metadata: { 'request_type': 'premium' },
+        headers: { 'XPriority': 'high' },
+        metadata: { 'requestType': 'premium' },
       },
     },
     {
@@ -103,9 +103,9 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'gpt-3.5-turbo',
         region: 'eu-west-1',
         virtualKeyId: 'vk-eu-123456789',
-        customFields: { 'gdpr_compliant': 'true' },
-        headers: { 'X-Region': 'eu', 'X-Compliance': 'gdpr' },
-        metadata: { 'data_residency': 'eu' },
+        customFields: { 'gdprCompliant': 'true' },
+        headers: { 'XRegion': 'eu', 'XCompliance': 'gdpr' },
+        metadata: { 'dataResidency': 'eu' },
       },
     },
     {
@@ -117,12 +117,12 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'llama-2-70b',
         costThreshold: 0.01,
         customFields: { 
-          'batch_size': '1000',
+          'batchSize': '1000',
           'priority': 'batch',
-          'max_tokens': '512'
+          'maxTokens': '512'
         },
-        headers: { 'X-Batch-Mode': 'true' },
-        metadata: { 'processing_type': 'batch' },
+        headers: { 'XBatchMode': 'true' },
+        metadata: { 'processingType': 'batch' },
       },
     },
     {
@@ -134,8 +134,8 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'gpt-3.5-turbo',
         region: 'us-east-1',
         customFields: { 'environment': 'development' },
-        headers: { 'X-Environment': 'development', 'X-Cache': 'enabled' },
-        metadata: { 'debug': true, 'cache_ttl': 3600 },
+        headers: { 'XEnvironment': 'development', 'XCache': 'enabled' },
+        metadata: { 'debug': true, 'cacheTtl': 3600 },
       },
     },
   ];

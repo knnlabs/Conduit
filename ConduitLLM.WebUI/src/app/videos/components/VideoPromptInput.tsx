@@ -9,7 +9,7 @@ interface VideoPromptInputProps {
   models: VideoModel[];
 }
 
-export default function VideoPromptInput(props: VideoPromptInputProps) {
+export default function VideoPromptInput({}: VideoPromptInputProps) {
   const [prompt, setPrompt] = useState('');
   const { settings, currentTask, setError } = useVideoStore();
   const { generateVideo, isGenerating } = useVideoGeneration();

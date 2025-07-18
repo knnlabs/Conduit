@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Check if async generation is requested
     if (body.async === true) {
       // Use async generation
-      const result = await coreClient.images.generateAsync(body as AsyncImageGenerationRequest);
+      const result = await coreClient.images.generateAsync(body);
       return NextResponse.json(result);
     } else {
       // Use synchronous generation (default)
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         user: body.user
       };
       
-      const result = await coreClient.images.generate(syncRequest as any);
+      const result = await coreClient.images.generate(syncRequest);
       
       return NextResponse.json(result);
     }

@@ -87,22 +87,27 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   return (
     <div className="video-card">
       <div className="video-card-player">
-        {video.url ? (
-          <VideoPlayer
-            src={video.url}
-            poster={undefined}
-            title={task.prompt}
-          />
-        ) : video.b64_json ? (
-            <VideoPlayer
-              src={`data:video/mp4;base64,${video.b64_json}`}
-              poster={undefined}
-              title={task.prompt}
-            />
-          ) : (
-            <div className="video-placeholder">No video available</div>
-          )
-        }
+{(() => {
+          if (video.url) {
+            return (
+              <VideoPlayer
+                src={video.url}
+                poster={undefined}
+                title={task.prompt}
+              />
+            );
+          }
+          if (video.b64_json) {
+            return (
+              <VideoPlayer
+                src={`data:video/mp4;base64,${video.b64_json}`}
+                poster={undefined}
+                title={task.prompt}
+              />
+            );
+          }
+          return <div className="video-placeholder">No video available</div>;
+        })()}
       </div>
       
       <div className="video-card-content">
@@ -116,7 +121,7 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
             {metadata.resolution && <span>{metadata.resolution}</span>}
             {metadata.fps && <span>{metadata.fps} FPS</span>}
             {metadata.file_size_bytes && (
-              <span>{formatFileSize(metadata.file_size_bytes)}</span>
+              <span>{formatFileSize(Number(metadata.file_size_bytes))}</span>
             )}
           </div>
         )}
