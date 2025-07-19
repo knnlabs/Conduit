@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
       ? requestData as CreateModelCostDto  // New format
       : {     // Transform legacy format
           modelIdPattern: requestData.modelId ?? '',
+          providerName: 'Unknown', // Default for legacy format
+          modelType: 'chat' as const, // Default for legacy format
           inputTokenCost: requestData.inputTokenCost ?? 0,
           outputTokenCost: requestData.outputTokenCost ?? 0,
           embeddingTokenCost: requestData.embeddingTokenCost,

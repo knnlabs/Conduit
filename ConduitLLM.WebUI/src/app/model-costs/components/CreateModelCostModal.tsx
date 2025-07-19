@@ -29,6 +29,7 @@ interface CreateModelCostModalProps {
 
 interface FormValues {
   modelIdPattern: string;
+  providerName: string;
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   // Token-based costs (per 1K tokens for display)
   inputCostPer1K: number;
@@ -55,6 +56,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
   const form = useForm<FormValues>({
     initialValues: {
       modelIdPattern: '',
+      providerName: '',
       modelType: 'chat',
       inputCostPer1K: 0,
       outputCostPer1K: 0,
@@ -72,6 +74,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
     },
     validate: {
       modelIdPattern: (value) => !value?.trim() ? 'Model pattern is required' : null,
+      providerName: (value) => !value?.trim() ? 'Provider name is required' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
       inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -95,10 +98,12 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
   const handleSubmit = (values: FormValues) => {
     const data: CreateModelCostDto = {
       modelIdPattern: values.modelIdPattern,
+      providerName: values.providerName,
+      modelType: values.modelType,
       // Convert from per 1K to per 1M tokens for backend
-      inputTokenCost: values.inputCostPer1K * 1000,
-      outputTokenCost: values.outputCostPer1K * 1000,
-      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000 : undefined,
+      inputTokenCost: values.inputCostPer1K * 1000000,
+      outputTokenCost: values.outputCostPer1K * 1000000,
+      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000000 : undefined,
       imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
       audioCostPerMinute: values.audioCostPerMinute > 0 ? values.audioCostPerMinute : undefined,
       audioCostPerKCharacters: values.audioCostPerKCharacters > 0 ? values.audioCostPerKCharacters : undefined,
@@ -135,6 +140,14 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
             required
             {...form.getInputProps('modelIdPattern')}
             description="Exact model ID or pattern with * wildcard"
+          />
+
+          <TextInput
+            label="Provider Name"
+            placeholder="e.g., OpenAI, Anthropic, MiniMax"
+            required
+            {...form.getInputProps('providerName')}
+            description="Name of the LLM provider"
           />
 
           <PatternPreview pattern={form.values.modelIdPattern} />

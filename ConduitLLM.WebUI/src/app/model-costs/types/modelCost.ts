@@ -18,6 +18,8 @@ export interface ModelCost {
 
 export interface CreateModelCostDto {
   modelIdPattern: string;
+  providerName: string;
+  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputTokenCost: number;
   outputTokenCost: number;
   embeddingTokenCost?: number;

@@ -16,6 +16,10 @@ export interface ParsedModelCost {
   // Validation
   isValid: boolean;
   errors: string[];
+  // Tracking
+  rowNumber: number;
+  isSkipped?: boolean;
+  skipReason?: string;
 }
 
 export const parseCSVLine = (line: string): string[] => {
@@ -52,7 +56,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
   }
 
   // Parse headers
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
   const requiredHeaders = ['model pattern', 'provider', 'model type'];
   
   for (const required of requiredHeaders) {
@@ -66,8 +70,25 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
   
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
+    const rowNumber = i + 1;
+    
+    // Handle malformed rows
     if (values.length !== headers.length) {
-      continue; // Skip malformed rows
+      parsed.push({
+        modelPattern: '',
+        provider: '',
+        modelType: '',
+        inputCostPer1K: 0,
+        outputCostPer1K: 0,
+        priority: 0,
+        active: false,
+        isValid: false,
+        errors: [`Row has ${values.length} columns but expected ${headers.length}`],
+        rowNumber,
+        isSkipped: true,
+        skipReason: `Malformed row: expected ${headers.length} columns, got ${values.length}`,
+      });
+      continue;
     }
 
     const row: Record<string, string> = {};
@@ -75,21 +96,29 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       row[header] = values[index];
     });
 
+    // Helper function to parse numeric values with proper fallbacks
+    const parseNumericValue = (value: string | undefined, defaultValue?: number): number | undefined => {
+      if (!value || value.trim() === '') return defaultValue;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? defaultValue : parsed;
+    };
+
     const cost: ParsedModelCost = {
-      modelPattern: row['model pattern'] ?? '',
-      provider: row['provider'] ?? '',
-      modelType: row['model type'] ?? 'chat',
-      inputCostPer1K: parseFloat(row['input cost (per 1k tokens)']) || 0,
-      outputCostPer1K: parseFloat(row['output cost (per 1k tokens)']) || 0,
-      embeddingCostPer1K: parseFloat(row['embedding cost (per 1k tokens)']) || undefined,
-      imageCostPerImage: parseFloat(row['image cost (per image)']) || undefined,
-      audioCostPerMinute: parseFloat(row['audio cost (per minute)']) || undefined,
-      videoCostPerSecond: parseFloat(row['video cost (per second)']) || undefined,
-      priority: parseInt(row['priority']) || 0,
+      modelPattern: row['model pattern']?.trim() ?? '',
+      provider: row['provider']?.trim() ?? '',
+      modelType: row['model type']?.trim().toLowerCase() ?? 'chat',
+      inputCostPer1K: parseNumericValue(row['input cost (per 1k tokens)'], 0) ?? 0,
+      outputCostPer1K: parseNumericValue(row['output cost (per 1k tokens)'], 0) ?? 0,
+      embeddingCostPer1K: parseNumericValue(row['embedding cost (per 1k tokens)']),
+      imageCostPerImage: parseNumericValue(row['image cost (per image)']),
+      audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
+      videoCostPerSecond: parseNumericValue(row['video cost (per second)']),
+      priority: parseNumericValue(row['priority'], 0) ?? 0,
       active: row['active']?.toLowerCase() === 'yes' || row['active']?.toLowerCase() === 'true',
-      description: row['description'],
+      description: row['description']?.trim(),
       isValid: true,
       errors: [],
+      rowNumber,
     };
 
     // Validate row
@@ -97,15 +126,38 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (!cost.modelPattern) errors.push('Model pattern is required');
     if (!cost.provider) errors.push('Provider is required');
     if (!['chat', 'embedding', 'image', 'audio', 'video'].includes(cost.modelType)) {
-      errors.push('Invalid model type');
+      errors.push(`Invalid model type: ${cost.modelType}. Must be one of: chat, embedding, image, audio, video`);
     }
     if (cost.priority < 0) errors.push('Priority must be non-negative');
+    
+    // Cost validation
+    if (cost.inputCostPer1K < 0) errors.push('Input cost cannot be negative');
+    if (cost.outputCostPer1K < 0) errors.push('Output cost cannot be negative');
+    if (cost.embeddingCostPer1K !== undefined && cost.embeddingCostPer1K < 0) errors.push('Embedding cost cannot be negative');
+    if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
+    if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost cannot be negative');
+    if (cost.videoCostPerSecond !== undefined && cost.videoCostPerSecond < 0) errors.push('Video cost cannot be negative');
+    
+    // Reasonable upper bounds validation
+    if (cost.inputCostPer1K > 1000) errors.push('Input cost seems unreasonably high (>$1000 per 1K tokens)');
+    if (cost.outputCostPer1K > 1000) errors.push('Output cost seems unreasonably high (>$1000 per 1K tokens)');
 
     cost.isValid = errors.length === 0;
     cost.errors = errors;
 
     parsed.push(cost);
   }
+
+  // Check for duplicates
+  const seenPatterns = new Set<string>();
+  parsed.forEach(cost => {
+    if (cost.isValid && seenPatterns.has(cost.modelPattern)) {
+      cost.isValid = false;
+      cost.errors.push(`Duplicate model pattern: ${cost.modelPattern}`);
+    } else if (cost.isValid) {
+      seenPatterns.add(cost.modelPattern);
+    }
+  });
 
   return parsed;
 };
@@ -115,9 +167,11 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
     .filter(d => d.isValid)
     .map(cost => ({
       modelIdPattern: cost.modelPattern,
-      inputTokenCost: cost.inputCostPer1K * 1000, // Convert to per million
-      outputTokenCost: cost.outputCostPer1K * 1000,
-      embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K * 1000 : undefined,
+      providerName: cost.provider,
+      modelType: cost.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
+      inputTokenCost: cost.inputCostPer1K * 1000000, // Convert to per million tokens
+      outputTokenCost: cost.outputCostPer1K * 1000000,
+      embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K * 1000000 : undefined,
       imageCostPerImage: cost.imageCostPerImage,
       audioCostPerMinute: cost.audioCostPerMinute,
       videoCostPerSecond: cost.videoCostPerSecond,

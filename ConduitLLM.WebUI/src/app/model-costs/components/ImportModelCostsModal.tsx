@@ -91,7 +91,8 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
   };
 
   const validCount = parsedData.filter(d => d.isValid).length;
-  const invalidCount = parsedData.filter(d => !d.isValid).length;
+  const invalidCount = parsedData.filter(d => !d.isValid && !d.isSkipped).length;
+  const skippedCount = parsedData.filter(d => d.isSkipped).length;
 
   return (
     <Modal
@@ -126,7 +127,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
           <>
             <Card withBorder>
               <Group justify="space-between">
-                <Text fw={600}>Import Preview</Text>
+                <Text fw={600}>File Processed Successfully</Text>
                 <Group gap="xs">
                   {validCount > 0 && (
                     <Badge color="green" variant="light">
@@ -136,6 +137,11 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                   {invalidCount > 0 && (
                     <Badge color="red" variant="light">
                       {invalidCount} invalid
+                    </Badge>
+                  )}
+                  {skippedCount > 0 && (
+                    <Badge color="orange" variant="light">
+                      {skippedCount} skipped
                     </Badge>
                   )}
                 </Group>
@@ -148,6 +154,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th w={40}></Table.Th>
+                    <Table.Th>Row #</Table.Th>
                     <Table.Th>Model Pattern</Table.Th>
                     <Table.Th>Provider</Table.Th>
                     <Table.Th>Type</Table.Th>
@@ -158,21 +165,28 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                 </Table.Thead>
                 <Table.Tbody>
                   {parsedData.map((cost) => (
-                    <Table.Tr key={`${cost.modelPattern}-${cost.provider}-${cost.isValid ? 'valid' : 'invalid'}`} style={{ 
-                      backgroundColor: cost.isValid ? undefined : 'var(--mantine-color-red-0)' 
+                    <Table.Tr key={`${cost.rowNumber}-${cost.modelPattern}-${cost.provider}`} style={{ 
+                      backgroundColor: cost.isValid 
+                        ? undefined 
+                        : cost.isSkipped 
+                        ? 'var(--mantine-color-orange-0)' 
+                        : 'var(--mantine-color-red-0)' 
                     }}>
                       <Table.Td>
                         {cost.isValid ? (
                           <IconCheck size={16} color="green" />
                         ) : (
-                          <IconAlertCircle size={16} color="red" />
+                          <IconAlertCircle size={16} color={cost.isSkipped ? "orange" : "red"} />
                         )}
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{cost.modelPattern}</Text>
+                        <Text size="sm">{cost.rowNumber}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{cost.modelPattern || '(empty)'}</Text>
                         {!cost.isValid && (
-                          <Text size="xs" c="red">
-                            {cost.errors.join(', ')}
+                          <Text size="xs" c={cost.isSkipped ? "orange" : "red"}>
+                            {cost.isSkipped ? cost.skipReason : cost.errors.join(', ')}
                           </Text>
                         )}
                       </Table.Td>
@@ -213,10 +227,26 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
               </Table>
             </ScrollArea>
 
-            {validCount > 0 && (
+            {validCount > 0 ? (
               <Alert icon={<IconCheck size={16} />} color="green">
                 Ready to import {validCount} valid pricing configuration{validCount !== 1 ? 's' : ''}.
                 This will create new entries or update existing ones based on model pattern.
+              </Alert>
+            ) : (
+              <Alert icon={<IconAlertCircle size={16} />} color="orange">
+                Import is disabled because no valid entries were found in the CSV file.
+                {(() => {
+                  if (invalidCount > 0 && skippedCount > 0) {
+                    return ` Found ${invalidCount} validation errors and ${skippedCount} skipped rows. Please fix the issues shown above and try again.`;
+                  }
+                  if (invalidCount > 0) {
+                    return ` All ${invalidCount} entries have validation errors. Please fix the errors shown above and try again.`;
+                  }
+                  if (skippedCount > 0) {
+                    return ` All ${skippedCount} rows were skipped due to formatting issues. Please check your CSV format.`;
+                  }
+                  return ' Please check that your CSV file has the correct format with required columns: Model Pattern, Provider, Model Type, and cost fields.';
+                })()}
               </Alert>
             )}
           </>

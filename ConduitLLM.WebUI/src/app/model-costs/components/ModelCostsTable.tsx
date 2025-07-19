@@ -76,7 +76,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   });
 
   // Filter data client-side for search
-  const filteredData = data?.items.filter(cost => {
+  const filteredData = data?.items?.filter(cost => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -87,7 +87,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   }) ?? [];
 
   // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(data?.items.map(c => c.providerName) ?? []));
+  const uniqueProviders = Array.from(new Set(data?.items?.map(c => c.providerName) ?? []));
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
