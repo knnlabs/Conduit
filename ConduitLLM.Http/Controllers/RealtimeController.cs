@@ -250,7 +250,7 @@ namespace ConduitLLM.Http.Controllers
                 }
             }
 
-            return true; // Default to true for now during development
+            return false; // Default to false - require explicit permissions
         }
     }
 
