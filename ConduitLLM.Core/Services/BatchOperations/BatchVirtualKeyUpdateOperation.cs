@@ -12,7 +12,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
     /// <summary>
     /// Batch operation for updating multiple virtual keys (budgets, models, settings)
     /// </summary>
-    public class BatchVirtualKeyUpdateOperation
+    public class BatchVirtualKeyUpdateOperation : IBatchVirtualKeyUpdateOperation
     {
         private readonly ILogger<BatchVirtualKeyUpdateOperation> _logger;
         private readonly IBatchOperationService _batchOperationService;
@@ -190,19 +190,5 @@ namespace ConduitLLM.Core.Services.BatchOperations
                 };
             }
         }
-    }
-
-    /// <summary>
-    /// Item for batch virtual key update
-    /// </summary>
-    public class VirtualKeyUpdateItem
-    {
-        public int VirtualKeyId { get; set; }
-        public decimal? MaxBudget { get; set; }
-        public List<string>? AllowedModels { get; set; }
-        public Dictionary<string, object>? RateLimits { get; set; }
-        public bool? IsEnabled { get; set; }
-        public DateTime? ExpiresAt { get; set; }
-        public string? Notes { get; set; }
     }
 }

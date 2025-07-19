@@ -14,7 +14,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
     /// <summary>
     /// Batch operation for sending webhooks to multiple endpoints
     /// </summary>
-    public class BatchWebhookSendOperation
+    public class BatchWebhookSendOperation : IBatchWebhookSendOperation
     {
         private readonly ILogger<BatchWebhookSendOperation> _logger;
         private readonly IBatchOperationService _batchOperationService;
@@ -201,19 +201,5 @@ namespace ConduitLLM.Core.Services.BatchOperations
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
             return Convert.ToBase64String(hash);
         }
-    }
-
-    /// <summary>
-    /// Item for batch webhook send
-    /// </summary>
-    public class WebhookSendItem
-    {
-        public string WebhookUrl { get; set; } = string.Empty;
-        public int VirtualKeyId { get; set; }
-        public string EventType { get; set; } = string.Empty;
-        public object Payload { get; set; } = new { };
-        public Dictionary<string, string>? Headers { get; set; }
-        public string? Secret { get; set; }
-        public int MaxRetries { get; set; } = 3;
     }
 }

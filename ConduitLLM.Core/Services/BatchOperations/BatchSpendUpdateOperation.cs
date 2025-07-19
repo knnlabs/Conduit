@@ -12,7 +12,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
     /// <summary>
     /// Batch operation for updating spend amounts across multiple virtual keys
     /// </summary>
-    public class BatchSpendUpdateOperation
+    public class BatchSpendUpdateOperation : IBatchSpendUpdateOperation
     {
         private readonly ILogger<BatchSpendUpdateOperation> _logger;
         private readonly IBatchOperationService _batchOperationService;
@@ -120,17 +120,5 @@ namespace ConduitLLM.Core.Services.BatchOperations
                 };
             }
         }
-    }
-
-    /// <summary>
-    /// Item for batch spend update
-    /// </summary>
-    public class SpendUpdateItem
-    {
-        public int VirtualKeyId { get; set; }
-        public decimal Amount { get; set; }
-        public string Model { get; set; } = string.Empty;
-        public string Provider { get; set; } = string.Empty;
-        public Dictionary<string, object>? RequestMetadata { get; set; }
     }
 }

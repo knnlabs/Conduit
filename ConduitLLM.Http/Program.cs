@@ -248,9 +248,9 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IBatchOperationHi
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Http.Services.BatchOperationHistoryService>();
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationNotificationService, ConduitLLM.Http.Services.BatchOperationNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
-builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
-builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
-builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchSpendUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchVirtualKeyUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchWebhookSendOperation, ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
 
 // Register Webhook Delivery Service
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
@@ -781,7 +781,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 // Register provider model list service
-builder.Services.AddScoped<ModelListService>();
+builder.Services.AddScoped<IModelListService, ModelListService>();
 
 // Register async task service
 // Register cancellable task registry
