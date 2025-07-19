@@ -56,5 +56,11 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Key is resolution (e.g., "1920x1080"), value is multiplier.
         /// </summary>
         public Dictionary<string, decimal>? VideoResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost multiplier for batch processing operations, if applicable.
+        /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
+        /// </summary>
+        public decimal? BatchProcessingMultiplier { get; set; }
     }
 }

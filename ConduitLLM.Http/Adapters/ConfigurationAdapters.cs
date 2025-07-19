@@ -146,7 +146,8 @@ namespace ConduitLLM.Http.Adapters
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                     ImageCostPerImage = modelCost.ImageCostPerImage,
                     VideoCostPerSecond = modelCost.VideoCostPerSecond,
-                    VideoResolutionMultipliers = videoResolutionMultipliers
+                    VideoResolutionMultipliers = videoResolutionMultipliers,
+                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier
                 };
             }
         }

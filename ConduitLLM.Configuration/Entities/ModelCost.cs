@@ -171,4 +171,17 @@ public class ModelCost
     /// Stored as JSON text in the database.
     /// </remarks>
     public string? VideoResolutionMultipliers { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost multiplier for batch processing operations, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents a cost reduction factor for batch API usage.
+    /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
+    /// Applied to the standard token costs when requests are processed through batch APIs.
+    /// Nullable because not all models support batch processing.
+    /// Stored with moderate precision (decimal 18,4) for percentage-based multipliers.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? BatchProcessingMultiplier { get; set; }
 }
