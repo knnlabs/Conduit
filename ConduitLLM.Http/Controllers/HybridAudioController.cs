@@ -276,7 +276,9 @@ namespace ConduitLLM.Http.Controllers
                 "audio/webm" => "webm",
                 "audio/flac" => "flac",
                 "audio/ogg" => "ogg",
-                _ => Path.GetExtension(fileName)?.TrimStart('.').ToLower() ?? "mp3"
+                _ => string.IsNullOrEmpty(Path.GetExtension(fileName)?.TrimStart('.').ToLower()) 
+                    ? "mp3" 
+                    : Path.GetExtension(fileName).TrimStart('.').ToLower()
             };
         }
 
