@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+// Note: Using local interfaces instead of SDK types due to compatibility issues
 
 interface ImageGenerationRequest {
   prompt: string;
@@ -109,12 +110,12 @@ export function useCoreApi() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error ?? 'Image generation failed');
       }
+
+      const result = await response.json() as ImageGenerationResponse;
 
       notifications.show({
         title: 'Success',
@@ -122,7 +123,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result as ImageGenerationResponse;
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Image generation failed';
       setError(message);
@@ -150,12 +151,12 @@ export function useCoreApi() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error ?? 'Video generation failed');
       }
+
+      const result = await response.json() as VideoGenerationResponse;
 
       notifications.show({
         title: 'Success',
@@ -163,7 +164,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result as VideoGenerationResponse;
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Video generation failed';
       setError(message);
@@ -194,12 +195,12 @@ export function useCoreApi() {
         body: formData,
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error ?? 'Audio transcription failed');
       }
+
+      const result = await response.json() as AudioTranscriptionResponse;
 
       notifications.show({
         title: 'Success',
@@ -207,7 +208,7 @@ export function useCoreApi() {
         color: 'green',
       });
 
-      return result as AudioTranscriptionResponse;
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Audio transcription failed';
       setError(message);
@@ -236,9 +237,8 @@ export function useCoreApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json() as unknown;
-        const error = errorData as { error?: string };
-        throw new Error(error.error ?? 'Speech generation failed');
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error ?? 'Speech generation failed');
       }
 
       const blob = await response.blob();
@@ -280,14 +280,13 @@ export function useCoreApi() {
         }),
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error ?? 'Chat completion failed');
       }
 
-      return result as ChatCompletionResponse;
+      const result = await response.json() as ChatCompletionResponse;
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Chat completion failed';
       setError(message);

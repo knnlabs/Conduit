@@ -123,8 +123,8 @@ export class ChatService {
     }
     
     // Set up timeout
-    const timeoutId = options?.timeout || this.config.timeout
-      ? setTimeout(() => controller.abort(), options?.timeout || this.config.timeout)
+    const timeoutId = options?.timeout ?? this.config.timeout
+      ? setTimeout(() => controller.abort(), options?.timeout ?? this.config.timeout)
       : undefined;
 
     try {
@@ -235,6 +235,6 @@ export class ChatService {
       options
     );
 
-    return new ControllableChatStream(baseStream, options?.streamControl || {});
+    return new ControllableChatStream(baseStream, options?.streamControl ?? {});
   }
 }

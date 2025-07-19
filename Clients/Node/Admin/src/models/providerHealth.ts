@@ -2,6 +2,7 @@ import { FilterOptions } from './common';
 import type { 
   ProviderHealthStatusDto
 } from './provider';
+import type { HealthCheckDetails } from './common-types';
 
 // Core health types
 export interface HealthSummaryDto {
@@ -47,7 +48,7 @@ export interface HealthCheck {
   status: 'ok' | 'warning' | 'critical';
   message: string;
   lastChecked: string;
-  details?: Record<string, any>;
+  details?: HealthCheckDetails;
 }
 
 export interface UptimeMetric {

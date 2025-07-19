@@ -1,5 +1,7 @@
 // Removed unused import: FilterOptions
 
+import type { ConfigValue, RouterActionParameters, ExtendedMetadata } from './common-types';
+
 // Extended Routing types from issue #380
 export interface RoutingConfigDto {
   defaultStrategy: 'round_robin' | 'least_latency' | 'cost_optimized' | 'priority';
@@ -42,13 +44,13 @@ export interface RuleCondition {
   type: 'model' | 'header' | 'body' | 'time' | 'load';
   field?: string;
   operator: 'equals' | 'contains' | 'regex' | 'gt' | 'lt' | 'between';
-  value: any;
+  value: ConfigValue;
 }
 
 export interface RuleAction {
   type: 'route' | 'transform' | 'cache' | 'rate_limit' | 'log';
   target?: string;
-  parameters?: Record<string, any>;
+  parameters?: RouterActionParameters;
 }
 
 export interface CreateRoutingRuleDto {
@@ -106,7 +108,7 @@ export interface CacheCondition {
   type: 'header' | 'query' | 'body' | 'time';
   field: string;
   operator: 'equals' | 'contains' | 'regex' | 'exists';
-  value?: any;
+  value?: ConfigValue;
 }
 
 export interface CacheClearParams {
@@ -269,7 +271,7 @@ export interface FeatureFlag {
   enabled: boolean;
   rolloutPercentage?: number;
   conditions?: FeatureFlagCondition[];
-  metadata?: Record<string, any>;
+  metadata?: ExtendedMetadata;
   lastModified: string;
 }
 
@@ -277,7 +279,7 @@ export interface FeatureFlagCondition {
   type: 'user' | 'key' | 'environment' | 'custom';
   field: string;
   operator: 'in' | 'not_in' | 'equals' | 'regex';
-  values: any[];
+  values: ConfigValue[];
 }
 
 export interface UpdateFeatureFlagDto {
@@ -286,7 +288,7 @@ export interface UpdateFeatureFlagDto {
   enabled?: boolean;
   rolloutPercentage?: number;
   conditions?: FeatureFlagCondition[];
-  metadata?: Record<string, any>;
+  metadata?: ExtendedMetadata;
 }
 
 // Issue #437 - Routing Health and Configuration SDK Methods
@@ -478,7 +480,7 @@ export interface RoutePerformanceTestParams {
   payload?: {
     size: number;
     complexity: 'simple' | 'medium' | 'complex';
-    customData?: Record<string, any>;
+    customData?: ExtendedMetadata;
   };
   /** Performance thresholds */
   thresholds?: {

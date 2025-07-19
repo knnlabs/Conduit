@@ -31,11 +31,11 @@ export interface ColumnDef<T> {
   width?: string;
   sortable?: boolean;
   sortType?: 'string' | 'number' | 'date' | 'currency' | 'boolean';
-  accessor?: keyof T | ((item: T) => unknown);
+  accessor?: keyof T | ((item: T) => unknown); // Generic accessor - can return any value type
   customSort?: (a: T, b: T, direction: SortDirection) => number;
   filterable?: boolean;
   filterType?: 'text' | 'select' | 'number' | 'date' | 'boolean';
-  filterOptions?: { label: string; value: unknown }[];
+  filterOptions?: { label: string; value: unknown }[]; // Generic filter values - can be any type
 }
 
 export interface ActionDef<T> {

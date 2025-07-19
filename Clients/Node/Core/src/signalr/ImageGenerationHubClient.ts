@@ -1,13 +1,13 @@
 import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import type { 
-  IImageGenerationHubServer,
-  ImageGenerationStartedEvent,
-  ImageGenerationProgressEvent,
-  ImageGenerationCompletedEvent,
-  ImageGenerationFailedEvent
+import { 
+  SignalREndpoints,
+  type IImageGenerationHubServer,
+  type ImageGenerationStartedEvent,
+  type ImageGenerationProgressEvent,
+  type ImageGenerationCompletedEvent,
+  type ImageGenerationFailedEvent
 } from '../models/signalr';
-import { SignalREndpoints } from '../models/signalr';
 
 /**
  * SignalR client for the Image Generation Hub, providing real-time image generation notifications.
@@ -33,28 +33,28 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
    */
   protected configureHubHandlers(connection: signalR.HubConnection): void {
     connection.on('ImageGenerationStarted', async (taskId: string, prompt: string, model: string) => {
-      console.debug(`Image generation started: ${taskId}, Model: ${model}`);
+      console.warn(`Image generation started: ${taskId}, Model: ${model}`);
       if (this.onImageGenerationStarted) {
         await this.onImageGenerationStarted({ eventType: 'ImageGenerationStarted', taskId, prompt, model });
       }
     });
 
     connection.on('ImageGenerationProgress', async (taskId: string, progress: number, stage?: string) => {
-      console.debug(`Image generation progress: ${taskId}, Progress: ${progress}%, Stage: ${stage}`);
+      console.warn(`Image generation progress: ${taskId}, Progress: ${progress}%, Stage: ${stage}`);
       if (this.onImageGenerationProgress) {
         await this.onImageGenerationProgress({ eventType: 'ImageGenerationProgress', taskId, progress, stage });
       }
     });
 
     connection.on('ImageGenerationCompleted', async (taskId: string, imageUrl: string, metadata: unknown) => {
-      console.debug(`Image generation completed: ${taskId}`);
+      console.warn(`Image generation completed: ${taskId}`);
       if (this.onImageGenerationCompleted) {
         await this.onImageGenerationCompleted({ eventType: 'ImageGenerationCompleted', taskId, imageUrl, metadata: metadata as Record<string, unknown> });
       }
     });
 
     connection.on('ImageGenerationFailed', async (taskId: string, error: string, isRetryable: boolean) => {
-      console.debug(`Image generation failed: ${taskId}, Error: ${error}`);
+      console.error(`Image generation failed: ${taskId}, Error: ${error}`);
       if (this.onImageGenerationFailed) {
         await this.onImageGenerationFailed({ eventType: 'ImageGenerationFailed', taskId, error, isRetryable, errorCode: undefined });
       }
@@ -70,7 +70,7 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('SubscribeToTask', taskId);
-    console.debug(`Subscribed to image generation task: ${taskId}`);
+    console.warn(`Subscribed to image generation task: ${taskId}`);
   }
 
   /**
@@ -82,7 +82,7 @@ export class ImageGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('UnsubscribeFromTask', taskId);
-    console.debug(`Unsubscribed from image generation task: ${taskId}`);
+    console.warn(`Unsubscribed from image generation task: ${taskId}`);
   }
 
   /**

@@ -150,7 +150,7 @@ export function validateEmbeddingRequest(request: EmbeddingRequest): void {
     if (request.input.length === 0) {
       throw new Error('At least one input text is required');
     }
-    if (request.input.some(text => !text || !text.trim())) {
+    if (request.input.some(text => !text?.trim())) {
       throw new Error('Input texts cannot be null or empty');
     }
   } else {

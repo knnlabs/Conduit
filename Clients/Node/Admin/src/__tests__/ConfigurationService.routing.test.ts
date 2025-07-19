@@ -91,12 +91,12 @@ describe('ConfigurationService - Extended Routing Methods', () => {
     });
     
     // Mock the protected methods
-    (service as any).get = mockGet;
-    (service as any).put = mockPut;
-    (service as any).post = mockPost;
-    (service as any).delete = mockDelete;
-    (service as any).withCache = jest.fn((key, fn) => fn());
-    (service as any).invalidateConfigurationCache = jest.fn();
+    (service as unknown as { get: jest.Mock }).get = mockGet;
+    (service as unknown as { put: jest.Mock }).put = mockPut;
+    (service as unknown as { post: jest.Mock }).post = mockPost;
+    (service as unknown as { delete: jest.Mock }).delete = mockDelete;
+    (service as unknown as { withCache: jest.Mock }).withCache = jest.fn((key, fn) => fn());
+    (service as unknown as { invalidateConfigurationCache: jest.Mock }).invalidateConfigurationCache = jest.fn();
   });
 
   describe('extendedRouting.get', () => {
@@ -208,7 +208,7 @@ describe('ConfigurationService - Extended Routing Methods', () => {
         name: 'Invalid Rule',
         conditions: [
           {
-            type: 'invalid-type' as any,
+            type: 'invalid-type' as unknown as 'model',
             operator: 'equals',
             value: 'test',
           },

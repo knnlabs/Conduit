@@ -22,13 +22,13 @@ export class SignalRService {
   /**
    * Gets or creates the navigation state hub connection
    */
-  async getOrCreateNavigationStateHub(): Promise<NavigationStateHubClient> {
+  getOrCreateNavigationStateHub(): NavigationStateHubClient {
     if (!this.navigationStateHub) {
       this.navigationStateHub = new NavigationStateHubClient(this.baseUrl, this.masterKey);
       
       // Set up connection event handlers
       this.navigationStateHub.onConnected = async () => {
-        console.log('Navigation state hub connected');
+        console.warn('Navigation state hub connected');
       };
       
       this.navigationStateHub.onDisconnected = async (error) => {
@@ -36,11 +36,11 @@ export class SignalRService {
       };
       
       this.navigationStateHub.onReconnecting = async (error) => {
-        console.log('Navigation state hub reconnecting:', error?.message);
+        console.warn('Navigation state hub reconnecting:', error?.message);
       };
       
       this.navigationStateHub.onReconnected = async () => {
-        console.log('Navigation state hub reconnected');
+        console.warn('Navigation state hub reconnected');
       };
     }
     
@@ -50,13 +50,13 @@ export class SignalRService {
   /**
    * Gets or creates the admin notification hub connection
    */
-  async getOrCreateAdminNotificationHub(): Promise<AdminNotificationHubClient> {
+  getOrCreateAdminNotificationHub(): AdminNotificationHubClient {
     if (!this.adminNotificationHub) {
       this.adminNotificationHub = new AdminNotificationHubClient(this.baseUrl, this.masterKey);
       
       // Set up connection event handlers
       this.adminNotificationHub.onConnected = async () => {
-        console.log('Admin notification hub connected');
+        console.warn('Admin notification hub connected');
         // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
         // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
       };
@@ -66,11 +66,11 @@ export class SignalRService {
       };
       
       this.adminNotificationHub.onReconnecting = async (error) => {
-        console.log('Admin notification hub reconnecting:', error?.message);
+        console.warn('Admin notification hub reconnecting:', error?.message);
       };
       
       this.adminNotificationHub.onReconnected = async () => {
-        console.log('Admin notification hub reconnected');
+        console.warn('Admin notification hub reconnected');
         // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
         // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
       };
@@ -82,14 +82,14 @@ export class SignalRService {
   /**
    * Gets a connection by type
    */
-  async getOrCreateConnection(type: 'navigation' | 'notifications'): Promise<NavigationStateHubClient | AdminNotificationHubClient> {
+  getOrCreateConnection(type: 'navigation' | 'notifications'): NavigationStateHubClient | AdminNotificationHubClient {
     switch (type) {
       case 'navigation':
         return this.getOrCreateNavigationStateHub();
       case 'notifications':
         return this.getOrCreateAdminNotificationHub();
       default:
-        throw new Error(`Unknown connection type: ${type}`);
+        throw new Error(`Unknown connection type: ${type as string}`);
     }
   }
 
@@ -100,13 +100,13 @@ export class SignalRService {
     const promises: Promise<void>[] = [];
     
     // Create and start navigation state hub
-    const navigationHub = await this.getOrCreateNavigationStateHub();
+    const navigationHub = this.getOrCreateNavigationStateHub();
     if (!navigationHub.isConnected) {
       promises.push(navigationHub.start());
     }
     
     // Create and start admin notification hub
-    const notificationHub = await this.getOrCreateAdminNotificationHub();
+    const notificationHub = this.getOrCreateAdminNotificationHub();
     if (!notificationHub.isConnected) {
       promises.push(notificationHub.start());
     }
@@ -135,8 +135,8 @@ export class SignalRService {
    * Checks if any hub is connected
    */
   isAnyConnected(): boolean {
-    return (this.navigationStateHub?.isConnected || false) ||
-           (this.adminNotificationHub?.isConnected || false);
+    return (this.navigationStateHub?.isConnected ?? false) ||
+           (this.adminNotificationHub?.isConnected ?? false);
   }
 
   /**
@@ -144,8 +144,8 @@ export class SignalRService {
    */
   getConnectionStates(): Record<string, HubConnectionState> {
     return {
-      navigationState: this.navigationStateHub?.state || HubConnectionState.Disconnected,
-      adminNotifications: this.adminNotificationHub?.state || HubConnectionState.Disconnected,
+      navigationState: this.navigationStateHub?.state ?? HubConnectionState.Disconnected,
+      adminNotifications: this.adminNotificationHub?.state ?? HubConnectionState.Disconnected,
     };
   }
 

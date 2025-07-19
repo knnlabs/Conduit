@@ -58,7 +58,7 @@ export class ConduitCoreClient extends FetchBasedClient {
     // Initialize SignalR with configuration
     const signalRConfig = config.signalR ?? {};
     this.signalr = new SignalRService(
-      config.baseURL || 'http://localhost:5000', 
+      config.baseURL ?? 'http://localhost:5000', 
       config.apiKey
     );
     

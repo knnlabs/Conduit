@@ -12,8 +12,8 @@ export class HealthService extends FetchBasedClient {
   }
 
   async waitForHealth(options?: WaitForHealthOptions): Promise<HealthCheckResponse> {
-    const timeout = options?.timeout || 30000;
-    const pollingInterval = options?.pollingInterval || 1000;
+    const timeout = options?.timeout ?? 30000;
+    const pollingInterval = options?.pollingInterval ?? 1000;
     const maxAttempts = Math.floor(timeout / pollingInterval);
 
     for (let i = 0; i < maxAttempts; i++) {

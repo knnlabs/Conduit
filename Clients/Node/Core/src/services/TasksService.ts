@@ -114,7 +114,7 @@ export class TasksService {
 
         case TASK_STATUS.FAILED:
           throw new ConduitError(
-            `Task failed: ${status.error || 'Unknown error'}`
+            `Task failed: ${status.error ?? 'Unknown error'}`
           );
 
         case TASK_STATUS.CANCELLED:

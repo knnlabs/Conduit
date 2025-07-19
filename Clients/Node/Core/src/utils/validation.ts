@@ -1,7 +1,6 @@
 import type { ChatCompletionRequest, TextContent, ImageContent } from '../models/chat';
-import type { ImageGenerationRequest } from '../models/images';
 import { ValidationError } from './errors';
-import { IMAGE_MODEL_CAPABILITIES } from '../models/images';
+import { IMAGE_MODEL_CAPABILITIES, type ImageGenerationRequest } from '../models/images';
 import { ChatRoleHelpers, ImageValidationHelpers } from '../constants';
 
 /**

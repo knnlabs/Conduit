@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 export type ExportFormat = 'csv' | 'json' | 'excel';
 export type ExportType = 'analytics' | 'virtualKeys' | 'usage' | 'requestLogs' | 'systemPerformance' | 'providerHealth';
@@ -48,12 +49,12 @@ export function useExportApi() {
         }),
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
-        throw new Error(errorData.error ?? 'Failed to start export');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to start export');
       }
+
+      const result = await response.json() as { exportId: string };
 
       notifications.show({
         title: 'Export Started',
@@ -61,7 +62,7 @@ export function useExportApi() {
         color: 'blue',
       });
 
-      return result as { exportId: string };
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start export';
       setError(message);
@@ -82,24 +83,22 @@ export function useExportApi() {
         method: 'GET',
       });
 
-      const result = await response.json() as unknown;
-
       if (!response.ok) {
-        const errorData = result as { error?: string };
-        throw new Error(errorData.error ?? 'Failed to get export status');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to get export status');
       }
 
-      const statusData = result as { progress?: number };
+      const result = await response.json() as ExportStatus;
+      
       // Update progress tracking
-      if (statusData.progress !== undefined) {
-        const progress = statusData.progress;
+      if (result.progress !== undefined) {
         setExportProgress(prev => ({
           ...prev,
-          [exportId]: progress,
+          [exportId]: result.progress,
         }));
       }
 
-      return result as ExportStatus;
+      return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to get export status';
       setError(message);
@@ -160,9 +159,8 @@ export function useExportApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const errorData = result as { error?: string };
-        throw new Error(errorData.error ?? 'Failed to export analytics');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to export analytics');
       }
 
       // For direct download endpoints

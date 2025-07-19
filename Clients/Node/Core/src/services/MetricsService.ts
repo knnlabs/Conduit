@@ -167,7 +167,7 @@ export class MetricsService {
     }
 
     const allProviders = await this.getProviderHealth();
-    return allProviders.find(p => p.providerName.toLowerCase() === providerName.toLowerCase()) || null;
+    return allProviders.find(p => p.providerName.toLowerCase() === providerName.toLowerCase()) ?? null;
   }
 
   /**

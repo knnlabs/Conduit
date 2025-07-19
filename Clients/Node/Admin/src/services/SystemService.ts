@@ -25,7 +25,7 @@ import { z } from 'zod';
 import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
 import { SettingsService } from './SettingsService';
 // Get SDK version from package.json at build time
-const SDK_VERSION = process.env.npm_package_version || '1.0.0';
+const SDK_VERSION = process.env.npm_package_version ?? '1.0.0';
 
 const createBackupSchema = z.object({
   description: z.string().max(500).optional(),
@@ -84,7 +84,7 @@ export class SystemService extends FetchBaseApiClient {
 
     const response = await this.post<BackupDto>(
       ENDPOINTS.SYSTEM.BACKUP,
-      request || {}
+      request ?? {}
     );
 
     await this.invalidateCache();
@@ -182,7 +182,7 @@ export class SystemService extends FetchBaseApiClient {
   }
 
   // Stub methods
-  async getAuditLogs(_filters?: AuditLogFilters): Promise<PaginatedResponse<AuditLogDto>> {
+  getAuditLogs(_filters?: AuditLogFilters): Promise<PaginatedResponse<AuditLogDto>> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getAuditLogs requires Admin API endpoint implementation. ' +
@@ -190,7 +190,7 @@ export class SystemService extends FetchBaseApiClient {
     );
   }
 
-  async scheduledBackup(
+  scheduledBackup(
     _schedule: string,
     _config: CreateBackupRequest
   ): Promise<{
@@ -206,7 +206,7 @@ export class SystemService extends FetchBaseApiClient {
     );
   }
 
-  async getScheduledBackups(): Promise<Array<{
+  getScheduledBackups(): Promise<Array<{
     id: string;
     schedule: string;
     nextRun: string;
@@ -220,7 +220,7 @@ export class SystemService extends FetchBaseApiClient {
     );
   }
 
-  async exportAuditLogs(
+  exportAuditLogs(
     _filters: AuditLogFilters,
     _format: 'csv' | 'json'
   ): Promise<Blob> {
@@ -231,7 +231,7 @@ export class SystemService extends FetchBaseApiClient {
     );
   }
 
-  async getDiagnostics(): Promise<{
+  getDiagnostics(): Promise<{
     timestamp: string;
     checks: DiagnosticChecks;
     recommendations: string[];
@@ -285,7 +285,7 @@ export class SystemService extends FetchBaseApiClient {
       }
     } catch (error) {
       // Key doesn't exist, we'll create it
-      this.logger?.debug('WebUI virtual key not found in GlobalSettings, creating new one');
+      this.log('debug', 'WebUI virtual key not found in GlobalSettings, creating new one');
     }
 
     // Create metadata
@@ -311,7 +311,7 @@ export class SystemService extends FetchBaseApiClient {
       description: 'Virtual key for WebUI Core API access'
     });
     
-    this.logger?.info('Created new WebUI virtual key');
+    this.log('info', 'Created new WebUI virtual key');
     return response.virtualKey;
   }
 

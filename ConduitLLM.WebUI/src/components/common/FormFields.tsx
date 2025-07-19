@@ -56,7 +56,7 @@ export function FieldGroup({
 
 // Name field component with standard validation
 export interface NameFieldProps {
-  form: UseFormReturnType<Record<string, unknown>>;
+  form: UseFormReturnType<Record<string, unknown>>; // Generic form - needs to support any form structure
   fieldName: string;
   label?: string;
   placeholder?: string;
@@ -93,7 +93,7 @@ export function NameField({
 
 // Budget field component with proper number formatting
 export interface BudgetFieldProps {
-  form: UseFormReturnType<Record<string, unknown>>;
+  form: UseFormReturnType<Record<string, unknown>>; // Generic form - needs to support any form structure
   fieldName: string;
   label?: string;
   description?: string;

@@ -83,11 +83,11 @@ export abstract class ServiceBase {
    * Merges service-specific options with client options
    */
   protected getValidationOptions(): ValidationOptions {
-    const clientOptions = (this.client as any).validation || {};
+    // Use service-specific options or fall back to defaults
     return {
-      enabled: this.validationOptions?.enabled ?? clientOptions.enabled ?? (process.env.NODE_ENV !== 'production'),
-      throwOnError: this.validationOptions?.throwOnError ?? clientOptions.throwOnError ?? false,
-      onValidationError: this.validationOptions?.onValidationError ?? clientOptions.onValidationError,
+      enabled: this.validationOptions?.enabled ?? (process.env.NODE_ENV !== 'production'),
+      throwOnError: this.validationOptions?.throwOnError ?? false,
+      onValidationError: this.validationOptions?.onValidationError ?? defaultValidationOptions.onValidationError,
     };
   }
   

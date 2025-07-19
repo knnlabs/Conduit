@@ -7,6 +7,7 @@ import type {
   UpdateModelProviderMappingDto,
   DiscoveredModel
 } from '@knn_labs/conduit-admin-client';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 const QUERY_KEY = 'model-mappings';
 
@@ -66,9 +67,8 @@ export function useCreateModelMapping() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string };
-        throw new Error(error.message ?? 'Failed to create model mapping');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create model mapping');
       }
 
       return response.json() as Promise<ModelProviderMappingDto>;
@@ -107,18 +107,13 @@ export function useUpdateModelMapping() {
 
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string; details?: string };
+        const errorResult = await response.json() as ErrorResponse;
         
         // Try to parse the details if it's a JSON string
-        let detailsMessage = error.message ?? 'Failed to update model mapping';
-        if (error.details) {
-          try {
-            const details = JSON.parse(error.details) as { detail?: string; message?: string };
-            detailsMessage = details.detail ?? details.message ?? detailsMessage;
-          } catch {
-            detailsMessage = error.details;
-          }
+        let detailsMessage = errorResult.error ?? errorResult.message ?? 'Failed to update model mapping';
+        if (errorResult.details && typeof errorResult.details === 'object') {
+          const details = errorResult.details as { detail?: string; message?: string };
+          detailsMessage = details.detail ?? details.message ?? detailsMessage;
         }
         
         throw new Error(detailsMessage);
@@ -155,9 +150,8 @@ export function useDeleteModelMapping() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string };
-        throw new Error(error.message ?? 'Failed to delete model mapping');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to delete model mapping');
       }
     },
     onSuccess: () => {
@@ -202,9 +196,8 @@ export function useDiscoverModels() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string };
-        throw new Error(error.message ?? 'Failed to discover models');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to discover models');
       }
 
       const result = await response.json() as DiscoveredModelWithStatus[];
@@ -291,9 +284,8 @@ export function useBulkDiscoverModels() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string };
-        throw new Error(error.message ?? 'Failed to discover models');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to discover models');
       }
 
       const result = await response.json() as BulkDiscoverResult;
@@ -368,9 +360,8 @@ export function useBulkCreateMappings() {
       });
 
       if (!response.ok) {
-        const result = await response.json() as unknown;
-        const error = result as { message?: string };
-        throw new Error(error.message ?? 'Failed to create mappings');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create mappings');
       }
 
       const result = await response.json() as BulkCreateResult;

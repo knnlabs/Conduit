@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import type { HealthStatusDto } from '@knn_labs/conduit-admin-client';
 
 export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
   coreApi: 'healthy' | 'degraded' | 'unavailable';
   lastChecked: Date;
-  adminApiDetails?: unknown;
-  coreApiDetails?: unknown;
+  adminApiDetails?: Record<string, unknown>; // Health check details - flexible structure
+  coreApiDetails?: Record<string, unknown>; // Health check details - flexible structure
   coreApiMessage?: string;
   coreApiChecks?: {
     name: string;
     status: string;
     description?: string;
-    data?: unknown;
+    data?: Record<string, unknown>; // Health check data - flexible structure
   }[];
 }
 
@@ -34,32 +35,18 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
       const response = await fetch('/api/admin/system/health');
       
       if (response.ok) {
-        const health = await response.json() as unknown;
-        const healthData = health as {
-          status?: string;
-          overallStatus?: string;
-          adminApiDetails?: unknown;
-          coreApiDetails?: unknown;
-          coreApiMessage?: string;
-          coreApiChecks?: {
-            name: string;
-            status: string;
-            description?: string;
-            data?: unknown;
-          }[];
-        };
+        const health = await response.json() as HealthStatusDto;
+        // The SDK response contains the standard health data
         
         // Determine status based on the health response
-        const isHealthy = healthData.status === 'healthy' || healthData.overallStatus === 'healthy';
+        const isHealthy = health.status === 'healthy';
         
         setHealthStatus({
           adminApi: isHealthy ? 'healthy' : 'degraded',
           coreApi: isHealthy ? 'healthy' : 'degraded',
           lastChecked: new Date(),
-          adminApiDetails: healthData.adminApiDetails,
-          coreApiDetails: healthData.coreApiDetails,
-          coreApiMessage: healthData.coreApiMessage,
-          coreApiChecks: healthData.coreApiChecks,
+          adminApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
+          coreApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
         });
       } else {
         setHealthStatus({

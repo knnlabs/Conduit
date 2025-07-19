@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import type { CustomSettings, ConfigValue } from './common-types';
 
 export interface GlobalSettingDto {
   key: string;
@@ -41,7 +42,7 @@ export interface AudioConfigurationDto {
   defaultModel?: string;
   maxDuration?: number;
   allowedVoices?: string[];
-  customSettings?: Record<string, any>;
+  customSettings?: CustomSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -55,7 +56,7 @@ export interface CreateAudioConfigurationDto {
   defaultModel?: string;
   maxDuration?: number;
   allowedVoices?: string[];
-  customSettings?: Record<string, any>;
+  customSettings?: CustomSettings;
 }
 
 export interface UpdateAudioConfigurationDto {
@@ -66,7 +67,7 @@ export interface UpdateAudioConfigurationDto {
   defaultModel?: string;
   maxDuration?: number;
   allowedVoices?: string[];
-  customSettings?: Record<string, any>;
+  customSettings?: CustomSettings;
 }
 
 export interface RouterConfigurationDto {
@@ -97,12 +98,12 @@ export interface RouterRule {
 export interface RouterCondition {
   type: 'model' | 'key' | 'metadata' | 'time' | 'cost';
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
-  value: any;
+  value: ConfigValue;
 }
 
 export interface RouterAction {
   type: 'route_to_provider' | 'block' | 'rate_limit' | 'add_metadata';
-  value: any;
+  value: ConfigValue;
 }
 
 export interface UpdateRouterConfigurationDto {

@@ -1,19 +1,19 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
-import type {
-  BatchSpendUpdateRequest,
-  BatchVirtualKeyUpdateRequest,
-  BatchWebhookSendRequest,
-  BatchOperationStartResponse,
-  BatchOperationStatusResponse,
-  SpendUpdateDto,
-  VirtualKeyUpdateDto,
-  WebhookSendDto,
-  BatchOperationPollOptions,
-  BatchValidationOptions,
-  BatchValidationResult
+import {
+  type BatchSpendUpdateRequest,
+  type BatchVirtualKeyUpdateRequest,
+  type BatchWebhookSendRequest,
+  type BatchOperationStartResponse,
+  type BatchOperationStatusResponse,
+  type SpendUpdateDto,
+  type VirtualKeyUpdateDto,
+  type WebhookSendDto,
+  type BatchOperationPollOptions,
+  type BatchValidationOptions,
+  type BatchValidationResult,
+  BatchOperationStatusEnum
 } from '../models/batchOperations';
-import { BatchOperationStatusEnum } from '../models/batchOperations';
 
 /**
  * Service for performing batch operations on the Conduit Core API
@@ -215,8 +215,8 @@ export class BatchOperationsService {
     operationId: string,
     options: BatchOperationPollOptions = {}
   ): Promise<BatchOperationStatusResponse> {
-    const pollingInterval = options.pollingInterval || 5000;
-    const timeout = options.timeout || 600000; // 10 minutes default
+    const pollingInterval = options.pollingInterval ?? 5000;
+    const timeout = options.timeout ?? 600000; // 10 minutes default
 
     const startTime = Date.now();
     let lastStatus: BatchOperationStatusResponse | undefined;
@@ -236,7 +236,7 @@ export class BatchOperationsService {
 
     throw new Error(
       `Batch operation ${operationId} did not complete within ${timeout}ms. ` +
-      `Last status: ${lastStatus?.status || 'unknown'}`
+      `Last status: ${lastStatus?.status ?? 'unknown'}`
     );
   }
 

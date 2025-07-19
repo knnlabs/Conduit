@@ -7,7 +7,7 @@ export function setupGlobalErrorHandler() {
   // Handle unhandled promise rejections
   if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
-      const reason = event.reason as unknown;
+      const reason = event.reason as unknown; // Browser rejection reason can be any type
       const reasonMessage = reason instanceof Error ? reason.message : undefined;
       const reasonStack = reason instanceof Error ? reason.stack : undefined;
       
@@ -57,7 +57,7 @@ export function setupGlobalErrorHandler() {
 
     // Handle uncaught errors
     window.addEventListener('error', (event) => {
-      const errorObj = event.error as unknown;
+      const errorObj = event.error as unknown; // Browser error object can be any type
       const errorStack = errorObj instanceof Error ? errorObj.stack : undefined;
       
       console.error('Uncaught error:', {
@@ -89,9 +89,9 @@ export function setupGlobalErrorHandler() {
 /**
  * Error serializer for logging
  */
-export function serializeError(error: unknown): Record<string, unknown> {
+export function serializeError(error: unknown): Record<string, unknown> { // Generic error serializer for any error type
   if (error instanceof Error) {
-    const { name, message, stack, ...rest } = error as Error & Record<string, unknown>;
+    const { name, message, stack, ...rest } = error as Error & Record<string, unknown>; // Capture custom error properties
     return {
       name,
       message,
@@ -109,7 +109,7 @@ export function serializeError(error: unknown): Record<string, unknown> {
 /**
  * Check if an error is recoverable
  */
-export function isRecoverableError(error: unknown): boolean {
+export function isRecoverableError(error: unknown): boolean { // Check if any error type is recoverable
   if (!(error instanceof Error)) return false;
   
   const message = error.message.toLowerCase();
@@ -135,7 +135,7 @@ export function isRecoverableError(error: unknown): boolean {
 /**
  * Format error message for display
  */
-export function formatErrorMessage(error: unknown): string {
+export function formatErrorMessage(error: unknown): string { // Format any error type for user display
   if (error instanceof Error) {
     // Special handling for common errors
     const message = error.message.toLowerCase();

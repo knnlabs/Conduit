@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
  */
 type ApiHandler = (
   req: NextRequest,
-  ...args: unknown[]
+  ...args: unknown[] // Generic handler args - can be any parameters
 ) => Promise<Response | undefined> | Promise<Response>;
 
 export class ApiLogger {
@@ -19,7 +19,7 @@ export class ApiLogger {
     this.startTime = Date.now();
   }
 
-    logRequest(request: NextRequest, body?: unknown) {
+    logRequest(request: NextRequest, body?: unknown) { // Generic request body - can be any JSON structure
     if (process.env.NODE_ENV === 'development') {
             console.warn(`\n=== API REQUEST: ${this.routeName} ===`);
             console.warn(`Method: ${request.method}`);
@@ -32,7 +32,7 @@ export class ApiLogger {
     }
   }
 
-    logResponse(status: number, body?: unknown) {
+    logResponse(status: number, body?: unknown) { // Generic response body - can be any JSON structure
     if (process.env.NODE_ENV === 'development') {
       const duration = Date.now() - this.startTime;
             console.warn(`\n=== API RESPONSE: ${this.routeName} ===`);
@@ -45,7 +45,7 @@ export class ApiLogger {
     }
   }
 
-    logError(error: unknown) {
+    logError(error: unknown) { // Generic error - can be any error type
     const duration = Date.now() - this.startTime;
     console.error(`\n=== API ERROR: ${this.routeName} ===`);
     console.error(`Duration: ${duration}ms`);
@@ -61,16 +61,16 @@ export class ApiLogger {
  * Middleware wrapper that logs all requests/responses
  */
 export function withLogging(routeName: string, handler: ApiHandler) {
-      return async (req: NextRequest, ...args: unknown[]) => {
+      return async (req: NextRequest, ...args: unknown[]) => { // Generic handler args - can be any parameters
     const logger = new ApiLogger(routeName);
         const request = req;
     
     try {
       // Log request
-      let body: unknown;
+      let body: unknown; // Generic request body - can be any JSON structure
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         try {
-          body = await request.clone().json() as unknown;
+          body = await request.clone().json() as unknown; // Parse any JSON body type
         } catch {
           // Not JSON body, ignore
         }
@@ -82,7 +82,7 @@ export function withLogging(routeName: string, handler: ApiHandler) {
       
       // Log response
       if (response instanceof Response) {
-        const responseBody: unknown = await response.clone().json().catch(() => null);
+        const responseBody: unknown = await response.clone().json().catch(() => null); // Parse any JSON response type
         logger.logResponse(response.status, responseBody);
       }
       

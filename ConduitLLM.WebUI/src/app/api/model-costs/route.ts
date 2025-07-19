@@ -47,7 +47,7 @@ interface LegacyCreateModelCostDto {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: unknown = await req.json();
+    const body = await req.json() as CreateModelCostDto | LegacyCreateModelCostDto;
 
     // Type guard to ensure body is a valid object
     if (!body || typeof body !== 'object') {

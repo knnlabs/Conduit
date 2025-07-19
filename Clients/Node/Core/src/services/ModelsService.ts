@@ -31,7 +31,7 @@ export class ModelsService {
 
   async get(modelId: string, options?: RequestOptions): Promise<Model | null> {
     const models = await this.list(options);
-    return models.find(model => model.id === modelId) || null;
+    return models.find(model => model.id === modelId) ?? null;
   }
 
   async exists(modelId: string, options?: RequestOptions): Promise<boolean> {

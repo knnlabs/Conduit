@@ -2,6 +2,8 @@
  * Security-related models for the Admin SDK
  */
 
+import type { SecurityEventDetails } from './common-types';
+
 /**
  * Represents a security event in the system
  */
@@ -28,7 +30,7 @@ export interface SecurityEvent {
   ipAddress?: string;
   
   /** Additional event details */
-  details: Record<string, any>;
+  details: SecurityEventDetails;
   
   /** HTTP status code, if applicable */
   statusCode?: number;
@@ -54,7 +56,7 @@ export interface CreateSecurityEventDto {
   ipAddress?: string;
   
   /** Additional event details */
-  details: Record<string, any>;
+  details: SecurityEventDetails;
   
   /** HTTP status code, if applicable */
   statusCode?: number;

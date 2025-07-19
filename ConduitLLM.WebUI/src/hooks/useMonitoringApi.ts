@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { 
   SystemMetrics
 } from '@knn_labs/conduit-admin-client';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 // Define ServiceHealth interface based on the available SDK types
 interface ServiceHealth {
@@ -53,12 +54,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json() as SystemMetrics;
-
       if (!response.ok) {
-        const errorResult = result as unknown as { error?: string };
-        throw new Error(errorResult.error ?? 'Failed to fetch system metrics');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch system metrics');
       }
+
+      const result = await response.json() as SystemMetrics;
 
       setMetrics(result);
       return result;
@@ -75,12 +76,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json() as ServiceHealth[];
-
       if (!response.ok) {
-        const errorResult = result as unknown as { error?: string };
-        throw new Error(errorResult.error ?? 'Failed to fetch service health');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch service health');
       }
+
+      const result = await response.json() as ServiceHealth[];
 
       setHealth(result);
       return result;
@@ -104,12 +105,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json() as Alert[];
-
       if (!response.ok) {
-        const errorResult = result as unknown as { error?: string };
-        throw new Error(errorResult.error ?? 'Failed to fetch alerts');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch alerts');
       }
+
+      const result = await response.json() as Alert[];
 
       setAlerts(result);
       return result;
@@ -127,8 +128,8 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
       });
 
       if (!response.ok) {
-        const result = await response.json() as { error?: string };
-        throw new Error(result.error ?? 'Failed to resolve alert');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to resolve alert');
       }
 
       // Update local state

@@ -267,6 +267,9 @@ builder.Services.AddHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotifi
 
 // Model Capability Service is registered via ServiceCollectionExtensions
 
+// Provider Discovery Service is only used in Admin API for dynamic model discovery
+// Core API relies on configured model mappings only
+
 // Register Video Generation Service with explicit dependencies
 builder.Services.AddScoped<IVideoGenerationService>(sp =>
 {

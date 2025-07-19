@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto, CreateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/providers - List all providers
 export async function GET() {
@@ -25,7 +25,7 @@ export async function GET() {
       console.error('Unexpected response from providers.list():', response);
       // Try to extract providers from common response structures
       if (response && typeof response === 'object') {
-        const responseObject = response as unknown as Record<string, unknown>;
+        const responseObject = response as Record<string, unknown>; // Fallback parsing for unexpected response format
         const possibleProviders = responseObject.data ?? responseObject.providers ?? responseObject.result;
         if (Array.isArray(possibleProviders)) {
           return NextResponse.json(possibleProviders as ProviderCredentialDto[]);
@@ -46,16 +46,16 @@ export async function GET() {
 export async function POST(request: Request) {
 
   try {
-    const body = await request.json() as Record<string, unknown>;
+    const body = await request.json() as CreateProviderCredentialDto;
     const adminClient = getServerAdminClient();
     
     // Ensure isEnabled has a value (default to true if not provided)
     const createData = {
-      providerName: body.providerName as string,
-      apiBase: body.apiBase as string | undefined,
-      apiKey: body.apiKey as string | undefined,
-      isEnabled: (body.isEnabled as boolean | undefined) ?? true,
-      organization: body.organization as string | undefined
+      providerName: body.providerName,
+      apiBase: body.apiBase,
+      apiKey: body.apiKey,
+      isEnabled: body.isEnabled ?? true,
+      organization: body.organization
     };
     
     const provider: ProviderCredentialDto = await adminClient.providers.create(createData);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { UpdateRoutingConfigDto } from '@knn_labs/conduit-admin-client';
 // GET /api/config/routing - Get routing configuration
 export async function GET() {
 
@@ -40,10 +41,10 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const config: unknown = await req.json();
+    const config = await req.json() as UpdateRoutingConfigDto;
     
     try {
-      const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config as never);
+      const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config);
       return NextResponse.json(updatedConfig);
     } catch (error) {
       console.warn('Failed to update routing configuration:', error);
@@ -64,13 +65,13 @@ export async function PATCH(req: NextRequest) {
 export async function PUT(req: NextRequest) {
 
   try {
-    const body: unknown = await req.json();
+    const body = await req.json() as { providers: Array<{ provider: string; priority: number }> };
     
     if (typeof body !== 'object' || body === null || !('providers' in body)) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
     
-    const { providers } = body as { providers: unknown };
+    const { providers } = body;
     
     // Return the requested priorities if SDK doesn't support it yet
     return NextResponse.json(providers);

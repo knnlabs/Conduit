@@ -1,21 +1,19 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { VideoApiRequest, AsyncVideoApiRequest } from '../models/common-types';
-import type {
-  VideoGenerationRequest,
-  VideoGenerationResponse,
-  AsyncVideoGenerationRequest,
-  AsyncVideoGenerationResponse,
-  VideoTaskPollingOptions,
-  VideoModelCapabilities
-} from '../models/videos';
 import {
   VideoTaskStatus,
   VideoDefaults,
   VideoModels,
   VideoResponseFormats,
   validateAsyncVideoGenerationRequest,
-  getVideoModelCapabilities
+  getVideoModelCapabilities,
+  type VideoGenerationRequest,
+  type VideoGenerationResponse,
+  type AsyncVideoGenerationRequest,
+  type AsyncVideoGenerationResponse,
+  type VideoTaskPollingOptions,
+  type VideoModelCapabilities
 } from '../models/videos';
 import { ConduitError } from '../utils/errors';
 import type { VideoWebhookMetadata } from '../models/metadata';
@@ -179,7 +177,7 @@ export class VideosService {
 
         case VideoTaskStatus.Failed:
           throw new ConduitError(
-            `Task failed: ${status.error || 'Unknown error'}`
+            `Task failed: ${status.error ?? 'Unknown error'}`
           );
 
         case VideoTaskStatus.Cancelled:
@@ -226,15 +224,15 @@ export class VideosService {
   private convertToApiRequest(request: VideoGenerationRequest): VideoApiRequest {
     return {
       prompt: request.prompt,
-      model: request.model || VideoModels.DEFAULT,
+      model: request.model ?? VideoModels.DEFAULT,
       duration: request.duration,
       size: request.size,
       fps: request.fps,
       style: request.style,
-      response_format: request.response_format || VideoResponseFormats.URL,
+      response_format: request.response_format ?? VideoResponseFormats.URL,
       user: request.user,
       seed: request.seed,
-      n: request.n || 1,
+      n: request.n ?? 1,
     };
   }
 

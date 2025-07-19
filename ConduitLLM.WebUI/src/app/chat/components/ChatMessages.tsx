@@ -53,20 +53,23 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
             
             {!isUser && (message.metadata ?? (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
-                {message.metadata?.tokensUsed !== null && message.metadata?.tokensUsed !== undefined && (
+                {message.metadata?.tokensUsed !== null && message.metadata?.tokensUsed !== undefined && message.metadata.tokensUsed > 0 && (
                   <Badge size="xs" variant="light">
                     {message.metadata.tokensUsed} tokens
                   </Badge>
                 )}
-                {(message.metadata?.tokensPerSecond ?? (isStreaming && tokensPerSecond)) && (
-                  <Badge size="xs" variant="light" color="green">
-                    <Group gap={4}>
-                      <IconBolt size={12} />
-                      {(message.metadata?.tokensPerSecond ?? tokensPerSecond)?.toFixed(1)} t/s
-                    </Group>
-                  </Badge>
-                )}
-                {message.metadata?.latency !== null && message.metadata?.latency !== undefined && (
+                {(() => {
+                  const tps = message.metadata?.tokensPerSecond ?? (isStreaming ? tokensPerSecond : null);
+                  return tps !== null && tps !== undefined && tps > 0 ? (
+                    <Badge size="xs" variant="light" color="green">
+                      <Group gap={4}>
+                        <IconBolt size={12} />
+                        {tps.toFixed(1)} t/s
+                      </Group>
+                    </Badge>
+                  ) : null;
+                })()}
+                {message.metadata?.latency !== null && message.metadata?.latency !== undefined && message.metadata.latency > 0 && (
                   <Badge size="xs" variant="light" color="blue">
                     <Group gap={4}>
                       <IconClock size={12} />

@@ -1,17 +1,17 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import type { RequestOptions } from '../client/types';
-import type { 
-  ImageGenerationRequest, 
-  ImageGenerationResponse,
-  ImageEditRequest,
-  ImageEditResponse,
-  ImageVariationRequest,
-  ImageVariationResponse,
-  AsyncImageGenerationRequest,
-  AsyncImageGenerationResponse,
-  TaskPollingOptions
+import { 
+  type ImageGenerationRequest, 
+  type ImageGenerationResponse,
+  type ImageEditRequest,
+  type ImageEditResponse,
+  type ImageVariationRequest,
+  type ImageVariationResponse,
+  type AsyncImageGenerationRequest,
+  type AsyncImageGenerationResponse,
+  type TaskPollingOptions,
+  DEFAULT_POLLING_OPTIONS
 } from '../models/images';
-import { DEFAULT_POLLING_OPTIONS } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
 import { API_ENDPOINTS, CONTENT_TYPES } from '../constants';
 

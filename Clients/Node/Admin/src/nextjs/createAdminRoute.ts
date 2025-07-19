@@ -4,29 +4,36 @@ import { ConduitError, serializeError, isConduitError } from '../utils/errors';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
+// Define proper types for request bodies
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+type JsonObject = { [key: string]: JsonValue };
+type JsonArray = JsonValue[];
+
 interface RouteContext {
   params: Promise<Record<string, string | string[]>>;
   searchParams: URLSearchParams;
   request: NextRequest;
-  body?: any;
+  body?: JsonValue | FormData | string;
 }
 
-export interface AdminRouteHandlerContext {
+export interface AdminRouteHandlerContext<TBody = JsonValue> {
   client: ConduitAdminClient;
   searchParams: URLSearchParams;
   params: Record<string, string | string[]>;
-  body?: any;
+  body?: TBody;
   request: NextRequest;
 }
 
-export type AdminRouteHandler<T = any> = (context: AdminRouteHandlerContext) => Promise<T>;
+export type AdminRouteHandler<TResponse = unknown, TBody = JsonValue> = (
+  context: AdminRouteHandlerContext<TBody>
+) => Promise<TResponse>;
 
 interface AdminRouteOptions {
   method?: HttpMethod;
 }
 
 function isServerEnvironment(): boolean {
-  return typeof (global as any).window === 'undefined';
+  return typeof globalThis === 'object' && !('window' in globalThis);
 }
 
 function mapErrorToResponse(error: unknown): NextResponse {
@@ -53,7 +60,7 @@ function mapErrorToResponse(error: unknown): NextResponse {
   );
 }
 
-async function parseRequestBody(request: NextRequest): Promise<any> {
+async function parseRequestBody(request: NextRequest): Promise<JsonValue | FormData | string | undefined> {
   const contentType = request.headers.get('content-type');
   
   if (!contentType) {
@@ -62,7 +69,7 @@ async function parseRequestBody(request: NextRequest): Promise<any> {
 
   try {
     if (contentType.includes('application/json')) {
-      return await request.json();
+      return await request.json() as JsonValue;
     }
     
     if (contentType.includes('multipart/form-data')) {
@@ -71,7 +78,8 @@ async function parseRequestBody(request: NextRequest): Promise<any> {
     
     if (contentType.includes('application/x-www-form-urlencoded')) {
       const text = await request.text();
-      return Object.fromEntries(new URLSearchParams(text));
+      const entries = Object.fromEntries(new URLSearchParams(text));
+      return entries as JsonObject;
     }
     
     return await request.text();
@@ -83,8 +91,8 @@ async function parseRequestBody(request: NextRequest): Promise<any> {
   }
 }
 
-export function createAdminRoute<T = any>(
-  handler: AdminRouteHandler<T>,
+export function createAdminRoute<TResponse = unknown, TBody = JsonValue>(
+  handler: AdminRouteHandler<TResponse, TBody>,
   _options: AdminRouteOptions = {}
 ): (request: NextRequest, context: RouteContext) => Promise<NextResponse> {
   if (!isServerEnvironment()) {
@@ -120,7 +128,7 @@ export function createAdminRoute<T = any>(
       const searchParams = new URLSearchParams(request.nextUrl.search);
       const params = await context.params;
       
-      let body: any;
+      let body: JsonValue | FormData | string | undefined;
       if (request.method !== 'GET' && request.method !== 'DELETE') {
         body = await parseRequestBody(request);
       }
@@ -129,7 +137,7 @@ export function createAdminRoute<T = any>(
         client,
         searchParams,
         params,
-        body,
+        body: body as TBody | undefined,
         request,
       });
 

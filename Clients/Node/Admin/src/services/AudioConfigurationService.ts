@@ -1,23 +1,21 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { AudioProviderSettings } from '../models/common-types';
-import type {
-  AudioProviderConfigRequest,
-  AudioProviderConfigDto,
-  AudioCostConfigRequest,
-  AudioCostConfigDto,
-  AudioUsageDto,
-  AudioUsageSummaryDto,
-  AudioUsageFilters,
-  AudioUsageSummaryFilters,
-  RealtimeSessionDto,
-  AudioProviderTestResult,
-} from '../models/audioConfiguration';
-import type { PagedResponse } from '../models/common';
 import {
+  type AudioProviderConfigRequest,
+  type AudioProviderConfigDto,
+  type AudioCostConfigRequest,
+  type AudioCostConfigDto,
+  type AudioUsageDto,
+  type AudioUsageSummaryDto,
+  type AudioUsageFilters,
+  type AudioUsageSummaryFilters,
+  type RealtimeSessionDto,
+  type AudioProviderTestResult,
   validateAudioProviderRequest,
   validateAudioCostConfigRequest,
   validateAudioUsageFilters,
 } from '../models/audioConfiguration';
+import type { PagedResponse } from '../models/common';
 
 /**
  * Service for managing audio provider configurations, cost settings, and usage analytics
@@ -479,8 +477,11 @@ export const AudioConfigurationHelpers = {
         };
       }
       
-      default:
-        throw new Error(`Unknown period: ${period}`);
+      default: {
+        // This case should be unreachable as all period types are handled
+        const exhaustiveCheck: never = period;
+        throw new Error(`Unknown period: ${exhaustiveCheck}`);
+      }
     }
   },
 };

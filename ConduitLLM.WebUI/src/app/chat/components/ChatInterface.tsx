@@ -16,29 +16,27 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
 import { v4 as uuidv4 } from 'uuid';
-import { ContentHelpers, type TextContent, type ImageContent } from '@knn_labs/conduit-core-client';
+import { 
+  ContentHelpers, 
+  type TextContent, 
+  type ImageContent,
+  type ChatCompletionRequest,
+  type PerformanceMetrics,
+  type Usage 
+} from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
-import { ImageAttachment, ChatParameters, ChatCompletionResponse } from '../types';
-import { StreamingPerformanceMetrics, UsageData, MessageMetrics, SSEEventType, MetricsEventData } from '../types/metrics';
+import { ImageAttachment, ChatParameters, ChatCompletionResponse, ChatMessage } from '../types';
+import { StreamingPerformanceMetrics, UsageData, SSEEventType, MetricsEventData } from '../types/metrics';
 import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  images?: ImageAttachment[];
-  timestamp: Date;
-  metadata?: MessageMetrics;
-}
-
 export function ChatInterface() {
   const [models, setModels] = useState<Array<{ value: string; label: string; supportsVision?: boolean }>>([]);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +96,7 @@ export function ChatInterface() {
     if (!inputMessage.trim() && (!images || images.length === 0)) return;
     if (!selectedModel || isLoading) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: uuidv4(),
       role: 'user',
       content: inputMessage.trim(),
@@ -110,6 +108,7 @@ export function ChatInterface() {
     setIsLoading(true);
     setStreamingContent('');
     setTokensPerSecond(null);
+    const startTime = Date.now();
 
     try {
       // Convert message format for API
@@ -121,44 +120,43 @@ export function ChatInterface() {
       // Build messages array with optional system prompt
       const allMessages = [...messages, userMessage];
       const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | Array<TextContent | ImageContent> }> = 
-        allMessages.map(m => ({
-          role: m.role,
-          content: m.images && m.images.length > 0 
-            ? buildMessageContent(m.content, m.images)
-            : m.content
-        }));
+        allMessages
+          .filter(m => m.role !== 'function') // Filter out function messages for API
+          .map(m => ({
+            role: m.role as 'system' | 'user' | 'assistant',
+            content: m.images && m.images.length > 0 
+              ? buildMessageContent(m.content, m.images)
+              : m.content
+          }));
       
       // Prepend system prompt if it exists
       if (sessionParams.systemPrompt) {
         apiMessages.unshift({ role: 'system' as const, content: sessionParams.systemPrompt });
       }
       
-      const requestBody: Record<string, unknown> = {
+      const requestBody: ChatCompletionRequest = {
         messages: apiMessages,
         model: selectedModel,
         stream: sessionParams.stream ?? true,
         // Include all session parameters
         temperature: sessionParams.temperature,
+        max_tokens: sessionParams.maxTokens,
+        top_p: sessionParams.topP,
+        frequency_penalty: sessionParams.frequencyPenalty,
+        presence_penalty: sessionParams.presencePenalty,
         ...(sessionParams.seed !== undefined && { seed: sessionParams.seed }),
-        ...(sessionParams.stop && sessionParams.stop.length > 0 && { stop: sessionParams.stop })
+        ...(sessionParams.stop && sessionParams.stop.length > 0 && { stop: sessionParams.stop }),
+        ...(sessionParams.responseFormat === 'json_object' && { 
+          response_format: { type: 'json_object' } 
+        })
       };
-      
-      // Add snake_case properties dynamically to avoid naming convention issues
-      requestBody['max_tokens'] = sessionParams.maxTokens;
-      requestBody['top_p'] = sessionParams.topP;
-      requestBody['frequency_penalty'] = sessionParams.frequencyPenalty;
-      requestBody['presence_penalty'] = sessionParams.presencePenalty;
-      
-      if (sessionParams.responseFormat === 'json_object') {
-        requestBody['response_format'] = { type: 'json_object' };
-      }
       
       // Request logged for debugging
       if (process.env.NODE_ENV === 'development') {
         console.warn('Sending chat request:', {
           model: selectedModel,
-          messageCount: (requestBody.messages as unknown[]).length,
-          lastMessage: (requestBody.messages as unknown[])[(requestBody.messages as unknown[]).length - 1]
+          messageCount: requestBody.messages.length,
+          lastMessage: requestBody.messages[requestBody.messages.length - 1]
         });
       }
       
@@ -183,8 +181,7 @@ export function ChatInterface() {
         if (!reader) throw new Error('No response body reader');
         
         let fullContent = '';
-        const startTime = Date.now();
-        const finalMetrics: Partial<StreamingPerformanceMetrics & UsageData & MetricsEventData> = {};
+        const finalMetrics: Partial<PerformanceMetrics & Usage> = {};
 
         // Process SSE stream with proper event parsing
         for await (const event of parseSSEStream(reader)) {
@@ -192,15 +189,23 @@ export function ChatInterface() {
           const endTime = Date.now();
           const duration = (endTime - startTime) / 1000;
           
-          const metadata: MessageMetrics | undefined = performanceSettings.trackPerformanceMetrics
+          // Calculate final metrics with proper fallbacks
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Final metrics collected:', finalMetrics);
+          }
+          const totalTokens = finalMetrics.total_tokens ?? finalMetrics.completion_tokens ?? 0;
+          const tokensPerSec = finalMetrics.tokens_per_second ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
+          const latencyMs = finalMetrics.total_response_time_ms ?? duration * 1000;
+          
+          const metadata = performanceSettings.trackPerformanceMetrics
             ? {
-                tokensUsed: finalMetrics['total_tokens'] ?? finalMetrics['completion_tokens'] ?? finalMetrics['tokens_generated'] ?? 0,
-                tokensPerSecond: finalMetrics['tokens_per_second'] ?? finalMetrics['current_tokens_per_second'] ?? 0,
-                latency: finalMetrics['total_latency_ms'] ?? duration * 1000,
+                tokensUsed: totalTokens,
+                tokensPerSecond: tokensPerSec,
+                latency: latencyMs,
               }
             : undefined;
           
-          const assistantMessage: Message = {
+          const assistantMessage: ChatMessage = {
             id: uuidv4(),
             role: 'assistant',
             content: fullContent,
@@ -229,8 +234,11 @@ export function ChatInterface() {
             const performanceData = event.data as { performance?: StreamingPerformanceMetrics };
             if (performanceData?.performance && performanceSettings.useServerMetrics) {
               Object.assign(finalMetrics, performanceData.performance);
-              if (performanceData.performance['tokens_per_second'] && performanceSettings.showTokensPerSecond) {
-                setTokensPerSecond(performanceData.performance['tokens_per_second']);
+              // Type assertion needed for legacy metrics format compatibility
+              const perf = performanceData.performance as unknown as PerformanceMetrics;
+              const tps = perf.tokens_per_second;
+              if (tps && performanceSettings.showTokensPerSecond) {
+                setTokensPerSecond(tps);
               }
             }
             
@@ -245,9 +253,15 @@ export function ChatInterface() {
             // Handle live metrics updates
             if (performanceSettings.useServerMetrics) {
               const metricsData = event.data as MetricsEventData;
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('Metrics event received:', metricsData);
+              }
               Object.assign(finalMetrics, metricsData);
-              if (metricsData['current_tokens_per_second'] && performanceSettings.showTokensPerSecond) {
-                setTokensPerSecond(metricsData['current_tokens_per_second']);
+              // Type assertion needed for dynamic metrics event format
+              const metrics = metricsData as unknown as PerformanceMetrics;
+              const tps = metrics.tokens_per_second;
+              if (tps !== undefined && performanceSettings.showTokensPerSecond) {
+                setTokensPerSecond(tps);
               }
             }
             break;
@@ -256,6 +270,9 @@ export function ChatInterface() {
             // Handle final metrics
             if (performanceSettings.useServerMetrics) {
               const finalMetricsData = event.data as MetricsEventData;
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('Final metrics event received:', finalMetricsData);
+              }
               Object.assign(finalMetrics, finalMetricsData);
             }
             break;
@@ -271,15 +288,20 @@ export function ChatInterface() {
         const data = await response.json() as ChatCompletionResponse;
         const assistantContent = data.choices?.[0]?.message?.content ?? '';
         
-        const metadata: MessageMetrics | undefined = performanceSettings.trackPerformanceMetrics && data.usage
+        const requestDuration = (Date.now() - startTime) / 1000;
+        // Type assertion needed for response format compatibility
+        const usage = data.usage as unknown as Usage | undefined;
+        const totalTokens = usage?.total_tokens ?? 0;
+        
+        const metadata = performanceSettings.trackPerformanceMetrics && data.usage
           ? {
-              tokensUsed: data.usage['total_tokens'] ?? 0,
-              tokensPerSecond: 0, // Not applicable for non-streaming
-              latency: Date.now() - Date.now(), // Would need to track request start time
+              tokensUsed: totalTokens,
+              tokensPerSecond: totalTokens > 0 && requestDuration > 0 ? totalTokens / requestDuration : 0,
+              latency: requestDuration * 1000,
             }
           : undefined;
         
-        const assistantMessage: Message = {
+        const assistantMessage: ChatMessage = {
           id: uuidv4(),
           role: 'assistant',
           content: assistantContent,
@@ -295,7 +317,7 @@ export function ChatInterface() {
       setError(errorMessage);
       
       // Show error as a system message in chat
-      const errorMsg: Message = {
+      const errorMsg: ChatMessage = {
         id: uuidv4(),
         role: 'assistant',
         content: `Error: ${errorMessage}`,

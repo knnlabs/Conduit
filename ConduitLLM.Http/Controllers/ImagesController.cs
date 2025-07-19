@@ -26,7 +26,6 @@ namespace ConduitLLM.Http.Controllers
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;
         private readonly ILogger<ImagesController> _logger;
-        private readonly IProviderDiscoveryService _discoveryService;
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IAsyncTaskService _taskService;
         private readonly IPublishEndpoint _publishEndpoint;
@@ -38,7 +37,6 @@ namespace ConduitLLM.Http.Controllers
             ILLMClientFactory clientFactory,
             IMediaStorageService storageService,
             ILogger<ImagesController> logger,
-            IProviderDiscoveryService discoveryService,
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
@@ -49,7 +47,6 @@ namespace ConduitLLM.Http.Controllers
             _clientFactory = clientFactory;
             _storageService = storageService;
             _logger = logger;
-            _discoveryService = discoveryService;
             _modelMappingService = modelMappingService;
             _taskService = taskService;
             _publishEndpoint = publishEndpoint;
@@ -133,11 +130,9 @@ namespace ConduitLLM.Http.Controllers
                 }
                 else
                 {
-                    // Fall back to discovery service if no mapping exists
-                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
-                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
-                        modelName, 
-                        ModelCapability.ImageGeneration);
+                    // Model must be mapped to be used
+                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", modelName);
+                    supportsImageGen = false;
                 }
                 
                 if (!supportsImageGen)
@@ -353,10 +348,8 @@ namespace ConduitLLM.Http.Controllers
                 }
                 else
                 {
-                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
-                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
-                        modelName, 
-                        ModelCapability.ImageGeneration);
+                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", modelName);
+                    supportsImageGen = false;
                 }
                 
                 if (!supportsImageGen)

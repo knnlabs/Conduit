@@ -1,7 +1,8 @@
 import { 
-  BaseSignalRConnection as CommonBaseSignalRConnection
+  BaseSignalRConnection as CommonBaseSignalRConnection,
+  type BaseSignalRConfig,
+  type SignalRAuthConfig
 } from '@knn_labs/conduit-common';
-import type { BaseSignalRConfig, SignalRAuthConfig } from '@knn_labs/conduit-common';
 
 /**
  * Base class for Core SDK SignalR hub connections.
