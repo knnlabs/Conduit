@@ -5,8 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Controllers;
-using ConduitLLM.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,20 +22,216 @@ namespace ConduitLLM.Tests.Http.Controllers
     public class ProviderModelsControllerTests : ControllerTestBase
     {
         private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockDbContextFactory;
+        private readonly Mock<IModelListService> _mockModelListService;
         private readonly Mock<ILogger<ProviderModelsController>> _mockLogger;
+        private readonly ProviderModelsController _controller;
 
         public ProviderModelsControllerTests(ITestOutputHelper output) : base(output)
         {
             _mockDbContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _mockModelListService = new Mock<IModelListService>();
             _mockLogger = CreateLogger<ProviderModelsController>();
+
+            _controller = new ProviderModelsController(
+                _mockDbContextFactory.Object,
+                _mockModelListService.Object,
+                _mockLogger.Object);
+
+            _controller.ControllerContext = CreateControllerContext();
         }
 
         #region GetProviderModels Tests
 
-        // Note: Due to ModelListService being a concrete class without an interface,
-        // we cannot create comprehensive tests for the GetProviderModels method.
-        // The controller requires a non-null ModelListService instance which cannot be mocked.
-        // Recommendation: Add an IModelListService interface to enable proper unit testing.
+        [Fact]
+        public async Task GetProviderModels_WithValidProvider_ShouldReturnSortedModelList()
+        {
+            // Arrange
+            var providerName = "openai";
+            var models = new List<string> { "gpt-4", "gpt-3.5-turbo", "ada", "text-embedding-3-large" };
+            
+            var mockDbContext = new InMemoryDbContext();
+            mockDbContext.ProviderCredentials.Add(new ProviderCredential
+            {
+                Id = 1,
+                ProviderName = "openai",
+                ApiKey = "test-api-key",
+                BaseUrl = "https://api.openai.com"
+            });
+            await mockDbContext.SaveChangesAsync();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            _mockModelListService.Setup(x => x.GetModelsForProviderAsync(
+                    It.IsAny<ProviderCredentials>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(models);
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedModels = Assert.IsType<List<string>>(okResult.Value);
+            Assert.Equal(4, returnedModels.Count);
+            // Verify sorting
+            Assert.Equal("ada", returnedModels[0]);
+            Assert.Equal("gpt-3.5-turbo", returnedModels[1]);
+            Assert.Equal("gpt-4", returnedModels[2]);
+            Assert.Equal("text-embedding-3-large", returnedModels[3]);
+        }
+
+        [Fact]
+        public async Task GetProviderModels_WithForceRefresh_ShouldPassParameterToService()
+        {
+            // Arrange
+            var providerName = "anthropic";
+            var forceRefresh = true;
+            var models = new List<string> { "claude-3-opus", "claude-3-sonnet" };
+            
+            var mockDbContext = new InMemoryDbContext();
+            mockDbContext.ProviderCredentials.Add(new ProviderCredential
+            {
+                Id = 1,
+                ProviderName = "anthropic",
+                ApiKey = "test-api-key"
+            });
+            await mockDbContext.SaveChangesAsync();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            _mockModelListService.Setup(x => x.GetModelsForProviderAsync(
+                    It.IsAny<ProviderCredentials>(),
+                    forceRefresh,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(models)
+                .Verifiable();
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName, forceRefresh);
+
+            // Assert
+            Assert.IsType<OkObjectResult>(result);
+            _mockModelListService.Verify(x => x.GetModelsForProviderAsync(
+                It.IsAny<ProviderCredentials>(), 
+                forceRefresh,
+                It.IsAny<CancellationToken>()), 
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetProviderModels_WithNonExistentProvider_ShouldReturnNotFound()
+        {
+            // Arrange
+            var providerName = "non-existent-provider";
+            var mockDbContext = new InMemoryDbContext();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic error = notFoundResult.Value;
+            Assert.Equal($"Provider '{providerName}' not found", error.error.ToString());
+        }
+
+        [Fact]
+        public async Task GetProviderModels_WithMissingApiKey_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var providerName = "openai";
+            var mockDbContext = new InMemoryDbContext();
+            mockDbContext.ProviderCredentials.Add(new ProviderCredential
+            {
+                Id = 1,
+                ProviderName = "openai",
+                ApiKey = null // Missing API key
+            });
+            await mockDbContext.SaveChangesAsync();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            dynamic error = badRequestResult.Value;
+            Assert.Equal("API key is required to retrieve models", error.error.ToString());
+        }
+
+        [Fact]
+        public async Task GetProviderModels_WithCaseInsensitiveProviderName_ShouldWork()
+        {
+            // Arrange
+            var providerName = "OPENAI"; // Upper case
+            var models = new List<string> { "gpt-4" };
+            
+            var mockDbContext = new InMemoryDbContext();
+            mockDbContext.ProviderCredentials.Add(new ProviderCredential
+            {
+                Id = 1,
+                ProviderName = "openai", // Lower case in DB
+                ApiKey = "test-api-key"
+            });
+            await mockDbContext.SaveChangesAsync();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            _mockModelListService.Setup(x => x.GetModelsForProviderAsync(
+                    It.IsAny<ProviderCredentials>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(models);
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedModels = Assert.IsType<List<string>>(okResult.Value);
+            Assert.Single(returnedModels);
+        }
+
+        [Fact]
+        public async Task GetProviderModels_WithServiceException_ShouldReturn500()
+        {
+            // Arrange
+            var providerName = "openai";
+            var mockDbContext = new InMemoryDbContext();
+            mockDbContext.ProviderCredentials.Add(new ProviderCredential
+            {
+                Id = 1,
+                ProviderName = "openai",
+                ApiKey = "test-api-key"
+            });
+            await mockDbContext.SaveChangesAsync();
+
+            _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockDbContext);
+
+            _mockModelListService.Setup(x => x.GetModelsForProviderAsync(
+                    It.IsAny<ProviderCredentials>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Service error"));
+
+            // Act
+            var result = await _controller.GetProviderModels(providerName);
+
+            // Assert
+            var internalServerErrorResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, internalServerErrorResult.StatusCode);
+            dynamic error = internalServerErrorResult.Value;
+            Assert.Equal("Failed to retrieve models: Service error", error.error.ToString());
+        }
 
         #endregion
 
@@ -45,10 +241,11 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullDbContextFactory_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ProviderModelsController(
+            var ex = Assert.Throws<ArgumentNullException>(() => new ProviderModelsController(
                 null,
-                null, // ModelListService can be null for this test
+                _mockModelListService.Object,
                 _mockLogger.Object));
+            Assert.Equal("dbContextFactory", ex.ParamName);
         }
 
         [Fact]
@@ -57,7 +254,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange & Act & Assert
             var ex = Assert.Throws<ArgumentNullException>(() => new ProviderModelsController(
                 _mockDbContextFactory.Object,
-                null, // ModelListService should throw exception
+                null,
                 _mockLogger.Object));
             Assert.Equal("modelListService", ex.ParamName);
         }
@@ -66,13 +263,11 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
         {
             // Arrange & Act & Assert
-            // Note: Can't test this without a real ModelListService instance due to null check order
-            // The modelListService null check happens before the logger null check
             var ex = Assert.Throws<ArgumentNullException>(() => new ProviderModelsController(
                 _mockDbContextFactory.Object,
-                null,
+                _mockModelListService.Object,
                 null));
-            Assert.Equal("modelListService", ex.ParamName); // Will throw for modelListService first
+            Assert.Equal("logger", ex.ParamName);
         }
 
         #endregion
