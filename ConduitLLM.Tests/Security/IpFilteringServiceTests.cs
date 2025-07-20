@@ -283,8 +283,16 @@ namespace ConduitLLM.Tests.Security
         [InlineData("172.16.10.0/24", "172.16.11.1", false)]
         public async Task IsInRange_WithCidrNotation_ShouldCalculateCorrectly(string cidr, string testIp, bool expected)
         {
-            // Arrange
-            var service = new MockIpFilteringService(_mockConfiguration.Object, _mockCache.Object, _mockLogger.Object);
+            // Arrange - Create a clean configuration without overlapping ranges
+            var cleanConfig = new Mock<IConfiguration>();
+            var emptySection = new Mock<IConfigurationSection>();
+            emptySection.Setup(x => x.GetChildren()).Returns(new List<IConfigurationSection>());
+            cleanConfig.Setup(x => x.GetSection("Security:IpWhitelist")).Returns(emptySection.Object);
+            cleanConfig.Setup(x => x.GetSection("Security:IpBlacklist")).Returns(emptySection.Object);
+            cleanConfig.Setup(x => x["Security:EnableIpFiltering"]).Returns("true");
+            cleanConfig.Setup(x => x["Security:DefaultAction"]).Returns("Deny");
+            
+            var service = new MockIpFilteringService(cleanConfig.Object, _mockCache.Object, _mockLogger.Object);
             await service.AddToWhitelistAsync(cidr);
 
             // Act
@@ -539,14 +547,23 @@ namespace ConduitLLM.Tests.Security
             {
                 var ipBytes = ip.GetAddressBytes();
                 var networkBytes = network.GetAddressBytes();
-                var maskBits = 32 - prefixLength;
                 
-                for (int i = 0; i < 4; i++)
+                // Calculate how many bits to check
+                var bytesToCheck = prefixLength / 8;
+                var remainingBits = prefixLength % 8;
+                
+                // Check full bytes
+                for (int i = 0; i < bytesToCheck; i++)
                 {
-                    var shift = Math.Max(0, Math.Min(8, maskBits - (3 - i) * 8));
-                    var mask = (byte)(0xFF << shift);
-                    
-                    if ((ipBytes[i] & mask) != (networkBytes[i] & mask))
+                    if (ipBytes[i] != networkBytes[i])
+                        return false;
+                }
+                
+                // Check remaining bits if any
+                if (remainingBits > 0 && bytesToCheck < 4)
+                {
+                    var mask = (byte)(0xFF << (8 - remainingBits));
+                    if ((ipBytes[bytesToCheck] & mask) != (networkBytes[bytesToCheck] & mask))
                         return false;
                 }
                 
