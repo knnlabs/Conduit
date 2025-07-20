@@ -148,6 +148,28 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
     
+    // Validate image quality multipliers JSON
+    if (cost.imageQualityMultipliers) {
+      try {
+        const multipliers = JSON.parse(cost.imageQualityMultipliers) as unknown;
+        if (typeof multipliers !== 'object' || Array.isArray(multipliers)) {
+          errors.push('Image quality multipliers must be a JSON object');
+        } else {
+          // Validate each multiplier value
+          const multipliersObj = multipliers as Record<string, unknown>;
+          for (const [key, value] of Object.entries(multipliersObj)) {
+            if (typeof value !== 'number' || value < 0) {
+              errors.push(`Image quality multiplier for "${key}" must be a positive number`);
+            } else if (value > 10) {
+              errors.push(`Image quality multiplier for "${key}" seems unreasonably high (>10x)`);
+            }
+          }
+        }
+      } catch {
+        errors.push('Image quality multipliers must be valid JSON');
+      }
+    }
+    
     // Reasonable upper bounds validation
     if (cost.inputCostPer1K > 1000) errors.push('Input cost seems unreasonably high (>$1000 per 1K tokens)');
     if (cost.outputCostPer1K > 1000) errors.push('Output cost seems unreasonably high (>$1000 per 1K tokens)');

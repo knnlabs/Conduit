@@ -1,0 +1,20 @@
+Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Batch Processing Multiplier,Supports Batch Processing,Image Quality Multipliers,Priority,Active,Description
+gpt-4.1-2025-04-14,OpenAI,chat,0.002,0.008,,,,,0.5,Yes,,10,Yes,GPT-4.1 latest model with batch support
+gpt-4.1-mini-2025-04-14,OpenAI,chat,0.0004,0.0016,,,,,0.5,Yes,,10,Yes,GPT-4.1 Mini latest model with batch support
+gpt-4.1-nano-2025-04-14,OpenAI,chat,0.0001,0.0004,,,,,,,10,Yes,GPT-4.1 Nano latest model
+gpt-4.5-preview-2025-02-27,OpenAI,chat,0.075,0.15,,,,,,,10,Yes,GPT-4.5 Preview - highest capability
+gpt-4o,OpenAI,chat,0.005,0.015,,,,,0.5,Yes,,10,Yes,GPT-4 Optimized with batch processing
+gpt-4o-mini,OpenAI,chat,0.00015,0.0006,,,,,0.5,Yes,,10,Yes,GPT-4 Optimized Mini with batch processing
+o1-preview,OpenAI,chat,0.015,0.06,,,,,,,10,Yes,OpenAI o1 Preview reasoning model
+o1-mini,OpenAI,chat,0.003,0.012,,,,,,,10,Yes,OpenAI o1 Mini reasoning model
+gpt-4-turbo,OpenAI,chat,0.01,0.03,,,,,,,10,Yes,GPT-4 Turbo
+gpt-4,OpenAI,chat,0.03,0.06,,,,,,,5,Yes,Original GPT-4
+gpt-3.5-turbo,OpenAI,chat,0.0005,0.0015,,,,,,,5,Yes,GPT-3.5 Turbo
+text-embedding-3-large,OpenAI,embedding,,,0.00013,,,,,,3,Yes,Large embedding model
+text-embedding-3-small,OpenAI,embedding,,,0.00002,,,,,,3,Yes,Small embedding model
+text-embedding-ada-002,OpenAI,embedding,,,0.0001,,,,,,2,Yes,Ada v2 embedding model
+dall-e-3,OpenAI,image,,,,0.04,,,,,"{""standard"": 1.0, ""hd"": 2.0}",5,Yes,DALL-E 3 with standard and HD quality
+dall-e-2,OpenAI,image,,,,0.02,,,,,,3,Yes,DALL-E 2 single quality tier
+whisper-1,OpenAI,audio,,,,,0.006,,,,,5,Yes,Whisper speech-to-text
+tts-1,OpenAI,audio,,,,,0.015,,,,,5,Yes,Text-to-speech standard
+tts-1-hd,OpenAI,audio,,,,,0.03,,,,,5,Yes,Text-to-speech HD quality
