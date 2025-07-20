@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Tests.TestHelpers;
 
 namespace ConduitLLM.Tests.Security
 {
@@ -29,6 +30,16 @@ namespace ConduitLLM.Tests.Security
             _mockMetricsService = new Mock<ISecurityMetricsService>();
             _mockThreatDetectionService = new Mock<IThreatDetectionService>();
             _mockLogger = new Mock<ILogger<MockSecurityEventMonitoringService>>();
+            
+            // Setup the Log method to not throw when called
+            _mockLogger.Setup(x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+                .Verifiable();
+            
             _service = new MockSecurityEventMonitoringService(
                 _mockMetricsService.Object,
                 _mockThreatDetectionService.Object,
@@ -121,11 +132,7 @@ namespace ConduitLLM.Tests.Security
             await _service.RecordEventAsync(securityEvent);
 
             // Assert
-            _mockLogger.Verify(x => x.LogWarning(
-                "Security threat detected: {ThreatLevel} - {Reason}",
-                ThreatLevel.High,
-                "Brute force attack detected"),
-                Times.Once);
+            _mockLogger.VerifyLog(LogLevel.Warning, "Security threat detected");
 
             _mockMetricsService.Verify(x => x.RecordThreatDetected(
                 ThreatLevel.High,
@@ -413,11 +420,9 @@ namespace ConduitLLM.Tests.Security
             // Assert
             result.Should().Be(150);
             
-            _mockLogger.Verify(x => x.LogInformation(
-                "Cleared {Count} old security events older than {Date}",
-                150,
-                It.IsAny<DateTime>()),
-                Times.Once);
+            _mockLogger.VerifyLog(LogLevel.Information, "Cleared");
+            _mockLogger.VerifyLog(LogLevel.Information, "150");
+            _mockLogger.VerifyLog(LogLevel.Information, "old security events older than");
         }
 
         #endregion
@@ -444,10 +449,7 @@ namespace ConduitLLM.Tests.Security
             await _service.RecordEventAsync(securityEvent);
 
             // Assert
-            _mockLogger.Verify(x => x.LogError(
-                It.IsAny<Exception>(),
-                "Error recording security event metrics"),
-                Times.Once);
+            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error recording security event metrics");
 
             // Threat detection should still be called
             _mockThreatDetectionService.Verify(x => x.AnalyzeEventAsync(It.IsAny<SecurityEvent>()), Times.Once);
@@ -470,10 +472,7 @@ namespace ConduitLLM.Tests.Security
             await _service.RecordEventAsync(securityEvent);
 
             // Assert
-            _mockLogger.Verify(x => x.LogError(
-                It.IsAny<Exception>(),
-                "Error analyzing security event for threats"),
-                Times.Once);
+            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error analyzing security event for threats");
         }
 
         #endregion

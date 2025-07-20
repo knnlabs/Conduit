@@ -19,6 +19,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Tests.TestHelpers;
 using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
 using AzureOpenAIModels = ConduitLLM.Providers.AzureOpenAIModels;
 

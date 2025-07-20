@@ -18,6 +18,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Tests.TestHelpers;
 
 namespace ConduitLLM.Tests.Providers
 {

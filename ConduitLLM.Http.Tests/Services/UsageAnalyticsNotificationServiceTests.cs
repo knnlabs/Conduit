@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.SignalR;
@@ -38,6 +39,13 @@ namespace ConduitLLM.Http.Tests.Services
             // Setup hub context mocks
             _mockHubContext.Setup(x => x.Clients).Returns(_mockClients.Object);
             _mockClients.Setup(x => x.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
+            
+            // Setup default SendCoreAsync to return completed task
+            _mockClientProxy.Setup(x => x.SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object[]>(),
+                It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
             _service = new UsageAnalyticsNotificationService(
                 _mockHubContext.Object,
@@ -75,8 +83,13 @@ namespace ConduitLLM.Http.Tests.Services
             {
                 RequestsPerMinute = 50,
                 TokensPerMinute = 5000,
-                TokensPerRequest = 100,
-                ActiveModels = new[] { "gpt-4", "gpt-3.5-turbo" }
+                UniqueModelsUsed = 2,
+                MostUsedModel = "gpt-4",
+                RequestsByModel = new Dictionary<string, int>
+                {
+                    { "gpt-4", 30 },
+                    { "gpt-3.5-turbo", 20 }
+                }
             };
 
             // Act
@@ -84,7 +97,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-usage-123"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "UsageMetrics", 
                 It.Is<object[]>(args => args[0] == metrics),
                 default), Times.Once);
@@ -102,8 +115,12 @@ namespace ConduitLLM.Http.Tests.Services
             {
                 RequestsPerMinute = 150, // > 100
                 TokensPerMinute = 5000,
-                TokensPerRequest = 100,
-                ActiveModels = new[] { "gpt-4" }
+                UniqueModelsUsed = 1,
+                MostUsedModel = "gpt-4",
+                RequestsByModel = new Dictionary<string, int>
+                {
+                    { "gpt-4", 150 }
+                }
             };
 
             // Act
@@ -113,7 +130,7 @@ namespace ConduitLLM.Http.Tests.Services
             // Should send to both key-specific and global groups
             _mockClients.Verify(x => x.Group("analytics-usage-123"), Times.Once);
             _mockClients.Verify(x => x.Group("analytics-global-usage"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 It.IsAny<string>(), 
                 It.IsAny<object[]>(),
                 default), Times.Exactly(2));
@@ -128,8 +145,12 @@ namespace ConduitLLM.Http.Tests.Services
             {
                 RequestsPerMinute = 50,
                 TokensPerMinute = 15000, // > 10000
-                TokensPerRequest = 300,
-                ActiveModels = new[] { "gpt-4" }
+                UniqueModelsUsed = 1,
+                MostUsedModel = "gpt-4",
+                RequestsByModel = new Dictionary<string, int>
+                {
+                    { "gpt-4", 50 }
+                }
             };
 
             // Act
@@ -146,7 +167,7 @@ namespace ConduitLLM.Http.Tests.Services
             var virtualKeyId = 123;
             var metrics = new UsageMetricsNotification();
             
-            _mockClientProxy.Setup(x => x.SendAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
+            _mockClientProxy.Setup(x => x.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
                 .ThrowsAsync(new Exception("SignalR error"));
 
             // Act
@@ -186,7 +207,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-cost-456"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "CostAnalytics", 
                 It.Is<object[]>(args => args[0] == analytics),
                 default), Times.Once);
@@ -230,12 +251,13 @@ namespace ConduitLLM.Http.Tests.Services
             var metrics = new PerformanceMetricsNotification
             {
                 ModelName = "gpt-4",
+                ProviderName = "openai",
                 AverageLatencyMs = 1500,
                 P95LatencyMs = 2500,
                 P99LatencyMs = 3500,
                 ErrorRate = 0.01,
-                SuccessfulRequests = 99,
-                FailedRequests = 1
+                SuccessRate = 0.99,
+                SampleSize = 100
             };
 
             // Act
@@ -243,7 +265,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-performance-789"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "PerformanceMetrics", 
                 It.Is<object[]>(args => args[0] == metrics),
                 default), Times.Once);
@@ -284,8 +306,8 @@ namespace ConduitLLM.Http.Tests.Services
                 ModelName = "gpt-4",
                 AverageLatencyMs = 2000,
                 ErrorRate = 0.08, // > 0.05
-                SuccessfulRequests = 92,
-                FailedRequests = 8
+                SuccessRate = 0.92,
+                SampleSize = 100
             };
 
             // Act
@@ -324,7 +346,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-errors-999"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "ErrorAnalytics", 
                 It.Is<object[]>(args => args[0] == analytics),
                 default), Times.Once);
@@ -390,8 +412,14 @@ namespace ConduitLLM.Http.Tests.Services
             {
                 RequestsPerMinute = 1000,
                 TokensPerMinute = 100000,
-                TokensPerRequest = 100,
-                ActiveModels = new[] { "gpt-4", "gpt-3.5-turbo", "claude-3" }
+                UniqueModelsUsed = 3,
+                MostUsedModel = "gpt-4",
+                RequestsByModel = new Dictionary<string, int>
+                {
+                    { "gpt-4", 500 },
+                    { "gpt-3.5-turbo", 300 },
+                    { "claude-3", 200 }
+                }
             };
 
             // Act
@@ -399,7 +427,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-global-usage"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "GlobalUsageMetrics", 
                 It.Is<object[]>(args => args.Length == 1),
                 default), Times.Once);
@@ -426,7 +454,7 @@ namespace ConduitLLM.Http.Tests.Services
 
             // Assert
             _mockClients.Verify(x => x.Group("analytics-global-cost"), Times.Once);
-            _mockClientProxy.Verify(x => x.SendAsync(
+            _mockClientProxy.Verify(x => x.SendCoreAsync(
                 "GlobalCostAnalytics", 
                 It.Is<object[]>(args => args.Length == 1),
                 default), Times.Once);
@@ -438,7 +466,7 @@ namespace ConduitLLM.Http.Tests.Services
             // Arrange
             var metrics = new UsageMetricsNotification();
             
-            _mockClientProxy.Setup(x => x.SendAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
+            _mockClientProxy.Setup(x => x.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), default))
                 .ThrowsAsync(new Exception("SignalR error"));
 
             // Act

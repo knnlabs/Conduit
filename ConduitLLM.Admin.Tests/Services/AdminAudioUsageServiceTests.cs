@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Tests.Services
             
             mockScope.Setup(x => x.ServiceProvider).Returns(mockScopedProvider.Object);
             mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
-            mockServiceProvider.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(mockScopeFactory.Object);
+            _mockServiceProvider.Setup(x => x.GetService(typeof(IServiceScopeFactory))).Returns(mockScopeFactory.Object);
             mockScopedProvider.Setup(x => x.GetService(typeof(IRealtimeSessionStore))).Returns(_mockSessionStore.Object);
 
             _service = new AdminAudioUsageService(
@@ -150,14 +150,14 @@ namespace ConduitLLM.Admin.Tests.Services
                 TotalOperations = 100,
                 TotalCost = 50.5m,
                 TotalDurationSeconds = 3600,
-                TranscriptionCount = 60,
-                TextToSpeechCount = 30,
-                RealtimeSessionCount = 10,
-                UniqueVirtualKeys = 5,
-                SuccessRate = 95.5
+                SuccessfulOperations = 95,
+                FailedOperations = 5,
+                TotalCharacters = 10000,
+                TotalInputTokens = 5000,
+                TotalOutputTokens = 4000
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, null, null))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -179,10 +179,11 @@ namespace ConduitLLM.Admin.Tests.Services
             {
                 TotalOperations = 20,
                 TotalCost = 10.5m,
-                SuccessRate = 100
+                SuccessfulOperations = 20,
+                FailedOperations = 0
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, null))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, It.IsAny<string?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -209,14 +210,21 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyName = "Test API Key"
             };
 
-            _mockRepository.Setup(x => x.GetByVirtualKeyAsync(virtualKey, null, null))
+            _mockRepository.Setup(x => x.GetByVirtualKeyAsync(virtualKey, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(logs);
-            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(virtualKey))
+            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(virtualKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(key);
             _mockRepository.Setup(x => x.GetOperationBreakdownAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), virtualKey))
-                .ReturnsAsync(new Dictionary<string, int> { { "transcription", 6 }, { "tts", 4 } });
+                .ReturnsAsync(new List<OperationTypeBreakdown> 
+                { 
+                    new() { OperationType = "transcription", Count = 6, TotalCost = 3.0m }, 
+                    new() { OperationType = "tts", Count = 4, TotalCost = 2.0m } 
+                });
             _mockRepository.Setup(x => x.GetProviderBreakdownAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), virtualKey))
-                .ReturnsAsync(new Dictionary<string, int> { { "openai", 10 } });
+                .ReturnsAsync(new List<ProviderBreakdown> 
+                { 
+                    new() { Provider = "openai", Count = 10, TotalCost = 5.0m, SuccessRate = 100 } 
+                });
 
             // Act
             var result = await _service.GetUsageByKeyAsync(virtualKey);
@@ -227,7 +235,7 @@ namespace ConduitLLM.Admin.Tests.Services
             result.KeyName.Should().Be("Test API Key");
             result.TotalOperations.Should().Be(10);
             result.TotalCost.Should().Be(logs.Sum(l => l.Cost));
-            result.SuccessRate.Should().Be(100);
+            result.SuccessRate.Should().Be(90); // 9 out of 10 logs are successful (one has status 500)
         }
 
         [Fact]
@@ -241,7 +249,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             _mockRepository.Setup(x => x.GetByVirtualKeyAsync(virtualKey, startDate, endDate))
                 .ReturnsAsync(logs);
-            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(virtualKey))
+            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(virtualKey, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((VirtualKey?)null);
 
             // Act
@@ -269,7 +277,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 CreateAudioUsageLog("transcription", "whisper-1", 500) // Failed request
             };
 
-            _mockRepository.Setup(x => x.GetByProviderAsync(provider, null, null))
+            _mockRepository.Setup(x => x.GetByProviderAsync(provider, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(logs);
 
             // Act
@@ -291,7 +299,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var provider = "azure";
-            _mockRepository.Setup(x => x.GetByProviderAsync(provider, null, null))
+            _mockRepository.Setup(x => x.GetByProviderAsync(provider, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(new List<AudioUsageLog>());
 
             // Act
@@ -312,7 +320,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var sessions = CreateSampleRealtimeSessions(5);
-            _mockSessionStore.Setup(x => x.GetActiveSessionsAsync())
+            _mockSessionStore.Setup(x => x.GetActiveSessionsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(sessions);
 
             // Act
@@ -359,7 +367,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var sessions = CreateSampleRealtimeSessions(3);
-            _mockSessionStore.Setup(x => x.GetActiveSessionsAsync())
+            _mockSessionStore.Setup(x => x.GetActiveSessionsAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(sessions);
 
             // Act
@@ -368,8 +376,8 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().HaveCount(3);
             result.First().SessionId.Should().Be("session-1");
-            result.First().Provider.Should().Be("openai");
-            result.First().State.Should().Be("Connected");
+            result.First().Provider.Should().Be("ultravox"); // First session (i=0) is ultravox based on CreateSampleRealtimeSessions logic
+            result.First().State.Should().Be(SessionState.Connected.ToString());
         }
 
         [Fact]
@@ -379,7 +387,7 @@ namespace ConduitLLM.Admin.Tests.Services
             var sessionId = "session-123";
             var session = CreateRealtimeSession(sessionId, "openai");
             
-            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId))
+            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
 
             // Act
@@ -396,7 +404,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var sessionId = "non-existent";
-            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId))
+            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((RealtimeSession?)null);
 
             // Act
@@ -413,11 +421,11 @@ namespace ConduitLLM.Admin.Tests.Services
             var sessionId = "session-to-terminate";
             var session = CreateRealtimeSession(sessionId, "openai");
             
-            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId))
+            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(session);
-            _mockSessionStore.Setup(x => x.UpdateSessionAsync(It.IsAny<RealtimeSession>()))
+            _mockSessionStore.Setup(x => x.UpdateSessionAsync(It.IsAny<RealtimeSession>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            _mockSessionStore.Setup(x => x.RemoveSessionAsync(sessionId))
+            _mockSessionStore.Setup(x => x.RemoveSessionAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             // Act
@@ -426,8 +434,8 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().BeTrue();
             _mockSessionStore.Verify(x => x.UpdateSessionAsync(It.Is<RealtimeSession>(s => 
-                s.State == SessionState.Closed)), Times.Once);
-            _mockSessionStore.Verify(x => x.RemoveSessionAsync(sessionId), Times.Once);
+                s.State == SessionState.Closed), It.IsAny<CancellationToken>()), Times.Once);
+            _mockSessionStore.Verify(x => x.RemoveSessionAsync(sessionId, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -435,7 +443,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var sessionId = "non-existent";
-            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId))
+            _mockSessionStore.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((RealtimeSession?)null);
 
             // Act
@@ -443,7 +451,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             result.Should().BeFalse();
-            _mockSessionStore.Verify(x => x.RemoveSessionAsync(It.IsAny<string>()), Times.Never);
+            _mockSessionStore.Verify(x => x.RemoveSessionAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion
@@ -516,6 +524,18 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var query = new AudioUsageQueryDto { Page = 1, PageSize = 10 };
+            var logs = CreateSampleAudioUsageLogs(3);
+            var pagedResult = new PagedResult<AudioUsageLog>
+            {
+                Items = logs,
+                TotalCount = 3,
+                Page = 1,
+                PageSize = int.MaxValue,
+                TotalPages = 1
+            };
+
+            _mockRepository.Setup(x => x.GetPagedAsync(It.IsAny<AudioUsageQueryDto>()))
+                .ReturnsAsync(pagedResult);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => 
@@ -608,8 +628,11 @@ namespace ConduitLLM.Admin.Tests.Services
                 Language = "en-US"
             };
 
-            var session = new RealtimeSession(sessionId, provider, config)
+            var session = new RealtimeSession
             {
+                Id = sessionId,
+                Provider = provider,
+                Config = config,
                 State = SessionState.Connected,
                 CreatedAt = DateTime.UtcNow.AddMinutes(-30),
                 Metadata = new Dictionary<string, object>

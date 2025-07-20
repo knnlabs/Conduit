@@ -596,7 +596,9 @@ namespace ConduitLLM.Providers
                 string apiUrl = $"model/{modelId}/invoke-with-response-stream";
 
                 // Create HTTP request with streaming enabled
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+                // Create absolute URI by combining with client base address
+                var absoluteUri = new Uri(httpClient.BaseAddress!, apiUrl);
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, absoluteUri);
                 var json = JsonSerializer.Serialize(bedrockRequest, JsonOptions);
                 httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 httpRequest.Headers.Add("User-Agent", "ConduitLLM");
@@ -797,7 +799,9 @@ namespace ConduitLLM.Providers
             string effectiveApiKey = Credentials.ApiKey!;
             string effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
 
-            var request = new HttpRequestMessage(method, path);
+            // Create absolute URI by combining with client base address
+            var absoluteUri = new Uri(client.BaseAddress!, path);
+            var request = new HttpRequestMessage(method, absoluteUri);
             
             if (requestBody != null)
             {
@@ -1787,6 +1791,36 @@ namespace ConduitLLM.Providers
                 null => "stop",
                 _ => "stop"
             };
+        }
+
+        #endregion
+
+        #region GetCapabilities Override
+
+        /// <inheritdoc />
+        public override Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = modelId ?? ProviderModelId,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    Stop = true
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = true,
+                    ImageGeneration = true,
+                    FunctionCalling = false,
+                    AudioTranscription = false,
+                    TextToSpeech = false
+                }
+            });
         }
 
         #endregion
