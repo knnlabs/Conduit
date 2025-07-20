@@ -23,6 +23,7 @@ namespace ConduitLLM.Tests.Repositories
     public class VirtualKeyRepositoryExampleTests : IDisposable
     {
         private readonly ConfigurationDbContext _context;
+        private readonly DbContextOptions<ConfigurationDbContext> _options;
         private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockContextFactory;
         private readonly Mock<ILogger<VirtualKeyRepository>> _mockLogger;
         private readonly VirtualKeyRepository _repository;
@@ -33,14 +34,16 @@ namespace ConduitLLM.Tests.Repositories
             _output = output;
             
             // Setup in-memory database for testing
-            var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
+            _options = new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
             
-            _context = new ConfigurationDbContext(options);
+            _context = new ConfigurationDbContext(_options);
             _mockContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            // The factory must return a new context each time to simulate production behavior
+            // where each operation gets its own context that will be disposed
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(_context);
+                .ReturnsAsync(() => new ConfigurationDbContext(_options));
             
             _mockLogger = new Mock<ILogger<VirtualKeyRepository>>();
             
@@ -210,9 +213,12 @@ namespace ConduitLLM.Tests.Repositories
             // Assert
             result.Should().BeTrue();
             
-            // Verify deletion
-            var deletedKey = await _context.VirtualKeys.FindAsync(key.Id);
-            deletedKey.Should().BeNull();
+            // Verify deletion using a new context
+            using (var verifyContext = new ConfigurationDbContext(_options))
+            {
+                var deletedKey = await verifyContext.VirtualKeys.FindAsync(key.Id);
+                deletedKey.Should().BeNull();
+            }
         }
 
         [Fact]
@@ -255,11 +261,14 @@ namespace ConduitLLM.Tests.Repositories
             // Assert
             result.Should().BeTrue();
             
-            // Verify updates
-            var updatedKeys = await _context.VirtualKeys.ToListAsync();
-            updatedKeys.First(k => k.KeyHash == "hash1").CurrentSpend.Should().Be(10.5m);
-            updatedKeys.First(k => k.KeyHash == "hash2").CurrentSpend.Should().Be(20.0m);
-            updatedKeys.First(k => k.KeyHash == "hash3").CurrentSpend.Should().Be(30.25m);
+            // Verify updates using a new context
+            using (var verifyContext = new ConfigurationDbContext(_options))
+            {
+                var updatedKeys = await verifyContext.VirtualKeys.ToListAsync();
+                updatedKeys.First(k => k.KeyHash == "hash1").CurrentSpend.Should().Be(10.5m);
+                updatedKeys.First(k => k.KeyHash == "hash2").CurrentSpend.Should().Be(20.0m);
+                updatedKeys.First(k => k.KeyHash == "hash3").CurrentSpend.Should().Be(30.25m);
+            }
         }
 
         #endregion
