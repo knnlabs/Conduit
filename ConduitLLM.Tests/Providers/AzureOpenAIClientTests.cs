@@ -407,11 +407,37 @@ data: [DONE]
             {
                 chunks.Add(chunk);
             }
+            
+            // Debug output
+            _output.WriteLine($"Total chunks received: {chunks.Count}");
+            for (int i = 0; i < chunks.Count; i++)
+            {
+                _output.WriteLine($"Chunk {i}:");
+                _output.WriteLine($"  - Has ToolCalls: {chunks[i].Choices[0].Delta.ToolCalls != null}");
+                if (chunks[i].Choices[0].Delta.ToolCalls != null)
+                {
+                    _output.WriteLine($"  - ToolCalls Count: {chunks[i].Choices[0].Delta.ToolCalls.Count}");
+                    if (chunks[i].Choices[0].Delta.ToolCalls.Count > 0)
+                    {
+                        var tc = chunks[i].Choices[0].Delta.ToolCalls[0];
+                        _output.WriteLine($"  - Function Name: {tc.Function?.Name}");
+                        _output.WriteLine($"  - Function Arguments: {tc.Function?.Arguments}");
+                    }
+                }
+                _output.WriteLine($"  - FinishReason: {chunks[i].Choices[0].FinishReason}");
+            }
 
             // Assert
             chunks.Should().HaveCount(3);
             chunks[0].Choices[0].Delta.ToolCalls.Should().NotBeNull();
             chunks[0].Choices[0].Delta.ToolCalls![0].Function.Name.Should().Be("get_weather");
+            chunks[0].Choices[0].Delta.ToolCalls![0].Function.Arguments.Should().Be("");
+            
+            // Second chunk should have arguments update
+            chunks[1].Choices[0].Delta.ToolCalls.Should().NotBeNull();
+            chunks[1].Choices[0].Delta.ToolCalls![0].Function.Arguments.Should().Be("{\"location\": \"Seattle\"}");
+            
+            // Third chunk should have finish reason
             chunks[2].Choices[0].FinishReason.Should().Be("tool_calls");
         }
 
@@ -775,16 +801,23 @@ data: [DONE]
         private void SetupStreamingResponse(string streamContent)
         {
             // Parse the SSE format into individual chunks
+            // Split by lines first, then extract data lines
             var chunks = streamContent
-                .Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(chunk => chunk.StartsWith("data: ") && !chunk.Contains("[DONE]"))
-                .Select(chunk => chunk.Substring(6)) // Remove "data: " prefix
+                .Split('\n')
+                .Where(line => line.StartsWith("data: ") && !line.Contains("[DONE]"))
+                .Select(line => line.Substring(6)) // Remove "data: " prefix
                 .ToList();
+                
+            _output?.WriteLine($"SetupStreamingResponse: Found {chunks.Count} chunks");
+            for (int i = 0; i < chunks.Count; i++)
+            {
+                _output?.WriteLine($"  Chunk {i}: {chunks[i].Substring(0, Math.Min(100, chunks[i].Length))}...");
+            }
             
             // Use the new streaming infrastructure with SSE format
             var response = StreamingTestResponseFactory.CreateOpenAIStreamingResponse(
                 chunks,
-                delay: TimeSpan.FromMilliseconds(5)); // Small delay to simulate network streaming
+                delay: TimeSpan.FromMilliseconds(50)); // Increased delay to ensure chunks are processed separately
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
