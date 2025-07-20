@@ -39,6 +39,7 @@ interface FormValues {
   cachedInputWriteCostPer1K: number;
   embeddingCostPer1K: number;
   // Other cost types
+  searchUnitCostPer1K: number;
   imageCostPerImage: number;
   audioCostPerMinute: number;
   audioCostPerKCharacters: number;
@@ -71,6 +72,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     cachedInputCostPer1K: (modelCost.cachedInputCostPerMillionTokens ?? 0) / 1000,
     cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCostPerMillionTokens ?? 0) / 1000,
     embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) / 1000,
+    searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
     imageCostPerImage: modelCost.imageCostPerImage ?? 0,
     audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
     audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
@@ -96,6 +98,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -166,6 +169,10 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     
     if (values.embeddingCostPer1K > 0) {
       updates.embeddingTokenCost = values.embeddingCostPer1K * 1000;
+    }
+    
+    if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
+      updates.costPerSearchUnit = values.searchUnitCostPer1K || undefined;
     }
     
     if (values.imageCostPerImage !== modelCost.imageCostPerImage) {
@@ -416,6 +423,19 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               />
             </>
           )}
+
+          {/* Search/Rerank pricing - optional for any model type */}
+          <Divider label="Search/Rerank Pricing (Optional)" labelPosition="center" variant="dashed" />
+          <NumberInput
+            label="Cost per Search Unit (per 1K units)"
+            placeholder="0.0000"
+            description="For reranking models: 1 search unit = 1 query + up to 100 documents"
+            decimalScale={4}
+            min={0}
+            step={0.0001}
+            leftSection="$"
+            {...form.getInputProps('searchUnitCostPer1K')}
+          />
 
           <Fieldset legend="Batch Processing">
             <Stack gap="sm">

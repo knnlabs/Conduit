@@ -40,6 +40,7 @@ interface FormValues {
   cachedInputWriteCostPer1K: number;
   embeddingCostPer1K: number;
   // Other cost types
+  searchUnitCostPer1K: number;
   imageCostPerImage: number;
   audioCostPerMinute: number;
   audioCostPerKCharacters: number;
@@ -72,6 +73,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputCostPer1K: 0,
       cachedInputWriteCostPer1K: 0,
       embeddingCostPer1K: 0,
+      searchUnitCostPer1K: 0,
       imageCostPerImage: 0,
       audioCostPerMinute: 0,
       audioCostPerKCharacters: 0,
@@ -95,6 +97,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -148,6 +151,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputTokenCost: values.cachedInputCostPer1K > 0 ? values.cachedInputCostPer1K * 1000000 : undefined,
       cachedInputWriteTokenCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K * 1000000 : undefined,
       embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000000 : undefined,
+      costPerSearchUnit: values.searchUnitCostPer1K > 0 ? values.searchUnitCostPer1K : undefined,
       imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
       audioCostPerMinute: values.audioCostPerMinute > 0 ? values.audioCostPerMinute : undefined,
       audioCostPerKCharacters: values.audioCostPerKCharacters > 0 ? values.audioCostPerKCharacters : undefined,
@@ -371,6 +375,19 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
               />
             </>
           )}
+
+          {/* Search/Rerank pricing - optional for any model type */}
+          <Divider label="Search/Rerank Pricing (Optional)" labelPosition="center" variant="dashed" />
+          <NumberInput
+            label="Cost per Search Unit (per 1K units)"
+            placeholder="0.0000"
+            description="For reranking models: 1 search unit = 1 query + up to 100 documents"
+            decimalScale={4}
+            min={0}
+            step={0.0001}
+            leftSection="$"
+            {...form.getInputProps('searchUnitCostPer1K')}
+          />
 
           <Fieldset legend="Batch Processing">
             <Stack gap="sm">

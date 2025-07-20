@@ -2191,6 +2191,192 @@ namespace ConduitLLM.Tests.Core.Services
             result.IsPartialRefund.Should().BeFalse();
         }
 
+        [Fact]
+        public async Task CalculateCostAsync_WithSearchUnits_CalculatesCorrectly()
+        {
+            // Arrange
+            var modelId = "cohere/rerank-3.5";
+            var usage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                SearchUnits = 5
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerSearchUnit = 2.0m // $2.00 per 1K search units
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected: 5 * (2.0 / 1000) = 5 * 0.002 = 0.01
+            result.Should().Be(0.01m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithSearchUnitsAndTokens_CalculatesBothCorrectly()
+        {
+            // Arrange
+            var modelId = "hybrid/model";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                SearchUnits = 10
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00003m,
+                CostPerSearchUnit = 1.5m // $1.50 per 1K search units
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Token cost: (1000 * 0.00001) + (500 * 0.00003) = 0.01 + 0.015 = 0.025
+            // Search unit cost: 10 * (1.5 / 1000) = 10 * 0.0015 = 0.015
+            // Total: 0.025 + 0.015 = 0.04
+            result.Should().Be(0.04m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithSearchUnitsAndBatchProcessing_AppliesDiscountToAll()
+        {
+            // Arrange
+            var modelId = "cohere/rerank-3.5";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 0,
+                TotalTokens = 1000,
+                SearchUnits = 100,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0m,
+                CostPerSearchUnit = 2.0m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m // 50% discount
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Token cost: 1000 * 0.00001 = 0.01
+            // Search unit cost: 100 * (2.0 / 1000) = 0.2
+            // Total before discount: 0.01 + 0.2 = 0.21
+            // After 50% discount: 0.21 * 0.5 = 0.105
+            result.Should().Be(0.105m);
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithSearchUnits_CalculatesCorrectRefund()
+        {
+            // Arrange
+            var modelId = "cohere/rerank-3.5";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                SearchUnits = 50
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                SearchUnits = 20
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerSearchUnit = 2.0m // $2.00 per 1K search units
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Service interruption");
+
+            // Assert
+            // Expected refund: 20 * (2.0 / 1000) = 20 * 0.002 = 0.04
+            result.RefundAmount.Should().Be(0.04m);
+            result.Breakdown!.SearchUnitRefund.Should().Be(0.04m);
+            result.IsPartialRefund.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithSearchUnitsExceedingOriginal_ReportsValidationError()
+        {
+            // Arrange
+            var modelId = "cohere/rerank-3.5";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                SearchUnits = 20
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                SearchUnits = 30 // More than original
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerSearchUnit = 2.0m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Invalid refund request");
+
+            // Assert
+            result.IsPartialRefund.Should().BeTrue();
+            result.ValidationMessages.Should().Contain(m => m.Contains("Refund search units"));
+        }
+
         #endregion
     }
 }

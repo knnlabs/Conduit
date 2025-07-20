@@ -174,6 +174,22 @@ public class CostCalculationService : ICostCalculationService
             calculatedCost += baseCost;
         }
 
+        // Add search unit cost if applicable
+        if (usage.SearchUnits.HasValue && usage.SearchUnits.Value > 0 && modelCost.CostPerSearchUnit.HasValue)
+        {
+            // Convert from per-1K-units to per-unit
+            var costPerUnit = modelCost.CostPerSearchUnit.Value / 1000m;
+            var searchCost = usage.SearchUnits.Value * costPerUnit;
+            calculatedCost += searchCost;
+            
+            _logger.LogDebug(
+                "Search cost calculation for model {ModelId}: {Units} units × ${CostPerUnit} = ${Total}",
+                modelId,
+                usage.SearchUnits.Value,
+                costPerUnit,
+                searchCost);
+        }
+
         // Apply batch processing discount if applicable
         if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
         {
@@ -183,8 +199,8 @@ public class CostCalculationService : ICostCalculationService
                 modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, IsBatch: {IsBatch}) is {CalculatedCost}",
-            modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.IsBatch ?? false, calculatedCost);
+        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, IsBatch: {IsBatch}) is {CalculatedCost}",
+            modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.IsBatch ?? false, calculatedCost);
 
         return calculatedCost;
     }
@@ -358,6 +374,23 @@ public class CostCalculationService : ICostCalculationService
             totalRefund += breakdown.VideoRefund;
         }
 
+        // Handle search unit refunds
+        if (modelCost.CostPerSearchUnit.HasValue && refundUsage.SearchUnits.HasValue && refundUsage.SearchUnits.Value > 0)
+        {
+            // Convert from per-1K-units to per-unit
+            var costPerUnit = modelCost.CostPerSearchUnit.Value / 1000m;
+            var searchRefund = refundUsage.SearchUnits.Value * costPerUnit;
+            breakdown.SearchUnitRefund = searchRefund;
+            totalRefund += searchRefund;
+            
+            _logger.LogDebug(
+                "Search unit refund for model {ModelId}: {Units} units × ${CostPerUnit} = ${Total}",
+                modelId,
+                refundUsage.SearchUnits.Value,
+                costPerUnit,
+                searchRefund);
+        }
+
         // Apply batch processing discount if applicable
         if (refundUsage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
         {
@@ -417,6 +450,18 @@ public class CostCalculationService : ICostCalculationService
         if (refundUsage.VideoDurationSeconds.HasValue && refundUsage.VideoDurationSeconds.Value < 0)
         {
             messages.Add("Refund video duration must be non-negative.");
+        }
+
+        // Validate search unit refund amounts
+        if (refundUsage.SearchUnits.HasValue && originalUsage.SearchUnits.HasValue &&
+            refundUsage.SearchUnits.Value > originalUsage.SearchUnits.Value)
+        {
+            messages.Add($"Refund search units ({refundUsage.SearchUnits.Value}) cannot exceed original ({originalUsage.SearchUnits.Value}).");
+        }
+
+        if (refundUsage.SearchUnits.HasValue && refundUsage.SearchUnits.Value < 0)
+        {
+            messages.Add("Refund search units must be non-negative.");
         }
 
         return messages;

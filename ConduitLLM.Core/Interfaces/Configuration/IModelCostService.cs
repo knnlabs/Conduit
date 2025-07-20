@@ -88,5 +88,13 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// The write cost is incurred when new content is added to the cache.
         /// </summary>
         public decimal? CachedInputWriteCost { get; set; }
+
+        /// <summary>
+        /// Cost per search unit for reranking models, if applicable.
+        /// Used by reranking models like Cohere Rerank that charge per search unit rather than per token.
+        /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+        /// Cost is expressed as USD per 1000 search units.
+        /// </summary>
+        public decimal? CostPerSearchUnit { get; set; }
     }
 }

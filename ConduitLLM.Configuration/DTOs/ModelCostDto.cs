@@ -145,6 +145,16 @@ namespace ConduitLLM.Configuration.DTOs
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
         public decimal? CachedInputWriteCost { get; set; }
+
+        /// <summary>
+        /// Cost per search unit for reranking models in USD per 1000 units, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by reranking models like Cohere Rerank that charge per search unit rather than per token.
+        /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+        /// Documents over 500 tokens are split into chunks, each counting as a separate document.
+        /// </remarks>
+        public decimal? CostPerSearchUnit { get; set; }
     }
 
     /// <summary>
@@ -264,6 +274,16 @@ namespace ConduitLLM.Configuration.DTOs
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
         public decimal? CachedInputWriteCost { get; set; }
+
+        /// <summary>
+        /// Cost per search unit for reranking models in USD per 1000 units, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by reranking models like Cohere Rerank that charge per search unit rather than per token.
+        /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+        /// Documents over 500 tokens are split into chunks, each counting as a separate document.
+        /// </remarks>
+        public decimal? CostPerSearchUnit { get; set; }
     }
 
     /// <summary>
@@ -388,6 +408,16 @@ namespace ConduitLLM.Configuration.DTOs
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
         public decimal? CachedInputWriteCost { get; set; }
+
+        /// <summary>
+        /// Cost per search unit for reranking models in USD per 1000 units, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by reranking models like Cohere Rerank that charge per search unit rather than per token.
+        /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+        /// Documents over 500 tokens are split into chunks, each counting as a separate document.
+        /// </remarks>
+        public decimal? CostPerSearchUnit { get; set; }
     }
 
     /// <summary>

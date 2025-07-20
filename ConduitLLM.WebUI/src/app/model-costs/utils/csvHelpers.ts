@@ -15,6 +15,7 @@ export interface ParsedModelCost {
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
   imageQualityMultipliers?: string;
+  searchUnitCostPer1K?: number;
   priority: number;
   active: boolean;
   description?: string;
@@ -125,6 +126,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       batchProcessingMultiplier: parseNumericValue(row['batch processing multiplier']),
       supportsBatchProcessing: row['supports batch processing']?.toLowerCase() === 'yes' || row['supports batch processing']?.toLowerCase() === 'true',
       imageQualityMultipliers: row['image quality multipliers']?.trim(),
+      searchUnitCostPer1K: parseNumericValue(row['search unit cost (per 1k units)']),
       priority: parseNumericValue(row['priority'], 0) ?? 0,
       active: row['active']?.toLowerCase() === 'yes' || row['active']?.toLowerCase() === 'true',
       description: row['description']?.trim(),
@@ -153,6 +155,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.videoCostPerSecond !== undefined && cost.videoCostPerSecond < 0) errors.push('Video cost cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
+    if (cost.searchUnitCostPer1K !== undefined && cost.searchUnitCostPer1K < 0) errors.push('Search unit cost cannot be negative');
     
     // Validate image quality multipliers JSON
     if (cost.imageQualityMultipliers) {
@@ -218,6 +221,7 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       batchProcessingMultiplier: cost.batchProcessingMultiplier,
       supportsBatchProcessing: cost.supportsBatchProcessing,
       imageQualityMultipliers: cost.imageQualityMultipliers,
+      costPerSearchUnit: cost.searchUnitCostPer1K,
       priority: cost.priority,
       description: cost.description,
     }));

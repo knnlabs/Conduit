@@ -7,6 +7,7 @@ export interface ModelCost {
   outputCostPerMillionTokens?: number;
   cachedInputCostPerMillionTokens?: number;
   cachedInputWriteCostPerMillionTokens?: number;
+  costPerSearchUnit?: number;
   costPerRequest?: number;
   costPerSecond?: number;
   costPerImage?: number;
@@ -38,6 +39,7 @@ export interface CreateModelCostDto {
   outputTokenCost: number;
   cachedInputTokenCost?: number;
   cachedInputWriteTokenCost?: number;
+  costPerSearchUnit?: number;
   embeddingTokenCost?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;

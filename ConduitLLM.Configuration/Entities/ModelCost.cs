@@ -232,4 +232,18 @@ public class ModelCost
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
     public decimal? CachedInputWriteCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per search unit for reranking models, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD per 1000 search units.
+    /// Used by reranking models like Cohere Rerank that charge per search unit rather than per token.
+    /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+    /// Documents over 500 tokens are split into chunks, each counting as a separate document.
+    /// Nullable because not all models use search unit pricing.
+    /// Stored with moderate precision (decimal 18,8) to accommodate search unit costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? CostPerSearchUnit { get; set; }
 }

@@ -90,4 +90,53 @@ public class Usage
     [JsonPropertyName("cached_write_tokens")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? CachedWriteTokens { get; set; }
+
+    /// <summary>
+    /// Number of search units consumed (for rerank operations).
+    /// </summary>
+    /// <remarks>
+    /// Used by reranking models like Cohere Rerank that charge per search unit.
+    /// A search unit typically consists of 1 query + up to 100 documents to be ranked.
+    /// </remarks>
+    [JsonPropertyName("search_units")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SearchUnits { get; set; }
+
+    /// <summary>
+    /// Additional metadata for search operations.
+    /// </summary>
+    /// <remarks>
+    /// Provides detailed breakdown of search/rerank operations for cost tracking and debugging.
+    /// </remarks>
+    [JsonPropertyName("search_metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SearchUsageMetadata? SearchMetadata { get; set; }
+}
+
+/// <summary>
+/// Represents detailed usage metadata for search and reranking operations.
+/// </summary>
+public class SearchUsageMetadata
+{
+    /// <summary>
+    /// Number of queries processed.
+    /// </summary>
+    [JsonPropertyName("query_count")]
+    public int QueryCount { get; set; }
+
+    /// <summary>
+    /// Total number of documents ranked.
+    /// </summary>
+    [JsonPropertyName("document_count")]
+    public int DocumentCount { get; set; }
+
+    /// <summary>
+    /// Number of documents that were split into chunks.
+    /// </summary>
+    /// <remarks>
+    /// Documents exceeding 500 tokens are typically split into chunks,
+    /// with each chunk counting as a separate document for billing purposes.
+    /// </remarks>
+    [JsonPropertyName("chunked_document_count")]
+    public int ChunkedDocumentCount { get; set; }
 }

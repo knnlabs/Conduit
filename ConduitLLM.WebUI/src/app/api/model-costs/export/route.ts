@@ -28,6 +28,7 @@ function convertToCSV(modelCosts: ModelCost[]): string {
     'Batch Processing Multiplier',
     'Supports Batch Processing',
     'Image Quality Multipliers',
+    'Search Unit Cost (per 1K units)',
     'Priority',
     'Active',
     'Description',
@@ -65,6 +66,9 @@ function convertToCSV(modelCosts: ModelCost[]): string {
     const embeddingCostPer1K = cost.embeddingTokenCost 
       ? cost.embeddingTokenCost.toFixed(4) 
       : '';
+    const searchUnitCostPer1K = cost.costPerSearchUnit 
+      ? cost.costPerSearchUnit.toFixed(4) 
+      : '';
 
     return [
       escapeCSV(cost.modelIdPattern),
@@ -85,6 +89,7 @@ function convertToCSV(modelCosts: ModelCost[]): string {
       escapeCSV(cost.batchProcessingMultiplier),
       escapeCSV(cost.supportsBatchProcessing ? 'Yes' : 'No'),
       escapeCSV(cost.imageQualityMultipliers),
+      escapeCSV(searchUnitCostPer1K),
       escapeCSV(cost.priority),
       escapeCSV(cost.isActive ? 'Yes' : 'No'),
       escapeCSV(cost.description),

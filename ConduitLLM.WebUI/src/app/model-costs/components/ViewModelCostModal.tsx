@@ -36,6 +36,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
   
   const hasImageCosts = modelCost.costPerImage !== undefined;
   const hasVideoCosts = modelCost.costPerSecond !== undefined;
+  const hasSearchCosts = modelCost.costPerSearchUnit !== undefined;
   // Audio costs would be here but backend doesn't support them yet
 
   return (
@@ -165,6 +166,26 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
                   {formatters.currency(modelCost.costPerSecond ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
+            </Card>
+          </>
+        )}
+
+        {hasSearchCosts && (
+          <>
+            <Divider label="Search/Rerank Pricing" labelPosition="center" />
+            <Card withBorder>
+              <Group justify="space-between">
+                <Text>Cost per Search Unit</Text>
+                <Group gap="xs">
+                  <Text fw={500}>
+                    {formatters.currency(modelCost.costPerSearchUnit ?? 0, { currency: 'USD', precision: 4 })}
+                  </Text>
+                  <Text size="sm" c="dimmed">per 1K units</Text>
+                </Group>
+              </Group>
+              <Text size="xs" c="dimmed" mt="xs">
+                1 search unit = 1 query + up to 100 documents
+              </Text>
             </Card>
           </>
         )}

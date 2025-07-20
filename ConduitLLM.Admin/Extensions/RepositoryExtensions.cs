@@ -538,6 +538,9 @@ namespace ConduitLLM.Admin.Extensions
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                 ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
+                CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                CostPerSearchUnit = modelCost.CostPerSearchUnit,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -571,6 +574,9 @@ namespace ConduitLLM.Admin.Extensions
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
                 ImageQualityMultipliers = dto.ImageQualityMultipliers,
+                CachedInputTokenCost = dto.CachedInputTokenCost,
+                CachedInputWriteCost = dto.CachedInputWriteCost,
+                CostPerSearchUnit = dto.CostPerSearchUnit,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -608,6 +614,9 @@ namespace ConduitLLM.Admin.Extensions
             entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
             entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
             entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
+            entity.CachedInputTokenCost = dto.CachedInputTokenCost;
+            entity.CachedInputWriteCost = dto.CachedInputWriteCost;
+            entity.CostPerSearchUnit = dto.CostPerSearchUnit;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

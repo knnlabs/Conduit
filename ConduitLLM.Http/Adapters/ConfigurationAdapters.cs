@@ -163,7 +163,10 @@ namespace ConduitLLM.Http.Adapters
                     VideoResolutionMultipliers = videoResolutionMultipliers,
                     BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                     SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                    ImageQualityMultipliers = imageQualityMultipliers
+                    ImageQualityMultipliers = imageQualityMultipliers,
+                    CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                    CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                    CostPerSearchUnit = modelCost.CostPerSearchUnit
                 };
             }
         }

@@ -160,6 +160,16 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
     if (cost.costPerSecond !== undefined) {
       return <Text size="xs">{formatters.currency(cost.costPerSecond, { currency: 'USD' })}/second</Text>;
     }
+    if (cost.costPerSearchUnit !== undefined) {
+      return (
+        <Stack gap={2}>
+          <Text size="xs">
+            Search: {formatters.currency(cost.costPerSearchUnit, { currency: 'USD', precision: 4 })}/1K units
+          </Text>
+          <Badge size="xs" variant="light" color="violet">Rerank</Badge>
+        </Stack>
+      );
+    }
     return <Text size="xs" c="dimmed">No pricing set</Text>;
   };
 
