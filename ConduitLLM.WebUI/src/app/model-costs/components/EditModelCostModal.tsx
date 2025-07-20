@@ -12,6 +12,8 @@ import {
   Alert,
   Divider,
   Textarea,
+  Fieldset,
+  JsonInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
@@ -42,6 +44,11 @@ interface FormValues {
   audioOutputCostPerMinute: number;
   videoCostPerSecond: number;
   videoResolutionMultipliers: string;
+  // Batch processing
+  supportsBatchProcessing: boolean;
+  batchProcessingMultiplier: number;
+  // Image quality
+  imageQualityMultipliers: string;
   // Metadata
   priority: number;
   description: string;
@@ -59,16 +66,19 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     // Convert from per million to per 1K for display
     inputCostPer1K: (modelCost.inputCostPerMillionTokens ?? 0) / 1000,
     outputCostPer1K: (modelCost.outputCostPerMillionTokens ?? 0) / 1000,
-    embeddingCostPer1K: 0, // Backend doesn't have this field yet
-    imageCostPerImage: modelCost.costPerImage ?? 0,
-    audioCostPerMinute: 0, // Backend missing audio fields
-    audioCostPerKCharacters: 0,
-    audioInputCostPerMinute: 0,
-    audioOutputCostPerMinute: 0,
-    videoCostPerSecond: modelCost.costPerSecond ?? 0,
-    videoResolutionMultipliers: '', // Backend missing this field
+    embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) / 1000,
+    imageCostPerImage: modelCost.imageCostPerImage ?? 0,
+    audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
+    audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
+    audioInputCostPerMinute: modelCost.audioInputCostPerMinute ?? 0,
+    audioOutputCostPerMinute: modelCost.audioOutputCostPerMinute ?? 0,
+    videoCostPerSecond: modelCost.videoCostPerSecond ?? 0,
+    videoResolutionMultipliers: modelCost.videoResolutionMultipliers ?? '',
+    supportsBatchProcessing: modelCost.supportsBatchProcessing ?? false,
+    batchProcessingMultiplier: modelCost.batchProcessingMultiplier ?? 0.5,
+    imageQualityMultipliers: modelCost.imageQualityMultipliers ?? '',
     priority: modelCost.priority,
-    description: '', // Backend missing description field
+    description: modelCost.description ?? '',
     isActive: modelCost.isActive,
   };
 
@@ -83,6 +93,32 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      batchProcessingMultiplier: (value, values) => {
+        if (values.supportsBatchProcessing && value) {
+          if (value <= 0 || value > 1) {
+            return 'Multiplier must be between 0 and 1';
+          }
+        }
+        return null;
+      },
+      imageQualityMultipliers: (value) => {
+        if (!value || value === '{}') return null;
+        try {
+          const parsed = JSON.parse(value) as unknown;
+          if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return 'Must be a JSON object';
+          }
+          const parsedObj = parsed as Record<string, unknown>;
+          for (const [key, val] of Object.entries(parsedObj)) {
+            if (typeof val !== 'number' || val <= 0) {
+              return `Value for "${key}" must be a positive number`;
+            }
+          }
+          return null;
+        } catch {
+          return 'Invalid JSON';
+        }
+      },
     },
   });
 
@@ -118,7 +154,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       updates.embeddingTokenCost = values.embeddingCostPer1K * 1000;
     }
     
-    if (values.imageCostPerImage !== modelCost.costPerImage) {
+    if (values.imageCostPerImage !== modelCost.imageCostPerImage) {
       updates.imageCostPerImage = values.imageCostPerImage || undefined;
     }
     
@@ -135,12 +171,26 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       updates.audioOutputCostPerMinute = values.audioOutputCostPerMinute;
     }
     
-    if (values.videoCostPerSecond !== modelCost.costPerSecond) {
+    if (values.videoCostPerSecond !== modelCost.videoCostPerSecond) {
       updates.videoCostPerSecond = values.videoCostPerSecond || undefined;
     }
     
     if (values.videoResolutionMultipliers) {
       updates.videoResolutionMultipliers = values.videoResolutionMultipliers;
+    }
+    
+    // Batch processing fields
+    if (values.supportsBatchProcessing !== modelCost.supportsBatchProcessing) {
+      updates.supportsBatchProcessing = values.supportsBatchProcessing;
+    }
+    
+    if (values.supportsBatchProcessing && values.batchProcessingMultiplier !== modelCost.batchProcessingMultiplier) {
+      updates.batchProcessingMultiplier = values.batchProcessingMultiplier || undefined;
+    }
+    
+    // Image quality multipliers
+    if (values.imageQualityMultipliers !== modelCost.imageQualityMultipliers) {
+      updates.imageQualityMultipliers = values.imageQualityMultipliers || undefined;
     }
     
     if (values.priority !== modelCost.priority) {
@@ -244,6 +294,16 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                 leftSection="$"
                 {...form.getInputProps('imageCostPerImage')}
               />
+              <JsonInput
+                label="Image Quality Multipliers"
+                description='JSON object like {"standard": 1.0, "hd": 2.0}'
+                placeholder='{"standard": 1.0, "hd": 2.0}'
+                validationError="Invalid JSON"
+                formatOnBlur
+                autosize
+                minRows={2}
+                {...form.getInputProps('imageQualityMultipliers')}
+              />
             </>
           )}
 
@@ -315,6 +375,31 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               />
             </>
           )}
+
+          <Fieldset legend="Batch Processing">
+            <Stack gap="sm">
+              <Switch
+                label="Supports Batch Processing"
+                checked={form.values.supportsBatchProcessing}
+                onChange={(event) => 
+                  form.setFieldValue('supportsBatchProcessing', event.currentTarget.checked)}
+                description="Enable batch API support for this model"
+              />
+              
+              {form.values.supportsBatchProcessing && (
+                <NumberInput
+                  label="Batch Processing Multiplier"
+                  description="Discount multiplier (e.g., 0.5 for 50% off)"
+                  placeholder="0.5"
+                  min={0.01}
+                  max={1}
+                  step={0.01}
+                  decimalScale={2}
+                  {...form.getInputProps('batchProcessingMultiplier')}
+                />
+              )}
+            </Stack>
+          </Fieldset>
 
           <Divider label="Additional Settings" labelPosition="center" />
 

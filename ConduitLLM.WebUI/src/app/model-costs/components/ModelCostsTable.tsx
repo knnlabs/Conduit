@@ -17,6 +17,7 @@ import {
   Stack,
   Pagination,
   Center,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -24,6 +25,7 @@ import {
   IconTrash,
   IconDots,
   IconEye,
+  IconAdjustments,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
@@ -129,6 +131,21 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
         </Stack>
       );
     }
+    if (cost.imageCostPerImage !== undefined) {
+      const hasMultipliers = cost.imageQualityMultipliers && 
+        cost.imageQualityMultipliers !== '{}';
+      
+      return (
+        <Group gap="xs">
+          <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>
+          {hasMultipliers && (
+            <Tooltip label="Has quality multipliers">
+              <IconAdjustments size={14} />
+            </Tooltip>
+          )}
+        </Group>
+      );
+    }
     if (cost.costPerImage !== undefined) {
       return <Text size="xs">{formatters.currency(cost.costPerImage, { currency: 'USD' })}/image</Text>;
     }
@@ -205,6 +222,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                     <Table.Th>Provider</Table.Th>
                     <Table.Th>Type</Table.Th>
                     <Table.Th>Pricing</Table.Th>
+                    <Table.Th>Batch</Table.Th>
                     <Table.Th>Priority</Table.Th>
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Updated</Table.Th>
@@ -230,6 +248,15 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                         </Badge>
                       </Table.Td>
                       <Table.Td>{getCostDisplay(cost)}</Table.Td>
+                      <Table.Td>
+                        {cost.supportsBatchProcessing ? (
+                          <Badge color="green" size="sm">
+                            {cost.batchProcessingMultiplier 
+                              ? `${(cost.batchProcessingMultiplier * 100).toFixed(0)}%` 
+                              : 'Yes'}
+                          </Badge>
+                        ) : null}
+                      </Table.Td>
                       <Table.Td>
                         <Text size="sm">{cost.priority}</Text>
                       </Table.Td>

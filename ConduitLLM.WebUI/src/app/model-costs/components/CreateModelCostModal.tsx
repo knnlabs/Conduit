@@ -13,6 +13,8 @@ import {
   Alert,
   Divider,
   Textarea,
+  Fieldset,
+  JsonInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
@@ -43,6 +45,10 @@ interface FormValues {
   audioOutputCostPerMinute: number;
   videoCostPerSecond: number;
   videoResolutionMultipliers: string;
+  // Batch processing
+  supportsBatchProcessing: boolean;
+  batchProcessingMultiplier: number;
+  // Image quality
   imageQualityMultipliers: string;
   // Metadata
   priority: number;
@@ -69,6 +75,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       audioOutputCostPerMinute: 0,
       videoCostPerSecond: 0,
       videoResolutionMultipliers: '',
+      supportsBatchProcessing: false,
+      batchProcessingMultiplier: 0.5,
       imageQualityMultipliers: '',
       priority: 0,
       description: '',
@@ -84,6 +92,32 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      batchProcessingMultiplier: (value, values) => {
+        if (values.supportsBatchProcessing && value) {
+          if (value <= 0 || value > 1) {
+            return 'Multiplier must be between 0 and 1';
+          }
+        }
+        return null;
+      },
+      imageQualityMultipliers: (value) => {
+        if (!value || value === '{}') return null;
+        try {
+          const parsed = JSON.parse(value) as unknown;
+          if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return 'Must be a JSON object';
+          }
+          const parsedObj = parsed as Record<string, unknown>;
+          for (const [key, val] of Object.entries(parsedObj)) {
+            if (typeof val !== 'number' || val <= 0) {
+              return `Value for "${key}" must be a positive number`;
+            }
+          }
+          return null;
+        } catch {
+          return 'Invalid JSON';
+        }
+      },
     },
   });
 
@@ -113,10 +147,11 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       audioOutputCostPerMinute: values.audioOutputCostPerMinute > 0 ? values.audioOutputCostPerMinute : undefined,
       videoCostPerSecond: values.videoCostPerSecond > 0 ? values.videoCostPerSecond : undefined,
       videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
+      supportsBatchProcessing: values.supportsBatchProcessing,
+      batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
       imageQualityMultipliers: values.imageQualityMultipliers || undefined,
       priority: values.priority,
-      description: values.description || undefined,
-      supportsBatchProcessing: false, // Default to false for new costs
+      description: values.description || undefined
     };
 
     void createMutation.mutate(data);
@@ -220,11 +255,15 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
                 leftSection="$"
                 {...form.getInputProps('imageCostPerImage')}
               />
-              <Textarea
-                label="Quality Multipliers (JSON)"
+              <JsonInput
+                label="Image Quality Multipliers"
+                description='JSON object like {"standard": 1.0, "hd": 2.0}'
                 placeholder='{"standard": 1.0, "hd": 2.0}'
+                validationError="Invalid JSON"
+                formatOnBlur
+                autosize
+                minRows={2}
                 {...form.getInputProps('imageQualityMultipliers')}
-                description="Optional: JSON object with quality multipliers"
               />
             </>
           )}
@@ -297,6 +336,31 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
               />
             </>
           )}
+
+          <Fieldset legend="Batch Processing">
+            <Stack gap="sm">
+              <Switch
+                label="Supports Batch Processing"
+                checked={form.values.supportsBatchProcessing}
+                onChange={(event) => 
+                  form.setFieldValue('supportsBatchProcessing', event.currentTarget.checked)}
+                description="Enable batch API support for this model"
+              />
+              
+              {form.values.supportsBatchProcessing && (
+                <NumberInput
+                  label="Batch Processing Multiplier"
+                  description="Discount multiplier (e.g., 0.5 for 50% off)"
+                  placeholder="0.5"
+                  min={0.01}
+                  max={1}
+                  step={0.01}
+                  decimalScale={2}
+                  {...form.getInputProps('batchProcessingMultiplier')}
+                />
+              )}
+            </Stack>
+          </Fieldset>
 
           <Divider label="Additional Settings" labelPosition="center" />
 
