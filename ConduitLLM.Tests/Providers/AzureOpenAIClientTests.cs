@@ -392,7 +392,7 @@ data: [DONE]
 
             var streamContent = @"data: {""id"":""1"",""choices"":[{""index"":0,""delta"":{""tool_calls"":[{""index"":0,""id"":""call_123"",""type"":""function"",""function"":{""name"":""get_weather"",""arguments"":""""}}]}}]}
 
-data: {""id"":""1"",""choices"":[{""index"":0,""delta"":{""tool_calls"":[{""index"":0,""function"":{""arguments"":""{""""location"""": """"Seattle""""}""}}]}}]}
+data: {""id"":""1"",""choices"":[{""index"":0,""delta"":{""tool_calls"":[{""index"":0,""function"":{""arguments"":""{\""location\"": \""Seattle\""}""}}]}}]}
 
 data: {""id"":""1"",""choices"":[{""index"":0,""delta"":{},""finish_reason"":""tool_calls""}]}
 
@@ -408,24 +408,6 @@ data: [DONE]
                 chunks.Add(chunk);
             }
             
-            // Debug output
-            _output.WriteLine($"Total chunks received: {chunks.Count}");
-            for (int i = 0; i < chunks.Count; i++)
-            {
-                _output.WriteLine($"Chunk {i}:");
-                _output.WriteLine($"  - Has ToolCalls: {chunks[i].Choices[0].Delta.ToolCalls != null}");
-                if (chunks[i].Choices[0].Delta.ToolCalls != null)
-                {
-                    _output.WriteLine($"  - ToolCalls Count: {chunks[i].Choices[0].Delta.ToolCalls.Count}");
-                    if (chunks[i].Choices[0].Delta.ToolCalls.Count > 0)
-                    {
-                        var tc = chunks[i].Choices[0].Delta.ToolCalls[0];
-                        _output.WriteLine($"  - Function Name: {tc.Function?.Name}");
-                        _output.WriteLine($"  - Function Arguments: {tc.Function?.Arguments}");
-                    }
-                }
-                _output.WriteLine($"  - FinishReason: {chunks[i].Choices[0].FinishReason}");
-            }
 
             // Assert
             chunks.Should().HaveCount(3);
@@ -808,11 +790,6 @@ data: [DONE]
                 .Select(line => line.Substring(6)) // Remove "data: " prefix
                 .ToList();
                 
-            _output?.WriteLine($"SetupStreamingResponse: Found {chunks.Count} chunks");
-            for (int i = 0; i < chunks.Count; i++)
-            {
-                _output?.WriteLine($"  Chunk {i}: {chunks[i].Substring(0, Math.Min(100, chunks[i].Length))}...");
-            }
             
             // Use the new streaming infrastructure with SSE format
             var response = StreamingTestResponseFactory.CreateOpenAIStreamingResponse(
