@@ -53,7 +53,8 @@ echo "Step 2: Listing migrations..."
 # Try EF tool first, with timeout to prevent hanging
 TEMP_FILE=$(mktemp)
 if timeout 10s dotnet ef migrations list --no-build > "$TEMP_FILE" 2>&1; then
-    MIGRATIONS_EF=$(grep -E "^[0-9]{14}_" "$TEMP_FILE" || true)
+    # Extract migration names and strip status indicators like (Pending) or (Applied)
+    MIGRATIONS_EF=$(grep -E "^[0-9]{14}_" "$TEMP_FILE" | sed 's/ (Pending)$//' | sed 's/ (Applied)$//' || true)
 else
     MIGRATIONS_EF=""
 fi
