@@ -86,6 +86,17 @@ namespace ConduitLLM.Providers
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
 
+            // Project ID validation is deferred until it's actually used in API calls
+            // This is because the base constructor calls ValidateCredentials() before
+            // the derived class has a chance to set _projectId
+        }
+
+        /// <summary>
+        /// Validates that the project ID has been properly configured.
+        /// This is called when the project ID is actually needed, rather than during construction.
+        /// </summary>
+        private void ValidateProjectId()
+        {
             if (string.IsNullOrWhiteSpace(_projectId))
             {
                 throw new ConfigurationException($"Project ID could not be determined for provider '{ProviderName}'. " +
@@ -100,6 +111,7 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateChatCompletionAsync");
+            ValidateProjectId();
 
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
             Logger.LogInformation("Creating chat completion with Google Vertex AI for model {Model}", request.Model);
@@ -182,6 +194,7 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletionAsync");
+            ValidateProjectId();
 
             Logger.LogInformation("Streaming is not natively supported in this Vertex AI client implementation. Simulating streaming.");
 
