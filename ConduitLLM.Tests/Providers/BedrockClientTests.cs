@@ -13,6 +13,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
+using ConduitLLM.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,6 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
-using ConduitLLM.Tests.TestHelpers;
 
 namespace ConduitLLM.Tests.Providers
 {
@@ -394,7 +394,7 @@ namespace ConduitLLM.Tests.Providers
 
         #region Streaming Tests
 
-        [Fact(Skip = "Streaming response mocking infrastructure not yet implemented - see issue #522")]
+        [Fact]
         public async Task StreamCompletionAsync_WithClaude_ShouldStreamChunks()
         {
             // Arrange
@@ -437,7 +437,7 @@ namespace ConduitLLM.Tests.Providers
             contentChunks[1].Choices[0].Delta.Content.Should().Be("streaming!");
         }
 
-        [Fact(Skip = "Streaming response mocking infrastructure not yet implemented - see issue #522")]
+        [Fact]
         public async Task StreamCompletionAsync_WithLlama_ShouldStreamTokens()
         {
             // Arrange
@@ -773,13 +773,27 @@ namespace ConduitLLM.Tests.Providers
 
         private void SetupBedrockStreamResponse(string modelId, List<object> events)
         {
-            // For streaming, we would need to setup a more complex response
-            // For now, let's simplify this for testing
-            var streamContent = string.Join("\n", events.Select(e => JsonSerializer.Serialize(e)));
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            // Convert events to AWS event stream format
+            var eventChunks = events.Select((e, index) => 
             {
-                Content = new StringContent(streamContent, Encoding.UTF8, "application/vnd.amazon.eventstream")
-            };
+                // Determine event type based on the data structure
+                string eventType = "chunk"; // Default event type
+                if (e is Dictionary<string, object> dict && dict.ContainsKey("type"))
+                {
+                    var type = dict["type"]?.ToString();
+                    if (type != null)
+                    {
+                        eventType = type.Replace("_", "-"); // AWS uses hyphens
+                    }
+                }
+                
+                return StreamingTestResponseFactory.FormatBedrockEvent(eventType, e);
+            });
+            
+            // Use the new streaming infrastructure with a small delay to simulate real streaming
+            var response = StreamingTestResponseFactory.CreateBedrockStreamingResponse(
+                eventChunks, 
+                delay: TimeSpan.FromMilliseconds(5)); // Small delay to simulate network streaming
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
@@ -791,7 +805,8 @@ namespace ConduitLLM.Tests.Providers
 
         private object CreateStreamEvent(string eventType, object data)
         {
-            return data; // Simplified for testing
+            // For testing, we'll pass the data as-is since SetupBedrockStreamResponse will format it
+            return data;
         }
 
         private HttpResponseMessage CreateInvokeModelResponse(object content)

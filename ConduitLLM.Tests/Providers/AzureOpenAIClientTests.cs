@@ -364,7 +364,7 @@ data: [DONE]
             chunks[2].Choices[0].FinishReason.Should().Be("stop");
         }
 
-        [Fact(Skip = "Streaming response mocking infrastructure not yet implemented - see issue #523")]
+        [Fact]
         public async Task StreamChatCompletionAsync_WithFunctionCall_ShouldStreamToolCalls()
         {
             // Arrange
@@ -774,10 +774,17 @@ data: [DONE]
 
         private void SetupStreamingResponse(string streamContent)
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(streamContent, Encoding.UTF8, "text/event-stream")
-            };
+            // Parse the SSE format into individual chunks
+            var chunks = streamContent
+                .Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(chunk => chunk.StartsWith("data: ") && !chunk.Contains("[DONE]"))
+                .Select(chunk => chunk.Substring(6)) // Remove "data: " prefix
+                .ToList();
+            
+            // Use the new streaming infrastructure with SSE format
+            var response = StreamingTestResponseFactory.CreateOpenAIStreamingResponse(
+                chunks,
+                delay: TimeSpan.FromMilliseconds(5)); // Small delay to simulate network streaming
 
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
