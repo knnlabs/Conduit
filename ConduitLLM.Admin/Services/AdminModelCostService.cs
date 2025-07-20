@@ -555,7 +555,9 @@ namespace ConduitLLM.Admin.Services
                 AudioInputCostPerMinute = mc.AudioInputCostPerMinute,
                 AudioOutputCostPerMinute = mc.AudioOutputCostPerMinute,
                 VideoCostPerSecond = mc.VideoCostPerSecond,
-                VideoResolutionMultipliers = mc.VideoResolutionMultipliers
+                VideoResolutionMultipliers = mc.VideoResolutionMultipliers,
+                BatchProcessingMultiplier = mc.BatchProcessingMultiplier,
+                SupportsBatchProcessing = mc.SupportsBatchProcessing
             });
 
             return JsonSerializer.Serialize(exportData, new JsonSerializerOptions
@@ -567,7 +569,7 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Model Pattern,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers");
+            csv.AppendLine("Model Pattern,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing");
 
             foreach (var modelCost in modelCosts.OrderBy(mc => mc.ModelIdPattern))
             {
@@ -581,7 +583,9 @@ namespace ConduitLLM.Admin.Services
                     $"{(modelCost.AudioInputCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.AudioOutputCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.VideoCostPerSecond?.ToString("F4") ?? "")}," +
-                    $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}");
+                    $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}," +
+                    $"{(modelCost.BatchProcessingMultiplier?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.SupportsBatchProcessing ? "Yes" : "No")}");
             }
 
             return csv.ToString();
@@ -606,7 +610,9 @@ namespace ConduitLLM.Admin.Services
                     AudioInputCostPerMinute = d.AudioInputCostPerMinute,
                     AudioOutputCostPerMinute = d.AudioOutputCostPerMinute,
                     VideoCostPerSecond = d.VideoCostPerSecond,
-                    VideoResolutionMultipliers = d.VideoResolutionMultipliers
+                    VideoResolutionMultipliers = d.VideoResolutionMultipliers,
+                    BatchProcessingMultiplier = d.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = d.SupportsBatchProcessing
                 }).ToList();
             }
             catch (JsonException ex)
@@ -650,7 +656,9 @@ namespace ConduitLLM.Admin.Services
                         AudioInputCostPerMinute = decimal.TryParse(parts[7], out var audioInputCost) ? audioInputCost : null,
                         AudioOutputCostPerMinute = decimal.TryParse(parts[8], out var audioOutputCost) ? audioOutputCost : null,
                         VideoCostPerSecond = decimal.TryParse(parts[9], out var videoCost) ? videoCost : null,
-                        VideoResolutionMultipliers = parts.Length > 10 ? UnescapeCsvValue(parts[10]) : null
+                        VideoResolutionMultipliers = parts.Length > 10 ? UnescapeCsvValue(parts[10]) : null,
+                        BatchProcessingMultiplier = parts.Length > 11 && decimal.TryParse(parts[11], out var batchMultiplier) ? batchMultiplier : null,
+                        SupportsBatchProcessing = parts.Length > 12 && (parts[12].Trim().ToLower() == "yes" || parts[12].Trim().ToLower() == "true")
                     };
 
                     modelCosts.Add(modelCost);
@@ -709,5 +717,7 @@ namespace ConduitLLM.Admin.Services
         public decimal? AudioOutputCostPerMinute { get; set; }
         public decimal? VideoCostPerSecond { get; set; }
         public string? VideoResolutionMultipliers { get; set; }
+        public decimal? BatchProcessingMultiplier { get; set; }
+        public bool SupportsBatchProcessing { get; set; }
     }
 }

@@ -98,6 +98,24 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
         /// </remarks>
         public string? VideoResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost multiplier for batch processing operations, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents a cost reduction factor for batch API usage.
+        /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
+        /// Applied to the standard token costs when requests are processed through batch APIs.
+        /// </remarks>
+        public decimal? BatchProcessingMultiplier { get; set; }
+
+        /// <summary>
+        /// Indicates if this model supports batch processing
+        /// </summary>
+        /// <remarks>
+        /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
+        /// </remarks>
+        public bool SupportsBatchProcessing { get; set; }
     }
 
     /// <summary>
@@ -170,6 +188,24 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
         /// </remarks>
         public string? VideoResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost multiplier for batch processing operations, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents a cost reduction factor for batch API usage.
+        /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
+        /// Applied to the standard token costs when requests are processed through batch APIs.
+        /// </remarks>
+        public decimal? BatchProcessingMultiplier { get; set; }
+
+        /// <summary>
+        /// Indicates if this model supports batch processing
+        /// </summary>
+        /// <remarks>
+        /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
+        /// </remarks>
+        public bool SupportsBatchProcessing { get; set; }
     }
 
     /// <summary>
@@ -247,6 +283,24 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
         /// </remarks>
         public string? VideoResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost multiplier for batch processing operations, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents a cost reduction factor for batch API usage.
+        /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
+        /// Applied to the standard token costs when requests are processed through batch APIs.
+        /// </remarks>
+        public decimal? BatchProcessingMultiplier { get; set; }
+
+        /// <summary>
+        /// Indicates if this model supports batch processing
+        /// </summary>
+        /// <remarks>
+        /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
+        /// </remarks>
+        public bool SupportsBatchProcessing { get; set; }
     }
 
     /// <summary>

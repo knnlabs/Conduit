@@ -62,5 +62,11 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Example: 0.5 means 50% discount (half price), 0.6 means 40% discount.
         /// </summary>
         public decimal? BatchProcessingMultiplier { get; set; }
+
+        /// <summary>
+        /// Indicates if this model supports batch processing.
+        /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
+        /// </summary>
+        public bool SupportsBatchProcessing { get; set; }
     }
 }

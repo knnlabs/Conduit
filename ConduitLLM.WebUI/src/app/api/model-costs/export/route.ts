@@ -1,27 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-
-interface ModelCost {
-  modelIdPattern: string;
-  providerName: string;
-  modelType: string;
-  inputCostPerMillionTokens?: number;
-  outputCostPerMillionTokens?: number;
-  embeddingTokenCost?: number;
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string;
-  priority?: number;
-  isActive: boolean;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { ModelCost } from '@/app/model-costs/types/modelCost';
 
 function convertToCSV(modelCosts: ModelCost[]): string {
   if (!modelCosts || modelCosts.length === 0) {
@@ -43,6 +23,8 @@ function convertToCSV(modelCosts: ModelCost[]): string {
     'Audio Output Cost (per minute)',
     'Video Cost (per second)',
     'Video Resolution Multipliers',
+    'Batch Processing Multiplier',
+    'Supports Batch Processing',
     'Priority',
     'Active',
     'Description',
@@ -89,6 +71,8 @@ function convertToCSV(modelCosts: ModelCost[]): string {
       escapeCSV(cost.audioOutputCostPerMinute),
       escapeCSV(cost.videoCostPerSecond),
       escapeCSV(cost.videoResolutionMultipliers),
+      escapeCSV(cost.batchProcessingMultiplier),
+      escapeCSV(cost.supportsBatchProcessing ? 'Yes' : 'No'),
       escapeCSV(cost.priority),
       escapeCSV(cost.isActive ? 'Yes' : 'No'),
       escapeCSV(cost.description),

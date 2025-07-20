@@ -184,4 +184,14 @@ public class ModelCost
     /// </remarks>
     [Column(TypeName = "decimal(18, 4)")]
     public decimal? BatchProcessingMultiplier { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports batch processing.
+    /// </summary>
+    /// <remarks>
+    /// Indicates if the model has batch API capabilities for discounted processing.
+    /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
+    /// Default is false for backward compatibility.
+    /// </remarks>
+    public bool SupportsBatchProcessing { get; set; }
 }

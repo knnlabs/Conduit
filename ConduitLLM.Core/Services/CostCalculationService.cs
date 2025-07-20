@@ -135,8 +135,17 @@ public class CostCalculationService : ICostCalculationService
             calculatedCost += baseCost;
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, Images: {ImageCount}, Video: {VideoDuration}s) is {CalculatedCost}",
-            modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, calculatedCost);
+        // Apply batch processing discount if applicable
+        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
+        {
+            var originalCost = calculatedCost;
+            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
+            _logger.LogDebug("Applied batch processing discount for model {ModelId}. Original cost: {OriginalCost}, Discounted cost: {DiscountedCost}, Multiplier: {Multiplier}",
+                modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
+        }
+
+        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, Images: {ImageCount}, Video: {VideoDuration}s, IsBatch: {IsBatch}) is {CalculatedCost}",
+            modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.IsBatch ?? false, calculatedCost);
 
         return calculatedCost;
     }
@@ -264,6 +273,15 @@ public class CostCalculationService : ICostCalculationService
             
             breakdown.VideoRefund = videoRefund;
             totalRefund += breakdown.VideoRefund;
+        }
+
+        // Apply batch processing discount if applicable
+        if (refundUsage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
+        {
+            var originalRefund = totalRefund;
+            totalRefund *= modelCost.BatchProcessingMultiplier!.Value;
+            _logger.LogDebug("Applied batch processing discount to refund for model {ModelId}. Original refund: {OriginalRefund}, Discounted refund: {DiscountedRefund}, Multiplier: {Multiplier}",
+                modelId, originalRefund, totalRefund, modelCost.BatchProcessingMultiplier.Value);
         }
 
         result.RefundAmount = totalRefund;

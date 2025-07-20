@@ -45,4 +45,14 @@ public class Usage
     [JsonPropertyName("video_resolution")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? VideoResolution { get; set; }
+
+    /// <summary>
+    /// Indicates whether this usage is for a batch processing request.
+    /// </summary>
+    /// <remarks>
+    /// When true, batch processing discounts may be applied to the cost calculation.
+    /// </remarks>
+    [JsonPropertyName("is_batch")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IsBatch { get; set; }
 }

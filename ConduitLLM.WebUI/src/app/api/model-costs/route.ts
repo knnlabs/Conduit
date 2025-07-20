@@ -41,6 +41,8 @@ interface LegacyCreateModelCostDto {
   audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string;
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
   description?: string;
   priority?: number;
 }
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
           audioOutputCostPerMinute: requestData.audioOutputCostPerMinute,
           videoCostPerSecond: requestData.videoCostPerSecond,
           videoResolutionMultipliers: requestData.videoResolutionMultipliers,
+          batchProcessingMultiplier: requestData.batchProcessingMultiplier,
+          supportsBatchProcessing: requestData.supportsBatchProcessing ?? false,
           description: requestData.description,
           priority: requestData.priority ?? 0,
         };

@@ -8,10 +8,21 @@ export interface ModelCost {
   costPerRequest?: number;
   costPerSecond?: number;
   costPerImage?: number;
+  embeddingTokenCost?: number;
+  imageCostPerImage?: number;
+  audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
+  videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string;
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
   isActive: boolean;
   priority: number;
   effectiveDate: string;
   expiryDate?: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +41,8 @@ export interface CreateModelCostDto {
   audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string;
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
   description?: string;
   priority?: number;
 }

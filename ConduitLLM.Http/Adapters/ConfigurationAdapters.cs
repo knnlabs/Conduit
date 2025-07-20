@@ -147,7 +147,8 @@ namespace ConduitLLM.Http.Adapters
                     ImageCostPerImage = modelCost.ImageCostPerImage,
                     VideoCostPerSecond = modelCost.VideoCostPerSecond,
                     VideoResolutionMultipliers = videoResolutionMultipliers,
-                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier
+                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = modelCost.SupportsBatchProcessing
                 };
             }
         }

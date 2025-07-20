@@ -1434,5 +1434,278 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         #endregion
+
+        #region Batch Processing Tests
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBatchProcessing_AppliesDiscount()
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m // 50% discount
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected without batch: (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            // Expected with 50% batch discount: 2.0 * 0.5 = 1.0
+            result.Should().Be(1.0m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBatchProcessingButNotSupported_NoDiscount()
+        {
+            // Arrange
+            var modelId = "openai/gpt-3.5";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = false, // Model doesn't support batch
+                BatchProcessingMultiplier = 0.5m
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected: No discount applied since model doesn't support batch
+            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            result.Should().Be(2.0m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBatchFalse_NoDiscount()
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = false
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected: No discount since IsBatch is false
+            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            result.Should().Be(2.0m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBatchNullMultiplier_NoDiscount()
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = null // No multiplier defined
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected: No discount since multiplier is null
+            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            result.Should().Be(2.0m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBatchAndMultiModalUsage_AppliesDiscountToAll()
+        {
+            // Arrange
+            var modelId = "multimodal/model";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                ImageCount = 2,
+                VideoDurationSeconds = 3,
+                VideoResolution = "1280x720",
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00002m,
+                ImageCostPerImage = 0.05m,
+                VideoCostPerSecond = 0.1m,
+                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                {
+                    ["1280x720"] = 0.8m
+                },
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.6m // 40% discount
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected without batch: 
+            // Text: (1000 * 0.00001) + (500 * 0.00002) = 0.01 + 0.01 = 0.02
+            // Images: 2 * 0.05 = 0.1
+            // Video: 3 * 0.1 * 0.8 = 0.24
+            // Total before batch: 0.02 + 0.1 + 0.24 = 0.36
+            // With 40% discount (0.6 multiplier): 0.36 * 0.6 = 0.216
+            result.Should().Be(0.216m);
+        }
+
+        [Theory]
+        [InlineData(0.5, 1.0)]  // 50% discount
+        [InlineData(0.6, 1.2)]  // 40% discount
+        [InlineData(0.4, 0.8)]  // 60% discount
+        [InlineData(1.0, 2.0)]  // No discount
+        public async Task CalculateCostAsync_WithVariousBatchMultipliers_AppliesCorrectDiscount(decimal multiplier, decimal expectedCost)
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = multiplier
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            result.Should().Be(expectedCost);
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithBatchProcessing_AppliesDiscountToRefund()
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                IsBatch = true
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 500,
+                CompletionTokens = 200,
+                TotalTokens = 700,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.001m,
+                OutputTokenCost = 0.002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m // 50% discount
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId,
+                originalUsage,
+                refundUsage,
+                "Test refund",
+                "transaction-123"
+            );
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ValidationMessages.Should().BeEmpty();
+            // Expected refund without batch: (500 * 0.001) + (200 * 0.002) = 0.5 + 0.4 = 0.9
+            // Expected with 50% batch discount: 0.9 * 0.5 = 0.45
+            result.RefundAmount.Should().Be(0.45m);
+            result.Breakdown.Should().NotBeNull();
+        }
+
+        #endregion
     }
 }

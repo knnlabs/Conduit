@@ -113,6 +113,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
       priority: values.priority,
       description: values.description || undefined,
+      supportsBatchProcessing: false, // Default to false for new costs
     };
 
     void createMutation.mutate(data);

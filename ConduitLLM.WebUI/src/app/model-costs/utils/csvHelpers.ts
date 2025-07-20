@@ -10,6 +10,8 @@ export interface ParsedModelCost {
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
   videoCostPerSecond?: number;
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
   priority: number;
   active: boolean;
   description?: string;
@@ -82,6 +84,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
         outputCostPer1K: 0,
         priority: 0,
         active: false,
+        supportsBatchProcessing: false,
         isValid: false,
         errors: [`Row has ${values.length} columns but expected ${headers.length}`],
         rowNumber,
@@ -113,6 +116,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       imageCostPerImage: parseNumericValue(row['image cost (per image)']),
       audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
       videoCostPerSecond: parseNumericValue(row['video cost (per second)']),
+      batchProcessingMultiplier: parseNumericValue(row['batch processing multiplier']),
+      supportsBatchProcessing: row['supports batch processing']?.toLowerCase() === 'yes' || row['supports batch processing']?.toLowerCase() === 'true',
       priority: parseNumericValue(row['priority'], 0) ?? 0,
       active: row['active']?.toLowerCase() === 'yes' || row['active']?.toLowerCase() === 'true',
       description: row['description']?.trim(),
@@ -137,6 +142,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
     if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost cannot be negative');
     if (cost.videoCostPerSecond !== undefined && cost.videoCostPerSecond < 0) errors.push('Video cost cannot be negative');
+    if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
+    if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
     
     // Reasonable upper bounds validation
     if (cost.inputCostPer1K > 1000) errors.push('Input cost seems unreasonably high (>$1000 per 1K tokens)');
@@ -175,6 +182,8 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       imageCostPerImage: cost.imageCostPerImage,
       audioCostPerMinute: cost.audioCostPerMinute,
       videoCostPerSecond: cost.videoCostPerSecond,
+      batchProcessingMultiplier: cost.batchProcessingMultiplier,
+      supportsBatchProcessing: cost.supportsBatchProcessing,
       priority: cost.priority,
       description: cost.description,
     }));
