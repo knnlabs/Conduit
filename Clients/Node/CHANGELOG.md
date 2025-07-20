@@ -3,36 +3,39 @@
 ## [2025-01-20]
 
 ### @knn_labs/conduit-common v0.2.0
-- Added new fields to `Usage` interface for Phase 1 and Phase 2 pricing features:
-  - `is_batch?: boolean` - Indicates batch processing
-  - `image_quality?: string` - Image quality tier
-  - `cached_input_tokens?: number` - Cached input token count
-  - `cached_write_tokens?: number` - Cache write token count
-  - `search_units?: number` - Search unit count for reranking
-  - `inference_steps?: number` - Inference steps for image generation
+- Added comprehensive usage tracking fields to `Usage` interface:
+  - `is_batch?: boolean` - Indicates batch processing for discounted rates
+  - `image_quality?: string` - Image quality tier for differentiated pricing
+  - `cached_input_tokens?: number` - Tokens read from prompt cache (Anthropic, Gemini)
+  - `cached_write_tokens?: number` - Tokens written to prompt cache
+  - `search_units?: number` - Search units for reranking operations (Cohere)
+  - `inference_steps?: number` - Inference steps for image generation (Fireworks)
   - `image_count?: number` - Number of images generated
-  - `video_duration_seconds?: number` - Video duration
-  - `video_resolution?: string` - Video resolution
-  - `audio_duration_seconds?: number` - Audio duration
+  - `video_duration_seconds?: number` - Video duration for media pricing
+  - `video_resolution?: string` - Video resolution tier
+  - `audio_duration_seconds?: number` - Audio duration for TTS/STT pricing
 
 ### @knn_labs/conduit-admin-client v1.1.0
-- Added new fields to `ModelCost` interface:
-  - `batchProcessingMultiplier?: number` - Batch processing discount
-  - `supportsBatchProcessing: boolean` - Batch support flag
-  - `imageQualityMultipliers?: string` - JSON quality multipliers
-  - `cachedInputTokenCost?: number` - Cached input token cost
-  - `cachedInputWriteCost?: number` - Cache write cost
-  - `costPerSearchUnit?: number` - Search unit cost
-  - `costPerInferenceStep?: number` - Inference step cost
-  - `defaultInferenceSteps?: number` - Default steps for model
+- Enhanced `ModelCost` interface with advanced pricing capabilities:
+  - `batchProcessingMultiplier?: number` - Multiplier for batch processing discounts
+  - `supportsBatchProcessing: boolean` - Indicates if model supports batch operations
+  - `imageQualityMultipliers?: string` - JSON object mapping quality tiers to price multipliers
+  - `cachedInputTokenCost?: number` - Cost per million cached input tokens
+  - `cachedInputWriteCost?: number` - Cost per million tokens written to cache
+  - `costPerSearchUnit?: number` - Cost per search unit for reranking models
+  - `costPerInferenceStep?: number` - Cost per inference step for image generation
+  - `defaultInferenceSteps?: number` - Default number of steps for estimation
 - Updated `ModelCostDto`, `CreateModelCostDto`, and `UpdateModelCostDto` with same fields
 
 ### @knn_labs/conduit-core-client v0.3.0
-- Updated to use new `Usage` interface from common package with all Phase 1 and Phase 2 pricing fields
+- Updated to use enhanced `Usage` interface from common package
+- Full support for advanced pricing models including prompt caching, search units, and inference steps
 
-## Purpose
-These updates add support for the new pricing models implemented in Conduit:
-- Phase 1: Batch processing discounts, image quality multipliers
-- Phase 2: Prompt caching costs, search unit pricing (Cohere), inference step pricing (Fireworks)
+## Summary
+These updates enable Conduit to support sophisticated pricing models beyond simple per-token billing:
+- **Batch Processing**: Discounted rates for asynchronous batch operations (OpenAI, Anthropic)
+- **Prompt Caching**: Reduced costs for repeated content (Anthropic Claude, Google Gemini)
+- **Alternative Units**: Search units for reranking (Cohere), inference steps for images (Fireworks)
+- **Quality Tiers**: Different pricing for image quality levels (DALL-E, Stable Diffusion)
 
 All changes are backward compatible as new fields are optional.
