@@ -170,6 +170,18 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
         </Stack>
       );
     }
+    if (cost.costPerInferenceStep !== undefined) {
+      return (
+        <Stack gap={2}>
+          <Text size="xs">
+            Steps: {formatters.currency(cost.costPerInferenceStep, { currency: 'USD', precision: 4 })}/step
+          </Text>
+          {cost.defaultInferenceSteps && (
+            <Badge size="xs" variant="light" color="teal">Default: {cost.defaultInferenceSteps} steps</Badge>
+          )}
+        </Stack>
+      );
+    }
     return <Text size="xs" c="dimmed">No pricing set</Text>;
   };
 

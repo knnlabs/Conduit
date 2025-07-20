@@ -111,6 +111,19 @@ public class Usage
     [JsonPropertyName("search_metadata")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SearchUsageMetadata? SearchMetadata { get; set; }
+
+    /// <summary>
+    /// Number of inference steps used for image generation.
+    /// </summary>
+    /// <remarks>
+    /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
+    /// Each step represents one iteration of the diffusion process that refines noise into an image.
+    /// Different models require different numbers of steps for optimal quality.
+    /// Example: FLUX.1[schnell] uses 4 steps, SDXL typically uses 30 steps.
+    /// </remarks>
+    [JsonPropertyName("inference_steps")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InferenceSteps { get; set; }
 }
 
 /// <summary>

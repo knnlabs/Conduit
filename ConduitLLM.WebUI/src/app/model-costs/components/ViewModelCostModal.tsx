@@ -34,9 +34,10 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
   const hasTokenCosts = modelCost.inputCostPerMillionTokens !== undefined || 
                        modelCost.outputCostPerMillionTokens !== undefined;
   
-  const hasImageCosts = modelCost.costPerImage !== undefined;
-  const hasVideoCosts = modelCost.costPerSecond !== undefined;
+  const hasImageCosts = modelCost.costPerImage !== undefined || modelCost.imageCostPerImage !== undefined;
+  const hasVideoCosts = modelCost.costPerSecond !== undefined || modelCost.videoCostPerSecond !== undefined;
   const hasSearchCosts = modelCost.costPerSearchUnit !== undefined;
+  const hasInferenceStepCosts = modelCost.costPerInferenceStep !== undefined;
   // Audio costs would be here but backend doesn't support them yet
 
   return (
@@ -185,6 +186,42 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               </Group>
               <Text size="xs" c="dimmed" mt="xs">
                 1 search unit = 1 query + up to 100 documents
+              </Text>
+            </Card>
+          </>
+        )}
+
+        {hasInferenceStepCosts && (
+          <>
+            <Divider label="Inference Step Pricing" labelPosition="center" />
+            <Card withBorder>
+              <Stack gap="sm">
+                <Group justify="space-between">
+                  <Text>Cost per Inference Step</Text>
+                  <Text fw={500}>
+                    {formatters.currency(modelCost.costPerInferenceStep ?? 0, { currency: 'USD', precision: 6 })}
+                  </Text>
+                </Group>
+                {modelCost.defaultInferenceSteps && (
+                  <Group justify="space-between">
+                    <Text>Default Steps</Text>
+                    <Text fw={500}>{modelCost.defaultInferenceSteps}</Text>
+                  </Group>
+                )}
+                {modelCost.defaultInferenceSteps && modelCost.costPerInferenceStep && (
+                  <Group justify="space-between">
+                    <Text>Default Image Cost</Text>
+                    <Text fw={500}>
+                      {formatters.currency(
+                        modelCost.defaultInferenceSteps * modelCost.costPerInferenceStep,
+                        { currency: 'USD', precision: 4 }
+                      )}
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+              <Text size="xs" c="dimmed" mt="xs">
+                Step-based pricing for iterative image generation models
               </Text>
             </Card>
           </>

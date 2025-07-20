@@ -155,6 +155,27 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>
+        /// Cost per inference step for image generation models in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
+        /// Different models require different numbers of steps to generate an image.
+        /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
+        /// Example: SDXL typically uses 30 steps × $0.00013/step = $0.0039 per image.
+        /// </remarks>
+        public decimal? CostPerInferenceStep { get; set; }
+
+        /// <summary>
+        /// Default number of inference steps for this model
+        /// </summary>
+        /// <remarks>
+        /// Indicates the standard number of iterative refinement steps this model uses for image generation.
+        /// Used when the client request doesn't specify a custom step count.
+        /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
+        /// </remarks>
+        public int? DefaultInferenceSteps { get; set; }
     }
 
     /// <summary>
@@ -284,6 +305,27 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>
+        /// Cost per inference step for image generation models in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
+        /// Different models require different numbers of steps to generate an image.
+        /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
+        /// Example: SDXL typically uses 30 steps × $0.00013/step = $0.0039 per image.
+        /// </remarks>
+        public decimal? CostPerInferenceStep { get; set; }
+
+        /// <summary>
+        /// Default number of inference steps for this model
+        /// </summary>
+        /// <remarks>
+        /// Indicates the standard number of iterative refinement steps this model uses for image generation.
+        /// Used when the client request doesn't specify a custom step count.
+        /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
+        /// </remarks>
+        public int? DefaultInferenceSteps { get; set; }
     }
 
     /// <summary>
@@ -418,6 +460,27 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>
+        /// Cost per inference step for image generation models in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
+        /// Different models require different numbers of steps to generate an image.
+        /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
+        /// Example: SDXL typically uses 30 steps × $0.00013/step = $0.0039 per image.
+        /// </remarks>
+        public decimal? CostPerInferenceStep { get; set; }
+
+        /// <summary>
+        /// Default number of inference steps for this model
+        /// </summary>
+        /// <remarks>
+        /// Indicates the standard number of iterative refinement steps this model uses for image generation.
+        /// Used when the client request doesn't specify a custom step count.
+        /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
+        /// </remarks>
+        public int? DefaultInferenceSteps { get; set; }
     }
 
     /// <summary>

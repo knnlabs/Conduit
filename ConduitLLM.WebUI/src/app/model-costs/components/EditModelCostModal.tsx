@@ -40,6 +40,8 @@ interface FormValues {
   embeddingCostPer1K: number;
   // Other cost types
   searchUnitCostPer1K: number;
+  inferenceStepCost: number;
+  defaultInferenceSteps: number;
   imageCostPerImage: number;
   audioCostPerMinute: number;
   audioCostPerKCharacters: number;
@@ -73,6 +75,8 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCostPerMillionTokens ?? 0) / 1000,
     embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) / 1000,
     searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
+    inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
+    defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
     imageCostPerImage: modelCost.imageCostPerImage ?? 0,
     audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
     audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
@@ -99,6 +103,8 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      inferenceStepCost: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      defaultInferenceSteps: (value) => value < 0 ? 'Steps must be non-negative' : null,
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -173,6 +179,14 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     
     if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
       updates.costPerSearchUnit = values.searchUnitCostPer1K || undefined;
+    }
+    
+    if (values.inferenceStepCost !== modelCost.costPerInferenceStep) {
+      updates.costPerInferenceStep = values.inferenceStepCost || undefined;
+    }
+    
+    if (values.defaultInferenceSteps !== modelCost.defaultInferenceSteps) {
+      updates.defaultInferenceSteps = values.defaultInferenceSteps || undefined;
     }
     
     if (values.imageCostPerImage !== modelCost.imageCostPerImage) {
@@ -352,6 +366,28 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                 minRows={2}
                 {...form.getInputProps('imageQualityMultipliers')}
               />
+              
+              <Divider label="Inference Step Pricing (Optional)" labelPosition="center" variant="dashed" />
+              <Group grow>
+                <NumberInput
+                  label="Cost per Inference Step"
+                  placeholder="0.000000"
+                  description="For step-based pricing models"
+                  decimalScale={6}
+                  min={0}
+                  step={0.000001}
+                  leftSection="$"
+                  {...form.getInputProps('inferenceStepCost')}
+                />
+                <NumberInput
+                  label="Default Inference Steps"
+                  placeholder="30"
+                  description="Default steps for this model"
+                  min={0}
+                  step={1}
+                  {...form.getInputProps('defaultInferenceSteps')}
+                />
+              </Group>
             </>
           )}
 

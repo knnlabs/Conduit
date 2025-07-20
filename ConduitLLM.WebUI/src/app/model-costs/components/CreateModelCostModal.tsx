@@ -41,6 +41,8 @@ interface FormValues {
   embeddingCostPer1K: number;
   // Other cost types
   searchUnitCostPer1K: number;
+  inferenceStepCost: number;
+  defaultInferenceSteps: number;
   imageCostPerImage: number;
   audioCostPerMinute: number;
   audioCostPerKCharacters: number;
@@ -74,6 +76,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputWriteCostPer1K: 0,
       embeddingCostPer1K: 0,
       searchUnitCostPer1K: 0,
+      inferenceStepCost: 0,
+      defaultInferenceSteps: 0,
       imageCostPerImage: 0,
       audioCostPerMinute: 0,
       audioCostPerKCharacters: 0,
@@ -98,6 +102,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      inferenceStepCost: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      defaultInferenceSteps: (value) => value < 0 ? 'Steps must be non-negative' : null,
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
       videoCostPerSecond: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -152,6 +158,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       cachedInputWriteTokenCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K * 1000000 : undefined,
       embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000000 : undefined,
       costPerSearchUnit: values.searchUnitCostPer1K > 0 ? values.searchUnitCostPer1K : undefined,
+      costPerInferenceStep: values.inferenceStepCost > 0 ? values.inferenceStepCost : undefined,
+      defaultInferenceSteps: values.defaultInferenceSteps > 0 ? values.defaultInferenceSteps : undefined,
       imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
       audioCostPerMinute: values.audioCostPerMinute > 0 ? values.audioCostPerMinute : undefined,
       audioCostPerKCharacters: values.audioCostPerKCharacters > 0 ? values.audioCostPerKCharacters : undefined,
@@ -304,6 +312,28 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
                 minRows={2}
                 {...form.getInputProps('imageQualityMultipliers')}
               />
+              
+              <Divider label="Inference Step Pricing (Optional)" labelPosition="center" variant="dashed" />
+              <Group grow>
+                <NumberInput
+                  label="Cost per Inference Step"
+                  placeholder="0.000000"
+                  description="For step-based pricing models"
+                  decimalScale={6}
+                  min={0}
+                  step={0.000001}
+                  leftSection="$"
+                  {...form.getInputProps('inferenceStepCost')}
+                />
+                <NumberInput
+                  label="Default Inference Steps"
+                  placeholder="30"
+                  description="Default steps for this model"
+                  min={0}
+                  step={1}
+                  {...form.getInputProps('defaultInferenceSteps')}
+                />
+              </Group>
             </>
           )}
 

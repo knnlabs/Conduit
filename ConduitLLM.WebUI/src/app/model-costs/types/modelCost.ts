@@ -11,6 +11,8 @@ export interface ModelCost {
   costPerRequest?: number;
   costPerSecond?: number;
   costPerImage?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
   embeddingTokenCost?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
@@ -40,6 +42,8 @@ export interface CreateModelCostDto {
   cachedInputTokenCost?: number;
   cachedInputWriteTokenCost?: number;
   costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
   embeddingTokenCost?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;

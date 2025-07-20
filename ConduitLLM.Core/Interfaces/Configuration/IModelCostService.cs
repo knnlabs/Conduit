@@ -96,5 +96,20 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Cost is expressed as USD per 1000 search units.
         /// </summary>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>
+        /// Cost per inference step for image generation models, if applicable.
+        /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
+        /// Different models require different numbers of steps to generate an image.
+        /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
+        /// </summary>
+        public decimal? CostPerInferenceStep { get; set; }
+
+        /// <summary>
+        /// Default number of inference steps for this model.
+        /// Used when the client request doesn't specify a custom step count.
+        /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
+        /// </summary>
+        public int? DefaultInferenceSteps { get; set; }
     }
 }

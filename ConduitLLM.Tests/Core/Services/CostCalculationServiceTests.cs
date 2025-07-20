@@ -2378,5 +2378,202 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         #endregion
+
+        #region Inference Step Pricing Tests
+
+        [Fact]
+        public async Task CalculateCostAsync_WithInferenceSteps_CalculatesCorrectly()
+        {
+            // Arrange
+            var modelId = "fireworks/flux-schnell";
+            var usage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = 1,
+                InferenceSteps = 4
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerInferenceStep = 0.00035m, // $0.00035 per step
+                DefaultInferenceSteps = 4
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Expected: 4 * 0.00035 = 0.0014
+            result.Should().Be(0.0014m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithInferenceStepsAndImageCost_PrefersStepBasedPricing()
+        {
+            // Arrange
+            var modelId = "fireworks/stable-diffusion-xl";
+            var usage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = 2,
+                InferenceSteps = 30
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerInferenceStep = 0.00013m, // $0.00013 per step
+                ImageCostPerImage = 0.0039m, // Pre-calculated per image
+                DefaultInferenceSteps = 30
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Should use step-based pricing: 30 * 0.00013 = 0.0039
+            // Plus image cost: 2 * 0.0039 = 0.0078
+            // Total: 0.0039 + 0.0078 = 0.0117
+            result.Should().Be(0.0117m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithInferenceStepsAndBatchProcessing_AppliesDiscountToAll()
+        {
+            // Arrange
+            var modelId = "fireworks/batch-model";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                InferenceSteps = 10,
+                IsBatch = true
+            };
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00002m,
+                CostPerInferenceStep = 0.0002m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m // 50% discount
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Token cost: (1000 * 0.00001) + (500 * 0.00002) = 0.01 + 0.01 = 0.02
+            // Step cost: 10 * 0.0002 = 0.002
+            // Total before discount: 0.022
+            // After 50% discount: 0.011
+            result.Should().Be(0.011m);
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithInferenceSteps_CalculatesCorrectRefund()
+        {
+            // Arrange
+            var modelId = "fireworks/flux-pro";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = 3,
+                InferenceSteps = 20
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = 1,
+                InferenceSteps = 20
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerInferenceStep = 0.0005m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Partial image generation failure");
+
+            // Assert
+            // Expected refund: 20 * 0.0005 = 0.01
+            result.RefundAmount.Should().Be(0.01m);
+            result.Breakdown!.InferenceStepRefund.Should().Be(0.01m);
+            result.IsPartialRefund.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithInferenceStepsExceedingOriginal_ReportsValidationError()
+        {
+            // Arrange
+            var modelId = "fireworks/sdxl";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                InferenceSteps = 30
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                InferenceSteps = 50 // More than original
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0m,
+                OutputTokenCost = 0m,
+                CostPerInferenceStep = 0.00013m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Invalid refund request");
+
+            // Assert
+            result.IsPartialRefund.Should().BeTrue();
+            result.ValidationMessages.Should().Contain(m => m.Contains("Refund inference steps"));
+        }
+
+        #endregion
     }
 }

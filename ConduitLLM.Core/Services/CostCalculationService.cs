@@ -190,6 +190,20 @@ public class CostCalculationService : ICostCalculationService
                 searchCost);
         }
 
+        // Add inference step cost if applicable (for image generation)
+        if (usage.InferenceSteps.HasValue && usage.InferenceSteps.Value > 0 && modelCost.CostPerInferenceStep.HasValue)
+        {
+            var stepCost = usage.InferenceSteps.Value * modelCost.CostPerInferenceStep.Value;
+            calculatedCost += stepCost;
+            
+            _logger.LogDebug(
+                "Inference step cost calculation for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Total}",
+                modelId,
+                usage.InferenceSteps.Value,
+                modelCost.CostPerInferenceStep.Value,
+                stepCost);
+        }
+
         // Apply batch processing discount if applicable
         if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
         {
@@ -199,8 +213,8 @@ public class CostCalculationService : ICostCalculationService
                 modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, IsBatch: {IsBatch}) is {CalculatedCost}",
-            modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.IsBatch ?? false, calculatedCost);
+        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, InferenceSteps: {InferenceSteps}, IsBatch: {IsBatch}) is {CalculatedCost}",
+            modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.InferenceSteps ?? 0, usage.IsBatch ?? false, calculatedCost);
 
         return calculatedCost;
     }
@@ -391,6 +405,21 @@ public class CostCalculationService : ICostCalculationService
                 searchRefund);
         }
 
+        // Handle inference step refunds (for image generation)
+        if (modelCost.CostPerInferenceStep.HasValue && refundUsage.InferenceSteps.HasValue && refundUsage.InferenceSteps.Value > 0)
+        {
+            var stepRefund = refundUsage.InferenceSteps.Value * modelCost.CostPerInferenceStep.Value;
+            breakdown.InferenceStepRefund = stepRefund;
+            totalRefund += stepRefund;
+            
+            _logger.LogDebug(
+                "Inference step refund for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Total}",
+                modelId,
+                refundUsage.InferenceSteps.Value,
+                modelCost.CostPerInferenceStep.Value,
+                stepRefund);
+        }
+
         // Apply batch processing discount if applicable
         if (refundUsage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
         {
@@ -462,6 +491,18 @@ public class CostCalculationService : ICostCalculationService
         if (refundUsage.SearchUnits.HasValue && refundUsage.SearchUnits.Value < 0)
         {
             messages.Add("Refund search units must be non-negative.");
+        }
+
+        // Validate inference steps refund amounts
+        if (refundUsage.InferenceSteps.HasValue && originalUsage.InferenceSteps.HasValue &&
+            refundUsage.InferenceSteps.Value > originalUsage.InferenceSteps.Value)
+        {
+            messages.Add($"Refund inference steps ({refundUsage.InferenceSteps.Value}) cannot exceed original ({originalUsage.InferenceSteps.Value}).");
+        }
+
+        if (refundUsage.InferenceSteps.HasValue && refundUsage.InferenceSteps.Value < 0)
+        {
+            messages.Add("Refund inference steps must be non-negative.");
         }
 
         return messages;
