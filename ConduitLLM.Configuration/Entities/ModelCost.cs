@@ -205,4 +205,31 @@ public class ModelCost
     /// Stored as JSON text in the database.
     /// </remarks>
     public string? ImageQualityMultipliers { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per cached input token for prompt caching, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing each cached input token (reading from cache).
+    /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+    /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+    /// Nullable because not all models support prompt caching.
+    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 10)")]
+    public decimal? CachedInputTokenCost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per token for writing to the prompt cache, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for writing tokens to the prompt cache.
+    /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+    /// Typically higher than cached read costs but may be lower than standard input costs.
+    /// The write cost is incurred when new content is added to the cache.
+    /// Nullable because not all models support prompt caching.
+    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 10)")]
+    public decimal? CachedInputWriteCost { get; set; }
 }

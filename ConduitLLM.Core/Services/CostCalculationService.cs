@@ -106,8 +106,37 @@ public class CostCalculationService : ICostCalculationService
         }
         else
         {
-            // Use regular token costs for chat/completions
-            calculatedCost += (usage.PromptTokens * modelCost.InputTokenCost);
+            // Calculate input token costs, accounting for cached tokens
+            var regularInputTokens = usage.PromptTokens;
+            
+            // Handle cached input tokens (read from cache)
+            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
+            {
+                // Subtract cached tokens from regular input tokens
+                regularInputTokens -= usage.CachedInputTokens.Value;
+                
+                // Add cost for cached tokens at the cached rate
+                calculatedCost += (usage.CachedInputTokens.Value * modelCost.CachedInputTokenCost.Value);
+                
+                _logger.LogDebug("Applied cached input token pricing for {CachedTokens} tokens at rate {CachedRate}",
+                    usage.CachedInputTokens.Value, modelCost.CachedInputTokenCost.Value);
+            }
+            
+            // Handle cache write tokens
+            if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCost.HasValue)
+            {
+                // Cache writes are additional to regular input processing
+                calculatedCost += (usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCost.Value);
+                
+                _logger.LogDebug("Applied cache write token pricing for {WriteTokens} tokens at rate {WriteRate}",
+                    usage.CachedWriteTokens.Value, modelCost.CachedInputWriteCost.Value);
+            }
+            
+            // Add cost for remaining regular input tokens
+            if (regularInputTokens > 0)
+            {
+                calculatedCost += (regularInputTokens * modelCost.InputTokenCost);
+            }
         }
         
         // Always add completion token cost
@@ -154,8 +183,8 @@ public class CostCalculationService : ICostCalculationService
                 modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, Images: {ImageCount}, Video: {VideoDuration}s, IsBatch: {IsBatch}) is {CalculatedCost}",
-            modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.IsBatch ?? false, calculatedCost);
+        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, IsBatch: {IsBatch}) is {CalculatedCost}",
+            modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.IsBatch ?? false, calculatedCost);
 
         return calculatedCost;
     }
@@ -247,11 +276,45 @@ public class CostCalculationService : ICostCalculationService
             breakdown.InputTokenRefund = 0; // Clear input token refund since we're using embedding cost
             totalRefund += breakdown.EmbeddingRefund;
         }
-        else if (refundUsage.PromptTokens > 0)
+        else
         {
-            // Use regular input token cost
-            breakdown.InputTokenRefund = refundUsage.PromptTokens * modelCost.InputTokenCost;
-            totalRefund += breakdown.InputTokenRefund;
+            // Calculate input token refunds, accounting for cached tokens
+            var regularInputTokens = refundUsage.PromptTokens;
+            
+            // Handle cached input token refunds (read from cache)
+            if (refundUsage.CachedInputTokens.HasValue && refundUsage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
+            {
+                // Subtract cached tokens from regular input tokens for refund calculation
+                regularInputTokens -= refundUsage.CachedInputTokens.Value;
+                
+                // Add refund for cached tokens at the cached rate
+                var cachedRefund = refundUsage.CachedInputTokens.Value * modelCost.CachedInputTokenCost.Value;
+                breakdown.InputTokenRefund = breakdown.InputTokenRefund + cachedRefund;
+                totalRefund += cachedRefund;
+                
+                _logger.LogDebug("Applied cached input token refund for {CachedTokens} tokens at rate {CachedRate}",
+                    refundUsage.CachedInputTokens.Value, modelCost.CachedInputTokenCost.Value);
+            }
+            
+            // Handle cache write token refunds
+            if (refundUsage.CachedWriteTokens.HasValue && refundUsage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCost.HasValue)
+            {
+                // Cache write refunds are additional
+                var cacheWriteRefund = refundUsage.CachedWriteTokens.Value * modelCost.CachedInputWriteCost.Value;
+                breakdown.InputTokenRefund = breakdown.InputTokenRefund + cacheWriteRefund;
+                totalRefund += cacheWriteRefund;
+                
+                _logger.LogDebug("Applied cache write token refund for {WriteTokens} tokens at rate {WriteRate}",
+                    refundUsage.CachedWriteTokens.Value, modelCost.CachedInputWriteCost.Value);
+            }
+            
+            // Add refund for remaining regular input tokens
+            if (regularInputTokens > 0)
+            {
+                var regularRefund = regularInputTokens * modelCost.InputTokenCost;
+                breakdown.InputTokenRefund = breakdown.InputTokenRefund + regularRefund;
+                totalRefund += regularRefund;
+            }
         }
 
         // Always add completion token refund

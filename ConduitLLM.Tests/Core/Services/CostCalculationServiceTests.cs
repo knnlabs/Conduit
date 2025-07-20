@@ -1957,5 +1957,240 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         #endregion
+
+        #region Cached Token Pricing Tests
+
+        [Fact]
+        public async Task CalculateCostAsync_WithCachedInputTokens_CalculatesCorrectCost()
+        {
+            // Arrange
+            var modelId = "anthropic/claude-3-opus";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedInputTokens = 600  // 600 of the 1000 prompt tokens are cached
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,         // $0.01 per 1K regular input tokens
+                OutputTokenCost = 0.00003m,        // $0.03 per 1K output tokens
+                CachedInputTokenCost = 0.000001m   // $0.001 per 1K cached tokens (90% discount)
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Regular input: 400 tokens * 0.00001 = 0.004
+            // Cached input: 600 tokens * 0.000001 = 0.0006
+            // Output: 500 tokens * 0.00003 = 0.015
+            // Total: 0.004 + 0.0006 + 0.015 = 0.0196
+            result.Should().Be(0.0196m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithCacheWriteTokens_CalculatesCorrectCost()
+        {
+            // Arrange
+            var modelId = "google/gemini-1.5-pro";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedWriteTokens = 300  // 300 tokens written to cache
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,          // $0.01 per 1K regular input tokens
+                OutputTokenCost = 0.00003m,         // $0.03 per 1K output tokens
+                CachedInputWriteCost = 0.000025m    // $0.025 per 1K cache write tokens
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Input: 1000 tokens * 0.00001 = 0.01
+            // Cache write: 300 tokens * 0.000025 = 0.0075
+            // Output: 500 tokens * 0.00003 = 0.015
+            // Total: 0.01 + 0.0075 + 0.015 = 0.0325
+            result.Should().Be(0.0325m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithBothCachedInputAndWriteTokens_CalculatesCorrectCost()
+        {
+            // Arrange
+            var modelId = "anthropic/claude-3-sonnet";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedInputTokens = 400,   // 400 cached read tokens
+                CachedWriteTokens = 200    // 200 cache write tokens
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,          // $0.01 per 1K regular input tokens
+                OutputTokenCost = 0.00003m,         // $0.03 per 1K output tokens
+                CachedInputTokenCost = 0.000001m,   // $0.001 per 1K cached read tokens
+                CachedInputWriteCost = 0.000025m    // $0.025 per 1K cache write tokens
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Regular input: (1000 - 400) * 0.00001 = 600 * 0.00001 = 0.006
+            // Cached input: 400 * 0.000001 = 0.0004
+            // Cache write: 200 * 0.000025 = 0.005
+            // Output: 500 * 0.00003 = 0.015
+            // Total: 0.006 + 0.0004 + 0.005 + 0.015 = 0.0264
+            result.Should().Be(0.0264m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithCachedTokensButNoCachedPricing_UsesRegularPricing()
+        {
+            // Arrange
+            var modelId = "openai/gpt-4o";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedInputTokens = 600,
+                CachedWriteTokens = 200
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00003m
+                // No cached token pricing defined
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Should use regular pricing for all tokens since no cached pricing is defined
+            // Input: 1000 * 0.00001 = 0.01
+            // Output: 500 * 0.00003 = 0.015
+            // Total: 0.01 + 0.015 = 0.025
+            result.Should().Be(0.025m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithCachedTokensAndBatchProcessing_AppliesBothDiscounts()
+        {
+            // Arrange
+            var modelId = "anthropic/claude-3-haiku";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedInputTokens = 600,
+                IsBatch = true
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00003m,
+                CachedInputTokenCost = 0.000001m,
+                SupportsBatchProcessing = true,
+                BatchProcessingMultiplier = 0.5m  // 50% discount for batch
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            // Regular input: 400 * 0.00001 = 0.004
+            // Cached input: 600 * 0.000001 = 0.0006
+            // Output: 500 * 0.00003 = 0.015
+            // Subtotal: 0.004 + 0.0006 + 0.015 = 0.0196
+            // With batch discount: 0.0196 * 0.5 = 0.0098
+            result.Should().Be(0.0098m);
+        }
+
+        [Fact]
+        public async Task CalculateRefundAsync_WithCachedTokens_CalculatesCorrectRefund()
+        {
+            // Arrange
+            var modelId = "google/gemini-1.5-flash";
+            var originalUsage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                TotalTokens = 1500,
+                CachedInputTokens = 400,
+                CachedWriteTokens = 200
+            };
+            var refundUsage = new Usage
+            {
+                PromptTokens = 500,
+                CompletionTokens = 250,
+                TotalTokens = 750,
+                CachedInputTokens = 200,
+                CachedWriteTokens = 100
+            };
+
+            var modelCost = new ModelCostInfo
+            {
+                ModelIdPattern = modelId,
+                InputTokenCost = 0.00001m,
+                OutputTokenCost = 0.00003m,
+                CachedInputTokenCost = 0.000001m,
+                CachedInputWriteCost = 0.000025m
+            };
+
+            _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var result = await _service.CalculateRefundAsync(
+                modelId, originalUsage, refundUsage, "Partial service interruption");
+
+            // Assert
+            // Regular input refund: 300 * 0.00001 = 0.003 (500 total - 200 cached = 300 regular)
+            // Cached input refund: 200 * 0.000001 = 0.0002
+            // Cache write refund: 100 * 0.000025 = 0.0025
+            // Output refund: 250 * 0.00003 = 0.0075
+            // Total refund: 0.003 + 0.0002 + 0.0025 + 0.0075 = 0.0132
+            result.RefundAmount.Should().Be(0.0132m);
+            result.IsPartialRefund.Should().BeFalse();
+        }
+
+        #endregion
     }
 }

@@ -74,5 +74,19 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Key is quality level (e.g., "standard", "hd"), value is multiplier.
         /// </summary>
         public Dictionary<string, decimal>? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per cached input token for prompt caching, if applicable.
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+        /// </summary>
+        public decimal? CachedInputTokenCost { get; set; }
+
+        /// <summary>
+        /// Cost per token for writing to the prompt cache, if applicable.
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// The write cost is incurred when new content is added to the cache.
+        /// </summary>
+        public decimal? CachedInputWriteCost { get; set; }
     }
 }

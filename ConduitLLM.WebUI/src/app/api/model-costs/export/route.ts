@@ -15,6 +15,8 @@ function convertToCSV(modelCosts: ModelCost[]): string {
     'Model Type',
     'Input Cost (per 1K tokens)',
     'Output Cost (per 1K tokens)',
+    'Cached Input Cost (per 1K tokens)',
+    'Cache Write Cost (per 1K tokens)',
     'Embedding Cost (per 1K tokens)',
     'Image Cost (per image)',
     'Audio Cost (per minute)',
@@ -54,6 +56,12 @@ function convertToCSV(modelCosts: ModelCost[]): string {
     const outputCostPer1K = cost.outputCostPerMillionTokens 
       ? (cost.outputCostPerMillionTokens / 1000).toFixed(4) 
       : '';
+    const cachedInputCostPer1K = cost.cachedInputCostPerMillionTokens 
+      ? (cost.cachedInputCostPerMillionTokens / 1000).toFixed(4) 
+      : '';
+    const cachedInputWriteCostPer1K = cost.cachedInputWriteCostPerMillionTokens 
+      ? (cost.cachedInputWriteCostPerMillionTokens / 1000).toFixed(4) 
+      : '';
     const embeddingCostPer1K = cost.embeddingTokenCost 
       ? cost.embeddingTokenCost.toFixed(4) 
       : '';
@@ -64,6 +72,8 @@ function convertToCSV(modelCosts: ModelCost[]): string {
       escapeCSV(cost.modelType),
       escapeCSV(inputCostPer1K),
       escapeCSV(outputCostPer1K),
+      escapeCSV(cachedInputCostPer1K),
+      escapeCSV(cachedInputWriteCostPer1K),
       escapeCSV(embeddingCostPer1K),
       escapeCSV(cost.imageCostPerImage),
       escapeCSV(cost.audioCostPerMinute),

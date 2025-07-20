@@ -125,6 +125,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"standard": 1.0, "hd": 2.0}
         /// </remarks>
         public string? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+        /// </remarks>
+        public decimal? CachedInputTokenCost { get; set; }
+
+        /// <summary>
+        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for writing tokens to the prompt cache.
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// The write cost is incurred when new content is added to the cache.
+        /// </remarks>
+        public decimal? CachedInputWriteCost { get; set; }
     }
 
     /// <summary>
@@ -224,6 +244,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"standard": 1.0, "hd": 2.0}
         /// </remarks>
         public string? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+        /// </remarks>
+        public decimal? CachedInputTokenCost { get; set; }
+
+        /// <summary>
+        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for writing tokens to the prompt cache.
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// The write cost is incurred when new content is added to the cache.
+        /// </remarks>
+        public decimal? CachedInputWriteCost { get; set; }
     }
 
     /// <summary>
@@ -328,6 +368,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"standard": 1.0, "hd": 2.0}
         /// </remarks>
         public string? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+        /// </remarks>
+        public decimal? CachedInputTokenCost { get; set; }
+
+        /// <summary>
+        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for writing tokens to the prompt cache.
+        /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+        /// The write cost is incurred when new content is added to the cache.
+        /// </remarks>
+        public decimal? CachedInputWriteCost { get; set; }
     }
 
     /// <summary>

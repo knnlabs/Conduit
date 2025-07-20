@@ -66,4 +66,28 @@ public class Usage
     [JsonPropertyName("image_quality")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ImageQuality { get; set; }
+
+    /// <summary>
+    /// Number of cached input tokens used (read from cache).
+    /// </summary>
+    /// <remarks>
+    /// For providers that support prompt caching (e.g., Anthropic Claude, Google Gemini),
+    /// this represents tokens that were read from the cache rather than processed as new input.
+    /// These tokens are typically charged at a much lower rate than regular input tokens.
+    /// </remarks>
+    [JsonPropertyName("cached_input_tokens")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? CachedInputTokens { get; set; }
+
+    /// <summary>
+    /// Number of tokens written to the cache.
+    /// </summary>
+    /// <remarks>
+    /// For providers that support prompt caching (e.g., Anthropic Claude, Google Gemini),
+    /// this represents tokens that were written to the cache for future reuse.
+    /// Cache write operations may have a different cost than regular input processing.
+    /// </remarks>
+    [JsonPropertyName("cached_write_tokens")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? CachedWriteTokens { get; set; }
 }

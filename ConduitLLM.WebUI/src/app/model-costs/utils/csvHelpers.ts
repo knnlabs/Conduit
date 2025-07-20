@@ -6,6 +6,8 @@ export interface ParsedModelCost {
   modelType: string;
   inputCostPer1K: number;
   outputCostPer1K: number;
+  cachedInputCostPer1K?: number;
+  cachedInputWriteCostPer1K?: number;
   embeddingCostPer1K?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
@@ -114,6 +116,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       modelType: row['model type']?.trim().toLowerCase() ?? 'chat',
       inputCostPer1K: parseNumericValue(row['input cost (per 1k tokens)'], 0) ?? 0,
       outputCostPer1K: parseNumericValue(row['output cost (per 1k tokens)'], 0) ?? 0,
+      cachedInputCostPer1K: parseNumericValue(row['cached input cost (per 1k tokens)']),
+      cachedInputWriteCostPer1K: parseNumericValue(row['cache write cost (per 1k tokens)']),
       embeddingCostPer1K: parseNumericValue(row['embedding cost (per 1k tokens)']),
       imageCostPerImage: parseNumericValue(row['image cost (per image)']),
       audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
@@ -141,6 +145,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     // Cost validation
     if (cost.inputCostPer1K < 0) errors.push('Input cost cannot be negative');
     if (cost.outputCostPer1K < 0) errors.push('Output cost cannot be negative');
+    if (cost.cachedInputCostPer1K !== undefined && cost.cachedInputCostPer1K < 0) errors.push('Cached input cost cannot be negative');
+    if (cost.cachedInputWriteCostPer1K !== undefined && cost.cachedInputWriteCostPer1K < 0) errors.push('Cache write cost cannot be negative');
     if (cost.embeddingCostPer1K !== undefined && cost.embeddingCostPer1K < 0) errors.push('Embedding cost cannot be negative');
     if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
     if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost cannot be negative');
@@ -203,6 +209,8 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       modelType: cost.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
       inputTokenCost: cost.inputCostPer1K * 1000000, // Convert to per million tokens
       outputTokenCost: cost.outputCostPer1K * 1000000,
+      cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K * 1000000 : undefined,
+      cachedInputWriteTokenCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K * 1000000 : undefined,
       embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K * 1000000 : undefined,
       imageCostPerImage: cost.imageCostPerImage,
       audioCostPerMinute: cost.audioCostPerMinute,
