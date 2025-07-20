@@ -66,7 +66,7 @@ namespace ConduitLLM.Providers
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");
 
             // Validate Azure-specific required fields
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials!.ApiBase))
             {
                 throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
             }

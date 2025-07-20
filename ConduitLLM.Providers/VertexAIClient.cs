@@ -764,7 +764,7 @@ namespace ConduitLLM.Providers
                                 Role = "assistant",
                                 Content = string.Empty
                             },
-                            FinishReason = MapFinishReason(candidate.FinishReason)
+                            FinishReason = MapFinishReason(candidate.FinishReason) ?? "stop"
                         });
                         continue;
                     }

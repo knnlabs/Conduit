@@ -305,7 +305,7 @@ public class CostCalculationService : ICostCalculationService
         if (modelCost.EmbeddingTokenCost.HasValue && refundUsage.CompletionTokens.GetValueOrDefault() == 0 && refundUsage.PromptTokens.GetValueOrDefault() > 0)
         {
             // Use specialized embedding cost for prompt token refunds
-            breakdown.EmbeddingRefund = refundUsage.PromptTokens.Value * modelCost.EmbeddingTokenCost.Value;
+            breakdown.EmbeddingRefund = refundUsage.PromptTokens!.Value * modelCost.EmbeddingTokenCost.Value;
             breakdown.InputTokenRefund = 0; // Clear input token refund since we're using embedding cost
             totalRefund += breakdown.EmbeddingRefund;
         }
