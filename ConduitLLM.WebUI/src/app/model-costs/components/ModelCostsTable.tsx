@@ -26,6 +26,8 @@ import {
   IconDots,
   IconEye,
   IconAdjustments,
+  IconDatabase,
+  IconStairs,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
@@ -273,9 +275,26 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="outline" size="sm">
-                          {getCostTypeLabel(cost.modelType)}
-                        </Badge>
+                        <Group gap="xs">
+                          <Badge variant="outline" size="sm">
+                            {getCostTypeLabel(cost.modelType)}
+                          </Badge>
+                          {(cost.cachedInputCostPerMillionTokens ?? cost.cachedInputWriteCostPerMillionTokens) && (
+                            <Tooltip label="Supports prompt caching">
+                              <IconDatabase size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                          {cost.costPerSearchUnit && (
+                            <Tooltip label="Search/rerank model">
+                              <IconSearch size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                          {cost.costPerInferenceStep && (
+                            <Tooltip label="Step-based pricing">
+                              <IconStairs size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                        </Group>
                       </Table.Td>
                       <Table.Td>{getCostDisplay(cost)}</Table.Td>
                       <Table.Td>
