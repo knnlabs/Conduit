@@ -141,12 +141,24 @@ if [ "$GENERATE_SCRIPT" = true ]; then
     echo ""
     echo "Step 6: Generating migration script..."
     OUTPUT_FILE="$PROJECT_ROOT/migration-script-$(date +%Y%m%d-%H%M%S).sql"
-    dotnet ef migrations script --no-build -o "$OUTPUT_FILE"
-    echo "✓ Migration script generated: $OUTPUT_FILE"
     
-    # Validate SQL syntax (basic check)
-    if grep -E "(syntax error|ERROR)" "$OUTPUT_FILE" > /dev/null; then
-        echo "WARNING: Potential SQL errors detected in migration script"
+    # Use ef-wrapper for better error handling
+    if [ -f "$SCRIPT_DIR/ef-wrapper.sh" ]; then
+        "$SCRIPT_DIR/ef-wrapper.sh" migrations script --no-build -o "$OUTPUT_FILE"
+    else
+        dotnet ef migrations script --no-build -o "$OUTPUT_FILE"
+    fi
+    
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo "✓ Migration script generated: $OUTPUT_FILE"
+        
+        # Validate SQL syntax (basic check)
+        if grep -E "(syntax error|ERROR)" "$OUTPUT_FILE" > /dev/null; then
+            echo "WARNING: Potential SQL errors detected in migration script"
+        fi
+    else
+        echo "ERROR: Failed to generate migration script"
+        exit 1
     fi
 fi
 
