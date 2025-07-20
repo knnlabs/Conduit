@@ -11,19 +11,22 @@ public class Usage
     /// Number of tokens in the prompt.
     /// </summary>
     [JsonPropertyName("prompt_tokens")]
-    public required int PromptTokens { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? PromptTokens { get; set; }
 
     /// <summary>
     /// Number of tokens in the generated completion.
     /// </summary>
     [JsonPropertyName("completion_tokens")]
-    public required int CompletionTokens { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? CompletionTokens { get; set; }
 
     /// <summary>
     /// Total number of tokens used in the request (prompt + completion).
     /// </summary>
     [JsonPropertyName("total_tokens")]
-    public required int TotalTokens { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TotalTokens { get; set; }
 
     /// <summary>
     /// Number of images generated (used for image generation requests).
@@ -124,6 +127,31 @@ public class Usage
     [JsonPropertyName("inference_steps")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? InferenceSteps { get; set; }
+
+    /// <summary>
+    /// Duration of audio in seconds (used for speech generation and transcription).
+    /// </summary>
+    /// <remarks>
+    /// Used by audio models for both text-to-speech and speech-to-text operations.
+    /// Most providers charge per minute of audio, which is calculated from this value.
+    /// </remarks>
+    [JsonPropertyName("audio_duration_seconds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? AudioDurationSeconds { get; set; }
+
+    /// <summary>
+    /// Optional metadata for provider-specific usage information.
+    /// </summary>
+    /// <remarks>
+    /// Can include provider-specific details such as:
+    /// - Cache TTL information
+    /// - Model-specific parameters
+    /// - Additional breakdown of resource usage
+    /// - Provider-specific billing details
+    /// </remarks>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object>? Metadata { get; set; }
 }
 
 /// <summary>

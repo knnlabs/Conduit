@@ -99,15 +99,15 @@ public class CostCalculationService : ICostCalculationService
 
         // Calculate cost based on token usage
         // For embeddings: prioritize embedding cost when available and no completion tokens
-        if (modelCost.EmbeddingTokenCost.HasValue && usage.CompletionTokens == 0)
+        if (modelCost.EmbeddingTokenCost.HasValue && usage.CompletionTokens.GetValueOrDefault() == 0 && usage.PromptTokens.HasValue)
         {
             // Use specialized embedding cost for prompt tokens
-            calculatedCost += (usage.PromptTokens * modelCost.EmbeddingTokenCost.Value);
+            calculatedCost += (usage.PromptTokens.Value * modelCost.EmbeddingTokenCost.Value);
         }
         else
         {
             // Calculate input token costs, accounting for cached tokens
-            var regularInputTokens = usage.PromptTokens;
+            var regularInputTokens = usage.PromptTokens.GetValueOrDefault();
             
             // Handle cached input tokens (read from cache)
             if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
@@ -140,7 +140,10 @@ public class CostCalculationService : ICostCalculationService
         }
         
         // Always add completion token cost
-        calculatedCost += (usage.CompletionTokens * modelCost.OutputTokenCost);
+        if (usage.CompletionTokens.HasValue)
+        {
+            calculatedCost += (usage.CompletionTokens.Value * modelCost.OutputTokenCost);
+        }
 
         // Add image generation cost if applicable
         if (modelCost.ImageCostPerImage.HasValue && usage.ImageCount.HasValue)
@@ -299,17 +302,17 @@ public class CostCalculationService : ICostCalculationService
 
         // Calculate token-based refunds
         // For embeddings: prioritize embedding cost when available and no completion tokens
-        if (modelCost.EmbeddingTokenCost.HasValue && refundUsage.CompletionTokens == 0 && refundUsage.PromptTokens > 0)
+        if (modelCost.EmbeddingTokenCost.HasValue && refundUsage.CompletionTokens.GetValueOrDefault() == 0 && refundUsage.PromptTokens.GetValueOrDefault() > 0)
         {
             // Use specialized embedding cost for prompt token refunds
-            breakdown.EmbeddingRefund = refundUsage.PromptTokens * modelCost.EmbeddingTokenCost.Value;
+            breakdown.EmbeddingRefund = refundUsage.PromptTokens.Value * modelCost.EmbeddingTokenCost.Value;
             breakdown.InputTokenRefund = 0; // Clear input token refund since we're using embedding cost
             totalRefund += breakdown.EmbeddingRefund;
         }
         else
         {
             // Calculate input token refunds, accounting for cached tokens
-            var regularInputTokens = refundUsage.PromptTokens;
+            var regularInputTokens = refundUsage.PromptTokens.GetValueOrDefault();
             
             // Handle cached input token refunds (read from cache)
             if (refundUsage.CachedInputTokens.HasValue && refundUsage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
@@ -348,9 +351,9 @@ public class CostCalculationService : ICostCalculationService
         }
 
         // Always add completion token refund
-        if (refundUsage.CompletionTokens > 0)
+        if (refundUsage.CompletionTokens.HasValue && refundUsage.CompletionTokens.Value > 0)
         {
-            breakdown.OutputTokenRefund = refundUsage.CompletionTokens * modelCost.OutputTokenCost;
+            breakdown.OutputTokenRefund = refundUsage.CompletionTokens.Value * modelCost.OutputTokenCost;
             totalRefund += breakdown.OutputTokenRefund;
         }
 
