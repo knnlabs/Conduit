@@ -16,10 +16,10 @@ Welcome to the Conduit documentation! This guide will help you navigate through 
 - **[LLM Routing](./llm-routing.md)** - How Conduit routes requests between providers
 
 ### API Documentation
-- **[Core API Reference](./Core-API-Detailed-Reference.md)** - Chat, completions, embeddings
-- **[Admin API](./Admin-API.md)** - Virtual keys, providers, configuration
-- **[Webhook API](./WebhookAPI.md)** - Event notifications
-- **[Real-Time API Guide](./Real-Time-API-Guide.md)** - WebSocket/SignalR integration
+- **[Core API Reference](./core-api-detailed-reference.md)** - Chat, completions, embeddings
+- **[Admin API](./admin-api/)** - Virtual keys, providers, configuration
+- **[Webhook API](./webhook-api.md)** - Event notifications
+- **[Real-Time API Guide](./real-time-api-guide.md)** - WebSocket/SignalR integration
 
 ### Features
 - **[Virtual Keys](./virtual-keys.md)** - API key management and routing
@@ -73,8 +73,8 @@ Welcome to the Conduit documentation! This guide will help you navigate through 
 - **[Video Architecture](./VIDEO_ARCHITECTURE.md)** - Video generation
 
 ### Real-Time Features
-- **[SignalR Quick Start](./SignalR-Quick-Start-Guide.md)** - Real-time setup
-- **[SignalR Architecture](./SignalR-Hub-Architecture-Diagram.md)** - Technical design
+- **[SignalR Documentation](./signalr/)** - Complete SignalR/WebSocket documentation
+- **[Real-Time API Guide](./real-time-api-guide.md)** - API integration patterns
 - **[Real-Time Features Index](./Real-Time-Features-Index.md)** - Available features
 
 ### Security
