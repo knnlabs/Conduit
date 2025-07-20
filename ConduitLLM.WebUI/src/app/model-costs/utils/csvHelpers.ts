@@ -16,6 +16,8 @@ export interface ParsedModelCost {
   supportsBatchProcessing: boolean;
   imageQualityMultipliers?: string;
   searchUnitCostPer1K?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
   priority: number;
   active: boolean;
   description?: string;
@@ -127,6 +129,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       supportsBatchProcessing: row['supports batch processing']?.toLowerCase() === 'yes' || row['supports batch processing']?.toLowerCase() === 'true',
       imageQualityMultipliers: row['image quality multipliers']?.trim(),
       searchUnitCostPer1K: parseNumericValue(row['search unit cost (per 1k units)']),
+      costPerInferenceStep: parseNumericValue(row['cost per inference step']),
+      defaultInferenceSteps: parseNumericValue(row['default inference steps']),
       priority: parseNumericValue(row['priority'], 0) ?? 0,
       active: row['active']?.toLowerCase() === 'yes' || row['active']?.toLowerCase() === 'true',
       description: row['description']?.trim(),
@@ -156,6 +160,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
     if (cost.searchUnitCostPer1K !== undefined && cost.searchUnitCostPer1K < 0) errors.push('Search unit cost cannot be negative');
+    if (cost.costPerInferenceStep !== undefined && cost.costPerInferenceStep < 0) errors.push('Cost per inference step cannot be negative');
+    if (cost.defaultInferenceSteps !== undefined && cost.defaultInferenceSteps < 0) errors.push('Default inference steps cannot be negative');
     
     // Validate image quality multipliers JSON
     if (cost.imageQualityMultipliers) {
@@ -222,6 +228,8 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       supportsBatchProcessing: cost.supportsBatchProcessing,
       imageQualityMultipliers: cost.imageQualityMultipliers,
       costPerSearchUnit: cost.searchUnitCostPer1K,
+      costPerInferenceStep: cost.costPerInferenceStep,
+      defaultInferenceSteps: cost.defaultInferenceSteps,
       priority: cost.priority,
       description: cost.description,
     }));

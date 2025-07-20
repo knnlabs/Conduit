@@ -386,6 +386,9 @@ namespace ConduitLLM.Tests.Providers
             Assert.Contains("Model not found", exception.Message);
         }
 
+        // Note: Cached token mapping test would go here once AnthropicUsage model is updated
+        // to include CacheCreationInputTokens and CacheReadInputTokens fields
+
         #endregion
 
         #region Streaming Tests

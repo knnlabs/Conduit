@@ -106,6 +106,18 @@ public class UsageValidatorTests
             .Which.Should().Be("Search units must be positive");
     }
 
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(-5, false)]
+    [InlineData(1, true)]
+    [InlineData(100, true)]
+    public void Validate_SearchUnits_ValidatesRange(int units, bool isValid)
+    {
+        var usage = new Usage { SearchUnits = units };
+        var result = _validator.Validate(usage);
+        result.IsValid.Should().Be(isValid);
+    }
+
     [Fact]
     public void Validate_InferenceStepsOutOfRange_ShouldReturnErrors()
     {
