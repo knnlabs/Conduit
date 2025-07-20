@@ -104,6 +104,30 @@ namespace ConduitLLM.Providers
             }
         }
 
+        /// <summary>
+        /// Configures the HttpClient for VertexAI API calls.
+        /// </summary>
+        /// <param name="client">The HTTP client to configure.</param>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        /// <remarks>
+        /// VertexAI uses dynamically constructed full URLs for each API call,
+        /// so we don't set a base address on the client.
+        /// </remarks>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            // Don't call base.ConfigureHttpClient since VertexAI doesn't use a base URL
+            // VertexAI builds complete URLs dynamically in BuildVertexAIEndpoint()
+            
+            // Clear any default headers
+            client.DefaultRequestHeaders.Clear();
+            
+            // Set a reasonable timeout for VertexAI API calls
+            client.Timeout = TimeSpan.FromMinutes(5);
+            
+            // Note: Authentication for VertexAI is handled per-request using OAuth2 tokens,
+            // not via default headers on the HttpClient
+        }
+
         /// <inheritdoc/>
         public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
