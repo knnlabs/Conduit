@@ -525,6 +525,68 @@ public class BedrockAI21FinishReason
     public string? Reason { get; set; }
 }
 
+// --- Mistral Models for Bedrock ---
+
+/// <summary>
+/// Bedrock Mistral chat request
+/// </summary>
+public class BedrockMistralChatRequest
+{
+    [JsonPropertyName("prompt")]
+    public string Prompt { get; set; } = null!;
+    
+    [JsonPropertyName("max_tokens")]
+    public int? MaxTokens { get; set; }
+    
+    [JsonPropertyName("temperature")]
+    public float? Temperature { get; set; }
+    
+    [JsonPropertyName("top_p")]
+    public float? TopP { get; set; }
+    
+    [JsonPropertyName("top_k")]
+    public int? TopK { get; set; }
+    
+    [JsonPropertyName("stop")]
+    public List<string>? Stop { get; set; }
+}
+
+/// <summary>
+/// Bedrock Mistral chat response
+/// </summary>
+public class BedrockMistralChatResponse
+{
+    [JsonPropertyName("outputs")]
+    public List<BedrockMistralOutput>? Outputs { get; set; }
+}
+
+public class BedrockMistralOutput
+{
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+    
+    [JsonPropertyName("stop_reason")]
+    public string? StopReason { get; set; }
+}
+
+/// <summary>
+/// Bedrock Mistral streaming response
+/// </summary>
+public class BedrockMistralStreamingResponse
+{
+    [JsonPropertyName("outputs")]
+    public List<BedrockMistralStreamingOutput>? Outputs { get; set; }
+}
+
+public class BedrockMistralStreamingOutput
+{
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+    
+    [JsonPropertyName("stop_reason")]
+    public string? StopReason { get; set; }
+}
+
 // --- Stability AI Models for Bedrock ---
 
 /// <summary>

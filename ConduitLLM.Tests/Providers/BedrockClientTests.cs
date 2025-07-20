@@ -354,7 +354,7 @@ namespace ConduitLLM.Tests.Providers
 
         #region Mistral Model Tests
 
-        [Fact(Skip = "Mistral model support not yet implemented in BedrockClient - see issue #523")]
+        [Fact]
         public async Task CompleteAsync_WithMistralModel_ShouldReturnResponse()
         {
             // Arrange
@@ -387,7 +387,7 @@ namespace ConduitLLM.Tests.Providers
 
             // Assert
             response.Choices[0].Message.Content.Should().Be("Hello! I'm Mistral AI on Bedrock.");
-            response.Choices[0].FinishReason.Should().Be("stop_sequence");
+            response.Choices[0].FinishReason.Should().Be("stop");
         }
 
         #endregion

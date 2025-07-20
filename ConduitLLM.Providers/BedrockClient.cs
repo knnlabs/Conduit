@@ -132,6 +132,10 @@ namespace ConduitLLM.Providers
                 {
                     return await CreateAI21ChatCompletionAsync(request, apiKey, cancellationToken);
                 }
+                else if (modelId.Contains("mistral", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateMistralChatCompletionAsync(request, apiKey, cancellationToken);
+                }
                 else
                 {
                     throw new UnsupportedProviderException($"Unsupported Bedrock model: {modelId}");
@@ -519,6 +523,83 @@ namespace ConduitLLM.Providers
             };
         }
 
+        private async Task<ChatCompletionResponse> CreateMistralChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Map to Bedrock Mistral format
+            var mistralRequest = new BedrockMistralChatRequest
+            {
+                Prompt = BuildMistralPrompt(request.Messages),
+                MaxTokens = request.MaxTokens ?? 512,
+                Temperature = request.Temperature.HasValue ? (float)request.Temperature.Value : 0.7f,
+                TopP = request.TopP.HasValue ? (float)request.TopP.Value : 0.9f,
+                TopK = 50, // Default top-k for Mistral
+                Stop = request.Stop?.ToList()
+            };
+
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"model/{modelId}/invoke";
+
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, mistralRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockMistralChatResponse>(responseContent, JsonOptions);
+
+            if (bedrockResponse?.Outputs == null || !bedrockResponse.Outputs.Any())
+            {
+                throw new LLMCommunicationException("Failed to deserialize the response from AWS Bedrock API or response outputs are empty");
+            }
+
+            // Get the first output
+            var output = bedrockResponse.Outputs.FirstOrDefault();
+            var responseText = output?.Text ?? string.Empty;
+            var finishReason = MapMistralStopReason(output?.StopReason);
+
+            // Mistral doesn't provide token counts in the response, so estimate them
+            var promptTokens = EstimateTokenCount(mistralRequest.Prompt);
+            var completionTokens = EstimateTokenCount(responseText);
+
+            // Map to standard format
+            return new ChatCompletionResponse
+            {
+                Id = $"bedrock-{Guid.NewGuid()}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = modelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new ConduitLLM.Core.Models.Message
+                        {
+                            Role = "assistant",
+                            Content = responseText
+                        },
+                        FinishReason = finishReason,
+                        Logprobs = null
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = promptTokens,
+                    CompletionTokens = completionTokens,
+                    TotalTokens = promptTokens + completionTokens
+                },
+                SystemFingerprint = null
+            };
+        }
+
         /// <inheritdoc />
         public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
@@ -689,6 +770,9 @@ namespace ConduitLLM.Providers
                     ExtendedModelInfo.Create("meta.llama2-70b-chat-v1", ProviderName, "meta.llama2-70b-chat-v1"),
                     ExtendedModelInfo.Create("meta.llama3-8b-instruct-v1:0", ProviderName, "meta.llama3-8b-instruct-v1:0"),
                     ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0"),
+                    ExtendedModelInfo.Create("mistral.mistral-7b-instruct-v0:2", ProviderName, "mistral.mistral-7b-instruct-v0:2"),
+                    ExtendedModelInfo.Create("mistral.mixtral-8x7b-instruct-v0:1", ProviderName, "mistral.mixtral-8x7b-instruct-v0:1"),
+                    ExtendedModelInfo.Create("mistral.mistral-large-2402-v1:0", ProviderName, "mistral.mistral-large-2402-v1:0"),
                     ExtendedModelInfo.Create("ai21.j2-mid-v1", ProviderName, "ai21.j2-mid-v1"),
                     ExtendedModelInfo.Create("ai21.j2-ultra-v1", ProviderName, "ai21.j2-ultra-v1"),
                     ExtendedModelInfo.Create("stability.stable-diffusion-xl-v1", ProviderName, "stability.stable-diffusion-xl-v1")
@@ -713,7 +797,9 @@ namespace ConduitLLM.Providers
                 ExtendedModelInfo.Create("anthropic.claude-3-sonnet-20240229-v1:0", ProviderName, "anthropic.claude-3-sonnet-20240229-v1:0"),
                 ExtendedModelInfo.Create("anthropic.claude-3-haiku-20240307-v1:0", ProviderName, "anthropic.claude-3-haiku-20240307-v1:0"),
                 ExtendedModelInfo.Create("meta.llama3-8b-instruct-v1:0", ProviderName, "meta.llama3-8b-instruct-v1:0"),
-                ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0")
+                ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0"),
+                ExtendedModelInfo.Create("mistral.mistral-7b-instruct-v0:2", ProviderName, "mistral.mistral-7b-instruct-v0:2"),
+                ExtendedModelInfo.Create("mistral.mixtral-8x7b-instruct-v0:1", ProviderName, "mistral.mixtral-8x7b-instruct-v0:1")
             };
         }
 
@@ -923,6 +1009,37 @@ namespace ConduitLLM.Providers
         }
         
         /// <summary>
+        /// Builds a Mistral-specific prompt format.
+        /// </summary>
+        private string BuildMistralPrompt(IEnumerable<ConduitLLM.Core.Models.Message> messages)
+        {
+            var promptBuilder = new StringBuilder();
+            
+            // Mistral uses a specific instruction format
+            promptBuilder.Append("<s>");
+            
+            foreach (var message in messages)
+            {
+                var content = ContentHelper.GetContentAsString(message.Content);
+                
+                if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($"[INST] {content} [/INST]</s>");
+                }
+                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($"[INST] {content} [/INST]");
+                }
+                else if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($"{content}</s>");
+                }
+            }
+            
+            return promptBuilder.ToString();
+        }
+        
+        /// <summary>
         /// Maps Cohere stop reasons to standardized finish reasons.
         /// </summary>
         private string MapCohereStopReason(string? finishReason)
@@ -977,6 +1094,20 @@ namespace ConduitLLM.Providers
                 "endoftext" => "stop",
                 "length" => "length",
                 "stop" => "stop",
+                _ => "stop"
+            };
+        }
+        
+        /// <summary>
+        /// Maps Mistral stop reasons to standardized finish reasons.
+        /// </summary>
+        private string MapMistralStopReason(string? stopReason)
+        {
+            return stopReason?.ToLowerInvariant() switch
+            {
+                "stop" => "stop",
+                "length" => "length",
+                "model_length" => "length",
                 _ => "stop"
             };
         }
