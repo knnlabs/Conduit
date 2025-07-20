@@ -36,6 +36,8 @@ interface FormValues {
   // Token-based costs (per 1K tokens for display)
   inputCostPer1K: number;
   outputCostPer1K: number;
+  cachedInputCostPer1K: number;
+  cachedInputWriteCostPer1K: number;
   embeddingCostPer1K: number;
   // Other cost types
   imageCostPerImage: number;
@@ -67,6 +69,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       modelType: 'chat',
       inputCostPer1K: 0,
       outputCostPer1K: 0,
+      cachedInputCostPer1K: 0,
+      cachedInputWriteCostPer1K: 0,
       embeddingCostPer1K: 0,
       imageCostPerImage: 0,
       audioCostPerMinute: 0,
@@ -88,6 +92,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
       inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       imageCostPerImage: (value) => value < 0 ? 'Cost must be non-negative' : null,
       audioCostPerMinute: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -139,6 +145,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       // Convert from per 1K to per 1M tokens for backend
       inputTokenCost: values.inputCostPer1K * 1000000,
       outputTokenCost: values.outputCostPer1K * 1000000,
+      cachedInputTokenCost: values.cachedInputCostPer1K > 0 ? values.cachedInputCostPer1K * 1000000 : undefined,
+      cachedInputWriteTokenCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K * 1000000 : undefined,
       embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000000 : undefined,
       imageCostPerImage: values.imageCostPerImage > 0 ? values.imageCostPerImage : undefined,
       audioCostPerMinute: values.audioCostPerMinute > 0 ? values.audioCostPerMinute : undefined,
@@ -208,26 +216,53 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
             <>
               <Divider label="Token Pricing" labelPosition="center" />
               {modelType === 'chat' && (
-                <Group grow>
-                  <NumberInput
-                    label="Input Cost (per 1K tokens)"
-                    placeholder="0.0000"
-                    decimalScale={4}
-                    min={0}
-                    step={0.0001}
-                    leftSection="$"
-                    {...form.getInputProps('inputCostPer1K')}
-                  />
-                  <NumberInput
-                    label="Output Cost (per 1K tokens)"
-                    placeholder="0.0000"
-                    decimalScale={4}
-                    min={0}
-                    step={0.0001}
-                    leftSection="$"
-                    {...form.getInputProps('outputCostPer1K')}
-                  />
-                </Group>
+                <>
+                  <Group grow>
+                    <NumberInput
+                      label="Input Cost (per 1K tokens)"
+                      placeholder="0.0000"
+                      decimalScale={4}
+                      min={0}
+                      step={0.0001}
+                      leftSection="$"
+                      {...form.getInputProps('inputCostPer1K')}
+                    />
+                    <NumberInput
+                      label="Output Cost (per 1K tokens)"
+                      placeholder="0.0000"
+                      decimalScale={4}
+                      min={0}
+                      step={0.0001}
+                      leftSection="$"
+                      {...form.getInputProps('outputCostPer1K')}
+                    />
+                  </Group>
+                  
+                  <Divider label="Prompt Caching Rates (Optional)" labelPosition="center" variant="dashed" />
+                  
+                  <Group grow>
+                    <NumberInput
+                      label="Cached Input Cost (per 1K tokens)"
+                      placeholder="0.0000"
+                      description="Cost for reading from cache"
+                      decimalScale={4}
+                      min={0}
+                      step={0.0001}
+                      leftSection="$"
+                      {...form.getInputProps('cachedInputCostPer1K')}
+                    />
+                    <NumberInput
+                      label="Cache Write Cost (per 1K tokens)"
+                      placeholder="0.0000"
+                      description="Cost for writing to cache"
+                      decimalScale={4}
+                      min={0}
+                      step={0.0001}
+                      leftSection="$"
+                      {...form.getInputProps('cachedInputWriteCostPer1K')}
+                    />
+                  </Group>
+                </>
               )}
               {modelType === 'embedding' && (
                 <NumberInput

@@ -5,6 +5,8 @@ export interface ModelCost {
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
+  cachedInputCostPerMillionTokens?: number;
+  cachedInputWriteCostPerMillionTokens?: number;
   costPerRequest?: number;
   costPerSecond?: number;
   costPerImage?: number;
@@ -34,6 +36,8 @@ export interface CreateModelCostDto {
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputTokenCost: number;
   outputTokenCost: number;
+  cachedInputTokenCost?: number;
+  cachedInputWriteTokenCost?: number;
   embeddingTokenCost?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;

@@ -109,6 +109,33 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
                     </Group>
                   </Group>
                 )}
+                
+                {modelCost.cachedInputCostPerMillionTokens !== undefined && (
+                  <>
+                    <Divider variant="dashed" />
+                    <Group justify="space-between">
+                      <Text>Cached Input Cost</Text>
+                      <Group gap="xs">
+                        <Text fw={500}>
+                          {formatters.currency(modelCost.cachedInputCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                        </Text>
+                        <Text size="sm" c="dimmed">per 1K tokens</Text>
+                      </Group>
+                    </Group>
+                  </>
+                )}
+                
+                {modelCost.cachedInputWriteCostPerMillionTokens !== undefined && (
+                  <Group justify="space-between">
+                    <Text>Cache Write Cost</Text>
+                    <Group gap="xs">
+                      <Text fw={500}>
+                        {formatters.currency(modelCost.cachedInputWriteCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                      </Text>
+                      <Text size="sm" c="dimmed">per 1K tokens</Text>
+                    </Group>
+                  </Group>
+                )}
               </Stack>
             </Card>
           </>

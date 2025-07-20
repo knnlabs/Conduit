@@ -120,6 +120,9 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
 
   const getCostDisplay = (cost: ModelCost) => {
     if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
+      const hasCachedRates = cost.cachedInputCostPerMillionTokens !== undefined || 
+                            cost.cachedInputWriteCostPerMillionTokens !== undefined;
+      
       return (
         <Stack gap={2}>
           <Text size="xs">
@@ -128,6 +131,11 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           <Text size="xs">
             Output: {formatters.currency(((cost.outputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
+          {hasCachedRates && (
+            <Group gap="xs">
+              <Badge size="xs" variant="light" color="blue">Cached</Badge>
+            </Group>
+          )}
         </Stack>
       );
     }
