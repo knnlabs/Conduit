@@ -55,4 +55,15 @@ public class Usage
     [JsonPropertyName("is_batch")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? IsBatch { get; set; }
+
+    /// <summary>
+    /// Quality tier for image generation (e.g., "standard", "hd").
+    /// </summary>
+    /// <remarks>
+    /// Used to apply quality-based multipliers to image generation costs.
+    /// Different providers may use different quality tier names.
+    /// </remarks>
+    [JsonPropertyName("image_quality")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ImageQuality { get; set; }
 }

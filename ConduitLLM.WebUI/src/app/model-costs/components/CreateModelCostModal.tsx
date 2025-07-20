@@ -43,6 +43,7 @@ interface FormValues {
   audioOutputCostPerMinute: number;
   videoCostPerSecond: number;
   videoResolutionMultipliers: string;
+  imageQualityMultipliers: string;
   // Metadata
   priority: number;
   description: string;
@@ -68,6 +69,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       audioOutputCostPerMinute: 0,
       videoCostPerSecond: 0,
       videoResolutionMultipliers: '',
+      imageQualityMultipliers: '',
       priority: 0,
       description: '',
       isActive: true,
@@ -111,6 +113,7 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       audioOutputCostPerMinute: values.audioOutputCostPerMinute > 0 ? values.audioOutputCostPerMinute : undefined,
       videoCostPerSecond: values.videoCostPerSecond > 0 ? values.videoCostPerSecond : undefined,
       videoResolutionMultipliers: values.videoResolutionMultipliers || undefined,
+      imageQualityMultipliers: values.imageQualityMultipliers || undefined,
       priority: values.priority,
       description: values.description || undefined,
       supportsBatchProcessing: false, // Default to false for new costs
@@ -216,6 +219,12 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
                 step={0.01}
                 leftSection="$"
                 {...form.getInputProps('imageCostPerImage')}
+              />
+              <Textarea
+                label="Quality Multipliers (JSON)"
+                placeholder='{"standard": 1.0, "hd": 2.0}'
+                {...form.getInputProps('imageQualityMultipliers')}
+                description="Optional: JSON object with quality multipliers"
               />
             </>
           )}

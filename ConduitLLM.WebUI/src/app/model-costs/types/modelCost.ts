@@ -18,6 +18,7 @@ export interface ModelCost {
   videoResolutionMultipliers?: string;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
   isActive: boolean;
   priority: number;
   effectiveDate: string;
@@ -43,6 +44,7 @@ export interface CreateModelCostDto {
   videoResolutionMultipliers?: string;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
   description?: string;
   priority?: number;
 }

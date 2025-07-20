@@ -12,6 +12,7 @@ export interface ParsedModelCost {
   videoCostPerSecond?: number;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
   priority: number;
   active: boolean;
   description?: string;
@@ -85,6 +86,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
         priority: 0,
         active: false,
         supportsBatchProcessing: false,
+        imageQualityMultipliers: undefined,
         isValid: false,
         errors: [`Row has ${values.length} columns but expected ${headers.length}`],
         rowNumber,
@@ -118,6 +120,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       videoCostPerSecond: parseNumericValue(row['video cost (per second)']),
       batchProcessingMultiplier: parseNumericValue(row['batch processing multiplier']),
       supportsBatchProcessing: row['supports batch processing']?.toLowerCase() === 'yes' || row['supports batch processing']?.toLowerCase() === 'true',
+      imageQualityMultipliers: row['image quality multipliers']?.trim(),
       priority: parseNumericValue(row['priority'], 0) ?? 0,
       active: row['active']?.toLowerCase() === 'yes' || row['active']?.toLowerCase() === 'true',
       description: row['description']?.trim(),
@@ -184,6 +187,7 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       videoCostPerSecond: cost.videoCostPerSecond,
       batchProcessingMultiplier: cost.batchProcessingMultiplier,
       supportsBatchProcessing: cost.supportsBatchProcessing,
+      imageQualityMultipliers: cost.imageQualityMultipliers,
       priority: cost.priority,
       description: cost.description,
     }));

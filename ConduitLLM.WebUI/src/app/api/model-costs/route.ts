@@ -43,6 +43,7 @@ interface LegacyCreateModelCostDto {
   videoResolutionMultipliers?: string;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
   description?: string;
   priority?: number;
 }
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
           videoResolutionMultipliers: requestData.videoResolutionMultipliers,
           batchProcessingMultiplier: requestData.batchProcessingMultiplier,
           supportsBatchProcessing: requestData.supportsBatchProcessing ?? false,
+          imageQualityMultipliers: requestData.imageQualityMultipliers,
           description: requestData.description,
           priority: requestData.priority ?? 0,
         };

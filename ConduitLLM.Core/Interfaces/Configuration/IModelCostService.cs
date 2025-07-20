@@ -68,5 +68,11 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </summary>
         public bool SupportsBatchProcessing { get; set; }
+
+        /// <summary>
+        /// Additional cost multipliers for different image quality levels.
+        /// Key is quality level (e.g., "standard", "hd"), value is multiplier.
+        /// </summary>
+        public Dictionary<string, decimal>? ImageQualityMultipliers { get; set; }
     }
 }

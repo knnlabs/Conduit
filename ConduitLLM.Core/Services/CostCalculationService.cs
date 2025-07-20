@@ -116,7 +116,17 @@ public class CostCalculationService : ICostCalculationService
         // Add image generation cost if applicable
         if (modelCost.ImageCostPerImage.HasValue && usage.ImageCount.HasValue)
         {
-            calculatedCost += (usage.ImageCount.Value * modelCost.ImageCostPerImage.Value);
+            var imageCost = usage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
+            
+            // Apply quality multiplier if available
+            if (modelCost.ImageQualityMultipliers != null && 
+                !string.IsNullOrEmpty(usage.ImageQuality) &&
+                modelCost.ImageQualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            {
+                imageCost *= multiplier;
+            }
+            
+            calculatedCost += imageCost;
         }
 
         // Add video generation cost if applicable
@@ -254,7 +264,17 @@ public class CostCalculationService : ICostCalculationService
         // Handle image generation refunds
         if (modelCost.ImageCostPerImage.HasValue && refundUsage.ImageCount.HasValue && refundUsage.ImageCount.Value > 0)
         {
-            breakdown.ImageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
+            var imageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
+            
+            // Apply quality multiplier if available
+            if (modelCost.ImageQualityMultipliers != null && 
+                !string.IsNullOrEmpty(refundUsage.ImageQuality) &&
+                modelCost.ImageQualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            {
+                imageRefund *= multiplier;
+            }
+            
+            breakdown.ImageRefund = imageRefund;
             totalRefund += breakdown.ImageRefund;
         }
 

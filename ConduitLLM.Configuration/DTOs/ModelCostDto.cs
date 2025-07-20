@@ -116,6 +116,15 @@ namespace ConduitLLM.Configuration.DTOs
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </remarks>
         public bool SupportsBatchProcessing { get; set; }
+
+        /// <summary>
+        /// Quality-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing quality-to-multiplier mappings.
+        /// Example: {"standard": 1.0, "hd": 2.0}
+        /// </remarks>
+        public string? ImageQualityMultipliers { get; set; }
     }
 
     /// <summary>
@@ -206,6 +215,15 @@ namespace ConduitLLM.Configuration.DTOs
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </remarks>
         public bool SupportsBatchProcessing { get; set; }
+
+        /// <summary>
+        /// Quality-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing quality-to-multiplier mappings.
+        /// Example: {"standard": 1.0, "hd": 2.0}
+        /// </remarks>
+        public string? ImageQualityMultipliers { get; set; }
     }
 
     /// <summary>
@@ -301,6 +319,15 @@ namespace ConduitLLM.Configuration.DTOs
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </remarks>
         public bool SupportsBatchProcessing { get; set; }
+
+        /// <summary>
+        /// Quality-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing quality-to-multiplier mappings.
+        /// Example: {"standard": 1.0, "hd": 2.0}
+        /// </remarks>
+        public string? ImageQualityMultipliers { get; set; }
     }
 
     /// <summary>

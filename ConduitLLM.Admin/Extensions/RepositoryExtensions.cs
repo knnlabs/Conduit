@@ -537,6 +537,7 @@ namespace ConduitLLM.Admin.Extensions
                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -569,6 +570,7 @@ namespace ConduitLLM.Admin.Extensions
                 VideoResolutionMultipliers = dto.VideoResolutionMultipliers,
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
+                ImageQualityMultipliers = dto.ImageQualityMultipliers,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -605,6 +607,7 @@ namespace ConduitLLM.Admin.Extensions
             entity.VideoResolutionMultipliers = dto.VideoResolutionMultipliers;
             entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
             entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
+            entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

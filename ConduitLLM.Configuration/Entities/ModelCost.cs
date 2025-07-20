@@ -194,4 +194,15 @@ public class ModelCost
     /// Default is false for backward compatibility.
     /// </remarks>
     public bool SupportsBatchProcessing { get; set; }
+
+    /// <summary>
+    /// Gets or sets the quality-based cost multipliers for image generation.
+    /// </summary>
+    /// <remarks>
+    /// JSON object containing quality-to-multiplier mappings.
+    /// Example: {"standard": 1.0, "hd": 2.0}
+    /// The base ImageCostPerImage is multiplied by these values based on the requested quality.
+    /// Stored as JSON text in the database.
+    /// </remarks>
+    public string? ImageQualityMultipliers { get; set; }
 }
