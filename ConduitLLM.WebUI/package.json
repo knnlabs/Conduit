@@ -17,7 +17,7 @@
     "pre-commit": "lint-staged"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.24.0",
+    "@clerk/nextjs": "^6.25.4",
     "@hello-pangea/dnd": "^18.0.1",
     "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
     "@knn_labs/conduit-common": "file:../Clients/Node/Common",
@@ -32,9 +32,9 @@
     "@mantine/modals": "^8.1.2",
     "@mantine/notifications": "^8.1.2",
     "@mantine/spotlight": "^8.1.2",
-    "@tabler/icons-react": "^3.34.0",
+    "@tabler/icons-react": "^3.34.1",
     "@tanstack/react-query": "^5.0.0",
-    "@types/node": "^24.0.7",
+    "@types/node": "^24.0.15",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/video.js": "^7.3.58",
@@ -43,7 +43,7 @@
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",
     "eslint": "^9.30.0",
-    "next": "^15.3.5",
+    "next": "^15.4.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
@@ -51,7 +51,7 @@
     "typescript": "^5.8.3",
     "uuid": "^11.1.0",
     "video.js": "^8.23.3",
-    "zod": "^3.25.72",
+    "zod": "^4.0.5",
     "zustand": "^5.0.6"
   },
   "keywords": [
@@ -70,12 +70,12 @@
     "@types/jest": "^30.0.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^10.0.0",
-    "eslint-config-next": "^15.3.5",
+    "eslint-config-next": "^15.4.2",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "husky": "^9.0.11",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
-    "lint-staged": "^15.2.2",
+    "lint-staged": "^16.1.2",
     "playwright": "^1.54.1",
     "ts-jest": "^29.4.0"
   },

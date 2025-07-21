@@ -122,7 +122,7 @@ describe('SettingsService - Routing Methods', () => {
       const newRule = {
         name: 'First Rule',
         condition: { type: 'model' as const, operator: 'equals' as const, value: 'gpt-3.5' },
-        action: { type: 'block' as const, value: null },
+        action: { type: 'block' as const, value: '' },
         priority: 1,
         isEnabled: true,
       };

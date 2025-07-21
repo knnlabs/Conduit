@@ -23,9 +23,9 @@
   "author": "KNN Labs",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.14.9",
+    "@types/node": "^24.0.15",
     "tsup": "^8.1.0",
-    "typescript": "^5.5.2"
+    "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "typescript": ">=4.5.0"

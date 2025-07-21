@@ -1,5 +1,7 @@
 import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchModelMappingsService } from '../services/FetchModelMappingsService';
+import type { ModelProviderMappingDto } from '../models/modelMapping';
+import type { RequestConfig } from '../client/types';
 
 import { ENDPOINTS } from '../constants';
 
@@ -15,49 +17,39 @@ describe('FetchModelMappingsService', () => {
 
   describe('list', () => {
     it('should list model mappings with default pagination', async () => {
-      const mockResponse = {
-        items: [],
-        totalCount: 0,
-        page: 1,
-        pageSize: 10,
-        totalPages: 0,
-      };
-      mockClient.get.mockResolvedValue(mockResponse);
+      // Backend returns plain array, not paginated response
+      const mockMappings: ModelProviderMappingDto[] = [];
+      mockClient.get.mockResolvedValue(mockMappings);
 
       const result = await service.list();
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        `${ENDPOINTS.MODEL_MAPPINGS.BASE}?page=1&pageSize=10`,
+        ENDPOINTS.MODEL_MAPPINGS.BASE,
         {
           signal: undefined,
           timeout: undefined,
           headers: undefined,
         }
       );
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(mockMappings);
     });
 
-    it('should list model mappings with custom pagination', async () => {
-      const mockResponse = {
-        items: [],
-        totalCount: 0,
-        page: 2,
-        pageSize: 20,
-        totalPages: 0,
-      };
-      mockClient.get.mockResolvedValue(mockResponse);
-
-      const result = await service.list(2, 20);
+    it('should list model mappings with config options', async () => {
+      const mockMappings: ModelProviderMappingDto[] = [];
+      mockClient.get.mockResolvedValue(mockMappings);
+      
+      const config: RequestConfig = { timeout: 5000 };
+      const result = await service.list(config);
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        `${ENDPOINTS.MODEL_MAPPINGS.BASE}?page=2&pageSize=20`,
+        ENDPOINTS.MODEL_MAPPINGS.BASE,
         {
-          signal: undefined,
-          timeout: undefined,
-          headers: undefined,
+          signal: config.signal,
+          timeout: config.timeout,
+          headers: config.headers,
         }
       );
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(mockMappings);
     });
   });
 
@@ -249,6 +241,8 @@ describe('FetchModelMappingsService', () => {
       supportsRealtimeAudio: false,
       supportsFunctionCalling: true,
       supportsStreaming: true,
+      supportsVideoGeneration: false,
+      supportsEmbeddings: false,
       isDefault: false,
       createdAt: '2025-01-11T10:00:00Z',
       updatedAt: '2025-01-11T10:00:00Z',
