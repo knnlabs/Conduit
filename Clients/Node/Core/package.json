@@ -1,6 +1,6 @@
 {
   "name": "@knn_labs/conduit-core-client",
-  "version": "0.2.1",
+  "version": "0.2.1-dev.20250721233943",
   "description": "Official Node.js client library for Conduit Core API - OpenAI-compatible multi-provider LLM gateway",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
