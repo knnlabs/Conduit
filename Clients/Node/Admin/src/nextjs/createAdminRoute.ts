@@ -51,7 +51,7 @@ function mapErrorToResponse(error: unknown): NextResponse {
   return NextResponse.json(
     {
       ...serialized,
-      error: serialized.message || 'Internal server error',
+      error: serialized.message ?? 'Internal server error',
       statusCode: 500,
       timestamp: new Date().toISOString(),
       details: isDevelopment ? serialized : undefined,
@@ -112,7 +112,7 @@ export function createAdminRoute<TResponse = unknown, TBody = JsonValue>(
         );
       }
 
-      const apiUrl = process.env.CONDUIT_ADMIN_API_URL || process.env.CONDUIT_API_URL;
+      const apiUrl = process.env.CONDUIT_ADMIN_API_URL ?? process.env.CONDUIT_API_URL;
       if (!apiUrl) {
         throw new Error(
           'CONDUIT_ADMIN_API_URL or CONDUIT_API_URL environment variable is not set. ' +

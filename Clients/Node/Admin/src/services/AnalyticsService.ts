@@ -250,21 +250,21 @@ export class AnalyticsService extends FetchBaseApiClient {
     stats.p99ResponseTime = responseTimes[Math.floor(responseTimes.length * 0.99)];
 
     // Calculate other metrics
-    stats.totalCost = logs.reduce((sum, log) => sum + (log.cost || 0), 0);
-    stats.totalTokensUsed = logs.reduce((sum, log) => sum + (log.tokensUsed?.total || 0), 0);
+    stats.totalCost = logs.reduce((sum, log) => sum + (log.cost ?? 0), 0);
+    stats.totalTokensUsed = logs.reduce((sum, log) => sum + (log.tokensUsed?.total ?? 0), 0);
     const errorCount = logs.filter(l => l.error).length;
     stats.errorRate = (errorCount / logs.length) * 100;
 
     // Status code distribution
     logs.forEach(log => {
       stats.statusCodeDistribution[log.statusCode] = 
-        (stats.statusCodeDistribution[log.statusCode] || 0) + 1;
+        (stats.statusCodeDistribution[log.statusCode] ?? 0) + 1;
     });
 
     // Endpoint distribution
     const endpointMap = new Map<string, { count: number; totalTime: number }>();
     logs.forEach(log => {
-      const current = endpointMap.get(log.endpoint) || { count: 0, totalTime: 0 };
+      const current = endpointMap.get(log.endpoint) ?? { count: 0, totalTime: 0 };
       current.count++;
       current.totalTime += log.responseTime;
       endpointMap.set(log.endpoint, current);

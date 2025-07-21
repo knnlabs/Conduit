@@ -390,9 +390,9 @@ export class FetchProvidersService {
         );
 
         return {
-          id: provider.id?.toString() || '',
+          id: provider.id?.toString() ?? '',
           name: provider.providerName,
-          isEnabled: provider.isEnabled || false,
+          isEnabled: provider.isEnabled ?? false,
           providerName: provider.providerName,
           apiKey: provider.apiKey ? '***masked***' : undefined,
           health: {

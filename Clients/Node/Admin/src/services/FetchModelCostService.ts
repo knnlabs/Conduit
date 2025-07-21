@@ -319,7 +319,7 @@ export class FetchModelCostService {
       .filter(c => c.modelIdPattern.endsWith('*') && this.doesModelMatchPattern(modelId, c.modelIdPattern))
       .sort((a, b) => b.modelIdPattern.length - a.modelIdPattern.length);
 
-    return patternMatches[0] || null;
+    return patternMatches[0] ?? null;
   }
 
   /**
@@ -330,8 +330,8 @@ export class FetchModelCostService {
     inputTokens: number,
     outputTokens: number
   ): { inputCost: number; outputCost: number; totalCost: number } {
-    const inputCostPerMillion = cost.inputCostPerMillionTokens || 0;
-    const outputCostPerMillion = cost.outputCostPerMillionTokens || 0;
+    const inputCostPerMillion = cost.inputCostPerMillionTokens ?? 0;
+    const outputCostPerMillion = cost.outputCostPerMillionTokens ?? 0;
     
     const inputCost = (inputTokens / 1000000) * inputCostPerMillion;
     const outputCost = (outputTokens / 1000000) * outputCostPerMillion;

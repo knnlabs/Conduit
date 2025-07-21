@@ -80,7 +80,7 @@ export class FetchDashboardService {
     }
 
     const totalRequests = timeSeriesData.data.reduce(
-      (sum, point) => sum + (point.requests || 0),
+      (sum, point) => sum + (point.requests ?? 0),
       0
     );
 
@@ -96,7 +96,7 @@ export class FetchDashboardService {
     }
 
     return timeSeriesData.data.reduce(
-      (sum, point) => sum + (point.cost || 0),
+      (sum, point) => sum + (point.cost ?? 0),
       0
     );
   }
@@ -111,14 +111,14 @@ export class FetchDashboardService {
 
     let peakPoint = timeSeriesData.data[0];
     for (const point of timeSeriesData.data) {
-      if ((point.requests || 0) > (peakPoint.requests || 0)) {
+      if ((point.requests ?? 0) > (peakPoint.requests ?? 0)) {
         peakPoint = point;
       }
     }
 
     return {
-      date: peakPoint.date || '',
-      requests: peakPoint.requests || 0,
+      date: peakPoint.date ?? '',
+      requests: peakPoint.requests ?? 0,
     };
   }
 
@@ -133,20 +133,20 @@ export class FetchDashboardService {
     }
 
     const totalCost = providerMetrics.reduce(
-      (sum, metric) => sum + (metric.totalCost || 0),
+      (sum, metric) => sum + (metric.totalCost ?? 0),
       0
     );
 
     if (totalCost === 0) {
       return providerMetrics.map(metric => ({
-        provider: metric.provider || 'Unknown',
+        provider: metric.provider ?? 'Unknown',
         percentage: 0,
       }));
     }
 
     return providerMetrics.map(metric => ({
-      provider: metric.provider || 'Unknown',
-      percentage: ((metric.totalCost || 0) / totalCost) * 100,
+      provider: metric.provider ?? 'Unknown',
+      percentage: ((metric.totalCost ?? 0) / totalCost) * 100,
     }));
   }
 
@@ -161,11 +161,11 @@ export class FetchDashboardService {
     avgResponseTime: string;
   } {
     return {
-      totalRequests: this.formatNumber(metrics.totalRequests || 0),
-      totalCost: this.formatCurrency(metrics.totalCost || 0),
-      activeKeys: this.formatNumber(metrics.activeVirtualKeys || 0),
-      errorRate: this.formatPercentage(metrics.errorRate || 0),
-      avgResponseTime: this.formatMilliseconds(metrics.avgResponseTime || 0),
+      totalRequests: this.formatNumber(metrics.totalRequests ?? 0),
+      totalCost: this.formatCurrency(metrics.totalCost ?? 0),
+      activeKeys: this.formatNumber(metrics.activeVirtualKeys ?? 0),
+      errorRate: this.formatPercentage(metrics.errorRate ?? 0),
+      avgResponseTime: this.formatMilliseconds(metrics.avgResponseTime ?? 0),
     };
   }
 

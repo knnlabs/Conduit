@@ -36,20 +36,20 @@ export class FetchProviderModelsService {
     return discoveredModels.map(dm => ({
       id: dm.modelId,
       name: dm.modelId,
-      displayName: dm.displayName || dm.modelId,
+      displayName: dm.displayName ?? dm.modelId,
       provider: dm.provider,
       description: dm.metadata?.description,
-      contextWindow: dm.capabilities?.maxTokens || 0,
-      maxTokens: dm.capabilities?.maxOutputTokens || 0,
+      contextWindow: dm.capabilities?.maxTokens ?? 0,
+      maxTokens: dm.capabilities?.maxOutputTokens ?? 0,
       inputCost: 0, // Admin API doesn't provide cost information
       outputCost: 0, // Admin API doesn't provide cost information
       capabilities: {
-        chat: dm.capabilities?.chat || false,
+        chat: dm.capabilities?.chat ?? false,
         completion: false, // Not in DiscoveredModel
-        embedding: dm.capabilities?.embeddings || false,
-        vision: dm.capabilities?.vision || false,
-        functionCalling: dm.capabilities?.functionCalling || false,
-        streaming: dm.capabilities?.chatStream || false,
+        embedding: dm.capabilities?.embeddings ?? false,
+        vision: dm.capabilities?.vision ?? false,
+        functionCalling: dm.capabilities?.functionCalling ?? false,
+        streaming: dm.capabilities?.chatStream ?? false,
         fineTuning: false, // Not in DiscoveredModel
         plugins: false, // Not in DiscoveredModel
       },
@@ -111,20 +111,20 @@ export class FetchProviderModelsService {
     return {
       id: discoveredModel.modelId,
       name: discoveredModel.modelId,
-      displayName: discoveredModel.displayName || discoveredModel.modelId,
+      displayName: discoveredModel.displayName ?? discoveredModel.modelId,
       provider: discoveredModel.provider,
       description: discoveredModel.metadata?.description,
-      contextWindow: discoveredModel.capabilities?.maxTokens || 0,
-      maxTokens: discoveredModel.capabilities?.maxOutputTokens || 0,
+      contextWindow: discoveredModel.capabilities?.maxTokens ?? 0,
+      maxTokens: discoveredModel.capabilities?.maxOutputTokens ?? 0,
       inputCost: 0,
       outputCost: 0,
       capabilities: {
-        chat: discoveredModel.capabilities?.chat || false,
+        chat: discoveredModel.capabilities?.chat ?? false,
         completion: false,
-        embedding: discoveredModel.capabilities?.embeddings || false,
-        vision: discoveredModel.capabilities?.vision || false,
-        functionCalling: discoveredModel.capabilities?.functionCalling || false,
-        streaming: discoveredModel.capabilities?.chatStream || false,
+        embedding: discoveredModel.capabilities?.embeddings ?? false,
+        vision: discoveredModel.capabilities?.vision ?? false,
+        functionCalling: discoveredModel.capabilities?.functionCalling ?? false,
+        streaming: discoveredModel.capabilities?.chatStream ?? false,
         fineTuning: false,
         plugins: false,
       },

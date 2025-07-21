@@ -308,7 +308,7 @@ export class ProviderHealthService extends FetchBaseApiClient {
       try {
         const status = await this.getProviderHealthStatus(providerName);
         results[providerName] = status;
-      } catch {
+      } catch (error) {
         // Skip providers that fail to load
         console.warn(`Failed to get health status for provider ${providerName}:`, error);
       }

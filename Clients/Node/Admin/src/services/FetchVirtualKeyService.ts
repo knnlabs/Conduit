@@ -276,7 +276,7 @@ export class FetchVirtualKeyService {
     }
     
     if (key.maxBudget !== null && key.maxBudget !== undefined) {
-      const currentSpend = key.currentSpend || 0;
+      const currentSpend = key.currentSpend ?? 0;
       if (currentSpend >= key.maxBudget) {
         return false;
       }
@@ -293,7 +293,7 @@ export class FetchVirtualKeyService {
       return null;
     }
     
-    const currentSpend = key.currentSpend || 0;
+    const currentSpend = key.currentSpend ?? 0;
     return Math.max(0, key.maxBudget - currentSpend);
   }
 

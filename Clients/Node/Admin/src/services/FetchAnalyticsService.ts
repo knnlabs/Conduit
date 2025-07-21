@@ -222,7 +222,7 @@ export class FetchAnalyticsService {
           break;
       }
 
-      grouped.set(period, (grouped.get(period) || 0) + item.value);
+      grouped.set(period, (grouped.get(period) ?? 0) + item.value);
     });
 
     return Array.from(grouped.entries())

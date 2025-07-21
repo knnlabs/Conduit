@@ -61,7 +61,6 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.POST,
         headers: {
-          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -86,7 +85,7 @@ export class FetchMonitoringService {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -414,7 +413,6 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.GET,
         headers: {
-          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -438,7 +436,7 @@ export class FetchMonitoringService {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -517,7 +515,6 @@ export class FetchMonitoringService {
       {
         method: HttpMethod.POST,
         headers: {
-          ...this.getClientHeaders(),
           ...config?.headers,
           'Accept': 'text/event-stream',
         },
@@ -542,7 +539,7 @@ export class FetchMonitoringService {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -674,12 +671,12 @@ export class FetchMonitoringService {
    */
   generateAlertSummary(alerts: AlertDto[]): string {
     const byStatus = alerts.reduce((acc, alert) => {
-      acc[alert.status] = (acc[alert.status] || 0) + 1;
+      acc[alert.status] = (acc[alert.status] ?? 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     const bySeverity = alerts.reduce((acc, alert) => {
-      acc[alert.severity] = (acc[alert.severity] || 0) + 1;
+      acc[alert.severity] = (acc[alert.severity] ?? 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -764,8 +761,4 @@ export class FetchMonitoringService {
     }
   }
   
-  private getClientHeaders(): Record<string, string> {
-    // @ts-ignore - accessing private method for headers
-    return (this.client as any).getHeaders?.() || {};
-  }
 }
