@@ -88,35 +88,50 @@ namespace ConduitLLM.Tests.Core.Services
             _mockDatabase.Setup(db => db.SetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, RedisValue value, CommandFlags flags) =>
                 {
-                    _instanceSet.Add(value.ToString());
-                    return true;
+                    lock (_lockObj)
+                    {
+                        _instanceSet.Add(value.ToString());
+                        return true;
+                    }
                 });
 
             _mockDatabase.Setup(db => db.SetRemoveAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, RedisValue value, CommandFlags flags) =>
                 {
-                    return _instanceSet.Remove(value.ToString());
+                    lock (_lockObj)
+                    {
+                        return _instanceSet.Remove(value.ToString());
+                    }
                 });
 
             _mockDatabase.Setup(db => db.SetMembersAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, CommandFlags flags) =>
                 {
-                    return _instanceSet.Select(i => (RedisValue)i).ToArray();
+                    lock (_lockObj)
+                    {
+                        return _instanceSet.Select(i => (RedisValue)i).ToArray();
+                    }
                 });
 
             // String operations for heartbeat
             _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, RedisValue value, TimeSpan? expiry, bool keepTtl, When when, CommandFlags flags) =>
                 {
-                    _redisStorage[key.ToString()] = value;
-                    return true;
+                    lock (_lockObj)
+                    {
+                        _redisStorage[key.ToString()] = value;
+                        return true;
+                    }
                 });
 
             _mockDatabase.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, CommandFlags flags) =>
                 {
-                    var keyStr = key.ToString();
-                    return _redisStorage.ContainsKey(keyStr) ? _redisStorage[keyStr] : RedisValue.Null;
+                    lock (_lockObj)
+                    {
+                        var keyStr = key.ToString();
+                        return _redisStorage.ContainsKey(keyStr) ? _redisStorage[keyStr] : RedisValue.Null;
+                    }
                 });
 
             // Sorted set operations for response times - matching actual usage without When parameter
@@ -449,12 +464,18 @@ namespace ConduitLLM.Tests.Core.Services
             await instance2.RegisterInstanceAsync();
 
             // Ensure instances are in the set (RegisterInstanceAsync should have done this)
-            _instanceSet.Add("instance-1");
-            _instanceSet.Add("instance-2");
+            lock (_lockObj)
+            {
+                _instanceSet.Add("instance-1");
+                _instanceSet.Add("instance-2");
+            }
 
             // Ensure heartbeats are set for active instances
-            _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-            _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            lock (_lockObj)
+            {
+                _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            }
 
             var region = CacheRegion.ModelMetadata;
 
@@ -515,13 +536,22 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Act - Register instances with different heartbeat times
             await instance1.RegisterInstanceAsync();
-            _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            lock (_lockObj)
+            {
+                _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            }
 
             await instance2.RegisterInstanceAsync();
-            _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeMilliseconds().ToString();
+            lock (_lockObj)
+            {
+                _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeMilliseconds().ToString();
+            }
 
             await instance3.RegisterInstanceAsync();
-            _redisStorage[$"conduit:cache:heartbeat:instance-3"] = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeMilliseconds().ToString(); // Expired
+            lock (_lockObj)
+            {
+                _redisStorage[$"conduit:cache:heartbeat:instance-3"] = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeMilliseconds().ToString(); // Expired
+            }
 
             // Assert
             var activeInstances = (await instance1.GetActiveInstancesAsync()).ToList();
