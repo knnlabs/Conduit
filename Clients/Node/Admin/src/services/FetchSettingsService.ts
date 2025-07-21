@@ -11,7 +11,7 @@ import type {
 // Define the batch update types that match the issue requirements
 export interface SettingUpdate {
   key: string;
-  value: any;
+  value: unknown;
 }
 
 export interface SettingsListResponseDto {
@@ -179,11 +179,14 @@ export class FetchSettingsService {
     const categoryMap = new Map<string, GlobalSettingDto[]>();
     
     for (const setting of allSettings.settings) {
-      const category = setting.category || 'General';
+      const category = setting.category ?? 'General';
       if (!categoryMap.has(category)) {
         categoryMap.set(category, []);
       }
-      categoryMap.get(category)!.push(setting);
+      const categorySettings = categoryMap.get(category);
+      if (categorySettings) {
+        categorySettings.push(setting);
+      }
     }
 
     // Convert to array of SettingCategory
@@ -217,7 +220,7 @@ export class FetchSettingsService {
   /**
    * Helper method to get typed setting value
    */
-  async getTypedSettingValue<T = any>(key: string, config?: RequestConfig): Promise<T> {
+  async getTypedSettingValue<T = unknown>(key: string, config?: RequestConfig): Promise<T> {
     const setting = await this.getGlobalSetting(key, config);
     
     switch (setting.dataType) {

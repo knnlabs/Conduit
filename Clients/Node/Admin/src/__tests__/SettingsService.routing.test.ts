@@ -217,7 +217,7 @@ describe('SettingsService - Routing Methods', () => {
   });
 
   describe('testRouterRule', () => {
-    it('should validate a valid rule', async () => {
+    it('should validate a valid rule', () => {
       const rule: RouterRule = {
         name: 'Test Rule',
         condition: { type: 'model', operator: 'equals', value: 'gpt-4' },
@@ -226,14 +226,14 @@ describe('SettingsService - Routing Methods', () => {
         isEnabled: true,
       };
 
-      const result = await service.testRouterRule(rule);
+      const result = service.testRouterRule(rule);
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Rule validation passed');
       expect(result.details).toBeDefined();
     });
 
-    it('should fail validation for rule without name', async () => {
+    it('should fail validation for rule without name', () => {
       const rule: RouterRule = {
         name: '',
         condition: { type: 'model', operator: 'equals', value: 'gpt-4' },
@@ -242,13 +242,13 @@ describe('SettingsService - Routing Methods', () => {
         isEnabled: true,
       };
 
-      const result = await service.testRouterRule(rule);
+      const result = service.testRouterRule(rule);
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Rule name is required');
     });
 
-    it('should fail validation for invalid condition', async () => {
+    it('should fail validation for invalid condition', () => {
       const rule: RouterRule = {
         name: 'Test Rule',
         condition: {} as any,
@@ -257,13 +257,13 @@ describe('SettingsService - Routing Methods', () => {
         isEnabled: true,
       };
 
-      const result = await service.testRouterRule(rule);
+      const result = service.testRouterRule(rule);
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Rule condition is invalid');
     });
 
-    it('should fail validation for invalid action', async () => {
+    it('should fail validation for invalid action', () => {
       const rule: RouterRule = {
         name: 'Test Rule',
         condition: { type: 'model', operator: 'equals', value: 'gpt-4' },
@@ -272,7 +272,7 @@ describe('SettingsService - Routing Methods', () => {
         isEnabled: true,
       };
 
-      const result = await service.testRouterRule(rule);
+      const result = service.testRouterRule(rule);
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Rule action is invalid');

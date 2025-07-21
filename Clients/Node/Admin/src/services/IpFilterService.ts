@@ -279,7 +279,7 @@ export class IpFilterService extends FetchBaseApiClient {
     const response = await this.get<Blob>(url, {
       headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' },
       responseType: 'blob',
-    } as any);
+    });
 
     return response;
   }

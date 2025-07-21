@@ -173,7 +173,7 @@ export class ModelCostService extends FetchBaseApiClient {
 
   async getCurrentCost(modelId: string): Promise<ModelCostDto | null> {
     const costs = await this.getByModel(modelId);
-    return costs.find(c => c.isActive) || null;
+    return costs.find(c => c.isActive) ?? null;
   }
 
   async updateCosts(models: string[], inputCost: number, outputCost: number): Promise<void> {

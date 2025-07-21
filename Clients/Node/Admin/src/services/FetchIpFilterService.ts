@@ -281,7 +281,7 @@ export class FetchIpFilterService {
     const response = await this.client['get']<Blob>(url, {
       headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' },
       responseType: 'blob',
-    } as any);
+    });
 
     return response;
   }

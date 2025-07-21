@@ -41,7 +41,7 @@ interface DiscoveredModelDto {
   id: string;
   provider?: string;
   displayName: string;
-  capabilities: Record<string, any>;
+  capabilities: Record<string, unknown>;
 }
 
 /**

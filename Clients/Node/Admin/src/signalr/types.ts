@@ -18,7 +18,7 @@ export interface SignalRObject {
   [key: string]: SignalRValue;
 }
 
-export interface SignalRArray extends Array<SignalRValue> {}
+export type SignalRArray = Array<SignalRValue>;
 
 /**
  * Type for SignalR method arguments

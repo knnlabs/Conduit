@@ -43,9 +43,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     // Ensure navigation state hub is initialized
-    if (!this.navigationStateHub) {
-      this.navigationStateHub = await this.signalRService.getOrCreateNavigationStateHub();
-    }
+    this.navigationStateHub ??= this.signalRService.getOrCreateNavigationStateHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -86,9 +84,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     callback: ModelDiscoveredCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
-    if (!this.navigationStateHub) {
-      this.navigationStateHub = await this.signalRService.getOrCreateNavigationStateHub();
-    }
+    this.navigationStateHub ??= this.signalRService.getOrCreateNavigationStateHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -123,9 +119,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     callback: ProviderHealthChangeCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
-    if (!this.navigationStateHub) {
-      this.navigationStateHub = await this.signalRService.getOrCreateNavigationStateHub();
-    }
+    this.navigationStateHub ??= this.signalRService.getOrCreateNavigationStateHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -160,9 +154,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     callback: VirtualKeyEventCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
-    if (!this.adminNotificationHub) {
-      this.adminNotificationHub = await this.signalRService.getOrCreateAdminNotificationHub();
-    }
+    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -197,9 +189,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     callback: ConfigurationChangeCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
-    if (!this.adminNotificationHub) {
-      this.adminNotificationHub = await this.signalRService.getOrCreateAdminNotificationHub();
-    }
+    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -234,9 +224,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     callback: AdminNotificationCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
-    if (!this.adminNotificationHub) {
-      this.adminNotificationHub = await this.signalRService.getOrCreateAdminNotificationHub();
-    }
+    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
 
     const subscriptionId = this.generateSubscriptionId();
 
@@ -305,9 +293,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Acknowledge an admin notification
    */
   async acknowledgeNotification(notificationId: string): Promise<void> {
-    if (!this.adminNotificationHub) {
-      this.adminNotificationHub = await this.signalRService.getOrCreateAdminNotificationHub();
-    }
+    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
     
     await this.adminNotificationHub.acknowledgeNotification(notificationId);
   }

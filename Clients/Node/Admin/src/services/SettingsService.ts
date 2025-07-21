@@ -286,7 +286,7 @@ export class SettingsService extends FetchBaseApiClient {
       await this.getGlobalSetting(key);
       // Setting exists, update it
       await this.updateGlobalSetting(key, { value });
-    } catch (error) {
+    } catch {
       // Setting doesn't exist, create it
       await this.createGlobalSetting({
         key,

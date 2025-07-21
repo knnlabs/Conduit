@@ -51,9 +51,9 @@ export interface RoutingSubscriptionResponse {
  * Response structure containing routing health data  
  */
 export interface RoutingHealthData {
-  health?: any; // This will be replaced with specific type
-  routes?: any; // This will be replaced with specific type
-  history?: any; // This will be replaced with specific type
+  health?: Record<string, unknown>; // This will be replaced with specific type
+  routes?: Record<string, unknown>; // This will be replaced with specific type
+  history?: Record<string, unknown>; // This will be replaced with specific type
   subscription?: {
     endpoint: string;
     connectionId: string;

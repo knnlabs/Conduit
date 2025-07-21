@@ -142,7 +142,7 @@ export class FetchModelMappingsService {
   async testCapability(
     id: number,
     capability: string,
-    testParams?: any,
+    testParams?: Record<string, unknown>,
     config?: RequestConfig
   ): Promise<CapabilityTestResult> {
     // Use the model alias endpoint instead of ID-based endpoint
@@ -195,7 +195,7 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
     const request: BulkModelMappingRequest = {
-      mappings: mappings as any, // Type compatibility
+      mappings: mappings as unknown as BulkModelMappingRequest['mappings'], // Type compatibility
       replaceExisting,
       validateProviderModels: true,
     };

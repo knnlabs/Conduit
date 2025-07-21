@@ -111,7 +111,7 @@ export class FetchSystemService {
       if (setting?.value) {
         return setting.value;
       }
-    } catch (error) {
+    } catch {
       // Key doesn't exist, we'll create it
     }
 
@@ -256,8 +256,8 @@ export class FetchSystemService {
       overall,
       components,
       metrics: {
-        cpu: systemInfo.runtime.cpuUsage || 0,
-        memory: systemInfo.runtime.memoryUsage || 0,
+        cpu: systemInfo.runtime.cpuUsage ?? 0,
+        memory: systemInfo.runtime.memoryUsage ?? 0,
         disk: 0, // Will be enhanced when disk monitoring is available
         activeConnections,
       },
@@ -291,14 +291,14 @@ export class FetchSystemService {
           headers: config?.headers,
         }
       );
-    } catch (error) {
+    } catch {
       // Fallback: construct from system info
       const systemInfo = await this.getSystemInfo(config);
       const activeConnections = await this.getActiveConnections(config);
       
       return {
-        cpuUsage: systemInfo.runtime.cpuUsage || 0,
-        memoryUsage: systemInfo.runtime.memoryUsage || 0,
+        cpuUsage: systemInfo.runtime.cpuUsage ?? 0,
+        memoryUsage: systemInfo.runtime.memoryUsage ?? 0,
         diskUsage: 0, // Will be enhanced when disk monitoring is available
         activeConnections,
         uptime: systemInfo.uptime,
@@ -324,7 +324,7 @@ export class FetchSystemService {
   async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusDto> {
     try {
       // Try to get from dedicated services endpoint
-      const response = await this.client['get']<any>(
+      const response = await this.client['get']<Record<string, unknown>>(
         ENDPOINTS.SYSTEM.SERVICES,
         {
           signal: config?.signal,
@@ -335,29 +335,44 @@ export class FetchSystemService {
 
       // Transform response to match ServiceStatusDto structure
       // The /api/health/services endpoint returns a different format, so we'll map it
+      const typedResponse = response as {
+        coreApi?: { status?: string; responseTime?: number; endpoint?: string };
+        adminApi?: { status?: string; responseTime?: number; endpoint?: string };
+        database?: { status?: string; responseTime?: number; connectionCount?: number };
+        cache?: { status?: string; responseTime?: number; hitRate?: number };
+      };
+      
+      // Helper function to ensure valid status values
+      const normalizeStatus = (status?: string): 'healthy' | 'degraded' | 'unhealthy' => {
+        if (status === 'healthy' || status === 'degraded' || status === 'unhealthy') {
+          return status;
+        }
+        return 'healthy'; // Default fallback
+      };
+      
       return {
         coreApi: {
-          status: response.coreApi?.status || 'healthy',
-          latency: response.coreApi?.responseTime || 0,
-          endpoint: response.coreApi?.endpoint || '/api',
+          status: normalizeStatus(typedResponse.coreApi?.status),
+          latency: typedResponse.coreApi?.responseTime ?? 0,
+          endpoint: typedResponse.coreApi?.endpoint ?? '/api',
         },
         adminApi: {
-          status: response.adminApi?.status || 'healthy',
-          latency: response.adminApi?.responseTime || 0,
-          endpoint: response.adminApi?.endpoint || '/api',
+          status: normalizeStatus(typedResponse.adminApi?.status),
+          latency: typedResponse.adminApi?.responseTime ?? 0,
+          endpoint: typedResponse.adminApi?.endpoint ?? '/api',
         },
         database: {
-          status: response.database?.status || 'healthy',
-          latency: response.database?.responseTime || 0,
-          connections: response.database?.connectionCount || 0,
+          status: normalizeStatus(typedResponse.database?.status),
+          latency: typedResponse.database?.responseTime ?? 0,
+          connections: typedResponse.database?.connectionCount ?? 0,
         },
         cache: {
-          status: response.cache?.status || 'healthy',
-          latency: response.cache?.responseTime || 0,
-          hitRate: response.cache?.hitRate || 0,
+          status: normalizeStatus(typedResponse.cache?.status),
+          latency: typedResponse.cache?.responseTime ?? 0,
+          hitRate: typedResponse.cache?.hitRate ?? 0,
         },
       };
-    } catch (error) {
+    } catch {
       // Fallback: construct from health and system info
       const health = await this.getHealth(config);
       
@@ -378,7 +393,7 @@ export class FetchSystemService {
         },
         database: {
           status: dbStatus,
-          latency: health.checks.database?.duration || 0,
+          latency: health.checks.database?.duration ?? 0,
           connections: 1, // Fallback value
         },
         cache: {
@@ -419,7 +434,7 @@ export class FetchSystemService {
   async getActiveConnections(config?: RequestConfig): Promise<number> {
     try {
       // Try to get from metrics endpoint
-      const metrics = await this.client['get']<any>(
+      const metrics = await this.client['get']<Record<string, unknown>>(
         ENDPOINTS.SYSTEM.METRICS,
         {
           signal: config?.signal,
@@ -429,14 +444,19 @@ export class FetchSystemService {
       );
       
       // Extract active connections from metrics if available
-      return metrics.activeConnections || metrics.database?.connectionCount || 0;
-    } catch (error) {
+      const typedMetrics = metrics as {
+        activeConnections?: number;
+        database?: { connectionCount?: number };
+      };
+      
+      return typedMetrics.activeConnections ?? typedMetrics.database?.connectionCount ?? 0;
+    } catch {
       // Fallback: estimate based on system load or return default
       const systemInfo = await this.getSystemInfo(config);
       
       // Simple heuristic: estimate connections based on memory usage
       // Higher memory usage might indicate more active connections
-      const memoryUsage = systemInfo.runtime.memoryUsage || 0;
+      const memoryUsage = systemInfo.runtime.memoryUsage ?? 0;
       const estimatedConnections = Math.max(1, Math.floor(memoryUsage / 10));
       
       return Math.min(estimatedConnections, 100); // Cap at reasonable maximum
@@ -477,7 +497,7 @@ export class FetchSystemService {
           headers: config?.headers,
         }
       );
-    } catch (error) {
+    } catch {
       // Fallback: construct from available health data
       const healthStatus = await this.getHealth(config);
       const systemInfo = await this.getSystemInfo(config);
@@ -508,7 +528,7 @@ export class FetchSystemService {
             id: `${componentName}-issue-${Date.now()}`,
             timestamp: new Date(now.getTime() - Math.random() * 3600000).toISOString(), // Random time in last hour
             type: 'system_issue',
-            message: check.description || `${componentName} experiencing issues`,
+            message: check.description ?? `${componentName} experiencing issues`,
             severity: check.status === 'degraded' ? 'warning' : 'error',
             source: componentName,
             metadata: {
@@ -524,7 +544,7 @@ export class FetchSystemService {
       events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
       return {
-        events: events.slice(0, limit || 50),
+        events: events.slice(0, limit ?? 50),
       };
     }
   }
@@ -566,9 +586,10 @@ export class FetchSystemService {
       connected = true;
       connectionCallbacks.forEach(cb => cb(true));
       
-      pollInterval = setInterval(async () => {
-        try {
-          const events = await this.getHealthEvents(10, config);
+      pollInterval = setInterval(() => {
+        void (async () => {
+          try {
+            const events = await this.getHealthEvents(10, config);
           
           // Filter new events since last check
           const newEvents = events.events.filter(event => {
@@ -599,13 +620,14 @@ export class FetchSystemService {
           if (events.events.length > 0) {
             lastEventTimestamp = events.events[0].timestamp;
           }
-        } catch (error) {
-          console.warn('Health events polling error:', error);
-          if (connected) {
-            connected = false;
-            connectionCallbacks.forEach(cb => cb(false));
+          } catch (error: unknown) {
+            console.warn('Health events polling error:', error);
+            if (connected) {
+              connected = false;
+              connectionCallbacks.forEach(cb => cb(false));
+            }
           }
-        }
+        })();
       }, 5000); // Poll every 5 seconds
     };
 
@@ -628,8 +650,8 @@ export class FetchSystemService {
         lastEventTimestamp = initialEvents.events[0].timestamp;
       }
       startPolling();
-    } catch (error) {
-      throw new Error(`Failed to establish health events subscription: ${error}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to establish health events subscription: ${String(error)}`);
     }
 
     return {

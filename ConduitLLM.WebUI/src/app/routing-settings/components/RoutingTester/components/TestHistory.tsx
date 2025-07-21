@@ -176,9 +176,9 @@ export function TestHistory({
                       </Group>
 
                       {/* Additional Info */}
-                      {(testCase.request.region ?? 
+                      {((testCase.request.region ?? false) || 
                         testCase.request.costThreshold !== undefined || 
-                        testCase.request.virtualKeyId ??
+                        (testCase.request.virtualKeyId ?? false) ||
                         Object.keys(testCase.request.customFields).length > 0) && (
                         <Group gap="xs">
                           {testCase.request.region && (

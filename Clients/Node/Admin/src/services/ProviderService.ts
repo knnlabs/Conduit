@@ -166,8 +166,8 @@ export class ProviderService extends FetchBaseApiClient {
     filters?: ProviderHealthFilters
   ): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
     const params = {
-      pageNumber: filters?.pageNumber || 1,
-      pageSize: filters?.pageSize || DEFAULT_PAGE_SIZE,
+      pageNumber: filters?.pageNumber ?? 1,
+      pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
       providerName: filters?.providerName,
       isHealthy: filters?.isHealthy,
       startDate: filters?.startDate,

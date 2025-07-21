@@ -26,7 +26,7 @@ export interface ProviderData {
     message?: string;
   };
   errorRate?: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 /**

@@ -2,17 +2,24 @@ import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ApiClientConfig } from '../client/types';
 import {
   NotificationType,
-  NotificationSeverity
+  NotificationSeverity,
+  type NotificationDto,
+  type CreateNotificationDto,
+  type UpdateNotificationDto,
+  type NotificationFilters,
+  type NotificationSummary,
+  type NotificationBulkResponse,
+  type NotificationStatistics
 } from '../models/system';
-import type {
-  NotificationDto,
-  CreateNotificationDto,
-  UpdateNotificationDto,
-  NotificationFilters,
-  NotificationSummary,
-  NotificationBulkResponse,
-  NotificationStatistics
-} from '../models/system';
+
+// Define valid sortable properties for type safety
+type SortableNotificationProperty = keyof Pick<NotificationDto, 'id' | 'type' | 'severity' | 'message' | 'isRead' | 'createdAt' | 'virtualKeyId'>;
+
+// Type guard function
+function isValidSortProperty(property: string): property is SortableNotificationProperty {
+  const validProperties: SortableNotificationProperty[] = ['id', 'type', 'severity', 'message', 'isRead', 'createdAt', 'virtualKeyId'];
+  return validProperties.includes(property as SortableNotificationProperty);
+}
 
 /**
  * Service for managing notifications through the Admin API
@@ -382,19 +389,29 @@ export class NotificationsService extends FetchBaseApiClient {
     }
 
     if (filters.startDate) {
-      notifications = notifications.filter(n => new Date(n.createdAt) >= filters.startDate!);
+      const startDate = filters.startDate;
+      notifications = notifications.filter(n => new Date(n.createdAt) >= startDate);
     }
 
     if (filters.endDate) {
-      notifications = notifications.filter(n => new Date(n.createdAt) <= filters.endDate!);
+      const endDate = filters.endDate;
+      notifications = notifications.filter(n => new Date(n.createdAt) <= endDate);
     }
 
     // Apply sorting
-    if (filters.sortBy) {
+    if (filters.sortBy && isValidSortProperty(filters.sortBy)) {
       const sortDirection = filters.sortDirection === 'asc' ? 1 : -1;
+      const sortBy = filters.sortBy as SortableNotificationProperty;
       notifications.sort((a, b) => {
-        const aValue = (a as any)[filters.sortBy!];
-        const bValue = (b as any)[filters.sortBy!];
+        const aValue = a[sortBy];
+        const bValue = b[sortBy];
+        
+        // Handle undefined/null values by treating them as less than any defined value
+        if (aValue === null || aValue === undefined) {
+          if (bValue === null || bValue === undefined) return 0;
+          return -1 * sortDirection;
+        }
+        if (bValue === null || bValue === undefined) return 1 * sortDirection;
         
         if (aValue < bValue) return -1 * sortDirection;
         if (aValue > bValue) return 1 * sortDirection;

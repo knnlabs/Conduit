@@ -32,14 +32,14 @@ export interface ErrorMessage {
   correlationId: string;
   timestamp: string;
   messageType: string;
-  headers: Record<string, any>;
-  body?: any;
+  headers: Record<string, unknown>;
+  body?: unknown;
   error: ErrorDetails;
   retryCount: number;
 }
 
 export interface ErrorMessageDetail extends ErrorMessage {
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   fullException?: string;
 }
 

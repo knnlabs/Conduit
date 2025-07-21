@@ -83,7 +83,7 @@ export class FetchModelCostService {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          queryParams.append(key, String(value));
         }
       });
     }
@@ -276,7 +276,7 @@ export class FetchModelCostService {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          queryParams.append(key, String(value));
         }
       });
     }

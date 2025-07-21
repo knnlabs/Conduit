@@ -50,7 +50,7 @@ export class ProviderModelsService extends FetchBaseApiClient {
       virtualKey?: string;
     }
   ): Promise<ProviderModel[]> {
-    const params: Record<string, any> = {};
+    const params: Record<string, unknown> = {};
     
     if (options?.forceRefresh) {
       params.forceRefresh = true;
@@ -108,7 +108,7 @@ export class ProviderModelsService extends FetchBaseApiClient {
     providerId: string,
     virtualKey?: string
   ): Promise<ProviderModel[]> {
-    const params: Record<string, any> = {};
+    const params: Record<string, unknown> = {};
     if (virtualKey) {
       params.virtualKey = virtualKey;
     }

@@ -74,7 +74,7 @@ export class SecurityService extends FetchBaseApiClient {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          queryParams.append(key, String(value));
         }
       });
     }
@@ -127,7 +127,7 @@ export class SecurityService extends FetchBaseApiClient {
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          queryParams.append(key, String(value));
         }
       });
     }
@@ -136,7 +136,7 @@ export class SecurityService extends FetchBaseApiClient {
     const response = await this.get<Blob>(url, {
       headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' },
       responseType: 'blob',
-    } as any);
+    });
 
     return response;
   }
@@ -161,7 +161,7 @@ export class SecurityService extends FetchBaseApiClient {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          queryParams.append(key, String(value));
         }
       });
     }
@@ -236,7 +236,7 @@ export class SecurityService extends FetchBaseApiClient {
     const response = await this.get<Blob>(url, {
       headers: { Accept: format === 'pdf' ? 'application/pdf' : 'application/json' },
       responseType: 'blob',
-    } as any);
+    });
 
     return response;
   }

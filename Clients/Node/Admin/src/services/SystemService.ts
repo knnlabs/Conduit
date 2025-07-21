@@ -283,7 +283,7 @@ export class SystemService extends FetchBaseApiClient {
       if (setting?.value) {
         return setting.value;
       }
-    } catch (error) {
+    } catch {
       // Key doesn't exist, we'll create it
       this.log('debug', 'WebUI virtual key not found in GlobalSettings, creating new one');
     }
