@@ -6,6 +6,7 @@ This directory contains guides for deploying and operating Conduit in production
 
 - **[Deployment Configuration](./DEPLOYMENT-CONFIGURATION.md)** - Comprehensive production deployment guide
 - **[Docker Optimization](./docker-optimization.md)** - Container performance and security best practices
+- **[CI/CD Maintenance Guide](./ci-cd-maintenance-guide.md)** - GitHub Actions workflow maintenance and troubleshooting
 
 ## Quick Start
 

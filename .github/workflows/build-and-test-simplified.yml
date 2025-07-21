@@ -1,0 +1,90 @@
+  # Build and Test - Simplified Version
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: codeql-analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Restore local tools
+      run: dotnet tool restore
+
+    # Main build and test step using our wrapper script
+    - name: Build and Test
+      id: build-test
+      run: |
+        chmod +x ./scripts/ci-build-test.sh
+        ./scripts/ci-build-test.sh 2>&1 | tee build-test.log
+        echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+    # Coverage analysis (informational only)
+    - name: Analyze Coverage
+      if: always()
+      run: |
+        if [ -f "./scripts/check-coverage-info.sh" ]; then
+          chmod +x ./scripts/check-coverage-info.sh
+          ./scripts/check-coverage-info.sh || true  # Never fail
+        fi
+
+    # Upload artifacts for debugging (only on failure or if requested)
+    - name: Upload Test Results
+      if: failure() || github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          ./TestResults/
+          ./build-test.log
+        retention-days: 7
+
+    - name: Upload Coverage Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./CoverageReport/
+        retention-days: 30
+        if-no-files-found: ignore  # Don't fail if no coverage
+
+    # Simple build artifacts (minimal)
+    - name: Upload Build Artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          **/bin/Release/*.dll
+          **/bin/Release/*.exe
+          !**/bin/Release/**/*.pdb
+          !**/bin/Release/**/*.xml
+          !**/bin/Release/**/ref/
+        retention-days: 1
+
+    # Check if we should fail the job
+    - name: Check Build Status
+      if: always()
+      run: |
+        EXIT_CODE="${{ steps.build-test.outputs.exit_code }}"
+        if [ "$EXIT_CODE" != "0" ]; then
+          echo "❌ Build or tests failed with exit code: $EXIT_CODE"
+          exit $EXIT_CODE
+        fi
+        echo "✅ Build and tests passed!"
