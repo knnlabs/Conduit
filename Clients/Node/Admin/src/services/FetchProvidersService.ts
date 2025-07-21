@@ -7,6 +7,11 @@ import type {
   ProviderWithHealthDto,
   ProviderHealthMetricsDto
 } from '../models/providerHealth';
+import type {
+  ProviderData,
+  HealthDataResponse,
+  MetricsDataResponse
+} from '../models/providerResponses';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
@@ -290,7 +295,7 @@ export class FetchProvidersService {
         ? ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerId)
         : ENDPOINTS.HEALTH.STATUS;
         
-      const healthData = await this.client['get']<any>(
+      const healthData = await this.client['get']<HealthDataResponse>(
         endpoint,
         {
           signal: config?.signal,
@@ -304,17 +309,17 @@ export class FetchProvidersService {
         // Single provider response
         return {
           providers: [{
-            id: healthData.providerId || providerId,
-            name: healthData.providerName || providerId,
-            status: healthData.status || 'unknown',
-            lastChecked: healthData.lastChecked || new Date().toISOString(),
-            responseTime: healthData.avgLatency || 0,
-            uptime: healthData.uptime?.percentage || 0,
-            errorRate: healthData.metrics?.issues?.rate || 0,
+            id: healthData.providerId ?? providerId,
+            name: healthData.providerName ?? providerId,
+            status: (healthData.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
+            lastChecked: healthData.lastChecked ?? new Date().toISOString(),
+            responseTime: healthData.avgLatency ?? 0,
+            uptime: healthData.uptime?.percentage ?? 0,
+            errorRate: healthData.metrics?.issues?.rate ?? 0,
             details: healthData.lastIncident ? {
-              lastError: healthData.lastIncident.message,
+              lastError: healthData.lastIncident.message ?? 'Unknown error',
               consecutiveFailures: 0,
-              lastSuccessfulCheck: healthData.lastChecked,
+              lastSuccessfulCheck: healthData.lastChecked ?? new Date().toISOString(),
             } : undefined,
           }]
         };
@@ -322,15 +327,15 @@ export class FetchProvidersService {
         // Multiple providers response
         const providers = Array.isArray(healthData.providers) ? healthData.providers : [];
         return {
-          providers: providers.map((provider: any) => ({
-            id: provider.providerId || provider.id,
-            name: provider.providerName || provider.name,
-            status: provider.status || 'unknown',
-            lastChecked: provider.lastChecked || new Date().toISOString(),
-            responseTime: provider.avgLatency || 0,
-            uptime: provider.uptime || 0,
-            errorRate: provider.errorRate || 0,
-            details: provider.details,
+          providers: providers.map((provider: ProviderData) => ({
+            id: provider.providerId ?? provider.id ?? '',
+            name: provider.providerName ?? provider.name ?? '',
+            status: (provider.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
+            lastChecked: provider.lastChecked ?? new Date().toISOString(),
+            responseTime: provider.avgLatency ?? 0,
+            uptime: typeof provider.uptime === 'object' ? provider.uptime.percentage ?? 0 : provider.uptime ?? 0,
+            errorRate: provider.errorRate ?? 0,
+            details: provider.details as { lastError?: string; consecutiveFailures?: number; lastSuccessfulCheck?: string; } | undefined,
           }))
         };
       }
@@ -340,11 +345,11 @@ export class FetchProvidersService {
       
       return {
         providers: providersResponse.items.map(provider => ({
-          id: provider.id?.toString() || '',
+          id: provider.id?.toString() ?? '',
           name: provider.providerName,
           status: provider.isEnabled 
             ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
-            : 'unknown',
+            : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
           lastChecked: new Date().toISOString(),
           responseTime: Math.floor(Math.random() * 200) + 50,
           uptime: 95 + Math.random() * 4.9,
@@ -391,10 +396,10 @@ export class FetchProvidersService {
           providerName: provider.providerName,
           apiKey: provider.apiKey ? '***masked***' : undefined,
           health: {
-            status: healthData?.status || 'unknown',
-            responseTime: healthData?.responseTime || 0,
-            uptime: healthData?.uptime || 0,
-            errorRate: healthData?.errorRate || 0,
+            status: healthData?.status ?? 'unknown',
+            responseTime: healthData?.responseTime ?? 0,
+            uptime: healthData?.uptime ?? 0,
+            errorRate: healthData?.errorRate ?? 0,
           }
         };
       });
@@ -403,15 +408,15 @@ export class FetchProvidersService {
       const providersResponse = await this.list(1, 100, config);
       
       return providersResponse.items.map(provider => ({
-        id: provider.id?.toString() || '',
+        id: provider.id?.toString() ?? '',
         name: provider.providerName,
-        isEnabled: provider.isEnabled || false,
+        isEnabled: provider.isEnabled ?? false,
         providerName: provider.providerName,
         apiKey: provider.apiKey ? '***masked***' : undefined,
         health: {
           status: provider.isEnabled 
             ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
-            : 'unknown',
+            : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
           responseTime: Math.floor(Math.random() * 200) + 50,
           uptime: 95 + Math.random() * 4.9,
           errorRate: Math.random() * 10,
@@ -447,7 +452,7 @@ export class FetchProvidersService {
       // Try to get detailed metrics from performance endpoint
       const endpoint = `${ENDPOINTS.HEALTH.PERFORMANCE(providerId)}${searchParams.toString() ? `?${searchParams}` : ''}`;
       
-      const metricsData = await this.client['get']<any>(
+      const metricsData = await this.client['get']<MetricsDataResponse>(
         endpoint,
         {
           signal: config?.signal,
@@ -459,22 +464,22 @@ export class FetchProvidersService {
       // Transform response to expected format
       return {
         providerId,
-        providerName: metricsData.providerName || providerId,
+        providerName: metricsData.providerName ?? providerId,
         metrics: {
-          totalRequests: metricsData.totalRequests || 0,
-          failedRequests: metricsData.failedRequests || 0,
-          avgResponseTime: metricsData.avgResponseTime || 0,
-          p95ResponseTime: metricsData.p95ResponseTime || 0,
-          p99ResponseTime: metricsData.p99ResponseTime || 0,
-          availability: metricsData.availability || 0,
-          endpoints: metricsData.endpoints || [],
-          models: metricsData.models || [],
-          rateLimit: metricsData.rateLimit || {
+          totalRequests: metricsData.totalRequests ?? 0,
+          failedRequests: metricsData.failedRequests ?? 0,
+          avgResponseTime: metricsData.avgResponseTime ?? 0,
+          p95ResponseTime: metricsData.p95ResponseTime ?? 0,
+          p99ResponseTime: metricsData.p99ResponseTime ?? 0,
+          availability: metricsData.availability ?? 0,
+          endpoints: metricsData.endpoints ?? [],
+          models: metricsData.models ?? [],
+          rateLimit: metricsData.rateLimit ?? {
             requests: { used: 0, limit: 1000, reset: new Date(Date.now() + 3600000).toISOString() },
             tokens: { used: 0, limit: 100000, reset: new Date(Date.now() + 3600000).toISOString() }
           }
         },
-        incidents: metricsData.incidents || []
+        incidents: metricsData.incidents ?? []
       };
     } catch {
       // Fallback: generate realistic health metrics
@@ -494,13 +499,13 @@ export class FetchProvidersService {
           endpoints: [
             {
               name: '/v1/chat/completions',
-              status: Math.random() > 0.1 ? 'healthy' : 'degraded',
+              status: (Math.random() > 0.1 ? 'healthy' : 'degraded') as 'healthy' | 'degraded' | 'down',
               responseTime: Math.floor(Math.random() * 150) + 50,
               lastCheck: new Date().toISOString()
             },
             {
               name: '/v1/embeddings',
-              status: Math.random() > 0.05 ? 'healthy' : 'degraded',
+              status: (Math.random() > 0.05 ? 'healthy' : 'degraded') as 'healthy' | 'degraded' | 'down',
               responseTime: Math.floor(Math.random() * 100) + 30,
               lastCheck: new Date().toISOString()
             }

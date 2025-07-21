@@ -16,6 +16,10 @@ import type {
   ProviderHealthHistoryOptions,
   ProviderHealthHistoryResponse,
 } from '../models/providerHealth';
+import type {
+  HealthHistoryData,
+  HealthConfigurationData
+} from '../models/providerResponses';
 
 /**
  * Type-safe Provider Health service using native fetch
@@ -120,7 +124,7 @@ export class FetchProviderHealthService {
     startDate?: string,
     endDate?: string,
     config?: RequestConfig
-  ): Promise<any[]> {
+  ): Promise<HealthHistoryData[]> {
     const queryParams = new URLSearchParams();
     if (startDate) queryParams.append('startDate', startDate);
     if (endDate) queryParams.append('endDate', endDate);
@@ -130,7 +134,7 @@ export class FetchProviderHealthService {
       ? `${ENDPOINTS.HEALTH.HISTORY}?${queryString}`
       : ENDPOINTS.HEALTH.HISTORY;
 
-    return this.client['get']<any[]>(
+    return this.client['get']<HealthHistoryData[]>(
       url,
       {
         signal: config?.signal,
@@ -231,8 +235,8 @@ export class FetchProviderHealthService {
   /**
    * Get provider health configurations
    */
-  async getHealthConfigurations(config?: RequestConfig): Promise<any[]> {
-    return this.client['get']<any[]>(
+  async getHealthConfigurations(config?: RequestConfig): Promise<HealthConfigurationData[]> {
+    return this.client['get']<HealthConfigurationData[]>(
       ENDPOINTS.HEALTH.CONFIGURATIONS,
       {
         signal: config?.signal,
@@ -248,8 +252,8 @@ export class FetchProviderHealthService {
   async getProviderHealthConfiguration(
     providerId: string,
     config?: RequestConfig
-  ): Promise<any> {
-    return this.client['get']<any>(
+  ): Promise<HealthConfigurationData> {
+    return this.client['get']<HealthConfigurationData>(
       ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
       {
         signal: config?.signal,
@@ -263,10 +267,10 @@ export class FetchProviderHealthService {
    * Create health configuration for a provider
    */
   async createHealthConfiguration(
-    data: any,
+    data: Partial<HealthConfigurationData>,
     config?: RequestConfig
-  ): Promise<any> {
-    return this.client['post']<any, any>(
+  ): Promise<HealthConfigurationData> {
+    return this.client['post']<HealthConfigurationData, Partial<HealthConfigurationData>>(
       ENDPOINTS.HEALTH.CONFIGURATIONS,
       data,
       {
@@ -282,10 +286,10 @@ export class FetchProviderHealthService {
    */
   async updateHealthConfiguration(
     providerId: string,
-    data: any,
+    data: Partial<HealthConfigurationData>,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, any>(
+    return this.client['put']<void, Partial<HealthConfigurationData>>(
       ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
       data,
       {
@@ -367,9 +371,9 @@ export class FetchProviderHealthService {
       return {
         dataPoints: historyData.dataPoints.map(point => ({
           timestamp: point.timestamp,
-          responseTime: point.latency || 0, // Map latency to responseTime
-          errorRate: point.errorRate || 0,
-          availability: point.uptime || 0, // Map uptime to availability
+          responseTime: point.latency ?? 0, // Map latency to responseTime
+          errorRate: point.errorRate ?? 0,
+          availability: point.uptime ?? 0, // Map uptime to availability
         })),
         incidents: options.includeIncidents ? historyData.incidents.map(incident => ({
           id: incident.id,
@@ -379,7 +383,7 @@ export class FetchProviderHealthService {
             ? new Date(incident.endTime).getTime() - new Date(incident.startTime).getTime()
             : 0,
           message: incident.type, // Use type as message fallback since message doesn't exist
-          resolved: !!incident.endTime
+          resolved: Boolean(incident.endTime)
         })) : []
       };
     } catch {
@@ -520,7 +524,8 @@ export class FetchProviderHealthService {
 
     const totalRecoveryTime = resolvedIncidents.reduce((sum, incident) => {
       const start = new Date(incident.startTime).getTime();
-      const end = new Date(incident.endTime!).getTime();
+      // We already filtered for incidents with endTime
+      const end = incident.endTime ? new Date(incident.endTime).getTime() : start;
       return sum + (end - start) / 1000; // Convert to seconds
     }, 0);
 
