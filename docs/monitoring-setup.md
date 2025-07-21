@@ -60,6 +60,14 @@ Conduit implements comprehensive monitoring and observability for production dep
 - **RabbitMQ queues**: `conduit_rabbitmq_*`
 - **System resources**: `conduit_process_*`
 
+### 3a. Cache Statistics Metrics
+- **Hit/miss rates**: `conduit_cache_hits_total`, `conduit_cache_misses_total`
+- **Hit rate percentage**: `conduit_cache_hit_rate`
+- **Response times**: `conduit_cache_response_time_seconds`
+- **Active instances**: `conduit_cache_statistics_active_instances`
+- **Aggregation latency**: `conduit_cache_statistics_aggregation_latency_ms`
+- **Statistics drift**: `conduit_cache_statistics_max_drift_percentage`
+
 ### 4. SignalR Metrics
 - **Active connections**: `conduit_signalr_connections_active`
 - **Messages sent/received**: `conduit_signalr_messages_total`
@@ -214,6 +222,27 @@ Alert qualities:
 - Symptom-based: User impact focused
 - Tested: Verified in staging
 - Documented: Runbook linked
+
+#### Cache Statistics Alerts
+```yaml
+# Critical: No active cache statistics instances
+- alert: CacheStatisticsNoActiveInstances
+  expr: conduit_cache_statistics_active_instances == 0
+  for: 2m
+  severity: critical
+  
+# Warning: High statistics aggregation latency
+- alert: CacheStatisticsSlowAggregation
+  expr: conduit_cache_statistics_aggregation_latency_ms > 500
+  for: 5m
+  severity: warning
+  
+# Warning: Statistics drift between instances
+- alert: CacheStatisticsDrift
+  expr: conduit_cache_statistics_max_drift_percentage > 10
+  for: 10m
+  severity: warning
+```
 
 ### 5. Dashboard Guidelines
 - One dashboard per service/domain

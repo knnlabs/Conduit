@@ -94,6 +94,34 @@ REDIS_URL_SIGNALR=redis://redis-signalr:6379/2
 - **Provider Health**: 5-minute health checks with real-time updates
 - **Performance Metrics**: Prometheus integration for detailed observability
 
+### Distributed Cache Statistics
+ConduitLLM implements a sophisticated distributed cache statistics system that scales horizontally:
+
+**Architecture:**
+- **Hybrid Collection**: Local in-memory collection with Redis-based aggregation
+- **Auto-Discovery**: Instances automatically register and report statistics
+- **Eventual Consistency**: Statistics aggregated with 1-second grace period
+- **Performance**: Sub-100ms aggregation for 1000+ instances
+
+**Key Features:**
+- **Instance Tracking**: Heartbeat-based instance health monitoring
+- **Accurate Aggregation**: Per-region statistics across all instances
+- **Health Monitoring**: Built-in health checks for statistics accuracy
+- **Alert Integration**: Configurable thresholds for drift and latency
+
+**Redis Key Structure:**
+```
+conduit:cache:stats:{instanceId}:{region}     # Per-instance stats
+conduit:cache:instances                        # Active instances
+conduit:cache:stats:aggregated:{region}       # Cached results
+```
+
+**Scaling Limits:**
+- Maximum instances: 1000 per Redis instance
+- Aggregation latency: <100ms target
+- Memory overhead: ~100KB per instance per region
+- Statistics drift tolerance: 5% configurable
+
 ## 🎯 Future Scaling Roadmap
 
 ### Phase 2: Beyond 10K Sessions (Next Quarter)

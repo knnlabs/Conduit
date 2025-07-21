@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.HealthChecks;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -121,6 +122,14 @@ namespace ConduitLLM.Core.Extensions
 
             // Register distributed statistics collector
             services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+            
+            // Register statistics health check
+            services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
+            services.AddHostedService(sp => 
+            {
+                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
+                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
+            });
 
             // Register hybrid collector as the main statistics collector
             services.AddSingleton<ICacheStatisticsCollector>(sp =>
@@ -146,7 +155,8 @@ namespace ConduitLLM.Core.Extensions
             // Register health checks
             services.AddHealthChecks()
                 .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager")
-                .AddRedis(redisConnectionString, name: "redis_cache");
+                .AddRedis(redisConnectionString, name: "redis_cache")
+                .AddCheck<CacheStatisticsHealthCheckAdapter>("cache_statistics");
 
             return services;
         }
@@ -215,6 +225,14 @@ namespace ConduitLLM.Core.Extensions
 
                 // Register distributed statistics collector
                 services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+                
+                // Register statistics health check
+                services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
+                services.AddHostedService(sp => 
+            {
+                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
+                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
+            });
             }
 
             // Register statistics collector (hybrid if Redis is available, local otherwise)

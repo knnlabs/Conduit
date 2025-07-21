@@ -50,7 +50,7 @@ namespace ConduitLLM.Core.Caching
                         provider.GetRequiredService<ICacheMetricsService>(),
                         provider.GetRequiredService<ICacheRegistry>(),
                         provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
-                    HealthStatus.Unhealthy,
+                    Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                     new[] { "cache", "infrastructure" }));
             });
 
@@ -93,7 +93,7 @@ namespace ConduitLLM.Core.Caching
                         provider.GetRequiredService<ICacheMetricsService>(),
                         provider.GetRequiredService<ICacheRegistry>(),
                         provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
-                    HealthStatus.Unhealthy,
+                    Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                     new[] { "cache", "infrastructure" }));
             });
 

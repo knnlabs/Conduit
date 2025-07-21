@@ -31,7 +31,7 @@ namespace ConduitLLM.Admin.Extensions
                     serviceProvider.GetRequiredService<IAudioProviderConfigRepository>(),
                     serviceProvider.GetRequiredService<ILLMClientFactory>(),
                     serviceProvider.GetRequiredService<ILogger<AudioProviderHealthCheck>>()),
-                HealthStatus.Degraded,
+                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
                 tag != null ? new[] { tag } : null));
         }
     }

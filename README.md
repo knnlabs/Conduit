@@ -460,6 +460,7 @@ See [TUI Documentation](ConduitLLM.TUI/README.md) for detailed usage instruction
 
 See the `docs/` directory for detailed documentation:
 
+
 ### Core Documentation
 - [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
@@ -483,6 +484,7 @@ See the `docs/` directory for detailed documentation:
 - [Configuration Guide](docs/Configuration-Guide.md)
 - [Environment Variables](docs/Environment-Variables.md)
 - [Cache Configuration](docs/Cache-Configuration.md)
+- [Distributed Cache Statistics](docs/claude/distributed-cache-statistics.md) - **Horizontal Scaling Guide**
 
 ### API Reference
 - [API Reference](docs/api-reference/API-REFERENCE.md)

@@ -68,6 +68,12 @@ This directory contains operational runbooks for handling various incidents and 
 - **Impact**: Increased latency, DB load
 - **First Response**: Review cache strategy
 
+### [Cache Statistics Issues](./cache-statistics.md)
+- **Severity**: Warning
+- **Trigger**: Statistics showing zeros, high aggregation latency, drift
+- **Impact**: Inaccurate metrics, monitoring blind spots
+- **First Response**: Check Redis connectivity, verify instance registration
+
 ### Webhook Delivery Slow
 - **Severity**: Info
 - **Trigger**: p95 >5s for >10 minutes

@@ -161,6 +161,77 @@ The Conduit Web UI provides a Redis cache monitoring panel that shows:
 
 For external monitoring, consider tools like Redis Commander, RedisInsight, or Prometheus with Redis Exporter.
 
+## Distributed Cache Statistics
+
+When running multiple Conduit instances with Redis, the system automatically collects and aggregates cache statistics across all instances.
+
+### Configuration
+
+Enable distributed statistics in `appsettings.json`:
+
+```json
+{
+  "CacheStatistics": {
+    "Enabled": true,
+    "FlushInterval": "00:00:10",
+    "AggregationInterval": "00:01:00",
+    "RetentionPeriod": "24:00:00",
+    "MaxResponseTimeSamples": 1000
+  },
+  "StatisticsAlertThresholds": {
+    "MaxInstanceMissingTime": "00:01:00",
+    "MaxAggregationLatency": "00:00:00.500",
+    "MaxDriftPercentage": 5.0,
+    "MaxRedisMemoryBytes": 1073741824,
+    "MinActiveInstances": 1
+  }
+}
+```
+
+### Health Monitoring
+
+Access cache statistics health through the standard health check endpoint:
+
+```bash
+curl http://localhost:5000/health/cache_statistics
+```
+
+The health check monitors:
+- Active instances reporting statistics
+- Redis connectivity for statistics storage
+- Statistics accuracy across instances
+- Aggregation performance
+
+### Horizontal Scaling Considerations
+
+The distributed statistics system supports:
+
+- **Auto-discovery**: Instances automatically register when they start
+- **Graceful shutdown**: Statistics are preserved when instances stop
+- **Accurate aggregation**: Statistics are collected locally and aggregated globally
+- **Performance**: Handles 1000+ instances with sub-100ms aggregation latency
+
+### Redis Key Structure for Statistics
+
+Statistics are stored using the following Redis keys:
+
+```
+conduit:cache:stats:{instanceId}:{region}     # Per-instance statistics
+conduit:cache:instances                        # Active instance tracking
+conduit:cache:stats:aggregated:{region}       # Cached aggregated results
+```
+
+### Monitoring Dashboard
+
+A Grafana dashboard is available at `monitoring/grafana/dashboards/cache-statistics-monitoring.json` which displays:
+
+- Cache hit rate by region
+- Active instances count
+- Aggregation latency
+- Response time percentiles
+- Redis memory usage for statistics
+- Active alerts
+
 ## Troubleshooting
 
 Common Redis connection issues:

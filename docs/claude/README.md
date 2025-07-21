@@ -4,6 +4,7 @@ This directory contains detailed documentation for Claude-specific implementatio
 
 ## Contents
 
+- **[Distributed Cache Statistics](./distributed-cache-statistics.md)** - Horizontal scaling architecture for cache metrics collection
 - **[Event-Driven Architecture](./event-driven-architecture.md)** - MassTransit events, domain events, and troubleshooting
 - **[Incident Health History Requirements](./incident-health-history-requirements.md)** - Health monitoring specifications
 - **[Media Storage Configuration](./media-storage-configuration.md)** - S3/CDN setup, Docker SignalR configuration

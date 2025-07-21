@@ -14,6 +14,7 @@ This guide provides practical examples of integrating the Conduit SDK into vario
 6. [Real-time Monitoring](#real-time-monitoring)
 7. [Batch Processing](#batch-processing)
 8. [Webhook Integration](#webhook-integration)
+9. [Cache Statistics Monitoring](#cache-statistics-monitoring)
 
 ## Chat Application
 
@@ -1028,6 +1029,145 @@ export function generateWebhookSignature(payload: any): string {
 
 ## Conclusion
 
+## Cache Statistics Monitoring
+
+### Distributed Cache Statistics API
+
+Monitor cache performance across multiple instances:
+
+```csharp
+[ApiController]
+[Route("api/cache")]
+public class CacheStatsController : ControllerBase
+{
+    private readonly ICacheStatisticsCollector _statsCollector;
+    
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var stats = new Dictionary<string, object>();
+        
+        foreach (var region in Enum.GetValues<CacheRegion>())
+        {
+            var regionStats = await _statsCollector.GetStatisticsAsync(region);
+            stats[region.ToString()] = new
+            {
+                hitRate = $"{regionStats.HitRate:F1}%",
+                totalRequests = regionStats.HitCount + regionStats.MissCount,
+                avgResponseTimeMs = regionStats.AverageGetTime.TotalMilliseconds,
+                memorySizeMB = regionStats.MemoryUsageBytes / (1024.0 * 1024.0)
+            };
+        }
+        
+        return Ok(stats);
+    }
+}
+```
+
+### Health Check Integration
+
+```csharp
+public class CacheStatisticsHealthCheck : IHealthCheck
+{
+    private readonly IDistributedCacheStatisticsCollector _distributedStats;
+    
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var instances = await _distributedStats.GetActiveInstancesAsync(cancellationToken);
+        var data = new Dictionary<string, object>
+        {
+            ["active_instances"] = instances.Count()
+        };
+        
+        if (!instances.Any())
+        {
+            return HealthCheckResult.Unhealthy("No active instances", data: data);
+        }
+        
+        // Check for statistics drift
+        var accuracy = await ValidateAccuracyAsync(cancellationToken);
+        if (accuracy.MaxDriftPercentage > 10)
+        {
+            return HealthCheckResult.Degraded(
+                $"Statistics drift: {accuracy.MaxDriftPercentage:F1}%", 
+                data: data);
+        }
+        
+        return HealthCheckResult.Healthy("Cache statistics healthy", data: data);
+    }
+}
+```
+
+### Prometheus Metrics Export
+
+```csharp
+public class PrometheusStatisticsExporter : BackgroundService
+{
+    private static readonly Counter CacheHitsTotal = Metrics
+        .CreateCounter("conduit_cache_hits_total", 
+            "Total cache hits", 
+            new[] { "region", "instance" });
+    
+    private static readonly Gauge CacheHitRate = Metrics
+        .CreateGauge("conduit_cache_hit_rate", 
+            "Cache hit rate percentage", 
+            new[] { "region" });
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            foreach (var region in Enum.GetValues<CacheRegion>())
+            {
+                var stats = await _statsCollector.GetStatisticsAsync(region);
+                
+                CacheHitsTotal
+                    .WithLabels(region.ToString(), Environment.MachineName)
+                    .IncTo(stats.HitCount);
+                
+                CacheHitRate
+                    .WithLabels(region.ToString())
+                    .Set(stats.HitRate);
+            }
+            
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+        }
+    }
+}
+```
+
+### Configuration for Horizontal Scaling
+
+```csharp
+// Program.cs
+builder.Services.AddCacheManagerWithRedis(
+    redisConnectionString,
+    options =>
+    {
+        options.EnableStatistics = true;
+        options.DefaultExpiration = TimeSpan.FromHours(1);
+    });
+
+// Configure distributed statistics
+builder.Services.Configure<CacheStatisticsOptions>(options =>
+{
+    options.InstanceId = Environment.GetEnvironmentVariable("INSTANCE_ID") 
+        ?? $"{Environment.MachineName}_{Process.GetCurrentProcess().Id}";
+    options.FlushInterval = TimeSpan.FromSeconds(10);
+    options.EnableBatching = true;
+    options.BatchSize = 100;
+});
+
+// Add monitoring
+builder.Services.AddHostedService<PrometheusStatisticsExporter>();
+builder.Services.AddHealthChecks()
+    .AddCheck<CacheStatisticsHealthCheck>("cache_statistics");
+```
+
+## Summary
+
 These examples demonstrate practical implementations of the Conduit SDK across various use cases:
 
 1. **Chat Applications** - Streaming responses with real-time UI updates
@@ -1038,6 +1178,7 @@ These examples demonstrate practical implementations of the Conduit SDK across v
 6. **System Monitoring** - Comprehensive health dashboards
 7. **Batch Processing** - Efficient bulk operations
 8. **Webhook Integration** - Async event handling
+9. **Cache Statistics** - Distributed monitoring for horizontal scaling
 
 Each example follows best practices for:
 - Error handling and user feedback
@@ -1045,5 +1186,6 @@ Each example follows best practices for:
 - Type safety with TypeScript
 - Performance optimization
 - Security considerations
+- Horizontal scaling support
 
 Use these examples as starting points and adapt them to your specific requirements.
