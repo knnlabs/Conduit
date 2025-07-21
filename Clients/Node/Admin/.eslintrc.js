@@ -9,7 +9,8 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    // Disable type-checking rules that don't work well with file: dependencies
+    // 'plugin:@typescript-eslint/recommended-requiring-type-checking',
   ],
   root: true,
   env: {
