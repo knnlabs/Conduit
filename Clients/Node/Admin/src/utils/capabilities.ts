@@ -108,7 +108,7 @@ export function getBestMapping(
 ): ModelProviderMappingDto | undefined {
   // First try to find default mapping
   const defaultMapping = findDefaultMapping(mappings, capability);
-  if (defaultMapping && defaultMapping.isEnabled) {
+  if (defaultMapping?.isEnabled) {
     return defaultMapping;
   }
 

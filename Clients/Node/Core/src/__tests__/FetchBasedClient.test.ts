@@ -1,5 +1,6 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import { ResponseParser } from '../client/FetchOptions';
+import { HttpMethod } from '../client/HttpMethod';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -63,7 +64,7 @@ describe('FetchBasedClient', () => {
       );
 
       const result = await client.testRequest<{ id: number; name: string }>('/test', {
-        method: 'POST',
+        method: HttpMethod.POST,
         body: requestBody,
       });
 
@@ -285,8 +286,8 @@ describe('FetchBasedClient', () => {
 
       try {
         await interceptClient.testRequest('/test');
-      } catch (e) {
-        // Expected
+      } catch {
+        // Expected - error is intentionally ignored
       }
       
       expect(onError).toHaveBeenCalledWith(expect.any(Error));

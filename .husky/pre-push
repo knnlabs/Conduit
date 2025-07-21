@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-push hook to prevent pushing code with lint errors
+
+echo "🔍 Running pre-push lint checks..."
+
+# Check if we're in CI (skip hook in CI)
+if [ "$CI" = "true" ]; then
+  echo "📦 Running in CI, skipping pre-push hook"
+  exit 0
+fi
+
+# Run the STRICT validation script (same as CI/CD)
+./scripts/validate-eslint-strict.sh
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ PUSH BLOCKED: ESLint errors detected!"
+  echo ""
+  echo "⚠️  You cannot push code with lint errors. This causes CI/CD failures."
+  echo ""
+  echo "To fix:"
+  echo "1. Run './scripts/fix-lint-errors.sh' to automatically fix what's possible"
+  echo "2. Manually fix any remaining errors"
+  echo "3. Test locally with './scripts/validate-eslint.sh'"
+  echo ""
+  echo "To bypass (NOT RECOMMENDED):"
+  echo "git push --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo "✅ All lint checks passed!"

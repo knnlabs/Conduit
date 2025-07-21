@@ -142,9 +142,6 @@ export class TasksService {
         currentInterval = Math.min(currentInterval * 2, opts.maxIntervalMs);
       }
     }
-    
-    // This should never be reached due to the loop structure
-    throw new ConduitError('Unexpected end of polling loop');
   }
 
   /**

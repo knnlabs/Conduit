@@ -6,7 +6,7 @@ export class ConnectionService {
   private signalr?: SignalRService;
   private clientAdapter: IFetchBasedClientAdapter;
 
-  constructor(private client: FetchBasedClient) {
+  constructor(client: FetchBasedClient) {
     this.clientAdapter = createClientAdapter(client);
   }
 

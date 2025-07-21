@@ -1,4 +1,4 @@
-import type { SSEMessage, StreamEvent, StreamingResponse, StreamOptions, ProgressEvent } from '../models/streaming';
+import type { SSEMessage, StreamEvent, StreamingResponse, StreamOptions, ProgressEvent, BaseStreamChunk } from '../models/streaming';
 import type { ChatCompletionChunk } from '../models/chat';
 import { StreamError } from './errors';
 import { StreamingHelpers } from '../constants';
@@ -71,7 +71,7 @@ export function parseStreamEvent(data: string): StreamEvent | null {
 
   try {
     return JSON.parse(data) as ChatCompletionChunk;
-  } catch (error) {
+  } catch {
     throw new StreamError(`Failed to parse stream event: ${data}`);
   }
 }
@@ -123,7 +123,7 @@ export async function* streamAsyncIterator(
           try {
             const event = JSON.parse(data) as ChatCompletionChunk;
             yield event;
-          } catch (error) {
+          } catch {
             const streamError = new StreamError(`Failed to parse stream event: ${data}`);
             if (options?.onError) {
               options.onError(streamError);
@@ -152,7 +152,7 @@ export async function* streamAsyncIterator(
 /**
  * Creates a typed streaming response from a readable stream
  */
-export function createTypedStream<T>(
+export function createTypedStream<T extends BaseStreamChunk>(
   stream: NodeJS.ReadableStream,
   options?: StreamOptions
 ): StreamingResponse<T> {

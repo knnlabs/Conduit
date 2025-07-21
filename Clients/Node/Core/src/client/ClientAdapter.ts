@@ -61,7 +61,7 @@ export function isClientAdapter(client: unknown): client is IFetchBasedClientAda
  * Internal interface to access protected methods of FetchBasedClient
  * This avoids using 'any' while maintaining type safety
  */
-interface IFetchBasedClientInternal extends FetchBasedClient {
+interface IFetchBasedClientInternal {
   request<TResponse = unknown>(
     urlOrConfig: string | { method: HttpMethod; url: string; body?: unknown },
     options?: RequestOptions & { method?: HttpMethod; body?: unknown }
@@ -101,7 +101,7 @@ interface IFetchBasedClientInternal extends FetchBasedClient {
  */
 export function createClientAdapter(client: FetchBasedClient): IFetchBasedClientAdapter {
   // Cast to internal interface to access protected methods with proper typing
-  const internalClient = client as IFetchBasedClientInternal;
+  const internalClient = client as unknown as IFetchBasedClientInternal;
   
   return {
     request: <TResponse = unknown>(urlOrConfig: string | { method: HttpMethod; url: string; body?: unknown }, options?: RequestOptions & { method?: HttpMethod; body?: unknown }) => 

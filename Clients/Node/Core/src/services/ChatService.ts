@@ -8,11 +8,11 @@ import type {
 } from '../models/chat';
 import type { StreamingResponse } from '../models/streaming';
 import { validateChatCompletionRequest } from '../utils/validation';
-import { createTypedStream } from '../utils/streaming';
+import { createWebStream } from '../utils/web-streaming';
 import { API_ENDPOINTS } from '../constants';
 import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
 
-interface FetchBasedClientWithConfig extends FetchBasedClient {
+interface FetchBasedClientWithConfig {
   config: Required<Omit<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>> & 
     Pick<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>;
 }
@@ -21,11 +21,11 @@ export class ChatService {
   private readonly clientAdapter: IFetchBasedClientAdapter;
   private readonly config: ClientConfig;
 
-  constructor(private readonly client: FetchBasedClient) {
+  constructor(client: FetchBasedClient) {
     this.clientAdapter = createClientAdapter(client);
     // Access config through type assertion - this is a known architectural limitation
     // The config is protected in FetchBasedClient, but we need it for streaming
-    this.config = (client as FetchBasedClientWithConfig).config;
+    this.config = (client as unknown as FetchBasedClientWithConfig).config;
   }
 
   /**
@@ -102,8 +102,8 @@ export class ChatService {
     }
 
     // Use web streaming for browser compatibility
-    return createTypedStream<ChatCompletionChunk>(
-      stream as ReadableStream, // Type assertion needed due to stream type differences
+    return createWebStream<ChatCompletionChunk>(
+      stream,
       {
         signal: options?.signal,
       }

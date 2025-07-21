@@ -1,4 +1,4 @@
-import type { StreamingResponse } from './streaming';
+import type { StreamingResponse, BaseStreamChunk } from './streaming';
 import type { ChatCompletionChunk } from './chat';
 
 export interface StreamControlOptions {
@@ -8,7 +8,7 @@ export interface StreamControlOptions {
   onCancel?: () => void;
 }
 
-export interface ControllableStream<T> extends StreamingResponse<T> {
+export interface ControllableStream<T extends BaseStreamChunk> extends StreamingResponse<T> {
   pause(): void;
   resume(): void;
   cancel(): void;
@@ -152,5 +152,47 @@ export class ControllableChatStream implements ControllableStream<ChatCompletion
     if (this.tpsWindow.length === 0) return 0;
     const sum = this.tpsWindow.reduce((a, b) => a + b, 0);
     return sum / this.tpsWindow.length;
+  }
+
+  // Implement StreamingResponse methods
+  async toArray(): Promise<ChatCompletionChunk[]> {
+    const chunks: ChatCompletionChunk[] = [];
+    for await (const chunk of this) {
+      chunks.push(chunk);
+    }
+    return chunks;
+  }
+
+  async *map<U>(fn: (chunk: ChatCompletionChunk) => U | Promise<U>): AsyncGenerator<U, void, unknown> {
+    for await (const chunk of this) {
+      yield await fn(chunk);
+    }
+  }
+
+  async *filter(predicate: (chunk: ChatCompletionChunk) => boolean | Promise<boolean>): AsyncGenerator<ChatCompletionChunk, void, unknown> {
+    for await (const chunk of this) {
+      if (await predicate(chunk)) {
+        yield chunk;
+      }
+    }
+  }
+
+  async *take(n: number): AsyncGenerator<ChatCompletionChunk, void, unknown> {
+    let count = 0;
+    for await (const chunk of this) {
+      if (count >= n) break;
+      yield chunk;
+      count++;
+    }
+  }
+
+  async *skip(n: number): AsyncGenerator<ChatCompletionChunk, void, unknown> {
+    let count = 0;
+    for await (const chunk of this) {
+      if (count >= n) {
+        yield chunk;
+      }
+      count++;
+    }
   }
 }

@@ -1,5 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
+import { HttpMethod } from '../client/HttpMethod';
 import { z } from 'zod';
 
 /**
@@ -99,7 +100,14 @@ export abstract class ServiceBase {
     schema?: z.ZodSchema<TResponse>,
     config?: RequestConfig
   ): Promise<TResponse> {
-    const response = await this.client['get']<TResponse>(url, config);
+    // Extract only the options that the get method accepts
+    const options = config ? {
+      headers: config.headers,
+      signal: config.signal,
+      timeout: config.timeout,
+      responseType: config.responseType as 'json' | 'text' | 'blob' | 'arraybuffer' | undefined
+    } : undefined;
+    const response = await this.client['get']<TResponse>(url, options);
     if (schema) {
       return validateResponse(schema, response, this.getValidationOptions());
     }
@@ -183,6 +191,11 @@ export abstract class ServiceBase {
       responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
     } = {}
   ): Promise<TResponse> {
-    return this.client['request']<TResponse, TRequest>(url, options);
+    // Ensure method is the correct HttpMethod type
+    const requestOptions = {
+      ...options,
+      method: options.method as HttpMethod | undefined
+    };
+    return this.client['request']<TResponse, TRequest>(url, requestOptions);
   }
 }

@@ -1,10 +1,10 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
-import type { ClientConfig } from '../client/types';
 import type { HealthCheckResponse, HealthCheckOptions, WaitForHealthOptions } from '../models/health';
 
 export class HealthService extends FetchBasedClient {
-  constructor(config: ClientConfig) {
-    super(config);
+  constructor(client: FetchBasedClient) {
+    // @ts-expect-error Accessing protected property from another instance
+    super(client.config);
   }
 
   async check(options?: HealthCheckOptions): Promise<HealthCheckResponse> {
@@ -22,8 +22,8 @@ export class HealthService extends FetchBasedClient {
         if (response.status === 'Healthy') {
           return response;
         }
-      } catch (error) {
-        // Continue trying
+      } catch {
+        // Continue trying - error is intentionally ignored
       }
 
       if (i < maxAttempts - 1) {

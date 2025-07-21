@@ -1,11 +1,11 @@
-import type { StreamingResponse, StreamOptions } from '../models/streaming';
+import type { StreamingResponse, StreamOptions, BaseStreamChunk } from '../models/streaming';
 import { StreamError } from './errors';
 import { createStreamingResponse } from './stream-response';
 
 /**
  * Creates a typed streaming response from a web ReadableStream
  */
-export function createWebStream<T>(
+export function createWebStream<T extends BaseStreamChunk>(
   stream: ReadableStream<Uint8Array>,
   options?: StreamOptions
 ): StreamingResponse<T> {

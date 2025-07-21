@@ -19,15 +19,18 @@ export const TaskStatusHelpers = {
   /**
    * Check if a task status indicates the task is finished (terminal state).
    */
-  isTerminal: (status: string): boolean => 
-    [TASK_STATUS.COMPLETED, TASK_STATUS.FAILED, TASK_STATUS.CANCELLED, TASK_STATUS.TIMEDOUT]
-      .includes(status as TaskStatus),
+  isTerminal: (status: string): boolean => {
+    const terminalStatuses: readonly string[] = [TASK_STATUS.COMPLETED, TASK_STATUS.FAILED, TASK_STATUS.CANCELLED, TASK_STATUS.TIMEDOUT];
+    return terminalStatuses.includes(status);
+  },
   
   /**
    * Check if a task status indicates the task is still active.
    */
-  isActive: (status: string): boolean => 
-    [TASK_STATUS.PENDING, TASK_STATUS.RUNNING].includes(status as TaskStatus),
+  isActive: (status: string): boolean => {
+    const activeStatuses: readonly string[] = [TASK_STATUS.PENDING, TASK_STATUS.RUNNING];
+    return activeStatuses.includes(status);
+  },
 
   /**
    * Check if a task status indicates success.
@@ -38,8 +41,10 @@ export const TaskStatusHelpers = {
   /**
    * Check if a task status indicates failure.
    */
-  isFailed: (status: string): boolean => 
-    [TASK_STATUS.FAILED, TASK_STATUS.CANCELLED, TASK_STATUS.TIMEDOUT].includes(status as TaskStatus),
+  isFailed: (status: string): boolean => {
+    const failedStatuses: readonly string[] = [TASK_STATUS.FAILED, TASK_STATUS.CANCELLED, TASK_STATUS.TIMEDOUT];
+    return failedStatuses.includes(status);
+  },
 
   /**
    * Get all terminal status values.

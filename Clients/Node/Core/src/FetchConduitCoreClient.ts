@@ -41,8 +41,8 @@ export class FetchConduitCoreClient extends FetchBasedClient {
 
     // Initialize services
     this.chat = new FetchChatService(config);
-    this.audio = new AudioService(config);
-    this.health = new HealthService(config);
+    this.audio = new AudioService(this);
+    this.health = new HealthService(this);
     this.images = new ImagesService(this);
     this.videos = new VideosService(this);
     this.discovery = new DiscoveryService(this);

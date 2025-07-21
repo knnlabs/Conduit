@@ -1,6 +1,6 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
-import type { ClientConfig, RequestOptions } from '../client/types';
+import type { RequestOptions } from '../client/types';
 import type {
   AudioTranscriptionRequest,
   AudioTranscriptionResponse,
@@ -42,8 +42,9 @@ import type {
  * ```
  */
 export class AudioService extends FetchBasedClient {
-  constructor(config: ClientConfig) {
-    super(config);
+  constructor(client: FetchBasedClient) {
+    // @ts-expect-error Accessing protected property from another instance
+    super(client.config);
   }
 
   /**
