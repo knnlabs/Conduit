@@ -80,7 +80,7 @@ function validateMultiModalContent(content: Array<TextContent | ImageContent>, m
       imageCount++;
     } else {
       throw new ValidationError(
-        `Unknown content type '${(part as any).type}' at index ${j} in message ${messageIndex}. Must be 'text' or 'image_url'`,
+        `Unknown content type '${(part as Record<string, unknown>).type}' at index ${j} in message ${messageIndex}. Must be 'text' or 'image_url'`,
         { field: 'messages' }
       );
     }
