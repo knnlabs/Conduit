@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
+
+interface RoutingTestRequest {
+  provider?: string;
+  model?: string;
+  request?: unknown;
+}
+
 // POST /api/config/routing/test - Test routing rules
 export async function POST(req: NextRequest) {
 
   try {
-    const adminClient = getServerAdminClient();
-    const testRequest = await req.json();
+    const testRequest = await req.json() as RoutingTestRequest;
     
     // SDK doesn't support routing test yet, return a simulated result
     console.warn('Routing test not supported by SDK, returning simulated result');
     
     const mockResult = {
       success: true,
-      selectedProvider: testRequest.provider || 'openai-1',
+      selectedProvider: testRequest.provider ?? 'openai-1',
       routingDecision: {
         strategy: 'priority',
         reason: 'Default priority-based routing',
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
       },
       matchedRules: [],
       errors: [],
-      _warning: 'Test result simulated (SDK support pending)'
+      warningMessage: 'Test result simulated (SDK support pending)'
     };
     
     return NextResponse.json(mockResult);

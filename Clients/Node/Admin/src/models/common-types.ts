@@ -310,3 +310,81 @@ export interface SystemParameters {
     [key: string]: string | number | boolean | undefined;
   } | undefined;
 }
+
+/**
+ * Generic metadata type
+ */
+export type Metadata = Record<string, string | number | boolean | null | undefined>;
+
+/**
+ * Extended metadata that can include nested objects
+ */
+export type ExtendedMetadata = Record<string, unknown>;
+
+/**
+ * Custom settings for providers and configurations
+ */
+export type CustomSettings = Record<string, string | number | boolean | string[] | Record<string, unknown>>;
+
+/**
+ * Validation function type
+ */
+export type ValidationFunction<T = unknown> = (value: T) => boolean;
+
+/**
+ * Event data payload
+ */
+export type EventData = Record<string, unknown>;
+
+/**
+ * Generic configuration value
+ */
+export type ConfigValue = string | number | boolean | string[] | Record<string, unknown>;
+
+/**
+ * Router action parameters
+ */
+export type RouterActionParameters = {
+  targetProvider?: string;
+  targetModel?: string;
+  fallbackProvider?: string;
+  fallbackModel?: string;
+  [key: string]: string | number | boolean | undefined;
+};
+
+/**
+ * Maintenance task configuration
+ */
+export type MaintenanceTaskConfig = {
+  schedule?: string;
+  retention?: number;
+  batchSize?: number;
+  [key: string]: string | number | boolean | undefined;
+};
+
+/**
+ * Maintenance task result
+ */
+export type MaintenanceTaskResultData = {
+  processed?: number;
+  errors?: number;
+  duration?: number;
+  details?: Record<string, unknown>;
+};
+
+/**
+ * Custom metric dimensions
+ */
+export type MetricDimensions = Record<string, string | number | boolean>;
+
+/**
+ * Additional provider info
+ */
+export type AdditionalProviderInfo = {
+  version?: string;
+  region?: string;
+  endpoint?: string;
+  features?: string[];
+  limits?: Record<string, number>;
+  [key: string]: unknown;
+};

@@ -12,7 +12,6 @@ import {
   Paper,
   SimpleGrid,
   Progress,
-  Switch,
   NumberInput,
   Table,
   ScrollArea,
@@ -24,7 +23,6 @@ import {
   Code,
   Tabs,
   RingProgress,
-  Center,
 } from '@mantine/core';
 import {
   IconAlertCircle,
@@ -34,77 +32,29 @@ import {
   IconRefresh,
   IconSettings,
   IconActivity,
-  IconHistory,
   IconHeartRateMonitor,
-  IconClock,
-  IconDatabase,
   IconServer,
   IconBolt,
   IconAlertTriangle,
   IconInfoCircle,
-  IconX,
   IconTrash,
 } from '@tabler/icons-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-
-interface MonitoringStatus {
-  lastCheck: string;
-  isHealthy: boolean;
-  currentHitRate: number;
-  currentMemoryUsagePercent: number;
-  currentEvictionRate: number;
-  currentResponseTimeMs: number;
-  activeAlerts: number;
-  details: Record<string, any>;
-}
-
-interface AlertThresholds {
-  minHitRate: number;
-  maxMemoryUsage: number;
-  maxEvictionRate: number;
-  maxResponseTimeMs: number;
-  minRequestsForHitRateAlert: number;
-}
-
-interface CacheAlert {
-  alertType: string;
-  message: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  region?: string;
-  details?: Record<string, any>;
-  timestamp: string;
-}
-
-interface AlertDefinition {
-  type: string;
-  name: string;
-  defaultSeverity: string;
-  description: string;
-  recommendedActions: string[];
-  notificationEnabled: boolean;
-  cooldownPeriodMinutes: number;
-}
-
-interface HealthSummary {
-  overallHealth: string;
-  hitRate: number;
-  memoryUsagePercent: number;
-  responseTimeMs: number;
-  evictionRate: number;
-  activeAlerts: number;
-  totalCacheSize: number;
-  totalEntries: number;
-  lastCheck: string;
-  recentAlerts: CacheAlert[];
-}
+import type {
+  MonitoringStatus,
+  AlertThresholds,
+  CacheAlert,
+  AlertDefinition,
+  HealthSummary,
+} from '@/types/cache-types';
 
 export default function CacheMonitoringPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
-  const [status, setStatus] = useState<MonitoringStatus | null>(null);
+  const [, setStatus] = useState<MonitoringStatus | null>(null);
   const [thresholds, setThresholds] = useState<AlertThresholds | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<CacheAlert[]>([]);
   const [alertDefinitions, setAlertDefinitions] = useState<AlertDefinition[]>([]);
@@ -120,9 +70,16 @@ export default function CacheMonitoringPage() {
       if (recentAlerts.length > lastAlertCount && lastAlertCount > 0) {
         // New alert detected
         const newAlert = recentAlerts[0];
-        const color = newAlert.severity === 'critical' ? 'red' : 
-                     newAlert.severity === 'error' ? 'orange' :
-                     newAlert.severity === 'warning' ? 'yellow' : 'blue';
+        let color: string;
+        if (newAlert.severity === 'critical') {
+          color = 'red';
+        } else if (newAlert.severity === 'error') {
+          color = 'orange';
+        } else if (newAlert.severity === 'warning') {
+          color = 'yellow';
+        } else {
+          color = 'blue';
+        }
         
         notifications.show({
           title: `Cache Alert: ${newAlert.alertType}`,
@@ -138,9 +95,11 @@ export default function CacheMonitoringPage() {
   }, [recentAlerts, notificationsEnabled, lastAlertCount]);
 
   useEffect(() => {
-    fetchMonitoringData();
+    void fetchMonitoringData();
     // Refresh every 30 seconds
-    const interval = setInterval(fetchMonitoringData, 30000);
+    const interval = setInterval(() => {
+      void fetchMonitoringData();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -164,15 +123,15 @@ export default function CacheMonitoringPage() {
         alertsRes.json(),
         definitionsRes.json(),
         healthRes.json()
-      ]);
+      ]) as [MonitoringStatus, AlertThresholds, CacheAlert[], AlertDefinition[], HealthSummary];
 
       setStatus(statusData);
       setThresholds(thresholdsData);
       setRecentAlerts(alertsData);
       setAlertDefinitions(definitionsData);
       setHealthSummary(healthData);
-    } catch (error) {
-      console.error('Error fetching monitoring data:', error);
+    } catch {
+      console.error('Error fetching monitoring data');
       notifications.show({
         title: 'Error',
         message: 'Failed to load monitoring data',
@@ -204,7 +163,7 @@ export default function CacheMonitoringPage() {
         throw new Error('Failed to force check');
       }
 
-      const data = await response.json();
+      const data = await response.json() as MonitoringStatus;
       setStatus(data);
       
       notifications.show({
@@ -212,7 +171,7 @@ export default function CacheMonitoringPage() {
         message: 'Cache monitoring check completed',
         color: 'green',
       });
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to perform check',
@@ -235,7 +194,7 @@ export default function CacheMonitoringPage() {
         throw new Error('Failed to update thresholds');
       }
 
-      const data = await response.json();
+      const data = await response.json() as AlertThresholds;
       setThresholds(data);
       
       notifications.show({
@@ -243,7 +202,7 @@ export default function CacheMonitoringPage() {
         message: 'Alert thresholds have been updated',
         color: 'green',
       });
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to update thresholds',
@@ -269,7 +228,7 @@ export default function CacheMonitoringPage() {
         message: 'Alert history has been cleared',
         color: 'green',
       });
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to clear alert history',
@@ -330,14 +289,14 @@ export default function CacheMonitoringPage() {
             <Button
               variant="light"
               leftSection={<IconHeartRateMonitor size={16} />}
-              onClick={handleForceCheck}
+              onClick={() => void handleForceCheck()}
             >
               Force Check
             </Button>
             <Button
               variant="light"
               leftSection={<IconRefresh size={16} />}
-              onClick={handleRefresh}
+              onClick={() => void handleRefresh()}
               loading={isRefreshing}
             >
               Refresh
@@ -388,15 +347,19 @@ export default function CacheMonitoringPage() {
                   <Text size="xl" fw={700} mt={4}>
                     {healthSummary.hitRate.toFixed(1)}%
                   </Text>
-                  <Text size="xs" c={healthSummary.hitRate < (thresholds?.minHitRate || 70) ? 'red' : 'dimmed'}>
-                    {healthSummary.hitRate < (thresholds?.minHitRate || 70) ? '↓ Below threshold' : ''}
+                  <Text size="xs" c={healthSummary.hitRate < (thresholds?.minHitRate ?? 70) ? 'red' : 'dimmed'}>
+                    {healthSummary.hitRate < (thresholds?.minHitRate ?? 70) ? '↓ Below threshold' : ''}
                   </Text>
                 </Group>
                 <Progress
                   value={healthSummary.hitRate}
                   size="xs"
                   mt={8}
-                  color={healthSummary.hitRate > 80 ? 'green' : healthSummary.hitRate > 60 ? 'yellow' : 'red'}
+                  color={(() => {
+                    if (healthSummary.hitRate > 80) return 'green';
+                    if (healthSummary.hitRate > 60) return 'yellow';
+                    return 'red';
+                  })()}
                 />
               </div>
               <RingProgress
@@ -417,15 +380,19 @@ export default function CacheMonitoringPage() {
                   <Text size="xl" fw={700} mt={4}>
                     {healthSummary.memoryUsagePercent.toFixed(1)}%
                   </Text>
-                  <Text size="xs" c={healthSummary.memoryUsagePercent > (thresholds?.maxMemoryUsage || 85) * 100 ? 'red' : 'dimmed'}>
-                    {healthSummary.memoryUsagePercent > (thresholds?.maxMemoryUsage || 85) * 100 ? '↑ Above threshold' : ''}
+                  <Text size="xs" c={healthSummary.memoryUsagePercent > (thresholds?.maxMemoryUsage ?? 85) * 100 ? 'red' : 'dimmed'}>
+                    {healthSummary.memoryUsagePercent > (thresholds?.maxMemoryUsage ?? 85) * 100 ? '↑ Above threshold' : ''}
                   </Text>
                 </Group>
                 <Progress
                   value={healthSummary.memoryUsagePercent}
                   size="xs"
                   mt={8}
-                  color={healthSummary.memoryUsagePercent > 90 ? 'red' : healthSummary.memoryUsagePercent > 70 ? 'yellow' : 'green'}
+                  color={(() => {
+                    if (healthSummary.memoryUsagePercent > 90) return 'red';
+                    if (healthSummary.memoryUsagePercent > 70) return 'yellow';
+                    return 'green';
+                  })()}
                 />
               </div>
               <ThemeIcon color="blue" variant="light" size={48} radius="md">
@@ -444,8 +411,8 @@ export default function CacheMonitoringPage() {
                   <Text size="xl" fw={700} mt={4}>
                     {healthSummary.responseTimeMs.toFixed(2)}ms
                   </Text>
-                  <Text size="xs" c={healthSummary.responseTimeMs > (thresholds?.maxResponseTimeMs || 100) ? 'red' : 'dimmed'}>
-                    {healthSummary.responseTimeMs > (thresholds?.maxResponseTimeMs || 100) ? '↑ Above threshold' : ''}
+                  <Text size="xs" c={healthSummary.responseTimeMs > (thresholds?.maxResponseTimeMs ?? 100) ? 'red' : 'dimmed'}>
+                    {healthSummary.responseTimeMs > (thresholds?.maxResponseTimeMs ?? 100) ? '↑ Above threshold' : ''}
                   </Text>
                 </Group>
                 <Text size="xs" c="dimmed" mt={4}>
@@ -481,9 +448,9 @@ export default function CacheMonitoringPage() {
             <Title order={4} mb="md">Recent Alerts</Title>
             {recentAlerts.length > 0 ? (
               <Timeline active={-1} bulletSize={24} lineWidth={2}>
-                {recentAlerts.slice(0, 10).map((alert, index) => (
+                {recentAlerts.slice(0, 10).map((alert) => (
                   <Timeline.Item
-                    key={index}
+                    key={`alert-${alert.timestamp}-${alert.alertType}-${alert.message.slice(0, 10)}`}
                     bullet={
                       <ThemeIcon
                         size={24}
@@ -533,7 +500,7 @@ export default function CacheMonitoringPage() {
                 color="red"
                 size="xs"
                 leftSection={<IconTrash size={14} />}
-                onClick={handleClearAlertHistory}
+                onClick={() => void handleClearAlertHistory()}
               >
                 Clear History
               </Button>
@@ -550,8 +517,8 @@ export default function CacheMonitoringPage() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {recentAlerts.map((alert, index) => (
-                    <Table.Tr key={index}>
+                  {recentAlerts.map((alert) => (
+                    <Table.Tr key={`alert-${alert.timestamp}-${alert.alertType}-${alert.message.slice(0, 10)}`}>
                       <Table.Td>
                         <Text size="xs">{formatters.date(alert.timestamp, { relativeDays: 0 })}</Text>
                       </Table.Td>
@@ -564,7 +531,7 @@ export default function CacheMonitoringPage() {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        {alert.region || '-'}
+                        {alert.region ?? '-'}
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm" lineClamp={1}>
@@ -591,7 +558,7 @@ export default function CacheMonitoringPage() {
                       <Text size="sm" c="dimmed">Minimum Hit Rate (%)</Text>
                       <NumberInput
                         value={thresholds.minHitRate * 100}
-                        onChange={(value) => handleUpdateThresholds({ minHitRate: Number(value) / 100 })}
+                        onChange={(value) => void handleUpdateThresholds({ minHitRate: Number(value) / 100 })}
                         min={0}
                         max={100}
                         suffix="%"
@@ -602,7 +569,7 @@ export default function CacheMonitoringPage() {
                       <Text size="sm" c="dimmed">Maximum Memory Usage (%)</Text>
                       <NumberInput
                         value={thresholds.maxMemoryUsage * 100}
-                        onChange={(value) => handleUpdateThresholds({ maxMemoryUsage: Number(value) / 100 })}
+                        onChange={(value) => void handleUpdateThresholds({ maxMemoryUsage: Number(value) / 100 })}
                         min={0}
                         max={100}
                         suffix="%"
@@ -613,7 +580,7 @@ export default function CacheMonitoringPage() {
                       <Text size="sm" c="dimmed">Maximum Eviction Rate (per hour)</Text>
                       <NumberInput
                         value={thresholds.maxEvictionRate}
-                        onChange={(value) => handleUpdateThresholds({ maxEvictionRate: Number(value) })}
+                        onChange={(value) => void handleUpdateThresholds({ maxEvictionRate: Number(value) })}
                         min={0}
                         mt={4}
                       />
@@ -622,7 +589,7 @@ export default function CacheMonitoringPage() {
                       <Text size="sm" c="dimmed">Maximum Response Time (ms)</Text>
                       <NumberInput
                         value={thresholds.maxResponseTimeMs}
-                        onChange={(value) => handleUpdateThresholds({ maxResponseTimeMs: Number(value) })}
+                        onChange={(value) => void handleUpdateThresholds({ maxResponseTimeMs: Number(value) })}
                         min={0}
                         suffix="ms"
                         mt={4}
@@ -637,7 +604,7 @@ export default function CacheMonitoringPage() {
                     <Text size="sm" c="dimmed">Minimum Requests for Hit Rate Alert</Text>
                     <NumberInput
                       value={thresholds.minRequestsForHitRateAlert}
-                      onChange={(value) => handleUpdateThresholds({ minRequestsForHitRateAlert: Number(value) })}
+                      onChange={(value) => void handleUpdateThresholds({ minRequestsForHitRateAlert: Number(value) })}
                       min={0}
                       mt={4}
                       description="Number of requests required before hit rate alerts are triggered"
@@ -676,8 +643,8 @@ export default function CacheMonitoringPage() {
                     <>
                       <Text size="xs" fw={500} c="dimmed" mb={4}>Recommended Actions:</Text>
                       <Stack gap={4}>
-                        {def.recommendedActions.map((action, index) => (
-                          <Text key={index} size="xs" c="dimmed" pl="md">
+                        {def.recommendedActions.map((action) => (
+                          <Text key={`action-${action.slice(0, 30).replace(/\s+/g, '-')}`} size="xs" c="dimmed" pl="md">
                             • {action}
                           </Text>
                         ))}

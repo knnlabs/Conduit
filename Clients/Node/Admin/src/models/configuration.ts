@@ -3,6 +3,7 @@
  */
 
 import type { BaseMetadata } from './metadata';
+import type { ExtendedMetadata } from './common-types';
 
 /**
  * Routing configuration for multi-provider setups
@@ -107,7 +108,7 @@ export interface TestResult {
     test: string;
     passed: boolean;
     message: string;
-    details?: any;
+    details?: ExtendedMetadata;
   }>;
   
   /** Any errors encountered */

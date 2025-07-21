@@ -7,14 +7,13 @@ import {
   Group,
   Stack,
   Paper,
-  CloseButton,
   Image,
   Grid,
   ActionIcon,
   Tooltip,
   Progress,
 } from '@mantine/core';
-import { IconUpload, IconX, IconPhoto, IconEdit } from '@tabler/icons-react';
+import { IconX, IconPhoto, IconEdit } from '@tabler/icons-react';
 
 interface ImageUploadAreaProps {
   images: string[];
@@ -65,7 +64,8 @@ export function ImageUploadArea({
         console.error('Error processing file:', error);
       } finally {
         setUploadProgress((prev) => {
-          const { [id]: _, ...rest } = prev;
+          const { [id]: removed, ...rest } = prev;
+          void removed; // Acknowledge unused destructured value
           return rest;
         });
       }
@@ -98,7 +98,7 @@ export function ImageUploadArea({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    handleFiles(e.dataTransfer.files);
+    void handleFiles(e.dataTransfer.files);
   };
 
   const handlePaste = async (e: React.ClipboardEvent) => {
@@ -116,12 +116,16 @@ export function ImageUploadArea({
     if (files.length > 0) {
       const dataTransfer = new DataTransfer();
       files.forEach((file) => dataTransfer.items.add(file));
-      handleFiles(dataTransfer.files);
+      void handleFiles(dataTransfer.files);
     }
   };
 
   const removeImage = (index: number) => {
-    onImagesChange(images.filter((_, i) => i !== index));
+    const filteredImages = images.filter((image, i) => {
+      void image; // Acknowledge unused parameter
+      return i !== index;
+    });
+    onImagesChange(filteredImages);
   };
 
   const hasImages = images.length > 0;
@@ -133,7 +137,7 @@ export function ImageUploadArea({
       {hasImages && (
         <Grid gutter="xs">
           {images.map((image, index) => (
-            <Grid.Col key={index} span={{ base: 6, xs: 4, sm: 3 }}>
+            <Grid.Col key={`image-${image.slice(0, 100)}`} span={{ base: 6, xs: 4, sm: 3 }}>
               <Paper
                 p={4}
                 withBorder
@@ -200,7 +204,7 @@ export function ImageUploadArea({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onPaste={handlePaste}
+          onPaste={(e) => void handlePaste(e)}
           style={{ position: 'relative' }}
         >
           <input
@@ -208,7 +212,7 @@ export function ImageUploadArea({
             type="file"
             multiple
             accept="image/*"
-            onChange={(e) => handleFiles(e.target.files)}
+            onChange={(e) => void handleFiles(e.target.files)}
             style={{ display: 'none' }}
           />
           <Paper
@@ -222,7 +226,7 @@ export function ImageUploadArea({
                 : undefined,
               transition: 'background-color 200ms ease',
             }}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => void fileInputRef.current?.click()}
           >
             <Stack align="center" gap="xs">
               <IconPhoto

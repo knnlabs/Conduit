@@ -1,0 +1,16 @@
+Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Priority,Active,Description
+minimax-m1,MiniMax,chat,0.0004,0.0022,,,,,,10,Yes,MiniMax-M1 for inputs under 200K tokens
+minimax-m1-large,MiniMax,chat,0.013,0.0022,,,,,,10,Yes,MiniMax-M1 for inputs over 200K tokens
+minimax-text-01,MiniMax,chat,0.0002,0.0011,,,,,,10,Yes,MiniMax-Text-01 - unified pricing for all context sizes
+minimax-m1-batch,MiniMax,chat,0.0002,0.0011,,,,,,10,Yes,MiniMax-M1 Batch processing under 200K tokens
+minimax-m1-batch-large,MiniMax,chat,0.0007,0.0011,,,,,,10,Yes,MiniMax-M1 Batch processing over 200K tokens
+speech-02-turbo,MiniMax,audio,,,,,0.06,,,10,Yes,Standard quality text-to-speech (per 1K characters)
+speech-02-hd,MiniMax,audio,,,,,0.1,,,10,Yes,High quality text-to-speech (per 1K characters)
+minimax-hailuo-02-768p-5s,MiniMax,video,,,,,,0.056,,10,Yes,Video generation 768P 5 seconds
+minimax-hailuo-02-768p-10s,MiniMax,video,,,,,,0.056,,10,Yes,Video generation 768P 10 seconds
+minimax-hailuo-02-1080p-5s,MiniMax,video,,,,,,0.096,,10,Yes,Video generation 1080P 5 seconds
+s2v-01,MiniMax,video,,,,,,0.13,,10,Yes,S2V-01 video generation
+t2v-01-director,MiniMax,video,,,,,,0.086,,10,Yes,T2V-01-Director video generation
+i2v-01-director,MiniMax,video,,,,,,0.086,,10,Yes,I2V-01-Director video generation
+i2v-01-live,MiniMax,video,,,,,,0.086,,10,Yes,I2V-01-Live video generation
+image-01,MiniMax,image,,,,0.0035,,,,10,Yes,Image generation model

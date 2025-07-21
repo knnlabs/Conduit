@@ -4,6 +4,16 @@ import { z } from 'zod';
  * Common schemas used across Admin API
  */
 
+// Base schemas
+export const IdSchema = z.object({
+  id: z.number(),
+});
+
+export const TimestampSchema = z.object({
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
 // Virtual Key schemas
 export const VirtualKeyDtoSchema = z.object({
   id: z.number(),
@@ -109,7 +119,7 @@ export const HealthStatusDtoSchema = z.object({
   checks: z.record(z.string(), z.object({
     status: z.enum(['Healthy', 'Unhealthy', 'Degraded']),
     description: z.string().optional(),
-    data: z.record(z.string(), z.any()).optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
   })),
   totalDuration: z.string(),
   timestamp: z.string(),

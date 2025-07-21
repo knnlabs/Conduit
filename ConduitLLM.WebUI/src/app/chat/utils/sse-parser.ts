@@ -19,7 +19,7 @@ export class SSEParser {
     const events: SSEEvent[] = [];
     
     const lines = this.buffer.split('\n');
-    this.buffer = lines.pop() || ''; // Keep incomplete line in buffer
+    this.buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
     
     for (const line of lines) {
       if (line.trim() === '') {
@@ -68,7 +68,7 @@ export class SSEParser {
   
   private createEvent(): SSEEvent {
     return {
-      event: this.currentEvent.event || SSEEventType.Content,
+      event: this.currentEvent.event ?? SSEEventType.Content,
       data: this.currentEvent.data
     };
   }

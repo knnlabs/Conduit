@@ -16,6 +16,14 @@ import { IconTrash, IconGripVertical } from '@tabler/icons-react';
 import { RoutingCondition } from '../../../../types/routing';
 import { CONDITION_FIELDS, getOperatorsForField, getValueInputType } from '../../utils/ruleBuilder';
 
+interface FieldConfig {
+  value: string;
+  label: string;
+  type: string;
+  description?: string;
+  options?: Array<{ value: string; label: string }>;
+}
+
 interface ConditionRowProps {
   condition: Omit<RoutingCondition, 'logicalOperator'>;
   index: number;
@@ -40,11 +48,11 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
     if (!value) return;
     
     const newOperators = getOperatorsForField(value);
-    const defaultOperator = newOperators[0]?.value || 'equals';
+    const defaultOperator = newOperators[0]?.value ?? 'equals';
     
     onUpdate({
-      type: value as any,
-      operator: defaultOperator as any,
+      type: value as RoutingCondition['type'],
+      operator: defaultOperator as RoutingCondition['operator'],
       value: '',
       field: undefined, // Reset field for new type
     });
@@ -54,13 +62,24 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
     if (!value) return;
     
     onUpdate({
-      operator: value as any,
+      operator: value as RoutingCondition['operator'],
       value: condition.operator !== value ? '' : condition.value, // Reset value if operator changed
     });
   };
 
-  const handleValueChange = (value: any) => {
-    onUpdate({ value });
+  const handleValueChange = (value: unknown) => {
+    // Convert value to appropriate type
+    let typedValue: string | number | boolean | string[] | number[] | undefined;
+    
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      typedValue = value;
+    } else if (Array.isArray(value)) {
+      typedValue = value as string[] | number[];
+    } else {
+      typedValue = String(value);
+    }
+    
+    onUpdate({ value: typedValue });
   };
 
   const renderValueInput = () => {
@@ -80,7 +99,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
         return (
           <TextInput
             placeholder="Enter values separated by commas"
-            value={condition.value}
+            value={typeof condition.value === 'string' || typeof condition.value === 'number' ? String(condition.value) : ''}
             onChange={(e) => handleValueChange(e.target.value)}
             style={{ flex: 1 }}
             description="Use commas to separate multiple values"
@@ -91,7 +110,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
         return (
           <Textarea
             placeholder="Enter pattern or expression"
-            value={condition.value}
+            value={typeof condition.value === 'string' || typeof condition.value === 'number' ? String(condition.value) : ''}
             onChange={(e) => handleValueChange(e.target.value)}
             autosize
             minRows={1}
@@ -102,7 +121,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
 
       case 'select':
         // For boolean-like fields
-        const options = (fieldConfig as any)?.options || [
+        const options = (fieldConfig as FieldConfig)?.options ?? [
           { value: 'true', label: 'True' },
           { value: 'false', label: 'False' },
         ];
@@ -111,7 +130,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
           <Select
             placeholder="Select value"
             data={options}
-            value={condition.value}
+            value={typeof condition.value === 'string' ? condition.value : null}
             onChange={handleValueChange}
             style={{ flex: 1 }}
           />
@@ -121,7 +140,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
         return (
           <TextInput
             placeholder="Enter value"
-            value={condition.value}
+            value={typeof condition.value === 'string' || typeof condition.value === 'number' ? String(condition.value) : ''}
             onChange={(e) => handleValueChange(e.target.value)}
             style={{ flex: 1 }}
           />
@@ -159,7 +178,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
             <TextInput
               label="Field Name"
               placeholder={condition.type === 'header' ? 'Header name' : 'Metadata key'}
-              value={condition.field || ''}
+              value={condition.field ?? ''}
               onChange={(e) => onUpdate({ field: e.target.value })}
             />
           </div>

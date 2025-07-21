@@ -1,0 +1,11 @@
+Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Batch Processing Multiplier,Supports Batch Processing,Image Quality Multipliers,Priority,Active,Description
+abab6.5g-chat,MiniMax,chat,0.001,0.001,,,,,,,10,Yes,MiniMax GPT 6.5g chat model
+abab6.5s-chat,MiniMax,chat,0.0005,0.0005,,,,,,,10,Yes,MiniMax GPT 6.5s chat model
+abab5.5-chat,MiniMax,chat,0.00025,0.00025,,,,,,,8,Yes,MiniMax GPT 5.5 chat model
+abab5.5s-chat,MiniMax,chat,0.0001,0.0001,,,,,,,8,Yes,MiniMax GPT 5.5s chat model
+embo-01,MiniMax,embedding,,,0.00001,,,,,,10,Yes,MiniMax embedding model
+gpt-image-01*,MiniMax,image,,,,0.011,,,,,"{""low"": 1.0, ""medium"": 3.82, ""high"": 15.18}",10,Yes,MiniMax image generation with quality tiers
+speech-01,MiniMax,audio,,,,,0.002,,,,,10,Yes,MiniMax speech synthesis
+speech-01-turbo,MiniMax,audio,,,,,0.0008,,,,,10,Yes,MiniMax turbo speech synthesis
+video-01,MiniMax,video,,,,,,0.3,,,"{""720p"": 1.0, ""1080p"": 1.5, ""4k"": 3.0}",10,Yes,MiniMax video generation with resolution tiers
+video-01-turbo,MiniMax,video,,,,,,0.15,,,"{""720p"": 1.0, ""1080p"": 1.5}",10,Yes,MiniMax turbo video generation

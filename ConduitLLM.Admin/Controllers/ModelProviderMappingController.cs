@@ -81,7 +81,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound("Model provider mapping not found");
+                return NotFound(new { error = "Model provider mapping not found" });
             }
 
             return Ok(mapping);
@@ -110,7 +110,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound("Model provider mapping not found");
+                return NotFound(new { error = "Model provider mapping not found" });
             }
 
             return Ok(mapping);
@@ -194,7 +194,7 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
 
             if (!success)
             {
-                return NotFound("Model provider mapping not found");
+                return NotFound(new { error = "Model provider mapping not found" });
             }
 
             return NoContent();
@@ -226,7 +226,7 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
 
             if (!success)
             {
-                return NotFound("Model provider mapping not found");
+                return NotFound(new { error = "Model provider mapping not found" });
             }
 
             return NoContent();
@@ -275,12 +275,12 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     {
         if (request == null)
         {
-            return BadRequest("Bulk mapping request cannot be null");
+            return BadRequest(new { error = "Bulk mapping request cannot be null" });
         }
 
         if (request.Mappings == null || !request.Mappings.Any())
         {
-            return BadRequest("At least one mapping must be provided");
+            return BadRequest(new { error = "No mappings provided" });
         }
 
         try
@@ -388,7 +388,7 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
             
             if (model == null)
             {
-                return NotFound($"Model {modelId} not found for provider {providerName}");
+                return NotFound(new { error = $"Model {modelId} not found for provider {providerName}" });
             }
             
             return Ok(model);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+
 // GET /api/providers/[id] - Get a single provider
 export async function GET(
   req: NextRequest,
@@ -10,7 +12,7 @@ export async function GET(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const provider = await adminClient.providers.getById(parseInt(id, 10));
+    const provider: ProviderCredentialDto = await adminClient.providers.getById(parseInt(id, 10));
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);
@@ -26,8 +28,21 @@ export async function PUT(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json();
-    const provider = await adminClient.providers.update(parseInt(id, 10), body);
+    const body = await req.json() as Record<string, unknown>;
+    
+    // Get the current provider data to merge with updates
+    const currentProvider = await adminClient.providers.getById(parseInt(id, 10));
+    
+    // Build update data ensuring type safety - SDK expects the generated type format
+    const updateData = {
+      id: parseInt(id, 10),
+      apiBase: (body.apiBase as string | undefined) ?? currentProvider.apiBase,
+      apiKey: (body.apiKey as string | undefined) ?? currentProvider.apiKey,
+      isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
+      organization: (body.organization as string | undefined) ?? currentProvider.organization
+    };
+    
+    const provider = await adminClient.providers.update(parseInt(id, 10), updateData);
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);

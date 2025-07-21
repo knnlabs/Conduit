@@ -5,11 +5,9 @@ import {
   AuthError, 
   RateLimitError, 
   NetworkError,
-  createErrorFromResponseLegacy
 } from '../utils/errors';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
-import type { ExtendedRequestInit } from './FetchOptions';
-import { ResponseParser } from './FetchOptions';
+import { ResponseParser, type ExtendedRequestInit } from './FetchOptions';
 import { HttpMethod } from './HttpMethod';
 
 /**
@@ -25,13 +23,13 @@ export abstract class FetchBasedClient {
   constructor(config: ClientConfig) {
     this.config = {
       apiKey: config.apiKey,
-      baseURL: config.baseURL || 'https://api.conduit.ai',
-      timeout: config.timeout || 60000,
-      maxRetries: config.maxRetries || 3,
-      headers: config.headers || {},
-      debug: config.debug || false,
-      signalR: config.signalR || {},
-      retryDelay: config.retryDelay || [1000, 2000, 4000, 8000, 16000],
+      baseURL: config.baseURL ?? 'https://api.conduit.ai',
+      timeout: config.timeout ?? 60000,
+      maxRetries: config.maxRetries ?? 3,
+      headers: config.headers ?? {},
+      debug: config.debug ?? false,
+      signalR: config.signalR ?? {},
+      retryDelay: config.retryDelay ?? [1000, 2000, 4000, 8000, 16000],
       onError: config.onError,
       onRequest: config.onRequest,
       onResponse: config.onResponse,
@@ -61,13 +59,13 @@ export abstract class FetchBasedClient {
     const controller = new AbortController();
     
     // Set up timeout
-    const timeoutId = options.timeout || this.config.timeout
-      ? setTimeout(() => controller.abort(), options.timeout || this.config.timeout)
+    const timeoutId = options.timeout ?? this.config.timeout
+      ? setTimeout(() => controller.abort(), options.timeout ?? this.config.timeout)
       : undefined;
 
     try {
       const requestConfig: RequestConfig = {
-        method: options.method || HttpMethod.GET,
+        method: options.method ?? HttpMethod.GET,
         url: fullUrl,
         headers: this.buildHeaders(options.headers),
         data: options.body,
@@ -80,7 +78,7 @@ export abstract class FetchBasedClient {
 
 
       if (this.config.debug) {
-        console.debug(`[Conduit] ${requestConfig.method} ${requestConfig.url}`);
+        console.warn(`[Conduit] ${requestConfig.method} ${requestConfig.url}`);
       }
 
       const response = await this.executeWithRetry<TResponse, TRequest>(
@@ -89,9 +87,9 @@ export abstract class FetchBasedClient {
           method: requestConfig.method,
           headers: requestConfig.headers as HeadersInit,
           body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: options.signal || controller.signal,
+          signal: options.signal ?? controller.signal,
           responseType: options.responseType,
-          timeout: options.timeout || this.config.timeout,
+          timeout: options.timeout ?? this.config.timeout,
         },
         options
       );
@@ -214,9 +212,9 @@ export abstract class FetchBasedClient {
           headers,
           data: undefined, // Will be populated after parsing
           config: {
-            method: init.method || 'GET',
+            method: init.method ?? 'GET',
             url,
-            headers: init.headers as Record<string, string> || {},
+            headers: init.headers as Record<string, string> ?? {},
             data: undefined,
           },
         };
@@ -224,7 +222,7 @@ export abstract class FetchBasedClient {
       }
 
       if (this.config.debug) {
-        console.debug(`[Conduit] Response: ${response.status} ${response.statusText}`);
+        console.warn(`[Conduit] Response: ${response.status} ${response.statusText}`);
       }
 
       if (!response.ok) {
@@ -233,7 +231,7 @@ export abstract class FetchBasedClient {
       }
 
       // Parse response using ResponseParser
-      return await ResponseParser.parse<TResponse>(response, init.responseType || options.responseType);
+      return await ResponseParser.parse<TResponse>(response, init.responseType ?? options.responseType);
     } catch (error) {
       
       // Check if we've exceeded max retries
@@ -244,7 +242,7 @@ export abstract class FetchBasedClient {
       if (this.shouldRetry(error) && attempt <= this.retryConfig.maxRetries) {
         const delay = this.calculateDelay(attempt);
         if (this.config.debug) {
-          console.debug(`[Conduit] Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
+          console.warn(`[Conduit] Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
         }
         await this.sleep(delay);
         return this.executeWithRetry<TResponse, TRequest>(url, init, options, attempt + 1);
@@ -260,7 +258,7 @@ export abstract class FetchBasedClient {
     try {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        errorData = await response.json() as ErrorResponse;
+        errorData = await response.json() as unknown as ErrorResponse;
       }
     } catch {
       // Ignore JSON parsing errors
@@ -270,23 +268,27 @@ export abstract class FetchBasedClient {
     
     if (status === 401) {
       return new AuthError(
-        errorData?.error?.message || 'Authentication failed',
-        { code: errorData?.error?.code || 'auth_error' }
+        errorData?.error?.message ?? 'Authentication failed',
+        { code: errorData?.error?.code ?? 'auth_error' }
       );
     } else if (status === 429) {
       const retryAfter = response.headers.get('retry-after');
       return new RateLimitError(
-        errorData?.error?.message || 'Rate limit exceeded',
+        errorData?.error?.message ?? 'Rate limit exceeded',
         retryAfter ? parseInt(retryAfter, 10) : undefined
       );
     } else if (status === 400) {
       return new ConduitError(
-        errorData?.error?.message || 'Bad request',
+        errorData?.error?.message ?? 'Bad request',
         status,
-        errorData?.error?.code || 'bad_request'
+        errorData?.error?.code ?? 'bad_request'
       );
     } else if (errorData?.error) {
-      return createErrorFromResponseLegacy(errorData, status);
+      return new ConduitError(
+        errorData.error.message,
+        status,
+        errorData.error.code ?? undefined
+      );
     } else {
       return new ConduitError(
         `Request failed with status ${status}`,

@@ -23,7 +23,10 @@ export function validateUniquePriorities(providers: ProviderPriority[]): {
     if (!priorityMap.has(provider.priority)) {
       priorityMap.set(provider.priority, []);
     }
-    priorityMap.get(provider.priority)!.push(provider.providerName);
+    const providerList = priorityMap.get(provider.priority);
+    if (providerList) {
+      providerList.push(provider.providerName);
+    }
   });
 
   // Find duplicates

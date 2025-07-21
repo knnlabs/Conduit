@@ -113,8 +113,8 @@ export class AnalyticsService extends FetchBaseApiClient {
     filters?: RequestLogFilters
   ): Promise<PaginatedResponse<RequestLogDto>> {
     const params = {
-      pageNumber: filters?.pageNumber || 1,
-      pageSize: filters?.pageSize || DEFAULT_PAGE_SIZE,
+      pageNumber: filters?.pageNumber ?? 1,
+      pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
       startDate: filters?.startDate,
       endDate: filters?.endDate,
       virtualKeyId: filters?.virtualKeyId,
@@ -222,7 +222,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     return response;
   }
 
-  async getRequestLogStatistics(logs: RequestLog[]): Promise<RequestLogStatistics> {
+  getRequestLogStatistics(logs: RequestLog[]): RequestLogStatistics {
     // Client-side calculation of statistics
     const stats: RequestLogStatistics = {
       totalRequests: logs.length,
@@ -305,7 +305,7 @@ export class AnalyticsService extends FetchBaseApiClient {
   }
 
   // Stub methods
-  async getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<never> {
+  getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<never> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getDetailedCostBreakdown requires Admin API endpoint implementation. ' +
@@ -313,7 +313,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     );
   }
 
-  async predictFutureCosts(_basePeriod: DateRange, _forecastDays: number): Promise<CostForecastDto> {
+  predictFutureCosts(_basePeriod: DateRange, _forecastDays: number): Promise<CostForecastDto> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'predictFutureCosts requires Admin API endpoint implementation. ' +
@@ -348,7 +348,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     return this.export(filters, format);
   }
 
-  async detectAnomalies(_dateRange: DateRange): Promise<AnomalyDto[]> {
+  detectAnomalies(_dateRange: DateRange): Promise<AnomalyDto[]> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'detectAnomalies requires Admin API endpoint implementation. ' +
@@ -356,11 +356,11 @@ export class AnalyticsService extends FetchBaseApiClient {
     );
   }
 
-  async streamRequestLogs(
+  streamRequestLogs(
     _filters?: RequestLogFilters,
     _onMessage?: (log: RequestLogDto) => void,
     _onError?: (error: Error) => void
-  ): Promise<() => void> {
+  ): never {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'streamRequestLogs requires Admin API SSE endpoint implementation. ' +
@@ -368,11 +368,11 @@ export class AnalyticsService extends FetchBaseApiClient {
     );
   }
 
-  async generateReport(
+  generateReport(
     _type: 'cost' | 'usage' | 'performance',
     _dateRange: DateRange,
     _options?: AnalyticsOptions
-  ): Promise<Blob> {
+  ): never {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'generateReport requires Admin API endpoint implementation. ' +

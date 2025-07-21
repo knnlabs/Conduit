@@ -1,4 +1,5 @@
 import { AlertMetadata } from './metadata';
+import type { EventData } from './common-types';
 
 /**
  * Real-time monitoring metric
@@ -211,7 +212,8 @@ export interface WidgetConfig {
   yAxisRange?: [number, number];
   thresholds?: Array<{ value: number; color: string; label?: string }>;
   displayFormat?: string;
-  [key: string]: any;
+  // Additional chart-specific configuration
+  [key: string]: string | number | boolean | string[] | [number, number] | Array<{ value: number; color: string; label?: string }> | undefined;
 }
 
 /**
@@ -431,7 +433,7 @@ export interface LogEntry {
   service: string;
   traceId?: string;
   spanId?: string;
-  fields: Record<string, any>;
+  fields: EventData;
   stackTrace?: string;
 }
 

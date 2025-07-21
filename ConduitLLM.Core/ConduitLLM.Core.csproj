@@ -2,10 +2,10 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
     <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />
     <PackageReference Include="TiktokenSharp" Version="1.1.7" />
@@ -21,17 +21,6 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    
-    <!-- NuGet Package Configuration -->
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageId>ConduitLLM.Core</PackageId>
-    <Title>Conduit LLM Core Library</Title>
-    <Description>Core interfaces, models, and business logic for Conduit LLM multi-provider gateway</Description>
-    <PackageTags>llm;ai;core;interfaces;conduit;openai;anthropic</PackageTags>
-    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>

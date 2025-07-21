@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+
+interface SettingUpdateRequest {
+  value: unknown;
+}
 // GET /api/settings/[key] - Get a single setting
 export async function GET(
   req: NextRequest,
@@ -26,8 +30,8 @@ export async function PUT(
   try {
     const { key } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json();
-    await adminClient.settings.updateGlobalSetting(key, { value: body.value });
+    const body = await req.json() as SettingUpdateRequest;
+    await adminClient.settings.updateGlobalSetting(key, { value: body.value as string });
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleSDKError(error);

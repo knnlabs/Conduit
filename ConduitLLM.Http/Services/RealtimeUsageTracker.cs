@@ -125,8 +125,8 @@ namespace ConduitLLM.Http.Services
                 return;
             }
 
-            session.InputTokens += usage.PromptTokens;
-            session.OutputTokens += usage.CompletionTokens;
+            session.InputTokens += usage.PromptTokens.GetValueOrDefault();
+            session.OutputTokens += usage.CompletionTokens.GetValueOrDefault();
             session.LastActivity = DateTime.UtcNow;
 
             _logger.LogDebug("Tracked {InputTokens} input tokens and {OutputTokens} output tokens for connection {ConnectionId}",

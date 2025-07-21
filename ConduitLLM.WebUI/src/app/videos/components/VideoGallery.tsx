@@ -62,7 +62,7 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   }
 
   const metadata = video.metadata;
-  const downloadUrl = video.url || '';
+  const downloadUrl = video.url ?? '';
   const downloadFilename = `video-${task.id.slice(0, 8)}.mp4`;
 
   const handleDownload = async () => {
@@ -87,21 +87,27 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   return (
     <div className="video-card">
       <div className="video-card-player">
-        {video.url ? (
-          <VideoPlayer
-            src={video.url}
-            poster={undefined}
-            title={task.prompt}
-          />
-        ) : video.b64_json ? (
-          <VideoPlayer
-            src={`data:video/mp4;base64,${video.b64_json}`}
-            poster={undefined}
-            title={task.prompt}
-          />
-        ) : (
-          <div className="video-placeholder">No video available</div>
-        )}
+{(() => {
+          if (video.url) {
+            return (
+              <VideoPlayer
+                src={video.url}
+                poster={undefined}
+                title={task.prompt}
+              />
+            );
+          }
+          if (video.b64Json) {
+            return (
+              <VideoPlayer
+                src={`data:video/mp4;base64,${video.b64Json}`}
+                poster={undefined}
+                title={task.prompt}
+              />
+            );
+          }
+          return <div className="video-placeholder">No video available</div>;
+        })()}
       </div>
       
       <div className="video-card-content">
@@ -114,15 +120,15 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
             {metadata.duration && <span>{metadata.duration}s</span>}
             {metadata.resolution && <span>{metadata.resolution}</span>}
             {metadata.fps && <span>{metadata.fps} FPS</span>}
-            {metadata.file_size_bytes && (
-              <span>{formatFileSize(metadata.file_size_bytes)}</span>
+            {metadata.fileSizeBytes && (
+              <span>{formatFileSize(Number(metadata.fileSizeBytes))}</span>
             )}
           </div>
         )}
         
         <div className="video-card-actions">
           <button
-            onClick={handleDownload}
+            onClick={() => void handleDownload()}
             className="btn btn-primary btn-sm"
             disabled={!downloadUrl}
           >

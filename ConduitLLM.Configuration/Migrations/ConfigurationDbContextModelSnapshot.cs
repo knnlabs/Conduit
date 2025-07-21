@@ -17,7 +17,7 @@ namespace ConduitLLM.Configuration.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.5")
+                .HasAnnotation("ProductVersion", "9.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -893,14 +893,35 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal?>("AudioOutputCostPerMinute")
                         .HasColumnType("decimal(18, 4)");
 
+                    b.Property<decimal?>("BatchProcessingMultiplier")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("CachedInputTokenCost")
+                        .HasColumnType("decimal(18, 10)");
+
+                    b.Property<decimal?>("CachedInputWriteCost")
+                        .HasColumnType("decimal(18, 10)");
+
+                    b.Property<decimal?>("CostPerInferenceStep")
+                        .HasColumnType("decimal(18, 8)");
+
+                    b.Property<decimal?>("CostPerSearchUnit")
+                        .HasColumnType("decimal(18, 8)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DefaultInferenceSteps")
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("EmbeddingTokenCost")
                         .HasColumnType("decimal(18, 10)");
 
                     b.Property<decimal?>("ImageCostPerImage")
                         .HasColumnType("decimal(18, 4)");
+
+                    b.Property<string>("ImageQualityMultipliers")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("InputTokenCost")
                         .HasColumnType("decimal(18, 10)");
@@ -912,6 +933,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<decimal>("OutputTokenCost")
                         .HasColumnType("decimal(18, 10)");
+
+                    b.Property<bool>("SupportsBatchProcessing")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1058,10 +1082,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsEmbeddings")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("SupportsFunctionCalling")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsImageGeneration")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("SupportsRealtimeAudio")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportsStreaming")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("SupportsTextToSpeech")

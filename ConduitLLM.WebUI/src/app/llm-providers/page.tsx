@@ -11,7 +11,6 @@ import {
   ThemeIcon,
   LoadingOverlay,
   Alert,
-  Badge,
   Menu,
   rem,
   TextInput,
@@ -21,7 +20,6 @@ import {
   IconPlus,
   IconCircleCheck,
   IconCircleX,
-  IconClock,
   IconRefresh,
   IconAlertCircle,
   IconDownload,
@@ -38,7 +36,7 @@ import { notifications } from '@mantine/notifications';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { ProviderCredentialDto, ProviderHealthStatusDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // Use SDK types directly with health extensions
 interface ProviderWithHealth extends ProviderCredentialDto {
@@ -60,7 +58,7 @@ export default function ProvidersPage() {
 
   // Fetch providers on mount
   useEffect(() => {
-    fetchProviders();
+    void fetchProviders();
   }, []);
 
   const fetchProviders = async () => {
@@ -70,14 +68,10 @@ export default function ProvidersPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
-      const data = await response.json();
-      console.log('Providers API response:', data);
+      const data = await response.json() as ProviderCredentialDto[] | { items?: ProviderCredentialDto[]; providers?: ProviderCredentialDto[] };
       
       // Check if data is an array or if it's wrapped in a response object
-      const providersList = Array.isArray(data) ? data : (data.items || data.providers || []);
-      console.log('Provider object structure:', JSON.stringify(providersList[0], null, 2));
-      console.log('Provider object structure:', JSON.stringify(providersList[0], null, 2));
-      console.log('Providers list:', providersList);
+      const providersList = Array.isArray(data) ? data : (data.items ?? data.providers ?? []);
       
       // Use SDK types directly and add health status (would need separate health fetch in real app)
       const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
@@ -86,10 +80,9 @@ export default function ProvidersPage() {
         models: []
       }));
       
-      console.log('Providers with health:', providersWithHealth);
       setProviders(providersWithHealth);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } catch (error) {
+      setError(error instanceof Error ? error : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
@@ -104,17 +97,17 @@ export default function ProvidersPage() {
       if (!response.ok) {
         throw new Error('Failed to test provider');
       }
-      const result = await response.json();
+      const result = await response.json() as { success?: boolean; message?: string };
       
       notifications.show({
         title: result.success ? 'Connection Successful' : 'Connection Failed',
-        message: result.message || (result.success ? 'Provider is working correctly' : 'Failed to connect to provider'),
+        message: result.message ?? (result.success ? 'Provider is working correctly' : 'Failed to connect to provider'),
         color: result.success ? 'green' : 'red',
       });
       
       // Refresh providers to get updated health status
-      await fetchProviders();
-    } catch (err) {
+      void fetchProviders();
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to test provider connection',
@@ -142,8 +135,8 @@ export default function ProvidersPage() {
         message: 'Provider deleted successfully',
         color: 'green',
       });
-      await fetchProviders();
-    } catch (err) {
+      void fetchProviders();
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to delete provider',
@@ -160,7 +153,7 @@ export default function ProvidersPage() {
     return (
       provider.providerName.toLowerCase().includes(query) ||
       provider.id.toString().toLowerCase().includes(query) ||
-      (provider.endpoint?.toLowerCase().includes(query))
+      (provider.endpoint?.toLowerCase().includes(query) ?? false)
     );
   });
 
@@ -201,8 +194,8 @@ export default function ProvidersPage() {
       type: provider.providerName,
       status: provider.isEnabled ? 'Enabled' : 'Disabled',
       health: provider.healthStatus,
-      endpoint: provider.endpoint || '',
-      models: provider.models?.join('; ') || '',
+      endpoint: provider.endpoint ?? '',
+      models: provider.models?.join('; ') ?? '',
       lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
       createdAt: formatDateForExport(provider.createdAt),
     }));
@@ -309,7 +302,7 @@ export default function ProvidersPage() {
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchProviders}
+            onClick={() => void fetchProviders()}
             loading={isLoading}
           >
             Refresh
@@ -325,13 +318,13 @@ export default function ProvidersPage() {
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<IconFileTypeCsv style={{ width: rem(14), height: rem(14) }} />}
-                onClick={handleExportCSV}
+                onClick={() => void handleExportCSV()}
               >
                 Export as CSV
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconJson style={{ width: rem(14), height: rem(14) }} />}
-                onClick={handleExportJSON}
+                onClick={() => void handleExportJSON()}
               >
                 Export as JSON
               </Menu.Item>
@@ -395,8 +388,8 @@ export default function ProvidersPage() {
           <ProvidersTable 
             data={paginatedData}
             onEdit={handleEdit}
-            onTest={handleTestProvider}
-            onDelete={handleDelete}
+            onTest={(providerId: string) => void handleTestProvider(providerId)}
+            onDelete={(providerId: string) => void handleDelete(providerId)}
             testingProviders={testingProviders}
           />
           {filteredProviders.length > 0 && (
@@ -415,7 +408,7 @@ export default function ProvidersPage() {
       <CreateProviderModal
         opened={createModalOpened}
         onClose={closeCreateModal}
-        onSuccess={fetchProviders}
+        onSuccess={() => void fetchProviders()}
       />
 
       {/* Edit Provider Modal */}
@@ -423,7 +416,7 @@ export default function ProvidersPage() {
         opened={editModalOpened}
         onClose={closeEditModal}
         provider={selectedProvider}
-        onSuccess={fetchProviders}
+        onSuccess={() => void fetchProviders()}
       />
     </Stack>
   );

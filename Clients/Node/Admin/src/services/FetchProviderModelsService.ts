@@ -38,7 +38,7 @@ export class FetchProviderModelsService {
       name: dm.modelId,
       displayName: dm.displayName || dm.modelId,
       provider: dm.provider,
-      description: dm.metadata?.description as string | undefined,
+      description: dm.metadata?.description,
       contextWindow: dm.capabilities?.maxTokens || 0,
       maxTokens: dm.capabilities?.maxOutputTokens || 0,
       inputCost: 0, // Admin API doesn't provide cost information
@@ -113,7 +113,7 @@ export class FetchProviderModelsService {
       name: discoveredModel.modelId,
       displayName: discoveredModel.displayName || discoveredModel.modelId,
       provider: discoveredModel.provider,
-      description: discoveredModel.metadata?.description as string | undefined,
+      description: discoveredModel.metadata?.description,
       contextWindow: discoveredModel.capabilities?.maxTokens || 0,
       maxTokens: discoveredModel.capabilities?.maxOutputTokens || 0,
       inputCost: 0,
@@ -129,7 +129,7 @@ export class FetchProviderModelsService {
         plugins: false,
       },
       status: 'active',
-      version: discoveredModel.metadata?.version as string || 'unknown',
+      version: (discoveredModel.metadata?.version as string | undefined) ?? 'unknown',
     };
   }
 

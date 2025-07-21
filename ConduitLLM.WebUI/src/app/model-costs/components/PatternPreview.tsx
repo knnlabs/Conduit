@@ -9,13 +9,6 @@ interface PatternPreviewProps {
   pattern: string;
 }
 
-interface ProviderModel {
-  id: string;
-  modelId: string;
-  providerId: string;
-  providerModelId: string;
-  displayName?: string;
-}
 
 // Common model patterns for demonstration
 const COMMON_MODELS = [
@@ -71,8 +64,8 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
       try {
         const response = await fetch('/api/model-mappings');
         if (!response.ok) return [];
-        const data = await response.json();
-        return data.items || [];
+        const data = await response.json() as { items?: unknown[] };
+        return data.items ?? [];
       } catch {
         return [];
       }
@@ -91,11 +84,14 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
     
     // Add provider models if available
     if (providerModels && Array.isArray(providerModels)) {
-      providerModels.forEach((mapping: any) => {
-        if (mapping.modelId && mapping.providerId) {
-          modelMap.set(mapping.modelId, {
-            modelId: mapping.modelId,
-            provider: mapping.providerId,
+      providerModels.forEach((mapping: unknown) => {
+        const typedMapping = mapping as Record<string, unknown>;
+        if (typedMapping.modelId && typedMapping.providerId && 
+            typeof typedMapping.modelId === 'string' && 
+            typeof typedMapping.providerId === 'string') {
+          modelMap.set(typedMapping.modelId, {
+            modelId: typedMapping.modelId,
+            provider: typedMapping.providerId,
           });
         }
       });
@@ -124,7 +120,7 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
   const modelsByProvider = useMemo(() => {
     const grouped = new Map<string, string[]>();
     matchingModels.forEach(model => {
-      const models = grouped.get(model.provider) || [];
+      const models = grouped.get(model.provider) ?? [];
       models.push(model.modelId);
       grouped.set(model.provider, models);
     });

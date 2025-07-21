@@ -13,10 +13,18 @@ import { useForm } from '@mantine/form';
 import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 
+interface ModelMapping {
+  id: string;
+  modelName: string;
+  providerModelId: string;
+  priority: number;
+  isEnabled: boolean;
+}
+
 interface EditModelMappingModalProps {
   opened: boolean;
   onClose: () => void;
-  mapping: any | null;
+  mapping: ModelMapping | null;
   onSuccess?: () => void;
 }
 
@@ -48,13 +56,13 @@ export function EditModelMappingModal({
   useEffect(() => {
     if (mapping) {
       form.setValues({
-        modelName: mapping.modelName || '',
-        providerModelId: mapping.providerModelId || '',
-        priority: mapping.priority || 100,
-        isEnabled: mapping.isEnabled || false,
+        modelName: mapping.modelName ?? '',
+        providerModelId: mapping.providerModelId ?? '',
+        priority: mapping.priority ?? 100,
+        isEnabled: mapping.isEnabled ?? false,
       });
     }
-  }, [mapping]);
+  }, [mapping, form]);
 
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;

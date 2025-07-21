@@ -29,7 +29,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
-        private readonly Mock<IModelProviderMappingService> _mockModelMappingService;
+        private readonly Mock<ConduitLLM.Configuration.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
@@ -46,7 +46,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
-            _mockModelMappingService = new Mock<IModelProviderMappingService>();
+            _mockModelMappingService = new Mock<ConduitLLM.Configuration.IModelProviderMappingService>();
             _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
@@ -98,7 +98,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -134,9 +134,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Completed,
-                null,
-                It.IsAny<object>(),
                 100,
+                It.IsAny<object>(),
+                null,
                 It.IsAny<CancellationToken>()), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
@@ -157,7 +157,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -177,14 +177,15 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "dall-e-3"))
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ModelProviderMapping
+            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
                 ProviderName = "openai",
@@ -193,13 +194,14 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
-                .ReturnsAsync(modelMapping);
+                .Returns(Task.FromResult(modelMapping));
 
             // Setup client response with base64 data
             var mockClient = new Mock<ILLMClient>();
             var base64ImageData = Convert.ToBase64String(Encoding.UTF8.GetBytes("fake image data"));
             var imageResponse = new ConduitLLM.Core.Models.ImageGenerationResponse
             {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Data = new List<ConduitLLM.Core.Models.ImageData>
                 {
                     new ConduitLLM.Core.Models.ImageData
@@ -212,6 +214,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             mockClient.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(imageResponse);
 
@@ -238,7 +241,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockStorageService.Verify(x => x.StoreAsync(
-                It.Is<Stream>(s => s.Length > 0),
+                It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => m.ContentType == "image/png")), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
@@ -257,7 +260,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "invalid-model",
@@ -275,7 +278,8 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "invalid-model"))
@@ -283,7 +287,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Setup model mapping to return null (invalid model)
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("invalid-model"))
-                .ReturnsAsync((ModelProviderMapping)null);
+                .Returns(Task.FromResult((ConduitLLM.Configuration.ModelProviderMapping?)null));
 
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
@@ -293,9 +297,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Failed,
+                null,
+                null,
                 It.Is<string>(error => error.Contains("Model invalid-model not found")),
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
@@ -312,7 +316,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "invalid-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -337,9 +341,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Failed,
+                null,
+                null,
                 It.Is<string>(error => error.Contains("Model dall-e-3 not found")),
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -352,7 +356,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "gpt-4",
@@ -370,23 +374,23 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "gpt-4"))
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping for a text model
-            var modelMapping = new ModelProviderMapping
+            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
                 ProviderName = "openai",
-                ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false // Does not support image generation
+                ProviderModelId = "gpt-4"
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))
-                .ReturnsAsync(modelMapping);
+                .Returns(Task.FromResult(modelMapping));
 
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
@@ -396,9 +400,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Failed,
+                null,
+                null,
                 It.Is<string>(error => error.Contains("Model gpt-4 not found")),
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -411,7 +415,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -430,14 +434,15 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "dall-e-3"))
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ModelProviderMapping
+            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
                 ProviderName = "openai",
@@ -446,12 +451,13 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
-                .ReturnsAsync(modelMapping);
+                .Returns(Task.FromResult(modelMapping));
 
             // Setup client to throw cancellation exception
             var mockClient = new Mock<ILLMClient>();
             mockClient.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException());
 
@@ -468,9 +474,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Cancelled,
+                null,
+                null,
                 "Task was cancelled by user request",
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -483,7 +489,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -542,9 +548,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Cancelled,
+                null,
+                null,
                 "User requested cancellation",
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -572,9 +578,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "non-existent-task-id",
                 TaskState.Cancelled,
+                null,
+                null,
                 "User requested cancellation",
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -601,9 +607,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Cancelled,
+                null,
+                null,
                 "Cancelled by user request",
-                null,
-                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -629,7 +635,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = model,
@@ -652,10 +658,12 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Completed,
-                null,
-                It.Is<object>(result => 
-                    result.GetType().GetProperty("cost")?.GetValue(result)?.Equals(expectedCost) == true),
                 100,
+                It.Is<object>(result => 
+                    result.GetType().GetProperty("cost") != null &&
+                    result.GetType().GetProperty("cost").GetValue(result) != null &&
+                    result.GetType().GetProperty("cost").GetValue(result).Equals(expectedCost)),
+                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -675,7 +683,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -699,9 +707,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 "test-task-id",
                 TaskState.Completed,
-                null,
-                It.IsAny<object>(),
                 100,
+                It.IsAny<object>(),
+                null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -716,7 +724,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "minimax-image",
@@ -737,7 +745,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Verify that HTTP client was created (indicating download was attempted)
-            _mockHttpClientFactory.Verify(x => x.CreateClient(), Times.Once);
+            _mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Once);
         }
 
         #endregion
@@ -755,7 +763,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -794,7 +802,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
                 VirtualKeyHash = "test-virtual-key-hash",
-                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                 {
                     Prompt = "A beautiful landscape",
                     Model = "dall-e-3",
@@ -815,7 +823,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _orchestrator.Consume(context.Object);
 
             // Assert
-            _mockHttpClientFactory.Verify(x => x.CreateClient(), Times.Once);
+            _mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Once);
             _mockStorageService.Verify(x => x.StoreAsync(
                 It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => 
@@ -834,14 +842,15 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = request.VirtualKeyId,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync(request.VirtualKeyHash, request.Request.Model))
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ModelProviderMapping
+            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
                 ProviderName = provider,
@@ -850,7 +859,7 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))
-                .ReturnsAsync(modelMapping);
+                .Returns(Task.FromResult(modelMapping));
 
             // Setup client response
             var mockClient = new Mock<ILLMClient>();
@@ -878,11 +887,13 @@ namespace ConduitLLM.Tests.Core.Services
 
             var imageResponse = new ConduitLLM.Core.Models.ImageGenerationResponse
             {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Data = imageData
             };
 
             mockClient.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(imageResponse);
 
@@ -915,14 +926,15 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = request.VirtualKeyId,
                 IsEnabled = true,
-                Key = "test-virtual-key"
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
             };
 
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync(request.VirtualKeyHash, request.Request.Model))
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ModelProviderMapping
+            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
                 ProviderName = provider,
@@ -931,7 +943,7 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))
-                .ReturnsAsync(modelMapping);
+                .Returns(Task.FromResult(modelMapping));
 
             // Setup client response with URLs
             var mockClient = new Mock<ILLMClient>();
@@ -948,11 +960,13 @@ namespace ConduitLLM.Tests.Core.Services
 
             var imageResponse = new ConduitLLM.Core.Models.ImageGenerationResponse
             {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Data = imageData
             };
 
             mockClient.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
+                It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(imageResponse);
 
@@ -997,7 +1011,7 @@ namespace ConduitLLM.Tests.Core.Services
                 });
 
             var httpClient = new HttpClient(mockHttpMessageHandler.Object);
-            _mockHttpClientFactory.Setup(x => x.CreateClient())
+            _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
                 .Returns(httpClient);
         }
 

@@ -10,7 +10,6 @@ import {
   Menu,
   Switch,
   Tooltip,
-  Anchor,
 } from '@mantine/core';
 import {
   IconDots,
@@ -36,7 +35,7 @@ export function RulesList({ rules, onEdit, onDelete, onToggle }: RulesListProps)
       title: 'Delete Routing Rule',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the rule "{rule.name}"? This action cannot be undone.
+          Are you sure you want to delete the rule &quot;{rule.name}&quot;? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
@@ -49,7 +48,10 @@ export function RulesList({ rules, onEdit, onDelete, onToggle }: RulesListProps)
     if (rule.conditions.length === 0) return 'No conditions';
     if (rule.conditions.length === 1) {
       const condition = rule.conditions[0];
-      return `${condition.type} ${condition.operator} ${condition.value}`;
+      const valueStr = Array.isArray(condition.value) 
+        ? condition.value.join(', ') 
+        : String(condition.value);
+      return `${condition.type} ${condition.operator} ${valueStr}`;
     }
     return `${rule.conditions.length} conditions`;
   };

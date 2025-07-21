@@ -70,7 +70,7 @@ cat > "$BADGES_DIR/coverage-summary.md" << EOF
 EOF
 
 # Add project-specific coverage
-jq -r '.coverage[] | select(.name | contains("ConduitLLM")) | "| **\(.name)** | \(.linecoverage)% |"' "$COVERAGE_DIR/Summary.json" 2>/dev/null >> "$BADGES_DIR/coverage-summary.md" || echo "| Coverage details unavailable | N/A |" >> "$BADGES_DIR/coverage-summary.md"
+jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM")) | "| **\(.name)** | \(.coverage)% |"' "$COVERAGE_DIR/Summary.json" 2>/dev/null >> "$BADGES_DIR/coverage-summary.md" || echo "| Coverage details unavailable | N/A |" >> "$BADGES_DIR/coverage-summary.md"
 
 echo ""
 echo "✅ Coverage badges generated:"

@@ -11,13 +11,11 @@ import {
   ThemeIcon,
   Table,
   Progress,
-  Tooltip,
 } from '@mantine/core';
 import {
   IconClock,
   IconCheck,
   IconX,
-  IconArrowRight,
   IconBug,
   IconBolt,
 } from '@tabler/icons-react';
@@ -34,6 +32,8 @@ export function RuleEvaluationTrace({
   matchedRules,
   evaluationTime,
 }: RuleEvaluationTraceProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const unusedMatchedRules = matchedRules;
   const getStepIcon = (step: EvaluationStep) => {
     if (step.success) {
       return <IconCheck size={14} />;
@@ -115,7 +115,7 @@ export function RuleEvaluationTrace({
               const percentage = (categoryDuration / getTotalDuration()) * 100;
               
               return (
-                <div key={category}>
+                <div key={`category-${category}`}>
                   <Group justify="space-between" mb={2}>
                     <Text size="xs" fw={500} style={{ textTransform: 'capitalize' }}>
                       {category.replace(/([A-Z])/g, ' $1').trim()}
@@ -140,9 +140,9 @@ export function RuleEvaluationTrace({
           <div>
             <Text fw={500} size="sm" mb="md">Detailed Execution Steps</Text>
             <Timeline active={evaluationSteps.length} bulletSize={24} lineWidth={2}>
-              {evaluationSteps.map((step, index) => (
+              {evaluationSteps.map((step, stepIndex) => (
                 <Timeline.Item
-                  key={index}
+                  key={`step-${step.stepNumber}-${step.action}-${step.timestamp ?? stepIndex}`}
                   bullet={
                     <ThemeIcon
                       size={20}
@@ -219,7 +219,7 @@ export function RuleEvaluationTrace({
                   const avgDuration = totalDuration / steps.length;
                   
                   return (
-                    <Table.Tr key={category}>
+                    <Table.Tr key={`summary-${category}`}>
                       <Table.Td>
                         <Text fw={500} size="sm" style={{ textTransform: 'capitalize' }}>
                           {category.replace(/([A-Z])/g, ' $1').trim()}
@@ -234,7 +234,11 @@ export function RuleEvaluationTrace({
                             value={successRate}
                             size="sm"
                             w={60}
-                            color={successRate === 100 ? 'green' : successRate > 80 ? 'yellow' : 'red'}
+                            color={(() => {
+                              if (successRate === 100) return 'green';
+                              if (successRate > 80) return 'yellow';
+                              return 'red';
+                            })()}
                           />
                           <Text size="sm">{successRate.toFixed(0)}%</Text>
                         </Group>

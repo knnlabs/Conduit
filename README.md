@@ -104,7 +104,7 @@ flowchart LR
 ### Components
 
 - **ConduitLLM.Http**: OpenAI-compatible REST API gateway handling authentication and request forwarding
-- **ConduitLLM.WebUI**: Blazor-based admin interface for configuration and monitoring
+- **ConduitLLM.WebUI**: Next.js-based admin interface for configuration and monitoring
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
@@ -143,7 +143,7 @@ Key features:
 
 As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
-- **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
+- **WebUI Image**: The Next.js-based admin dashboard (`ConduitLLM.WebUI`)
 - **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
 - **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 

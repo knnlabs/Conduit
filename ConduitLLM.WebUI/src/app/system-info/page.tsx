@@ -19,10 +19,8 @@ import {
   Tabs,
   ScrollArea,
 } from '@mantine/core';
-import { StatusIndicator } from '@/components/common/StatusIndicator';
 import {
   IconServer,
-  IconCpu,
   IconDatabase,
   IconBrandDocker,
   IconRefresh,
@@ -30,16 +28,13 @@ import {
   IconCircleCheck,
   IconAlertTriangle,
   IconClock,
-  IconCpu2,
-  IconDeviceFloppy,
-  IconNetwork,
   IconLock,
   IconPackage,
   IconBolt,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { formatters } from '@/lib/utils/formatters';
+import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
 
 interface SystemMetric {
   name: string;
@@ -60,21 +55,22 @@ interface ServiceInfo {
 }
 
 
+
 export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [systemInfo, setSystemInfo] = useState<SystemInfoDto | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
 
   useEffect(() => {
-    fetchSystemInfo();
+    void fetchSystemInfo();
   }, []);
 
   const fetchSystemInfo = async () => {
     try {
       const response = await fetch('/api/settings/system-info', {
         headers: {
-          'X-Admin-Auth-Key': localStorage.getItem('adminAuthKey') || '',
+          'xAdminAuthKey': localStorage.getItem('adminAuthKey') ?? '',
         },
       });
 
@@ -82,7 +78,7 @@ export default function SystemInfoPage() {
         throw new Error('Failed to fetch system information');
       }
 
-      const data = await response.json();
+      const data = await response.json() as SystemInfoDto;
       setSystemInfo(data);
     } catch (error) {
       console.error('Error fetching system info:', error);
@@ -149,8 +145,12 @@ export default function SystemInfoPage() {
   const systemMetrics: SystemMetric[] = [];
   
   if (systemInfo?.runtime?.memoryUsage !== undefined) {
-    const memStatus = systemInfo.runtime.memoryUsage > 80 ? 'critical' : 
-                     systemInfo.runtime.memoryUsage > 60 ? 'warning' : 'healthy';
+    let memStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+    if (systemInfo.runtime.memoryUsage > 80) {
+      memStatus = 'critical';
+    } else if (systemInfo.runtime.memoryUsage > 60) {
+      memStatus = 'warning';
+    }
     systemMetrics.push({
       name: 'Memory Usage',
       value: systemInfo.runtime.memoryUsage,
@@ -161,8 +161,12 @@ export default function SystemInfoPage() {
   }
 
   if (systemInfo?.runtime?.cpuUsage !== undefined) {
-    const cpuStatus = systemInfo.runtime.cpuUsage > 80 ? 'critical' : 
-                     systemInfo.runtime.cpuUsage > 60 ? 'warning' : 'healthy';
+    let cpuStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+    if (systemInfo.runtime.cpuUsage > 80) {
+      cpuStatus = 'critical';
+    } else if (systemInfo.runtime.cpuUsage > 60) {
+      cpuStatus = 'warning';
+    }
     systemMetrics.push({
       name: 'CPU Usage',
       value: systemInfo.runtime.cpuUsage,
@@ -177,7 +181,7 @@ export default function SystemInfoPage() {
       name: 'Database Status',
       value: systemInfo.database.isConnected ? 'Connected' : 'Disconnected',
       status: systemInfo.database.isConnected ? 'healthy' : 'critical',
-      description: `Provider: ${systemInfo.database.provider || 'Unknown'}`
+      description: `Provider: ${systemInfo.database.provider ?? 'Unknown'}`
     });
   }
 
@@ -186,37 +190,20 @@ export default function SystemInfoPage() {
   if (systemInfo) {
     services.push({
       name: 'Conduit Core API',
-      version: systemInfo.version || 'Unknown',
+      version: systemInfo.version ?? 'Unknown',
       status: 'running',
-      uptime: formatUptime(systemInfo.uptime || 0)
+      uptime: formatUptime(systemInfo.uptime ?? 0)
     });
     
     if (systemInfo.database?.isConnected) {
       services.push({
-        name: systemInfo.database.provider || 'Database',
+        name: systemInfo.database.provider ?? 'Database',
         version: 'Unknown',
         status: systemInfo.database.isConnected ? 'running' : 'stopped'
       });
     }
   }
 
-  const mapToSystemStatus = (status: string) => {
-    switch (status) {
-      case 'running':
-      case 'healthy':
-      case 'latest':
-        return 'green';
-      case 'degraded':
-      case 'warning':
-      case 'outdated':
-        return 'yellow';
-      case 'stopped':
-      case 'critical':
-        return 'unhealthy';
-      default:
-        return 'unknown';
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -276,7 +263,7 @@ export default function SystemInfoPage() {
             <Button
               variant="light"
               leftSection={<IconRefresh size={16} />}
-              onClick={handleRefresh}
+              onClick={() => void handleRefresh()}
               loading={isRefreshing}
             >
               Refresh
@@ -300,10 +287,10 @@ export default function SystemInfoPage() {
                 Platform
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.runtime?.os || 'Unknown'}
+                {systemInfo?.runtime?.os ?? 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                {systemInfo?.runtime?.architecture || 'Unknown Architecture'}
+                {systemInfo?.runtime?.architecture ?? 'Unknown Architecture'}
               </Text>
             </div>
             <ThemeIcon color="blue" variant="light" size={48} radius="md">
@@ -319,10 +306,10 @@ export default function SystemInfoPage() {
                 .NET Runtime
               </Text>
               <Text size="xl" fw={700} mt={4}>
-                {systemInfo?.runtime?.dotnetVersion || 'Unknown'}
+                {systemInfo?.runtime?.dotnetVersion ?? 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Environment: {systemInfo?.environment || 'Unknown'}
+                Environment: {systemInfo?.environment ?? 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="green" variant="light" size={48} radius="md">
@@ -341,7 +328,7 @@ export default function SystemInfoPage() {
                 {systemInfo?.uptime ? formatUptime(systemInfo.uptime) : 'Unknown'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                Version: {systemInfo?.version || 'Unknown'}
+                Version: {systemInfo?.version ?? 'Unknown'}
               </Text>
             </div>
             <ThemeIcon color="teal" variant="light" size={48} radius="md">
@@ -360,7 +347,7 @@ export default function SystemInfoPage() {
                 {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
-                {systemInfo?.database?.provider || 'Unknown Provider'}
+                {systemInfo?.database?.provider ?? 'Unknown Provider'}
               </Text>
             </div>
             <ThemeIcon 
@@ -464,11 +451,11 @@ export default function SystemInfoPage() {
                           {service.status}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>{service.uptime || '-'}</Table.Td>
-                      <Table.Td>{service.port || '-'}</Table.Td>
+                      <Table.Td>{service.uptime ?? '-'}</Table.Td>
+                      <Table.Td>{service.port ?? '-'}</Table.Td>
                       <Table.Td>
                         <Text size="sm">
-                          CPU: {service.cpu || '-'}, Mem: {service.memory || '-'}
+                          CPU: {service.cpu ?? '-'}, Mem: {service.memory ?? '-'}
                         </Text>
                       </Table.Td>
                     </Table.Tr>
@@ -505,7 +492,7 @@ export default function SystemInfoPage() {
                       <Code>Environment</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Code>{systemInfo?.environment || 'Unknown'}</Code>
+                      <Code>{systemInfo?.environment ?? 'Unknown'}</Code>
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" size="sm" color="blue">
@@ -518,7 +505,7 @@ export default function SystemInfoPage() {
                       <Code>Build Date</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Code>{systemInfo?.buildDate || 'Unknown'}</Code>
+                      <Code>{systemInfo?.buildDate ?? 'Unknown'}</Code>
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" size="sm" color="blue">
@@ -640,7 +627,7 @@ export default function SystemInfoPage() {
                     <Table.Td>
                       <Code>Conduit Core</Code>
                     </Table.Td>
-                    <Table.Td>{systemInfo?.version || 'Unknown'}</Table.Td>
+                    <Table.Td>{systemInfo?.version ?? 'Unknown'}</Table.Td>
                     <Table.Td>
                       <Badge variant="light" color="green">
                         Current
@@ -651,7 +638,7 @@ export default function SystemInfoPage() {
                     <Table.Td>
                       <Code>.NET Runtime</Code>
                     </Table.Td>
-                    <Table.Td>{systemInfo?.runtime?.dotnetVersion || 'Unknown'}</Table.Td>
+                    <Table.Td>{systemInfo?.runtime?.dotnetVersion ?? 'Unknown'}</Table.Td>
                     <Table.Td>
                       <Badge variant="light" color="green">
                         Runtime
@@ -662,7 +649,7 @@ export default function SystemInfoPage() {
                     <Table.Td>
                       <Code>Database Provider</Code>
                     </Table.Td>
-                    <Table.Td>{systemInfo?.database?.provider || 'Unknown'}</Table.Td>
+                    <Table.Td>{systemInfo?.database?.provider ?? 'Unknown'}</Table.Td>
                     <Table.Td>
                       <Badge 
                         variant="light" 

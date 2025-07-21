@@ -30,7 +30,7 @@ export default function AccessDeniedPage() {
       // Basic URL validation
       new URL(redirectUrl);
       redirect(redirectUrl);
-    } catch (_error) {
+    } catch {
       console.error('Invalid redirect URL:', redirectUrl);
       // Continue to the access denied page if URL is invalid
     }

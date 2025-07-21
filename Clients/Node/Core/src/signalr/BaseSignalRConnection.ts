@@ -1,7 +1,7 @@
 import { 
   BaseSignalRConnection as CommonBaseSignalRConnection,
-  BaseSignalRConfig,
-  SignalRAuthConfig
+  type BaseSignalRConfig,
+  type SignalRAuthConfig
 } from '@knn_labs/conduit-common';
 
 /**

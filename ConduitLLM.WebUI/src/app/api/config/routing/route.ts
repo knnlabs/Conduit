@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { UpdateRoutingConfigDto } from '@knn_labs/conduit-admin-client';
 // GET /api/config/routing - Get routing configuration
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const config = await req.json();
+    const config = await req.json() as UpdateRoutingConfigDto;
     
     try {
       const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config);
@@ -50,8 +51,8 @@ export async function PATCH(req: NextRequest) {
       
       // Return success with the requested config if SDK doesn't support it yet
       return NextResponse.json({
-        ...config,
-        _warning: 'Configuration updated locally (SDK support pending)'
+        ...(config as object),
+        warning: 'Configuration updated locally (SDK support pending)'
       });
     }
   } catch (error) {
@@ -64,8 +65,13 @@ export async function PATCH(req: NextRequest) {
 export async function PUT(req: NextRequest) {
 
   try {
-    const adminClient = getServerAdminClient();
-    const { providers } = await req.json();
+    const body = await req.json() as { providers: Array<{ provider: string; priority: number }> };
+    
+    if (typeof body !== 'object' || body === null || !('providers' in body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    
+    const { providers } = body;
     
     // Return the requested priorities if SDK doesn't support it yet
     return NextResponse.json(providers);

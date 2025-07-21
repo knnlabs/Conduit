@@ -71,11 +71,11 @@ function highlightCode(code: string, language?: string): string {
 
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
+    ['&']: '&amp;',
+    ['<']: '&lt;',
+    ['>']: '&gt;',
+    ['"']: '&quot;',
+    ["'"]: '&#39;',
   };
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }
@@ -120,7 +120,7 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
         <Box p="sm" className="code-content">
           <pre style={{ margin: 0, fontSize: '0.875rem' }}>
             <code
-              dangerouslySetInnerHTML={{ __html: highlightedCode }}
+              dangerouslySetInnerHTML={{ ['__html']: highlightedCode }}
               style={{ fontFamily: 'monospace' }}
             />
           </pre>

@@ -26,7 +26,7 @@ export function useRoutingTest() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as TestHistory;
         setTestHistory(parsed);
       }
     } catch (err) {
@@ -136,7 +136,7 @@ export function useRoutingTest() {
             {
               type: 'route',
               target: 'openai-primary',
-              parameters: { fallback_enabled: true, timeout: 30000 },
+              parameters: { fallbackEnabled: true, timeout: 30000 },
             },
           ],
           createdAt: '2024-01-01T00:00:00Z',
@@ -175,7 +175,7 @@ export function useRoutingTest() {
             {
               type: 'route',
               target: 'anthropic-secondary',
-              parameters: { fallback_enabled: true },
+              parameters: { fallbackEnabled: true },
             },
           ],
           createdAt: '2024-01-01T00:00:00Z',
@@ -214,7 +214,7 @@ export function useRoutingTest() {
             {
               type: 'route',
               target: `provider-${request.region}`,
-              parameters: { fallback_enabled: true },
+              parameters: { fallbackEnabled: true },
             },
           ],
           createdAt: '2024-01-01T00:00:00Z',
@@ -273,7 +273,7 @@ export function useRoutingTest() {
       // Select provider based on rules
       const appliedRule = matchedRules.find(r => r.applied);
       const selectedProvider = appliedRule 
-        ? providers.find(p => p.id === appliedRule.rule.actions[0]?.target) || providers[0]
+        ? providers.find(p => p.id === appliedRule.rule.actions[0]?.target) ?? providers[0]
         : providers[0];
 
       // Generate fallback chain

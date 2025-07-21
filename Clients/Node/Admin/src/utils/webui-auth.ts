@@ -33,7 +33,7 @@ export interface SessionData {
   };
   
   /** Additional metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -61,9 +61,9 @@ export class WebUIAuthHelpers {
 
   constructor(config?: WebUIAuthConfig) {
     this.config = {
-      sessionDurationMs: config?.sessionDurationMs || 24 * 60 * 60 * 1000, // 24 hours
-      hashAlgorithm: config?.hashAlgorithm || 'sha256',
-      tokenLength: config?.tokenLength || 32,
+      sessionDurationMs: config?.sessionDurationMs ?? 24 * 60 * 60 * 1000, // 24 hours
+      hashAlgorithm: config?.hashAlgorithm ?? 'sha256',
+      tokenLength: config?.tokenLength ?? 32,
     };
   }
 
@@ -110,7 +110,7 @@ export class WebUIAuthHelpers {
    * @param metadata - Optional metadata
    * @returns A new session data object
    */
-  createSession(user?: SessionData['user'], metadata?: Record<string, any>): SessionData {
+  createSession(user?: SessionData['user'], metadata?: Record<string, unknown>): SessionData {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.config.sessionDurationMs);
 

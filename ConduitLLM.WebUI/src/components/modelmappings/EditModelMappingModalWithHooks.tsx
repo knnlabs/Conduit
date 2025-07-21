@@ -9,17 +9,13 @@ import {
   NumberInput,
   Button,
   Select,
-  MultiSelect,
-  Title,
-  Text,
   Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { ProviderCredentialDto, ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -86,7 +82,7 @@ export function EditModelMappingModal({
         
         // Check for duplicates, but exclude the current mapping being edited
         const duplicate = mappings.find(m => 
-          m.modelId === value && m.id !== (mapping?.id || 0)
+          m.modelId === value && m.id !== (mapping?.id ?? 0)
         );
         
         if (duplicate) {
@@ -101,23 +97,17 @@ export function EditModelMappingModal({
   // Update form when mapping changes
   useEffect(() => {
     if (mapping && providers) {
-      console.log('[EditModal] Setting form values from mapping:', mapping);
-      console.log('[EditModal] Available providers:', providers);
       
       // The mapping.providerId is the provider name (string), we need to find the numeric ID
       const provider = providers.find(p => p.providerName === mapping.providerId);
-      const providerIdForForm = provider?.id.toString() || '';
+      const providerIdForForm = provider?.id.toString() ?? '';
       
-      console.log('[EditModal] Mapped provider name to ID:', { 
-        providerName: mapping.providerId, 
-        providerIdForForm 
-      });
       
       const formData = {
         modelId: mapping.modelId,
         providerId: providerIdForForm, // Use the numeric ID for the form
         providerModelId: mapping.providerModelId,
-        priority: mapping.priority || 100,
+        priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
         supportsVision: mapping.supportsVision ?? false,
         supportsImageGeneration: mapping.supportsImageGeneration ?? false,
@@ -132,20 +122,17 @@ export function EditModelMappingModal({
         maxOutputTokens: mapping.maxOutputTokens,
         isDefault: mapping.isDefault ?? false,
       };
-      console.log('[EditModal] Form data to set:', formData);
       form.setValues(formData);
     }
-  }, [mapping, providers]);
+  }, [mapping, providers, form]);
 
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
 
-    console.log('[EditModal] Form values:', values);
-    console.log('[EditModal] Mapping:', mapping);
 
     // Convert the numeric provider ID back to provider name for the backend
     const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName || values.providerId;
+    const providerName = provider?.providerName ?? values.providerId;
 
     const updateData: UpdateModelProviderMappingDto = {
       modelId: values.modelId,
@@ -167,7 +154,6 @@ export function EditModelMappingModal({
       isDefault: values.isDefault,
     };
 
-    console.log('[EditModal] Update data:', updateData);
 
     try {
       await updateMapping.mutateAsync({

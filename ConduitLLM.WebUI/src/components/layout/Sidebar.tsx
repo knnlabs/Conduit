@@ -71,6 +71,7 @@ const navigationSections = [
     items: [
       { id: 'usage-analytics', label: 'Usage Analytics', href: '/usage-analytics', icon: IconChartBar },
       { id: 'cost-dashboard', label: 'Cost Dashboard', href: '/cost-dashboard', icon: IconCoin },
+      { id: 'model-costs', label: 'Model Pricing', href: '/model-costs', icon: IconCoin },
       { id: 'configuration', label: 'Configuration', href: '/configuration', icon: IconSettings },
     ]
   }

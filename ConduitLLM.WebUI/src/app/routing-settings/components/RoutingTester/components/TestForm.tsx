@@ -82,7 +82,9 @@ export function TestForm({
   };
 
   const handleRemoveCustomField = (key: string) => {
-    const { [key]: removed, ...rest } = request.customFields;
+    const { [key]: removedValue, ...rest } = request.customFields;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const unusedRemovedValue = removedValue;
     onRequestChange({
       ...request,
       customFields: rest,
@@ -106,7 +108,9 @@ export function TestForm({
 
   const handleRemoveHeader = (key: string) => {
     if (!request.headers) return;
-    const { [key]: removed, ...rest } = request.headers;
+    const { [key]: removedValue, ...rest } = request.headers;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const unusedRemovedValue = removedValue;
     onRequestChange({
       ...request,
       headers: rest,
@@ -156,7 +160,7 @@ export function TestForm({
                 description="Choose the model to test routing rules against"
                 data={modelOptions}
                 value={request.model}
-                onChange={(value) => onRequestChange({ ...request, model: value || '' })}
+                onChange={(value) => onRequestChange({ ...request, model: value ?? '' })}
                 searchable
                 disabled={modelsLoading}
                 required
@@ -171,8 +175,8 @@ export function TestForm({
                 placeholder="Select a region"
                 description="Choose user or provider region for geographic routing"
                 data={regionOptions}
-                value={request.region || ''}
-                onChange={(value) => onRequestChange({ ...request, region: value || undefined })}
+                value={request.region ?? ''}
+                onChange={(value) => onRequestChange({ ...request, region: value ?? undefined })}
                 searchable
                 clearable
               />
@@ -202,8 +206,8 @@ export function TestForm({
                 label="Virtual Key ID"
                 placeholder="Enter virtual key ID"
                 description="Optional virtual key for testing authentication"
-                value={request.virtualKeyId || ''}
-                onChange={(e) => onRequestChange({ ...request, virtualKeyId: e.target.value || undefined })}
+                value={request.virtualKeyId ?? ''}
+                onChange={(e) => onRequestChange({ ...request, virtualKeyId: e.target.value ?? undefined })}
               />
             </Tooltip>
           </Grid.Col>
@@ -282,7 +286,7 @@ export function TestForm({
               <Group>
                 <Text fw={500}>HTTP Headers</Text>
                 <Badge size="sm" variant="light">
-                  {Object.keys(request.headers || {}).length} headers
+                  {Object.keys(request.headers ?? {}).length} headers
                 </Badge>
                 <Tooltip label={getHelpText('testHeaders')}>
                   <ActionIcon size="sm" variant="subtle" color="gray">
@@ -323,7 +327,7 @@ export function TestForm({
                 </Group>
 
                 {/* Existing Headers */}
-                {Object.entries(request.headers || {}).map(([key, value]) => (
+                {Object.entries(request.headers ?? {}).map(([key, value]) => (
                   <Group key={key} justify="space-between" p="xs" bg="gray.0" style={{ borderRadius: 4 }}>
                     <Group>
                       <Text size="sm" fw={500}>{key}:</Text>
@@ -364,7 +368,7 @@ export function TestForm({
                   value={request.metadata ? JSON.stringify(request.metadata, null, 2) : ''}
                   onChange={(e) => {
                     try {
-                      const metadata = e.target.value ? JSON.parse(e.target.value) : {};
+                      const metadata = e.target.value ? JSON.parse(e.target.value) as Record<string, unknown> : {};
                       onRequestChange({ ...request, metadata });
                     } catch {
                       // Invalid JSON - keep previous value

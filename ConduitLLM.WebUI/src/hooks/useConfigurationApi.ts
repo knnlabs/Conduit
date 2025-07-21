@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 interface RoutingSettings {
   loadBalancingStrategy: 'round-robin' | 'least-latency' | 'weighted';
@@ -41,12 +42,12 @@ export function useConfigurationApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch routing settings');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to fetch routing settings');
       }
 
+      const result = await response.json() as RoutingSettings;
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch routing settings';
@@ -70,11 +71,12 @@ export function useConfigurationApi() {
         body: JSON.stringify(settings),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing settings');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to update routing settings');
       }
+
+      const result = await response.json() as RoutingSettings;
 
       notifications.show({
         title: 'Success',
@@ -106,12 +108,12 @@ export function useConfigurationApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch caching settings');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to fetch caching settings');
       }
 
+      const result = await response.json() as CachingSettings;
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch caching settings';
@@ -135,11 +137,12 @@ export function useConfigurationApi() {
         body: JSON.stringify(settings),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update caching settings');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to update caching settings');
       }
+
+      const result = await response.json() as CachingSettings;
 
       notifications.show({
         title: 'Success',
@@ -175,12 +178,12 @@ export function useConfigurationApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch cache stats');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to fetch cache stats');
       }
 
+      const result = await response.json() as CacheStats;
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch cache stats';
@@ -205,8 +208,8 @@ export function useConfigurationApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to clear cache');
+        const errorData = await response.json() as ErrorResponse;
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to clear cache');
       }
 
       notifications.show({

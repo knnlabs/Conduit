@@ -14,7 +14,7 @@ namespace ConduitLLM.Providers
     /// <summary>
     /// Service for retrieving available models from LLM providers.
     /// </summary>
-    public class ModelListService
+    public class ModelListService : IModelListService
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMemoryCache _cache;

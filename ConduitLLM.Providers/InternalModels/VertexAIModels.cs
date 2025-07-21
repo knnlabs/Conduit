@@ -53,6 +53,9 @@ public class VertexAIGeminiRequest
 
     [JsonPropertyName("generationConfig")]
     public VertexAIGenerationConfig? GenerationConfig { get; set; }
+
+    [JsonPropertyName("systemInstruction")]
+    public VertexAIGeminiContent? SystemInstruction { get; set; }
 }
 
 /// <summary>

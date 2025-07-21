@@ -30,7 +30,7 @@ export async function GET(
     if (searchParams.get('includeMetrics') === 'true') {
       const metricsResponse = await adminClient.providers.getHealthMetrics(
         id,
-        timeRange || undefined
+        timeRange ?? undefined
       );
       
       return NextResponse.json({

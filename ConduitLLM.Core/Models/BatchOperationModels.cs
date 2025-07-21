@@ -288,4 +288,44 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         PartiallyCompleted
     }
+
+    /// <summary>
+    /// Item for batch spend update
+    /// </summary>
+    public class SpendUpdateItem
+    {
+        public int VirtualKeyId { get; set; }
+        public decimal Amount { get; set; }
+        public string Model { get; set; } = string.Empty;
+        public string Provider { get; set; } = string.Empty;
+        public Dictionary<string, object>? RequestMetadata { get; set; }
+    }
+
+    /// <summary>
+    /// Item for batch virtual key update
+    /// </summary>
+    public class VirtualKeyUpdateItem
+    {
+        public int VirtualKeyId { get; set; }
+        public decimal? MaxBudget { get; set; }
+        public List<string>? AllowedModels { get; set; }
+        public Dictionary<string, object>? RateLimits { get; set; }
+        public bool? IsEnabled { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    /// <summary>
+    /// Item for batch webhook send
+    /// </summary>
+    public class WebhookSendItem
+    {
+        public string WebhookUrl { get; set; } = string.Empty;
+        public int VirtualKeyId { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public object Payload { get; set; } = new { };
+        public Dictionary<string, string>? Headers { get; set; }
+        public string? Secret { get; set; }
+        public int MaxRetries { get; set; } = 3;
+    }
 }

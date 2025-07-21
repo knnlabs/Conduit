@@ -158,7 +158,7 @@ namespace ConduitLLM.Tests.Core.Fixtures
                     IsEnabled = true
                 });
 
-            mock.Setup(x => x.UpdateSpendAsync(It.IsAny<string>(), It.IsAny<decimal>()))
+            mock.Setup(x => x.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
                 .ReturnsAsync(true);
 
             return mock;

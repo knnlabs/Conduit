@@ -113,7 +113,7 @@ export class ControllableChatStream implements ControllableStream<ChatCompletion
 
   getStats(): StreamStats {
     const now = Date.now();
-    const duration = (this.endTime || now) - this.startTime - this.totalPausedDuration;
+    const duration = (this.endTime ?? now) - this.startTime - this.totalPausedDuration;
     const averageTPS = duration > 0 ? (this.tokensReceived / duration) * 1000 : 0;
     
     return {
@@ -128,7 +128,7 @@ export class ControllableChatStream implements ControllableStream<ChatCompletion
 
   private updateStats(chunk: ChatCompletionChunk): void {
     // Count tokens (approximate - would need proper tokenizer for accuracy)
-    const content = chunk.choices?.[0]?.delta?.content || '';
+    const content = chunk.choices?.[0]?.delta?.content ?? '';
     const tokenCount = Math.ceil(content.length / 4); // Rough approximation
     this.tokensReceived += tokenCount;
 

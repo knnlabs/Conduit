@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { 
+  VirtualKeyDto,
+  PaginatedResponse 
+} from '@knn_labs/conduit-admin-client';
 
 export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const period = searchParams.get('period') || '30d';
+    const period = searchParams.get('period') ?? '30d';
     const adminClient = getServerAdminClient();
     
     // Calculate date range
@@ -29,22 +33,19 @@ export async function GET(req: NextRequest) {
     
     try {
       // Try to get analytics data, but don't fail if unavailable
-      let allKeys, vkAnalytics, costAnalytics;
       
       // Analytics endpoints don't exist - just get virtual keys
-      allKeys = await adminClient.virtualKeys.list(1, 100);
-      vkAnalytics = null;
-      costAnalytics = null;
+      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
       
       // Transform virtual keys data without analytics
-      const virtualKeysData = (allKeys?.items || []).map((key: any) => {
+      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => {
         return {
           id: key.id,
           name: key.keyName,
           status: key.isEnabled ? 'active' : 'inactive',
           requests: 0,
           cost: 0,
-          budget: key.maxBudget || 0,
+          budget: key.maxBudget ?? 0,
           budgetUsed: 0,
         };
       });
@@ -61,10 +62,10 @@ export async function GET(req: NextRequest) {
       const activeKeysGrowth = null;
       
       // No time series data available
-      const timeSeriesData: any[] = [];
+      const timeSeriesData: Array<Record<string, unknown>> = [];
       
       // No model usage data available
-      const modelUsage: any[] = [];
+      const modelUsage: Array<Record<string, unknown>> = [];
       
       return NextResponse.json({
         virtualKeys: virtualKeysData,
@@ -85,15 +86,15 @@ export async function GET(req: NextRequest) {
       
       // If analytics methods fail, provide fallback with just virtual keys data
       try {
-        const allKeys = await adminClient.virtualKeys.list(1, 100);
+        const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
         
-        const virtualKeysData = (allKeys?.items || []).map((key: any) => ({
+        const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => ({
           id: key.id,
           name: key.keyName,
           status: key.isEnabled ? 'active' : 'inactive',
           requests: 0,
           cost: 0,
-          budget: key.maxBudget || 0,
+          budget: key.maxBudget ?? 0,
           budgetUsed: 0,
         }));
         

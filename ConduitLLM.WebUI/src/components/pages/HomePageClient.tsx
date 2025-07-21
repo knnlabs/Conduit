@@ -9,7 +9,8 @@ import {
   Badge,
   Button,
   Grid,
-  ThemeIcon
+  ThemeIcon,
+  Alert
 } from '@mantine/core';
 import { 
   IconServer, 
@@ -22,7 +23,6 @@ import {
   IconSettings,
   IconAlertCircle
 } from '@tabler/icons-react';
-import { Alert } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 

@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
 
-export interface Model {
-  id: string;
-  name: string;
-  provider: string;
-  capabilities: Record<string, boolean>;
-}
 
 export interface ModelOption {
   value: string;
@@ -15,7 +10,7 @@ export interface ModelOption {
 }
 
 export function useModels() {
-  const [models, setModels] = useState<Model[]>([]);
+  const [models, setModels] = useState<DiscoveredModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,11 +25,11 @@ export function useModels() {
           throw new Error(`Failed to fetch models: ${response.statusText}`);
         }
         
-        const modelsData = await response.json();
+        const modelsData = await response.json() as ModelsDiscoveryResponse;
         
         // Extract models array from response
-        const modelsArray = modelsData.data || modelsData.items || modelsData;
-        setModels(Array.isArray(modelsArray) ? modelsArray : []);
+        const modelsArray = modelsData.data ?? [];
+        setModels(modelsArray);
       } catch (err) {
         console.error('Error fetching models:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch models');
@@ -44,13 +39,13 @@ export function useModels() {
       }
     }
 
-    fetchModels();
+    void fetchModels();
   }, []);
 
   // Convert models to select options format
-  const modelOptions: ModelOption[] = models.map(model => ({
+  const modelOptions: ModelOption[] = models.map((model) => ({
     value: model.id,
-    label: model.name || model.id,
+    label: model.display_name ?? model.id,
   }));
 
   return {

@@ -6,12 +6,12 @@ declare module 'next/server' {
     nextUrl: URL & { search: string };
     headers: Headers;
     method: string;
-    json(): Promise<any>;
+    json(): Promise<unknown>;
     text(): Promise<string>;
     formData(): Promise<FormData>;
   }
 
   export class NextResponse extends Response {
-    static json(body: any, init?: ResponseInit): NextResponse;
+    static json(body: unknown, init?: ResponseInit): NextResponse;
   }
 }

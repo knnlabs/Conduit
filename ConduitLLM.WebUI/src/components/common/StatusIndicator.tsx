@@ -25,26 +25,32 @@ import {
 import { useStatusIndicator, type SystemStatusType } from '@/hooks/useSystemStatus';
 
 // Icon mapping for status types
-const STATUS_ICONS = {
-  'check': IconCheck,
-  'x': IconX,
-  'check-circle': IconCheck,
-  'x-circle': IconX,
-  'alert-triangle': IconAlertTriangle,
-  'alert-circle': IconAlertCircle,
-  'clock': IconClock,
-  'activity': IconActivity,
-  'wifi-off': IconWifiOff,
-  'tool': IconTool,
-  'help-circle': IconHelpCircle,
-  'loader': IconLoader,
-} as const;
+const STATUS_ICONS_MAP = new Map([
+  ['check', IconCheck],
+  ['x', IconX],
+  ['checkCircle', IconCheck],
+  ['xCircle', IconX],
+  ['alertTriangle', IconAlertTriangle],
+  ['alertCircle', IconAlertCircle],
+  ['clock', IconClock],
+  ['activity', IconActivity],
+  ['wifiOff', IconWifiOff],
+  ['tool', IconTool],
+  ['helpCircle', IconHelpCircle],
+  ['loader', IconLoader],
+  // Keep kebab-case for backward compatibility
+  ['check-circle', IconCheck],
+  ['x-circle', IconX],
+  ['alert-triangle', IconAlertTriangle],
+  ['alert-circle', IconAlertCircle],
+  ['wifi-off', IconWifiOff],
+  ['help-circle', IconHelpCircle],
+]);
 
 export interface StatusIndicatorProps {
   status: SystemStatusType | boolean;
   variant?: 'badge' | 'icon' | 'dot' | 'text' | 'detailed';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  context?: string;
   label?: string;
   description?: string;
   showTooltip?: boolean;
@@ -57,7 +63,6 @@ export function StatusIndicator({
   status,
   variant = 'badge',
   size = 'sm',
-  context,
   label,
   description,
   showTooltip = true,
@@ -65,13 +70,13 @@ export function StatusIndicator({
   className,
   testId,
 }: StatusIndicatorProps) {
-  const statusConfig = useStatusIndicator(status, context);
+  const statusConfig = useStatusIndicator(status);
   
-  const displayLabel = label || statusConfig.label;
-  const displayDescription = description || statusConfig.description;
+  const displayLabel = label ?? statusConfig.label;
+  const displayDescription = description ?? statusConfig.description;
   
   // Get appropriate icon component
-  const IconComponent = statusConfig.icon ? STATUS_ICONS[statusConfig.icon as keyof typeof STATUS_ICONS] : IconHelpCircle;
+  const IconComponent = statusConfig.icon ? STATUS_ICONS_MAP.get(statusConfig.icon) ?? IconHelpCircle : IconHelpCircle;
   
   // Animate icons for loading/connecting states
   const shouldAnimate = animate || ['connecting', 'processing', 'pending'].includes(statusConfig.type);
@@ -117,15 +122,25 @@ export function StatusIndicator({
           </ThemeIcon>
         );
 
-      case 'dot':
+      case 'dot': {
+        const getIndicatorSize = () => {
+          switch (size) {
+            case 'xs': return 6;
+            case 'sm': return 8;
+            case 'md': return 10;
+            default: return 12;
+          }
+        };
+        
         return (
           <Indicator
             color={statusConfig.color}
-            size={size === 'xs' ? 6 : size === 'sm' ? 8 : size === 'md' ? 10 : 12}
+            size={getIndicatorSize()}
             className={className}
             data-testid={testId}
           />
         );
+      }
 
       case 'text':
         return (
@@ -180,14 +195,14 @@ export function HealthStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' }) {
-  return <StatusIndicator {...props} status={status} context="health" />;
+  return <StatusIndicator {...props} status={status} />;
 }
 
 export function ConnectionStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'connected' | 'connecting' | 'disconnected' | 'error' }) {
-  return <StatusIndicator {...props} status={status} context="connection" />;
+  return <StatusIndicator {...props} status={status} />;
 }
 
 export function EnabledStatusIndicator({
@@ -202,7 +217,7 @@ export function EnabledStatusIndicator({
     <StatusIndicator 
       {...props} 
       status={enabled} 
-      label={enabled ? (labels?.enabled || 'Enabled') : (labels?.disabled || 'Disabled')}
+      label={enabled ? (labels?.enabled ?? 'Enabled') : (labels?.disabled ?? 'Disabled')}
     />
   );
 }
@@ -211,7 +226,7 @@ export function TaskStatusIndicator({
   status,
   ...props
 }: Omit<StatusIndicatorProps, 'context'> & { status: 'pending' | 'processing' | 'completed' | 'failed' }) {
-  return <StatusIndicator {...props} status={status} context="task" animate />;
+  return <StatusIndicator {...props} status={status} animate />;
 }
 
 // Composite status indicator for complex status displays
@@ -236,8 +251,7 @@ export function CompositeStatusIndicator({
   className,
   testId,
 }: CompositeStatusIndicatorProps) {
-  const primaryConfig = useStatusIndicator(primary);
-  const secondaryConfig = secondary ? useStatusIndicator(secondary) : null;
+  const secondaryConfig = useStatusIndicator(secondary ?? false);
 
   if (variant === 'vertical') {
     return (
@@ -253,9 +267,9 @@ export function CompositeStatusIndicator({
             {description}
           </Text>
         )}
-        {secondaryConfig && (
+        {secondary && (
           <Group gap="xs" mt={4} ml={18}>
-            <StatusIndicator status={secondary!} variant="dot" size="xs" showTooltip={false} />
+            <StatusIndicator status={secondary} variant="dot" size="xs" showTooltip={false} />
             <Text size="xs" c="dimmed">
               {secondaryConfig.label}
             </Text>
@@ -278,8 +292,8 @@ export function CompositeStatusIndicator({
           </Text>
         )}
       </Box>
-      {secondaryConfig && (
-        <StatusIndicator status={secondary!} variant="icon" size="xs" />
+      {secondary && (
+        <StatusIndicator status={secondary} variant="icon" size="xs" />
       )}
     </Group>
   );

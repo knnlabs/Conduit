@@ -58,7 +58,7 @@ export default function VideoInterface() {
                 <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
                   <li>Configure providers (MiniMax, etc.) in <strong>LLM Providers</strong></li>
                   <li>Add video generation models in <strong>Model Mappings</strong></li>
-                  <li>Enable the <strong>"Supports Video Generation"</strong> checkbox for those models</li>
+                  <li>Enable the <strong>&ldquo;Supports Video Generation&rdquo;</strong> checkbox for those models</li>
                 </ol>
                 <p style={{ marginTop: '0.5rem' }}>
                   Example model: <code>minimax-video</code>

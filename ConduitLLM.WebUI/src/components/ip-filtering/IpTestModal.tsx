@@ -74,9 +74,9 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
         throw new Error('Failed to test IP address');
       }
       
-      const result = await response.json();
+      const result = await response.json() as TestResult;
       setTestResult(result);
-    } catch (error) {
+    } catch {
       // For now, simulate a test result since the endpoint might not exist
       setTestResult({
         allowed: true,
@@ -151,7 +151,7 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
                   </Stack>
                 ) : (
                   <Text size="sm" c="dimmed">
-                    {testResult.reason || 'No specific rule matched this IP address.'}
+                    {testResult.reason ?? 'No specific rule matched this IP address.'}
                   </Text>
                 )}
               </Card>

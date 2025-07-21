@@ -1,6 +1,7 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ConduitError } from '../utils/errors';
 import type { ApiClientConfig } from '../client/types';
+import { HttpMethod, type RequestOptions } from '../client/HttpMethod';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -8,15 +9,19 @@ global.fetch = jest.fn();
 // Test implementation of FetchBaseApiClient
 class TestApiClient extends FetchBaseApiClient {
   // Expose protected methods for testing
-  public testRequest<T>(url: string, options?: any): Promise<T> {
+  public testRequest<T>(url: string, options?: RequestOptions<unknown> & { method?: HttpMethod }): Promise<T> {
     return this.request<T>(url, options);
   }
   
-  public testGet<T>(url: string, options?: any): Promise<T> {
-    return this.get<T>(url, options);
+  public testGet<T>(
+    url: string, 
+    optionsOrParams?: { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: 'json' | 'text' | 'blob' | 'arraybuffer'; } | Record<string, unknown>,
+    extraOptions?: { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; responseType?: 'json' | 'text' | 'blob' | 'arraybuffer'; }
+  ): Promise<T> {
+    return this.get<T>(url, optionsOrParams, extraOptions);
   }
   
-  public testPost<T, R>(url: string, data?: R, options?: any): Promise<T> {
+  public testPost<T, R>(url: string, data?: R, options?: { headers?: Record<string, string>; signal?: AbortSignal; timeout?: number; }): Promise<T> {
     return this.post<T, R>(url, data, options);
   }
 }
@@ -47,7 +52,7 @@ describe('FetchBaseApiClient', () => {
         })
       );
 
-      const result = await client.testGet('/test');
+      const result = await client.testGet<{ data: string }>('/test');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://admin.api.test.com/test',
@@ -73,7 +78,7 @@ describe('FetchBaseApiClient', () => {
         })
       );
 
-      const result = await client.testPost('/test', requestBody);
+      const result = await client.testPost<{ id: number; name: string }, { name: string }>('/test', requestBody);
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://admin.api.test.com/test',
@@ -134,7 +139,7 @@ describe('FetchBaseApiClient', () => {
         })
       );
 
-      await (client as any).get('/test', { page: 1 }, { headers: { 'X-Custom': 'value' } });
+      await client.testGet('/test', { page: 1 }, { headers: { 'X-Custom': 'value' } });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://admin.api.test.com/test?page=1',

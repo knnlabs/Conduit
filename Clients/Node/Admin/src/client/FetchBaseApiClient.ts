@@ -37,8 +37,8 @@ export abstract class FetchBaseApiClient {
     this.onResponse = config.onResponse;
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.masterKey = config.masterKey;
-    this.timeout = config.timeout || 30000;
-    this.defaultHeaders = config.defaultHeaders || {};
+    this.timeout = config.timeout ?? 30000;
+    this.defaultHeaders = config.defaultHeaders ?? {};
     
     this.retryConfig = this.normalizeRetryConfig(config.retries);
   }
@@ -58,7 +58,7 @@ export abstract class FetchBaseApiClient {
         },
       };
     }
-    return retries || { maxRetries: 3, retryDelay: 1000 };
+    return retries ?? { maxRetries: 3, retryDelay: 1000 };
   }
 
   /**
@@ -72,13 +72,13 @@ export abstract class FetchBaseApiClient {
     const controller = new AbortController();
     
     // Set up timeout
-    const timeoutId = options.timeout || this.timeout
-      ? setTimeout(() => controller.abort(), options.timeout || this.timeout)
+    const timeoutId = options.timeout ?? this.timeout
+      ? setTimeout(() => controller.abort(), options.timeout ?? this.timeout)
       : undefined;
 
     try {
       const requestInfo: RequestConfigInfo = {
-        method: options.method || 'GET',
+        method: options.method ?? 'GET',
         url: fullUrl,
         headers: this.buildHeaders(options.headers),
         data: options.body,
@@ -89,7 +89,7 @@ export abstract class FetchBaseApiClient {
         await this.onRequest(requestInfo);
       }
 
-      console.log('[SDK] API Request:', requestInfo.method, requestInfo.url);
+      console.warn('[SDK] API Request:', requestInfo.method, requestInfo.url);
       this.log('debug', `API Request: ${requestInfo.method} ${requestInfo.url}`);
 
       const response = await this.executeWithRetry<TResponse, TRequest>(
@@ -98,9 +98,9 @@ export abstract class FetchBaseApiClient {
           method: requestInfo.method,
           headers: requestInfo.headers,
           body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: options.signal || controller.signal,
+          signal: options.signal ?? controller.signal,
           responseType: options.responseType,
-          timeout: options.timeout || this.timeout,
+          timeout: options.timeout ?? this.timeout,
         }
       );
 
@@ -269,26 +269,26 @@ export abstract class FetchBaseApiClient {
           statusText: response.statusText,
           headers,
           data: undefined, // Will be populated after parsing
-          config: { url, method: init?.method || HttpMethod.GET } as RequestConfigInfo,
+          config: { url, method: init?.method ?? HttpMethod.GET } as RequestConfigInfo,
         };
         await this.onResponse(responseInfo);
       }
 
       if (!response.ok) {
-        console.log('[SDK] API Error Response:', {
+        console.error('[SDK] API Error Response:', {
           url,
           status: response.status,
           statusText: response.statusText,
-          method: init.method || HttpMethod.GET
+          method: init.method ?? HttpMethod.GET
         });
         
-        const apiError = await handleApiError({
+        const apiError = handleApiError({
           response: {
             status: response.status,
             data: await this.parseErrorResponse(response),
             headers,
           },
-          config: { url, method: init.method || HttpMethod.GET },
+          config: { url, method: init.method ?? HttpMethod.GET },
           isHttpError: false,
           message: `HTTP ${response.status}: ${response.statusText}`,
         });
@@ -316,7 +316,7 @@ export abstract class FetchBaseApiClient {
 
       const shouldRetry = this.retryConfig.retryCondition && 
                          error instanceof Error &&
-                         this.retryConfig.retryCondition(error as any);
+                         this.retryConfig.retryCondition(error as unknown as Error);
 
       if (shouldRetry) {
         const delay = this.calculateRetryDelay(attempt);
@@ -337,7 +337,7 @@ export abstract class FetchBaseApiClient {
     try {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        return await response.json();
+        return await response.json() as unknown;
       }
       return await response.text();
     } catch {
@@ -351,7 +351,7 @@ export abstract class FetchBaseApiClient {
       return this.retryDelays[index];
     }
     
-    const baseDelay = this.retryConfig.retryDelay || 1000;
+    const baseDelay = this.retryConfig.retryDelay ?? 1000;
     return baseDelay * Math.pow(2, attempt - 1);
   }
 
@@ -360,7 +360,7 @@ export abstract class FetchBaseApiClient {
   }
 
   protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
-    if (this.logger && this.logger[level]) {
+    if (this.logger?.[level]) {
       this.logger[level](message, ...args);
     }
   }

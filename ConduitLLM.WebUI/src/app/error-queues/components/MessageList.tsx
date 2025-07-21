@@ -12,7 +12,6 @@ import {
   Box,
   Code,
   Stack,
-  Button,
   Loader,
   Center,
   Paper,
@@ -29,21 +28,22 @@ import { useErrorQueueMessages, useReplayMessage, useDeleteMessage } from '@/hoo
 import { MessageDetailModal } from './MessageDetailModal';
 import { formatDateTime, formatRelativeTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
+import type { ErrorMessage } from '@knn_labs/conduit-admin-client';
 
 interface MessageListProps {
   queueName: string;
   page: number;
   pageSize: number;
-  searchQuery?: string;
-  dateFilter?: string | null;
+  searchQuery: string;
+  dateFilter: string | null;
 }
 
 export function MessageList({
   queueName,
   page,
   pageSize,
-  searchQuery,
-  dateFilter,
+  // searchQuery, // TODO: Implement search functionality
+  // dateFilter, // TODO: Implement date filtering
 }: MessageListProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [selectedMessage, setSelectedMessage] = useState<{
@@ -77,7 +77,7 @@ export function MessageList({
     );
   }
 
-  const messages = data?.messages || [];
+  const messages = data?.messages ?? [];
 
   const toggleRow = (messageId: string) => {
     setExpandedRows((prev) => {
@@ -99,8 +99,10 @@ export function MessageList({
     await deleteMutation.mutateAsync({ queueName, messageId });
   };
 
-  const handleCopyJson = (message: any) => {
-    navigator.clipboard.writeText(JSON.stringify(message, null, 2));
+  // Using SDK ErrorMessage type - no need for local interface
+  
+  const handleCopyJson = (message: ErrorMessage) => {
+    void navigator.clipboard.writeText(JSON.stringify(message, null, 2));
     notifications.show({
       title: 'Copied',
       message: 'Message JSON copied to clipboard',
@@ -109,7 +111,14 @@ export function MessageList({
   };
 
   const getRetryBadge = (retryCount: number) => {
-    const color = retryCount === 0 ? 'gray' : retryCount < 3 ? 'yellow' : 'red';
+    let color: string;
+    if (retryCount === 0) {
+      color = 'gray';
+    } else if (retryCount < 3) {
+      color = 'yellow';
+    } else {
+      color = 'red';
+    }
     return (
       <Badge size="sm" variant="light" color={color}>
         {retryCount} retries
@@ -144,7 +153,7 @@ export function MessageList({
             </tr>
           </thead>
           <tbody>
-            {messages.map((message: any) => {
+            {messages.map((message: ErrorMessage) => {
               const isExpanded = expandedRows.has(message.messageId);
               return (
                 <>
@@ -178,7 +187,7 @@ export function MessageList({
                     </td>
                     <td>
                       <Text size="sm" style={{ fontFamily: 'monospace' }}>
-                        {message.correlationId || '-'}
+                        {message.correlationId ?? '-'}
                       </Text>
                     </td>
                     <td>{getRetryBadge(message.retryCount)}</td>
@@ -191,16 +200,14 @@ export function MessageList({
                       <Group gap="xs">
                         <ActionIcon
                           variant="subtle"
-                          onClick={() =>
-                            setSelectedMessage({ queueName, messageId: message.messageId })
-                          }
+                          onClick={() => void setSelectedMessage({ queueName, messageId: message.messageId })}
                         >
                           <IconEye size={16} />
                         </ActionIcon>
                         <ActionIcon
                           variant="subtle"
                           color="blue"
-                          onClick={() => handleReplay(message.messageId)}
+                          onClick={() => void handleReplay(message.messageId)}
                           loading={replayMutation.isPending}
                         >
                           <IconReload size={16} />
@@ -214,7 +221,7 @@ export function MessageList({
                         <ActionIcon
                           variant="subtle"
                           color="red"
-                          onClick={() => handleDelete(message.messageId)}
+                          onClick={() => void handleDelete(message.messageId)}
                           loading={deleteMutation.isPending}
                         >
                           <IconTrash size={16} />
@@ -268,13 +275,16 @@ export function MessageList({
                                 </Paper>
                               </div>
 
-                              {message.body && (
+                              {message.body !== null && message.body !== undefined && (
                                 <div>
                                   <Text size="sm" fw={600} mb="xs">
                                     Message Body
                                   </Text>
                                   <Code block style={{ fontSize: '12px' }}>
-                                    {JSON.stringify(message.body, null, 2)}
+                                    {typeof message.body === 'string' 
+                                      ? message.body 
+                                      : JSON.stringify(message.body, null, 2)
+                                    }
                                   </Code>
                                 </div>
                               )}

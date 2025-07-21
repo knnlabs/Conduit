@@ -1,14 +1,12 @@
 import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import type {
-  IVideoGenerationHubServer,
-  VideoGenerationStartedEvent,
-  VideoGenerationProgressEvent,
-  VideoGenerationCompletedEvent,
-  VideoGenerationFailedEvent
-} from '../models/signalr';
 import { 
-  SignalREndpoints
+  SignalREndpoints,
+  type IVideoGenerationHubServer,
+  type VideoGenerationStartedEvent,
+  type VideoGenerationProgressEvent,
+  type VideoGenerationCompletedEvent,
+  type VideoGenerationFailedEvent
 } from '../models/signalr';
 
 /**
@@ -35,7 +33,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
    */
   protected configureHubHandlers(connection: signalR.HubConnection): void {
     connection.on('VideoGenerationStarted', async (taskId: string, prompt: string, estimatedSeconds: number) => {
-      console.debug(`Video generation started: ${taskId}, Estimated: ${estimatedSeconds}s`);
+      console.warn(`Video generation started: ${taskId}, Estimated: ${estimatedSeconds}s`);
       if (this.onVideoGenerationStarted) {
         await this.onVideoGenerationStarted({ eventType: 'VideoGenerationStarted', taskId, prompt, estimatedSeconds });
       }
@@ -48,7 +46,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       totalFrames?: number, 
       message?: string
     ) => {
-      console.debug(`Video generation progress: ${taskId}, Progress: ${progress}%`);
+      console.warn(`Video generation progress: ${taskId}, Progress: ${progress}%`);
       if (this.onVideoGenerationProgress) {
         await this.onVideoGenerationProgress({ 
           eventType: 'VideoGenerationProgress',
@@ -67,14 +65,14 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       duration: number, 
       metadata: unknown
     ) => {
-      console.debug(`Video generation completed: ${taskId}, Duration: ${duration}s`);
+      console.warn(`Video generation completed: ${taskId}, Duration: ${duration}s`);
       if (this.onVideoGenerationCompleted) {
         await this.onVideoGenerationCompleted({ eventType: 'VideoGenerationCompleted', taskId, videoUrl, duration, metadata: metadata as Record<string, unknown> });
       }
     });
 
     connection.on('VideoGenerationFailed', async (taskId: string, error: string, isRetryable: boolean) => {
-      console.debug(`Video generation failed: ${taskId}, Error: ${error}`);
+      console.error(`Video generation failed: ${taskId}, Error: ${error}`);
       if (this.onVideoGenerationFailed) {
         await this.onVideoGenerationFailed({ eventType: 'VideoGenerationFailed', taskId, error, isRetryable, errorCode: undefined });
       }
@@ -90,7 +88,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('SubscribeToTask', taskId);
-    console.debug(`Subscribed to video generation task: ${taskId}`);
+    console.warn(`Subscribed to video generation task: ${taskId}`);
   }
 
   /**
@@ -102,7 +100,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('UnsubscribeFromTask', taskId);
-    console.debug(`Unsubscribed from video generation task: ${taskId}`);
+    console.warn(`Unsubscribed from video generation task: ${taskId}`);
   }
 
   /**

@@ -2,22 +2,12 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-
-interface SystemInfo {
-  version: string;
-  environment: string;
-  uptime: number;
-  startTime: string;
-  hostname: string;
-  platform: string;
-  nodeVersion: string;
-  features: {
-    signalR: boolean;
-    redis: boolean;
-    eventBus: boolean;
-    mediaStorage: string;
-  };
-}
+import type {
+  SystemInfoDto,
+  HealthStatusDto,
+  BackupDto
+} from '@knn_labs/conduit-admin-client';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -28,30 +18,11 @@ interface SystemSettings {
   corsOrigins: string[];
 }
 
-interface SystemHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  checks: {
-    name: string;
-    status: 'healthy' | 'unhealthy';
-    message?: string;
-    duration: number;
-  }[];
-  timestamp: string;
-}
-
-interface BackupInfo {
-  id: string;
-  createdAt: string;
-  size: number;
-  type: 'manual' | 'scheduled';
-  status: 'completed' | 'failed' | 'in-progress';
-}
-
 export function useSystemApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getSystemInfo = useCallback(async (): Promise<SystemInfo> => {
+  const getSystemInfo = useCallback(async (): Promise<SystemInfoDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -60,13 +31,14 @@ export function useSystemApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as SystemInfoDto | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch system info');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to fetch system info');
       }
 
-      return result;
+      return result as SystemInfoDto;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch system info';
       setError(message);
@@ -85,13 +57,14 @@ export function useSystemApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as SystemSettings | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch system settings');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to fetch system settings');
       }
 
-      return result;
+      return result as SystemSettings;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch system settings';
       setError(message);
@@ -114,10 +87,11 @@ export function useSystemApi() {
         body: JSON.stringify(settings),
       });
 
-      const result = await response.json();
+      const result = await response.json() as SystemSettings | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update system settings');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to update system settings');
       }
 
       notifications.show({
@@ -126,7 +100,7 @@ export function useSystemApi() {
         color: 'green',
       });
 
-      return result;
+      return result as SystemSettings;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update system settings';
       setError(message);
@@ -141,7 +115,7 @@ export function useSystemApi() {
     }
   }, []);
 
-  const getSystemHealth = useCallback(async (): Promise<SystemHealth> => {
+  const getSystemHealth = useCallback(async (): Promise<HealthStatusDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -150,13 +124,14 @@ export function useSystemApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as HealthStatusDto | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch system health');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to fetch system health');
       }
 
-      return result;
+      return result as HealthStatusDto;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch system health';
       setError(message);
@@ -176,8 +151,8 @@ export function useSystemApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to restart service');
+        const result = await response.json() as ErrorResponse;
+        throw new Error(result.error ?? 'Failed to restart service');
       }
 
       notifications.show({
@@ -199,7 +174,7 @@ export function useSystemApi() {
     }
   }, []);
 
-  const createBackup = useCallback(async (): Promise<BackupInfo> => {
+  const createBackup = useCallback(async (): Promise<BackupDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -208,10 +183,11 @@ export function useSystemApi() {
         method: 'POST',
       });
 
-      const result = await response.json();
+      const result = await response.json() as BackupDto | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create backup');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to create backup');
       }
 
       notifications.show({
@@ -220,7 +196,7 @@ export function useSystemApi() {
         color: 'green',
       });
 
-      return result;
+      return result as BackupDto;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create backup';
       setError(message);
@@ -235,7 +211,7 @@ export function useSystemApi() {
     }
   }, []);
 
-  const getBackups = useCallback(async (): Promise<BackupInfo[]> => {
+  const getBackups = useCallback(async (): Promise<BackupDto[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -244,13 +220,14 @@ export function useSystemApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
+      const result = await response.json() as BackupDto[] | ErrorResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch backups');
+        const errorResult = result as ErrorResponse;
+        throw new Error(errorResult.error ?? 'Failed to fetch backups');
       }
 
-      return result;
+      return result as BackupDto[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch backups';
       setError(message);
@@ -270,8 +247,8 @@ export function useSystemApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to restore backup');
+        const result = await response.json() as ErrorResponse;
+        throw new Error(result.error ?? 'Failed to restore backup');
       }
 
       notifications.show({

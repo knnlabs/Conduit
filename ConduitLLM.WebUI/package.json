@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next lint && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
@@ -66,12 +66,15 @@
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.54.1",
+    "@testing-library/jest-dom": "^6.6.3",
     "@types/jest": "^30.0.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^10.0.0",
     "eslint-config-next": "^15.3.5",
+    "eslint-plugin-eslint-comments": "^3.2.0",
     "husky": "^9.0.11",
     "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.0.4",
     "lint-staged": "^15.2.2",
     "playwright": "^1.54.1",
     "ts-jest": "^29.4.0"

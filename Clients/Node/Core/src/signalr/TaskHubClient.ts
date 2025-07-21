@@ -1,16 +1,14 @@
 import type * as signalR from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import type {
-  ITaskHubServer,
-  TaskStartedEvent,
-  TaskProgressEvent,
-  TaskCompletedEvent,
-  TaskFailedEvent,
-  TaskCancelledEvent,
-  TaskTimedOutEvent
-} from '../models/signalr';
 import { 
-  SignalREndpoints
+  SignalREndpoints,
+  type ITaskHubServer,
+  type TaskStartedEvent,
+  type TaskProgressEvent,
+  type TaskCompletedEvent,
+  type TaskFailedEvent,
+  type TaskCancelledEvent,
+  type TaskTimedOutEvent
 } from '../models/signalr';
 
 /**
@@ -39,42 +37,42 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
    */
   protected configureHubHandlers(connection: signalR.HubConnection): void {
     connection.on('TaskStarted', async (taskId: string, taskType: string, metadata: unknown) => {
-      console.debug(`Task started: ${taskId}, Type: ${taskType}`);
+      console.warn(`Task started: ${taskId}, Type: ${taskType}`);
       if (this.onTaskStarted) {
         await this.onTaskStarted({ eventType: 'TaskStarted', taskId, taskType, metadata: metadata as Record<string, unknown> });
       }
     });
 
     connection.on('TaskProgress', async (taskId: string, progress: number, message?: string) => {
-      console.debug(`Task progress: ${taskId}, Progress: ${progress}%`);
+      console.warn(`Task progress: ${taskId}, Progress: ${progress}%`);
       if (this.onTaskProgress) {
         await this.onTaskProgress({ eventType: 'TaskProgress', taskId, progress, message });
       }
     });
 
     connection.on('TaskCompleted', async (taskId: string, result: unknown) => {
-      console.debug(`Task completed: ${taskId}`);
+      console.warn(`Task completed: ${taskId}`);
       if (this.onTaskCompleted) {
         await this.onTaskCompleted({ eventType: 'TaskCompleted', taskId, result: result as Record<string, unknown> });
       }
     });
 
     connection.on('TaskFailed', async (taskId: string, error: string, isRetryable: boolean) => {
-      console.debug(`Task failed: ${taskId}, Error: ${error}, Retryable: ${isRetryable}`);
+      console.error(`Task failed: ${taskId}, Error: ${error}, Retryable: ${isRetryable}`);
       if (this.onTaskFailed) {
         await this.onTaskFailed({ eventType: 'TaskFailed', taskId, error, isRetryable });
       }
     });
 
     connection.on('TaskCancelled', async (taskId: string, reason?: string) => {
-      console.debug(`Task cancelled: ${taskId}, Reason: ${reason}`);
+      console.warn(`Task cancelled: ${taskId}, Reason: ${reason}`);
       if (this.onTaskCancelled) {
         await this.onTaskCancelled({ eventType: 'TaskCancelled', taskId, reason });
       }
     });
 
     connection.on('TaskTimedOut', async (taskId: string, timeoutSeconds: number) => {
-      console.debug(`Task timed out: ${taskId}, Timeout: ${timeoutSeconds}s`);
+      console.error(`Task timed out: ${taskId}, Timeout: ${timeoutSeconds}s`);
       if (this.onTaskTimedOut) {
         await this.onTaskTimedOut({ eventType: 'TaskTimedOut', taskId, timeoutSeconds });
       }
@@ -90,7 +88,7 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
     }
 
     await this.invoke('SubscribeToTask', taskId);
-    console.debug(`Subscribed to task: ${taskId}`);
+    console.warn(`Subscribed to task: ${taskId}`);
   }
 
   /**
@@ -102,7 +100,7 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
     }
 
     await this.invoke('UnsubscribeFromTask', taskId);
-    console.debug(`Unsubscribed from task: ${taskId}`);
+    console.warn(`Unsubscribed from task: ${taskId}`);
   }
 
   /**
@@ -114,7 +112,7 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
     }
 
     await this.invoke('SubscribeToTaskType', taskType);
-    console.debug(`Subscribed to task type: ${taskType}`);
+    console.warn(`Subscribed to task type: ${taskType}`);
   }
 
   /**
@@ -126,7 +124,7 @@ export class TaskHubClient extends BaseSignalRConnection implements ITaskHubServ
     }
 
     await this.invoke('UnsubscribeFromTaskType', taskType);
-    console.debug(`Unsubscribed from task type: ${taskType}`);
+    console.warn(`Unsubscribed from task type: ${taskType}`);
   }
 
   /**

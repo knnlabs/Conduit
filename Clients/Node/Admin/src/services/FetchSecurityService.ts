@@ -29,6 +29,21 @@ import type {
   PagedResult,
 } from '../models/security';
 
+// Define ComplianceReport type locally
+interface ComplianceReport {
+  startDate: string;
+  endDate: string;
+  overallScore: number;
+  categories: {
+    dataProtection: { score: number; issues: string[] };
+    accessControl: { score: number; issues: string[] };
+    auditCompliance: { score: number; issues: string[] };
+    threatResponse: { score: number; issues: string[] };
+  };
+  recommendations: string[];
+  generatedAt: string;
+}
+
 /**
  * Type-safe Security service using native fetch
  */
@@ -433,13 +448,13 @@ export class FetchSecurityService {
     startDate: string, 
     endDate: string, 
     config?: RequestConfig
-  ): Promise<any> {
+  ): Promise<ComplianceReport> {
     const queryParams = new URLSearchParams({
       startDate,
       endDate,
     });
 
-    return this.client['get']<any>(
+    return this.client['get']<ComplianceReport>(
       `${ENDPOINTS.SECURITY.COMPLIANCE_REPORT}?${queryParams}`,
       {
         signal: config?.signal,
@@ -518,7 +533,7 @@ export class FetchSecurityService {
    * Format threat level for display
    */
   formatThreatLevel(level: 'low' | 'medium' | 'high' | 'critical'): string {
-    return level.charAt(0).toUpperCase() + level.slice(1) + ' Risk';
+    return `${level.charAt(0).toUpperCase() + level.slice(1)} Risk`;
   }
 
   /**

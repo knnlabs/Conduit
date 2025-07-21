@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import type { ExtendedMetadata, ConfigValue, SecurityChangeRecord } from './common-types';
 
 // IP Management types
 export interface IpWhitelistDto {
@@ -48,7 +49,7 @@ export interface SecurityEventExtended {
   };
   timestamp: string;
   status: 'active' | 'acknowledged' | 'resolved';
-  metadata?: Record<string, any>;
+  metadata?: ExtendedMetadata;
 }
 
 export interface SecurityEventPage {
@@ -104,10 +105,10 @@ export interface PolicyRule {
   condition: {
     field: string;
     operator: 'equals' | 'contains' | 'gt' | 'lt' | 'regex';
-    value: any;
+    value: ConfigValue;
   };
   action: 'allow' | 'deny' | 'limit' | 'log';
-  metadata?: Record<string, any>;
+  metadata?: ExtendedMetadata;
 }
 
 export interface CreateAccessPolicyDto {
@@ -144,7 +145,7 @@ export interface AuditLog {
   action: string;
   resourceType: string;
   resourceId?: string;
-  changes?: Record<string, any>;
+  changes?: SecurityChangeRecord[];
   ipAddress?: string;
   userAgent?: string;
   result: 'success' | 'failure';

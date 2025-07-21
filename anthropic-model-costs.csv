@@ -1,0 +1,11 @@
+Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Priority,Active,Description
+claude-opus-4,Anthropic,chat,0.015,0.075,,,,,,10,Yes,Claude Opus 4 - Most intelligent model for complex tasks
+claude-sonnet-4,Anthropic,chat,0.003,0.015,,,,,,10,Yes,Claude Sonnet 4 - Optimal balance of intelligence cost and speed
+claude-3.5-haiku,Anthropic,chat,0.0008,0.004,,,,,,10,Yes,Claude Haiku 3.5 - Fastest most cost-effective model
+claude-3-opus,Anthropic,chat,0.015,0.075,,,,,,10,Yes,Claude Opus 3 - Legacy powerful model
+claude-3.7-sonnet,Anthropic,chat,0.003,0.015,,,,,,10,Yes,Claude Sonnet 3.7 - Legacy balanced model
+claude-3-haiku,Anthropic,chat,0.00025,0.00125,,,,,,10,Yes,Claude Haiku 3 - Legacy fast model
+claude-3-opus-20240229,Anthropic,chat,0.015,0.075,,,,,,10,Yes,Claude 3 Opus - February 2024 release
+claude-3.5-sonnet-20241022,Anthropic,chat,0.003,0.015,,,,,,10,Yes,Claude 3.5 Sonnet - October 2024 release
+claude-3.5-sonnet-20240620,Anthropic,chat,0.003,0.015,,,,,,10,Yes,Claude 3.5 Sonnet - June 2024 release
+claude-3-haiku-20240307,Anthropic,chat,0.00025,0.00125,,,,,,10,Yes,Claude 3 Haiku - March 2024 release

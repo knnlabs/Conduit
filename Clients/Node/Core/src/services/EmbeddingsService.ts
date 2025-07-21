@@ -1,10 +1,8 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
-import type {
-  EmbeddingRequest,
-  EmbeddingResponse
-} from '../models/embeddings';
 import {
+  type EmbeddingRequest,
+  type EmbeddingResponse,
   EmbeddingModels,
   validateEmbeddingRequest,
   convertEmbeddingToFloatArray,
@@ -96,7 +94,7 @@ export class EmbeddingsService {
   ): Promise<number[]> {
     const request: EmbeddingRequest = {
       input: text,
-      model: model || EmbeddingModels.DEFAULT,
+      model: model ?? EmbeddingModels.DEFAULT,
       dimensions: options?.dimensions,
       encoding_format: options?.encoding_format,
       user: options?.user,
@@ -147,7 +145,7 @@ export class EmbeddingsService {
 
     const request: EmbeddingRequest = {
       input: texts,
-      model: model || EmbeddingModels.DEFAULT,
+      model: model ?? EmbeddingModels.DEFAULT,
       dimensions: options?.dimensions,
       encoding_format: options?.encoding_format,
       user: options?.user,
@@ -228,7 +226,7 @@ export class EmbeddingsService {
     // Sort by similarity (descending) and take top K
     results.sort((a, b) => b.similarity - a.similarity);
     
-    const topK = options?.topK || candidates.length;
+    const topK = options?.topK ?? candidates.length;
     return results.slice(0, topK);
   }
 

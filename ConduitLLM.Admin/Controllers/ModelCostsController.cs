@@ -79,7 +79,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return Ok(modelCost);
@@ -130,7 +130,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return Ok(modelCost);
@@ -205,7 +205,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return NoContent();
@@ -239,7 +239,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return NoContent();

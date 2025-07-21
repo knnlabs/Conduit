@@ -6,49 +6,31 @@ import { getServerCoreClient } from '@/lib/server/coreClient';
 export async function POST(request: NextRequest) {
 
   try {
-    const body = await request.json();
-    console.log('[Images API] Request body:', JSON.stringify(body, null, 2));
+    const body = await request.json() as {
+      prompt: string;
+      model?: string;
+      n?: number;
+      quality?: 'standard' | 'hd';
+      'response_format'?: 'url' | 'b64_json';
+      size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+      style?: 'vivid' | 'natural';
+      user?: string;
+      'webhook_url'?: string;
+      'webhook_metadata'?: Record<string, unknown>;
+      'timeout_seconds'?: number;
+      async?: boolean;
+    };
     
     const coreClient = await getServerCoreClient();
-    console.log('[Images API] Core client obtained successfully');
     
     // Check if async generation is requested
     if (body.async === true) {
       // Use async generation
-      console.log('[Images API] Using async generation');
-      const result = await coreClient.images.generateAsync({
-        prompt: body.prompt,
-        model: body.model,
-        n: body.n,
-        quality: body.quality,
-        response_format: body.response_format,
-        size: body.size,
-        style: body.style,
-        user: body.user,
-        webhook_url: body.webhook_url,
-        // Pass through any additional parameters
-        ...body
-      });
-      
-      console.log('[Images API] Async generation result:', result);
+      const result = await coreClient.images.generateAsync(body);
       return NextResponse.json(result);
     } else {
       // Use synchronous generation (default)
-      console.log('[Images API] Using synchronous generation');
-      const result = await coreClient.images.generate({
-        prompt: body.prompt,
-        model: body.model,
-        n: body.n,
-        quality: body.quality,
-        response_format: body.response_format,
-        size: body.size,
-        style: body.style,
-        user: body.user,
-        // Pass through any additional parameters
-        ...body
-      });
-      
-      console.log('[Images API] Sync generation result:', result);
+      const result = await coreClient.images.generate(body);
       return NextResponse.json(result);
     }
   } catch (error) {

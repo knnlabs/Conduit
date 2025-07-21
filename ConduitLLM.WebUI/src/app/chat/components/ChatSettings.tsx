@@ -8,7 +8,6 @@ import {
   Textarea,
   Switch,
   Group,
-  Button,
   Divider,
   Badge
 } from '@mantine/core';
@@ -197,7 +196,7 @@ export function ChatSettings() {
           <NumberInput
             label="Seed (optional)"
             placeholder="Random"
-            value={parameters.seed || ''}
+            value={parameters.seed ?? ''}
             onChange={(value) => handleParameterChange({ seed: value ? Number(value) : undefined })}
             min={0}
           />
@@ -205,7 +204,7 @@ export function ChatSettings() {
           <Textarea
             label="System Prompt"
             placeholder="You are a helpful assistant..."
-            value={parameters.systemPrompt || ''}
+            value={parameters.systemPrompt ?? ''}
             onChange={(e) => handleParameterChange({ systemPrompt: e.currentTarget.value })}
             minRows={3}
             maxRows={6}
@@ -214,7 +213,7 @@ export function ChatSettings() {
           <Textarea
             label="Stop Sequences"
             placeholder="Enter stop sequences, one per line..."
-            value={parameters.stop?.join('\n') || ''}
+            value={parameters.stop?.join('\n') ?? ''}
             onChange={(e) => {
               const sequences = e.currentTarget.value
                 .split('\n')

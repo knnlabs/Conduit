@@ -88,7 +88,7 @@ export class AudioService extends FetchBasedClient {
       timestamp_granularities: request.timestamp_granularities,
     });
 
-    return await this.request<AudioTranscriptionResponse>(
+    return this.request<AudioTranscriptionResponse>(
       '/v1/audio/transcriptions',
       {
         method: HttpMethod.POST,
@@ -184,7 +184,7 @@ export class AudioService extends FetchBasedClient {
     
     return {
       audio: audioBuffer,
-      format: request.response_format || 'mp3',
+      format: request.response_format ?? 'mp3',
       metadata: {
         size: audioBuffer.length,
       },
@@ -441,7 +441,7 @@ export class AudioService extends FetchBasedClient {
     let fileBlob: Blob;
     
     if (Buffer.isBuffer(file.data)) {
-      fileBlob = new Blob([file.data], { type: file.contentType || 'audio/mpeg' });
+      fileBlob = new Blob([file.data], { type: file.contentType ?? 'audio/mpeg' });
     } else if (file.data instanceof Blob) {
       fileBlob = file.data;
     } else if (typeof file.data === 'string') {
@@ -451,7 +451,7 @@ export class AudioService extends FetchBasedClient {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      fileBlob = new Blob([bytes], { type: file.contentType || 'audio/mpeg' });
+      fileBlob = new Blob([bytes], { type: file.contentType ?? 'audio/mpeg' });
     } else {
       throw new Error('Unsupported file data type');
     }
@@ -537,7 +537,7 @@ export class AudioUtils {
       size = Math.ceil(file.data.length * 0.75);
     }
 
-    const extension = file.filename.toLowerCase().split('.').pop() || 'unknown';
+    const extension = file.filename.toLowerCase().split('.').pop() ?? 'unknown';
     
     return {
       duration: 0, // Would need audio analysis library to determine

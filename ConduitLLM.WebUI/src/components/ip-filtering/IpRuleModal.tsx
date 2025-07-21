@@ -84,12 +84,12 @@ export function IpRuleModal({
       form.setValues({
         ipAddress: rule.ipAddress,
         action: rule.action,
-        description: rule.description || '',
+        description: rule.description ?? '',
       });
     } else {
       form.reset();
     }
-  }, [rule]);
+  }, [rule, form]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {

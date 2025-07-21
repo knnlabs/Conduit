@@ -80,8 +80,8 @@ export default function ConfigurationPage() {
 
   // Fetch data on mount
   useEffect(() => {
-    fetchSystemInfo();
-    fetchSettings();
+    void fetchSystemInfo();
+    void fetchSettings();
   }, []);
 
   const fetchSystemInfo = async () => {
@@ -91,12 +91,19 @@ export default function ConfigurationPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch system info');
       }
-      const data = await response.json();
+      interface SystemInfoResponse {
+        version?: string;
+        operatingSystem?: string;
+        runtime?: string;
+        database?: string;
+      }
+      
+      const data = await response.json() as SystemInfoResponse;
       
       // Validate the data structure
       if (data && typeof data === 'object' && 
           data.version && data.operatingSystem && data.runtime && data.database) {
-        setSystemInfo(data);
+        setSystemInfo(data as unknown as SystemInfo);
       } else {
         console.error('Invalid system info structure:', data);
         setSystemInfo(null);
@@ -121,7 +128,7 @@ export default function ConfigurationPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch settings');
       }
-      const data = await response.json();
+      const data = await response.json() as unknown;
       
       // Ensure we have an array
       if (Array.isArray(data)) {
@@ -193,7 +200,7 @@ export default function ConfigurationPage() {
 
   const groupedSettings = Array.isArray(settings) 
     ? settings.reduce((acc, setting) => {
-        const category = setting.category || 'General';
+        const category = setting.category ?? 'General';
         if (!acc[category]) {
           acc[category] = [];
         }
@@ -226,8 +233,8 @@ export default function ConfigurationPage() {
           variant="light"
           leftSection={<IconRefresh size={16} />}
           onClick={() => {
-            fetchSystemInfo();
-            fetchSettings();
+            void fetchSystemInfo();
+            void fetchSettings();
           }}
           loading={systemLoading || settingsLoading}
         >
@@ -359,7 +366,7 @@ export default function ConfigurationPage() {
                                   style={{ flex: 1 }}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                      handleSave(setting.key);
+                                      void handleSave(setting.key);
                                     } else if (e.key === 'Escape') {
                                       handleCancel();
                                     }
@@ -369,7 +376,7 @@ export default function ConfigurationPage() {
                                   color="green"
                                   variant="filled"
                                   size="sm"
-                                  onClick={() => handleSave(setting.key)}
+                                  onClick={() => void handleSave(setting.key)}
                                   title="Save"
                                 >
                                   <IconCheck size={14} />

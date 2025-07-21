@@ -19,16 +19,12 @@ import {
   Tabs,
   Grid,
   Paper,
-  Alert,
 } from '@mantine/core';
 import {
   IconSearch,
-  IconFilter,
   IconDownload,
   IconRefresh,
   IconEye,
-  IconClock,
-  IconUser,
   IconApi,
   IconAlertCircle,
 } from '@tabler/icons-react';
@@ -58,8 +54,8 @@ interface RequestLog {
   error?: string;
   userAgent?: string;
   ipAddress?: string;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown>;
 }
 
 interface RequestLogFilters {
@@ -95,24 +91,25 @@ export default function RequestLogsPage() {
       const queryParams = new URLSearchParams();
       
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
+        if (value) queryParams.append(key, String(value));
       });
 
       const response = await fetch(`/api/request-logs?${queryParams}`);
       if (!response.ok) {
         throw new Error('Failed to fetch logs');
       }
-      const data = await response.json();
-      setLogs(data.logs || []);
+      const data = await response.json() as { logs?: RequestLog[] };
+      const logsData = data.logs ?? [];
+      setLogs(logsData);
       
       // Extract unique virtual keys and providers for filters
-      const virtualKeyNames = data.logs
+      const virtualKeyNames = logsData
         .map((log: RequestLog) => log.virtualKeyName)
         .filter((name: string | undefined) => Boolean(name)) as string[];
       const uniqueVirtualKeys = [...new Set(virtualKeyNames)];
       setVirtualKeys(uniqueVirtualKeys.map(name => ({ value: name, label: name })));
       
-      const providerNames = data.logs
+      const providerNames = logsData
         .map((log: RequestLog) => log.provider)
         .filter((provider: string | undefined) => Boolean(provider)) as string[];
       const uniqueProviders = [...new Set(providerNames)];
@@ -125,7 +122,7 @@ export default function RequestLogsPage() {
   }, [filters]);
 
   useEffect(() => {
-    fetchLogs();
+    void fetchLogs();
   }, [fetchLogs]);
 
   const getStatusColor = (statusCode: number): string => {
@@ -150,7 +147,7 @@ export default function RequestLogsPage() {
     try {
       const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
+        if (value) queryParams.append(key, String(value));
       });
 
       const response = await fetch(`/api/request-logs/export?${queryParams}`);
@@ -181,14 +178,14 @@ export default function RequestLogsPage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchLogs}
+            onClick={() => void fetchLogs()}
             loading={isLoading}
           >
             Refresh
@@ -219,7 +216,7 @@ export default function RequestLogsPage() {
               <TextInput
                 placeholder="Search by path or ID..."
                 leftSection={<IconSearch size={16} />}
-                value={filters.search || ''}
+                value={filters.search ?? ''}
                 onChange={(e) => setFilters({ ...filters, search: e.currentTarget.value })}
               />
             </Grid.Col>
@@ -227,8 +224,8 @@ export default function RequestLogsPage() {
               <Select
                 placeholder="Virtual Key"
                 data={virtualKeys}
-                value={filters.virtualKeyId || null}
-                onChange={(value) => setFilters({ ...filters, virtualKeyId: value || undefined })}
+                value={filters.virtualKeyId ?? null}
+                onChange={(value) => setFilters({ ...filters, virtualKeyId: value ?? undefined })}
                 clearable
               />
             </Grid.Col>
@@ -236,8 +233,8 @@ export default function RequestLogsPage() {
               <Select
                 placeholder="Provider"
                 data={providers}
-                value={filters.provider || null}
-                onChange={(value) => setFilters({ ...filters, provider: value || undefined })}
+                value={filters.provider ?? null}
+                onChange={(value) => setFilters({ ...filters, provider: value ?? undefined })}
                 clearable
               />
             </Grid.Col>
@@ -249,8 +246,8 @@ export default function RequestLogsPage() {
                   { value: '4xx', label: '4xx Client Error' },
                   { value: '5xx', label: '5xx Server Error' },
                 ]}
-                value={filters.statusCode || null}
-                onChange={(value) => setFilters({ ...filters, statusCode: value || undefined })}
+                value={filters.statusCode ?? null}
+                onChange={(value) => setFilters({ ...filters, statusCode: value ?? undefined })}
                 clearable
               />
             </Grid.Col>
@@ -258,8 +255,8 @@ export default function RequestLogsPage() {
               <Select
                 placeholder="Method"
                 data={['GET', 'POST', 'PUT', 'PATCH', 'DELETE']}
-                value={filters.method || null}
-                onChange={(value) => setFilters({ ...filters, method: value || undefined })}
+                value={filters.method ?? null}
+                onChange={(value) => setFilters({ ...filters, method: value ?? undefined })}
                 clearable
               />
             </Grid.Col>
@@ -267,7 +264,7 @@ export default function RequestLogsPage() {
               <TextInput
                 type="datetime-local"
                 placeholder="From"
-                value={filters.dateFrom || ''}
+                value={filters.dateFrom ?? ''}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.currentTarget.value })}
               />
             </Grid.Col>
@@ -275,7 +272,7 @@ export default function RequestLogsPage() {
               <TextInput
                 type="datetime-local"
                 placeholder="To"
-                value={filters.dateTo || ''}
+                value={filters.dateTo ?? ''}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.currentTarget.value })}
               />
             </Grid.Col>
@@ -334,10 +331,10 @@ export default function RequestLogsPage() {
                         <Text size="sm">{log.duration}ms</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{log.virtualKeyName || '-'}</Text>
+                        <Text size="sm">{log.virtualKeyName ?? '-'}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{log.provider || '-'}</Text>
+                        <Text size="sm">{log.provider ?? '-'}</Text>
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon

@@ -13,7 +13,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { pattern: patternStr } = await params;
     const pattern = decodeURIComponent(patternStr);
     
-    console.log('[ModelCosts] GET by pattern:', pattern);
 
     const adminClient = getServerAdminClient();
     const result = await adminClient.modelCosts.getByPattern(pattern);

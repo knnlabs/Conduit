@@ -72,7 +72,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
     if (rule) {
       setFormData({
         name: rule.name,
-        description: rule.description || '',
+        description: rule.description ?? '',
         priority: rule.priority,
         conditions: rule.conditions.map(c => ({ ...c, logicalOperator: undefined })),
         actions: rule.actions,
@@ -135,7 +135,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
     }));
   };
 
-  const updateCondition = (index: number, field: keyof RoutingCondition, value: any) => {
+  const updateCondition = (index: number, field: keyof RoutingCondition, value: number | string[] | number[] | string | RoutingCondition['value']) => {
     setFormData(prev => ({
       ...prev,
       conditions: prev.conditions.map((condition, i) =>
@@ -147,7 +147,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
   const removeCondition = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      conditions: prev.conditions.filter((_, i) => i !== index)
+      conditions: prev.conditions.filter((condition, i) => i !== index)
     }));
   };
 
@@ -165,7 +165,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
     }));
   };
 
-  const updateAction = (index: number, field: keyof RoutingAction, value: any) => {
+  const updateAction = (index: number, field: keyof RoutingAction, value: Record<string, unknown> | string | RoutingAction['parameters']) => {
     setFormData(prev => ({
       ...prev,
       actions: prev.actions.map((action, i) =>
@@ -177,7 +177,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
   const removeAction = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      actions: prev.actions.filter((_, i) => i !== index)
+      actions: prev.actions.filter((action, i) => i !== index)
     }));
   };
 
@@ -242,20 +242,20 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
           </Group>
           <Stack gap="sm">
             {formData.conditions.map((condition, index) => (
-              <Card key={index} withBorder p="sm">
+              <Card key={`${condition.type}-${condition.field ?? ''}-${condition.operator}-${String(condition.value ?? '')}`} withBorder p="sm">
                 <Group align="flex-end">
                   <Select
                     label="Type"
                     data={conditionTypes}
                     value={condition.type}
-                    onChange={(value) => updateCondition(index, 'type', value)}
+                    onChange={(value) => value && updateCondition(index, 'type', value)}
                     style={{ flex: 1 }}
                   />
                   {(condition.type === 'header' || condition.type === 'metadata') && (
                     <TextInput
                       label="Field"
                       placeholder="Field name"
-                      value={condition.field || ''}
+                      value={condition.field ?? ''}
                       onChange={(e) => updateCondition(index, 'field', e.target.value)}
                       style={{ flex: 1 }}
                     />
@@ -264,13 +264,13 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
                     label="Operator"
                     data={operators}
                     value={condition.operator}
-                    onChange={(value) => updateCondition(index, 'operator', value)}
+                    onChange={(value) => value && updateCondition(index, 'operator', value)}
                     style={{ flex: 1 }}
                   />
                   <TextInput
                     label="Value"
                     placeholder="Condition value"
-                    value={condition.value}
+                    value={typeof condition.value === 'string' || typeof condition.value === 'number' ? String(condition.value) : ''}
                     onChange={(e) => updateCondition(index, 'value', e.target.value)}
                     style={{ flex: 1 }}
                   />
@@ -286,7 +286,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
             ))}
             {formData.conditions.length === 0 && (
               <Text c="dimmed" ta="center" py="md">
-                No conditions defined. Click "Add Condition" to get started.
+                No conditions defined. Click &quot;Add Condition&quot; to get started.
               </Text>
             )}
           </Stack>
@@ -307,20 +307,20 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
           </Group>
           <Stack gap="sm">
             {formData.actions.map((action, index) => (
-              <Card key={index} withBorder p="sm">
+              <Card key={`${action.type}-${action.target ?? ''}-${JSON.stringify(action.parameters ?? {})}`} withBorder p="sm">
                 <Group align="flex-end">
                   <Select
                     label="Type"
                     data={actionTypes}
                     value={action.type}
-                    onChange={(value) => updateAction(index, 'type', value)}
+                    onChange={(value) => value && updateAction(index, 'type', value)}
                     style={{ flex: 1 }}
                   />
                   {(action.type === 'route' || action.type === 'transform') && (
                     <TextInput
                       label="Target"
                       placeholder="Provider or target"
-                      value={action.target || ''}
+                      value={action.target ?? ''}
                       onChange={(e) => updateAction(index, 'target', e.target.value)}
                       style={{ flex: 1 }}
                     />
@@ -337,7 +337,7 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
             ))}
             {formData.actions.length === 0 && (
               <Text c="dimmed" ta="center" py="md">
-                No actions defined. Click "Add Action" to get started.
+                No actions defined. Click &quot;Add Action&quot; to get started.
               </Text>
             )}
           </Stack>

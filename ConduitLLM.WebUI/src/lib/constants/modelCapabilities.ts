@@ -73,19 +73,19 @@ export const CAPABILITY_COLORS = {
 
 // Groups for organizing capabilities in UI
 export const CAPABILITY_GROUPS = {
-  'Text Processing': [
+  TextProcessing: [
     ModelCapability.Chat,
     ModelCapability.Completion,
     ModelCapability.Code,
     ModelCapability.Reasoning,
   ],
-  'Multimodal': [
+  Multimodal: [
     ModelCapability.Vision,
     ModelCapability.Audio,
     ModelCapability.Image,
     ModelCapability.Video,
   ],
-  'Advanced Features': [
+  AdvancedFeatures: [
     ModelCapability.FunctionCalling,
     ModelCapability.Search,
     ModelCapability.Json,

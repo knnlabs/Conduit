@@ -2,8 +2,92 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 
+// Type definitions for SDK responses
+interface RequestLogDto {
+  id: string;
+  timestamp: string;
+  status: string;
+  duration: number;
+  virtualKeyId: string;
+  virtualKeyName?: string;
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cost?: number;
+  errorMessage?: string;
+  userAgent?: string;
+  ipAddress?: string;
+}
+
+interface RequestLogResponse {
+  items: RequestLogDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+interface MockRequestLog {
+  id: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  duration: number;
+  virtualKeyId: string;
+  virtualKeyName: string;
+  provider: string;
+  model: string;
+  tokenUsage?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  cost?: number;
+  error?: string;
+  userAgent: string;
+  ipAddress: string;
+  requestBody?: unknown;
+  responseBody?: unknown;
+}
+
+interface WebUIRequestLog {
+  id: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  duration: number;
+  virtualKeyId: string;
+  virtualKeyName: string;
+  provider: string;
+  model: string;
+  tokenUsage: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  cost?: number;
+  error?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  requestBody?: unknown;
+  responseBody?: unknown;
+}
+
+function getStatusCode(status: string): number {
+  if (status === 'success') {
+    return 200;
+  }
+  if (status === 'timeout') {
+    return 408;
+  }
+  return 500;
+}
+
 // Mock request logs data - in production this would come from the Admin API
-function generateMockLogs(count: number = 100) {
+function generateMockLogs(count: number = 100): MockRequestLog[] {
   const methods = ['GET', 'POST', 'PUT', 'DELETE'];
   const paths = [
     '/v1/chat/completions',
@@ -17,12 +101,15 @@ function generateMockLogs(count: number = 100) {
   const models = ['gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'claude-3-sonnet', 'gemini-pro'];
   const virtualKeys = ['Production API', 'Development API', 'Testing Key', 'Customer A', 'Customer B'];
   
-  const logs = [];
+  const logs: MockRequestLog[] = [];
   const now = Date.now();
   
   for (let i = 0; i < count; i++) {
     const isError = Math.random() < 0.1;
-    const statusCode = isError ? (Math.random() < 0.5 ? 400 : 500) : 200;
+    let statusCode = 200;
+    if (isError) {
+      statusCode = Math.random() < 0.5 ? 400 : 500;
+    }
     const hasTokenUsage = Math.random() < 0.7 && !isError;
     
     logs.push({
@@ -53,7 +140,7 @@ function generateMockLogs(count: number = 100) {
         temperature: 0.7,
       } : undefined,
       responseBody: !isError && Math.random() < 0.5 ? {
-        id: `chatcmpl-${  Math.random().toString(36).substr(2, 9)}`,
+        id: `chatcmpl-${Math.random().toString(36).substring(2, 11)}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         choices: [
@@ -82,62 +169,62 @@ export async function GET(req: NextRequest) {
     try {
       // Use the Admin SDK to fetch real request logs
       const logsResponse = await adminClient.analytics.getRequestLogs({
-        page: parseInt(searchParams.get('page') || '1', 10),
-        pageSize: parseInt(searchParams.get('pageSize') || '20', 10),
-        startDate: searchParams.get('dateFrom') || undefined,
-        endDate: searchParams.get('dateTo') || undefined,
-        virtualKeyId: searchParams.get('virtualKeyId') || undefined,
-        provider: searchParams.get('provider') || undefined,
-        model: searchParams.get('model') || undefined,
-        statusCode: searchParams.get('statusCode') ? parseInt(searchParams.get('statusCode')!, 10) : undefined,
+        page: parseInt(searchParams.get('page') ?? '1', 10),
+        pageSize: parseInt(searchParams.get('pageSize') ?? '20', 10),
+        startDate: searchParams.get('dateFrom') ?? undefined,
+        endDate: searchParams.get('dateTo') ?? undefined,
+        virtualKeyId: searchParams.get('virtualKeyId') ?? undefined,
+        provider: searchParams.get('provider') ?? undefined,
+        model: searchParams.get('model') ?? undefined,
+        statusCode: searchParams.get('statusCode') ? parseInt(searchParams.get('statusCode') ?? '', 10) : undefined,
         // TODO: SDK should support search parameter for filtering logs
         // search: searchParams.get('search') || undefined,
-      });
+      }) as unknown as RequestLogResponse;
       
       // Transform the response to match the expected format
       // TODO: The SDK response should match the WebUI expectations
-      const logs = logsResponse.items.map((log: any) => ({
+      const logs: WebUIRequestLog[] = logsResponse.items.map((log: RequestLogDto): WebUIRequestLog => ({
         id: log.id,
         timestamp: log.timestamp,
-        method: log.method,
-        path: log.path || log.endpoint,
-        statusCode: log.statusCode,
-        duration: log.duration || log.latency || log.responseTime,
+        method: 'POST', // RequestLogDto doesn't have method, default to POST
+        path: '/v1/chat/completions', // RequestLogDto doesn't have path
+        statusCode: getStatusCode(log.status),
+        duration: log.duration,
         virtualKeyId: log.virtualKeyId,
-        virtualKeyName: log.virtualKeyName || `Key ${log.virtualKeyId}`,
+        virtualKeyName: log.virtualKeyName ?? `Key ${String(log.virtualKeyId)}`,
         provider: log.provider,
         model: log.model,
-        tokenUsage: log.tokenUsage || log.tokens ? {
-          prompt: log.tokenUsage?.prompt || log.tokens?.prompt || 0,
-          completion: log.tokenUsage?.completion || log.tokens?.completion || 0,
-          total: log.tokenUsage?.total || log.tokens?.total || 0,
-        } : undefined,
+        tokenUsage: {
+          prompt: log.inputTokens,
+          completion: log.outputTokens,
+          total: log.inputTokens + log.outputTokens,
+        },
         cost: log.cost,
-        error: log.error || log.errorMessage,
+        error: log.errorMessage,
         userAgent: log.userAgent,
         ipAddress: log.ipAddress,
-        requestBody: log.requestBody,
-        responseBody: log.responseBody,
+        requestBody: undefined, // Not available in RequestLogDto
+        responseBody: undefined, // Not available in RequestLogDto
       }));
       
       // Apply client-side search filtering if needed
       // TODO: Remove this once SDK supports search parameter
-      let filteredLogs = logs;
+      let filteredLogs: WebUIRequestLog[] = logs;
       const search = searchParams.get('search');
       if (search) {
-        filteredLogs = logs.filter((log: any) => 
-          log.path?.toLowerCase().includes(search.toLowerCase()) ||
-          log.id?.toLowerCase().includes(search.toLowerCase()) ||
-          log.model?.toLowerCase().includes(search.toLowerCase()) ||
-          log.provider?.toLowerCase().includes(search.toLowerCase())
-        );
+        filteredLogs = logs.filter((log: WebUIRequestLog) => {
+          return log.path?.toLowerCase().includes(search.toLowerCase()) ||
+                  log.id?.toLowerCase().includes(search.toLowerCase()) ||
+                  log.model?.toLowerCase().includes(search.toLowerCase()) ||
+                  log.provider?.toLowerCase().includes(search.toLowerCase());
+        });
       }
       
       // Apply status code group filtering (2xx, 4xx, 5xx)
       const statusCodeParam = searchParams.get('statusCode');
-      if (statusCodeParam && statusCodeParam.endsWith('xx')) {
+      if (statusCodeParam?.endsWith('xx')) {
         const statusGroup = parseInt(statusCodeParam[0], 10);
-        filteredLogs = filteredLogs.filter((log: any) => 
+        filteredLogs = filteredLogs.filter((log: WebUIRequestLog) => 
           Math.floor(log.statusCode / 100) === statusGroup
         );
       }
@@ -155,7 +242,7 @@ export async function GET(req: NextRequest) {
       const logs = generateMockLogs();
       
       // Apply the same filtering logic to mock data
-      let filteredLogs = logs;
+      let filteredLogs: MockRequestLog[] = logs;
       
       const search = searchParams.get('search');
       if (search) {
@@ -193,7 +280,7 @@ export async function GET(req: NextRequest) {
       
       return NextResponse.json({ 
         logs: filteredLogs,
-        _warning: 'Using mock data due to SDK error.',
+        warning: 'Using mock data due to SDK error.',
       });
     }
   } catch (error) {

@@ -19,6 +19,16 @@ jobs:
   validate-migrations:
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    # Define environment variables at job level for consistency
+    env:
+      DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    
     services:
       postgres:
         image: postgres:16
@@ -45,6 +55,16 @@ jobs:
     - name: Install EF Core tools
       run: dotnet tool install --global dotnet-ef
     
+    - name: Validate environment
+      run: |
+        echo "Validating environment setup..."
+        if [ -z "$DATABASE_URL" ]; then
+          echo "ERROR: DATABASE_URL is not set"
+          exit 1
+        fi
+        echo "✓ DATABASE_URL is set"
+        echo "✓ PostgreSQL service should be available at localhost:5432"
+    
     - name: Restore dependencies
       run: dotnet restore
     
@@ -53,21 +73,17 @@ jobs:
     
     - name: Validate migrations
       run: ./scripts/migrations/validate-migrations.sh --check-pending
-      env:
-        DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
     
     - name: Test migration application
       run: |
         cd ConduitLLM.Configuration
         dotnet ef database update --no-build
-      env:
-        DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
     
     - name: Generate migration script
       if: github.event_name == 'pull_request'
       run: |
         cd ConduitLLM.Configuration
-        dotnet ef migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
+        ../scripts/migrations/ef-wrapper.sh migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
     
     - name: Upload migration script
       if: github.event_name == 'pull_request'

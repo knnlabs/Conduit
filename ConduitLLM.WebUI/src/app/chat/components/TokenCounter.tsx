@@ -36,12 +36,12 @@ function getMessageText(message: ChatMessage): string {
 
 // Model pricing per 1K tokens (example values)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  'gpt-4': { input: 0.03, output: 0.06 },
-  'gpt-4-turbo': { input: 0.01, output: 0.03 },
-  'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
-  'claude-3-opus': { input: 0.015, output: 0.075 },
-  'claude-3-sonnet': { input: 0.003, output: 0.015 },
-  'claude-3-haiku': { input: 0.00025, output: 0.00125 },
+  ['gpt-4']: { input: 0.03, output: 0.06 },
+  ['gpt-4-turbo']: { input: 0.01, output: 0.03 },
+  ['gpt-3.5-turbo']: { input: 0.0005, output: 0.0015 },
+  ['claude-3-opus']: { input: 0.015, output: 0.075 },
+  ['claude-3-sonnet']: { input: 0.003, output: 0.015 },
+  ['claude-3-haiku']: { input: 0.00025, output: 0.00125 },
 };
 
 export function TokenCounter({ messages, maxTokens = 4096, model, compact = false }: TokenCounterProps) {
@@ -105,7 +105,11 @@ export function TokenCounter({ messages, maxTokens = 4096, model, compact = fals
         <Badge
           size="sm"
           variant={isOverLimit ? 'filled' : 'light'}
-          color={isOverLimit ? 'red' : isNearLimit ? 'yellow' : 'blue'}
+          color={(() => {
+            if (isOverLimit) return 'red';
+            if (isNearLimit) return 'yellow';
+            return 'blue';
+          })()}
           leftSection={<IconCoin size={14} />}
         >
           {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
@@ -122,14 +126,22 @@ export function TokenCounter({ messages, maxTokens = 4096, model, compact = fals
             <IconCoin size={18} />
             <Text size="sm" fw={500}>Token Usage</Text>
           </Group>
-          <Text size="sm" c={isOverLimit ? 'red' : isNearLimit ? 'yellow' : undefined}>
+          <Text size="sm" c={(() => {
+            if (isOverLimit) return 'red';
+            if (isNearLimit) return 'yellow';
+            return undefined;
+          })()}>
             {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
           </Text>
         </Group>
 
         <Progress
           value={percentage}
-          color={isOverLimit ? 'red' : isNearLimit ? 'yellow' : 'blue'}
+          color={(() => {
+            if (isOverLimit) return 'red';
+            if (isNearLimit) return 'yellow';
+            return 'blue';
+          })()}
           size="sm"
           striped={isNearLimit}
           animated={isNearLimit}

@@ -56,6 +56,19 @@ export interface Usage {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+  // Phase 1 fields
+  is_batch?: boolean;
+  image_quality?: string;
+  // Phase 2 fields
+  cached_input_tokens?: number;
+  cached_write_tokens?: number;
+  search_units?: number;
+  inference_steps?: number;
+  // Additional fields from backend Usage model
+  image_count?: number;
+  video_duration_seconds?: number;
+  video_resolution?: string;
+  audio_duration_seconds?: number;
 }
 
 /**

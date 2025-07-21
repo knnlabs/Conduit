@@ -1,10 +1,55 @@
 import { useState, useCallback, useRef } from 'react';
 import { useVideoStore } from './useVideoStore';
-import type { VideoSettings, VideoTask } from '../types';
+import type { VideoSettings, VideoTask, VideoGenerationResult } from '../types';
 
 interface GenerateVideoParams {
   prompt: string;
   settings: VideoSettings;
+}
+
+interface TaskStatusResponse {
+  status: string;
+  progress: number;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  updatedAt?: string;
+  result?: unknown;
+  error?: string;
+}
+
+interface GenerateVideoResponse {
+  taskId: string;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Helper function to convert snake_case API response to camelCase
+function mapTaskStatusResponse(apiResponse: Record<string, unknown>): TaskStatusResponse {
+  return {
+    status: apiResponse.status as string,
+    progress: apiResponse.progress as number,
+    message: apiResponse.message as string | undefined,
+    estimatedTimeToCompletion: apiResponse.estimated_time_to_completion as number | undefined,
+    updatedAt: apiResponse.updated_at as string | undefined,
+    result: apiResponse.result,
+    error: apiResponse.error as string | undefined,
+  };
+}
+
+function mapGenerateVideoResponse(apiResponse: Record<string, unknown>): GenerateVideoResponse {
+  return {
+    taskId: apiResponse.task_id as string,
+    message: apiResponse.message as string | undefined,
+    estimatedTimeToCompletion: apiResponse.estimated_time_to_completion as number | undefined,
+    createdAt: apiResponse.created_at as string | undefined,
+    updatedAt: apiResponse.updated_at as string | undefined,
+  };
+}
+
+interface ErrorResponse {
+  error: string;
 }
 
 export function useVideoGeneration() {
@@ -19,15 +64,18 @@ export function useVideoGeneration() {
         throw new Error(`Failed to get task status: ${response.statusText}`);
       }
       
-      const taskStatus = await response.json();
+      const apiResponse = await response.json() as Record<string, unknown>;
+      
+      // Convert API response to camelCase
+      const taskStatus = mapTaskStatusResponse(apiResponse);
       
       // Update task in store
       updateTask(taskId, {
-        status: taskStatus.status.toLowerCase(),
+        status: taskStatus.status.toLowerCase() as VideoTask['status'],
         progress: taskStatus.progress,
         message: taskStatus.message,
-        estimatedTimeToCompletion: taskStatus.estimated_time_to_completion,
-        updatedAt: taskStatus.updated_at,
+        estimatedTimeToCompletion: taskStatus.estimatedTimeToCompletion,
+        updatedAt: taskStatus.updatedAt,
       });
 
       // Check if task is complete
@@ -35,16 +83,16 @@ export function useVideoGeneration() {
         if (taskStatus.result) {
           updateTask(taskId, {
             status: 'completed',
-            result: taskStatus.result,
+            result: taskStatus.result as VideoGenerationResult,
           });
         }
         return true; // Stop polling
       } else if (taskStatus.status === 'Failed' || taskStatus.status === 'Cancelled' || taskStatus.status === 'TimedOut') {
         updateTask(taskId, {
           status: 'failed',
-          error: taskStatus.error || `Task ${taskStatus.status.toLowerCase()}`,
+          error: taskStatus.error ?? `Task ${taskStatus.status.toLowerCase()}`,
         });
-        setError(taskStatus.error || `Video generation ${taskStatus.status.toLowerCase()}`);
+        setError(taskStatus.error ?? `Video generation ${taskStatus.status.toLowerCase()}`);
         return true; // Stop polling
       }
       
@@ -78,40 +126,45 @@ export function useVideoGeneration() {
           size: settings.size,
           fps: settings.fps,
           style: settings.style,
-          response_format: settings.response_format,
+          response_format: settings.responseFormat,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || `Failed to generate video: ${response.statusText}`);
+        const errorData = await response.json().catch(() => null) as ErrorResponse | null;
+        throw new Error(errorData?.error ?? `Failed to generate video: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const apiData = await response.json() as Record<string, unknown>;
+      
+      // Convert API response to camelCase
+      const data = mapGenerateVideoResponse(apiData);
       
       // Create new task
       const newTask: VideoTask = {
-        id: data.task_id,
+        id: data.taskId,
         prompt,
         status: 'pending',
         progress: 0,
         message: data.message,
-        estimatedTimeToCompletion: data.estimated_time_to_completion,
-        createdAt: data.created_at || new Date().toISOString(),
-        updatedAt: data.updated_at || new Date().toISOString(),
+        estimatedTimeToCompletion: data.estimatedTimeToCompletion,
+        createdAt: data.createdAt ?? new Date().toISOString(),
+        updatedAt: data.updatedAt ?? new Date().toISOString(),
         settings,
       };
       
       addTask(newTask);
 
       // Start polling for status
-      pollingIntervalRef.current = setInterval(async () => {
-        const shouldStop = await pollTaskStatus(data.task_id);
-        if (shouldStop && pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-          setIsGenerating(false);
-        }
+      pollingIntervalRef.current = setInterval(() => {
+        void (async () => {
+          const shouldStop = await pollTaskStatus(data.taskId);
+          if (shouldStop && pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+            setIsGenerating(false);
+          }
+        })();
       }, 2000); // Poll every 2 seconds
 
     } catch (error) {

@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+
+interface RequestLog {
+  timestamp?: string;
+  virtualKeyName?: string;
+  provider?: string;
+  model?: string;
+  status?: string;
+  duration?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cost?: number;
+  currency?: string;
+  ipAddress?: string;
+  errorMessage?: string;
+}
+
+interface RequestLogsResponse {
+  items: RequestLog[];
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const timeRange = searchParams.get('range') || '7d';
+    const timeRange = searchParams.get('range') ?? '7d';
     
     const adminClient = getServerAdminClient();
     
@@ -36,7 +54,7 @@ export async function GET(req: NextRequest) {
       endDate: now.toISOString(),
       pageSize: 10000, // Export up to 10,000 records
       page: 1
-    });
+    }) as RequestLogsResponse;
 
     // Create CSV headers
     const headers = [
@@ -58,20 +76,20 @@ export async function GET(req: NextRequest) {
     // Convert request logs to CSV format
     const csvRows = [headers.join(',')];
     
-    requestLogs.items.forEach((log: any) => {
+    requestLogs.items.forEach((log: RequestLog) => {
       const row = [
-        log.timestamp || '',
-        log.virtualKeyName || '',
-        log.provider || '',
-        log.model || '',
-        log.status || '',
-        log.duration || '',
-        log.inputTokens || 0,
-        log.outputTokens || 0,
-        (log.inputTokens || 0) + (log.outputTokens || 0),
-        log.cost || 0,
-        log.currency || 'USD',
-        log.ipAddress || '',
+        log.timestamp ?? '',
+        log.virtualKeyName ?? '',
+        log.provider ?? '',
+        log.model ?? '',
+        log.status ?? '',
+        log.duration ?? '',
+        log.inputTokens ?? 0,
+        log.outputTokens ?? 0,
+        (log.inputTokens ?? 0) + (log.outputTokens ?? 0),
+        log.cost ?? 0,
+        log.currency ?? 'USD',
+        log.ipAddress ?? '',
         log.errorMessage ? `"${log.errorMessage.replace(/"/g, '""')}"` : '' // Escape quotes in error messages
       ];
       csvRows.push(row.join(','));
@@ -83,15 +101,14 @@ export async function GET(req: NextRequest) {
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const filename = `usage-analytics-${timeRange}-${timestamp}.csv`;
 
-    return new NextResponse(csv, {
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      },
-    });
+    const responseHeaders: Record<string, string> = {};
+    responseHeaders['Content-Type'] = 'text/csv; charset=utf-8';
+    responseHeaders['Content-Disposition'] = `attachment; filename="${filename}"`;
+    responseHeaders['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    responseHeaders['Pragma'] = 'no-cache';
+    responseHeaders['Expires'] = '0';
+    
+    return new NextResponse(csv, { headers: responseHeaders });
 
   } catch (error) {
     // Enhanced error handling for export functionality
@@ -99,7 +116,7 @@ export async function GET(req: NextRequest) {
     
     // Get timeRange from URL params in case of error
     const { searchParams } = new URL(req.url);
-    const errorTimeRange = searchParams.get('range') || '7d';
+    const errorTimeRange = searchParams.get('range') ?? '7d';
     
     // Try to provide a fallback export with error information
     const errorCsv = `Error,Message,Timestamp
@@ -108,13 +125,14 @@ Note,"Please try again or contact support if the problem persists",""
 Range,"${errorTimeRange}",""`;
 
     // Return error CSV instead of JSON error for download consistency
+    const errorHeaders: Record<string, string> = {};
+    errorHeaders['Content-Type'] = 'text/csv; charset=utf-8';
+    errorHeaders['Content-Disposition'] = `attachment; filename="usage-analytics-error-${errorTimeRange}-${new Date().toISOString().split('T')[0]}.csv"`;
+    errorHeaders['X-Export-Error'] = 'true';
+    errorHeaders['X-Error-Message'] = error instanceof Error ? error.message : 'Export failed';
+    
     return new NextResponse(errorCsv, {
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="usage-analytics-error-${errorTimeRange}-${new Date().toISOString().split('T')[0]}.csv"`,
-        'X-Export-Error': 'true',
-        'X-Error-Message': error instanceof Error ? error.message : 'Export failed'
-      },
+      headers: errorHeaders,
       status: 200 // Use 200 so the download still works
     });
   }

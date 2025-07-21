@@ -76,7 +76,7 @@ namespace ConduitLLM.Core.Services
                     EncryptedAt = DateTime.UtcNow
                 };
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Encrypted audio data: {Size} bytes -> {EncryptedSize} bytes",
                     audioData.Length,
                     ciphertext.Length);
@@ -128,7 +128,7 @@ namespace ConduitLLM.Core.Services
                     plaintext,
                     associatedData);
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Decrypted audio data: {EncryptedSize} bytes -> {Size} bytes",
                     encryptedData.EncryptedBytes.Length,
                     plaintext.Length);

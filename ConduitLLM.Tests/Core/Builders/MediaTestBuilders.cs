@@ -189,7 +189,7 @@ namespace ConduitLLM.Tests.Core.Builders
             {
                 ContentType = _contentType,
                 FileName = _fileName,
-                Duration = _duration,
+                Duration = _duration.TotalSeconds,
                 Resolution = _resolution,
                 Width = _width,
                 Height = _height,

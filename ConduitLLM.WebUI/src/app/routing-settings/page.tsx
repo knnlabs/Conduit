@@ -1,14 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Container, Title, Text, Tabs, Stack, LoadingOverlay, Alert, Tooltip } from '@mantine/core';
+import { Container, Title, Text, Tabs, Stack, LoadingOverlay, Tooltip } from '@mantine/core';
 import { 
   IconRoute, 
   IconServer, 
-  IconTestPipe,
-  IconSettings,
-  IconInfoCircle,
-  IconHelp
+  IconTestPipe
 } from '@tabler/icons-react';
 import { RulesTab } from './components/RulesTab';
 import { ProvidersTab } from './components/ProvidersTab';

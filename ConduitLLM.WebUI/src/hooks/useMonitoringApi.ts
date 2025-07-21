@@ -1,28 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import type { 
+  SystemMetrics
+} from '@knn_labs/conduit-admin-client';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
 
-interface SystemMetrics {
-  cpu: {
-    usage: number;
-    cores: number;
-  };
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  disk: {
-    used: number;
-    total: number;
-    percentage: number;
-  };
-  network: {
-    in: number;
-    out: number;
-  };
-}
-
+// Define ServiceHealth interface based on the available SDK types
 interface ServiceHealth {
   service: string;
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -31,6 +15,7 @@ interface ServiceHealth {
   error?: string;
 }
 
+// Define Alert interface based on the available SDK types
 interface Alert {
   id: string;
   type: 'error' | 'warning' | 'info';
@@ -69,11 +54,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch system metrics');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch system metrics');
       }
+
+      const result = await response.json() as SystemMetrics;
 
       setMetrics(result);
       return result;
@@ -90,11 +76,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch service health');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch service health');
       }
+
+      const result = await response.json() as ServiceHealth[];
 
       setHealth(result);
       return result;
@@ -118,11 +105,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch alerts');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch alerts');
       }
+
+      const result = await response.json() as Alert[];
 
       setAlerts(result);
       return result;
@@ -140,8 +128,8 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to resolve alert');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to resolve alert');
       }
 
       // Update local state
@@ -160,14 +148,14 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
     setError(null);
 
     try {
-      const promises: Promise<any>[] = [];
+      const promises: Promise<unknown>[] = [];
       
       if (enableMetrics) promises.push(fetchSystemMetrics());
       if (enableHealth) promises.push(fetchServiceHealth());
       if (enableAlerts) promises.push(fetchAlerts({ unresolved: true }));
 
       await Promise.all(promises);
-    } catch (err) {
+    } catch {
       // Errors are already handled in individual functions
     } finally {
       setIsLoading(false);
@@ -178,10 +166,12 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
   useEffect(() => {
     if (refreshInterval > 0) {
       // Initial fetch
-      refreshAll();
+      void refreshAll();
 
       // Set up interval
-      intervalRef.current = setInterval(refreshAll, refreshInterval);
+      intervalRef.current = setInterval(() => {
+        void refreshAll();
+      }, refreshInterval);
 
       return () => {
         if (intervalRef.current) {
@@ -194,7 +184,9 @@ export function useMonitoringApi(config: MonitoringConfig = {}) {
   // Manual refresh control
   const startAutoRefresh = useCallback(() => {
     if (!intervalRef.current && refreshInterval > 0) {
-      intervalRef.current = setInterval(refreshAll, refreshInterval);
+      intervalRef.current = setInterval(() => {
+        void refreshAll();
+      }, refreshInterval);
     }
   }, [refreshInterval, refreshAll]);
 

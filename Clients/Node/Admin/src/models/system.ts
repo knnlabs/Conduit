@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import type { MaintenanceTaskConfig, ConfigValue } from './common-types';
 
 export interface SystemInfoDto {
   version: string;
@@ -176,7 +177,7 @@ export interface MaintenanceTaskDto {
 
 export interface RunMaintenanceTaskRequest {
   taskName: string;
-  parameters?: Record<string, any>;
+  parameters?: MaintenanceTaskConfig;
 }
 
 export interface MaintenanceTaskResult {
@@ -199,8 +200,8 @@ export interface AuditLogDto {
   userAgent?: string;
   resourceType?: string;
   resourceId?: string;
-  oldValue?: any;
-  newValue?: any;
+  oldValue?: ConfigValue;
+  newValue?: ConfigValue;
   result: 'success' | 'failure';
   errorMessage?: string;
 }

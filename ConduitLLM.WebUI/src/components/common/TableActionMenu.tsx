@@ -20,7 +20,7 @@ interface TableActionMenuProps<T> {
   deleteConfirmation?: DeleteConfirmation<T>;
 }
 
-export function TableActionMenu<T extends Record<string, any>>({
+export function TableActionMenu<T extends Record<string, unknown>>({
   item,
   actions,
   deleteConfirmation,
@@ -78,9 +78,9 @@ export function TableActionMenu<T extends Record<string, any>>({
 
       <Menu.Dropdown>
         {/* Edit actions */}
-        {editActions.map((action, index) => (
+        {editActions.map((action) => (
           <Menu.Item
-            key={`edit-${index}`}
+            key={`edit-${action.label}-${action.onClick.toString().slice(0, 20)}`}
             leftSection={
               <IconEdit style={{ width: rem(14), height: rem(14) }} />
             }
@@ -92,9 +92,9 @@ export function TableActionMenu<T extends Record<string, any>>({
         ))}
 
         {/* Custom actions */}
-        {customActions.map((action, index) => (
+        {customActions.map((action) => (
           <Menu.Item
-            key={`custom-${index}`}
+            key={`custom-${action.label}-${action.onClick.toString().slice(0, 20)}`}
             leftSection={
               action.icon ? (
                 <action.icon size={14} />
@@ -114,9 +114,9 @@ export function TableActionMenu<T extends Record<string, any>>({
         )}
 
         {/* Delete actions */}
-        {deleteActions.map((action, index) => (
+        {deleteActions.map((action) => (
           <Menu.Item
-            key={`delete-${index}`}
+            key={`delete-${action.label}-${action.onClick.toString().slice(0, 20)}`}
             color="red"
             leftSection={
               <IconTrash style={{ width: rem(14), height: rem(14) }} />

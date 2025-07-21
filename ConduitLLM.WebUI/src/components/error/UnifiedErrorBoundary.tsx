@@ -102,7 +102,7 @@ export class UnifiedErrorBoundary extends Component<
 
     // Report error if enabled
     if (this.props.enableErrorReporting !== false) {
-      this.reportError(error, errorInfo);
+      this.reportError();
     }
   }
 
@@ -134,7 +134,7 @@ export class UnifiedErrorBoundary extends Component<
   }
 
   private logError(error: Error, errorInfo: ErrorInfo) {
-    const context = this.props.context || 'UnifiedErrorBoundary';
+    const context = this.props.context ?? 'UnifiedErrorBoundary';
     
     logger.error(`Error caught by ${context}`, {
       error: {
@@ -165,7 +165,7 @@ export class UnifiedErrorBoundary extends Component<
     });
   }
 
-  private reportError(error: Error, errorInfo: ErrorInfo) {
+  private reportError() {
     // In production, this would send to error reporting service
     if (process.env.NODE_ENV === 'production') {
       // Example integration points:

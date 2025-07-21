@@ -64,6 +64,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Address warnings immediately, don't let them accumulate
 - Use proper TypeScript patterns from existing codebase
 
+### WebUI ESLint Strict Rules - CRITICAL
+The WebUI uses very strict ESLint rules that will cause build failures:
+
+1. **Type Safety Rules**:
+   - `@typescript-eslint/no-unsafe-assignment`: Cannot assign `any` or `unknown` types without explicit casting
+   - `@typescript-eslint/no-unsafe-argument`: Cannot pass `any` or `unknown` typed values as arguments
+   - `@typescript-eslint/no-unsafe-member-access`: Cannot access properties on `any` typed values
+   - `@typescript-eslint/no-unsafe-return`: Cannot return `any` typed values
+
+2. **Console Logging**:
+   - Only `console.warn` and `console.error` are allowed
+   - `console.log` will cause build failures
+   - Use `console.warn` for development debugging
+
+3. **Nullish Coalescing**:
+   - Use `??` instead of `||` for default values
+   - ESLint rule: `@typescript-eslint/prefer-nullish-coalescing`
+
+4. **Type Casting Pattern**:
+   ```typescript
+   // BAD - will fail ESLint
+   const data = event.data as MetricsData;
+   
+   // GOOD - proper type narrowing
+   const data = event.data as unknown as MetricsData;
+   // OR better - type guard
+   if (isMetricsData(event.data)) {
+     // event.data is now typed
+   }
+   ```
+
+5. **Always Run Build Before Committing**:
+   - `cd ConduitLLM.WebUI && npm run build`
+   - Fix ALL ESLint errors immediately
+   - The build will fail with any ESLint errors
+
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
 - **For WebUI changes**: ALWAYS run `cd ConduitLLM.WebUI && npm run build` 

@@ -40,7 +40,7 @@ async function* webStreamAsyncIterator<T>(
       const lines = buffer.split('\n');
       
       // Keep the last line if it's incomplete
-      buffer = lines.pop() || '';
+      buffer = lines.pop() ?? '';
 
       for (const line of lines) {
         if (line.trim() === '') continue;

@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import React from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { 
   Button, 
   Group, 
@@ -11,10 +10,9 @@ import {
   CloseButton,
   Image,
   Badge,
-  ActionIcon,
   Tooltip
 } from '@mantine/core';
-import { IconUpload, IconX, IconPhoto } from '@tabler/icons-react';
+import { IconPhoto } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { ImageAttachment } from '../types';
 
@@ -36,7 +34,7 @@ export function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -110,9 +108,9 @@ export function ImageUpload({
       fileInputRef.current.value = '';
     }
     setIsProcessing(false);
-  };
+  }, [images, maxImages, maxSizeInMB, onImagesChange]);
 
-  const handlePaste = async (event: ClipboardEvent) => {
+  const handlePaste = useCallback(async (event: ClipboardEvent) => {
     const items = event.clipboardData?.items;
     if (!items) return;
 
@@ -132,7 +130,7 @@ export function ImageUpload({
         }
       }
     }
-  };
+  }, [handleFileSelect]);
 
   const removeImage = (index: number) => {
     const newImages = [...images];
@@ -149,15 +147,18 @@ export function ImageUpload({
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
+      reader.onerror = () => reject(new Error('Failed to read file'));
     });
   };
 
   // Add paste event listener
   React.useEffect(() => {
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
-  }, [images]);
+    const handlePasteWrapper = (event: Event) => {
+      void handlePaste(event as ClipboardEvent);
+    };
+    document.addEventListener('paste', handlePasteWrapper);
+    return () => document.removeEventListener('paste', handlePasteWrapper);
+  }, [images, handlePaste]);
 
   // Clean up object URLs when component unmounts
   React.useEffect(() => {
@@ -168,7 +169,7 @@ export function ImageUpload({
         }
       });
     };
-  }, []);
+  }, [images]);
 
   return (
     <Stack gap="xs">
@@ -178,7 +179,7 @@ export function ImageUpload({
         accept="image/*"
         multiple
         style={{ display: 'none' }}
-        onChange={handleFileSelect}
+        onChange={(e) => void handleFileSelect(e)}
         disabled={disabled || isProcessing}
       />
       
@@ -186,7 +187,7 @@ export function ImageUpload({
         <Group gap="xs">
           {images.map((image, index) => (
             <Paper
-              key={index}
+              key={image.name || `image-${index}`}
               p="xs"
               withBorder
               radius="md"
@@ -230,7 +231,7 @@ export function ImageUpload({
             leftSection={<IconPhoto size={20} />}
             variant="subtle"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => void fileInputRef.current?.click()}
             disabled={disabled || isProcessing || images.length >= maxImages}
             loading={isProcessing}
           >

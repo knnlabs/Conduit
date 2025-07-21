@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
@@ -17,6 +17,7 @@ import {
   Stack,
   Pagination,
   Center,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -24,6 +25,9 @@ import {
   IconTrash,
   IconDots,
   IconEye,
+  IconAdjustments,
+  IconDatabase,
+  IconStairs,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
@@ -31,7 +35,6 @@ import { ModelCost } from '../types/modelCost';
 import { EditModelCostModal } from './EditModelCostModal';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
-import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ModelCostsTableProps {
   onRefresh?: () => void;
@@ -58,8 +61,12 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['model-costs', page, pageSize, providerFilter, activeFilter],
     queryFn: () => fetchModelCosts(page, pageSize, {
-      provider: providerFilter || undefined,
-      isActive: activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
+      provider: providerFilter ?? undefined,
+      isActive: (() => {
+        if (activeFilter === 'true') return true;
+        if (activeFilter === 'false') return false;
+        return undefined;
+      })(),
     }),
   });
 
@@ -67,13 +74,13 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   const deleteMutation = useMutation({
     mutationFn: deleteModelCost,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      void queryClient.invalidateQueries({ queryKey: ['model-costs'] });
       onRefresh?.();
     },
   });
 
   // Filter data client-side for search
-  const filteredData = data?.items.filter(cost => {
+  const filteredData = data?.items?.filter(cost => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -81,10 +88,10 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
       cost.providerName.toLowerCase().includes(search) ||
       cost.modelType.toLowerCase().includes(search)
     );
-  }) || [];
+  }) ?? [];
 
   // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(data?.items.map(c => c.providerName) || []));
+  const uniqueProviders = Array.from(new Set(data?.items?.map(c => c.providerName) ?? []));
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
@@ -115,15 +122,38 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
 
   const getCostDisplay = (cost: ModelCost) => {
     if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
+      const hasCachedRates = cost.cachedInputCostPerMillionTokens !== undefined || 
+                            cost.cachedInputWriteCostPerMillionTokens !== undefined;
+      
       return (
         <Stack gap={2}>
           <Text size="xs">
-            Input: {formatters.currency((cost.inputCostPerMillionTokens / 1000), { currency: 'USD', precision: 4 })}/1K
+            Input: {formatters.currency(((cost.inputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
           <Text size="xs">
-            Output: {formatters.currency((cost.outputCostPerMillionTokens / 1000), { currency: 'USD', precision: 4 })}/1K
+            Output: {formatters.currency(((cost.outputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
+          {hasCachedRates && (
+            <Group gap="xs">
+              <Badge size="xs" variant="light" color="blue">Cached</Badge>
+            </Group>
+          )}
         </Stack>
+      );
+    }
+    if (cost.imageCostPerImage !== undefined) {
+      const hasMultipliers = cost.imageQualityMultipliers && 
+        cost.imageQualityMultipliers !== '{}';
+      
+      return (
+        <Group gap="xs">
+          <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>
+          {hasMultipliers && (
+            <Tooltip label="Has quality multipliers">
+              <IconAdjustments size={14} />
+            </Tooltip>
+          )}
+        </Group>
       );
     }
     if (cost.costPerImage !== undefined) {
@@ -131,6 +161,28 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
     }
     if (cost.costPerSecond !== undefined) {
       return <Text size="xs">{formatters.currency(cost.costPerSecond, { currency: 'USD' })}/second</Text>;
+    }
+    if (cost.costPerSearchUnit !== undefined) {
+      return (
+        <Stack gap={2}>
+          <Text size="xs">
+            Search: {formatters.currency(cost.costPerSearchUnit, { currency: 'USD', precision: 4 })}/1K units
+          </Text>
+          <Badge size="xs" variant="light" color="violet">Rerank</Badge>
+        </Stack>
+      );
+    }
+    if (cost.costPerInferenceStep !== undefined) {
+      return (
+        <Stack gap={2}>
+          <Text size="xs">
+            Steps: {formatters.currency(cost.costPerInferenceStep, { currency: 'USD', precision: 4 })}/step
+          </Text>
+          {cost.defaultInferenceSteps && (
+            <Badge size="xs" variant="light" color="teal">Default: {cost.defaultInferenceSteps} steps</Badge>
+          )}
+        </Stack>
+      );
     }
     return <Text size="xs" c="dimmed">No pricing set</Text>;
   };
@@ -142,7 +194,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           <Group justify="space-between">
             <Text fw={600}>Model Pricing Configurations</Text>
             <Text size="sm" c="dimmed">
-              {data?.totalCount || 0} total configurations
+              {data?.totalCount ?? 0} total configurations
             </Text>
           </Group>
         </Card.Section>
@@ -202,6 +254,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                     <Table.Th>Provider</Table.Th>
                     <Table.Th>Type</Table.Th>
                     <Table.Th>Pricing</Table.Th>
+                    <Table.Th>Batch</Table.Th>
                     <Table.Th>Priority</Table.Th>
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Updated</Table.Th>
@@ -222,11 +275,37 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="outline" size="sm">
-                          {getCostTypeLabel(cost.modelType)}
-                        </Badge>
+                        <Group gap="xs">
+                          <Badge variant="outline" size="sm">
+                            {getCostTypeLabel(cost.modelType)}
+                          </Badge>
+                          {(cost.cachedInputCostPerMillionTokens ?? cost.cachedInputWriteCostPerMillionTokens) && (
+                            <Tooltip label="Supports prompt caching">
+                              <IconDatabase size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                          {cost.costPerSearchUnit && (
+                            <Tooltip label="Search/rerank model">
+                              <IconSearch size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                          {cost.costPerInferenceStep && (
+                            <Tooltip label="Step-based pricing">
+                              <IconStairs size={14} style={{ opacity: 0.7 }} />
+                            </Tooltip>
+                          )}
+                        </Group>
                       </Table.Td>
                       <Table.Td>{getCostDisplay(cost)}</Table.Td>
+                      <Table.Td>
+                        {cost.supportsBatchProcessing ? (
+                          <Badge color="green" size="sm">
+                            {cost.batchProcessingMultiplier 
+                              ? `${(cost.batchProcessingMultiplier * 100).toFixed(0)}%` 
+                              : 'Yes'}
+                          </Badge>
+                        ) : null}
+                      </Table.Td>
                       <Table.Td>
                         <Text size="sm">{cost.priority}</Text>
                       </Table.Td>
@@ -302,7 +381,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           onClose={() => setEditingCost(null)}
           onSuccess={() => {
             setEditingCost(null);
-            refetch();
+            void refetch();
             onRefresh?.();
           }}
         />

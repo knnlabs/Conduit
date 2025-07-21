@@ -14,7 +14,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const noLayoutPages = ['/access-denied'];
   
   if (noLayoutPages.includes(pathname)) {
-    return <>{children}</>;
+    return children;
   }
   
   return <AppWrapper>{children}</AppWrapper>;

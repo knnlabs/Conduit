@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { Alert, Button, Stack, Text, Title } from '@mantine/core';
+import { Button, Stack, Text, Title } from '@mantine/core';
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react';
 
 interface Props {
@@ -44,9 +44,9 @@ export class LazyErrorBoundary extends Component<Props, State> {
       return (
         <Stack align="center" gap="md" p="xl">
           <IconAlertCircle size={48} color="var(--mantine-color-red-6)" />
-          <Title order={3}>Failed to load {this.props.moduleName || 'module'}</Title>
+          <Title order={3}>Failed to load {this.props.moduleName ?? 'module'}</Title>
           <Text c="dimmed" ta="center" maw={400}>
-            {this.state.error?.message || 'An error occurred while loading this page. This might be due to a network issue or a problem with the application.'}
+            {this.state.error?.message ?? 'An error occurred while loading this page. This might be due to a network issue or a problem with the application.'}
           </Text>
           <Stack gap="xs" align="center">
             <Button

@@ -15,7 +15,6 @@ import {
 } from '@mantine/core';
 import {
   IconTestPipe,
-  IconRefresh,
   IconCircleCheck,
   IconCircleX,
   IconClock,
@@ -25,7 +24,6 @@ import {
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
-import { notifications } from '@mantine/notifications';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // Use SDK types directly with health extensions  
@@ -44,10 +42,10 @@ interface ProvidersTableProps {
 }
 
 export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProviders = new Set() }: ProvidersTableProps) {
-  const providers = data || [];
+  const providers = data ?? [];
 
   const handleDelete = (provider: Provider) => {
-    modals.openConfirmModal({
+    void modals.openConfirmModal({
       title: 'Delete Provider',
       children: (
         <Text size="sm">
@@ -83,7 +81,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
   };
 
   const rows = providers.map((provider) => (
-    <Table.Tr key={provider.id}>
+    <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
         <Stack gap={4}>
           <Text fw={500}>{provider.providerName}</Text>
@@ -114,8 +112,8 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
 
       <Table.Td>
         <Group gap={4}>
-          {provider.models?.slice(0, 2).map((model, idx) => (
-            <Badge key={idx} size="xs" variant="light">
+          {provider.models?.slice(0, 2).map((model) => (
+            <Badge key={`model-${model}`} size="xs" variant="light">
               {model}
             </Badge>
           ))}

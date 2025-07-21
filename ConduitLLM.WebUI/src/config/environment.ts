@@ -11,18 +11,10 @@ class EnvironmentError extends Error {
   }
 }
 
-// Helper to get required environment variable
-function _getRequiredEnv(key: string, description?: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new EnvironmentError(key, description);
-  }
-  return value;
-}
 
 // Helper to get optional environment variable with default
 function getOptionalEnv(key: string, defaultValue: string): string {
-  return process.env[key] || defaultValue;
+  return process.env[key] ?? defaultValue;
 }
 
 // Helper to parse boolean environment variable
@@ -168,14 +160,14 @@ export function getAdminApiUrl(): string {
   if (!isServer) {
     throw new Error('getAdminApiUrl can only be called on the server');
   }
-  return config.api.server!.adminUrl;
+  return config.api.server?.adminUrl ?? '';
 }
 
 export function getCoreApiUrl(): string {
   if (!isServer) {
     throw new Error('getCoreApiUrl can only be called on the server');
   }
-  return config.api.server!.coreUrl;
+  return config.api.server?.coreUrl ?? '';
 }
 
 /**
@@ -185,7 +177,7 @@ export function getSignalRUrl(path: string): string {
   if (!isServer) {
     throw new Error('getSignalRUrl can only be called on the server');
   }
-  const baseUrl = config.api.external!.adminUrl;
+  const baseUrl = config.api.external?.adminUrl ?? '';
   return `${baseUrl}${path}`;
 }
 

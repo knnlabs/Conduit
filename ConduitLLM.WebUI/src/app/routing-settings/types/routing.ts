@@ -18,7 +18,7 @@ export interface RoutingCondition {
   type: 'model' | 'header' | 'body' | 'time' | 'load' | 'key' | 'metadata' | 'cost' | 'region' | 'virtualKeyId';
   field?: string;
   operator: ConditionOperator;
-  value: any;
+  value: string | number | boolean | string[] | number[];
   logicalOperator?: 'AND' | 'OR';
 }
 
@@ -35,7 +35,7 @@ export type ConditionOperator =
 export interface RoutingAction {
   type: 'route' | 'transform' | 'cache' | 'rate_limit' | 'log' | 'block';
   target?: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
 }
 
 export interface ProviderPriority {
@@ -82,9 +82,9 @@ export interface RouteTestRequest {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   headers?: Record<string, string>;
-  body?: any;
+  body?: Record<string, unknown> | string;
   model?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RouteTestResult {
@@ -124,15 +124,15 @@ export interface TestRequest {
   region?: string;
   costThreshold?: number;
   virtualKeyId?: string;
-  customFields: Record<string, any>;
+  customFields: Record<string, unknown>;
   headers?: Record<string, string>;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ConditionMatch {
   condition: RoutingCondition;
   matched: boolean;
-  actualValue: any;
+  actualValue: unknown;
   reason: string;
 }
 

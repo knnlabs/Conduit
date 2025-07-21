@@ -56,8 +56,8 @@ export interface SignalRConfig {
   enabled?: boolean;
   autoConnect?: boolean;
   reconnectDelay?: number[];
-  logLevel?: any; // SignalRLogLevel from Common
-  transport?: any; // HttpTransportType from Common
+  logLevel?: number; // SignalRLogLevel enum value
+  transport?: number; // HttpTransportType enum value
   headers?: Record<string, string>;
   connectionTimeout?: number;
 }

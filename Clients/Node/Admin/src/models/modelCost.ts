@@ -18,6 +18,16 @@ export interface ModelCost {
   metadata?: ModelConfigMetadata;
   createdAt: string;
   updatedAt: string;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface ModelCostDto {
@@ -33,6 +43,16 @@ export interface ModelCostDto {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface CreateModelCostDto {
@@ -45,6 +65,16 @@ export interface CreateModelCostDto {
   providerId?: string;
   description?: string;
   isActive?: boolean;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface UpdateModelCostDto {
@@ -56,6 +86,16 @@ export interface UpdateModelCostDto {
   providerId?: string;
   description?: string;
   isActive?: boolean;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface ModelCostFilters extends FilterOptions {

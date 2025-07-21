@@ -3,7 +3,6 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import {
   ModelCost,
-  ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
   ModelCostOverview,
@@ -157,7 +156,7 @@ export class FetchModelCostService {
   ): Promise<ModelCost> {
     // Transform from old format to new format if needed
     const backendData: CreateModelCostDtoBackend = 'modelIdPattern' in data
-      ? data as CreateModelCostDtoBackend
+      ? data
       : {
           modelIdPattern: data.modelId,
           inputTokenCost: data.inputTokenCost,
@@ -226,7 +225,7 @@ export class FetchModelCostService {
     // Transform to backend format if needed
     const backendData = modelCosts.map(cost => {
       if ('modelIdPattern' in cost) {
-        return cost as CreateModelCostDtoBackend;
+        return cost;
       }
       return {
         modelIdPattern: cost.modelId,

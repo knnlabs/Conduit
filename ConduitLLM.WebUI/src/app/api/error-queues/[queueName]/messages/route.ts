@@ -9,8 +9,8 @@ export async function GET(
   try {
     const { queueName } = await params;
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
+    const page = parseInt(searchParams.get('page') ?? '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') ?? '50', 10);
     const includeHeaders = searchParams.get('includeHeaders') === 'true';
     const includeBody = searchParams.get('includeBody') === 'true';
 

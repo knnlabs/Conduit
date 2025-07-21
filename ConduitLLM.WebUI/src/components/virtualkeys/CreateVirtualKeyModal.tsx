@@ -100,14 +100,13 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
   });
 
   const handleSubmit = async (values: CreateVirtualKeyForm) => {
-    console.log('[CreateVirtualKey] Form submitted with values:', values);
     setIsSubmitting(true);
     try {
       const payload = {
         keyName: values.keyName.trim(),
-        description: values.description?.trim() || undefined,
-        maxBudget: values.maxBudget || undefined,
-        rateLimitRpm: values.rateLimitPerMinute || undefined,
+        description: values.description?.trim() ?? undefined,
+        maxBudget: values.maxBudget ?? undefined,
+        rateLimitRpm: values.rateLimitPerMinute ?? undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         metadata: values.metadata?.trim() ? values.metadata : undefined,
         isEnabled: values.isEnabled,
@@ -121,16 +120,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         body: JSON.stringify(payload),
       });
 
-      console.log('[CreateVirtualKey] Response status:', response.status);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[CreateVirtualKey] Error response:', errorText);
         throw new Error('Failed to create virtual key');
       }
-
-      const result = await response.json();
-      console.log('[CreateVirtualKey] Success response:', result);
 
       notifications.show({
         title: 'Success',

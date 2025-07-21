@@ -5,7 +5,7 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const range = searchParams.get('range') || '1h';
+    const range = searchParams.get('range') ?? '1h';
     
     const adminClient = getServerAdminClient();
     
@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
       const systemInfo = await adminClient.system.getSystemInfo();
       const systemMetrics = await adminClient.monitoring.getSystemMetrics();
       // Performance metrics endpoint doesn't exist
-      const performanceMetrics = null;
       
       // No historical data available since performance metrics endpoint doesn't exist
       if (false) {
@@ -50,15 +49,15 @@ export async function GET(req: NextRequest) {
     } catch (error) {
       console.warn('Failed to get system data for export:', error);
       csvContent += `# Export failed: Unable to retrieve system performance data\n`;
-      csvContent += `# Error: ${error}\n`;
+      csvContent += `# Error: ${String(error)}\n`;
       csvContent += `# Time Range: ${range}\n`;
       csvContent += `# Generated: ${new Date().toISOString()}\n`;
     }
 
     return new NextResponse(csvContent, {
       headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="system-performance-${range}-${new Date().toISOString()}.csv"`,
+        'content-type': 'text/csv',
+        'content-disposition': `attachment; filename="system-performance-${range}-${new Date().toISOString()}.csv"`,
       },
     });
   } catch (error) {

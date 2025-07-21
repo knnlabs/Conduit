@@ -102,7 +102,7 @@ export async function* streamAsyncIterator(
       }
       
       const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      buffer = lines.pop() ?? '';
 
       for (const line of lines) {
         const trimmedLine = line.trim();

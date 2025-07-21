@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 export interface ConnectionState {
+  // 'unknown' here is a string literal status value, not the TypeScript unknown type
   coreApi: 'connected' | 'connecting' | 'disconnected' | 'error' | 'unknown';
   adminApi: 'connected' | 'connecting' | 'disconnected' | 'error' | 'unknown';
   signalR: 'connected' | 'connecting' | 'disconnected' | 'error' | 'unknown';
@@ -15,9 +16,9 @@ interface ConnectionStore {
 }
 
 const initialState: ConnectionState = {
-  coreApi: 'unknown',
-  adminApi: 'unknown',
-  signalR: 'unknown',
+  coreApi: 'unknown', // String literal status, not TypeScript unknown type
+  adminApi: 'unknown', // String literal status, not TypeScript unknown type
+  signalR: 'unknown', // String literal status, not TypeScript unknown type
 };
 
 export const useConnectionStore = create<ConnectionStore>()(

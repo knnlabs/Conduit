@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { ProviderConnectionTestResultDto, ProviderSettings } from '@knn_labs/conduit-admin-client';
+
+interface TestProviderRequest {
+  providerName: string;
+  apiKey: string;
+  apiEndpoint?: string;
+  organizationId?: string;
+  additionalConfig?: ProviderSettings;
+}
+
+interface TestProviderResponse {
+  success: boolean;
+  message: string;
+  details: ProviderConnectionTestResultDto;
+  tested: boolean;
+  timestamp: string;
+}
+
+interface TestProviderErrorResponse {
+  error: string;
+  details: string;
+}
 
 /**
  * POST /api/providers/test
@@ -8,10 +30,10 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
  * Tests a provider configuration before creating it.
  * This allows validating API keys and endpoints without saving.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse>> {
 
   try {
-    const body = await request.json();
+    const body = await request.json() as TestProviderRequest;
     
     // Validate required fields
     if (!body.providerName || !body.apiKey) {
@@ -26,13 +48,13 @@ export async function POST(request: NextRequest) {
 
     const adminClient = getServerAdminClient();
     
-    // Use the SDK's testConfig method
+    // Use the SDK's testConfig method with ProviderConfig interface
     const testResult = await adminClient.providers.testConfig({
       providerName: body.providerName,
       apiKey: body.apiKey,
-      baseUrl: body.apiEndpoint, // SDK expects baseUrl, but we receive apiEndpoint
+      baseUrl: body.apiEndpoint,
       organizationId: body.organizationId,
-      additionalConfig: body.additionalConfig,
+      additionalConfig: body.additionalConfig
     });
     
     return NextResponse.json({
@@ -44,6 +66,6 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    return handleSDKError(error);
+    return handleSDKError(error) as NextResponse<TestProviderErrorResponse>;
   }
 }

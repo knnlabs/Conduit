@@ -22,17 +22,17 @@ namespace ConduitLLM.Http.Controllers
     {
         private readonly ILogger<BatchOperationsController> _logger;
         private readonly IBatchOperationService _batchOperationService;
-        private readonly BatchSpendUpdateOperation _batchSpendUpdateOperation;
-        private readonly BatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
-        private readonly BatchWebhookSendOperation _batchWebhookSendOperation;
+        private readonly IBatchSpendUpdateOperation _batchSpendUpdateOperation;
+        private readonly IBatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
+        private readonly IBatchWebhookSendOperation _batchWebhookSendOperation;
         private readonly IVirtualKeyService _virtualKeyService;
 
         public BatchOperationsController(
             ILogger<BatchOperationsController> logger,
             IBatchOperationService batchOperationService,
-            BatchSpendUpdateOperation batchSpendUpdateOperation,
-            BatchVirtualKeyUpdateOperation batchVirtualKeyUpdateOperation,
-            BatchWebhookSendOperation batchWebhookSendOperation,
+            IBatchSpendUpdateOperation batchSpendUpdateOperation,
+            IBatchVirtualKeyUpdateOperation batchVirtualKeyUpdateOperation,
+            IBatchWebhookSendOperation batchWebhookSendOperation,
             IVirtualKeyService virtualKeyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

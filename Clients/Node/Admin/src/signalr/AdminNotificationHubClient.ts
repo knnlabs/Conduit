@@ -75,11 +75,11 @@ export class AdminNotificationHubClient extends BaseSignalRConnection implements
     });
 
     connection.on('ProviderHealthStatus', (data: unknown) => {
-      console.log('Provider health status received:', data);
+      console.warn('Provider health status received:', data);
     });
 
     connection.on('ProviderHealthRefreshed', (data: unknown) => {
-      console.log('Provider health refreshed:', data);
+      console.warn('Provider health refreshed:', data);
     });
   }
 

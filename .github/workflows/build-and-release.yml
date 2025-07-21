@@ -141,7 +141,7 @@ jobs:
       run: |
         dotnet test --no-build --configuration Release \
           --logger "trx;LogFileName=test-results.trx" \
-          --logger "console;verbosity=detailed" \
+          --logger "console;verbosity=normal" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults \
           --settings .runsettings
@@ -248,7 +248,7 @@ jobs:
             # Coverage by namespace/assembly
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### Coverage by Project" >> $GITHUB_STEP_SUMMARY
-            jq -r '.coverage[] | select(.name | contains("ConduitLLM")) | "- **\(.name)**: \(.linecoverage)%"' ./CoverageReport/Summary.json 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "- Coverage details unavailable" >> $GITHUB_STEP_SUMMARY
+            jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM")) | "- **\(.name)**: \(.coverage)%"' ./CoverageReport/Summary.json 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "- Coverage details unavailable" >> $GITHUB_STEP_SUMMARY
           fi
         else
           echo "- **Coverage**: ❌ No coverage data generated" >> $GITHUB_STEP_SUMMARY

@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const timeRange = searchParams.get('timeRange') || '30d';
+    const timeRange = searchParams.get('timeRange') ?? '30d';
     
     const adminClient = getServerAdminClient();
     
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
 
     // Check if any virtual keys have budgets
     const monthlyBudget = virtualKeyCosts?.find(vk => vk.budgetUsed !== undefined)
-      ? virtualKeyCosts.reduce((sum, vk) => sum + (vk.budgetUsed || 0) + (vk.budgetRemaining || 0), 0)
+      ? virtualKeyCosts.reduce((sum, vk) => sum + (vk.budgetUsed ?? 0) + (vk.budgetRemaining ?? 0), 0)
       : null;
 
     const response = {

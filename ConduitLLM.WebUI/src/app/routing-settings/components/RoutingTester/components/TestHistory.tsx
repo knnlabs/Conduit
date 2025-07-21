@@ -11,7 +11,6 @@ import {
   Badge,
   ActionIcon,
   Tooltip,
-  Alert,
 } from '@mantine/core';
 import {
   IconHistory,
@@ -177,9 +176,9 @@ export function TestHistory({
                       </Group>
 
                       {/* Additional Info */}
-                      {(testCase.request.region || 
-                        testCase.request.costThreshold !== undefined || 
-                        testCase.request.virtualKeyId ||
+                      {(testCase.request.region ?? 
+                        testCase.request.costThreshold !== undefined ?? 
+                        testCase.request.virtualKeyId ??
                         Object.keys(testCase.request.customFields).length > 0) && (
                         <Group gap="xs">
                           {testCase.request.region && (

@@ -93,6 +93,11 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public Task<Stream?> GetStreamAsync(string storageKey)
         {
+            if (string.IsNullOrEmpty(storageKey))
+            {
+                return Task.FromResult<Stream?>(null);
+            }
+
             if (_storage.TryGetValue(storageKey, out var stored))
             {
                 return Task.FromResult<Stream?>(new MemoryStream(stored.Data));
@@ -127,6 +132,11 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public Task<bool> DeleteAsync(string storageKey)
         {
+            if (string.IsNullOrEmpty(storageKey))
+            {
+                return Task.FromResult(false);
+            }
+
             var removed = _storage.TryRemove(storageKey, out _);
             if (removed)
             {

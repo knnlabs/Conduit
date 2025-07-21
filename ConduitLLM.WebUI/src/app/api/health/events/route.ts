@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
 
 // TODO: Remove this mock data when SDK provides health event endpoints
 // SDK methods needed:
@@ -48,7 +47,7 @@ const mockEvents = [
 function generateMockEvents(limit: number) {
   return {
     events: mockEvents.slice(0, Math.min(limit, mockEvents.length)),
-    _warning: 'This data is simulated. SDK health event methods are not yet available.',
+    warningMessage: 'This data is simulated. SDK health event methods are not yet available.',
   };
 }
 
@@ -56,14 +55,13 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
-    const adminClient = getServerAdminClient();
+    const limit = parseInt(searchParams.get('limit') ?? '10', 10);
     
     // For now, return mock data as the SDK method doesn't exist yet
     try {
       // In the future: const events = await adminClient.system.getHealthEvents(limit);
       throw new Error('Method not implemented'); // Force fallback to mock data
-    } catch (sdkError) {
+    } catch {
       // Fallback to mock data if SDK methods fail
       const mockData = generateMockEvents(limit);
       return NextResponse.json(mockData);

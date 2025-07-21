@@ -25,7 +25,7 @@ export function useRoutingRules() {
         throw new Error('Failed to fetch routing rules');
       }
       
-      const rules = await response.json();
+      const rules = await response.json() as RoutingRule[];
       return rules;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch routing rules';
@@ -50,11 +50,11 @@ export function useRoutingRules() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to create routing rule');
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error ?? 'Failed to create routing rule');
       }
 
-      const newRule = await response.json();
+      const newRule = await response.json() as RoutingRule;
 
       notifications.show({
         title: 'Success',
@@ -90,10 +90,10 @@ export function useRoutingRules() {
         body: JSON.stringify(rule),
       });
 
-      const result = await response.json();
+      const result = await response.json() as RoutingRule & { error?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing rule');
+        throw new Error(result.error ?? 'Failed to update routing rule');
       }
 
       notifications.show({
@@ -127,8 +127,8 @@ export function useRoutingRules() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete routing rule');
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error ?? 'Failed to delete routing rule');
       }
 
       notifications.show({
@@ -168,11 +168,11 @@ export function useRoutingRules() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to test routing rules');
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error ?? 'Failed to test routing rules');
       }
 
-      const result = await response.json();
+      const result = await response.json() as RouteTestResult;
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to test routing rules';
@@ -196,10 +196,10 @@ export function useRoutingRules() {
         body: JSON.stringify({ rules }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as RoutingRule[] & { error?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update routing rules');
+        throw new Error(result.error ?? 'Failed to update routing rules');
       }
 
       notifications.show({

@@ -30,7 +30,7 @@ import {
   IconJson,
   IconTestPipe,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useSecurityApi, type IpRule, type IpStats } from '@/hooks/useSecurityApi';
 import { notifications } from '@mantine/notifications';
@@ -50,13 +50,9 @@ export default function IpFilteringPage() {
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { getIpRules, createIpRule, updateIpRule, deleteIpRule, getIpStats, error } = useSecurityApi();
+  const { getIpRules, createIpRule, updateIpRule, deleteIpRule, error } = useSecurityApi();
 
-  useEffect(() => {
-    fetchIpRules();
-  }, []);
-
-  const fetchIpRules = async () => {
+  const fetchIpRules = useCallback(async () => {
     try {
       setIsLoading(true);
       const fetchedRules = await getIpRules();
@@ -70,11 +66,11 @@ export default function IpFilteringPage() {
         activeRules: fetchedRules.filter(r => r.isEnabled !== false).length,
         blockedRequests24h: 0, // This would need to come from a real endpoint
         lastRuleUpdate: fetchedRules.length > 0 
-          ? new Date(Math.max(...fetchedRules.map(r => new Date(r.createdAt || '').getTime()).filter(t => !isNaN(t)))).toISOString()
+          ? new Date(Math.max(...fetchedRules.map(r => new Date(r.createdAt ?? '').getTime()).filter(t => !isNaN(t)))).toISOString()
           : null,
       };
       setStats(calculatedStats);
-    } catch (err) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to load IP rules',
@@ -83,11 +79,11 @@ export default function IpFilteringPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getIpRules]);
 
-  const handleRefresh = () => {
-    fetchIpRules();
-  };
+  useEffect(() => {
+    void fetchIpRules();
+  }, [fetchIpRules]);
 
   const handleCreateRule = () => {
     setSelectedRule(null);
@@ -109,10 +105,10 @@ export default function IpFilteringPage() {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as { error?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || `Failed to ${operation} rules`);
+        throw new Error(result.error ?? `Failed to ${operation} rules`);
       }
 
       notifications.show({
@@ -123,8 +119,8 @@ export default function IpFilteringPage() {
 
       await fetchIpRules();
       setSelectedRules([]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : `Failed to ${operation} rules`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Failed to ${operation} rules`;
       notifications.show({
         title: 'Error',
         message,
@@ -156,7 +152,7 @@ export default function IpFilteringPage() {
         message: `IP rules exported as ${format.toUpperCase()}`,
         color: 'green',
       });
-    } catch (err) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to export IP rules',
@@ -185,21 +181,21 @@ export default function IpFilteringPage() {
           body: formData,
         });
 
-        const result = await response.json();
+        const result = await response.json() as { error?: string; imported?: number; failed?: number };
 
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to import IP rules');
+          throw new Error(result.error ?? 'Failed to import IP rules');
         }
 
         notifications.show({
           title: 'Success',
-          message: `Imported ${result.imported} rule(s) successfully${result.failed ? `, ${result.failed} failed` : ''}`,
+          message: `Imported ${result.imported ?? 0} rule(s) successfully${result.failed ? `, ${result.failed} failed` : ''}`,
           color: 'green',
         });
 
         await fetchIpRules();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to import IP rules';
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to import IP rules';
         notifications.show({
           title: 'Error',
           message,
@@ -225,8 +221,8 @@ export default function IpFilteringPage() {
       await deleteIpRule(ruleId);
       await fetchIpRules();
       setSelectedRules(prev => prev.filter(id => id !== ruleId));
-    } catch (err) {
-      console.error('Failed to delete IP rule:', err);
+    } catch (error) {
+      console.error('Failed to delete IP rule:', error);
     }
   };
 
@@ -237,8 +233,8 @@ export default function IpFilteringPage() {
       
       await updateIpRule(ruleId, { ...rule, isEnabled: enabled });
       await fetchIpRules();
-    } catch (err) {
-      console.error('Failed to toggle IP rule:', err);
+    } catch (error) {
+      console.error('Failed to toggle IP rule:', error);
     }
   };
 
@@ -264,9 +260,9 @@ export default function IpFilteringPage() {
       }
       await fetchIpRules();
       closeModal();
-    } catch (err) {
+    } catch (error) {
       // Error is already handled by useSecurityApi
-      console.error('Failed to save IP rule:', err);
+      console.error('Failed to save IP rule:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -282,28 +278,28 @@ export default function IpFilteringPage() {
   const statCards = [
     {
       title: 'Total Rules',
-      value: stats?.totalRules || 0,
+      value: stats?.totalRules ?? 0,
       description: 'Active IP filtering rules',
       icon: IconShield,
       color: 'blue',
     },
     {
       title: 'Allow Rules',
-      value: stats?.allowRules || 0,
+      value: stats?.allowRules ?? 0,
       description: 'Whitelisted IPs',
       icon: IconShieldCheck,
       color: 'green',
     },
     {
       title: 'Block Rules',
-      value: stats?.blockRules || 0,
+      value: stats?.blockRules ?? 0,
       description: 'Blacklisted IPs',
       icon: IconShieldX,
       color: 'red',
     },
     {
       title: 'Blocked Today',
-      value: stats?.blockedRequests24h || 0,
+      value: stats?.blockedRequests24h ?? 0,
       description: 'Requests blocked in 24h',
       icon: IconClock,
       color: 'orange',
@@ -363,13 +359,13 @@ export default function IpFilteringPage() {
               <Menu.Dropdown>
                 <Menu.Item
                   leftSection={<IconJson style={{ width: rem(14), height: rem(14) }} />}
-                  onClick={() => handleExport('json')}
+                  onClick={() => void handleExport('json')}
                 >
                   Export as JSON
                 </Menu.Item>
                 <Menu.Item
                   leftSection={<IconFileTypeCsv style={{ width: rem(14), height: rem(14) }} />}
-                  onClick={() => handleExport('csv')}
+                  onClick={() => void handleExport('csv')}
                 >
                   Export as CSV
                 </Menu.Item>
@@ -429,7 +425,7 @@ export default function IpFilteringPage() {
               leftSection={<IconFilter size={16} />}
               rightSection={
                 <Badge size="sm" variant="filled" color="gray">
-                  {stats?.totalRules || 0}
+                  {stats?.totalRules ?? 0}
                 </Badge>
               }
             >
@@ -440,7 +436,7 @@ export default function IpFilteringPage() {
               leftSection={<IconShieldCheck size={16} />}
               rightSection={
                 <Badge size="sm" variant="filled" color="green">
-                  {stats?.allowRules || 0}
+                  {stats?.allowRules ?? 0}
                 </Badge>
               }
             >
@@ -451,7 +447,7 @@ export default function IpFilteringPage() {
               leftSection={<IconShieldX size={16} />}
               rightSection={
                 <Badge size="sm" variant="filled" color="red">
-                  {stats?.blockRules || 0}
+                  {stats?.blockRules ?? 0}
                 </Badge>
               }
             >
@@ -473,14 +469,14 @@ export default function IpFilteringPage() {
                     <Button 
                       size="xs" 
                       variant="light"
-                      onClick={() => handleBulkOperation('enable')}
+                      onClick={() => void handleBulkOperation('enable')}
                     >
                       Enable
                     </Button>
                     <Button 
                       size="xs" 
                       variant="light"
-                      onClick={() => handleBulkOperation('disable')}
+                      onClick={() => void handleBulkOperation('disable')}
                     >
                       Disable
                     </Button>
@@ -488,7 +484,7 @@ export default function IpFilteringPage() {
                       size="xs" 
                       variant="light" 
                       color="red"
-                      onClick={() => handleBulkOperation('delete')}
+                      onClick={() => void handleBulkOperation('delete')}
                     >
                       Delete
                     </Button>
@@ -504,8 +500,8 @@ export default function IpFilteringPage() {
                 selectedRules={selectedRules}
                 onSelectionChange={setSelectedRules}
                 onEdit={handleEditRule}
-                onDelete={handleDeleteRule}
-                onToggle={handleToggleRule}
+                onDelete={(ruleId: string) => void handleDeleteRule(ruleId)}
+                onToggle={(ruleId: string, enabled: boolean) => void handleToggleRule(ruleId, enabled)}
               />
             </Card.Section>
           </div>

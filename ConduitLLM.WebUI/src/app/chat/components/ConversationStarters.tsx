@@ -32,7 +32,7 @@ export function ConversationStarters({ onStarterClick }: ConversationStartersPro
       >
         <Stack gap="xs">
           <Group gap="xs">
-            <Icon size={20} color="var(--mantine-color-blue-6)" />
+            <Icon size={20} />
             <Text fw={600} size="sm">{starter.title}</Text>
           </Group>
           <Text size="xs" c="dimmed" lineClamp={2}>

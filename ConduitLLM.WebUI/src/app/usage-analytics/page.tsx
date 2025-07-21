@@ -5,11 +5,9 @@ import {
   Title,
   Text,
   Group,
-  Paper,
   Grid,
   Select,
   Card,
-  RingProgress,
   Button,
   Badge,
   ThemeIcon,
@@ -20,7 +18,6 @@ import {
 } from '@mantine/core';
 import {
   AreaChart,
-  LineChart,
   BarChart,
   DonutChart,
 } from '@mantine/charts';
@@ -29,7 +26,6 @@ import {
   IconApi,
   IconCoins,
   IconUsers,
-  IconCalendar,
   IconDownload,
   IconRefresh,
   IconArrowUpRight,
@@ -88,6 +84,15 @@ interface EndpointUsage {
   errorRate: number;
 }
 
+interface UsageAnalyticsResponse {
+  metrics: UsageMetrics;
+  timeSeries: TimeSeriesData[];
+  providerUsage: ProviderUsage[];
+  modelUsage: ModelUsage[];
+  virtualKeyUsage: VirtualKeyUsage[];
+  endpointUsage: EndpointUsage[];
+}
+
 export default function UsageAnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
   const [isLoading, setIsLoading] = useState(true);
@@ -105,14 +110,14 @@ export default function UsageAnalyticsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch analytics');
       }
-      const data = await response.json();
+      const data = await response.json() as UsageAnalyticsResponse;
       
       setMetrics(data.metrics);
-      setTimeSeriesData(data.timeSeries || []);
-      setProviderUsage(data.providerUsage || []);
-      setModelUsage(data.modelUsage || []);
-      setVirtualKeyUsage(data.virtualKeyUsage || []);
-      setEndpointUsage(data.endpointUsage || []);
+      setTimeSeriesData(data.timeSeries ?? []);
+      setProviderUsage(data.providerUsage ?? []);
+      setModelUsage(data.modelUsage ?? []);
+      setVirtualKeyUsage(data.virtualKeyUsage ?? []);
+      setEndpointUsage(data.endpointUsage ?? []);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
@@ -121,7 +126,7 @@ export default function UsageAnalyticsPage() {
   }, [timeRange]);
 
   useEffect(() => {
-    fetchAnalytics();
+    void fetchAnalytics();
   }, [fetchAnalytics]);
 
   const getChangeColor = (change: number): string => {
@@ -163,7 +168,7 @@ export default function UsageAnalyticsPage() {
         <Group>
           <Select
             value={timeRange}
-            onChange={(value) => setTimeRange(value || '7d')}
+            onChange={(value) => setTimeRange(value ?? '7d')}
             data={[
               { value: '24h', label: 'Last 24 Hours' },
               { value: '7d', label: 'Last 7 Days' },
@@ -174,14 +179,14 @@ export default function UsageAnalyticsPage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchAnalytics}
+            onClick={() => void fetchAnalytics()}
             loading={isLoading}
           >
             Refresh
@@ -202,7 +207,7 @@ export default function UsageAnalyticsPage() {
                     Total Requests
                   </Text>
                   <Text size="xl" fw={700}>
-                    {formatters.number(metrics?.totalRequests || 0)}
+                    {formatters.number(metrics?.totalRequests ?? 0)}
                   </Text>
                 </div>
                 <ThemeIcon color="blue" variant="light" size="xl">
@@ -213,12 +218,12 @@ export default function UsageAnalyticsPage() {
                 <ThemeIcon 
                   size="xs" 
                   variant="subtle" 
-                  color={getChangeColor(metrics?.requestsChange || 0)}
+                  color={getChangeColor(metrics?.requestsChange ?? 0)}
                 >
-                  {getChangeIcon(metrics?.requestsChange || 0)({ size: 14 })}
+                  {getChangeIcon(metrics?.requestsChange ?? 0)({ size: 14 })}
                 </ThemeIcon>
-                <Text size="xs" c={getChangeColor(metrics?.requestsChange || 0)}>
-                  {Math.abs(metrics?.requestsChange || 0)}%
+                <Text size="xs" c={getChangeColor(metrics?.requestsChange ?? 0)}>
+                  {Math.abs(metrics?.requestsChange ?? 0)}%
                 </Text>
                 <Text size="xs" c="dimmed">vs previous period</Text>
               </Group>
@@ -237,7 +242,7 @@ export default function UsageAnalyticsPage() {
                     Total Cost
                   </Text>
                   <Text size="xl" fw={700}>
-                    ${formatters.currency(metrics?.totalCost || 0)}
+                    ${formatters.currency(metrics?.totalCost ?? 0)}
                   </Text>
                 </div>
                 <ThemeIcon color="green" variant="light" size="xl">
@@ -248,12 +253,12 @@ export default function UsageAnalyticsPage() {
                 <ThemeIcon 
                   size="xs" 
                   variant="subtle" 
-                  color={getChangeColor(metrics?.costChange || 0)}
+                  color={getChangeColor(metrics?.costChange ?? 0)}
                 >
-                  {getChangeIcon(metrics?.costChange || 0)({ size: 14 })}
+                  {getChangeIcon(metrics?.costChange ?? 0)({ size: 14 })}
                 </ThemeIcon>
-                <Text size="xs" c={getChangeColor(metrics?.costChange || 0)}>
-                  {Math.abs(metrics?.costChange || 0)}%
+                <Text size="xs" c={getChangeColor(metrics?.costChange ?? 0)}>
+                  {Math.abs(metrics?.costChange ?? 0)}%
                 </Text>
                 <Text size="xs" c="dimmed">vs previous period</Text>
               </Group>
@@ -272,7 +277,7 @@ export default function UsageAnalyticsPage() {
                     Total Tokens
                   </Text>
                   <Text size="xl" fw={700}>
-                    {formatters.shortNumber(metrics?.totalTokens || 0)}
+                    {formatters.shortNumber(metrics?.totalTokens ?? 0)}
                   </Text>
                 </div>
                 <ThemeIcon color="cyan" variant="light" size="xl">
@@ -283,12 +288,12 @@ export default function UsageAnalyticsPage() {
                 <ThemeIcon 
                   size="xs" 
                   variant="subtle" 
-                  color={getChangeColor(metrics?.tokensChange || 0)}
+                  color={getChangeColor(metrics?.tokensChange ?? 0)}
                 >
-                  {getChangeIcon(metrics?.tokensChange || 0)({ size: 14 })}
+                  {getChangeIcon(metrics?.tokensChange ?? 0)({ size: 14 })}
                 </ThemeIcon>
-                <Text size="xs" c={getChangeColor(metrics?.tokensChange || 0)}>
-                  {Math.abs(metrics?.tokensChange || 0)}%
+                <Text size="xs" c={getChangeColor(metrics?.tokensChange ?? 0)}>
+                  {Math.abs(metrics?.tokensChange ?? 0)}%
                 </Text>
                 <Text size="xs" c="dimmed">vs previous period</Text>
               </Group>
@@ -307,7 +312,7 @@ export default function UsageAnalyticsPage() {
                     Active Keys
                   </Text>
                   <Text size="xl" fw={700}>
-                    {metrics?.activeVirtualKeys || 0}
+                    {metrics?.activeVirtualKeys ?? 0}
                   </Text>
                 </div>
                 <ThemeIcon color="orange" variant="light" size="xl">
@@ -318,12 +323,12 @@ export default function UsageAnalyticsPage() {
                 <ThemeIcon 
                   size="xs" 
                   variant="subtle" 
-                  color={getChangeColor(metrics?.virtualKeysChange || 0)}
+                  color={getChangeColor(metrics?.virtualKeysChange ?? 0)}
                 >
-                  {getChangeIcon(metrics?.virtualKeysChange || 0)({ size: 14 })}
+                  {getChangeIcon(metrics?.virtualKeysChange ?? 0)({ size: 14 })}
                 </ThemeIcon>
-                <Text size="xs" c={getChangeColor(metrics?.virtualKeysChange || 0)}>
-                  {Math.abs(metrics?.virtualKeysChange || 0)}%
+                <Text size="xs" c={getChangeColor(metrics?.virtualKeysChange ?? 0)}>
+                  {Math.abs(metrics?.virtualKeysChange ?? 0)}%
                 </Text>
                 <Text size="xs" c="dimmed">vs previous period</Text>
               </Group>
@@ -381,7 +386,7 @@ export default function UsageAnalyticsPage() {
                         'Azure': 'cyan.6',
                         'Google': 'green.6',
                         'Replicate': 'purple.6',
-                      }[p.provider] || 'gray.6'
+                      }[p.provider] ?? 'gray.6'
                     }))}
                     withLabelsLine
                     withLabels
@@ -436,7 +441,7 @@ export default function UsageAnalyticsPage() {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {modelUsage.slice(0, 10).map((model, index) => (
+                      {modelUsage.slice(0, 10).map((model) => (
                         <Table.Tr key={`${model.provider}-${model.model}`}>
                           <Table.Td>
                             <Text size="sm" fw={500}>{model.model}</Text>
@@ -519,7 +524,11 @@ export default function UsageAnalyticsPage() {
                       <Table.Td>{endpoint.avgDuration}ms</Table.Td>
                       <Table.Td>
                         <Badge 
-                          color={endpoint.errorRate > 5 ? 'red' : endpoint.errorRate > 1 ? 'orange' : 'green'}
+                          color={(() => {
+                            if (endpoint.errorRate > 5) return 'red';
+                            if (endpoint.errorRate > 1) return 'orange';
+                            return 'green';
+                          })()}
                           variant="light"
                         >
                           {endpoint.errorRate.toFixed(1)}%

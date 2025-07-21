@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
 
 // TODO: Remove this mock data generator when SDK provides system health endpoints
 // SDK methods needed:
@@ -14,10 +13,9 @@ function generateSystemHealth() {
   const diskUsage = Math.floor(Math.random() * 80) + 10;
   
   const isHealthy = cpuUsage < 80 && memoryUsage < 80 && diskUsage < 90;
-  const isDegraded = cpuUsage >= 80 || memoryUsage >= 80 || diskUsage >= 90;
   
   return {
-    overall: isHealthy ? 'healthy' : isDegraded ? 'degraded' : 'unhealthy',
+    overall: isHealthy ? 'healthy' : 'degraded',
     components: {
       api: {
         status: 'healthy',
@@ -46,20 +44,19 @@ function generateSystemHealth() {
       disk: diskUsage,
       activeConnections: Math.floor(Math.random() * 100) + 20,
     },
-    _warning: 'This data is simulated. SDK system health methods are not yet available.',
+    warningMessage: 'This data is simulated. SDK system health methods are not yet available.',
   };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
-    const adminClient = getServerAdminClient();
     
     // For now, return mock data as the SDK method doesn't exist yet
     try {
       // In the future: const systemHealth = await adminClient.system.getSystemHealth();
       throw new Error('Method not implemented'); // Force fallback to mock data
-    } catch (sdkError) {
+    } catch {
       // Fallback to mock data if SDK methods fail
       const systemHealth = generateSystemHealth();
       return NextResponse.json(systemHealth);

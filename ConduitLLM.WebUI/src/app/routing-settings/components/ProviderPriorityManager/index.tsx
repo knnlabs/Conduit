@@ -21,7 +21,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { ProviderPriority, RoutingConfiguration } from '../../types/routing';
+import { ProviderPriority } from '../../types/routing';
 import { ProviderList } from './components/ProviderList';
 import { BulkActions } from './components/BulkActions';
 import { ProviderStats } from './components/ProviderStats';
@@ -60,9 +60,57 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
     onLoadingChange(isLoading);
   }, [isLoading, onLoadingChange]);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [providersData, healthData, providerHealthData] = await Promise.all([
+        getProviderPriorities(),
+        getLoadBalancerHealth().catch(() => null),
+        fetch('/api/health/providers')
+          .then(res => res.json() as Promise<Array<{
+            id: string;
+            name: string;
+            status: string;
+            lastChecked: string;
+            responseTime: number;
+            uptime: number;
+            errorRate: number;
+            successRate: number;
+            details: unknown;
+          }>>)
+          .catch(() => []),
+      ]);
+
+      // Create a map of provider health data
+      const healthMap = new Map(
+        providerHealthData.map(h => [h.id, h])
+      );
+
+      // Transform provider data to include statistics and type
+      const providersWithStats: ProviderDisplay[] = providersData.map(provider => {
+        const health = healthMap.get(provider.providerId);
+        
+        return {
+          ...provider,
+          statistics: {
+            usagePercentage: healthData?.distribution[provider.providerId] ?? 0,
+            successRate: typeof health?.uptime === 'number' ? health.uptime : 0,
+            avgResponseTime: typeof health?.responseTime === 'number' ? health.responseTime : 0,
+          },
+          type: determineProviderType(provider.providerName),
+        };
+      });
+
+      setProviders(providersWithStats);
+      setOriginalProviders(JSON.parse(JSON.stringify(providersWithStats)) as ProviderDisplay[]);
+      setHasChanges(false);
+    } catch {
+      // Error is handled by the hook
+    }
+  }, [getProviderPriorities, getLoadBalancerHealth]);
+
   useEffect(() => {
-    loadData();
-  }, [refreshKey]);
+    void loadData();
+  }, [refreshKey, loadData]);
 
   useEffect(() => {
     // Filter providers based on search term
@@ -78,43 +126,6 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
     }
   }, [providers, filter]);
 
-  const loadData = async () => {
-    try {
-      const [providersData, healthData, providerHealthData] = await Promise.all([
-        getProviderPriorities(),
-        getLoadBalancerHealth().catch(() => null),
-        fetch('/api/health/providers').then(res => res.json()).catch(() => []),
-      ]);
-
-      // Create a map of provider health data
-      const healthMap = new Map(
-        Array.isArray(providerHealthData) 
-          ? providerHealthData.map((h: any) => [h.id, h])
-          : []
-      );
-
-      // Transform provider data to include statistics and type
-      const providersWithStats: ProviderDisplay[] = providersData.map(provider => {
-        const health = healthMap.get(provider.providerId);
-        
-        return {
-          ...provider,
-          statistics: {
-            usagePercentage: healthData?.distribution[provider.providerId] || 0,
-            successRate: health?.uptime || 0,
-            avgResponseTime: health?.responseTime || 0,
-          },
-          type: determineProviderType(provider.providerName),
-        };
-      });
-
-      setProviders(providersWithStats);
-      setOriginalProviders(JSON.parse(JSON.stringify(providersWithStats)));
-      setHasChanges(false);
-    } catch (err) {
-      // Error is handled by the hook
-    }
-  };
 
   const determineProviderType = (providerName: string): 'primary' | 'backup' | 'special' => {
     const name = providerName.toLowerCase();
@@ -156,7 +167,7 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         setHasChanges(true);
         break;
       case 'reset':
-        setProviders(JSON.parse(JSON.stringify(originalProviders)));
+        setProviders(JSON.parse(JSON.stringify(originalProviders)) as ProviderDisplay[]);
         setHasChanges(false);
         break;
     }
@@ -187,9 +198,15 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         return;
       }
 
-      const providersData: ProviderPriority[] = providers.map(({ statistics, type, ...provider }) => provider);
+      const providersData: ProviderPriority[] = providers.map(({ statistics, type, ...provider }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const unusedStatistics = statistics;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const unusedType = type;
+        return provider;
+      });
       await updateProviderPriorities(providersData);
-      setOriginalProviders(JSON.parse(JSON.stringify(providers)));
+      setOriginalProviders(JSON.parse(JSON.stringify(providers)) as ProviderDisplay[]);
       setHasChanges(false);
       
       notifications.show({
@@ -197,13 +214,13 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         message: 'Provider priorities saved successfully',
         color: 'green',
       });
-    } catch (err) {
+    } catch {
       // Error is handled by the hook
     }
   };
 
   const handleCancel = () => {
-    setProviders(JSON.parse(JSON.stringify(originalProviders)));
+    setProviders(JSON.parse(JSON.stringify(originalProviders)) as ProviderDisplay[]);
     setHasChanges(false);
   };
 
@@ -275,34 +292,44 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
       </Card>
 
       {/* Provider List */}
-      {isLoading && providers.length === 0 ? (
-        <Center h={300}>
-          <Loader />
-        </Center>
-      ) : filteredProviders.length === 0 ? (
-        <Card shadow="sm" p="xl" radius="md" withBorder>
-          <Center h={200}>
-            <Stack align="center" gap="md">
-              <Text size="lg" fw={500}>
-                {filter ? 'No providers match your search' : 'No providers configured'}
-              </Text>
-              <Text c="dimmed" size="sm">
-                {filter 
-                  ? 'Try adjusting your search terms'
-                  : 'Provider priorities will appear here once you configure LLM providers'
-                }
-              </Text>
-            </Stack>
-          </Center>
-        </Card>
-      ) : (
-        <ProviderList
-          providers={filteredProviders}
-          originalProviders={providers}
-          onProviderUpdate={handleProviderUpdate}
-          isLoading={isLoading}
-        />
-      )}
+      {(() => {
+        if (isLoading && providers.length === 0) {
+          return (
+            <Center h={300}>
+              <Loader />
+            </Center>
+          );
+        }
+        
+        if (filteredProviders.length === 0) {
+          return (
+            <Card shadow="sm" p="xl" radius="md" withBorder>
+              <Center h={200}>
+                <Stack align="center" gap="md">
+                  <Text size="lg" fw={500}>
+                    {filter ? 'No providers match your search' : 'No providers configured'}
+                  </Text>
+                  <Text c="dimmed" size="sm">
+                    {filter 
+                      ? 'Try adjusting your search terms'
+                      : 'Provider priorities will appear here once you configure LLM providers'
+                    }
+                  </Text>
+                </Stack>
+              </Center>
+            </Card>
+          );
+        }
+        
+        return (
+          <ProviderList
+            providers={filteredProviders}
+            originalProviders={providers}
+            onProviderUpdate={handleProviderUpdate}
+            isLoading={isLoading}
+          />
+        );
+      })()}
 
       {/* Save/Cancel Actions */}
       {hasChanges && (
@@ -320,7 +347,7 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
               </Button>
               <Button 
                 leftSection={<IconDeviceFloppy size={16} />}
-                onClick={handleSave}
+                onClick={() => void handleSave()}
                 loading={isLoading}
               >
                 Save Changes

@@ -141,7 +141,7 @@ export class SignalRService {
       await imageHubClient.subscribeToTask(taskId);
     }
 
-    console.debug(`Subscribed to task ${taskId} with type ${taskType}`);
+    console.warn(`Subscribed to task ${taskId} with type ${taskType}`);
   }
 
   /**
@@ -160,7 +160,7 @@ export class SignalRService {
       await imageHubClient.unsubscribeFromTask(taskId);
     }
 
-    console.debug(`Unsubscribed from task ${taskId} with type ${taskType}`);
+    console.warn(`Unsubscribed from task ${taskId} with type ${taskType}`);
   }
 
   /**
@@ -176,7 +176,7 @@ export class SignalRService {
       this.connections.clear();
       this.disposed = true;
       
-      console.debug('Disposed SignalRService and all connections');
+      console.warn('Disposed SignalRService and all connections');
     }
   }
 }

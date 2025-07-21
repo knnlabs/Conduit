@@ -64,7 +64,7 @@ const useChatStoreBase = create<ChatStore>()(
           sessions: state.sessions.filter((s) => s.id !== sessionId),
           activeSessionId:
             state.activeSessionId === sessionId
-              ? state.sessions.find((s) => s.id !== sessionId)?.id || null
+              ? state.sessions.find((s) => s.id !== sessionId)?.id ?? null
               : state.activeSessionId,
         }));
       },
@@ -175,7 +175,7 @@ const useChatStoreBase = create<ChatStore>()(
 
       getActiveSession: () => {
         const state = get();
-        return state.sessions.find((s) => s.id === state.activeSessionId) || null;
+        return state.sessions.find((s) => s.id === state.activeSessionId) ?? null;
       },
     }),
     {

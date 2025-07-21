@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 // GET /api/config/caching - Get cache configuration and statistics
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
@@ -86,7 +86,18 @@ export async function PUT(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const { cacheId, updates } = await req.json();
+    const body: unknown = await req.json();
+    
+    if (typeof body !== 'object' || body === null || !('updates' in body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    
+    const { updates } = body as { updates: {
+      ttl?: number;
+      maxSize?: number;
+      evictionPolicy?: string;
+      enabled?: boolean;
+    }};
 
     // Update cache configuration using the extended API
     const result = await adminClient.configuration.updateCacheConfig({

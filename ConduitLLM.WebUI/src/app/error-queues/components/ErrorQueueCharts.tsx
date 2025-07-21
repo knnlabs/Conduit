@@ -26,10 +26,12 @@ interface ErrorQueueChartsProps {
 const COLORS = ['#FF6B6B', '#FFA502', '#4ECDC4', '#45B7D1', '#96CEB4'];
 
 export function ErrorQueueCharts({ queues }: ErrorQueueChartsProps) {
-  const { data: statistics, isLoading } = useErrorQueueStatistics({
+  const { data: statisticsData, isLoading } = useErrorQueueStatistics({
     since: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
     groupBy: 'hour',
   });
+
+  const statistics = statisticsData as { errorRateTrends?: ErrorRateTrend[] } | undefined;
 
   if (isLoading) {
     return (
@@ -64,15 +66,21 @@ export function ErrorQueueCharts({ queues }: ErrorQueueChartsProps) {
       return acc;
     }, [] as { name: string; value: number }[]);
 
+  interface ErrorRateTrend {
+    period: string;
+    errorCount: number;
+    errorsPerMinute: number;
+  }
+  
   const errorRateData =
-    statistics?.errorRateTrends?.map((trend: any) => ({
+    statistics?.errorRateTrends?.map((trend: ErrorRateTrend) => ({
       period: new Date(trend.period).toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       }),
       errors: trend.errorCount,
       rate: trend.errorsPerMinute,
-    })) || [];
+    })) ?? [];
 
   return (
     <Grid>
@@ -82,7 +90,7 @@ export function ErrorQueueCharts({ queues }: ErrorQueueChartsProps) {
           <Title order={4} mb="md">
             Error Rate (Last 24 Hours)
           </Title>
-          {errorRateData.length > 0 ? (
+          {errorRateData?.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={errorRateData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -137,7 +145,7 @@ export function ErrorQueueCharts({ queues }: ErrorQueueChartsProps) {
                 >
                   {errorDistribution.map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
+                      key={`cell-${entry.name}`}
                       fill={COLORS[index % COLORS.length]}
                     />
                   ))}

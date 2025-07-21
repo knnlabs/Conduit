@@ -4,20 +4,14 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-
-// Use SDK types directly
-type Provider = ProviderCredentialDto;
-
-interface ProviderHealth {
-  providerId: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  lastCheck: string;
-  responseTime: number;
-  successRate: number;
-  errorCount: number;
-  issues?: string[];
-}
+import type { 
+  ProviderCredentialDto, 
+  CreateProviderCredentialDto, 
+  UpdateProviderCredentialDto,
+  ProviderHealthStatusDto
+} from '@knn_labs/conduit-admin-client';
+import type { ErrorResponse } from '@knn_labs/conduit-common';
+// Error utilities are handled inline with proper typing
 
 interface ProviderModel {
   id: string;
@@ -43,7 +37,7 @@ export function useProviderApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProviders = useCallback(async (): Promise<Provider[]> => {
+  const getProviders = useCallback(async (): Promise<ProviderCredentialDto[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -52,12 +46,12 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch providers');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch providers');
       }
 
+      const result = await response.json() as ProviderCredentialDto[];
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch providers';
@@ -68,7 +62,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProvider = useCallback(async (id: string): Promise<Provider> => {
+  const getProvider = useCallback(async (id: string): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -77,12 +71,12 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch provider');
       }
 
+      const result = await response.json() as ProviderCredentialDto;
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch provider';
@@ -93,7 +87,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const createProvider = useCallback(async (provider: Omit<Provider, 'id' | 'createdAt' | 'updatedAt'>): Promise<Provider> => {
+  const createProvider = useCallback(async (provider: CreateProviderCredentialDto): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -106,11 +100,12 @@ export function useProviderApi() {
         body: JSON.stringify(provider),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create provider');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create provider');
       }
+
+      const result = await response.json() as ProviderCredentialDto;
 
       notifications.show({
         title: 'Success',
@@ -133,7 +128,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const updateProvider = useCallback(async (id: string, updates: Partial<Provider>): Promise<Provider> => {
+  const updateProvider = useCallback(async (id: string, updates: UpdateProviderCredentialDto): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -146,11 +141,12 @@ export function useProviderApi() {
         body: JSON.stringify(updates),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to update provider');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to update provider');
       }
+
+      const result = await response.json() as ProviderCredentialDto;
 
       notifications.show({
         title: 'Success',
@@ -183,8 +179,8 @@ export function useProviderApi() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to delete provider');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to delete provider');
       }
 
       notifications.show({
@@ -219,10 +215,10 @@ export function useProviderApi() {
         body: JSON.stringify(request),
       });
 
-      const result = await response.json();
+      const result = await response.json() as { success: boolean; message: string; error?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || 'Provider test failed');
+        throw new Error(result.error ?? 'Provider test failed');
       }
 
       notifications.show({
@@ -231,7 +227,7 @@ export function useProviderApi() {
         color: result.success ? 'green' : 'red',
       });
 
-      return result;
+      return { success: result.success, message: result.message };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Provider test failed';
       setError(message);
@@ -246,7 +242,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealth> => {
+  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealthStatusDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -255,11 +251,12 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider health');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch provider health');
       }
+
+      const result = await response.json() as ProviderHealthStatusDto;
 
       return result;
     } catch (err) {
@@ -280,11 +277,12 @@ export function useProviderApi() {
         method: 'GET',
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch provider models');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch provider models');
       }
+
+      const result = await response.json() as ProviderModel[];
 
       return result;
     } catch (err) {
@@ -317,8 +315,8 @@ export function useProviders() {
     queryFn: async () => {
       const response = await fetch('/api/providers');
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch providers');
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch providers');
       }
       const data = await response.json() as ProviderCredentialDto[];
       // Use SDK types directly
@@ -327,7 +325,7 @@ export function useProviders() {
   });
 
   return {
-    providers: providers || [],
+    providers: providers ?? [],
     isLoading,
     error,
     refetch,

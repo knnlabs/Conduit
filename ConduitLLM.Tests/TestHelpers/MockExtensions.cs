@@ -124,6 +124,21 @@ namespace ConduitLLM.Tests.TestHelpers
         }
 
         /// <summary>
+        /// Verifies that a log message was written with any exception.
+        /// </summary>
+        public static void VerifyLogWithAnyException<T>(this Mock<ILogger<T>> mock, LogLevel level, 
+            string containsMessage = null)
+        {
+            mock.Verify(x => x.Log(
+                level,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((o, t) => containsMessage == null || o.ToString().Contains(containsMessage)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once());
+        }
+
+        /// <summary>
         /// Verifies that no logs were written at the specified level.
         /// </summary>
         public static void VerifyNoLog<T>(this Mock<ILogger<T>> mock, LogLevel level)

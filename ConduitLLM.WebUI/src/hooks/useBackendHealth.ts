@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import type { HealthStatusDto } from '@knn_labs/conduit-admin-client';
 
 export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
   coreApi: 'healthy' | 'degraded' | 'unavailable';
   lastChecked: Date;
-  adminApiDetails?: unknown;
-  coreApiDetails?: unknown;
+  adminApiDetails?: Record<string, unknown>; // Health check details - flexible structure
+  coreApiDetails?: Record<string, unknown>; // Health check details - flexible structure
   coreApiMessage?: string;
   coreApiChecks?: {
     name: string;
     status: string;
     description?: string;
-    data?: unknown;
+    data?: Record<string, unknown>; // Health check data - flexible structure
   }[];
 }
 
@@ -34,19 +35,18 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
       const response = await fetch('/api/admin/system/health');
       
       if (response.ok) {
-        const health = await response.json();
+        const health = await response.json() as HealthStatusDto;
+        // The SDK response contains the standard health data
         
         // Determine status based on the health response
-        const isHealthy = health.status === 'healthy' || health.overallStatus === 'healthy';
+        const isHealthy = health.status === 'healthy';
         
         setHealthStatus({
           adminApi: isHealthy ? 'healthy' : 'degraded',
           coreApi: isHealthy ? 'healthy' : 'degraded',
           lastChecked: new Date(),
-          adminApiDetails: health.adminApiDetails,
-          coreApiDetails: health.coreApiDetails,
-          coreApiMessage: health.coreApiMessage,
-          coreApiChecks: health.coreApiChecks,
+          adminApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
+          coreApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
         });
       } else {
         setHealthStatus({
@@ -71,10 +71,12 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
   useEffect(() => {
     if (autoRefresh) {
       // Initial check
-      checkHealth();
+      void checkHealth();
 
       // Set up interval
-      const interval = setInterval(checkHealth, refreshInterval);
+      const interval = setInterval(() => {
+        void checkHealth();
+      }, refreshInterval);
 
       return () => clearInterval(interval);
     }

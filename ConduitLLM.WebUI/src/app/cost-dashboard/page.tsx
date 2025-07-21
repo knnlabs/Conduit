@@ -1,8 +1,7 @@
-import { lazyLoadPage } from '@/lib/utils/lazyLoad';
+import dynamic from 'next/dynamic';
 
-const CostDashboard = lazyLoadPage(
-  () => import('./CostDashboard'),
-  { loadingMessage: 'Loading cost dashboard...' }
-);
+const CostDashboard = dynamic(() => import('./CostDashboard'), {
+  loading: () => <div>Loading cost dashboard...</div>,
+});
 
 export default CostDashboard;

@@ -143,7 +143,7 @@ export function getRecommendedModels(
     prioritizeCost?: boolean;
   }
 ): string[] {
-  const { prioritizeQuality, prioritizeSpeed, prioritizeCost } = preferences || {};
+  const { prioritizeQuality, prioritizeSpeed, prioritizeCost } = preferences ?? {};
 
   switch (capability) {
     case ModelCapability.CHAT:

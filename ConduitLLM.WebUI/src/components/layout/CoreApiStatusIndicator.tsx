@@ -57,8 +57,8 @@ export function CoreApiStatusIndicator({ status, message, checks }: CoreApiStatu
   const StatusIcon = getStatusIcon(status);
   
   // Check if degraded due to no providers
-  const isNoProvidersIssue = message?.toLowerCase().includes('no enabled providers') || 
-                            message?.toLowerCase().includes('no providers');
+  const isNoProvidersIssue = (message?.toLowerCase().includes('no enabled providers') ?? false) || 
+                            (message?.toLowerCase().includes('no providers') ?? false);
   
   // Create detailed tooltip content
   const tooltipContent = (
@@ -144,7 +144,7 @@ export function CoreApiStatusIndicator({ status, message, checks }: CoreApiStatu
       label={tooltipContent} 
       position="bottom"
       multiline={!!message || (checks && checks.length > 0)}
-      w={message || (checks && checks.length > 0) ? 300 : 'auto'}
+      w={message ?? (checks && checks.length > 0) ? 300 : 'auto'}
     >
       <Indicator 
         color={color} 

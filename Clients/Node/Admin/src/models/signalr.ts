@@ -6,6 +6,8 @@ import {
   DefaultTransports
 } from '@knn_labs/conduit-common';
 
+import type { ConfigValue, ExtendedMetadata } from './common-types';
+
 // Re-export for backward compatibility
 export {
   HubConnectionState,
@@ -106,8 +108,8 @@ export interface VirtualKeyEvent {
   virtualKeyName?: string;
   changes?: {
     field: string;
-    oldValue: any;
-    newValue: any;
+    oldValue: ConfigValue;
+    newValue: ConfigValue;
   }[];
   metadata?: {
     currentSpend?: number;
@@ -123,8 +125,8 @@ export interface VirtualKeyEvent {
 export interface ConfigurationChangeEvent {
   category: string;
   setting: string;
-  oldValue: any;
-  newValue: any;
+  oldValue: ConfigValue;
+  newValue: ConfigValue;
   changedBy?: string;
   timestamp: string;
 }
@@ -137,12 +139,12 @@ export interface AdminNotificationEvent {
   type: 'info' | 'warning' | 'error' | 'success';
   title: string;
   message: string;
-  details?: any;
+  details?: ExtendedMetadata;
   actionRequired?: boolean;
   actions?: {
     label: string;
     action: string;
-    data?: any;
+    data?: ExtendedMetadata;
   }[];
   timestamp: string;
 }

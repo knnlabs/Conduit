@@ -247,20 +247,23 @@ namespace ConduitLLM.Providers.InternalModels.OpenAIModels
         [JsonPropertyName("index")]
         public int Index { get; init; }
 
-        [JsonPropertyName("tool")]
-        public required string Tool { get; init; }
+        [JsonPropertyName("id")]
+        public string? Id { get; init; }
 
+        [JsonPropertyName("type")]
+        public string? Type { get; init; }
+
+        [JsonPropertyName("function")]
+        public ToolCallFunction? Function { get; init; }
+    }
+
+    internal record ToolCallFunction
+    {
         [JsonPropertyName("name")]
         public string? Name { get; init; }
 
-        [JsonPropertyName("user_message")]
-        public string? UserMessage { get; init; }
-
-        [JsonPropertyName("metadata")]
-        public JsonNode? Metadata { get; init; }
-
-        [JsonPropertyName("user_id")]
-        public string? UserId { get; init; }
+        [JsonPropertyName("arguments")]
+        public string? Arguments { get; init; }
     }
 
     internal record ToolAvailability

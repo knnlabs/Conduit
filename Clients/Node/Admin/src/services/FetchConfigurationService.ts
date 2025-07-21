@@ -595,7 +595,7 @@ export class FetchConfigurationService {
       : ENDPOINTS.CONFIGURATION.ROUTING_HEALTH_DETAILED;
 
     try {
-      const response = await this.client['get']<any>(url, {
+      const response = await this.client['get']<RoutingHealthResponse>(url, {
         signal: config?.signal,
         timeout: config?.timeout,
         headers: config?.headers,
@@ -638,7 +638,7 @@ export class FetchConfigurationService {
     config?: RequestConfig
   ): Promise<RouteHealthDetails> {
     try {
-      const response = await this.client['get']<any>(
+      const response = await this.client['get']<RouteHealthDetails>(
         ENDPOINTS.CONFIGURATION.ROUTE_HEALTH_BY_ID(routeId),
         {
           signal: config?.signal,
@@ -697,7 +697,7 @@ export class FetchConfigurationService {
     });
 
     try {
-      const response = await this.client['get']<any>(
+      const response = await this.client['get']<RoutingHealthHistory>(
         `${ENDPOINTS.CONFIGURATION.ROUTING_HEALTH_HISTORY}?${params.toString()}`,
         {
           signal: config?.signal,
@@ -764,7 +764,7 @@ export class FetchConfigurationService {
     config?: RequestConfig
   ): Promise<RoutePerformanceTestResult> {
     try {
-      const response = await this.client['post']<any, RoutePerformanceTestParams>(
+      const response = await this.client['post']<RoutePerformanceTestResult, RoutePerformanceTestParams>(
         ENDPOINTS.CONFIGURATION.ROUTE_PERFORMANCE_TEST,
         params,
         {
@@ -811,7 +811,7 @@ export class FetchConfigurationService {
    */
   async getCircuitBreakerStatus(config?: RequestConfig): Promise<CircuitBreakerStatus[]> {
     try {
-      const response = await this.client['get']<any>(
+      const response = await this.client['get']<RoutingHealthHistory>(
         ENDPOINTS.CONFIGURATION.CIRCUIT_BREAKERS,
         {
           signal: config?.signal,
@@ -915,7 +915,7 @@ export class FetchConfigurationService {
     config?: RequestConfig
   ): Promise<{ connectionId: string; unsubscribe: () => void }> {
     try {
-      const response = await this.client['post']<any, { eventTypes: string[] }>(
+      const response = await this.client['post']<{ connectionId: string }, { eventTypes: string[] }>(
         ENDPOINTS.CONFIGURATION.ROUTING_EVENTS_SUBSCRIBE,
         { eventTypes },
         {
@@ -1415,7 +1415,11 @@ export class FetchConfigurationService {
           case 'not_in':
             return !condition.values.includes(value);
           case 'regex':
-            return new RegExp(condition.values[0]).test(value);
+            const pattern = condition.values[0];
+            if (typeof pattern !== 'string') {
+              return false;
+            }
+            return new RegExp(pattern).test(value);
           default:
             return false;
         }

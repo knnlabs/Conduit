@@ -30,8 +30,8 @@ export function useProviders() {
           throw new Error(`Failed to fetch providers: ${response.statusText}`);
         }
         
-        const providersData = await response.json();
-        setProviders(Array.isArray(providersData) ? providersData : []);
+        const providersData = await response.json() as unknown;
+        setProviders(Array.isArray(providersData) ? providersData as Provider[] : []);
       } catch (err) {
         console.error('Error fetching providers:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch providers');
@@ -41,13 +41,13 @@ export function useProviders() {
       }
     }
 
-    fetchProviders();
+    void fetchProviders();
   }, []);
 
   // Convert providers to select options format
   const providerOptions: ProviderOption[] = providers.map(provider => ({
     value: provider.id,
-    label: provider.displayName || provider.name || provider.id,
+    label: provider.displayName ?? provider.name ?? provider.id,
   }));
 
   return {

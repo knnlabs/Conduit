@@ -18,7 +18,6 @@ import {
   IconFlask,
   IconHistory,
   IconDownload,
-  IconRefresh,
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -55,7 +54,6 @@ export function RoutingTester({ onLoadingChange }: RoutingTesterProps) {
     error,
     testHistory,
     saveTestCase,
-    loadTestCase,
     clearHistory,
     exportResults,
   } = useRoutingTest();
@@ -91,8 +89,8 @@ export function RoutingTester({ onLoadingChange }: RoutingTesterProps) {
         await saveTestCase(testCase);
       }
 
-    } catch (err) {
-      console.error('Test failed:', err);
+    } catch (_err) {
+      console.error('Test failed:', _err);
     }
   };
 
@@ -140,6 +138,8 @@ export function RoutingTester({ onLoadingChange }: RoutingTesterProps) {
         color: 'green',
       });
     } catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const unusedErr = err;
       notifications.show({
         title: 'Export Failed',
         message: 'Failed to export test results',
@@ -182,7 +182,7 @@ export function RoutingTester({ onLoadingChange }: RoutingTesterProps) {
               <Button
                 leftSection={<IconDownload size={16} />}
                 variant="light"
-                onClick={handleExportResults}
+                onClick={() => void handleExportResults()}
               >
                 Export Results
               </Button>
@@ -199,7 +199,7 @@ export function RoutingTester({ onLoadingChange }: RoutingTesterProps) {
             <TestForm
               request={currentRequest}
               onRequestChange={setCurrentRequest}
-              onRunTest={handleRunTest}
+              onRunTest={() => void handleRunTest()}
               onClear={handleClearForm}
               isLoading={isLoading}
               selectedCase={selectedHistoryCase}

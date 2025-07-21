@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import type {
-  ErrorQueueListResponse,
-  ErrorMessageListResponse,
+import type { 
+  ErrorQueueListResponse, 
+  ErrorMessageListResponse, 
   ErrorMessageDetail,
   ErrorQueueStatistics,
   ErrorQueueHealth,
+  MessageReplayResponse,
+  MessageDeleteResponse,
+  QueueClearResponse
 } from '@knn_labs/conduit-admin-client';
 
 interface ErrorQueueOptions {
@@ -40,7 +43,7 @@ export function useErrorQueues(options?: ErrorQueueOptions) {
       if (!response.ok) {
         throw new Error('Failed to fetch error queues');
       }
-      return response.json();
+      return response.json() as Promise<ErrorQueueListResponse>;
     },
     refetchInterval: 30000, // Poll every 30 seconds
     staleTime: 20000, // Consider data stale after 20 seconds
@@ -72,7 +75,7 @@ export function useErrorQueueMessages(
       if (!response.ok) {
         throw new Error('Failed to fetch error messages');
       }
-      return response.json();
+      return response.json() as Promise<ErrorMessageListResponse>;
     },
     enabled: !!queueName,
   });
@@ -86,7 +89,7 @@ export function useErrorMessage(queueName: string, messageId: string) {
       if (!response.ok) {
         throw new Error('Failed to fetch error message');
       }
-      return response.json();
+      return response.json() as Promise<ErrorMessageDetail>;
     },
     enabled: !!queueName && !!messageId,
   });
@@ -111,7 +114,7 @@ export function useErrorQueueStatistics(options?: {
       if (!response.ok) {
         throw new Error('Failed to fetch error queue statistics');
       }
-      return response.json();
+      return response.json() as Promise<ErrorQueueStatistics>;
     },
     staleTime: 60000, // Statistics can be cached for 1 minute
   });
@@ -125,7 +128,7 @@ export function useErrorQueueHealth() {
       if (!response.ok) {
         throw new Error('Failed to fetch error queue health');
       }
-      return response.json();
+      return response.json() as Promise<ErrorQueueHealth>;
     },
     refetchInterval: 30000, // Poll health every 30 seconds
   });
@@ -149,10 +152,10 @@ export function useReplayMessage() {
       if (!response.ok) {
         throw new Error('Failed to replay message');
       }
-      return response.json();
+      return response.json() as Promise<MessageReplayResponse>;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+    onSuccess: (data, variables) => {
+      void queryClient.invalidateQueries({
         queryKey: ['error-messages', variables.queueName],
       });
       notifications.show({
@@ -182,11 +185,11 @@ export function useReplayAllMessages() {
       if (!response.ok) {
         throw new Error('Failed to replay all messages');
       }
-      return response.json();
+      return response.json() as Promise<MessageReplayResponse>;
     },
-    onSuccess: (_, queueName) => {
-      queryClient.invalidateQueries({ queryKey: ['error-queues'] });
-      queryClient.invalidateQueries({
+    onSuccess: (data, queueName) => {
+      void queryClient.invalidateQueries({ queryKey: ['error-queues'] });
+      void queryClient.invalidateQueries({
         queryKey: ['error-messages', queueName],
       });
       notifications.show({
@@ -216,11 +219,11 @@ export function useClearQueue() {
       if (!response.ok) {
         throw new Error('Failed to clear queue');
       }
-      return response.json();
+      return response.json() as Promise<QueueClearResponse>;
     },
-    onSuccess: (_, queueName) => {
-      queryClient.invalidateQueries({ queryKey: ['error-queues'] });
-      queryClient.invalidateQueries({
+    onSuccess: (data, queueName) => {
+      void queryClient.invalidateQueries({ queryKey: ['error-queues'] });
+      void queryClient.invalidateQueries({
         queryKey: ['error-messages', queueName],
       });
       notifications.show({
@@ -256,11 +259,11 @@ export function useDeleteMessage() {
       if (!response.ok) {
         throw new Error('Failed to delete message');
       }
-      return response.json();
+      return response.json() as Promise<MessageDeleteResponse>;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['error-queues'] });
-      queryClient.invalidateQueries({
+    onSuccess: (data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['error-queues'] });
+      void queryClient.invalidateQueries({
         queryKey: ['error-messages', variables.queueName],
       });
       notifications.show({

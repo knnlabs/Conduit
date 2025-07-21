@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { RuleCondition, RuleAction } from '@knn_labs/conduit-admin-client';
 // PATCH /api/config/routing/rules/[ruleId] - Update a routing rule
 export async function PATCH(
   req: NextRequest,
@@ -10,15 +11,30 @@ export async function PATCH(
   try {
     const adminClient = getServerAdminClient();
     const { ruleId } = await params;
-    const updates = await req.json();
+    
+    // Safe parsing of request body
+    const body: unknown = await req.json();
+    
+    if (typeof body !== 'object' || body === null) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    const updates = body as { 
+      name?: string; 
+      description?: string;
+      priority?: number; 
+      enabled?: boolean; 
+      conditions?: unknown; 
+      actions?: unknown; 
+    };
     
     try {
-      const updateDto: any = {
+      const updateDto = {
         name: updates.name,
         priority: updates.priority,
         enabled: updates.enabled,
-        conditions: updates.conditions,
-        actions: updates.actions
+        conditions: updates.conditions as RuleCondition[],
+        actions: updates.actions as RuleAction[]
       };
       
       const updatedRule = await adminClient.configuration.updateRoutingRule(ruleId, updateDto);
@@ -37,7 +53,7 @@ export async function PATCH(
         conditions: updates.conditions,
         actions: updates.actions,
         updatedAt: new Date().toISOString(),
-        _warning: 'Rule updated locally (SDK support pending)'
+        warning: 'Rule updated locally (SDK support pending)'
       });
     }
   } catch (error) {
@@ -65,7 +81,7 @@ export async function DELETE(
       // Return success if SDK doesn't support it yet
       return NextResponse.json({ 
         success: true,
-        _warning: 'Rule deleted locally (SDK support pending)'
+        warning: 'Rule deleted locally (SDK support pending)'
       });
     }
   } catch (error) {

@@ -1,4 +1,4 @@
-import { TestRequest, TestResult, TestCase, EvaluationStep } from '../../../types/routing';
+import { TestRequest, TestResult, TestCase } from '../../../types/routing';
 
 /**
  * Validates a test request to ensure all required fields are present
@@ -76,8 +76,8 @@ export function getSampleTestRequests(): TestCase[] {
         region: 'us-east-1',
         costThreshold: 0.1,
         customFields: {},
-        headers: { 'X-Priority': 'high' },
-        metadata: { 'request_type': 'premium' },
+        headers: { 'XPriority': 'high' },
+        metadata: { 'requestType': 'premium' },
       },
     },
     {
@@ -103,9 +103,9 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'gpt-3.5-turbo',
         region: 'eu-west-1',
         virtualKeyId: 'vk-eu-123456789',
-        customFields: { 'gdpr_compliant': 'true' },
-        headers: { 'X-Region': 'eu', 'X-Compliance': 'gdpr' },
-        metadata: { 'data_residency': 'eu' },
+        customFields: { 'gdprCompliant': 'true' },
+        headers: { 'XRegion': 'eu', 'XCompliance': 'gdpr' },
+        metadata: { 'dataResidency': 'eu' },
       },
     },
     {
@@ -117,12 +117,12 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'llama-2-70b',
         costThreshold: 0.01,
         customFields: { 
-          'batch_size': '1000',
+          'batchSize': '1000',
           'priority': 'batch',
-          'max_tokens': '512'
+          'maxTokens': '512'
         },
-        headers: { 'X-Batch-Mode': 'true' },
-        metadata: { 'processing_type': 'batch' },
+        headers: { 'XBatchMode': 'true' },
+        metadata: { 'processingType': 'batch' },
       },
     },
     {
@@ -134,8 +134,8 @@ export function getSampleTestRequests(): TestCase[] {
         model: 'gpt-3.5-turbo',
         region: 'us-east-1',
         customFields: { 'environment': 'development' },
-        headers: { 'X-Environment': 'development', 'X-Cache': 'enabled' },
-        metadata: { 'debug': true, 'cache_ttl': 3600 },
+        headers: { 'XEnvironment': 'development', 'XCache': 'enabled' },
+        metadata: { 'debug': true, 'cacheTtl': 3600 },
       },
     },
   ];
@@ -153,7 +153,7 @@ export function formatTestResultsForExport(
       timestamp: new Date().toISOString(),
       success: result.success,
       evaluationTime: result.evaluationTime,
-      selectedProvider: result.selectedProvider?.name || 'None',
+      selectedProvider: result.selectedProvider?.name ?? 'None',
       rulesMatched: result.matchedRules.filter(r => 
         r.matchedConditions.every(c => c.matched)
       ).length,
@@ -165,7 +165,7 @@ export function formatTestResultsForExport(
       costThreshold: request.costThreshold,
       virtualKeyId: request.virtualKeyId,
       customFieldsCount: Object.keys(request.customFields).length,
-      headersCount: Object.keys(request.headers || {}).length,
+      headersCount: Object.keys(request.headers ?? {}).length,
     },
     routingDecision: result.routingDecision,
     matchedRules: result.matchedRules.map(rule => ({
@@ -209,7 +209,7 @@ export function formatTestResultsForExport(
       duration: step.duration,
       ruleName: step.ruleName,
     })),
-    errors: result.errors || [],
+    errors: result.errors ?? [],
   };
 
   return JSON.stringify(report, null, 2);
@@ -243,13 +243,13 @@ export function calculateTestStatistics(results: TestResult[]): {
 
   const providerCounts = results.reduce((acc, r) => {
     if (r.selectedProvider) {
-      acc[r.selectedProvider.name] = (acc[r.selectedProvider.name] || 0) + 1;
+      acc[r.selectedProvider.name] = (acc[r.selectedProvider.name] ?? 0) + 1;
     }
     return acc;
   }, {} as Record<string, number>);
 
   const mostUsedProvider = Object.entries(providerCounts)
-    .sort(([,a], [,b]) => b - a)[0]?.[0] || 'None';
+    .sort(([,a], [,b]) => b - a)[0]?.[0] ?? 'None';
 
   const testsWithMatches = results.filter(r => 
     r.matchedRules.some(rule => rule.matchedConditions.every(c => c.matched))
@@ -286,7 +286,7 @@ export function compareTestResults(
   if (result1.selectedProvider?.id !== result2.selectedProvider?.id) {
     providerChanged = true;
     differences.push(
-      `Provider changed from ${result1.selectedProvider?.name || 'None'} to ${result2.selectedProvider?.name || 'None'}`
+      `Provider changed from ${result1.selectedProvider?.name ?? 'None'} to ${result2.selectedProvider?.name ?? 'None'}`
     );
   }
 

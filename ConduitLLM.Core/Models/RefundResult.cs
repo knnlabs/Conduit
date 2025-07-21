@@ -88,6 +88,16 @@ namespace ConduitLLM.Core.Models
         /// Gets or sets the refund amount for embeddings.
         /// </summary>
         public decimal EmbeddingRefund { get; set; }
+
+        /// <summary>
+        /// Gets or sets the refund amount for search units (reranking operations).
+        /// </summary>
+        public decimal SearchUnitRefund { get; set; }
+
+        /// <summary>
+        /// Gets or sets the refund amount for inference steps (image generation).
+        /// </summary>
+        public decimal InferenceStepRefund { get; set; }
     }
 
     /// <summary>

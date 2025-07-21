@@ -85,8 +85,8 @@ export class FetchChatService extends FetchBasedClient {
     const controller = new AbortController();
     
     // Set up timeout
-    const timeoutId = options?.timeout || this.config.timeout
-      ? setTimeout(() => controller.abort(), options?.timeout || this.config.timeout)
+    const timeoutId = options?.timeout ?? this.config.timeout
+      ? setTimeout(() => controller.abort(), options?.timeout ?? this.config.timeout)
       : undefined;
 
     try {
@@ -99,7 +99,7 @@ export class FetchChatService extends FetchBasedClient {
           ...options?.headers,
         },
         body: JSON.stringify(request),
-        signal: options?.signal || controller.signal,
+        signal: options?.signal ?? controller.signal,
       });
 
       if (!response.ok) {
@@ -191,7 +191,7 @@ export class FetchChatService extends FetchBasedClient {
     maxTokens?: number
   ): { valid: boolean; tokens: number; limit: number } {
     const tokens = this.countTokens(request.messages, request.model);
-    const limit = maxTokens || 8192; // Default limit
+    const limit = maxTokens ?? 8192; // Default limit
     
     return {
       valid: tokens <= limit,

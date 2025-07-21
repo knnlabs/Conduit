@@ -1,4 +1,3 @@
-import * as signalR from '@microsoft/signalr';
 import { 
   BaseSignalRConnection as CommonBaseSignalRConnection,
   BaseSignalRConfig,

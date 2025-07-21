@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { RuleCondition, RuleAction } from '@knn_labs/conduit-admin-client';
+
+interface RoutingRule {
+  id?: string;
+  name: string;
+  description?: string;
+  priority: number;
+  enabled: boolean;
+  isEnabled?: boolean;
+  conditions: unknown[];
+  actions: unknown[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface CreateRuleData {
+  name: string;
+  description?: string;
+  priority: number;
+  enabled: boolean;
+  conditions: unknown[];
+  actions: unknown[];
+}
 // GET /api/config/routing/rules - Get all routing rules
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
@@ -31,15 +54,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const ruleData = await req.json();
+    const ruleData = await req.json() as CreateRuleData;
     
     try {
-      const createDto: any = {
+      const createDto = {
         name: ruleData.name,
         priority: ruleData.priority,
         enabled: ruleData.enabled,
-        conditions: ruleData.conditions,
-        actions: ruleData.actions
+        conditions: ruleData.conditions as RuleCondition[],
+        actions: ruleData.actions as RuleAction[]
       };
       
       const newRule = await adminClient.configuration.createRoutingRule(createDto);
@@ -53,13 +76,13 @@ export async function POST(req: NextRequest) {
         id: Date.now().toString(),
         name: ruleData.name,
         description: ruleData.description,
-        priority: ruleData.priority || 1,
-        isEnabled: ruleData.enabled || false,
-        conditions: ruleData.conditions || [],
-        actions: ruleData.actions || [],
+        priority: ruleData.priority ?? 1,
+        isEnabled: ruleData.enabled ?? false,
+        conditions: ruleData.conditions ?? [],
+        actions: ruleData.actions ?? [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        _warning: 'Rule created locally (SDK support pending)'
+        warningMessage: 'Rule created locally (SDK support pending)'
       });
     }
   } catch (error) {
@@ -72,8 +95,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
 
   try {
-    const adminClient = getServerAdminClient();
-    const { rules } = await req.json();
+    const { rules } = await req.json() as { rules: RoutingRule[] };
     
     // SDK doesn't support bulk update yet, so we'll return the rules as-is
     console.warn('Bulk update not supported by SDK, returning requested rules');

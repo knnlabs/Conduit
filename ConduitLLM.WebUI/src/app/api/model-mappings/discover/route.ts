@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const body = await req.json();
+    const body = await req.json() as { autoCreate?: boolean; enableNewMappings?: boolean };
     
     // Call discoverModels to get all available models
     const discoveredModels = await adminClient.modelMappings.discoverModels();

@@ -138,6 +138,20 @@ namespace ConduitLLM.Http.Adapters
                     }
                 }
 
+                // Deserialize image quality multipliers if present
+                Dictionary<string, decimal>? imageQualityMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers))
+                {
+                    try
+                    {
+                        imageQualityMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
                 return new ModelCostInfo
                 {
                     ModelIdPattern = modelCost.ModelIdPattern,
@@ -146,7 +160,13 @@ namespace ConduitLLM.Http.Adapters
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                     ImageCostPerImage = modelCost.ImageCostPerImage,
                     VideoCostPerSecond = modelCost.VideoCostPerSecond,
-                    VideoResolutionMultipliers = videoResolutionMultipliers
+                    VideoResolutionMultipliers = videoResolutionMultipliers,
+                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                    ImageQualityMultipliers = imageQualityMultipliers,
+                    CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                    CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                    CostPerSearchUnit = modelCost.CostPerSearchUnit
                 };
             }
         }

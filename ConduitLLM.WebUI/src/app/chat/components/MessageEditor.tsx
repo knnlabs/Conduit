@@ -14,7 +14,7 @@ interface MessageEditorProps {
 export function MessageEditor({ message, onSave, onCancel }: MessageEditorProps) {
   const initialContent = typeof message.content === 'string' 
     ? message.content 
-    : message.content.find(c => c.type === 'text')?.text || '';
+    : message.content.find(c => c.type === 'text')?.text ?? '';
     
   const [content, setContent] = useState(initialContent);
 
@@ -23,8 +23,8 @@ export function MessageEditor({ message, onSave, onCancel }: MessageEditorProps)
   }, [initialContent]);
 
   const handleSave = () => {
-    if (content.trim() && content !== initialContent) {
-      onSave(message.id!, content);
+    if (content.trim() && content !== initialContent && message.id) {
+      onSave(message.id, content);
     }
   };
 

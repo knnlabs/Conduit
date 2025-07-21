@@ -194,16 +194,23 @@ export interface VideoGenerationMetadata extends BaseMetadata {
 }
 
 /**
+ * Type representing valid JSON values
+ */
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+type JsonObject = { [key: string]: JsonValue };
+type JsonArray = JsonValue[];
+
+/**
  * Type guard to check if a value is a valid metadata object
  */
-export function isValidMetadata(value: unknown): value is Record<string, unknown> {
+export function isValidMetadata(value: unknown): value is Record<string, JsonValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
  * Safely parse JSON metadata from string
  */
-export function parseMetadata<T extends Record<string, unknown>>(
+export function parseMetadata<T extends Record<string, JsonValue>>(
   metadataString: string | null | undefined
 ): T | undefined {
   if (!metadataString) {
@@ -211,7 +218,7 @@ export function parseMetadata<T extends Record<string, unknown>>(
   }
   
   try {
-    const parsed = JSON.parse(metadataString);
+    const parsed = JSON.parse(metadataString) as JsonValue;
     if (isValidMetadata(parsed)) {
       return parsed as T;
     }
@@ -224,7 +231,7 @@ export function parseMetadata<T extends Record<string, unknown>>(
 /**
  * Safely stringify metadata to JSON
  */
-export function stringifyMetadata<T extends Record<string, unknown>>(
+export function stringifyMetadata<T extends Record<string, JsonValue>>(
   metadata: T | null | undefined
 ): string | undefined {
   if (!metadata || Object.keys(metadata).length === 0) {

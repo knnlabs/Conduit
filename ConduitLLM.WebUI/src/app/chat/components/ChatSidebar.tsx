@@ -7,7 +7,6 @@ import {
   ActionIcon,
   Menu,
   TextInput,
-  Modal,
   useMantineTheme
 } from '@mantine/core';
 import { 

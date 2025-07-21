@@ -1,12 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const range = searchParams.get('range') || '24h';
-    
     // Return empty data until provider health endpoints are properly implemented
     // This prevents the dashboard from showing fake data while we wait for real implementation
     return NextResponse.json({

@@ -78,10 +78,17 @@ export interface FunctionDefinition {
   description?: string;
   parameters?: {
     type: 'object';
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
     required?: string[];
   };
 }
+
+export interface ToolDefinition {
+  type: 'function';
+  function: FunctionDefinition;
+}
+
+export type ToolChoice = 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
 
 export interface ModelWithCapabilities {
   id: string;
@@ -93,4 +100,24 @@ export interface ModelWithCapabilities {
   supportsToolUsage?: boolean;
   supportsJsonMode?: boolean;
   supportsStreaming?: boolean;
+}
+
+export interface ChatCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    ['finish_reason']: string;
+  }>;
+  usage?: {
+    ['prompt_tokens']: number;
+    ['completion_tokens']: number;
+    ['total_tokens']: number;
+  };
 }

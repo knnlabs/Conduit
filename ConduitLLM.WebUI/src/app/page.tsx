@@ -1,29 +1,5 @@
-import { 
-  Title, 
-  Text, 
-  Card, 
-  Group, 
-  Stack, 
-  Badge,
-  Button,
-  Grid,
-  ThemeIcon
-} from '@mantine/core';
-import { 
-  IconServer, 
-  IconKey, 
-  IconChartBar, 
-  IconMessageChatbot,
-  IconPhoto,
-  IconVideo,
-  IconMicrophone,
-  IconSettings,
-  IconAlertCircle
-} from '@tabler/icons-react';
-import { Alert } from '@mantine/core';
 import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { getServerCoreClient } from '@/lib/server/coreClient';
 import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
 
 // Force dynamic rendering to ensure health check runs at request time
@@ -50,7 +26,7 @@ async function getHealthStatus() {
       };
     }
 
-    const adminClient = await getServerAdminClient();
+    const adminClient = getServerAdminClient();
     const health = await adminClient.system.getHealth();
     
     // Extract provider status from health checks

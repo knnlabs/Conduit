@@ -22,8 +22,8 @@ export function ImagePreview({ images, compact = false }: ImagePreviewProps) {
   return (
     <>
       <Group gap="xs" mt="xs">
-        {displayedImages.map((image, index) => (
-          <Stack key={index} gap="xs" align="center">
+        {displayedImages.map((image) => (
+          <Stack key={image.name || image.url} gap="xs" align="center">
             <Image
               src={image.url}
               alt={image.name}

@@ -2,6 +2,8 @@
  * Analytics export-related models for the Admin SDK
  */
 
+import type { ExportDestinationConfig, ExtendedMetadata } from './common-types';
+
 /**
  * Base export parameters common to all export types
  */
@@ -149,7 +151,7 @@ export interface CreateExportScheduleDto {
   /** Export destination configuration */
   destination?: {
     type: 's3' | 'email' | 'webhook';
-    config: Record<string, any>;
+    config: ExportDestinationConfig;
   };
 }
 
@@ -173,7 +175,10 @@ export interface ExportSchedule {
   params: ExportParams;
   
   /** Destination configuration */
-  destination?: any;
+  destination?: {
+    type: 's3' | 'email' | 'webhook';
+    config: ExportDestinationConfig;
+  };
   
   /** Last execution time */
   lastRun?: string;
@@ -353,7 +358,7 @@ export interface RequestLog {
     type: string;
     message: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: ExtendedMetadata;
 }
 
 /**

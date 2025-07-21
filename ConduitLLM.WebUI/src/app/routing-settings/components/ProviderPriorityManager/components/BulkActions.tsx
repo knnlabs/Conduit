@@ -83,14 +83,14 @@ export function BulkActions({ providers, onAction, disabled }: BulkActionsProps)
         const reader = new FileReader();
         reader.onload = (e) => {
           try {
-            const config = JSON.parse(e.target?.result as string);
+            JSON.parse(e.target?.result as string);
             // Here you would validate and apply the imported configuration
             notifications.show({
               title: 'Import Feature',
               message: 'Import functionality would be implemented here',
               color: 'blue',
             });
-          } catch (err) {
+          } catch {
             notifications.show({
               title: 'Import Error',
               message: 'Invalid configuration file format',

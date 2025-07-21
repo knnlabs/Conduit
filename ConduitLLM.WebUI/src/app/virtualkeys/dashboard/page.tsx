@@ -51,38 +51,58 @@ interface ModelUsage {
   model: string;
 }
 
+interface SummaryData {
+  totalRequests: number;
+  totalCost: number;
+  averageBudgetUsed: number;
+  requestsGrowth: number;
+  costGrowth: number;
+  activeKeysGrowth: number;
+  activeKeys: number;
+}
+
+interface TimeSeriesPoint {
+  date: string;
+  requests: number | null;
+  cost: number;
+}
+
+interface DashboardData {
+  virtualKeys: DashboardVirtualKey[];
+  summary: SummaryData;
+  timeSeriesData: TimeSeriesPoint[];
+  modelUsage: ModelUsage[];
+}
+
 export default function VirtualKeysDashboardPage() {
-  const [_dateRange, _setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    new Date(),
-  ]);
+  // Removed unused date range state variables
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch real virtual keys data from the API
-  const { data: dashboardData, isLoading, error, refetch } = useQuery({
+  const { data: dashboardData, isLoading, error, refetch } = useQuery<DashboardData>({
     queryKey: ['virtual-keys-dashboard', selectedPeriod],
     queryFn: async () => {
       const response = await fetch(`/api/virtualkeys/dashboard?period=${selectedPeriod}`);
       if (!response.ok) {
         throw new Error('Failed to fetch virtual keys data');
       }
-      return response.json();
+      return response.json() as Promise<DashboardData>;
     },
     refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   // Use real data from API or fallback values
-  const virtualKeys: DashboardVirtualKey[] = dashboardData?.virtualKeys || [];
-  const totalRequests = dashboardData?.summary?.totalRequests || 0;
-  const totalCost = dashboardData?.summary?.totalCost || 0;
-  const averageBudgetUsed = dashboardData?.summary?.averageBudgetUsed || 0;
-  const requestsGrowth = dashboardData?.summary?.requestsGrowth || 0;
-  const costGrowth = dashboardData?.summary?.costGrowth || 0;
-  const activeKeysGrowth = dashboardData?.summary?.activeKeysGrowth || 0;
-  const activeKeys = dashboardData?.summary?.activeKeys || 0;
-  const timeSeriesData = dashboardData?.timeSeriesData || [];
-  const modelUsage: ModelUsage[] = dashboardData?.modelUsage || [];
+  const virtualKeys: DashboardVirtualKey[] = dashboardData?.virtualKeys ?? [];
+  const totalRequests = dashboardData?.summary?.totalRequests ?? 0;
+  const totalCost = dashboardData?.summary?.totalCost ?? 0;
+  const averageBudgetUsed = dashboardData?.summary?.averageBudgetUsed ?? 0;
+  const requestsGrowth = dashboardData?.summary?.requestsGrowth ?? 0;
+  const costGrowth = dashboardData?.summary?.costGrowth ?? 0;
+  const activeKeysGrowth = dashboardData?.summary?.activeKeysGrowth ?? 0;
+  const activeKeys = dashboardData?.summary?.activeKeys ?? 0;
+  const timeSeriesData: TimeSeriesPoint[] = dashboardData?.timeSeriesData ?? [];
+  const modelUsage: ModelUsage[] = dashboardData?.modelUsage ?? [];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -93,7 +113,7 @@ export default function VirtualKeysDashboardPage() {
         message: 'Virtual keys data has been updated',
         color: 'green',
       });
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Refresh Failed',
         message: 'Failed to refresh virtual keys data',
@@ -154,7 +174,7 @@ export default function VirtualKeysDashboardPage() {
         <Group>
           <Select
             value={selectedPeriod}
-            onChange={(value) => setSelectedPeriod(value || '30d')}
+            onChange={(value) => setSelectedPeriod(value ?? '30d')}
             data={[
               { value: '7d', label: 'Last 7 days' },
               { value: '30d', label: 'Last 30 days' },
@@ -165,7 +185,7 @@ export default function VirtualKeysDashboardPage() {
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={handleRefresh}
+            onClick={() => void handleRefresh()}
             loading={isRefreshing}
           >
             Refresh
@@ -192,7 +212,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatters.number(totalRequests as number)}
+              {formatters.number(totalRequests)}
             </Text>
             {requestsGrowth !== null && (
               <Group gap="xs" mt={4}>
@@ -218,7 +238,7 @@ export default function VirtualKeysDashboardPage() {
               </ThemeIcon>
             </Group>
             <Text size="xl" fw={700}>
-              {formatters.currency(totalCost as number)}
+              {formatters.currency(totalCost)}
             </Text>
             {costGrowth !== null && (
               <Group gap="xs" mt={4}>
@@ -291,7 +311,7 @@ export default function VirtualKeysDashboardPage() {
             <RechartsTooltip />
             <Legend />
             {/* Only show requests if data is available */}
-            {timeSeriesData.some((d: any) => d.requests !== null) && (
+            {timeSeriesData.some((d) => d.requests !== null) && (
               <Area
                 yAxisId="left"
                 type="monotone"
@@ -355,7 +375,7 @@ export default function VirtualKeysDashboardPage() {
                             {key.status}
                           </Badge>
                         </Table.Td>
-                        <Table.Td>{formatters.number(key.requestCount || 0)}</Table.Td>
+                        <Table.Td>{formatters.number(key.requestCount ?? 0)}</Table.Td>
                         <Table.Td>{formatters.currency(key.currentSpend)}</Table.Td>
                         <Table.Td>{formatters.currency(key.maxBudget || 0)}</Table.Td>
                         <Table.Td>
@@ -398,13 +418,13 @@ export default function VirtualKeysDashboardPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry) => `${entry.model}: ${entry.percentage}%`}
+                      label={(entry: ModelUsage) => `${entry.model}: ${entry.percentage}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="percentage"
                     >
                       {modelUsage.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <RechartsTooltip />

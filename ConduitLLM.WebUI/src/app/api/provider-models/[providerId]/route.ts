@@ -11,15 +11,15 @@ export async function GET(
     const { providerId } = await params;
     const adminClient = getServerAdminClient();
     
-    console.log('[Provider Models] Fetching models for provider ID:', providerId);
+    console.error('[Provider Models] Fetching models for provider ID:', providerId);
     
     // First get the provider details to get the provider name
     const provider = await adminClient.providers.getById(parseInt(providerId, 10));
-    console.log('[Provider Models] Provider details:', provider);
+    console.error('[Provider Models] Provider details:', provider);
     
     // Get models for this provider using the provider name
     const models = await adminClient.providerModels.getProviderModels(provider.providerName);
-    console.log('[Provider Models] Found models:', models?.length || 0);
+    console.error('[Provider Models] Found models:', models?.length || 0);
     
     return NextResponse.json(models);
   } catch (error) {

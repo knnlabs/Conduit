@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ImageGenerationState, ImageGenerationActions } from '../types';
+import type { ImageGenerationResponse } from '@knn_labs/conduit-core-client';
 
 type ImageStore = ImageGenerationState & ImageGenerationActions;
 
@@ -12,7 +13,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
     quality: 'standard',
     style: 'vivid',
     n: 1,
-    response_format: 'url',
+    responseFormat: 'url',
   },
   status: 'idle',
   results: [],
@@ -58,7 +59,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         
         try {
-          const errorData = await response.json();
+          const errorData = await response.json() as { error?: string };
           if (errorData?.error) {
             errorMessage = errorData.error;
           }
@@ -78,10 +79,14 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      const result = await response.json() as ImageGenerationResponse;
       set({ 
         status: 'completed', 
-        results: result.data || [],
+        results: result.data.map(img => ({
+          url: img.url,
+          b64Json: img.b64_json,
+          revisedPrompt: img.revised_prompt
+        })),
         error: undefined 
       });
     } catch (error) {

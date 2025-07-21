@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
-using ConduitLLM.Providers;
+using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +22,7 @@ namespace ConduitLLM.Http.Controllers
     public class ProviderModelsController : ControllerBase
     {
         private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
-        private readonly ModelListService _modelListService;
+        private readonly IModelListService _modelListService;
         private readonly ILogger<ProviderModelsController> _logger;
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="logger">Logger for diagnostic information.</param>
         public ProviderModelsController(
             IDbContextFactory<ConfigurationDbContext> dbContextFactory,
-            ModelListService modelListService,
+            IModelListService modelListService,
             ILogger<ProviderModelsController> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

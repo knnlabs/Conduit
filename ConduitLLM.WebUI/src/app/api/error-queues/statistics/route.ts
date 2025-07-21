@@ -5,7 +5,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const since = searchParams.get('since') ? new Date(searchParams.get('since')!) : undefined;
+    const since = searchParams.get('since') ? new Date(searchParams.get('since') ?? '') : undefined;
     const groupBy = searchParams.get('groupBy') as 'hour' | 'day' | 'week' | undefined;
 
     const adminClient = getServerAdminClient();

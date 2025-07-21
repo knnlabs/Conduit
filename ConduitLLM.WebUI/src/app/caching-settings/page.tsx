@@ -29,10 +29,7 @@ import {
   IconRefresh,
   IconTrash,
   IconSettings,
-  IconServer2,
-  IconClock,
   IconActivity,
-  IconAlertCircle,
   IconCircleCheck,
   IconChartBar,
   IconCpu,
@@ -42,47 +39,37 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
+import type {
+  CacheConfig,
+  CacheStats,
+  CacheDataResponse,
+  CacheEntry,
+  CacheEntriesResponse,
+  CacheClearResponse,
+} from '@/types/cache-types';
 
-interface CacheConfig {
-  id: string;
-  name: string;
-  type: 'redis' | 'memory' | 'distributed';
-  enabled: boolean;
-  ttl: number;
-  maxSize: number;
-  evictionPolicy: 'lru' | 'lfu' | 'ttl' | 'random';
-  compression: boolean;
-  persistent: boolean;
+function getHitRateColor(hitRate: number): string {
+  if (hitRate > 80) {
+    return 'green';
+  }
+  if (hitRate > 60) {
+    return 'yellow';
+  }
+  return 'red';
 }
 
-interface CacheStats {
-  hits: number;
-  misses: number;
-  evictions: number;
-  size: number;
-  entries: number;
-  hitRate: number;
-  avgLatency: number;
+function getLatencyColor(avgLatency: number): string {
+  if (avgLatency < 0.5) {
+    return 'green';
+  }
+  if (avgLatency < 1) {
+    return 'yellow';
+  }
+  return 'red';
 }
 
-interface CacheEntry {
-  key: string;
-  size: string; // Changed to string as API returns formatted size
-  createdAt: string;
-  lastAccessedAt: string;
-  expiresAt: string;
-  accessCount: number;
-  priority: number;
-}
 
-interface CacheEntriesResponse {
-  regionId: string;
-  entries: CacheEntry[];
-  totalCount: number;
-  skip: number;
-  take: number;
-  message?: string;
-}
+
 
 export default function CachingSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +80,7 @@ export default function CachingSettingsPage() {
   const [selectedCache, setSelectedCache] = useState<string>('');
 
   useEffect(() => {
-    fetchCacheData();
+    void fetchCacheData();
   }, []);
 
   useEffect(() => {
@@ -104,7 +91,7 @@ export default function CachingSettingsPage() {
 
   useEffect(() => {
     if (selectedCache) {
-      fetchCacheEntries(selectedCache);
+      void fetchCacheEntries(selectedCache);
     }
   }, [selectedCache]);
 
@@ -116,10 +103,10 @@ export default function CachingSettingsPage() {
         throw new Error('Failed to fetch cache configuration');
       }
 
-      const data = await response.json();
+      const data = await response.json() as CacheDataResponse;
       
-      setCacheConfigs(data.configs || []);
-      setCacheStats(data.stats || {});
+      setCacheConfigs(data.configs ?? []);
+      setCacheStats(data.stats ?? {});
     } catch (error) {
       console.error('Error fetching cache data:', error);
       notifications.show({
@@ -152,8 +139,8 @@ export default function CachingSettingsPage() {
         throw new Error('Failed to fetch cache entries');
       }
       
-      const data: CacheEntriesResponse = await response.json();
-      setCacheEntries(data.entries || []);
+      const data = await response.json() as CacheEntriesResponse;
+      setCacheEntries(data.entries ?? []);
       
       // Show message if access is restricted
       if (data.message) {
@@ -181,16 +168,16 @@ export default function CachingSettingsPage() {
         throw new Error('Failed to clear cache');
       }
 
-      const data = await response.json();
+      const data = await response.json() as CacheClearResponse;
       
       notifications.show({
         title: 'Cache Cleared',
-        message: data.message || `${cacheId} cache has been cleared`,
+        message: data.message ?? `${cacheId} cache has been cleared`,
         color: 'green',
       });
 
       await fetchCacheData();
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to clear cache',
@@ -220,7 +207,7 @@ export default function CachingSettingsPage() {
       });
 
       await fetchCacheData();
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to update cache configuration',
@@ -277,7 +264,7 @@ export default function CachingSettingsPage() {
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={handleRefresh}
+            onClick={() => void handleRefresh()}
             loading={isRefreshing}
           >
             Refresh
@@ -427,7 +414,7 @@ export default function CachingSettingsPage() {
                           <ActionIcon
                             variant="light"
                             color="red"
-                            onClick={() => handleClearCache(config.id)}
+                            onClick={() => void handleClearCache(config.id)}
                           >
                             <IconTrash size={16} />
                           </ActionIcon>
@@ -440,7 +427,7 @@ export default function CachingSettingsPage() {
                         <Text size="xs" c="dimmed">TTL (seconds)</Text>
                         <NumberInput
                           value={config.ttl}
-                          onChange={(value) => handleConfigUpdate(config.id, { ttl: Number(value) })}
+                          onChange={(value) => void handleConfigUpdate(config.id, { ttl: Number(value) })}
                           min={0}
                           size="xs"
                           mt={4}
@@ -450,7 +437,7 @@ export default function CachingSettingsPage() {
                         <Text size="xs" c="dimmed">Max Size (MB)</Text>
                         <NumberInput
                           value={config.maxSize}
-                          onChange={(value) => handleConfigUpdate(config.id, { maxSize: Number(value) })}
+                          onChange={(value) => void handleConfigUpdate(config.id, { maxSize: Number(value) })}
                           min={0}
                           size="xs"
                           mt={4}
@@ -460,7 +447,7 @@ export default function CachingSettingsPage() {
                         <Text size="xs" c="dimmed">Eviction Policy</Text>
                         <Select
                           value={config.evictionPolicy}
-                          onChange={(value) => handleConfigUpdate(config.id, { evictionPolicy: value as any })}
+                          onChange={(value) => void handleConfigUpdate(config.id, { evictionPolicy: value as CacheConfig['evictionPolicy'] })}
                           data={[
                             { value: 'lru', label: 'LRU' },
                             { value: 'lfu', label: 'LFU' },
@@ -477,19 +464,19 @@ export default function CachingSettingsPage() {
                       <Switch
                         label="Enabled"
                         checked={config.enabled}
-                        onChange={(e) => handleConfigUpdate(config.id, { enabled: e.currentTarget.checked })}
+                        onChange={(e) => void handleConfigUpdate(config.id, { enabled: e.currentTarget.checked })}
                         size="sm"
                       />
                       <Switch
                         label="Compression"
                         checked={config.compression}
-                        onChange={(e) => handleConfigUpdate(config.id, { compression: e.currentTarget.checked })}
+                        onChange={(e) => void handleConfigUpdate(config.id, { compression: e.currentTarget.checked })}
                         size="sm"
                       />
                       <Switch
                         label="Persistent"
                         checked={config.persistent}
-                        onChange={(e) => handleConfigUpdate(config.id, { persistent: e.currentTarget.checked })}
+                        onChange={(e) => void handleConfigUpdate(config.id, { persistent: e.currentTarget.checked })}
                         size="sm"
                       />
                     </Group>
@@ -551,7 +538,7 @@ export default function CachingSettingsPage() {
                         <Table.Td>{stats.misses.toLocaleString()}</Table.Td>
                         <Table.Td>
                           <Badge
-                            color={stats.hitRate > 80 ? 'green' : stats.hitRate > 60 ? 'yellow' : 'red'}
+                            color={getHitRateColor(stats.hitRate)}
                             variant="light"
                           >
                             {stats.hitRate}%
@@ -571,7 +558,7 @@ export default function CachingSettingsPage() {
                         </Table.Td>
                         <Table.Td>
                           <Badge
-                            color={stats.avgLatency < 0.5 ? 'green' : stats.avgLatency < 1 ? 'yellow' : 'red'}
+                            color={getLatencyColor(stats.avgLatency)}
                             variant="light"
                           >
                             {stats.avgLatency}ms
@@ -592,7 +579,7 @@ export default function CachingSettingsPage() {
               <Title order={4}>Cache Entries</Title>
               <Select
                 value={selectedCache}
-                onChange={(value) => setSelectedCache(value || '')}
+                onChange={(value) => setSelectedCache(value ?? '')}
                 data={cacheConfigs.map(c => ({ value: c.id, label: c.name }))}
                 w={250}
                 placeholder="Select a cache"
@@ -614,60 +601,66 @@ export default function CachingSettingsPage() {
                   </Text>
                 </Alert>
 
-                {isLoadingEntries ? (
-                  <LoadingOverlay visible={true} />
-                ) : cacheEntries.length > 0 ? (
-                  <ScrollArea>
-                    <Table>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Key</Table.Th>
-                          <Table.Th>Size</Table.Th>
-                          <Table.Th>TTL</Table.Th>
-                          <Table.Th>Hits</Table.Th>
-                          <Table.Th>Last Accessed</Table.Th>
-                          <Table.Th>Expires</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {cacheEntries.map((entry) => (
-                          <Table.Tr key={entry.key}>
-                            <Table.Td>
-                              <Code style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {entry.key}
-                          </Code>
-                            </Table.Td>
-                            <Table.Td>{entry.size}</Table.Td>
-                            <Table.Td>
-                              {entry.expiresAt 
-                                ? formatters.duration(new Date(entry.expiresAt).getTime() - Date.now())
-                                : 'No expiry'
-                              }
-                            </Table.Td>
-                            <Table.Td>{entry.accessCount}</Table.Td>
-                            <Table.Td>
-                              <Text size="xs">{formatters.date(entry.lastAccessedAt, { relativeDays: 7 })}</Text>
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="xs">{entry.expiresAt ? formatters.date(entry.expiresAt, { relativeDays: 7 }) : 'Never'}</Text>
-                            </Table.Td>
+                {(() => {
+                  if (isLoadingEntries) {
+                    return <LoadingOverlay visible={true} />;
+                  }
+                  if (cacheEntries.length > 0) {
+                    return (
+                    <ScrollArea>
+                      <Table>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Key</Table.Th>
+                            <Table.Th>Size</Table.Th>
+                            <Table.Th>TTL</Table.Th>
+                            <Table.Th>Hits</Table.Th>
+                            <Table.Th>Last Accessed</Table.Th>
+                            <Table.Th>Expires</Table.Th>
                           </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  </ScrollArea>
-                ) : (
-                  <Alert
-                    icon={<IconInfoCircle size={16} />}
-                    title="No cache entries available"
-                    color="gray"
-                  >
-                    <Text size="sm">
-                      Individual cache entry inspection is not available in the current backend implementation.
-                      Use the statistics tab to view aggregate cache performance metrics.
-                    </Text>
-                  </Alert>
-                )}
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {cacheEntries.map((entry) => (
+                            <Table.Tr key={entry.key}>
+                              <Table.Td>
+                                <Code style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {entry.key}
+                            </Code>
+                              </Table.Td>
+                              <Table.Td>{entry.size}</Table.Td>
+                              <Table.Td>
+                                {entry.expiresAt 
+                                  ? formatters.duration(new Date(entry.expiresAt).getTime() - Date.now())
+                                  : 'No expiry'
+                                }
+                              </Table.Td>
+                              <Table.Td>{entry.accessCount}</Table.Td>
+                              <Table.Td>
+                                <Text size="xs">{formatters.date(entry.lastAccessedAt, { relativeDays: 7 })}</Text>
+                              </Table.Td>
+                              <Table.Td>
+                                <Text size="xs">{entry.expiresAt ? formatters.date(entry.expiresAt, { relativeDays: 7 }) : 'Never'}</Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </ScrollArea>
+                    );
+                  }
+                  return (
+                    <Alert
+                      icon={<IconInfoCircle size={16} />}
+                      title="No cache entries available"
+                      color="gray"
+                    >
+                      <Text size="sm">
+                        Individual cache entry inspection is not available in the current backend implementation.
+                        Use the statistics tab to view aggregate cache performance metrics.
+                      </Text>
+                    </Alert>
+                  );
+                })()}
               </Stack>
             )}
           </Card>

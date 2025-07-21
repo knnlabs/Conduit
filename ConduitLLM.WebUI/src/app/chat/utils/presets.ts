@@ -5,10 +5,7 @@ import {
   IconPencil, 
   IconChartBar, 
   IconMessageCircle,
-  IconRocket,
   IconBulb,
-  IconBook,
-  IconDatabase,
   IconBrush,
   IconHeart,
   IconTool
@@ -151,7 +148,7 @@ export const CONVERSATION_STARTERS: ConversationStarter[] = [
 ];
 
 export const getCategoryIcon = (category: string) => {
-  const iconMap: Record<string, any> = {
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; stroke?: number }>> = {
     Learning: IconBrain,
     Programming: IconCode,
     Creative: IconPencil,
@@ -161,16 +158,16 @@ export const getCategoryIcon = (category: string) => {
     Personal: IconHeart,
     Technical: IconTool,
   };
-  return iconMap[category] || IconMessageCircle;
+  return iconMap[category] ?? IconMessageCircle;
 };
 
 export const getPresetIcon = (iconName: string) => {
-  const iconMap: Record<string, any> = {
-    'message-circle': IconMessageCircle,
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; stroke?: number }>> = {
+    ['message-circle']: IconMessageCircle,
     'pencil': IconPencil,
     'code': IconCode,
-    'chart-bar': IconChartBar,
+    ['chart-bar']: IconChartBar,
     'brain': IconBrain,
   };
-  return iconMap[iconName] || IconMessageCircle;
+  return iconMap[iconName] ?? IconMessageCircle;
 };

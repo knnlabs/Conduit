@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useCoreApi } from '@/hooks/useCoreApi';
-import { ChatMessage } from '../types';
+import { ChatMessage, FunctionDefinition, ToolDefinition, ToolChoice } from '../types';
 import { notifications } from '@mantine/notifications';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,7 +30,7 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
 
   const sendMessage = useCallback(
     async (
-      messages: Array<{ role: string; content: string; name?: string }>,
+      messages: Array<{ role: 'user' | 'assistant' | 'system' | 'function'; content: string; name?: string }>,
       model: string,
       parameters: {
         temperature?: number;
@@ -40,9 +40,9 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
         presencePenalty?: number;
         responseFormat?: { type: 'text' | 'json_object' };
         stream?: boolean;
-        functions?: any[];
-        tools?: any[];
-        toolChoice?: any;
+        functions?: FunctionDefinition[];
+        tools?: ToolDefinition[];
+        toolChoice?: ToolChoice;
         seed?: number;
         stop?: string[];
       } = {}
@@ -72,12 +72,12 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
               temperature: otherParams.temperature,
               max_tokens: otherParams.maxTokens,
               top_p: otherParams.topP,
-              frequency_penalty: otherParams.frequencyPenalty,
+              ['frequency_penalty']: otherParams.frequencyPenalty,
               presence_penalty: otherParams.presencePenalty,
               response_format: otherParams.responseFormat,
               functions: otherParams.functions,
               tools: otherParams.tools,
-              tool_choice: otherParams.toolChoice,
+              ['tool_choice']: otherParams.toolChoice,
               seed: otherParams.seed,
               stop: otherParams.stop,
             }),
@@ -85,16 +85,16 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
           });
 
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to send message');
+            const error = await response.json() as { error?: string };
+            throw new Error(error.error ?? 'Failed to send message');
           }
 
           const reader = response.body?.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
           let fullContent = '';
-          let functionCall: any = null;
-          const toolCalls: any[] = [];
+          let functionCall: { name: string; arguments: string } | null = null;
+          const toolCalls: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
 
           while (reader) {
             const { done, value } = await reader.read();
@@ -102,7 +102,7 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+            buffer = lines.pop() ?? '';
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
@@ -121,7 +121,7 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
                     content: fullContent,
                     timestamp: new Date(),
                     model,
-                    functionCall,
+                    functionCall: functionCall ?? undefined,
                     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
                     metadata: {
                       tokensUsed: tokenCountRef.current,
@@ -135,7 +135,26 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
                 }
 
                 try {
-                  const parsed = JSON.parse(data);
+                  interface SSEStreamData {
+                    choices?: Array<{
+                      delta?: {
+                        content?: string;
+                        ['function_call']?: {
+                          name?: string;
+                          arguments?: string;
+                        };
+                        ['tool_calls']?: Array<{
+                          index: number;
+                          id: string;
+                          function?: {
+                            name?: string;
+                            arguments?: string;
+                          };
+                        }>;
+                      };
+                    }>;
+                  }
+                  const parsed = JSON.parse(data) as SSEStreamData;
                   const delta = parsed.choices?.[0]?.delta;
                   
                   if (delta?.content) {
@@ -144,27 +163,23 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
                     tokenCountRef.current += delta.content.split(/\s+/).length;
                   }
                   
-                  if (delta?.function_call) {
-                    if (!functionCall) {
-                      functionCall = { name: '', arguments: '' };
+                  if (delta?.['function_call']) {
+                    functionCall ??= { name: '', arguments: '' };
+                    if (delta['function_call'].name) {
+                      functionCall.name = delta['function_call'].name;
                     }
-                    if (delta.function_call.name) {
-                      functionCall.name = delta.function_call.name;
-                    }
-                    if (delta.function_call.arguments) {
-                      functionCall.arguments += delta.function_call.arguments;
+                    if (delta['function_call'].arguments) {
+                      functionCall.arguments += delta['function_call'].arguments;
                     }
                   }
                   
-                  if (delta?.tool_calls) {
-                    for (const toolCall of delta.tool_calls) {
-                      if (!toolCalls[toolCall.index]) {
-                        toolCalls[toolCall.index] = {
-                          id: toolCall.id,
-                          type: 'function',
-                          function: { name: '', arguments: '' },
-                        };
-                      }
+                  if (delta?.['tool_calls']) {
+                    for (const toolCall of delta['tool_calls']) {
+                      toolCalls[toolCall.index] ??= {
+                        id: toolCall.id,
+                        type: 'function',
+                        function: { name: '', arguments: '' },
+                      };
                       if (toolCall.function?.name) {
                         toolCalls[toolCall.index].function.name = toolCall.function.name;
                       }
@@ -180,49 +195,46 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
             }
           }
         } else {
-          const result = await coreApi.chatCompletion(messages, {
+          // Transform messages to match Core API expectations
+          const transformedMessages = messages.map(msg => ({
+            role: msg.role === 'function' ? 'assistant' as const : msg.role,
+            content: msg.content,
+            ...(msg.name && { name: msg.name })
+          }));
+          
+          const result = await coreApi.chatCompletion(transformedMessages, {
             model,
             temperature: otherParams.temperature,
-            max_tokens: otherParams.maxTokens,
-            top_p: otherParams.topP,
-            frequency_penalty: otherParams.frequencyPenalty,
-            presence_penalty: otherParams.presencePenalty,
-            response_format: otherParams.responseFormat,
-            functions: otherParams.functions,
-            tools: otherParams.tools,
-            tool_choice: otherParams.toolChoice,
-            seed: otherParams.seed,
-            stop: otherParams.stop,
+            maxTokens: otherParams.maxTokens,
+            stream: false,
           });
 
           const message: ChatMessage = {
             id: uuidv4(),
             role: 'assistant',
-            content: result.choices[0].message.content || '',
+            content: result.choices[0].message.content ?? '',
             timestamp: new Date(),
             model,
-            functionCall: result.choices[0].message.function_call,
-            toolCalls: result.choices[0].message.tool_calls,
             metadata: {
-              tokensUsed: result.usage?.total_tokens,
-              finishReason: result.choices[0].finish_reason,
+              tokensUsed: result.usage?.totalTokens,
+              finishReason: result.choices[0].finishReason,
             },
           };
 
           return message;
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') {
           return null;
         }
         
         notifications.show({
           title: 'Chat Error',
-          message: error.message || 'Failed to send message',
+          message: (error instanceof Error ? error.message : 'Unknown error') ?? 'Failed to send message',
           color: 'red',
         });
         
-        options.onStreamError?.(error);
+        options.onStreamError?.(error instanceof Error ? error : new Error(String(error)));
         throw error;
       } finally {
         setIsStreaming(false);

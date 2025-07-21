@@ -13,7 +13,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { provider } = await params;
     const providerName = decodeURIComponent(provider);
     
-    console.log('[ModelCosts] GET by provider:', providerName);
 
     const adminClient = getServerAdminClient();
     const result = await adminClient.modelCosts.getByProvider(providerName);

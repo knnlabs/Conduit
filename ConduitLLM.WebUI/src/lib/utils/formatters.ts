@@ -304,7 +304,7 @@ export const formatters = {
       return '0';
     }
 
-    const { decimals = 1, locale = 'en-US' } = options;
+    const { decimals = 1 } = options;
 
     if (Math.abs(value) < 1000) {
       return Math.round(value).toString();

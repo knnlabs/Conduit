@@ -5,13 +5,11 @@ import { useRouter } from 'next/navigation';
 import {
   Table,
   Badge,
-  Button,
   Group,
   Text,
   ActionIcon,
   Menu,
   ScrollArea,
-  Loader,
   Center,
 } from '@mantine/core';
 import {
@@ -35,7 +33,7 @@ interface ErrorQueueTableProps {
 type SortField = 'queueName' | 'messageCount' | 'messageBytes' | 'oldestMessage';
 type SortDirection = 'asc' | 'desc';
 
-export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
+export function ErrorQueueTable({ queues }: ErrorQueueTableProps) {
   const router = useRouter();
   const [sortField, setSortField] = useState<SortField>('messageCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -53,18 +51,26 @@ export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
     }
   };
 
-  const sortedQueues = [...queues].sort((a, b) => {
-    let aValue: any = (a as any)[sortField];
-    let bValue: any = (b as any)[sortField];
-
-    if (sortField === 'oldestMessage') {
-      aValue = a.oldestMessageTimestamp
-        ? new Date(a.oldestMessageTimestamp).getTime()
-        : 0;
-      bValue = b.oldestMessageTimestamp
-        ? new Date(b.oldestMessageTimestamp).getTime()
-        : 0;
+  const getFieldValue = (queue: ErrorQueueInfo, field: SortField): string | number => {
+    switch (field) {
+      case 'queueName':
+        return queue.queueName;
+      case 'messageCount':
+        return queue.messageCount;
+      case 'messageBytes':
+        return queue.messageBytes;
+      case 'oldestMessage':
+        return queue.oldestMessageTimestamp
+          ? new Date(queue.oldestMessageTimestamp).getTime()
+          : 0;
+      default:
+        return '';
     }
+  };
+  
+  const sortedQueues = [...queues].sort((a, b) => {
+    const aValue = getFieldValue(a, sortField);
+    const bValue = getFieldValue(b, sortField);
 
     if (sortDirection === 'asc') {
       return aValue > bValue ? 1 : -1;
@@ -74,8 +80,14 @@ export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
   });
 
   const getStatusBadge = (status: string) => {
-    const color =
-      status === 'critical' ? 'red' : status === 'warning' ? 'yellow' : 'green';
+    let color: string;
+    if (status === 'critical') {
+      color = 'red';
+    } else if (status === 'warning') {
+      color = 'yellow';
+    } else {
+      color = 'green';
+    }
     return (
       <Badge size="sm" variant="light" color={color}>
         {status.toUpperCase()}
@@ -142,9 +154,7 @@ export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
                   <Text
                     fw={600}
                     style={{ cursor: 'pointer' }}
-                    onClick={() =>
-                      router.push(`/error-queues/${encodeURIComponent(queue.queueName)}`)
-                    }
+                    onClick={() => void router.push(`/error-queues/${encodeURIComponent(queue.queueName)}`)}
                     c="blue"
                   >
                     {queue.queueName}
@@ -184,9 +194,7 @@ export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
                   <Group gap="xs">
                     <ActionIcon
                       variant="subtle"
-                      onClick={() =>
-                        router.push(`/error-queues/${encodeURIComponent(queue.queueName)}`)
-                      }
+                      onClick={() => void router.push(`/error-queues/${encodeURIComponent(queue.queueName)}`)}
                     >
                       <IconEye size={16} />
                     </ActionIcon>
@@ -229,7 +237,7 @@ export function ErrorQueueTable({ queues, onRefresh }: ErrorQueueTableProps) {
           setShowClearConfirm(false);
           setSelectedQueue(null);
         }}
-        onConfirm={handleClearQueue}
+        onConfirm={() => void handleClearQueue()}
         title="Clear Error Queue"
         message={
           selectedQueue

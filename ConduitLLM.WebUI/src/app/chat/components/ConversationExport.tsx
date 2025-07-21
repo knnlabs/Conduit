@@ -15,7 +15,7 @@ export interface ExportOptions {
   includeSystemMessages: boolean;
 }
 
-export function ConversationExport({ conversation, onExport }: ConversationExportProps) {
+export function ConversationExport({ onExport }: ConversationExportProps) {
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [includeSystemMessages, setIncludeSystemMessages] = useState(false);
 

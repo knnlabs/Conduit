@@ -34,7 +34,7 @@ const audioConfigSchema = z.object({
   defaultModel: z.string().optional(),
   maxDuration: z.number().positive().optional(),
   allowedVoices: z.array(z.string()).optional(),
-  customSettings: z.record(z.string(), z.any()).optional(),
+  customSettings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export class SettingsService extends FetchBaseApiClient {
@@ -166,11 +166,11 @@ export class SettingsService extends FetchBaseApiClient {
     // Add new rule with generated ID
     const newRule: RouterRule = {
       ...rule,
-      id: Math.max(0, ...(config.customRules?.map(r => r.id || 0) || [0])) + 1
+      id: Math.max(0, ...(config.customRules?.map(r => r.id ?? 0) ?? [0])) + 1
     };
     
     // Update configuration with new rule
-    const updatedRules = [...(config.customRules || []), newRule];
+    const updatedRules = [...(config.customRules ?? []), newRule];
     await this.updateRouterConfiguration({ customRules: updatedRules });
     
     return newRule;
@@ -181,7 +181,7 @@ export class SettingsService extends FetchBaseApiClient {
     const config = await this.getRouterConfiguration();
     
     // Find and update the rule
-    const rules = config.customRules || [];
+    const rules = config.customRules ?? [];
     const ruleIndex = rules.findIndex(r => r.id === id);
     
     if (ruleIndex === -1) {
@@ -202,9 +202,9 @@ export class SettingsService extends FetchBaseApiClient {
     const config = await this.getRouterConfiguration();
     
     // Remove the rule
-    const rules = (config.customRules || []).filter(r => r.id !== id);
+    const rules = (config.customRules ?? []).filter(r => r.id !== id);
     
-    if (rules.length === (config.customRules || []).length) {
+    if (rules.length === (config.customRules ?? []).length) {
       throw new ValidationError(`Router rule with ID ${id} not found`);
     }
     
@@ -215,7 +215,7 @@ export class SettingsService extends FetchBaseApiClient {
   async reorderRouterRules(ruleIds: number[]): Promise<RouterRule[]> {
     // Get current configuration
     const config = await this.getRouterConfiguration();
-    const rules = config.customRules || [];
+    const rules = config.customRules ?? [];
     
     // Create a map of rules by ID
     const ruleMap = new Map(rules.map(r => [r.id, r]));
@@ -232,7 +232,7 @@ export class SettingsService extends FetchBaseApiClient {
     
     // Add any rules not in the provided list at the end
     const remainingRules = rules
-      .filter(r => !ruleIds.includes(r.id || 0))
+      .filter(r => !ruleIds.includes(r.id ?? 0))
       .map((r, index) => ({ ...r, priority: -index - 1 }));
     
     const allRules = [...reorderedRules, ...remainingRules];
@@ -243,17 +243,17 @@ export class SettingsService extends FetchBaseApiClient {
     return allRules;
   }
 
-  async testRouterRule(rule: RouterRule): Promise<{ success: boolean; message: string; details?: any }> {
+  testRouterRule(rule: RouterRule): { success: boolean; message: string; details?: Record<string, unknown> } {
     // This would typically call a test endpoint, but for now we'll do basic validation
     if (!rule.name || rule.name.trim() === '') {
       return { success: false, message: 'Rule name is required' };
     }
     
-    if (!rule.condition || !rule.condition.type || !rule.condition.operator) {
+    if (!rule.condition?.type || !rule.condition.operator) {
       return { success: false, message: 'Rule condition is invalid' };
     }
     
-    if (!rule.action || !rule.action.type) {
+    if (!rule.action?.type) {
       return { success: false, message: 'Rule action is invalid' };
     }
     
@@ -327,7 +327,7 @@ export class SettingsService extends FetchBaseApiClient {
   }
 
   // Stub methods
-  async getSystemConfiguration(): Promise<SystemConfiguration> {
+  getSystemConfiguration(): Promise<SystemConfiguration> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getSystemConfiguration requires Admin API endpoint implementation. ' +
@@ -335,7 +335,7 @@ export class SettingsService extends FetchBaseApiClient {
     );
   }
 
-  async exportSettings(_format: 'json' | 'env'): Promise<Blob> {
+  exportSettings(_format: 'json' | 'env'): Promise<Blob> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'exportSettings requires Admin API endpoint implementation. ' +
@@ -343,7 +343,7 @@ export class SettingsService extends FetchBaseApiClient {
     );
   }
 
-  async importSettings(_file: File | Blob, _format: 'json' | 'env'): Promise<{
+  importSettings(_file: File | Blob, _format: 'json' | 'env'): Promise<{
     imported: number;
     skipped: number;
     errors: string[];
@@ -355,7 +355,7 @@ export class SettingsService extends FetchBaseApiClient {
     );
   }
 
-  async validateConfiguration(): Promise<{
+  validateConfiguration(): Promise<{
     isValid: boolean;
     errors: string[];
     warnings: string[];

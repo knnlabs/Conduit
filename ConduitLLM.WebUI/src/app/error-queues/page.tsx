@@ -31,7 +31,8 @@ import {
 import { useErrorQueues } from '@/hooks/useErrorQueues';
 import { ErrorQueueTable } from './components/ErrorQueueTable';
 import { ErrorQueueCharts } from './components/ErrorQueueCharts';
-import { formatBytes, formatRelativeTime } from '@/utils/formatters';
+import { formatRelativeTime } from '@/utils/formatters';
+// SDK types are now properly handled in useErrorQueues hook
 
 interface SummaryCardProps {
   title: string;
@@ -91,10 +92,9 @@ function SummaryCard({ title, value, icon, status, trend }: SummaryCardProps) {
 export default function ErrorQueuesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [includeEmpty, setIncludeEmpty] = useState(false);
 
   const { data, isLoading, error, refetch } = useErrorQueues({
-    includeEmpty,
+    includeEmpty: false,
     queueNameFilter: searchQuery || undefined,
   });
 
@@ -121,19 +121,19 @@ export default function ErrorQueuesPage() {
   }
 
   const summary = data?.summary;
-  const queues = data?.queues || [];
+  const queues = data?.queues ?? [];
 
   // Filter queues by status if selected
   const filteredQueues = statusFilter
-    ? queues.filter((q: any) => q.status === statusFilter)
+    ? queues.filter((q) => q.status === statusFilter)
     : queues;
 
   // Calculate oldest message across all queues
-  const oldestMessage = queues.reduce((oldest: any, queue: any) => {
+  const oldestMessage = queues.reduce((oldest: Date | null, queue) => {
     if (!queue.oldestMessageTimestamp) return oldest;
     const queueOldest = new Date(queue.oldestMessageTimestamp);
     return !oldest || queueOldest < oldest ? queueOldest : oldest;
-  }, null as Date | null);
+  }, null);
 
   return (
     <Container size="xl" py="xl">
@@ -145,7 +145,7 @@ export default function ErrorQueuesPage() {
             <Button
               leftSection={<IconRefresh size={16} />}
               variant="light"
-              onClick={() => refetch()}
+              onClick={() => void refetch()}
             >
               Refresh
             </Button>
@@ -164,31 +164,30 @@ export default function ErrorQueuesPage() {
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
             <SummaryCard
               title="Total Error Queues"
-              value={summary?.totalQueues || 0}
+              value={summary?.totalQueues ?? 0}
               icon={<IconMailbox size={20} />}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
             <SummaryCard
               title="Total Messages"
-              value={summary?.totalMessages || 0}
+              value={summary?.totalMessages ?? 0}
               icon={<IconAlertTriangle size={20} />}
-              status={
-                (summary?.totalMessages || 0) > 1000
-                  ? 'critical'
-                  : (summary?.totalMessages || 0) > 100
-                  ? 'warning'
-                  : 'ok'
-              }
+              status={(() => {
+                const totalMessages = summary?.totalMessages ?? 0;
+                if (totalMessages > 1000) return 'critical';
+                if (totalMessages > 100) return 'warning';
+                return 'ok';
+              })()}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
             <SummaryCard
               title="Critical Queues"
-              value={summary?.criticalQueues?.length || 0}
+              value={summary?.criticalQueues?.length ?? 0}
               icon={<IconAlertTriangle size={20} />}
               status={
-                (summary?.criticalQueues?.length || 0) > 0 ? 'critical' : 'ok'
+                (summary?.criticalQueues?.length ?? 0) > 0 ? 'critical' : 'ok'
               }
             />
           </Grid.Col>
@@ -234,7 +233,7 @@ export default function ErrorQueuesPage() {
         {/* Error Queue Table */}
         <ErrorQueueTable
           queues={filteredQueues}
-          onRefresh={() => refetch()}
+          onRefresh={() => void refetch()}
         />
 
         {/* Charts Section */}

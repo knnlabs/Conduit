@@ -1,5 +1,5 @@
 // Import common client configuration types
-import {
+import type {
   SignalRConfig,
   RetryConfig as CommonRetryConfig,
   RequestConfigInfo as CommonRequestConfig,

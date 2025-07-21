@@ -12,7 +12,6 @@ import {
 } from '@mantine/core';
 import { ModelCost } from '../types/modelCost';
 import { formatters } from '@/lib/utils/formatters';
-import { formatCostPerMillionTokens, formatModelType, formatDateString } from '../utils/costFormatters';
 
 interface ViewModelCostModalProps {
   isOpen: boolean;
@@ -35,8 +34,10 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
   const hasTokenCosts = modelCost.inputCostPerMillionTokens !== undefined || 
                        modelCost.outputCostPerMillionTokens !== undefined;
   
-  const hasImageCosts = modelCost.costPerImage !== undefined;
-  const hasVideoCosts = modelCost.costPerSecond !== undefined;
+  const hasImageCosts = modelCost.costPerImage !== undefined || modelCost.imageCostPerImage !== undefined;
+  const hasVideoCosts = modelCost.costPerSecond !== undefined || modelCost.videoCostPerSecond !== undefined;
+  const hasSearchCosts = modelCost.costPerSearchUnit !== undefined;
+  const hasInferenceStepCosts = modelCost.costPerInferenceStep !== undefined;
   // Audio costs would be here but backend doesn't support them yet
 
   return (
@@ -110,6 +111,33 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
                     </Group>
                   </Group>
                 )}
+                
+                {modelCost.cachedInputCostPerMillionTokens !== undefined && (
+                  <>
+                    <Divider variant="dashed" />
+                    <Group justify="space-between">
+                      <Text>Cached Input Cost</Text>
+                      <Group gap="xs">
+                        <Text fw={500}>
+                          {formatters.currency(modelCost.cachedInputCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                        </Text>
+                        <Text size="sm" c="dimmed">per 1K tokens</Text>
+                      </Group>
+                    </Group>
+                  </>
+                )}
+                
+                {modelCost.cachedInputWriteCostPerMillionTokens !== undefined && (
+                  <Group justify="space-between">
+                    <Text>Cache Write Cost</Text>
+                    <Group gap="xs">
+                      <Text fw={500}>
+                        {formatters.currency(modelCost.cachedInputWriteCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                      </Text>
+                      <Text size="sm" c="dimmed">per 1K tokens</Text>
+                    </Group>
+                  </Group>
+                )}
               </Stack>
             </Card>
           </>
@@ -122,7 +150,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Image</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerImage!, { currency: 'USD' })}
+                  {formatters.currency(modelCost.costPerImage ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
             </Card>
@@ -136,9 +164,65 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Second</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerSecond!, { currency: 'USD' })}
+                  {formatters.currency(modelCost.costPerSecond ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
+            </Card>
+          </>
+        )}
+
+        {hasSearchCosts && (
+          <>
+            <Divider label="Search/Rerank Pricing" labelPosition="center" />
+            <Card withBorder>
+              <Group justify="space-between">
+                <Text>Cost per Search Unit</Text>
+                <Group gap="xs">
+                  <Text fw={500}>
+                    {formatters.currency(modelCost.costPerSearchUnit ?? 0, { currency: 'USD', precision: 4 })}
+                  </Text>
+                  <Text size="sm" c="dimmed">per 1K units</Text>
+                </Group>
+              </Group>
+              <Text size="xs" c="dimmed" mt="xs">
+                1 search unit = 1 query + up to 100 documents
+              </Text>
+            </Card>
+          </>
+        )}
+
+        {hasInferenceStepCosts && (
+          <>
+            <Divider label="Inference Step Pricing" labelPosition="center" />
+            <Card withBorder>
+              <Stack gap="sm">
+                <Group justify="space-between">
+                  <Text>Cost per Inference Step</Text>
+                  <Text fw={500}>
+                    {formatters.currency(modelCost.costPerInferenceStep ?? 0, { currency: 'USD', precision: 6 })}
+                  </Text>
+                </Group>
+                {modelCost.defaultInferenceSteps && (
+                  <Group justify="space-between">
+                    <Text>Default Steps</Text>
+                    <Text fw={500}>{modelCost.defaultInferenceSteps}</Text>
+                  </Group>
+                )}
+                {modelCost.defaultInferenceSteps && modelCost.costPerInferenceStep && (
+                  <Group justify="space-between">
+                    <Text>Default Image Cost</Text>
+                    <Text fw={500}>
+                      {formatters.currency(
+                        modelCost.defaultInferenceSteps * modelCost.costPerInferenceStep,
+                        { currency: 'USD', precision: 4 }
+                      )}
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+              <Text size="xs" c="dimmed" mt="xs">
+                Step-based pricing for iterative image generation models
+              </Text>
             </Card>
           </>
         )}

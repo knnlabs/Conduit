@@ -7,7 +7,6 @@ import {
   Group,
   Grid,
   Card,
-  RingProgress,
   Progress,
   Badge,
   ThemeIcon,
@@ -22,7 +21,6 @@ import {
 } from '@mantine/core';
 import {
   LineChart,
-  AreaChart,
 } from '@mantine/charts';
 import {
   IconCpu,
@@ -35,8 +33,6 @@ import {
   IconDownload,
   IconAlertTriangle,
   IconCircleCheck,
-  IconBolt,
-  IconWifi,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
@@ -105,6 +101,13 @@ interface PerformanceAlert {
   resolved: boolean;
 }
 
+interface SystemPerformanceResponse {
+  metrics: SystemMetrics;
+  history: PerformanceHistory[];
+  services: ServiceStatus[];
+  alerts: PerformanceAlert[];
+}
+
 export default function SystemPerformancePage() {
   const [timeRange, setTimeRange] = useState('1h');
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -121,7 +124,7 @@ export default function SystemPerformancePage() {
       if (!response.ok) {
         throw new Error('Failed to fetch performance data');
       }
-      const data = await response.json();
+      const data = await response.json() as SystemPerformanceResponse;
       
       setMetrics(data.metrics);
       setHistory(data.history);
@@ -135,10 +138,10 @@ export default function SystemPerformancePage() {
   }, [timeRange]);
 
   useEffect(() => {
-    fetchPerformanceData();
+    void fetchPerformanceData();
     
     if (autoRefresh) {
-      const interval = setInterval(fetchPerformanceData, 10000); // Refresh every 10 seconds
+      const interval = setInterval(() => void fetchPerformanceData(), 10000); // Refresh every 10 seconds
       return () => clearInterval(interval);
     }
   }, [fetchPerformanceData, autoRefresh]);
@@ -208,7 +211,7 @@ export default function SystemPerformancePage() {
         <Group>
           <Select
             value={timeRange}
-            onChange={(value) => setTimeRange(value || '1h')}
+            onChange={(value) => setTimeRange(value ?? '1h')}
             data={[
               { value: '15m', label: 'Last 15 Minutes' },
               { value: '1h', label: 'Last Hour' },
@@ -224,14 +227,14 @@ export default function SystemPerformancePage() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={handleExport}
+            onClick={() => void handleExport()}
           >
             Export
           </Button>
           <Button
             variant="light"
             leftSection={<IconRefresh size={16} />}
-            onClick={fetchPerformanceData}
+            onClick={() => void fetchPerformanceData()}
             loading={isLoading}
           >
             Refresh
@@ -246,7 +249,7 @@ export default function SystemPerformancePage() {
           title="Performance Monitoring"
           color="blue"
         >
-          System performance data is retrieved from Conduit's monitoring services. Data availability depends on monitoring configuration and may be limited in some environments.
+          System performance data is retrieved from Conduit&apos;s monitoring services. Data availability depends on monitoring configuration and may be limited in some environments.
         </Alert>
       )}
 
@@ -261,24 +264,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   CPU Usage
                 </Text>
-                <ThemeIcon color={getCPUColor(metrics?.cpu.usage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getCPUColor(metrics?.cpu.usage ?? 0)} variant="light" size="sm">
                   <IconCpu size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.cpu.usage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.cpu.usage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {metrics?.cpu.cores || 0} cores
+                  {metrics?.cpu.cores ?? 0} cores
                 </Text>
               </Group>
               <Progress
-                value={metrics?.cpu.usage || 0}
-                color={getCPUColor(metrics?.cpu.usage || 0)}
+                value={metrics?.cpu.usage ?? 0}
+                color={getCPUColor(metrics?.cpu.usage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                Load: {metrics?.cpu.loadAverage?.join(', ') || 'N/A'}
+                Load: {metrics?.cpu.loadAverage?.join(', ') ?? 'N/A'}
               </Text>
             </Card>
           )}
@@ -293,24 +296,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   Memory Usage
                 </Text>
-                <ThemeIcon color={getMemoryColor(metrics?.memory.percentage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getMemoryColor(metrics?.memory.percentage ?? 0)} variant="light" size="sm">
                   <IconDatabase size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.memory.percentage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.memory.percentage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {formatters.fileSize(metrics?.memory.used || 0)} / {formatters.fileSize(metrics?.memory.total || 0)}
+                  {formatters.fileSize(metrics?.memory.used ?? 0)} / {formatters.fileSize(metrics?.memory.total ?? 0)}
                 </Text>
               </Group>
               <Progress
-                value={metrics?.memory.percentage || 0}
-                color={getMemoryColor(metrics?.memory.percentage || 0)}
+                value={metrics?.memory.percentage ?? 0}
+                color={getMemoryColor(metrics?.memory.percentage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                Swap: {formatters.fileSize(metrics?.memory.swap.used || 0)} / {formatters.fileSize(metrics?.memory.swap.total || 0)}
+                Swap: {formatters.fileSize(metrics?.memory.swap.used ?? 0)} / {formatters.fileSize(metrics?.memory.swap.total ?? 0)}
               </Text>
             </Card>
           )}
@@ -325,24 +328,24 @@ export default function SystemPerformancePage() {
                 <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
                   Disk Usage
                 </Text>
-                <ThemeIcon color={getDiskColor(metrics?.disk.percentage || 0)} variant="light" size="sm">
+                <ThemeIcon color={getDiskColor(metrics?.disk.percentage ?? 0)} variant="light" size="sm">
                   <IconServer size={16} />
                 </ThemeIcon>
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
-                <Text size="2xl" fw={700}>{metrics?.disk.percentage || 0}%</Text>
+                <Text size="2xl" fw={700}>{metrics?.disk.percentage ?? 0}%</Text>
                 <Text size="sm" c="dimmed" mb={5}>
-                  {formatters.fileSize(metrics?.disk.used || 0)} / {formatters.fileSize(metrics?.disk.total || 0)}
+                  {formatters.fileSize(metrics?.disk.used ?? 0)} / {formatters.fileSize(metrics?.disk.total ?? 0)}
                 </Text>
               </Group>
               <Progress
-                value={metrics?.disk.percentage || 0}
-                color={getDiskColor(metrics?.disk.percentage || 0)}
+                value={metrics?.disk.percentage ?? 0}
+                color={getDiskColor(metrics?.disk.percentage ?? 0)}
                 size="md"
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                I/O: ↓{formatters.fileSize(metrics?.disk.io.read || 0)}/s ↑{formatters.fileSize(metrics?.disk.io.write || 0)}/s
+                I/O: ↓{formatters.fileSize(metrics?.disk.io.read ?? 0)}/s ↑{formatters.fileSize(metrics?.disk.io.write ?? 0)}/s
               </Text>
             </Card>
           )}
@@ -363,10 +366,10 @@ export default function SystemPerformancePage() {
               </Group>
               <Group align="flex-end" gap="xs" mb="md">
                 <Text size="lg" fw={700}>
-                  ↓{formatters.fileSize(metrics?.network.in || 0)}/s
+                  ↓{formatters.fileSize(metrics?.network.in ?? 0)}/s
                 </Text>
                 <Text size="lg" fw={700}>
-                  ↑{formatters.fileSize(metrics?.network.out || 0)}/s
+                  ↑{formatters.fileSize(metrics?.network.out ?? 0)}/s
                 </Text>
               </Group>
               <Progress
@@ -376,7 +379,7 @@ export default function SystemPerformancePage() {
                 radius="md"
               />
               <Text size="xs" c="dimmed" mt="xs">
-                {metrics?.network.connections || 0} connections • {metrics?.network.latency || 0}ms latency
+                {metrics?.network.connections ?? 0} connections • {metrics?.network.latency ?? 0}ms latency
               </Text>
             </Card>
           )}
@@ -399,15 +402,15 @@ export default function SystemPerformancePage() {
               <Stack gap="xs">
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Uptime</Text>
-                  <Text size="sm" fw={500}>{formatters.duration(metrics?.uptime || 0, { format: 'long' })}</Text>
+                  <Text size="sm" fw={500}>{formatters.duration(metrics?.uptime ?? 0, { format: 'long' })}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Processes</Text>
-                  <Text size="sm" fw={500}>{metrics?.processCount || 0}</Text>
+                  <Text size="sm" fw={500}>{metrics?.processCount ?? 0}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Threads</Text>
-                  <Text size="sm" fw={500}>{metrics?.threadCount || 0}</Text>
+                  <Text size="sm" fw={500}>{metrics?.threadCount ?? 0}</Text>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">CPU Temperature</Text>
@@ -469,40 +472,46 @@ export default function SystemPerformancePage() {
           <Text fw={500}>Performance History</Text>
         </Card.Section>
         <Card.Section inheritPadding py="md">
-          {isLoading ? (
-            <Skeleton height={300} />
-          ) : history.length > 0 ? (
-            <LineChart
-              h={300}
-              data={history}
-              dataKey="timestamp"
-              series={[
-                { name: 'cpu', color: 'blue.6', label: 'CPU %' },
-                { name: 'memory', color: 'green.6', label: 'Memory %' },
-                { name: 'disk', color: 'orange.6', label: 'Disk %' },
-                { name: 'responseTime', color: 'red.6', label: 'Response Time (ms)' },
-              ]}
-              curveType="linear"
-              withLegend
-              legendProps={{ verticalAlign: 'bottom', height: 50 }}
-              valueFormatter={(value) => 
-                typeof value === 'number' ? value.toFixed(1) : value
-              }
-            />
-          ) : (
-            <Paper p="xl" h={300} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Stack align="center" gap="md">
-                <ThemeIcon size={48} variant="light" color="gray">
-                  <IconActivity size={24} />
-                </ThemeIcon>
-                <Text size="lg" fw={500} ta="center">No Performance History Available</Text>
-                <Text size="sm" c="dimmed" ta="center" maw={400}>
-                  Performance metrics history is not available for the selected time range. 
-                  This may be due to monitoring service configuration or recent system startup.
-                </Text>
-              </Stack>
-            </Paper>
-          )}
+{(() => {
+            if (isLoading) {
+              return <Skeleton height={300} />;
+            }
+            if (history.length > 0) {
+              return (
+                <LineChart
+                  h={300}
+                  data={history}
+                  dataKey="timestamp"
+                  series={[
+                    { name: 'cpu', color: 'blue.6', label: 'CPU %' },
+                    { name: 'memory', color: 'green.6', label: 'Memory %' },
+                    { name: 'disk', color: 'orange.6', label: 'Disk %' },
+                    { name: 'responseTime', color: 'red.6', label: 'Response Time (ms)' },
+                  ]}
+                  curveType="linear"
+                  withLegend
+                  legendProps={{ verticalAlign: 'bottom', height: 50 }}
+                  valueFormatter={(value) => 
+                    typeof value === 'number' ? value.toFixed(1) : value
+                  }
+                />
+              );
+            }
+            return (
+              <Paper p="xl" h={300} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Stack align="center" gap="md">
+                  <ThemeIcon size={48} variant="light" color="gray">
+                    <IconActivity size={24} />
+                  </ThemeIcon>
+                  <Text size="lg" fw={500} ta="center">No Performance History Available</Text>
+                  <Text size="sm" c="dimmed" ta="center" maw={400}>
+                    Performance metrics history is not available for the selected time range. 
+                    This may be due to monitoring service configuration or recent system startup.
+                  </Text>
+                </Stack>
+              </Paper>
+            );
+          })()}
         </Card.Section>
       </Card>
 
@@ -538,60 +547,66 @@ export default function SystemPerformancePage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {isLoading ? (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Skeleton height={200} />
-                    </Table.Td>
-                  </Table.Tr>
-                ) : services.length > 0 ? (
-                  services.map((service) => (
-                    <Table.Tr key={service.name}>
-                      <Table.Td>
-                        <Group gap="xs">
-                          <ThemeIcon 
-                            size="xs" 
-                            color={getServiceStatusColor(service.status)} 
-                            variant="light"
-                          >
-                            {service.status === 'healthy' ? <IconCircleCheck size={14} /> : <IconAlertTriangle size={14} />}
+{(() => {
+                  if (isLoading) {
+                    return (
+                      <Table.Tr>
+                        <Table.Td colSpan={6}>
+                          <Skeleton height={200} />
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  }
+                  if (services.length > 0) {
+                    return services.map((service) => (
+                      <Table.Tr key={service.name}>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <ThemeIcon 
+                              size="xs" 
+                              color={getServiceStatusColor(service.status)} 
+                              variant="light"
+                            >
+                              {service.status === 'healthy' ? <IconCircleCheck size={14} /> : <IconAlertTriangle size={14} />}
+                            </ThemeIcon>
+                            <Text size="sm" fw={500}>{service.name}</Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Badge color={getServiceStatusColor(service.status)} variant="light">
+                            {service.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.duration(service.uptime, { format: 'compact' })}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{service.cpu}%</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.fileSize(service.memory)}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatters.date(service.lastCheck, { includeTime: true })}</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ));
+                  }
+                  return (
+                    <Table.Tr>
+                      <Table.Td colSpan={6}>
+                        <Stack align="center" gap="md" py="xl">
+                          <ThemeIcon size={32} variant="light" color="gray">
+                            <IconServer size={18} />
                           </ThemeIcon>
-                          <Text size="sm" fw={500}>{service.name}</Text>
-                        </Group>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge color={getServiceStatusColor(service.status)} variant="light">
-                          {service.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.duration(service.uptime, { format: 'compact' })}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{service.cpu}%</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.fileSize(service.memory)}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="sm">{formatters.date(service.lastCheck, { includeTime: true })}</Text>
+                          <Text size="sm" c="dimmed" ta="center">
+                            No service information available from monitoring system
+                          </Text>
+                        </Stack>
                       </Table.Td>
                     </Table.Tr>
-                  ))
-                ) : (
-                  <Table.Tr>
-                    <Table.Td colSpan={6}>
-                      <Stack align="center" gap="md" py="xl">
-                        <ThemeIcon size={32} variant="light" color="gray">
-                          <IconServer size={18} />
-                        </ThemeIcon>
-                        <Text size="sm" c="dimmed" ta="center">
-                          No service information available from monitoring system
-                        </Text>
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                )}
+                  );
+                })()}
               </Table.Tbody>
             </Table>
           </ScrollArea>

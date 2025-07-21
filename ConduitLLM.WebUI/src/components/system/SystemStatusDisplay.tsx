@@ -11,7 +11,6 @@ import {
   ActionIcon,
   Box,
   Progress,
-  Timeline,
 } from '@mantine/core';
 import {
   IconRefresh,
@@ -23,7 +22,7 @@ import {
   IconWifi,
 } from '@tabler/icons-react';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
-import { StatusIndicator, HealthStatusIndicator, CompositeStatusIndicator } from '@/components/common/StatusIndicator';
+import { StatusIndicator, CompositeStatusIndicator } from '@/components/common/StatusIndicator';
 
 export interface SystemStatusDisplayProps {
   variant?: 'compact' | 'detailed' | 'dashboard';
@@ -85,7 +84,7 @@ export function SystemStatusDisplay({
     return (
       <Group gap="md" className={className} data-testid={testId}>
         <StatusIndicator
-          status={systemStatus?.overall.type || 'unknown'}
+          status={systemStatus?.overall.type ?? 'unknown'}
           variant="badge"
           label={isSystemHealthy() ? 'All Systems Operational' : 'System Issues Detected'}
         />
@@ -93,7 +92,7 @@ export function SystemStatusDisplay({
           <ActionIcon
             size="sm"
             variant="subtle"
-            onClick={refreshStatus}
+            onClick={() => void refreshStatus()}
             loading={isLoading}
             title="Refresh status"
           >
@@ -122,7 +121,7 @@ export function SystemStatusDisplay({
               {showRefresh && (
                 <ActionIcon
                   variant="subtle"
-                  onClick={refreshStatus}
+                  onClick={() => void refreshStatus()}
                   loading={isLoading}
                   title="Refresh status"
                 >
@@ -132,7 +131,7 @@ export function SystemStatusDisplay({
             </Group>
 
             <CompositeStatusIndicator
-              primary={systemStatus?.overall.type || 'unknown'}
+              primary={systemStatus?.overall.type ?? 'unknown'}
               label="Overall System Health"
               description={systemStatus?.overall.description}
               variant="horizontal"
@@ -141,9 +140,9 @@ export function SystemStatusDisplay({
 
             {showAlerts && alerts.length > 0 && (
               <Stack gap="xs" mt="md">
-                {alerts.map((alert, index) => (
+                {alerts.map((alert) => (
                   <Alert
-                    key={index}
+                    key={`alert-${alert.message}-${alert.type}`}
                     icon={alert.type === 'error' ? <IconAlertCircle size={16} /> : <IconAlertTriangle size={16} />}
                     color={alert.type === 'error' ? 'red' : 'orange'}
                     variant="light"
@@ -227,7 +226,7 @@ export function SystemStatusDisplay({
         {showRefresh && (
           <ActionIcon
             variant="subtle"
-            onClick={refreshStatus}
+            onClick={() => void refreshStatus()}
             loading={isLoading}
             title="Refresh status"
           >
@@ -238,7 +237,7 @@ export function SystemStatusDisplay({
 
       <Stack gap="md">
         <CompositeStatusIndicator
-          primary={systemStatus?.overall.type || 'unknown'}
+          primary={systemStatus?.overall.type ?? 'unknown'}
           label="Overall Status"
           description={systemStatus?.overall.description}
           variant="horizontal"
@@ -250,9 +249,9 @@ export function SystemStatusDisplay({
             <Divider />
             <Stack gap="xs">
               <Text size="sm" fw={500}>Active Alerts</Text>
-              {alerts.map((alert, index) => (
+              {alerts.map((alert) => (
                 <Alert
-                  key={index}
+                  key={`alert-${alert.message}-${alert.type}`}
                   icon={alert.type === 'error' ? <IconAlertCircle size={16} /> : <IconAlertTriangle size={16} />}
                   color={alert.type === 'error' ? 'red' : 'orange'}
                   variant="light"
