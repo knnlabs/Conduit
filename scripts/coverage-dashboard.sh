@@ -141,16 +141,16 @@ show_summary() {
     echo "===================="
     
     # Project-specific coverage
-    jq -r '.coverage[] | select(.name | contains("ConduitLLM")) | "  \(.name): \(.linecoverage)%"' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "  Coverage details unavailable"
+    jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM")) | "  \(.name): \(.coverage)%"' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "  Coverage details unavailable"
     
     echo ""
     echo_colored "$BLUE" "Critical Services Analysis:"
     echo "==========================="
     
     # Analyze critical services
-    CORE_COVERAGE=$(jq -r '.coverage[] | select(.name | contains("ConduitLLM.Core")) | .linecoverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
-    HTTP_COVERAGE=$(jq -r '.coverage[] | select(.name | contains("ConduitLLM.Http")) | .linecoverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
-    ADMIN_COVERAGE=$(jq -r '.coverage[] | select(.name | contains("ConduitLLM.Admin")) | .linecoverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
+    CORE_COVERAGE=$(jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM.Core")) | .coverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
+    HTTP_COVERAGE=$(jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM.Http")) | .coverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
+    ADMIN_COVERAGE=$(jq -r '.coverage.assemblies[] | select(.name | contains("ConduitLLM.Admin")) | .coverage' "$REPORT_DIR/Summary.json" 2>/dev/null || echo "0")
     
     assess_critical_service() {
         local name=$1

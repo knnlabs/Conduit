@@ -74,7 +74,7 @@ check_service_coverage() {
     local service_pattern=$2
     local min_threshold=$3
     
-    local coverage=$(jq -r ".coverage[] | select(.name | contains(\"$service_pattern\")) | .linecoverage" "$COVERAGE_REPORT" 2>/dev/null)
+    local coverage=$(jq -r ".coverage.assemblies[] | select(.name | contains(\"$service_pattern\")) | .coverage" "$COVERAGE_REPORT" 2>/dev/null)
     
     if [ -z "$coverage" ] || [ "$coverage" = "null" ]; then
         echo_colored "$YELLOW" "⚠️  $service_name: No coverage data found"
