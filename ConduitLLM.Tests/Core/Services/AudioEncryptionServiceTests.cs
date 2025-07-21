@@ -122,7 +122,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             _loggerMock.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Encrypted audio data")),
                     It.IsAny<Exception>(),
@@ -234,7 +234,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             _loggerMock.Verify(
                 x => x.Log(
-                    LogLevel.Information,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Decrypted audio data")),
                     It.IsAny<Exception>(),
