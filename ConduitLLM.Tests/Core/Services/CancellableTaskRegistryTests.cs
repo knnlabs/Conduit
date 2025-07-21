@@ -566,7 +566,8 @@ namespace ConduitLLM.Tests.Core.Services
                 }
                 
                 // Wait for grace period to expire plus cleanup timer interval
-                await Task.Delay(1500); // > 300ms grace period + 1000ms cleanup timer interval
+                // Timer runs every 1 second, so we need to wait at least 1 second after the grace period
+                await Task.Delay(2000); // > 300ms grace period + ensure at least one timer tick
                 
                 // All tasks should be removed
                 foreach (var taskId in taskIds)

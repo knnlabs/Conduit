@@ -28,6 +28,22 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockRedis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(_mockDatabase.Object);
             _mockRedis.Setup(r => r.GetSubscriber(It.IsAny<object>())).Returns(_mockSubscriber.Object);
+            
+            // Setup default returns for common operations
+            _mockDatabase.Setup(db => db.HashIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(1L);
+            _mockDatabase.Setup(db => db.HashGetAllAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(new HashEntry[0]);
+            _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+            _mockDatabase.Setup(db => db.SortedSetRemoveRangeByRankAsync(It.IsAny<RedisKey>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(0L);
+            _mockDatabase.Setup(db => db.PublishAsync(It.IsAny<RedisChannel>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(1L);
+            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+            _mockDatabase.Setup(db => db.SetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
 
             _collector = new RedisCacheStatisticsCollector(_mockRedis.Object, _mockLogger.Object, "test-instance");
         }
@@ -105,12 +121,11 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             await _collector.RecordOperationAsync(operation);
 
-            // Assert
+            // Assert - Match the actual signature without When parameter
             _mockDatabase.Verify(db => db.SortedSetAddAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderHealth") && k.ToString().Contains("Get")),
                 It.IsAny<RedisValue>(),
                 25.0,
-                It.IsAny<When>(),
                 It.IsAny<CommandFlags>()), Times.Once);
         }
 
@@ -218,13 +233,14 @@ namespace ConduitLLM.Tests.Core.Services
                 "test-instance",
                 It.IsAny<CommandFlags>()), Times.Once);
 
+            // Verify heartbeat is set (can be called twice - once from RegisterInstanceAsync and once from timer)
             _mockDatabase.Verify(db => db.StringSetAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("heartbeat") && k.ToString().Contains("test-instance")),
                 It.IsAny<RedisValue>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<bool>(),
                 It.IsAny<When>(),
-                CommandFlags.None), Times.Once);
+                CommandFlags.None), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -253,17 +269,20 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             await _collector.ResetStatisticsAsync(region);
 
-            // Assert
+            // Assert - Should delete 3 keys total
+            // 1. Stats hash key
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("test-instance")),
+                It.Is<RedisKey>(k => k.ToString().Contains("stats:ProviderResponses:test-instance")),
                 It.IsAny<CommandFlags>()), Times.Once);
 
+            // 2. Get response times
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderResponses") && k.ToString().Contains("Get")),
+                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response:ProviderResponses:Get:test-instance")),
                 It.IsAny<CommandFlags>()), Times.Once);
 
+            // 3. Set response times
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderResponses") && k.ToString().Contains("Set")),
+                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response:ProviderResponses:Set:test-instance")),
                 It.IsAny<CommandFlags>()), Times.Once);
         }
 
