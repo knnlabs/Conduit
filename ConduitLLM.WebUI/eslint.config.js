@@ -1,12 +1,12 @@
-import js from '@eslint/js';
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
-import eslintCommentsPlugin from 'eslint-plugin-eslint-comments';
-import nextPlugin from '@next/eslint-plugin-next';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
+const js = require('@eslint/js');
+const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
+const typescriptParser = require('@typescript-eslint/parser');
+const eslintCommentsPlugin = require('eslint-plugin-eslint-comments');
+const nextPlugin = require('@next/eslint-plugin-next');
+const reactPlugin = require('eslint-plugin-react');
+const reactHooksPlugin = require('eslint-plugin-react-hooks');
 
-export default [
+module.exports = [
   js.configs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -54,6 +54,10 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         alert: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        NodeJS: 'readonly',
+        AsyncGenerator: 'readonly',
       },
     },
     plugins: {
