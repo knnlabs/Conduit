@@ -32,6 +32,9 @@ export default [
         AbortSignal: 'readonly',
         URL: 'readonly',
         URLSearchParams: 'readonly',
+        atob: 'readonly',
+        btoa: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     plugins: {
@@ -69,6 +72,22 @@ export default [
       'no-return-await': 'error',
       'prefer-template': 'error',
       'no-duplicate-imports': 'warn',
+    },
+  },
+  {
+    files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
     },
   },
   {
