@@ -113,6 +113,15 @@ jobs:
             echo "commit-back=true" >> $GITHUB_OUTPUT
           fi
 
+      # Build Common Package First
+      - name: Build Common Package
+        run: |
+          echo "🔨 Building Common package (dependency for Core and Admin clients)..."
+          cd Clients/Node/Common
+          npm ci
+          npm run build
+          echo "✅ Common package built successfully"
+
       # Core Client Processing
       - name: Process Core Client
         if: needs.detect-changes.outputs.core-changed == 'true' || github.event.inputs.force_run == 'true'

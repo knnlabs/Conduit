@@ -64,13 +64,19 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: '${{ env.PACKAGE_PATH }}/package-lock.json'
 
       - name: Install dependencies
         run: |
-          npm install
-          # Generate package-lock.json if it doesn't exist
+          # Ensure package-lock.json exists for npm ci
           if [ ! -f package-lock.json ]; then
-            echo "Generated new package-lock.json"
+            echo "⚠️ No package-lock.json found, generating one..."
+            npm install
+            echo "✅ Generated new package-lock.json"
+          else
+            echo "📦 Installing dependencies with npm ci..."
+            npm ci
           fi
 
       - name: Run quality checks
