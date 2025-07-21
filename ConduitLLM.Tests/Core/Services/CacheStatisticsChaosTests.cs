@@ -116,6 +116,31 @@ namespace ConduitLLM.Tests.Core.Services
                     }
                 });
 
+            _mockDatabase.Setup(db => db.SetRemoveAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync((RedisKey key, RedisValue value, CommandFlags flags) =>
+                {
+                    lock (_redisData)
+                    {
+                        var setKey = $"set:{key}";
+                        if (_redisData.TryGetValue(setKey, out var existing) && existing is HashSet<string> set)
+                        {
+                            return set.Remove(value.ToString());
+                        }
+                        return false;
+                    }
+                });
+
+            _mockDatabase.Setup(db => db.KeyDeleteAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync((RedisKey key, CommandFlags flags) =>
+                {
+                    lock (_redisData)
+                    {
+                        var keyStr = key.ToString();
+                        var strKey = $"string:{keyStr}";
+                        return _redisData.Remove(strKey);
+                    }
+                });
+
             _mockDatabase.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, CommandFlags flags) =>
                 {
@@ -138,6 +163,21 @@ namespace ConduitLLM.Tests.Core.Services
                         return true;
                     }
                 });
+
+            // Add mock for sorted set operations (response times)
+            _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+
+            _mockDatabase.Setup(db => db.SortedSetRemoveRangeByRankAsync(It.IsAny<RedisKey>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(0);
+
+            // Add mock for publish operations
+            _mockDatabase.Setup(db => db.PublishAsync(It.IsAny<RedisChannel>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(1);
+
+            // Add mock for hash set operations (alerts)
+            _mockDatabase.Setup(db => db.HashSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<RedisValue>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
         }
 
         private RedisCacheStatisticsCollector CreateCollector(string instanceId)
@@ -344,16 +384,18 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 for (int i = 0; i < operationsPerInstance; i++)
                 {
+                    var operationIndex = i; // Capture loop variable
+                    var currentInstance = instance; // Capture instance
                     tasks.Add(Task.Run(async () =>
                     {
                         await semaphore.WaitAsync();
                         try
                         {
-                            await instance.RecordOperationAsync(new CacheOperation
+                            await currentInstance.RecordOperationAsync(new CacheOperation
                             {
                                 Region = region,
-                                OperationType = i % 3 == 0 ? CacheOperationType.Hit : CacheOperationType.Miss,
-                                Success = i % 20 != 0, // 5% error rate
+                                OperationType = operationIndex % 3 == 0 ? CacheOperationType.Hit : CacheOperationType.Miss,
+                                Success = operationIndex % 20 != 0, // 5% error rate
                                 Duration = TimeSpan.FromMilliseconds(_random.Next(1, 50))
                             });
                             Interlocked.Increment(ref completedOperations);

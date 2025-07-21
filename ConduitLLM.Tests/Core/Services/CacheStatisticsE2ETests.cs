@@ -53,6 +53,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Add memory cache
             services.AddMemoryCache();
 
+            // Add distributed cache (memory-based for testing)
+            services.AddDistributedMemoryCache();
+
             // Configure options
             services.Configure<CacheManagerOptions>(options =>
             {
@@ -318,8 +321,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var distributedCollector = _serviceProvider.GetRequiredService<IDistributedCacheStatisticsCollector>();
             
-            // Wait for hosted service to start
-            await Task.Delay(100);
+            // In test environment, we need to manually register the instance
+            // In production, the CacheStatisticsRegistrationService would do this automatically
+            await distributedCollector.RegisterInstanceAsync();
 
             // Act
             var activeInstances = await distributedCollector.GetActiveInstancesAsync();

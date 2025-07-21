@@ -199,6 +199,9 @@ namespace ConduitLLM.Core.Services
                     result.Messages.Add($"Active instances ({result.ActiveInstances}) below minimum threshold ({_alertThresholds.MinActiveInstances})");
                 }
 
+                // Process the health check result to trigger any necessary alerts
+                await ProcessHealthResult(result);
+
                 return result;
             }
             catch (Exception ex)

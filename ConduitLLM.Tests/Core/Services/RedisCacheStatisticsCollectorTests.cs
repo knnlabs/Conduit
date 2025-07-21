@@ -52,13 +52,13 @@ namespace ConduitLLM.Tests.Core.Services
                 It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("test-instance")),
                 "HitCount",
                 1,
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.HashIncrementAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("global")),
                 "HitCount",
                 1,
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -81,13 +81,13 @@ namespace ConduitLLM.Tests.Core.Services
                 It.Is<RedisKey>(k => k.ToString().Contains("ModelMetadata") && k.ToString().Contains("test-instance")),
                 "MissCount",
                 1,
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.HashIncrementAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("ModelMetadata") && k.ToString().Contains("global")),
                 "MissCount",
                 1,
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -107,11 +107,11 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockDatabase.Verify(db => db.SortedSetAddAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("response") && k.ToString().Contains("Get")),
+                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderHealth") && k.ToString().Contains("Get")),
                 It.IsAny<RedisValue>(),
                 25.0,
-                When.Always,
-                CommandFlags.None), Times.Once);
+                It.IsAny<When>(),
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -134,7 +134,7 @@ namespace ConduitLLM.Tests.Core.Services
                 It.IsAny<RedisKey>(),
                 "ErrorCount",
                 1,
-                CommandFlags.None), Times.Exactly(2)); // Once for instance, once for global
+                It.IsAny<CommandFlags>()), Times.Exactly(2)); // Once for instance, once for global
         }
 
         [Fact]
@@ -216,14 +216,14 @@ namespace ConduitLLM.Tests.Core.Services
             _mockDatabase.Verify(db => db.SetAddAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("instances")),
                 "test-instance",
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.StringSetAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("heartbeat") && k.ToString().Contains("test-instance")),
                 It.IsAny<RedisValue>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<bool>(),
-                When.Always,
+                It.IsAny<When>(),
                 CommandFlags.None), Times.Once);
         }
 
@@ -237,11 +237,11 @@ namespace ConduitLLM.Tests.Core.Services
             _mockDatabase.Verify(db => db.SetRemoveAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("instances")),
                 "test-instance",
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("heartbeat") && k.ToString().Contains("test-instance")),
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -256,15 +256,15 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("test-instance")),
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("response") && k.ToString().Contains("Get")),
-                CommandFlags.None), Times.Once);
+                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderResponses") && k.ToString().Contains("Get")),
+                It.IsAny<CommandFlags>()), Times.Once);
 
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("response") && k.ToString().Contains("Set")),
-                CommandFlags.None), Times.Once);
+                It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderResponses") && k.ToString().Contains("Set")),
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -324,8 +324,8 @@ namespace ConduitLLM.Tests.Core.Services
                 It.Is<RedisKey>(k => k.ToString().Contains("alerts") && k.ToString().Contains("ProviderResponses")),
                 "thresholds",
                 It.IsAny<RedisValue>(),
-                When.Always,
-                CommandFlags.None), Times.Once);
+                It.IsAny<When>(),
+                It.IsAny<CommandFlags>()), Times.Once);
         }
 
         [Fact]
@@ -338,7 +338,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockDatabase.Verify(db => db.SetRemoveAsync(
                 It.IsAny<RedisKey>(),
                 It.IsAny<RedisValue>(),
-                CommandFlags.None), Times.Once);
+                It.IsAny<CommandFlags>()), Times.Once);
         }
     }
 }

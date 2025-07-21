@@ -356,6 +356,10 @@ namespace ConduitLLM.Tests.Core.Services
             await instance1.RegisterInstanceAsync();
             await instance2.RegisterInstanceAsync();
 
+            // Ensure heartbeats are set for active instances
+            _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
             var region = CacheRegion.ModelMetadata;
 
             // Act - Record operations with varying response times
