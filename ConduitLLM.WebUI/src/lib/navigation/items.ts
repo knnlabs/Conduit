@@ -19,6 +19,7 @@ import {
   IconHeartRateMonitor,
   IconDeviceDesktop,
   IconAlertTriangle,
+  IconEye,
 } from '@tabler/icons-react';
 import { NavigationSection } from '@/types/navigation';
 
@@ -143,6 +144,14 @@ export const navigationSections: NavigationSection[] = [
         href: '/virtualkeys',
         description: 'Manage API keys and budgets',
         color: 'green',
+      },
+      {
+        id: 'virtualkeys-discovery-preview',
+        label: 'Discovery Preview',
+        icon: IconEye,
+        href: '/virtualkeys/discovery-preview',
+        description: 'Preview model discovery for virtual keys',
+        color: 'teal',
       },
       {
         id: 'virtualkeys-dashboard',

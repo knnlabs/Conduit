@@ -32,6 +32,18 @@ interface VirtualKeySpendDto {
   metadata?: string;
 }
 
+interface VirtualKeyDiscoveryPreviewDto {
+  data: DiscoveredModelDto[];
+  count: number;
+}
+
+interface DiscoveredModelDto {
+  id: string;
+  provider?: string;
+  displayName: string;
+  capabilities: Record<string, any>;
+}
+
 /**
  * Type-safe Virtual Key service using native fetch
  */
@@ -222,6 +234,26 @@ export class FetchVirtualKeyService {
     return this.client['post']<{ message: string }>(
       ENDPOINTS.VIRTUAL_KEYS.MAINTENANCE,
       undefined,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Preview what models and capabilities a virtual key would see when calling the discovery endpoint
+   */
+  async previewDiscovery(
+    id: string,
+    capability?: string,
+    config?: RequestConfig
+  ): Promise<VirtualKeyDiscoveryPreviewDto> {
+    const params = capability ? `?capability=${encodeURIComponent(capability)}` : '';
+    
+    return this.client['get']<VirtualKeyDiscoveryPreviewDto>(
+      `${ENDPOINTS.VIRTUAL_KEYS.DISCOVERY_PREVIEW(parseInt(id))}${params}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,

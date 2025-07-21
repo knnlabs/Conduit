@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Extensions;
 
@@ -365,6 +366,35 @@ public class VirtualKeysController : ControllerBase
         {
             _logger.LogError(ex, "Error performing virtual key maintenance");
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred during maintenance.");
+        }
+    }
+
+    /// <summary>
+    /// Previews the discovery results for a virtual key
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <param name="capability">Optional capability filter (e.g. "chat", "vision", "audio_transcription")</param>
+    /// <returns>The discovery results as the virtual key would see them</returns>
+    [HttpGet("{id}/discovery-preview")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(VirtualKeyDiscoveryPreviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> PreviewDiscovery(int id, [FromQuery] string? capability = null)
+    {
+        try
+        {
+            var preview = await _virtualKeyService.PreviewDiscoveryAsync(id, capability);
+            if (preview == null)
+            {
+                return NotFound();
+            }
+            return Ok(preview);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error previewing discovery for virtual key with ID {KeyId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
 }

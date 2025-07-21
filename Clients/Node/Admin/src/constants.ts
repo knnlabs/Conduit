@@ -51,6 +51,7 @@ export const ENDPOINTS = {
     CHECK_BUDGET: (id: number) => `/api/VirtualKeys/${id}/check-budget`,
     VALIDATION_INFO: (id: number) => `/api/VirtualKeys/${id}/validation-info`,
     MAINTENANCE: '/api/VirtualKeys/maintenance',
+    DISCOVERY_PREVIEW: (id: number) => `/api/VirtualKeys/${id}/discovery-preview`,
   },
 
   // Provider Credentials
