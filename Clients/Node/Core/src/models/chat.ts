@@ -183,3 +183,8 @@ export const ContentHelpers = {
     return content.filter((part): part is ImageContent => part.type === 'image_url');
   }
 };
+
+/**
+ * Alias for ChatCompletionRequest to maintain compatibility with existing imports
+ */
+export type ChatCompletionCreateParams = ChatCompletionRequest;

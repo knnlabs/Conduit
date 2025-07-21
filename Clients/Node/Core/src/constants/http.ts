@@ -44,6 +44,11 @@ export const CONTENT_TYPES = {
 
 export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
 
+// Re-export types from other modules to satisfy imports in constants/index.ts
+export type { TaskStatus, TaskType } from './tasks';
+export type { ChatRole, ImageResponseFormat, ImageQuality, ImageStyle, ImageSize } from './validation';
+export type { StreamEvent } from './streaming';
+
 /**
  * Client information constants.
  */
