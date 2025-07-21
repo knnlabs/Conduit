@@ -240,14 +240,12 @@ export class NotificationsService {
     options?: NotificationOptions
   ): NotificationSubscription {
     // Ensure task hub client is initialized
-    if (!this.taskHubClient) {
-      this.taskHubClient = this.signalRService.getTaskHubClient();
+    this.taskHubClient ??= this.signalRService.getTaskHubClient();
       
-      // Set up event handlers for spend updates
-      // Note: The current task hub doesn't directly support spend update events
-      // This would need to be implemented on the server side
-      // For now, we'll set up the structure for future implementation
-    }
+    // Set up event handlers for spend updates
+    // Note: The current task hub doesn't directly support spend update events
+    // This would need to be implemented on the server side
+    // For now, we'll set up the structure for future implementation
 
     const subscriptionId = this.generateSubscriptionId();
     this.spendUpdateCallbacks.set(subscriptionId, callback);
@@ -275,14 +273,12 @@ export class NotificationsService {
     options?: NotificationOptions
   ): NotificationSubscription {
     // Ensure task hub client is initialized
-    if (!this.taskHubClient) {
-      this.taskHubClient = this.signalRService.getTaskHubClient();
+    this.taskHubClient ??= this.signalRService.getTaskHubClient();
       
-      // Set up event handlers for spend limit alerts
-      // Note: The current task hub doesn't directly support spend limit alert events
-      // This would need to be implemented on the server side
-      // For now, we'll set up the structure for future implementation
-    }
+    // Set up event handlers for spend limit alerts
+    // Note: The current task hub doesn't directly support spend limit alert events
+    // This would need to be implemented on the server side
+    // For now, we'll set up the structure for future implementation
 
     const subscriptionId = this.generateSubscriptionId();
     this.spendLimitCallbacks.set(subscriptionId, callback);
@@ -321,25 +317,18 @@ export class NotificationsService {
 
     // Set up appropriate listeners based on task type
     if (taskType === 'video') {
-      if (!this.videoHubClient) {
-        this.videoHubClient = this.signalRService.getVideoGenerationHubClient();
-      }
+      this.videoHubClient ??= this.signalRService.getVideoGenerationHubClient();
       
       // We've already set up the handlers in onVideoProgress
     } else if (taskType === 'image') {
-      if (!this.imageHubClient) {
-        this.imageHubClient = this.signalRService.getImageGenerationHubClient();
-      }
+      this.imageHubClient ??= this.signalRService.getImageGenerationHubClient();
       
       // We've already set up the handlers in onImageProgress
     } else {
-      if (!this.taskHubClient) {
-        this.taskHubClient = this.signalRService.getTaskHubClient();
-      }
+      this.taskHubClient ??= this.signalRService.getTaskHubClient();
       
       // Set up generic task handlers if not already done
-      if (!this.taskHubClient.onTaskProgress) {
-        this.taskHubClient.onTaskProgress = (event) => {
+      this.taskHubClient.onTaskProgress ??= (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -359,10 +348,8 @@ export class NotificationsService {
           }
           return Promise.resolve();
         };
-      }
       
-      if (!this.taskHubClient.onTaskCompleted) {
-        this.taskHubClient.onTaskCompleted = (event) => {
+      this.taskHubClient.onTaskCompleted ??= (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -381,10 +368,8 @@ export class NotificationsService {
           }
           return Promise.resolve();
         };
-      }
       
-      if (!this.taskHubClient.onTaskFailed) {
-        this.taskHubClient.onTaskFailed = (event) => {
+      this.taskHubClient.onTaskFailed ??= (event) => {
           // Notify task-specific callbacks
           for (const [subId, taskInfo] of this.taskCallbacks) {
             if (taskInfo.taskId === event.taskId) {
@@ -403,7 +388,6 @@ export class NotificationsService {
           }
           return Promise.resolve();
         };
-      }
     }
 
     const subscription: NotificationSubscription = {
