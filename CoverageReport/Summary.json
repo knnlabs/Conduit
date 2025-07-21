@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "linecoverage": 16.5,
+    "branchcoverage": 16.9,
+    "methodcoverage": 17.4
+  },
+  "coverage": {
+    "assemblies": [
+      {
+        "name": "ConduitLLM.Core",
+        "coverage": 25.2
+      },
+      {
+        "name": "ConduitLLM.Http",
+        "coverage": 9.2
+      },
+      {
+        "name": "ConduitLLM.Admin",
+        "coverage": 8.1
+      }
+    ]
+  }
+}

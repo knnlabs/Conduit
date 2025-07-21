@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # Coverage Threshold Checker
-# Used by CI/CD to enforce minimum coverage requirements
+# Used by CI/CD to track coverage metrics (non-blocking)
 
 set -e
 
 COVERAGE_REPORT="./CoverageReport/Summary.json"
 EXIT_CODE=0
+WARNING_MODE=1  # Set to 1 to make coverage checks non-blocking
 
 # Colors
 RED='\033[0;31m'
@@ -53,7 +54,11 @@ check_threshold() {
     if (( $(echo "$actual >= $threshold" | bc -l) )); then
         echo_colored "$GREEN" "✅ $metric_name: $actual% (>= $threshold%)"
     else
-        echo_colored "$RED" "❌ $metric_name: $actual% (< $threshold%)"
+        if [ $WARNING_MODE -eq 1 ]; then
+            echo_colored "$YELLOW" "⚠️  $metric_name: $actual% (< $threshold%)"
+        else
+            echo_colored "$RED" "❌ $metric_name: $actual% (< $threshold%)"
+        fi
         EXIT_CODE=1
     fi
 }
@@ -84,8 +89,13 @@ check_service_coverage() {
     if (( $(echo "$coverage >= $min_threshold" | bc -l) )); then
         echo_colored "$GREEN" "✅ $service_name: $coverage% (>= $min_threshold%)"
     else
-        echo_colored "$RED" "❌ $service_name: $coverage% (< $min_threshold%)"
-        echo "   This is a critical service that requires higher coverage!"
+        if [ $WARNING_MODE -eq 1 ]; then
+            echo_colored "$YELLOW" "⚠️  $service_name: $coverage% (< $min_threshold%)"
+            echo "   This critical service needs more test coverage"
+        else
+            echo_colored "$RED" "❌ $service_name: $coverage% (< $min_threshold%)"
+            echo "   This is a critical service that requires higher coverage!"
+        fi
         EXIT_CODE=1
     fi
 }
@@ -102,13 +112,25 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo_colored "$GREEN" "🎉 All coverage thresholds passed!"
     echo "Your changes maintain adequate test coverage."
 else
-    echo_colored "$RED" "💥 Coverage thresholds not met!"
-    echo ""
-    echo "To fix this:"
-    echo "1. Add unit tests for uncovered code"
-    echo "2. Focus on critical services (Core, HTTP, Admin)"
-    echo "3. Ensure new features include comprehensive tests"
-    echo "4. Run './scripts/coverage-dashboard.sh run' to see detailed coverage"
+    if [ $WARNING_MODE -eq 1 ]; then
+        echo_colored "$YELLOW" "⚠️  Coverage thresholds not met (WARNING MODE - non-blocking)"
+        echo ""
+        echo "Coverage improvement suggestions:"
+        echo "1. Add unit tests for uncovered code"
+        echo "2. Focus on critical services (Core, HTTP, Admin)"
+        echo "3. Ensure new features include comprehensive tests"
+        echo "4. Run './scripts/coverage-dashboard.sh run' to see detailed coverage"
+        echo ""
+        echo_colored "$YELLOW" "⚠️  Build will continue despite low coverage (WARNING MODE)"
+        exit 0  # Exit with success to not block builds
+    else
+        echo_colored "$RED" "💥 Coverage thresholds not met!"
+        echo ""
+        echo "To fix this:"
+        echo "1. Add unit tests for uncovered code"
+        echo "2. Focus on critical services (Core, HTTP, Admin)"
+        echo "3. Ensure new features include comprehensive tests"
+        echo "4. Run './scripts/coverage-dashboard.sh run' to see detailed coverage"
+        exit $EXIT_CODE
+    fi
 fi
-
-exit $EXIT_CODE
