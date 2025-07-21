@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
@@ -31,8 +33,14 @@ namespace ConduitLLM.Core.Extensions
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
             services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
 
-            // Register statistics collector
-            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
+            // Register statistics collector (local mode only)
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                return new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+            });
 
             // Register policy engine
             services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
@@ -105,8 +113,29 @@ namespace ConduitLLM.Core.Extensions
             // Register statistics store for Redis
             services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
 
-            // Register statistics collector
-            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
+            // Register Redis connection multiplexer
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                return ConnectionMultiplexer.Connect(redisConnectionString);
+            });
+
+            // Register distributed statistics collector
+            services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+
+            // Register hybrid collector as the main statistics collector
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
+                var localCollector = new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+                
+                return new HybridCacheStatisticsCollector(
+                    localCollector,
+                    distributedCollector,
+                    sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
+            });
 
             // Register policy engine
             services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
@@ -164,9 +193,6 @@ namespace ConduitLLM.Core.Extensions
             // Add cache registry
             services.AddCacheRegistry(autoDiscover);
 
-            // Register statistics collector
-            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
-
             // Register policy engine
             services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
 
@@ -180,7 +206,36 @@ namespace ConduitLLM.Core.Extensions
                     options.InstanceName = "conduit:cache:";
                 });
                 services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+                
+                // Register Redis connection multiplexer
+                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    return ConnectionMultiplexer.Connect(redisConnection);
+                });
+
+                // Register distributed statistics collector
+                services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
             }
+
+            // Register statistics collector (hybrid if Redis is available, local otherwise)
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
+                var localCollector = new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+                
+                if (distributedCollector != null)
+                {
+                    return new HybridCacheStatisticsCollector(
+                        localCollector,
+                        distributedCollector,
+                        sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
+                }
+                
+                return localCollector;
+            });
 
             // Register cache manager with registry integration
             services.AddSingleton<ICacheManager>(provider =>

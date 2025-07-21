@@ -95,7 +95,7 @@ namespace ConduitLLM.Admin.Services
             return Task.CompletedTask;
         }
 
-        private async void OnMonitoringServiceAlertTriggered(object? sender, Core.Services.CacheAlertEventArgs e)
+        private async void OnMonitoringServiceAlertTriggered(object? sender, Core.Services.CacheMonitoringAlertEventArgs e)
         {
             // Handle alerts from the new monitoring service
             try
@@ -141,7 +141,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Convert to our monitoring service format
-                var alert = new Core.Services.CacheAlertEventArgs
+                var alert = new Core.Services.CacheMonitoringAlertEventArgs
                 {
                     AlertType = e.Alert.AlertType.ToString(),
                     Message = e.Alert.Message,
@@ -198,7 +198,7 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        private async Task<bool> ShouldSendAlert(Core.Services.CacheAlertEventArgs alert)
+        private async Task<bool> ShouldSendAlert(Core.Services.CacheMonitoringAlertEventArgs alert)
         {
             var alertKey = $"{alert.AlertType}:{alert.Region ?? "global"}";
             
@@ -227,7 +227,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        private async Task SendCacheAlertNotification(Core.Services.CacheAlertEventArgs alert, CacheAlertDefinition definition)
+        private async Task SendCacheAlertNotification(Core.Services.CacheMonitoringAlertEventArgs alert, CacheAlertDefinition definition)
         {
             try
             {
@@ -282,7 +282,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        private async Task SendGenericCacheAlert(Core.Services.CacheAlertEventArgs alert)
+        private async Task SendGenericCacheAlert(Core.Services.CacheMonitoringAlertEventArgs alert)
         {
             try
             {

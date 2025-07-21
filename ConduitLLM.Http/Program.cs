@@ -112,6 +112,9 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, 
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 builder.Services.AddMemoryCache();
 
+// Add cache infrastructure with distributed statistics collection
+builder.Services.AddCacheInfrastructure(builder.Configuration);
+
 // Configure OpenTelemetry with metrics
 builder.Services.AddOpenTelemetry()
     .WithMetrics(meterProviderBuilder =>
@@ -1187,6 +1190,9 @@ builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>
     var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
     return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "CoreAPI");
 });
+
+// Add cache statistics registration service
+builder.Services.AddHostedService<ConduitLLM.Http.Services.CacheStatisticsRegistrationService>();
 
 var app = builder.Build();
 

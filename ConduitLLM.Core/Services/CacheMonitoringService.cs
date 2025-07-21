@@ -46,9 +46,9 @@ namespace ConduitLLM.Core.Services
     }
 
     /// <summary>
-    /// Cache alert event arguments
+    /// Cache monitoring alert event arguments
     /// </summary>
-    public class CacheAlertEventArgs : EventArgs
+    public class CacheMonitoringAlertEventArgs : EventArgs
     {
         public string AlertType { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
@@ -66,7 +66,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Event raised when a cache alert is triggered
         /// </summary>
-        event EventHandler<CacheAlertEventArgs>? CacheAlertTriggered;
+        event EventHandler<CacheMonitoringAlertEventArgs>? CacheAlertTriggered;
 
         /// <summary>
         /// Gets the current alert thresholds
@@ -86,7 +86,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets recent alerts
         /// </summary>
-        IReadOnlyList<CacheAlertEventArgs> GetRecentAlerts(int count = 10);
+        IReadOnlyList<CacheMonitoringAlertEventArgs> GetRecentAlerts(int count = 10);
 
         /// <summary>
         /// Clears alert history
@@ -121,7 +121,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<CacheMonitoringService> _logger;
-        private readonly List<CacheAlertEventArgs> _alertHistory = new();
+        private readonly List<CacheMonitoringAlertEventArgs> _alertHistory = new();
         private readonly SemaphoreSlim _alertHistoryLock = new(1, 1);
         private MonitoringAlertThresholds _thresholds = new();
         private DateTime _lastCheck = DateTime.UtcNow;
@@ -133,7 +133,7 @@ namespace ConduitLLM.Core.Services
         private long _lastEvictionCount = 0;
         private DateTime _lastEvictionCheck = DateTime.UtcNow;
 
-        public event EventHandler<CacheAlertEventArgs>? CacheAlertTriggered;
+        public event EventHandler<CacheMonitoringAlertEventArgs>? CacheAlertTriggered;
 
         public CacheMonitoringService(
             IServiceProvider serviceProvider,
@@ -194,7 +194,7 @@ namespace ConduitLLM.Core.Services
                 IsHealthy = true
             };
 
-            var alerts = new List<CacheAlertEventArgs>();
+            var alerts = new List<CacheMonitoringAlertEventArgs>();
 
             try
             {
@@ -203,7 +203,7 @@ namespace ConduitLLM.Core.Services
                 if (!healthStatus.IsHealthy)
                 {
                     status.IsHealthy = false;
-                    alerts.Add(new CacheAlertEventArgs
+                    alerts.Add(new CacheMonitoringAlertEventArgs
                     {
                         AlertType = "CacheUnhealthy",
                         Message = "Cache manager is reporting unhealthy status",
@@ -223,7 +223,7 @@ namespace ConduitLLM.Core.Services
 
                 if (totalRequests >= _thresholds.MinRequestsForHitRateAlert && hitRate < _thresholds.MinHitRate)
                 {
-                    alerts.Add(new CacheAlertEventArgs
+                    alerts.Add(new CacheMonitoringAlertEventArgs
                     {
                         AlertType = "LowHitRate",
                         Message = $"Cache hit rate is {hitRate:P1}, below threshold of {_thresholds.MinHitRate:P1}",
@@ -245,7 +245,7 @@ namespace ConduitLLM.Core.Services
 
                 if (avgResponseTime > _thresholds.MaxResponseTimeMs)
                 {
-                    alerts.Add(new CacheAlertEventArgs
+                    alerts.Add(new CacheMonitoringAlertEventArgs
                     {
                         AlertType = "HighResponseTime",
                         Message = $"Average cache response time is {avgResponseTime:F1}ms, above threshold of {_thresholds.MaxResponseTimeMs}ms",
@@ -283,7 +283,7 @@ namespace ConduitLLM.Core.Services
                                 var regionMemoryUsage = (double)stats.TotalSizeBytes / regionConfig.MaxSizeInBytes.Value;
                                 if (regionMemoryUsage > _thresholds.MaxMemoryUsage)
                                 {
-                                    alerts.Add(new CacheAlertEventArgs
+                                    alerts.Add(new CacheMonitoringAlertEventArgs
                                     {
                                         AlertType = "HighMemoryUsage",
                                         Message = $"Cache region '{region}' memory usage is {regionMemoryUsage:P1}, above threshold of {_thresholds.MaxMemoryUsage:P1}",
@@ -318,7 +318,7 @@ namespace ConduitLLM.Core.Services
 
                         if (evictionRate > _thresholds.MaxEvictionRate)
                         {
-                            alerts.Add(new CacheAlertEventArgs
+                            alerts.Add(new CacheMonitoringAlertEventArgs
                             {
                                 AlertType = "HighEvictionRate",
                                 Message = $"Cache eviction rate is {evictionRate:F1}/min, above threshold of {_thresholds.MaxEvictionRate}/min",
@@ -372,7 +372,7 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task RaiseAlertAsync(CacheAlertEventArgs alert)
+        private async Task RaiseAlertAsync(CacheMonitoringAlertEventArgs alert)
         {
             try
             {
@@ -448,7 +448,7 @@ namespace ConduitLLM.Core.Services
             });
         }
 
-        public IReadOnlyList<CacheAlertEventArgs> GetRecentAlerts(int count = 10)
+        public IReadOnlyList<CacheMonitoringAlertEventArgs> GetRecentAlerts(int count = 10)
         {
             _alertHistoryLock.Wait();
             try
