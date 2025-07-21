@@ -49,13 +49,13 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockDatabase.Verify(db => db.HashIncrementAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ApiResponses") && k.ToString().Contains("test-instance")),
+                It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("test-instance")),
                 "HitCount",
                 1,
                 CommandFlags.None), Times.Once);
 
             _mockDatabase.Verify(db => db.HashIncrementAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ApiResponses") && k.ToString().Contains("global")),
+                It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("global")),
                 "HitCount",
                 1,
                 CommandFlags.None), Times.Once);
@@ -78,13 +78,13 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockDatabase.Verify(db => db.HashIncrementAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ModelCapabilities") && k.ToString().Contains("test-instance")),
+                It.Is<RedisKey>(k => k.ToString().Contains("ModelMetadata") && k.ToString().Contains("test-instance")),
                 "MissCount",
                 1,
                 CommandFlags.None), Times.Once);
 
             _mockDatabase.Verify(db => db.HashIncrementAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ModelCapabilities") && k.ToString().Contains("global")),
+                It.Is<RedisKey>(k => k.ToString().Contains("ModelMetadata") && k.ToString().Contains("global")),
                 "MissCount",
                 1,
                 CommandFlags.None), Times.Once);
@@ -255,7 +255,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("ApiResponses") && k.ToString().Contains("test-instance")),
+                It.Is<RedisKey>(k => k.ToString().Contains("ProviderResponses") && k.ToString().Contains("test-instance")),
                 CommandFlags.None), Times.Once);
 
             _mockDatabase.Verify(db => db.KeyDeleteAsync(
@@ -321,7 +321,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             _mockDatabase.Verify(db => db.HashSetAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("alerts") && k.ToString().Contains("ApiResponses")),
+                It.Is<RedisKey>(k => k.ToString().Contains("alerts") && k.ToString().Contains("ProviderResponses")),
                 "thresholds",
                 It.IsAny<RedisValue>(),
                 When.Always,
