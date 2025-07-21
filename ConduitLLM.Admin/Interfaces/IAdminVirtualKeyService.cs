@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 
 namespace ConduitLLM.Admin.Interfaces;
@@ -88,4 +89,12 @@ public interface IAdminVirtualKeyService
     /// </remarks>
     /// <returns>A task representing the asynchronous operation</returns>
     Task PerformMaintenanceAsync();
+
+    /// <summary>
+    /// Previews what models and capabilities a virtual key would see when calling the discovery endpoint
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <param name="capability">Optional capability filter (e.g. "chat", "vision", "audio_transcription")</param>
+    /// <returns>Discovery response as the virtual key would see it, or null if key not found</returns>
+    Task<VirtualKeyDiscoveryPreviewDto?> PreviewDiscoveryAsync(int id, string? capability = null);
 }

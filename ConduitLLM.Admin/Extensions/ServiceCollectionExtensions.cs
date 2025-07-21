@@ -56,9 +56,11 @@ public static class ServiceCollectionExtensions
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
+            var modelProviderMappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
+            var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
