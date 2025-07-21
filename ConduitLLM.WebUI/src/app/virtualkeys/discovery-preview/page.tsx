@@ -40,11 +40,18 @@ import { notifications } from '@mantine/notifications';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { useClipboard } from '@mantine/hooks';
 
+interface CapabilityDetails {
+  supported: boolean;
+  supported_languages?: string[];
+  supported_voices?: string[];
+  supported_formats?: string[];
+}
+
 interface DiscoveredModel {
   id: string;
   provider?: string;
   displayName: string;
-  capabilities: Record<string, any>;
+  capabilities: Record<string, CapabilityDetails>;
 }
 
 interface DiscoveryPreviewResponse {
@@ -176,7 +183,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
     }
   };
 
-  const renderCapability = (name: string, capability: any) => {
+  const renderCapability = (name: string, capability: CapabilityDetails) => {
     if (typeof capability !== 'object' || !capability) return null;
     
     const isSupported = capability.supported === true;
@@ -235,8 +242,8 @@ export default function VirtualKeyDiscoveryPreviewPage() {
               placeholder="Choose a virtual key"
               data={virtualKeys.map(key => ({
                 value: key.id?.toString() ?? '',
-                label: `${key.keyName} ${key.isActive ? '' : '(Inactive)'}`,
-                disabled: !key.isActive,
+                label: `${key.keyName} ${key.isEnabled ? '' : '(Inactive)'}`,
+                disabled: !key.isEnabled,
               }))}
               value={selectedKeyId}
               onChange={handleKeyChange}
@@ -281,8 +288,8 @@ export default function VirtualKeyDiscoveryPreviewPage() {
                     </Text>
                   )}
                 </div>
-                <Badge color={selectedKey.isActive ? 'green' : 'red'}>
-                  {selectedKey.isActive ? 'Active' : 'Inactive'}
+                <Badge color={selectedKey.isEnabled ? 'green' : 'red'}>
+                  {selectedKey.isEnabled ? 'Active' : 'Inactive'}
                 </Badge>
               </Group>
             </Paper>

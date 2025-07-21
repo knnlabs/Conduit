@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminApiClient } from '@/lib/api-client';
-import { AppError, handleApiError } from '@/lib/errors';
+import { getServerAdminClient } from '@/lib/server/adminClient';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
 
 interface RouteParams {
   params: Promise<{
@@ -24,7 +24,7 @@ export async function GET(
       );
     }
 
-    const adminClient = await createAdminApiClient();
+    const adminClient = getServerAdminClient();
     
     // Use the new previewDiscovery method
     const discoveryPreview = await adminClient.virtualKeys.previewDiscovery(
@@ -34,6 +34,6 @@ export async function GET(
 
     return NextResponse.json(discoveryPreview);
   } catch (error) {
-    return handleApiError(error);
+    return handleSDKError(error);
   }
 }
