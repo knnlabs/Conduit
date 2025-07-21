@@ -67,13 +67,22 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'Clients/Node/Admin/package-lock.json'
 
+      - name: Build Common Package First
+        run: |
+          echo "🔨 Building Common package (dependency for Admin client)..."
+          cd ../Common
+          npm ci
+          npm run build
+          echo "✅ Common package built successfully"
+          cd ../Admin
+
       - name: Install dependencies
         run: npm ci
 
       - name: Run quality checks
         run: |
-          echo "Running linter..."
-          npm run lint
+          echo "Running linter with CI configuration..."
+          npx eslint src --ext .ts --config .eslintrc.ci.js
           
           echo "Running tests..."
           npm run test
