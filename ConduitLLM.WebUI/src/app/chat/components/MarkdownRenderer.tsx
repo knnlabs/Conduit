@@ -76,12 +76,12 @@ function parseMarkdown(text: string): React.ReactNode[] {
     }
 
     // Lists
-    if (line.match(/^[\*\-\+]\s+/) || line.match(/^\d+\.\s+/)) {
+    if (line.match(/^[*\-+]\s+/) || line.match(/^\d+\.\s+/)) {
       const listItems: string[] = [];
       const isOrdered = /^\d+\.\s+/.test(line);
       
-      while (i < lines.length && (lines[i].match(/^[\*\-\+]\s+/) || lines[i].match(/^\d+\.\s+/))) {
-        listItems.push(lines[i].replace(/^[\*\-\+]\s+/, '').replace(/^\d+\.\s+/, ''));
+      while (i < lines.length && (lines[i].match(/^[*\-+]\s+/) || lines[i].match(/^\d+\.\s+/))) {
+        listItems.push(lines[i].replace(/^[*\-+]\s+/, '').replace(/^\d+\.\s+/, ''));
         i++;
       }
       

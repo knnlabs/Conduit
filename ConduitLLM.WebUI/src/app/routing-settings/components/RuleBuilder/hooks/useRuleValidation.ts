@@ -176,7 +176,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
     const fieldErrors: string[] = [];
 
     switch (field) {
-      case 'name':
+      case 'name': {
         let nameValue = '';
         if (typeof value === 'string') {
           nameValue = value;
@@ -193,6 +193,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
           fieldErrors.push('Rule name can only contain letters, numbers, spaces, hyphens, and underscores');
         }
         break;
+      }
 
       case 'priority':
         if (value === undefined || value === null) {
@@ -205,7 +206,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
         }
         break;
 
-      case 'description':
+      case 'description': {
         let descValue = '';
         if (typeof value === 'string') {
           descValue = value;
@@ -216,6 +217,7 @@ export function useRuleValidation(rule: CreateRoutingRuleRequest) {
           fieldErrors.push('Description must be less than 500 characters');
         }
         break;
+      }
     }
 
     return fieldErrors;

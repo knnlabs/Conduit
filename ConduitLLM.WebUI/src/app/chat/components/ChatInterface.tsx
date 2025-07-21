@@ -220,7 +220,7 @@ export function ChatInterface() {
         }
 
         switch (event.event) {
-          case SSEEventType.Content:
+          case SSEEventType.Content: {
             // Handle content chunks
             const contentData = event.data as { choices?: Array<{ delta?: { content?: string } }> };
             const delta = contentData?.choices?.[0]?.delta;
@@ -248,8 +248,9 @@ export function ChatInterface() {
               Object.assign(finalMetrics, usageData.usage);
             }
             break;
+          }
             
-          case SSEEventType.Metrics:
+          case SSEEventType.Metrics: {
             // Handle live metrics updates
             if (performanceSettings.useServerMetrics) {
               const metricsData = event.data as MetricsEventData;
@@ -265,8 +266,9 @@ export function ChatInterface() {
               }
             }
             break;
+          }
             
-          case SSEEventType.MetricsFinal:
+          case SSEEventType.MetricsFinal: {
             // Handle final metrics
             if (performanceSettings.useServerMetrics) {
               const finalMetricsData = event.data as MetricsEventData;
@@ -276,6 +278,7 @@ export function ChatInterface() {
               Object.assign(finalMetrics, finalMetricsData);
             }
             break;
+          }
             
           case SSEEventType.Error:
             // Handle error events

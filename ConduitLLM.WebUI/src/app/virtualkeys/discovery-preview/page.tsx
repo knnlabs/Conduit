@@ -11,7 +11,6 @@ import {
   LoadingOverlay,
   Alert,
   Select,
-  TextInput,
   Badge,
   Tabs,
   JsonInput,
@@ -20,15 +19,12 @@ import {
   Tooltip,
   Paper,
   Divider,
-  Code,
   Box,
 } from '@mantine/core';
 import {
   IconKey,
   IconEye,
   IconAlertCircle,
-  IconSearch,
-  IconRefresh,
   IconCode,
   IconFilter,
   IconApi,

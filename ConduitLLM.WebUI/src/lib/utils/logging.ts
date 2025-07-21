@@ -3,6 +3,8 @@
  * Prevents sensitive data from being logged to console
  */
 
+/* global performance */
+
 // Sensitive keys that should never be logged
 const SENSITIVE_KEYS = [
   'masterkey', 'master_key', 'password', 'secret', 'apikey', 'api_key',
@@ -105,11 +107,12 @@ export function perfLog(operation: string, duration: number, metadata?: unknown)
  * Create a performance timer
  */
 export function createPerfTimer(operation: string) {
-  const start = performance.now();
+  const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
   
   return {
     end: (metadata?: unknown) => {
-      const duration = performance.now() - start;
+      const end = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const duration = end - start;
       perfLog(operation, duration, metadata);
       return duration;
     }

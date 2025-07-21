@@ -169,8 +169,8 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
         
         <Divider />
         
-        {examples.map((example, index) => (
-          <Stack key={`example-${example.label}-${index}`} gap={4}>
+        {examples.map((example) => (
+          <Stack key={`example-${example.label}-${example.cost}-${example.description ?? ''}`} gap={4}>
             <Group justify="space-between" align="flex-start">
               <Stack gap={2}>
                 <Text size="sm">{example.label}</Text>

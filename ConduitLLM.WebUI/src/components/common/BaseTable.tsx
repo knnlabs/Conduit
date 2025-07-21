@@ -160,11 +160,12 @@ export function BaseTable<T extends Record<string, unknown>>({
       case 'currency':
         comparison = Number(a) - Number(b);
         break;
-      case 'date':
+      case 'date': {
         const dateA = typeof a === 'string' || typeof a === 'number' || a instanceof Date ? new Date(a) : new Date(0);
         const dateB = typeof b === 'string' || typeof b === 'number' || b instanceof Date ? new Date(b) : new Date(0);
         comparison = dateA.getTime() - dateB.getTime();
         break;
+      }
       case 'boolean':
         comparison = getBooleanComparison(a, b);
         break;

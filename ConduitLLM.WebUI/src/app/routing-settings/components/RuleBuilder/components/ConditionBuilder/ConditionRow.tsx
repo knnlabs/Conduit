@@ -119,7 +119,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
           />
         );
 
-      case 'select':
+      case 'select': {
         // For boolean-like fields
         const options = (fieldConfig as FieldConfig)?.options ?? [
           { value: 'true', label: 'True' },
@@ -135,6 +135,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
             style={{ flex: 1 }}
           />
         );
+      }
 
       default:
         return (

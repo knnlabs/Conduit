@@ -9,7 +9,8 @@ interface VideoPromptInputProps {
   models: VideoModel[];
 }
 
-export default function VideoPromptInput({}: VideoPromptInputProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function VideoPromptInput({ models }: VideoPromptInputProps) {
   const [prompt, setPrompt] = useState('');
   const { settings, currentTask, setError } = useVideoStore();
   const { generateVideo, isGenerating } = useVideoGeneration();

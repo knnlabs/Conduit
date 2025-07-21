@@ -153,7 +153,7 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         setProviders(prev => prev.map(p => ({ ...p, isEnabled: true })));
         setHasChanges(true);
         break;
-      case 'disable-all':
+      case 'disable-all': {
         const enabledCount = providers.filter(p => p.isEnabled).length;
         if (enabledCount <= 1) {
           notifications.show({
@@ -166,6 +166,7 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         setProviders(prev => prev.map(p => ({ ...p, isEnabled: false })));
         setHasChanges(true);
         break;
+      }
       case 'reset':
         setProviders(JSON.parse(JSON.stringify(originalProviders)) as ProviderDisplay[]);
         setHasChanges(false);

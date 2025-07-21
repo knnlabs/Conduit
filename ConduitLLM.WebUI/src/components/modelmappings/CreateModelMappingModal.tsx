@@ -120,7 +120,7 @@ export function CreateModelMappingModal({
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities
     Object.entries(capabilities).forEach(([key, value]) => {
-      if (form.values.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(form.values, key)) {
         form.setFieldValue(key as keyof FormValues, value);
       }
     });

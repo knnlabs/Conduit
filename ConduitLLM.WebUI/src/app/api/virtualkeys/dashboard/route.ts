@@ -85,37 +85,33 @@ export async function GET(req: NextRequest) {
       console.error('SDK Error in dashboard:', sdkError);
       
       // If analytics methods fail, provide fallback with just virtual keys data
-      try {
-        const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
-        
-        const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => ({
-          id: key.id,
-          name: key.keyName,
-          status: key.isEnabled ? 'active' : 'inactive',
-          requests: 0,
-          cost: 0,
-          budget: key.maxBudget ?? 0,
-          budgetUsed: 0,
-        }));
-        
-        // Return minimal data structure
-        return NextResponse.json({
-          virtualKeys: virtualKeysData,
-          summary: {
-            totalRequests: 0,
-            totalCost: 0,
-            activeKeys: virtualKeysData.filter(k => k.status === 'active').length,
-            averageBudgetUsed: 0,
-            requestsGrowth: null,
-            costGrowth: null,
-            activeKeysGrowth: null,
-          },
-          timeSeriesData: [],
-          modelUsage: [],
-        });
-      } catch (fallbackError) {
-        throw fallbackError;
-      }
+      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
+      
+      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => ({
+        id: key.id,
+        name: key.keyName,
+        status: key.isEnabled ? 'active' : 'inactive',
+        requests: 0,
+        cost: 0,
+        budget: key.maxBudget ?? 0,
+        budgetUsed: 0,
+      }));
+      
+      // Return minimal data structure
+      return NextResponse.json({
+        virtualKeys: virtualKeysData,
+        summary: {
+          totalRequests: 0,
+          totalCost: 0,
+          activeKeys: virtualKeysData.filter(k => k.status === 'active').length,
+          averageBudgetUsed: 0,
+          requestsGrowth: null,
+          costGrowth: null,
+          activeKeysGrowth: null,
+        },
+        timeSeriesData: [],
+        modelUsage: [],
+      });
     }
   } catch (error) {
     return handleSDKError(error);

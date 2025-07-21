@@ -21,17 +21,13 @@ export async function GET(req: NextRequest) {
       // Performance metrics endpoint doesn't exist
       
       // No historical data available since performance metrics endpoint doesn't exist
-      if (false) {
-        // This block will never execute
-      } else {
-        // Add at least current point if no historical data
-        const now = new Date().toISOString();
-        const cpuUsage = systemMetrics?.cpu?.usage || 0;
-        const memoryUsage = systemMetrics?.memory?.used && systemMetrics?.memory?.total 
-          ? Math.round((systemMetrics.memory.used / systemMetrics.memory.total) * 100) 
-          : 0;
-        csvContent += `${now},${cpuUsage},${memoryUsage},0,0,0,0\n`;
-      }
+      // Add at least current point if no historical data
+      const now = new Date().toISOString();
+      const cpuUsage = systemMetrics?.cpu?.usage || 0;
+      const memoryUsage = systemMetrics?.memory?.used && systemMetrics?.memory?.total 
+        ? Math.round((systemMetrics.memory.used / systemMetrics.memory.total) * 100) 
+        : 0;
+      csvContent += `${now},${cpuUsage},${memoryUsage},0,0,0,0\n`;
       
       // Add summary information
       csvContent += `\nSystem Information:\n`;
