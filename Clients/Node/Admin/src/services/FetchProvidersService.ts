@@ -334,7 +334,7 @@ export class FetchProvidersService {
           }))
         };
       }
-    } catch (error) {
+    } catch {
       // Fallback: generate health data from providers list
       const providersResponse = await this.list(1, 100, config);
       
@@ -398,7 +398,7 @@ export class FetchProvidersService {
           }
         };
       });
-    } catch (error) {
+    } catch {
       // Fallback: get providers and generate health data
       const providersResponse = await this.list(1, 100, config);
       
@@ -476,7 +476,7 @@ export class FetchProvidersService {
         },
         incidents: metricsData.incidents || []
       };
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic health metrics
       const baseRequestCount = Math.floor(Math.random() * 10000) + 1000;
       const failureRate = Math.random() * 0.1; // 0-10% failure rate

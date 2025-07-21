@@ -15,9 +15,9 @@ export class MetricsService extends FetchBaseApiClient {
    * @example
    * ```typescript
    * const poolMetrics = await adminClient.metrics.getDatabasePoolMetrics();
-   * console.log(`Active connections: ${poolMetrics.metrics.activeConnections}`);
-   * console.log(`Pool efficiency: ${poolMetrics.metrics.poolEfficiency}%`);
-   * console.log(`Pool is healthy: ${poolMetrics.isHealthy}`);
+   * console.warn(`Active connections: ${poolMetrics.metrics.activeConnections}`);
+   * console.warn(`Pool efficiency: ${poolMetrics.metrics.poolEfficiency}%`);
+   * console.warn(`Pool is healthy: ${poolMetrics.isHealthy}`);
    * ```
    */
   async getDatabasePoolMetrics(): Promise<DatabasePoolMetricsResponse> {
@@ -35,26 +35,26 @@ export class MetricsService extends FetchBaseApiClient {
    * ```typescript
    * const systemMetrics = await adminClient.metrics.getAllMetrics();
    * 
-   * console.log('Database Pool:');
-   * console.log(`  Active connections: ${systemMetrics.metrics.databasePool.activeConnections}`);
-   * console.log(`  Pool efficiency: ${systemMetrics.metrics.databasePool.poolEfficiency}%`);
+   * console.warn('Database Pool:');
+   * console.warn(`  Active connections: ${systemMetrics.metrics.databasePool.activeConnections}`);
+   * console.warn(`  Pool efficiency: ${systemMetrics.metrics.databasePool.poolEfficiency}%`);
    * 
-   * console.log('Memory Usage:');
-   * console.log(`  Working set: ${Math.round(systemMetrics.metrics.memory.workingSet / 1024 / 1024)} MB`);
-   * console.log(`  GC heap size: ${Math.round(systemMetrics.metrics.memory.gcHeapSize / 1024 / 1024)} MB`);
+   * console.warn('Memory Usage:');
+   * console.warn(`  Working set: ${Math.round(systemMetrics.metrics.memory.workingSet / 1024 / 1024)} MB`);
+   * console.warn(`  GC heap size: ${Math.round(systemMetrics.metrics.memory.gcHeapSize / 1024 / 1024)} MB`);
    * 
-   * console.log('CPU Usage:');
-   * console.log(`  CPU usage: ${systemMetrics.metrics.cpu.usage}%`);
-   * console.log(`  Thread count: ${systemMetrics.metrics.cpu.threadCount}`);
+   * console.warn('CPU Usage:');
+   * console.warn(`  CPU usage: ${systemMetrics.metrics.cpu.usage}%`);
+   * console.warn(`  Thread count: ${systemMetrics.metrics.cpu.threadCount}`);
    * 
-   * console.log('Request Statistics:');
-   * console.log(`  Total requests: ${systemMetrics.metrics.requests.totalRequests}`);
-   * console.log(`  Requests per second: ${systemMetrics.metrics.requests.requestsPerSecond}`);
-   * console.log(`  Average response time: ${systemMetrics.metrics.requests.averageResponseTime}ms`);
-   * console.log(`  Error rate: ${systemMetrics.metrics.requests.errorRate}%`);
+   * console.warn('Request Statistics:');
+   * console.warn(`  Total requests: ${systemMetrics.metrics.requests.totalRequests}`);
+   * console.warn(`  Requests per second: ${systemMetrics.metrics.requests.requestsPerSecond}`);
+   * console.warn(`  Average response time: ${systemMetrics.metrics.requests.averageResponseTime}ms`);
+   * console.warn(`  Error rate: ${systemMetrics.metrics.requests.errorRate}%`);
    * 
-   * console.log(`System is healthy: ${systemMetrics.isHealthy}`);
-   * console.log(`Uptime: ${Math.round(systemMetrics.uptime / 1000 / 60)} minutes`);
+   * console.warn(`System is healthy: ${systemMetrics.isHealthy}`);
+   * console.warn(`Uptime: ${Math.round(systemMetrics.uptime / 1000 / 60)} minutes`);
    * ```
    */
   async getAllMetrics(): Promise<AdminMetricsResponse> {
@@ -136,9 +136,9 @@ export class MetricsService extends FetchBaseApiClient {
    * @example
    * ```typescript
    * const memoryInfo = await adminClient.metrics.getMemoryUsage();
-   * console.log(`Working set: ${memoryInfo.workingSetMB} MB`);
-   * console.log(`GC heap: ${memoryInfo.gcHeapSizeMB} MB`);
-   * console.log(`Usage summary: ${memoryInfo.usage}`);
+   * console.warn(`Working set: ${memoryInfo.workingSetMB} MB`);
+   * console.warn(`GC heap: ${memoryInfo.gcHeapSizeMB} MB`);
+   * console.warn(`Usage summary: ${memoryInfo.usage}`);
    * ```
    */
   async getMemoryUsage(): Promise<{workingSetMB: number, gcHeapSizeMB: number, usage: string}> {
@@ -165,10 +165,10 @@ export class MetricsService extends FetchBaseApiClient {
    * @example
    * ```typescript
    * const requestStats = await adminClient.metrics.getRequestStatistics();
-   * console.log(`Requests per second: ${requestStats.rps}`);
-   * console.log(`Average response time: ${requestStats.avgResponseTime}ms`);
-   * console.log(`Error rate: ${requestStats.errorRate}%`);
-   * console.log(`Active requests: ${requestStats.activeRequests}`);
+   * console.warn(`Requests per second: ${requestStats.rps}`);
+   * console.warn(`Average response time: ${requestStats.avgResponseTime}ms`);
+   * console.warn(`Error rate: ${requestStats.errorRate}%`);
+   * console.warn(`Active requests: ${requestStats.activeRequests}`);
    * ```
    */
   async getRequestStatistics(): Promise<{rps: number, avgResponseTime: number, errorRate: number, activeRequests: number}> {
@@ -192,8 +192,8 @@ export class MetricsService extends FetchBaseApiClient {
    * @example
    * ```typescript
    * const uptime = await adminClient.metrics.getSystemUptime();
-   * console.log(`System uptime: ${uptime.uptimeString}`);
-   * console.log(`Uptime in hours: ${uptime.uptimeHours}`);
+   * console.warn(`System uptime: ${uptime.uptimeString}`);
+   * console.warn(`Uptime in hours: ${uptime.uptimeHours}`);
    * ```
    */
   async getSystemUptime(): Promise<{uptimeMs: number, uptimeMinutes: number, uptimeHours: number, uptimeString: string}> {

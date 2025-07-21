@@ -30,7 +30,11 @@ import type {
   RoutePerformanceTestResult,
   CircuitBreakerConfig,
   CircuitBreakerStatus,
+  ErrorSummary,
 } from '../models/configurationExtended';
+import type {
+  CircuitBreakerUpdateResponse
+} from '../models/configurationResponses';
 import type {
   RoutingConfiguration,
   UpdateRoutingConfigDto,
@@ -268,7 +272,7 @@ export class FetchConfigurationService {
   async clearCache(params?: CacheClearParams, config?: RequestConfig): Promise<CacheClearResult> {
     return this.client['post']<CacheClearResult, CacheClearParams>(
       '/api/config/cache/clear',
-      params || {},
+      params ?? {},
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -558,8 +562,8 @@ export class FetchConfigurationService {
    * ```typescript
    * // Get basic routing health status
    * const health = await adminClient.configuration.getRoutingHealthStatus();
-   * console.log(`Overall status: ${health.health.status}`);
-   * console.log(`Healthy routes: ${health.health.healthyRoutes}/${health.health.totalRoutes}`);
+   * console.warn(`Overall status: ${health.health.status}`);
+   * console.warn(`Healthy routes: ${health.health.healthyRoutes}/${health.health.totalRoutes}`);
    * 
    * // Get detailed health information with history
    * const detailedHealth = await adminClient.configuration.getRoutingHealthStatus({
@@ -570,9 +574,9 @@ export class FetchConfigurationService {
    * });
    * 
    * detailedHealth.routes.forEach(route => {
-   *   console.log(`Route ${route.routeName}: ${route.status}`);
-   *   console.log(`  Circuit breaker: ${route.circuitBreaker.state}`);
-   *   console.log(`  Avg response time: ${route.metrics.avgResponseTime}ms`);
+   *   console.warn(`Route ${route.routeName}: ${route.status}`);
+   *   console.warn(`  Circuit breaker: ${route.circuitBreaker.state}`);
+   *   console.warn(`  Avg response time: ${route.metrics.avgResponseTime}ms`);
    * });
    * ```
    */
@@ -602,7 +606,7 @@ export class FetchConfigurationService {
       });
 
       return this.transformRoutingHealthResponse(response, options);
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic routing health data
       return this.generateMockRoutingHealthResponse(options);
     }
@@ -625,12 +629,12 @@ export class FetchConfigurationService {
    * // Get health status for a specific route
    * const routeHealth = await adminClient.configuration.getRouteHealthStatus('route-openai-gpt4');
    * 
-   * console.log(`Route: ${routeHealth.routeName}`);
-   * console.log(`Status: ${routeHealth.status}`);
-   * console.log(`Health check: ${routeHealth.healthCheck.status}`);
-   * console.log(`Response time: ${routeHealth.healthCheck.responseTime}ms`);
-   * console.log(`Circuit breaker: ${routeHealth.circuitBreaker.state}`);
-   * console.log(`Success rate: ${(routeHealth.metrics.successCount / routeHealth.metrics.requestCount * 100).toFixed(2)}%`);
+   * console.warn(`Route: ${routeHealth.routeName}`);
+   * console.warn(`Status: ${routeHealth.status}`);
+   * console.warn(`Health check: ${routeHealth.healthCheck.status}`);
+   * console.warn(`Response time: ${routeHealth.healthCheck.responseTime}ms`);
+   * console.warn(`Circuit breaker: ${routeHealth.circuitBreaker.state}`);
+   * console.warn(`Success rate: ${(routeHealth.metrics.successCount / routeHealth.metrics.requestCount * 100).toFixed(2)}%`);
    * ```
    */
   async getRouteHealthStatus(
@@ -648,7 +652,7 @@ export class FetchConfigurationService {
       );
 
       return this.transformRouteHealthDetails(response);
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic route health data
       return this.generateMockRouteHealthDetails(routeId)[0];
     }
@@ -671,18 +675,18 @@ export class FetchConfigurationService {
    * // Get 24-hour routing health history with hourly resolution
    * const history = await adminClient.configuration.getRoutingHealthHistory('24h', 'hour');
    * 
-   * console.log(`Time range: ${history.summary.timeRange}`);
-   * console.log(`Average healthy percentage: ${history.summary.avgHealthyPercentage}%`);
-   * console.log(`Uptime: ${history.summary.uptimePercentage}%`);
+   * console.warn(`Time range: ${history.summary.timeRange}`);
+   * console.warn(`Average healthy percentage: ${history.summary.avgHealthyPercentage}%`);
+   * console.warn(`Uptime: ${history.summary.uptimePercentage}%`);
    * 
    * // Review historical data points
    * history.dataPoints.forEach(point => {
-   *   console.log(`${point.timestamp}: ${point.healthyRoutes}/${point.totalRoutes} routes healthy`);
+   *   console.warn(`${point.timestamp}: ${point.healthyRoutes}/${point.totalRoutes} routes healthy`);
    * });
    * 
    * // Check for incidents
    * history.incidents.forEach(incident => {
-   *   console.log(`Incident: ${incident.type} affecting ${incident.affectedRoutes.length} routes`);
+   *   console.warn(`Incident: ${incident.type} affecting ${incident.affectedRoutes.length} routes`);
    * });
    * ```
    */
@@ -707,7 +711,7 @@ export class FetchConfigurationService {
       );
 
       return this.transformRoutingHealthHistory(response, timeRange);
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic health history data
       return this.generateMockRoutingHealthHistory(timeRange, resolution);
     }
@@ -744,19 +748,19 @@ export class FetchConfigurationService {
    *   }
    * });
    * 
-   * console.log(`Test completed: ${testResult.summary.thresholdsPassed ? 'PASSED' : 'FAILED'}`);
-   * console.log(`Total requests: ${testResult.summary.totalRequests}`);
-   * console.log(`Success rate: ${((testResult.summary.successfulRequests / testResult.summary.totalRequests) * 100).toFixed(2)}%`);
-   * console.log(`Average latency: ${testResult.summary.avgLatency}ms`);
-   * console.log(`P95 latency: ${testResult.summary.p95Latency}ms`);
+   * console.warn(`Test completed: ${testResult.summary.thresholdsPassed ? 'PASSED' : 'FAILED'}`);
+   * console.warn(`Total requests: ${testResult.summary.totalRequests}`);
+   * console.warn(`Success rate: ${((testResult.summary.successfulRequests / testResult.summary.totalRequests) * 100).toFixed(2)}%`);
+   * console.warn(`Average latency: ${testResult.summary.avgLatency}ms`);
+   * console.warn(`P95 latency: ${testResult.summary.p95Latency}ms`);
    * 
    * // Review per-route results
    * testResult.routeResults.forEach(route => {
-   *   console.log(`Route ${route.routeName}: ${route.thresholdsPassed ? 'PASSED' : 'FAILED'}`);
+   *   console.warn(`Route ${route.routeName}: ${route.thresholdsPassed ? 'PASSED' : 'FAILED'}`);
    * });
    * 
    * // Get recommendations
-   * testResult.recommendations.forEach(rec => console.log(`💡 ${rec}`));
+   * testResult.recommendations.forEach(rec => console.warn(`💡 ${rec}`));
    * ```
    */
   async runRoutePerformanceTest(
@@ -769,13 +773,13 @@ export class FetchConfigurationService {
         params,
         {
           signal: config?.signal,
-          timeout: config?.timeout || 60000, // Default to 60s for long-running tests
+          timeout: config?.timeout ?? 60000, // Default to 60s for long-running tests
           headers: config?.headers,
         }
       );
 
       return this.transformRoutePerformanceTestResult(response, params);
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic test results
       return this.generateMockRoutePerformanceTestResult(params);
     }
@@ -797,14 +801,14 @@ export class FetchConfigurationService {
    * const circuitBreakers = await adminClient.configuration.getCircuitBreakerStatus();
    * 
    * circuitBreakers.forEach(breaker => {
-   *   console.log(`Circuit breaker ${breaker.config.id}:`);
-   *   console.log(`  Route: ${breaker.config.routeId}`);
-   *   console.log(`  State: ${breaker.state}`);
-   *   console.log(`  Failure rate: ${breaker.metrics.failureRate}%`);
-   *   console.log(`  Calls: ${breaker.metrics.numberOfCalls}`);
+   *   console.warn(`Circuit breaker ${breaker.config.id}:`);
+   *   console.warn(`  Route: ${breaker.config.routeId}`);
+   *   console.warn(`  State: ${breaker.state}`);
+   *   console.warn(`  Failure rate: ${breaker.metrics.failureRate}%`);
+   *   console.warn(`  Calls: ${breaker.metrics.numberOfCalls}`);
    *   
    *   if (breaker.state === 'open') {
-   *     console.log(`  Next retry: ${breaker.nextRetryAttempt}`);
+   *     console.warn(`  Next retry: ${breaker.nextRetryAttempt}`);
    *   }
    * });
    * ```
@@ -821,7 +825,7 @@ export class FetchConfigurationService {
       );
 
       return this.transformCircuitBreakerStatus(response);
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic circuit breaker data
       return this.generateMockCircuitBreakerStatus();
     }
@@ -851,8 +855,8 @@ export class FetchConfigurationService {
    *   }
    * );
    * 
-   * console.log(`Circuit breaker updated: ${updatedBreaker.config.id}`);
-   * console.log(`New failure threshold: ${updatedBreaker.config.failureThreshold}`);
+   * console.warn(`Circuit breaker updated: ${updatedBreaker.config.id}`);
+   * console.warn(`New failure threshold: ${updatedBreaker.config.failureThreshold}`);
    * ```
    */
   async updateCircuitBreakerConfig(
@@ -861,7 +865,7 @@ export class FetchConfigurationService {
     requestConfig?: RequestConfig
   ): Promise<CircuitBreakerStatus> {
     try {
-      const response = await this.client['put']<any, Partial<CircuitBreakerConfig>>(
+      const response = await this.client['put']<CircuitBreakerUpdateResponse, Partial<CircuitBreakerConfig>>(
         ENDPOINTS.CONFIGURATION.CIRCUIT_BREAKER_BY_ID(breakerId),
         config,
         {
@@ -871,8 +875,8 @@ export class FetchConfigurationService {
         }
       );
 
-      return this.transformCircuitBreakerStatus([response])[0];
-    } catch (error) {
+      return this.transformCircuitBreakerUpdateResponse(response);
+    } catch {
       // Fallback: return mock updated status
       return this.generateMockCircuitBreakerStatus()[0];
     }
@@ -899,11 +903,11 @@ export class FetchConfigurationService {
    *   'performance_alert'
    * ]);
    * 
-   * console.log(`Subscribed with connection ID: ${subscription.connectionId}`);
+   * console.warn(`Subscribed with connection ID: ${subscription.connectionId}`);
    * 
    * // Handle events (this would typically use SignalR or WebSocket)
    * // subscription.onEvent((event: RoutingHealthEvent) => {
-   * //   console.log(`Event: ${event.type} - ${event.details.message}`);
+   * //   console.warn(`Event: ${event.type} - ${event.details.message}`);
    * // });
    * 
    * // Unsubscribe when done
@@ -927,45 +931,45 @@ export class FetchConfigurationService {
 
       // In a real implementation, this would establish a SignalR/WebSocket connection
       return {
-        connectionId: response.connectionId || `conn_${Date.now()}`,
+        connectionId: response.connectionId ?? `conn_${Date.now()}`,
         unsubscribe: () => {
           // Implementation would close the real-time connection
-          console.log('Unsubscribed from routing health events');
+          console.warn('Unsubscribed from routing health events');
         }
       };
-    } catch (error) {
+    } catch {
       // Fallback: return mock subscription
       return {
         connectionId: `mock_conn_${Date.now()}`,
-        unsubscribe: () => console.log('Mock unsubscribe from routing health events')
+        unsubscribe: () => console.warn('Mock unsubscribe from routing health events')
       };
     }
   }
 
   // Helper methods for Issue #437 routing health transformations and mock data
 
-  private transformRoutingHealthResponse(response: any, options: RoutingHealthOptions): RoutingHealthResponse {
+  private transformRoutingHealthResponse(response: RoutingHealthResponse, options: RoutingHealthOptions): RoutingHealthResponse {
     return {
-      health: response.health || this.generateMockRoutingHealthStatus(),
-      routes: response.routes || this.generateMockRouteHealthDetails(),
-      history: options.includeHistory ? response.history || this.generateMockRoutingHealthHistory('24h', 'hour') : undefined,
+      health: response.health ?? this.generateMockRoutingHealthStatus(),
+      routes: response.routes ?? this.generateMockRouteHealthDetails(),
+      history: options.includeHistory ? response.history ?? this.generateMockRoutingHealthHistory('24h', 'hour') : undefined,
       subscription: response.subscription
     };
   }
 
-  private transformRouteHealthDetails(response: any): RouteHealthDetails {
-    return response || this.generateMockRouteHealthDetails(response?.routeId || 'unknown')[0];
+  private transformRouteHealthDetails(response: RouteHealthDetails | null | undefined): RouteHealthDetails {
+    return response ?? this.generateMockRouteHealthDetails('unknown')[0];
   }
 
-  private transformRoutingHealthHistory(response: any, timeRange: string): RoutingHealthHistory {
-    return response || this.generateMockRoutingHealthHistory(timeRange, 'hour');
+  private transformRoutingHealthHistory(response: RoutingHealthHistory, timeRange: string): RoutingHealthHistory {
+    return response ?? this.generateMockRoutingHealthHistory(timeRange as '1h' | '24h' | '7d' | '30d', 'hour');
   }
 
-  private transformRoutePerformanceTestResult(response: any, params: RoutePerformanceTestParams): RoutePerformanceTestResult {
-    return response || this.generateMockRoutePerformanceTestResult(params);
+  private transformRoutePerformanceTestResult(response: RoutePerformanceTestResult, params: RoutePerformanceTestParams): RoutePerformanceTestResult {
+    return response ?? this.generateMockRoutePerformanceTestResult(params);
   }
 
-  private transformCircuitBreakerStatus(response: any): CircuitBreakerStatus[] {
+  private transformCircuitBreakerStatus(response: CircuitBreakerStatus[] | RoutingHealthHistory): CircuitBreakerStatus[] {
     return Array.isArray(response) ? response : this.generateMockCircuitBreakerStatus();
   }
 
@@ -973,7 +977,7 @@ export class FetchConfigurationService {
     return {
       health: this.generateMockRoutingHealthStatus(),
       routes: options.includeRouteDetails ? this.generateMockRouteHealthDetails() : [],
-      history: options.includeHistory ? this.generateMockRoutingHealthHistory(options.historyTimeRange || '24h', options.historyResolution || 'hour') : undefined,
+      history: options.includeHistory ? this.generateMockRoutingHealthHistory(options.historyTimeRange ?? '24h', options.historyResolution ?? 'hour') : undefined,
       subscription: options.includeHistory ? {
         endpoint: '/hub/routing-health',
         connectionId: `conn_${Date.now()}`,
@@ -1022,7 +1026,7 @@ export class FetchConfigurationService {
   private generateMockRouteHealthDetails(routeId?: string): RouteHealthDetails[] {
     const routes = ['openai-gpt4', 'anthropic-claude', 'azure-gpt35', 'google-gemini', 'replicate-llama'];
     return routes.map((route) => ({
-      routeId: routeId || route,
+      routeId: routeId ?? route,
       routeName: route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' '),
       pattern: `/api/chat/completions/${route}`,
       status: Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy',
@@ -1387,7 +1391,7 @@ export class FetchConfigurationService {
   /**
    * Check if feature flag should be enabled for a given context
    */
-  evaluateFeatureFlag(flag: FeatureFlag, context: Record<string, any>): boolean {
+  evaluateFeatureFlag(flag: FeatureFlag, context: Record<string, unknown>): boolean {
     if (!flag.enabled) {
       return false;
     }
@@ -1395,7 +1399,7 @@ export class FetchConfigurationService {
     // Check rollout percentage
     if (flag.rolloutPercentage !== undefined && flag.rolloutPercentage < 100) {
       // Simple hash-based rollout
-      const hash = this.hashString(context.userId || context.key || '');
+      const hash = this.hashString((context.userId ?? context.key ?? '') as string);
       const bucket = (hash % 100) + 1;
       if (bucket > flag.rolloutPercentage) {
         return false;
@@ -1411,15 +1415,19 @@ export class FetchConfigurationService {
           case 'equals':
             return value === condition.values[0];
           case 'in':
-            return condition.values.includes(value);
+            return condition.values.includes(value as string | number | boolean);
           case 'not_in':
-            return !condition.values.includes(value);
-          case 'regex':
+            return !condition.values.includes(value as string | number | boolean);
+          case 'regex': {
             const pattern = condition.values[0];
             if (typeof pattern !== 'string') {
               return false;
             }
+            if (typeof value !== 'string') {
+              return false;
+            }
             return new RegExp(pattern).test(value);
+          }
           default:
             return false;
         }
@@ -1427,6 +1435,20 @@ export class FetchConfigurationService {
     }
 
     return true;
+  }
+
+  /**
+   * Transform circuit breaker update response to CircuitBreakerStatus
+   */
+  private transformCircuitBreakerUpdateResponse(response: CircuitBreakerUpdateResponse): CircuitBreakerStatus {
+    return {
+      config: response.config,
+      state: response.state,
+      metrics: response.metrics,
+      stateTransitions: response.stateTransitions,
+      lastStateChange: response.lastStateChange,
+      nextRetryAttempt: response.nextRetryAttempt
+    };
   }
 
   /**
@@ -1486,7 +1508,7 @@ export class FetchConfigurationService {
     }
 
     // Error pattern recommendations
-    const errorTypes = result.errors.map((e: any) => e.type);
+    const errorTypes = result.errors.map((e: ErrorSummary) => e.type);
     if (errorTypes.includes('timeout')) {
       recommendations.push('Timeout errors detected. Consider increasing timeout values or optimizing slow endpoints.');
     }

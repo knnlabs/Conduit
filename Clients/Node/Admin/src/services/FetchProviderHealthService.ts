@@ -382,7 +382,7 @@ export class FetchProviderHealthService {
           resolved: !!incident.endTime
         })) : []
       };
-    } catch (error) {
+    } catch {
       // Fallback: generate realistic historical data
       const startTime = new Date(options.startDate).getTime();
       const endTime = new Date(options.endDate).getTime();

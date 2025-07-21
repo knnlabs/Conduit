@@ -338,7 +338,7 @@ describe('FetchBaseApiClient', () => {
 
       try {
         await callbackClient.testRequest('/test');
-      } catch (e) {
+      } catch {
         // Expected
       }
       

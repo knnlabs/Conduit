@@ -94,7 +94,7 @@ export class FetchMonitoringService {
             if (data === '[DONE]') continue;
             try {
               yield JSON.parse(data) as MetricsResponse;
-            } catch (e) {
+            } catch {
               // Skip invalid JSON
             }
           }
@@ -446,7 +446,7 @@ export class FetchMonitoringService {
             if (data === '[DONE]') continue;
             try {
               yield JSON.parse(data) as SystemResourceMetrics;
-            } catch (e) {
+            } catch {
               // Skip invalid JSON
             }
           }
@@ -550,7 +550,7 @@ export class FetchMonitoringService {
             if (data === '[DONE]') continue;
             try {
               yield JSON.parse(data) as LogEntry;
-            } catch (e) {
+            } catch {
               // Skip invalid JSON
             }
           }
