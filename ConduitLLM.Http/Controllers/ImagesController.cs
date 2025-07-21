@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration;
 using MassTransit;
@@ -25,33 +26,33 @@ namespace ConduitLLM.Http.Controllers
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;
         private readonly ILogger<ImagesController> _logger;
-        private readonly IProviderDiscoveryService _discoveryService;
         private readonly IModelProviderMappingService _modelMappingService;
-        private readonly IImageGenerationQueue _imageQueue;
         private readonly IAsyncTaskService _taskService;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IMediaLifecycleService _mediaLifecycleService;
+        private readonly IImageGenerationMetricsService _metricsService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
             IMediaStorageService storageService,
             ILogger<ImagesController> logger,
-            IProviderDiscoveryService discoveryService,
             IModelProviderMappingService modelMappingService,
-            IImageGenerationQueue imageQueue,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IMediaLifecycleService mediaLifecycleService,
+            IImageGenerationMetricsService metricsService)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
             _logger = logger;
-            _discoveryService = discoveryService;
             _modelMappingService = modelMappingService;
-            _imageQueue = imageQueue;
             _taskService = taskService;
             _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
+            _mediaLifecycleService = mediaLifecycleService;
+            _metricsService = metricsService;
         }
 
         /// <summary>
@@ -70,7 +71,50 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
                 }
 
-                var modelName = request.Model ?? "dall-e-3";
+                var modelName = request.Model;
+                
+                // If no model specified, use smart provider selection
+                if (string.IsNullOrEmpty(modelName))
+                {
+                    _logger.LogInformation("No model specified, using smart provider selection");
+                    
+                    // Get all image generation capable providers
+                    var allMappings = await _modelMappingService.GetAllMappingsAsync();
+                    var imageProviders = allMappings.Where(m => m.SupportsImageGeneration).ToList();
+                    if (imageProviders.Any())
+                    {
+                        var availableProviders = imageProviders
+                            .Select(m => (m.ProviderName, m.ProviderModelId))
+                            .ToList();
+                        
+                        // Select optimal provider based on current metrics
+                        var optimal = await _metricsService.SelectOptimalProviderAsync(
+                            availableProviders,
+                            request.N,
+                            maxWaitTimeSeconds: null);
+                        
+                        if (optimal.HasValue)
+                        {
+                            var selectedMapping = imageProviders.FirstOrDefault(m => 
+                                m.ProviderName == optimal.Value.Provider && 
+                                m.ProviderModelId == optimal.Value.Model);
+                            
+                            if (selectedMapping != null)
+                            {
+                                modelName = selectedMapping.ModelAlias;
+                                _logger.LogInformation("Smart selection chose {Provider}/{Model} (alias: {Alias})", 
+                                    optimal.Value.Provider, optimal.Value.Model, modelName);
+                            }
+                        }
+                    }
+                    
+                    // Fallback to default if smart selection fails
+                    if (string.IsNullOrEmpty(modelName))
+                    {
+                        modelName = "dall-e-3";
+                        _logger.LogInformation("Smart selection failed, falling back to default model: {Model}", modelName);
+                    }
+                }
                 
                 // First check model mappings for image generation capability
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
@@ -86,11 +130,9 @@ namespace ConduitLLM.Http.Controllers
                 }
                 else
                 {
-                    // Fall back to discovery service if no mapping exists
-                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
-                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
-                        modelName, 
-                        ModelCapability.ImageGeneration);
+                    // Model must be mapped to be used
+                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", modelName);
+                    supportsImageGen = false;
                 }
                 
                 if (!supportsImageGen)
@@ -206,10 +248,43 @@ namespace ConduitLLM.Http.Controllers
 
                             var storageResult = await _storageService.StoreAsync(imageStream, metadata);
 
-                            // TODO: Media Ownership Tracking - We need to record this media in a database table
-                            // to track which virtual key owns it. Currently we only store CreatedBy in metadata.
-                            // Without DB tracking, we can't clean up media when virtual keys are deleted.
-                            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+                            // Track media ownership for lifecycle management
+                            try
+                            {
+                                // Get virtual key ID from HttpContext
+                                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                                if (!string.IsNullOrEmpty(virtualKeyIdClaim) && int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
+                                {
+                                    var mediaMetadata = new Core.Interfaces.MediaLifecycleMetadata
+                                    {
+                                        ContentType = contentType,
+                                        SizeBytes = storageResult.SizeBytes,
+                                        Provider = mapping?.ProviderName ?? "unknown",
+                                        Model = request.Model ?? "unknown",
+                                        Prompt = request.Prompt,
+                                        StorageUrl = storageResult.Url,
+                                        PublicUrl = storageResult.Url
+                                    };
+
+                                    await _mediaLifecycleService.TrackMediaAsync(
+                                        virtualKeyId,
+                                        storageResult.StorageKey,
+                                        "image",
+                                        mediaMetadata);
+                                    
+                                    _logger.LogInformation("Tracked media {StorageKey} for virtual key {VirtualKeyId}", 
+                                        storageResult.StorageKey, virtualKeyId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Could not determine virtual key ID for media tracking");
+                                }
+                            }
+                            catch (Exception trackEx)
+                            {
+                                // Don't fail the request if tracking fails
+                                _logger.LogError(trackEx, "Failed to track media ownership, but continuing with response");
+                            }
                             
                             // Update response with our proxied URL
                             imageData.Url = storageResult.Url;
@@ -273,10 +348,8 @@ namespace ConduitLLM.Http.Controllers
                 }
                 else
                 {
-                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
-                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
-                        modelName, 
-                        ModelCapability.ImageGeneration);
+                    _logger.LogWarning("No mapping found for model {Model}. Model must be configured in model mappings.", modelName);
+                    supportsImageGen = false;
                 }
                 
                 if (!supportsImageGen)
@@ -285,7 +358,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Get virtual key information
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyHash))
                 {
                     return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
@@ -297,22 +370,13 @@ namespace ConduitLLM.Http.Controllers
                     return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
                 }
 
-                // Create task ID
-                var taskId = Guid.NewGuid().ToString();
-                
-                // Create async task
-                var createdTaskId = await _taskService.CreateTaskAsync("image_generation", new
-                {
-                    taskId = taskId,
-                    request = request,
-                    model = modelName,
-                    virtualKeyId = virtualKey.Id
-                });
+                // Create correlation ID
+                var correlationId = Guid.NewGuid().ToString();
 
-                // Create and enqueue the generation request
+                // Create the generation request event first so we can store it as metadata
                 var generationRequest = new ImageGenerationRequested
                 {
-                    TaskId = taskId,
+                    TaskId = "", // Will be filled in after task creation
                     VirtualKeyId = virtualKey.Id,
                     VirtualKeyHash = virtualKeyHash,
                     Request = new ConduitLLM.Core.Events.ImageGenerationRequest
@@ -329,19 +393,40 @@ namespace ConduitLLM.Http.Controllers
                     UserId = HttpContext.User.FindFirst("sub")?.Value ?? "anonymous",
                     Priority = 0, // Normal priority
                     RequestedAt = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = correlationId
                 };
 
-                // Enqueue for processing
-                await _imageQueue.EnqueueAsync(generationRequest);
+                // Create metadata for the task including the serialized request
+                var metadata = new TaskMetadata(virtualKey.Id)
+                {
+                    Model = modelName,
+                    Prompt = request.Prompt,
+                    CorrelationId = correlationId,
+                    Payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
+                };
+
+                // Create the task using the correct method signature
+                var taskId = await _taskService.CreateTaskAsync(
+                    taskType: "image_generation",
+                    virtualKeyId: virtualKey.Id,
+                    metadata: metadata);
+
+                // Update the request with the actual task ID
+                generationRequest = generationRequest with { TaskId = taskId };
+
+                // Publish the event directly to MassTransit for immediate processing
+                await _publishEndpoint.Publish(generationRequest);
+                
+                _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event", 
+                    taskId, modelName);
 
                 // Return accepted response with task information
-                var response = new
+                var response = new AsyncTaskResponse
                 {
-                    taskId = taskId,
-                    status = "queued",
-                    statusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
-                    created = DateTime.UtcNow
+                    TaskId = taskId,
+                    Status = TaskStateConstants.Queued, 
+                    CheckStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 return Accepted(response);
@@ -363,39 +448,84 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
+                _logger.LogInformation("GetGenerationStatus called for task {TaskId}", taskId);
+                
                 // Get task from service
                 var task = await _taskService.GetTaskStatusAsync(taskId);
                 if (task == null)
                 {
+                    _logger.LogWarning("Task {TaskId} not found by task service", taskId);
                     return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                 }
+                
+                _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
+                    taskId, task.State, task.Metadata != null);
 
                 // Verify user owns this task
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
-                if (task.Metadata != null)
+                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(Convert.ToInt32(keyIdObj.ToString()));
-                        if (taskVirtualKey == null || taskVirtualKey.KeyHash != virtualKeyHash)
+                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
+                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        
+                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
+                        string userKeyHash;
+                        try
                         {
+                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                            {
+                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
+                                var hashBytes = sha256.ComputeHash(keyBytes);
+                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
+                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to compute hash from virtual key");
                             return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                         }
+                        
+                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
+                        if (taskVirtualKey == null)
+                        {
+                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                        
+                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
+                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
+                        
+                        // Compare the extracted hash with the database hash
+                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
+                                taskId, 
+                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
+                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                        
+                        _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
                     }
                 }
 
                 // Build response
-                var response = new
+                var response = new AsyncTaskStatusResponse
                 {
-                    taskId = task.TaskId,
-                    status = task.State.ToString().ToLowerInvariant(),
-                    created = task.CreatedAt,
-                    updated = task.UpdatedAt,
-                    progress = task.ProgressPercentage,
-                    result = task.State == TaskState.Completed ? task.Result : null,
-                    error = task.State == TaskState.Failed ? task.Error : null
+                    TaskId = task.TaskId,
+                    Status = TaskStateConstants.FromTaskState(task.State),
+                    CreatedAt = task.CreatedAt,
+                    UpdatedAt = task.UpdatedAt,
+                    Progress = task.Progress,
+                    Result = task.State == TaskState.Completed ? task.Result : null,
+                    Error = task.State == TaskState.Failed ? task.Error : null
                 };
 
                 return Ok(response);
@@ -408,7 +538,7 @@ namespace ConduitLLM.Http.Controllers
         }
 
         /// <summary>
-        /// Cancels an async image generation task if it hasn't started processing yet.
+        /// Cancels an async image generation task.
         /// </summary>
         /// <param name="taskId">The task ID to cancel.</param>
         /// <returns>Cancellation result.</returns>
@@ -425,31 +555,91 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Verify user owns this task
-                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
+                {
+                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
+                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
+                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
+                    {
+                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
+                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        
+                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
+                        string userKeyHash;
+                        try
+                        {
+                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                            {
+                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
+                                var hashBytes = sha256.ComputeHash(keyBytes);
+                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
+                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to compute hash from virtual key");
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                        
+                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
+                        if (taskVirtualKey == null)
+                        {
+                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                        
+                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
+                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
+                        
+                        // Compare the extracted hash with the database hash
+                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
+                                taskId, 
+                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
+                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                        
+                        _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
+                    }
+                }
+
+                // Check if task can be cancelled
+                if (task.State == TaskState.Completed || task.State == TaskState.Failed || task.State == TaskState.Cancelled)
+                {
+                    return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
+                }
+
+                // Get virtual key ID from metadata
+                var taskVirtualKeyId = 0;
                 if (task.Metadata != null)
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(Convert.ToInt32(keyIdObj.ToString()));
-                        if (taskVirtualKey == null || taskVirtualKey.KeyHash != virtualKeyHash)
-                        {
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
+                        taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
                     }
                 }
 
-                // Check if task can be cancelled
-                if (task.State == TaskState.Completed || task.State == TaskState.Failed)
+                // Publish cancellation event
+                await _publishEndpoint.Publish(new ImageGenerationCancelled
                 {
-                    return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
-                }
+                    TaskId = taskId,
+                    VirtualKeyId = taskVirtualKeyId,
+                    Reason = "Cancelled by user request",
+                    CancelledAt = DateTime.UtcNow,
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
 
-                // Cancel the task
-                await _taskService.UpdateTaskStatusAsync(taskId, TaskState.Failed, error: "Cancelled by user");
+                _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
 
-                return Ok(new { message = "Task cancelled successfully", taskId = taskId });
+                return Ok(new { message = "Task cancellation requested", task_id = taskId });
             }
             catch (Exception ex)
             {

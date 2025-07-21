@@ -65,15 +65,10 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
 
-        // TODO: Media Ownership Tracking - Add MediaRecords table to track generated media
-        // This table should include:
-        // - StorageKey (unique identifier)
-        // - VirtualKeyId (foreign key with cascade delete)
-        // - MediaType (image/video)
-        // - Provider, Model, Prompt
-        // - SizeBytes, ContentHash
-        // - CreatedAt, ExpiresAt, LastAccessedAt
-        // See: docs/TODO-Media-Lifecycle-Management.md for schema design
+        /// <summary>
+        /// Database set for media records
+        /// </summary>
+        public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
 
         /// <summary>
         /// Database set for provider credentials
@@ -134,6 +129,31 @@ namespace ConduitLLM.Configuration
         /// Database set for audio usage logs
         /// </summary>
         public virtual DbSet<AudioUsageLog> AudioUsageLogs { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for async tasks
+        /// </summary>
+        public virtual DbSet<AsyncTask> AsyncTasks { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for media lifecycle records
+        /// </summary>
+        public virtual DbSet<MediaLifecycleRecord> MediaLifecycleRecords { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for batch operation history
+        /// </summary>
+        public virtual DbSet<BatchOperationHistory> BatchOperationHistory { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for cache configurations
+        /// </summary>
+        public virtual DbSet<CacheConfiguration> CacheConfigurations { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for cache configuration audit logs
+        /// </summary>
+        public virtual DbSet<CacheConfigurationAudit> CacheConfigurationAudits { get; set; } = null!;
 
         public bool IsTestEnvironment { get; set; } = false;
 
@@ -301,14 +321,113 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.SessionId);
             });
 
+            // Configure AsyncTask entity
+            modelBuilder.Entity<AsyncTask>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.State);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => e.IsArchived);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
+                
+                // Composite index for archival queries
+                entity.HasIndex(e => new { e.IsArchived, e.CompletedAt, e.State })
+                      .HasDatabaseName("IX_AsyncTasks_Archival");
+                
+                // Index for cleanup queries
+                entity.HasIndex(e => new { e.IsArchived, e.ArchivedAt })
+                      .HasDatabaseName("IX_AsyncTasks_Cleanup");
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                // Configure large text fields without specifying provider-specific types
+                // EF Core will map these to appropriate text types for each provider
+                // By not specifying MaxLength, EF Core treats these as unlimited length text
+                entity.Property(e => e.Payload);
+                entity.Property(e => e.Result);
+                entity.Property(e => e.Error);
+                entity.Property(e => e.Metadata);
+            });
+
+            // Configure MediaRecord entity
+            modelBuilder.Entity<MediaRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.StorageKey).IsUnique();
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.ExpiresAt);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure MediaLifecycleRecord entity
+            modelBuilder.Entity<MediaLifecycleRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.StorageKey).IsUnique();
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.ExpiresAt);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.IsDeleted });
+                entity.HasIndex(e => new { e.ExpiresAt, e.IsDeleted });
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure BatchOperationHistory entity
+            modelBuilder.Entity<BatchOperationHistory>(entity =>
+            {
+                entity.HasKey(e => e.OperationId);
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.OperationType);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.StartedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.StartedAt });
+                entity.HasIndex(e => new { e.OperationType, e.Status, e.StartedAt });
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure CacheConfiguration entity
+            modelBuilder.Entity<CacheConfiguration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Region).IsUnique().HasFilter("IsActive = 1");
+                entity.HasIndex(e => new { e.Region, e.IsActive });
+                entity.HasIndex(e => e.UpdatedAt);
+                entity.Property(e => e.Version).IsConcurrencyToken();
+            });
+
+            // Configure CacheConfigurationAudit entity
+            modelBuilder.Entity<CacheConfigurationAudit>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Region);
+                entity.HasIndex(e => e.ChangedAt);
+                entity.HasIndex(e => new { e.Region, e.ChangedAt });
+                entity.HasIndex(e => e.ChangedBy);
+            });
+
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
 
-            // Only configure ModelProviderMapping in non-test environments or ignore it in test environments
-            if (IsTestEnvironment)
-            {
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ProviderCredential>();
-            }
+            // Note: ModelProviderMapping and ProviderCredential are now included in test environments
+            // as they are required by the application code during tests
         }
     }
 }

@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   IpFilterDto,
@@ -6,40 +6,43 @@ import {
   UpdateIpFilterDto,
   IpFilterSettingsDto,
   UpdateIpFilterSettingsDto,
-  IpCheckRequest,
   IpCheckResult,
   IpFilterFilters,
   IpFilterStatistics,
-  BulkIpFilterRequest,
   BulkIpFilterResponse,
   IpFilterValidationResult,
   FilterType,
+  CreateTemporaryIpFilterDto,
+  BulkOperationResult,
+  IpFilterImport,
+  IpFilterImportResult,
+  BlockedRequestStats,
 } from '../models/ipFilter';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
 
 const createFilterSchema = z.object({
   name: z.string().min(1).max(100),
-  cidrRange: z.string().regex(
-    /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/,
-    'Invalid CIDR format (e.g., 192.168.1.0/24)'
+  ipAddressOrCidr: z.string().regex(
+    /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/,
+    'Invalid IP address or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)'
   ),
-  filterType: z.enum(['Allow', 'Deny']),
+  filterType: z.enum(['whitelist', 'blacklist']),
   isEnabled: z.boolean().optional(),
   description: z.string().max(500).optional(),
 });
 
 const ipCheckSchema = z.object({
-  ipAddress: z.string().ip(),
+  ipAddress: z.string().ipv4().or(z.string().ipv6()),
   endpoint: z.string().optional(),
 });
 
-export class IpFilterService extends BaseApiClient {
+export class IpFilterService extends FetchBaseApiClient {
   async create(request: CreateIpFilterDto): Promise<IpFilterDto> {
     try {
       createFilterSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid IP filter request', error);
+      throw new ValidationError('Invalid IP filter request', { validationError: error });
     }
 
     const response = await this.post<IpFilterDto>(
@@ -57,7 +60,7 @@ export class IpFilterService extends BaseApiClient {
           filterType: filters.filterType,
           isEnabled: filters.isEnabled,
           nameContains: filters.nameContains,
-          cidrContains: filters.cidrContains,
+          ipAddressOrCidrContains: filters.ipAddressOrCidrContains,
           lastMatchedAfter: filters.lastMatchedAfter,
           lastMatchedBefore: filters.lastMatchedBefore,
           minMatchCount: filters.minMatchCount,
@@ -93,6 +96,8 @@ export class IpFilterService extends BaseApiClient {
   }
 
   async update(id: number, request: UpdateIpFilterDto): Promise<void> {
+    // Ensure the ID in the request matches the URL parameter
+    request.id = id;
     await this.put(ENDPOINTS.IP_FILTERS.BY_ID(id), request);
     await this.invalidateCache();
   }
@@ -116,15 +121,14 @@ export class IpFilterService extends BaseApiClient {
     await this.invalidateCache();
   }
 
-  async checkIp(ipAddress: string, endpoint?: string): Promise<IpCheckResult> {
+  async checkIp(ipAddress: string): Promise<IpCheckResult> {
     try {
-      ipCheckSchema.parse({ ipAddress, endpoint });
+      ipCheckSchema.parse({ ipAddress });
     } catch (error) {
-      throw new ValidationError('Invalid IP check request', error);
+      throw new ValidationError('Invalid IP check request', { validationError: error });
     }
 
-    const request: IpCheckRequest = { ipAddress, endpoint };
-    return this.post<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK, request);
+    return this.get<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK(ipAddress));
   }
 
   async search(query: string): Promise<IpFilterDto[]> {
@@ -135,28 +139,28 @@ export class IpFilterService extends BaseApiClient {
   }
 
   async enableFilter(id: number): Promise<void> {
-    await this.update(id, { isEnabled: true });
+    await this.update(id, { id, isEnabled: true });
   }
 
   async disableFilter(id: number): Promise<void> {
-    await this.update(id, { isEnabled: false });
+    await this.update(id, { id, isEnabled: false });
   }
 
-  async createAllowFilter(name: string, cidrRange: string, description?: string): Promise<IpFilterDto> {
+  async createAllowFilter(name: string, ipAddressOrCidr: string, description?: string): Promise<IpFilterDto> {
     return this.create({
       name,
-      cidrRange,
-      filterType: 'Allow',
+      ipAddressOrCidr,
+      filterType: 'whitelist',
       isEnabled: true,
       description,
     });
   }
 
-  async createDenyFilter(name: string, cidrRange: string, description?: string): Promise<IpFilterDto> {
+  async createDenyFilter(name: string, ipAddressOrCidr: string, description?: string): Promise<IpFilterDto> {
     return this.create({
       name,
-      cidrRange,
-      filterType: 'Deny',
+      ipAddressOrCidr,
+      filterType: 'blacklist',
       isEnabled: true,
       description,
     });
@@ -166,20 +170,146 @@ export class IpFilterService extends BaseApiClient {
     return this.list({ filterType });
   }
 
-  // Stub methods
+  // Bulk operations
+  async bulkCreate(rules: CreateIpFilterDto[]): Promise<BulkOperationResult> {
+    if (!Array.isArray(rules) || rules.length === 0) {
+      throw new ValidationError('Rules array is required and must not be empty');
+    }
+
+    const response = await this.post<BulkOperationResult>(
+      ENDPOINTS.IP_FILTERS.BULK_CREATE,
+      { rules }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async bulkUpdate(operation: 'enable' | 'disable', ruleIds: string[]): Promise<IpFilterDto[]> {
+    if (!['enable', 'disable'].includes(operation)) {
+      throw new ValidationError('Operation must be either "enable" or "disable"');
+    }
+
+    if (!Array.isArray(ruleIds) || ruleIds.length === 0) {
+      throw new ValidationError('Rule IDs array is required and must not be empty');
+    }
+
+    const response = await this.put<IpFilterDto[]>(
+      ENDPOINTS.IP_FILTERS.BULK_UPDATE,
+      { operation, ruleIds }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async bulkDelete(ruleIds: string[]): Promise<BulkOperationResult> {
+    if (!Array.isArray(ruleIds) || ruleIds.length === 0) {
+      throw new ValidationError('Rule IDs array is required and must not be empty');
+    }
+
+    const response = await this.post<BulkOperationResult>(
+      ENDPOINTS.IP_FILTERS.BULK_DELETE,
+      { ruleIds }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  // Temporary rules
+  async createTemporary(rule: CreateTemporaryIpFilterDto): Promise<IpFilterDto> {
+    const temporarySchema = createFilterSchema.extend({
+      expiresAt: z.string().refine((val) => {
+        const date = new Date(val);
+        return !isNaN(date.getTime()) && date > new Date();
+      }, 'expiresAt must be a valid future date'),
+      reason: z.string().optional(),
+    });
+
+    try {
+      temporarySchema.parse(rule);
+    } catch (error) {
+      throw new ValidationError('Invalid temporary IP filter request', { validationError: error });
+    }
+
+    const response = await this.post<IpFilterDto>(
+      ENDPOINTS.IP_FILTERS.CREATE_TEMPORARY,
+      rule
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async getExpiring(withinHours: number): Promise<IpFilterDto[]> {
+    if (withinHours <= 0) {
+      throw new ValidationError('withinHours must be a positive number');
+    }
+
+    const queryParams = new URLSearchParams({ withinHours: withinHours.toString() });
+    const url = `${ENDPOINTS.IP_FILTERS.EXPIRING}?${queryParams.toString()}`;
+    
+    return this.get<IpFilterDto[]>(url);
+  }
+
+  // Import/Export
+  async import(rules: IpFilterImport[]): Promise<IpFilterImportResult> {
+    if (!Array.isArray(rules) || rules.length === 0) {
+      throw new ValidationError('Rules array is required and must not be empty');
+    }
+
+    const response = await this.post<IpFilterImportResult>(
+      ENDPOINTS.IP_FILTERS.IMPORT,
+      { rules }
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async export(format: 'json' | 'csv'): Promise<Blob> {
+    if (!['json', 'csv'].includes(format)) {
+      throw new ValidationError('Format must be either "json" or "csv"');
+    }
+
+    const queryParams = new URLSearchParams({ format });
+    const url = `${ENDPOINTS.IP_FILTERS.EXPORT}?${queryParams.toString()}`;
+
+    const response = await this.get<Blob>(url, {
+      headers: { Accept: format === 'csv' ? 'text/csv' : 'application/json' },
+      responseType: 'blob',
+    });
+
+    return response;
+  }
+
+  // Analytics
+  async getBlockedRequestStats(params: { 
+    startDate?: string; 
+    endDate?: string; 
+    groupBy?: 'rule' | 'country' | 'hour' 
+  }): Promise<BlockedRequestStats> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.groupBy) queryParams.append('groupBy', params.groupBy);
+
+    const url = `${ENDPOINTS.IP_FILTERS.BLOCKED_STATS}?${queryParams.toString()}`;
+    
+    return this.withCache(
+      url,
+      () => this.get<BlockedRequestStats>(url),
+      CACHE_TTL.SHORT
+    );
+  }
+
+  // Legacy stub methods for backward compatibility
   async getStatistics(): Promise<IpFilterStatistics> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getStatistics requires Admin API endpoint implementation. ' +
         'Consider implementing GET /api/ipfilter/statistics'
-    );
-  }
-
-  async bulkCreate(_request: BulkIpFilterRequest): Promise<BulkIpFilterResponse> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'bulkCreate requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/ipfilter/bulk'
     );
   }
 

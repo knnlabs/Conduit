@@ -57,6 +57,26 @@ public class ModelProviderMapping
     public bool SupportsImageGeneration { get; set; }
 
     /// <summary>
+    /// Indicates whether this model supports embedding operations.
+    /// </summary>
+    public bool SupportsEmbeddings { get; set; }
+
+    /// <summary>
+    /// Indicates whether this model supports video generation.
+    /// </summary>
+    public bool SupportsVideoGeneration { get; set; }
+
+    /// <summary>
+    /// Indicates whether this model supports function calling.
+    /// </summary>
+    public bool SupportsFunctionCalling { get; set; }
+
+    /// <summary>
+    /// Indicates whether this model supports streaming responses.
+    /// </summary>
+    public bool SupportsStreaming { get; set; }
+
+    /// <summary>
     /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
     /// </summary>
     public string? TokenizerType { get; set; }

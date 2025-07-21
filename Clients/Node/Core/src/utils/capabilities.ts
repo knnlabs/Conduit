@@ -1,15 +1,9 @@
 import { IMAGE_MODEL_CAPABILITIES, type ImageModel } from '../models/images';
+import { ModelCapability, getCapabilityDisplayName as getDisplayName } from '@knn_labs/conduit-common';
 
-/**
- * Model capability types for Core client
- */
-export enum CoreModelCapability {
-  CHAT = 'chat',
-  VISION = 'vision',
-  IMAGE_GENERATION = 'image-generation',
-  IMAGE_EDIT = 'image-edit',
-  IMAGE_VARIATION = 'image-variation',
-}
+// Re-export ModelCapability but alias some Core-specific ones
+export { ModelCapability };
+export const CoreModelCapability = ModelCapability;
 
 /**
  * Check if a model supports a specific capability
@@ -19,20 +13,20 @@ export enum CoreModelCapability {
  */
 export function modelSupportsCapability(
   modelId: string,
-  capability: CoreModelCapability
+  capability: ModelCapability
 ): boolean {
   // For image generation models, check specific capabilities
   if (modelId in IMAGE_MODEL_CAPABILITIES) {
     const imageCapabilities = IMAGE_MODEL_CAPABILITIES[modelId as ImageModel];
     switch (capability) {
-      case CoreModelCapability.IMAGE_GENERATION:
+      case ModelCapability.IMAGE_GENERATION:
         return true; // All models in IMAGE_MODEL_CAPABILITIES support generation
-      case CoreModelCapability.IMAGE_EDIT:
+      case ModelCapability.IMAGE_EDIT:
         return imageCapabilities.supportsEdit;
-      case CoreModelCapability.IMAGE_VARIATION:
+      case ModelCapability.IMAGE_VARIATION:
         return imageCapabilities.supportsVariation;
-      case CoreModelCapability.VISION:
-      case CoreModelCapability.CHAT:
+      case ModelCapability.VISION:
+      case ModelCapability.CHAT:
         return false; // Image generation models don't support chat/vision
       default:
         return false;
@@ -72,10 +66,10 @@ export function modelSupportsCapability(
  * @param modelId The model identifier
  * @returns Array of supported capabilities
  */
-export function getModelCapabilities(modelId: string): CoreModelCapability[] {
-  const capabilities: CoreModelCapability[] = [];
+export function getModelCapabilities(modelId: string): ModelCapability[] {
+  const capabilities: ModelCapability[] = [];
 
-  Object.values(CoreModelCapability).forEach(capability => {
+  Object.values(ModelCapability).forEach(capability => {
     if (modelSupportsCapability(modelId, capability)) {
       capabilities.push(capability);
     }
@@ -101,11 +95,11 @@ export function validateModelCompatibility(
   const errors: string[] = [];
   const suggestions: string[] = [];
 
-  const capabilityMap: Record<string, CoreModelCapability> = {
-    'chat': CoreModelCapability.CHAT,
-    'image-generation': CoreModelCapability.IMAGE_GENERATION,
-    'image-edit': CoreModelCapability.IMAGE_EDIT,
-    'image-variation': CoreModelCapability.IMAGE_VARIATION,
+  const capabilityMap: Record<string, ModelCapability> = {
+    'chat': ModelCapability.CHAT,
+    'image-generation': ModelCapability.IMAGE_GENERATION,
+    'image-edit': ModelCapability.IMAGE_EDIT,
+    'image-variation': ModelCapability.IMAGE_VARIATION,
   };
 
   const requiredCapability = capabilityMap[requestType];
@@ -142,17 +136,17 @@ export function validateModelCompatibility(
  * @returns Array of recommended model IDs, ordered by preference
  */
 export function getRecommendedModels(
-  capability: CoreModelCapability,
+  capability: ModelCapability,
   preferences?: {
     prioritizeQuality?: boolean;
     prioritizeSpeed?: boolean;
     prioritizeCost?: boolean;
   }
 ): string[] {
-  const { prioritizeQuality, prioritizeSpeed, prioritizeCost } = preferences || {};
+  const { prioritizeQuality, prioritizeSpeed, prioritizeCost } = preferences ?? {};
 
   switch (capability) {
-    case CoreModelCapability.CHAT:
+    case ModelCapability.CHAT:
       if (prioritizeQuality) {
         return ['gpt-4', 'claude-3-sonnet', 'gpt-3.5-turbo'];
       }
@@ -164,13 +158,13 @@ export function getRecommendedModels(
       }
       return ['gpt-4', 'gpt-3.5-turbo', 'claude-3-sonnet'];
 
-    case CoreModelCapability.VISION:
+    case ModelCapability.VISION:
       if (prioritizeQuality) {
         return ['gpt-4-vision-preview', 'claude-3-sonnet', 'gpt-4'];
       }
       return ['gpt-4-vision-preview', 'claude-3-sonnet'];
 
-    case CoreModelCapability.IMAGE_GENERATION:
+    case ModelCapability.IMAGE_GENERATION:
       if (prioritizeQuality) {
         return ['dall-e-3', 'minimax-image', 'dall-e-2'];
       }
@@ -182,8 +176,8 @@ export function getRecommendedModels(
       }
       return ['dall-e-3', 'dall-e-2', 'minimax-image'];
 
-    case CoreModelCapability.IMAGE_EDIT:
-    case CoreModelCapability.IMAGE_VARIATION:
+    case ModelCapability.IMAGE_EDIT:
+    case ModelCapability.IMAGE_VARIATION:
       return ['dall-e-2']; // Currently only DALL-E 2 supports these
 
     default:
@@ -196,21 +190,8 @@ export function getRecommendedModels(
  * @param capability The capability to get display name for
  * @returns Human-readable display name
  */
-export function getCapabilityDisplayName(capability: CoreModelCapability): string {
-  switch (capability) {
-    case CoreModelCapability.CHAT:
-      return 'Chat Completion';
-    case CoreModelCapability.VISION:
-      return 'Vision (Image Understanding)';
-    case CoreModelCapability.IMAGE_GENERATION:
-      return 'Image Generation';
-    case CoreModelCapability.IMAGE_EDIT:
-      return 'Image Editing';
-    case CoreModelCapability.IMAGE_VARIATION:
-      return 'Image Variation';
-    default:
-      return capability;
-  }
+export function getCapabilityDisplayName(capability: ModelCapability): string {
+  return getDisplayName(capability);
 }
 
 /**
@@ -223,7 +204,7 @@ export function getCapabilityDisplayName(capability: CoreModelCapability): strin
 export function areModelsEquivalent(
   modelA: string,
   modelB: string,
-  capability: CoreModelCapability
+  capability: ModelCapability
 ): boolean {
   // Both must support the capability
   if (!modelSupportsCapability(modelA, capability) || 

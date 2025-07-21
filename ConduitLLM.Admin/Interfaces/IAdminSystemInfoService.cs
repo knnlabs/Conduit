@@ -154,9 +154,19 @@ public class HealthStatusDto
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
+    /// Timestamp when the health check was performed
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
     /// Individual component health statuses
     /// </summary>
-    public Dictionary<string, ComponentHealth> Components { get; set; } = new();
+    public Dictionary<string, ComponentHealth> Checks { get; set; } = new();
+
+    /// <summary>
+    /// Total duration of all health checks in milliseconds
+    /// </summary>
+    public double TotalDuration { get; set; }
 }
 
 /// <summary>
@@ -175,9 +185,14 @@ public class ComponentHealth
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Additional health details
+    /// Duration of the health check in milliseconds
     /// </summary>
-    public Dictionary<string, string> Data { get; set; } = new();
+    public double? Duration { get; set; }
+
+    /// <summary>
+    /// Error message if the health check failed
+    /// </summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>

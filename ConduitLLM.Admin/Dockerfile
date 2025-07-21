@@ -1,26 +1,41 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
-
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl
-
+# Admin API Dockerfile - Simplified for reliability
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
-COPY ["ConduitLLM.Admin/ConduitLLM.Admin.csproj", "ConduitLLM.Admin/"]
-COPY ["ConduitLLM.Configuration/ConduitLLM.Configuration.csproj", "ConduitLLM.Configuration/"]
-COPY ["ConduitLLM.Core/ConduitLLM.Core.csproj", "ConduitLLM.Core/"]
-COPY ["ConduitLLM.Providers/ConduitLLM.Providers.csproj", "ConduitLLM.Providers/"]
-RUN dotnet restore "ConduitLLM.Admin/ConduitLLM.Admin.csproj"
+
+# Copy everything - simple and works
 COPY . .
-WORKDIR "/src/ConduitLLM.Admin"
-RUN dotnet build "ConduitLLM.Admin.csproj" -c Release -o /app/build
 
-FROM build AS publish
-RUN dotnet publish "ConduitLLM.Admin.csproj" -c Release -o /app/publish
+# Simple restore without problematic flags
+RUN dotnet restore "ConduitLLM.Admin/ConduitLLM.Admin.csproj"
 
-FROM base AS final
+# Build and publish
+RUN dotnet publish "ConduitLLM.Admin/ConduitLLM.Admin.csproj" \
+    -c Release \
+    -o /app/publish
+
+# Runtime stage - Debian-based for reliability
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy published application
+COPY --from=build /app/publish .
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Configure ASP.NET Core
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl -f http://localhost:8080/health/ready || exit 1
+
 ENTRYPOINT ["dotnet", "ConduitLLM.Admin.dll"]

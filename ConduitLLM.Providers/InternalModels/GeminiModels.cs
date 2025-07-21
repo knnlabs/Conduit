@@ -19,7 +19,9 @@ internal record GeminiGenerateContentRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<GeminiSafetySetting>? SafetySettings { get; init; }
 
-    // TODO: Add tools if needed
+    [JsonPropertyName("tools")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<GeminiTool>? Tools { get; init; } // For function calling support
 }
 
 internal record GeminiContent
@@ -147,6 +149,25 @@ internal record GeminiUsageMetadata
 
     [JsonPropertyName("totalTokenCount")]
     public int TotalTokenCount { get; init; }
+}
+
+// Tool/Function calling support
+internal record GeminiTool
+{
+    [JsonPropertyName("functionDeclarations")]
+    public IEnumerable<GeminiFunctionDeclaration>? FunctionDeclarations { get; init; }
+}
+
+internal record GeminiFunctionDeclaration
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public object? Parameters { get; init; } // JSON Schema for the function parameters
 }
 
 

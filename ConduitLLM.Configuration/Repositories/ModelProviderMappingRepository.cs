@@ -43,6 +43,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
+                    .Include(m => m.ProviderCredential)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
@@ -67,6 +68,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
+                    .Include(m => m.ProviderCredential)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -85,6 +87,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
+                    .Include(m => m.ProviderCredential)
                     .AsNoTracking()
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);
@@ -122,6 +125,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 // Then find mappings with this credential ID
                 return await dbContext.ModelProviderMappings
+                    .Include(m => m.ProviderCredential)
                     .AsNoTracking()
                     .Where(m => m.ProviderCredentialId == credential.Id)
                     .OrderBy(m => m.ModelAlias)

@@ -114,6 +114,11 @@ namespace ConduitLLM.Admin.Options
     public class FailedAuthOptions
     {
         /// <summary>
+        /// Whether IP banning is enabled
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
         /// Maximum number of failed authentication attempts before banning
         /// </summary>
         public int MaxAttempts { get; set; } = 5;

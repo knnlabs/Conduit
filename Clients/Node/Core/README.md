@@ -93,6 +93,48 @@ for await (const chunk of stream) {
 }
 ```
 
+### React Query Hooks - Streaming
+
+The React Query integration now supports proper streaming with callbacks:
+
+```typescript
+import { useChatCompletionStream } from '@conduit/core/react-query';
+
+function ChatComponent() {
+  const streamingCompletion = useChatCompletionStream();
+  const [streamedContent, setStreamedContent] = useState('');
+
+  const handleStream = async () => {
+    await streamingCompletion.mutateAsync({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: 'Tell me a story' }],
+      stream: true,
+      streamingOptions: {
+        onChunk: (chunk) => {
+          // Handle each streaming chunk
+          if (chunk.choices?.[0]?.delta?.content) {
+            setStreamedContent(prev => prev + chunk.choices[0].delta.content);
+          }
+        },
+        onComplete: () => {
+          console.log('Streaming completed');
+        },
+        onError: (error) => {
+          console.error('Streaming error:', error);
+        }
+      }
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={handleStream}>Start Streaming</button>
+      <div>{streamedContent}</div>
+    </div>
+  );
+}
+```
+
 ### Function Calling
 
 ```typescript

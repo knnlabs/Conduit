@@ -30,7 +30,9 @@ services:
       retries: 5
       
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    build: 
+      context: ./docker/rabbitmq
+      dockerfile: Dockerfile
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: conduit
@@ -86,10 +88,10 @@ services:
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      interval: 60s
+      timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
   admin:
     build:
@@ -105,28 +107,31 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      # Using new CONDUIT_MASTER_KEY (old AdminApi__MasterKey still works)
-      CONDUIT_MASTER_KEY: alpha
+      # API-to-API authentication key for backend services
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-      AdminApi__AllowedOrigins__0: http://webui:8080
-      AdminApi__AllowedOrigins__1: http://localhost:5001
+      AdminApi__AllowedOrigins__0: http://localhost:3000
+      AdminApi__AllowedOrigins__1: http://localhost:3001
+      AdminApi__AllowedOrigins__2: http://localhost:5001
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
       CONDUITLLM__RABBITMQ__USERNAME: conduit
       CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
       CONDUITLLM__RABBITMQ__VHOST: /
+      # Disable IP banning for development
+      CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
       - "5002:8080"
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      interval: 60s
+      timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
   webui:
     build:
@@ -137,56 +142,41 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
-      # WebUI no longer needs direct database access
-      # Only depends on the Admin API and LLM API
     environment:
-      # WebUI no longer uses DATABASE_URL
-      CONDUIT_MASTER_KEY: alpha
-      CONDUIT_INSECURE: "false"
+      # Next.js specific environment variables
+      NODE_ENV: production
+      PORT: 3000
+      # Public environment variables (accessible in browser)
+      NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
+      # Admin API is accessed through proxy routes, not directly
+      # Server-side environment variables
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       CONDUIT_API_BASE_URL: http://api:8080
-      # Redis cache configuration - using new REDIS_URL format
-      REDIS_URL: "redis://redis:6379"
-      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
-      # Version check configuration
-      CONDUIT_VERSION_CHECK_ENABLED: "true"
-      CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
-      # Admin API configuration (required)
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      # WebUI authentication password
-      CONDUIT_WEBUI_AUTH_KEY: conduit123
-      # IP Filtering Configuration (optional)
-      # CONDUIT_IP_FILTERING_ENABLED: "true"
-      # CONDUIT_IP_FILTER_MODE: "permissive"  # or "restrictive"
-      # CONDUIT_IP_FILTER_DEFAULT_ALLOW: "true"
-      # CONDUIT_IP_FILTER_BYPASS_ADMIN_UI: "true"
-      # CONDUIT_IP_FILTER_ALLOW_PRIVATE: "true"  # Auto-allow private/intranet IPs
-      # CONDUIT_IP_FILTER_WHITELIST: "192.168.1.0/24,10.0.0.0/8"
-      # CONDUIT_IP_FILTER_BLACKLIST: "203.0.113.0/24"
-      # Failed Login Protection
-      # CONDUIT_MAX_FAILED_ATTEMPTS: "5"
-      # CONDUIT_IP_BAN_DURATION_MINUTES: "30"
-      # CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "true"  # Use Redis for distributed ban tracking
-      # Rate Limiting
-      # CONDUIT_RATE_LIMITING_ENABLED: "true"
-      # CONDUIT_RATE_LIMIT_MAX_REQUESTS: "100"
-      # CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "60"
-      # CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
-      # Security Headers
-      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS: "DENY"
-      # CONDUIT_SECURITY_HEADERS_CSP_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_CSP: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
-      # CONDUIT_SECURITY_HEADERS_HSTS_ENABLED: "true"
-      # CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE: "31536000"
+      # External URLs for SignalR connections from browser
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+      # Redis configuration
+      REDIS_URL: "redis://redis:6379"
+      # Clerk authentication for WebUI access (Required)
+      # Get these values from your Clerk dashboard at https://dashboard.clerk.com
+      # Users must have siteadmin: true in their public metadata to access the WebUI
+      
+      # Optional: Configure a redirect URL for users without admin access
+      # If set, users without proper permissions will be redirected to this URL
+      # instead of seeing the access denied page
+      # Example: ACCESS_DENIED_REDIRECT: "https://your-main-site.com"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
+      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
     ports:
-      - "5001:8080"
+      - "3000:3000"
     restart: on-failure
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
       retries: 3
-      start_period: 15s
+      start_period: 40s
 
 volumes:
   pgdata:

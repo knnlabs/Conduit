@@ -40,8 +40,8 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
             if (context.Resource is HttpContext httpContext)
             {
                 // Get the configured master key
-                // Check for CONDUIT_MASTER_KEY first (new standard), then fall back to AdminApi:MasterKey
-                string? masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+                // Check for CONDUIT_API_TO_API_BACKEND_AUTH_KEY first (new standard), then fall back to AdminApi:MasterKey
+                string? masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY") 
                                    ?? _configuration[MASTER_KEY_CONFIG_KEY];
 
                 if (string.IsNullOrEmpty(masterKey))
@@ -66,6 +66,38 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                 {
                     if (legacyKey.ToString() == masterKey)
                     {
+                        context.Succeed(requirement);
+                        return Task.CompletedTask;
+                    }
+                }
+
+                // Check Authorization header for Bearer token (SignalR support)
+                if (httpContext.Request.Headers.TryGetValue("Authorization", out var authValues))
+                {
+                    var authHeader = authValues.FirstOrDefault();
+                    if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var bearerToken = authHeader.Substring("Bearer ".Length).Trim();
+                        if (bearerToken == masterKey)
+                        {
+                            context.Succeed(requirement);
+                            return Task.CompletedTask;
+                        }
+                    }
+                }
+
+                // Check query string for SignalR WebSocket connections
+                if (httpContext.Request.Query.TryGetValue("access_token", out var tokenValues))
+                {
+                    var queryToken = tokenValues.FirstOrDefault();
+                    if (queryToken == masterKey)
+                    {
+                        // Log when query string auth is used for SignalR
+                        if (httpContext.Request.Path.StartsWithSegments("/hubs"))
+                        {
+                            _logger.LogDebug("Authorized SignalR hub connection via query string: {Path}", 
+                                httpContext.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                        }
                         context.Succeed(requirement);
                         return Task.CompletedTask;
                     }

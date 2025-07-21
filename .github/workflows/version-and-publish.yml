@@ -79,7 +79,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Configure Git
@@ -112,6 +112,15 @@ jobs:
             echo "npm-tag=latest" >> $GITHUB_OUTPUT
             echo "commit-back=true" >> $GITHUB_OUTPUT
           fi
+
+      # Build Common Package First
+      - name: Build Common Package
+        run: |
+          echo "🔨 Building Common package (dependency for Core and Admin clients)..."
+          cd Clients/Node/Common
+          npm ci
+          npm run build
+          echo "✅ Common package built successfully"
 
       # Core Client Processing
       - name: Process Core Client
@@ -207,14 +216,31 @@ jobs:
               echo "✅ Version changes committed and pushed"
               break
             else
-              echo "⚠️ Push failed, attempt $i/3. Pulling and retrying..."
-              git pull --rebase
+              echo "⚠️ Push failed, attempt $i/3. Checking for remote changes..."
+              # Try to fast-forward only, fail if not possible
+              if ! git pull --ff-only; then
+                echo "❌ Cannot fast-forward merge. Manual intervention required."
+                echo "Another commit was pushed to the branch during versioning."
+                echo "Please resolve conflicts manually."
+                exit 1
+              fi
               if [[ $i == 3 ]]; then
                 echo "❌ Failed to push after 3 attempts"
                 exit 1
               fi
             fi
           done
+
+      # Validate NPM Token
+      - name: Validate NPM Token
+        if: env.CORE_NEW_VERSION != '' || env.ADMIN_NEW_VERSION != ''
+        run: |
+          if [[ -z "${{ secrets.NPM_TOKEN }}" ]]; then
+            echo "❌ NPM_TOKEN secret not found. Cannot publish to NPM."
+            echo "Please add NPM_TOKEN as a repository secret."
+            exit 1
+          fi
+          echo "✅ NPM_TOKEN is configured"
 
       # Publish Core Client to NPM
       - name: Publish Core Client to NPM

@@ -1,8 +1,43 @@
 import type { Usage, ResponseFormat, Tool, ToolCall, FinishReason, PerformanceMetrics } from './common';
+import type { ToolParameters } from './metadata';
+
+/**
+ * Text content part for multi-modal messages
+ */
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+/**
+ * Image content part for multi-modal messages
+ */
+export interface ImageContent {
+  type: 'image_url';
+  image_url: {
+    /**
+     * URL of the image or base64 encoded image data
+     * For base64, use format: "data:image/jpeg;base64,{base64_data}"
+     */
+    url: string;
+    /**
+     * Level of detail for image processing
+     * - 'low': Faster processing, lower token usage
+     * - 'high': More detailed analysis, higher token usage
+     * - 'auto': Let the model decide (default)
+     */
+    detail?: 'low' | 'high' | 'auto';
+  };
+}
+
+/**
+ * Content can be a simple string, null, or an array of content parts for multi-modal messages
+ */
+export type MessageContent = string | null | Array<TextContent | ImageContent>;
 
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: MessageContent;
   name?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
@@ -24,9 +59,28 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   temperature?: number;
   top_p?: number;
+  /**
+   * Limits the number of tokens to consider for each step of generation.
+   * Only the top K most likely tokens are considered for sampling.
+   * @minimum 1
+   * @maximum 100
+   */
+  top_k?: number;
   tools?: Tool[];
   tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
   user?: string;
+  /**
+   * @deprecated Use 'tools' instead. Functions are converted to tools internally.
+   */
+  functions?: Array<{
+    name: string;
+    description?: string;
+    parameters?: ToolParameters;
+  }>;
+  /**
+   * @deprecated Use 'tool_choice' instead.
+   */
+  function_call?: 'none' | 'auto' | { name: string };
 }
 
 export interface ChatCompletionChoice {
@@ -64,3 +118,73 @@ export interface ChatCompletionChunk {
   usage?: Usage;
   performance?: PerformanceMetrics;
 }
+
+/**
+ * Helper functions for working with multi-modal content
+ */
+export const ContentHelpers = {
+  /**
+   * Creates a text content part
+   */
+  text(text: string): TextContent {
+    return { type: 'text', text };
+  },
+
+  /**
+   * Creates an image content part from a URL
+   */
+  imageUrl(url: string, detail?: 'low' | 'high' | 'auto'): ImageContent {
+    return {
+      type: 'image_url',
+      image_url: { url, detail }
+    };
+  },
+
+  /**
+   * Creates an image content part from base64 data
+   */
+  imageBase64(base64Data: string, mimeType: string = 'image/jpeg', detail?: 'low' | 'high' | 'auto'): ImageContent {
+    return {
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64Data}`,
+        detail
+      }
+    };
+  },
+
+  /**
+   * Checks if content contains images
+   */
+  hasImages(content: MessageContent): boolean {
+    if (!Array.isArray(content)) return false;
+    return content.some(part => part.type === 'image_url');
+  },
+
+  /**
+   * Extracts text from multi-modal content
+   */
+  extractText(content: MessageContent): string {
+    if (typeof content === 'string') return content;
+    if (!content) return '';
+    if (!Array.isArray(content)) return '';
+    
+    return content
+      .filter((part): part is TextContent => part.type === 'text')
+      .map(part => part.text)
+      .join(' ');
+  },
+
+  /**
+   * Extracts images from multi-modal content
+   */
+  extractImages(content: MessageContent): ImageContent[] {
+    if (!Array.isArray(content)) return [];
+    return content.filter((part): part is ImageContent => part.type === 'image_url');
+  }
+};
+
+/**
+ * Alias for ChatCompletionRequest to maintain compatibility with existing imports
+ */
+export type ChatCompletionCreateParams = ChatCompletionRequest;

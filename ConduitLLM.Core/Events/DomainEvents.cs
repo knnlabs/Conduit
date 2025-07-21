@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Events
 {
@@ -37,6 +38,53 @@ namespace ConduitLLM.Core.Events
     // ===============================
     // Virtual Key Domain Events
     // ===============================
+
+    /// <summary>
+    /// Raised when a new virtual key is created
+    /// Critical for cache initialization and real-time synchronization
+    /// </summary>
+    public record VirtualKeyCreated : DomainEvent
+    {
+        /// <summary>
+        /// Virtual Key database ID
+        /// </summary>
+        public int KeyId { get; init; }
+        
+        /// <summary>
+        /// Virtual Key hash for cache operations
+        /// </summary>
+        public string KeyHash { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Key name for logging and audit purposes
+        /// </summary>
+        public string KeyName { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// When the key was created
+        /// </summary>
+        public DateTime CreatedAt { get; init; }
+        
+        /// <summary>
+        /// Whether the key is enabled at creation
+        /// </summary>
+        public bool IsEnabled { get; init; } = true;
+        
+        /// <summary>
+        /// Allowed models at creation (if specified)
+        /// </summary>
+        public string? AllowedModels { get; init; }
+        
+        /// <summary>
+        /// Maximum budget at creation (if specified)
+        /// </summary>
+        public decimal? MaxBudget { get; init; }
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => KeyId.ToString();
+    }
 
     /// <summary>
     /// Raised when a virtual key is updated (properties changed)
@@ -156,6 +204,38 @@ namespace ConduitLLM.Core.Events
         public string PartitionKey => KeyId.ToString();
     }
 
+    /// <summary>
+    /// Raised when a spend update cannot be processed immediately
+    /// Allows other services to handle the update in appropriate context
+    /// </summary>
+    public record SpendUpdateDeferred : DomainEvent
+    {
+        /// <summary>
+        /// Virtual Key database ID
+        /// </summary>
+        public int KeyId { get; init; }
+        
+        /// <summary>
+        /// Amount to add to current spend
+        /// </summary>
+        public decimal Amount { get; init; }
+        
+        /// <summary>
+        /// Optional request identifier for correlation
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Reason for deferral
+        /// </summary>
+        public string Reason { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => KeyId.ToString();
+    }
+
     // ===============================
     // Provider Credential Domain Events
     // ===============================
@@ -259,11 +339,84 @@ namespace ConduitLLM.Core.Events
         public bool SupportsImageGeneration { get; init; }
         public bool SupportsVision { get; init; }
         public bool SupportsEmbeddings { get; init; }
+        public bool SupportsVideoGeneration { get; init; }
         public bool SupportsAudioTranscription { get; init; }
         public bool SupportsTextToSpeech { get; init; }
         public bool SupportsRealtimeAudio { get; init; }
         public bool SupportsFunctionCalling { get; init; }
         public Dictionary<string, object> AdditionalCapabilities { get; init; } = new();
+    }
+
+    // ===============================
+    // Model Cost Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when model costs are created, updated, or deleted
+    /// Critical for cache invalidation across all services
+    /// </summary>
+    public record ModelCostChanged : DomainEvent
+    {
+        /// <summary>
+        /// Model cost database ID
+        /// </summary>
+        public int ModelCostId { get; init; }
+        
+        /// <summary>
+        /// Model ID pattern that was affected
+        /// </summary>
+        public string ModelIdPattern { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of change (Created, Updated, Deleted)
+        /// </summary>
+        public string ChangeType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Properties that were changed (for selective invalidation)
+        /// </summary>
+        public string[] ChangedProperties { get; init; } = Array.Empty<string>();
+        
+        /// <summary>
+        /// Partition key for ordered processing per model cost
+        /// </summary>
+        public string PartitionKey => ModelCostId.ToString();
+    }
+
+    // ===============================
+    // Global Setting Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when a global setting is created, updated, or deleted
+    /// Critical for cache invalidation across all services
+    /// </summary>
+    public record GlobalSettingChanged : DomainEvent
+    {
+        /// <summary>
+        /// Global setting database ID
+        /// </summary>
+        public int SettingId { get; init; }
+        
+        /// <summary>
+        /// Global setting key
+        /// </summary>
+        public string SettingKey { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of change (Created, Updated, Deleted)
+        /// </summary>
+        public string ChangeType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Properties that were changed (for selective invalidation)
+        /// </summary>
+        public string[] ChangedProperties { get; init; } = Array.Empty<string>();
+        
+        /// <summary>
+        /// Partition key for ordered processing per setting
+        /// </summary>
+        public string PartitionKey => SettingId.ToString();
     }
 
     // ===============================
@@ -349,6 +502,57 @@ namespace ConduitLLM.Core.Events
     }
 
     // ===============================
+    // IP Filter Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when an IP filter is created, updated, or deleted
+    /// Critical for cache invalidation and security policy updates across services
+    /// </summary>
+    public record IpFilterChanged : DomainEvent
+    {
+        /// <summary>
+        /// IP filter database ID
+        /// </summary>
+        public int FilterId { get; init; }
+        
+        /// <summary>
+        /// IP address or CIDR range
+        /// </summary>
+        public string IpAddressOrCidr { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Filter type (whitelist/blacklist)
+        /// </summary>
+        public string FilterType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Whether the filter is enabled
+        /// </summary>
+        public bool IsEnabled { get; init; }
+        
+        /// <summary>
+        /// Type of change (Created, Updated, Deleted)
+        /// </summary>
+        public string ChangeType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Properties that were changed (for selective invalidation)
+        /// </summary>
+        public string[] ChangedProperties { get; init; } = Array.Empty<string>();
+        
+        /// <summary>
+        /// Filter description for logging
+        /// </summary>
+        public string Description { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Partition key for ordered processing per filter
+        /// </summary>
+        public string PartitionKey => FilterId.ToString();
+    }
+
+    // ===============================
     // Image Generation Domain Events
     // ===============================
 
@@ -392,6 +596,16 @@ namespace ConduitLLM.Core.Events
         /// When the request was submitted
         /// </summary>
         public DateTime RequestedAt { get; init; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Optional webhook URL for status notifications
+        /// </summary>
+        public string? WebhookUrl { get; init; }
+        
+        /// <summary>
+        /// Optional custom headers for webhook requests
+        /// </summary>
+        public Dictionary<string, string>? WebhookHeaders { get; init; }
         
         /// <summary>
         /// Partition key for ordered processing per virtual key
@@ -531,6 +745,37 @@ namespace ConduitLLM.Core.Events
     }
 
     /// <summary>
+    /// Raised when an image generation is cancelled
+    /// </summary>
+    public record ImageGenerationCancelled : DomainEvent
+    {
+        /// <summary>
+        /// Task identifier
+        /// </summary>
+        public string TaskId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Virtual Key ID for tracking
+        /// </summary>
+        public int VirtualKeyId { get; init; }
+        
+        /// <summary>
+        /// Reason for cancellation
+        /// </summary>
+        public string? Reason { get; init; }
+        
+        /// <summary>
+        /// When the cancellation occurred
+        /// </summary>
+        public DateTime CancelledAt { get; init; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => VirtualKeyId.ToString();
+    }
+
+    /// <summary>
     /// Image data structure for generation results
     /// </summary>
     public record ImageData
@@ -600,5 +845,467 @@ namespace ConduitLLM.Core.Events
         /// User identifier for tracking
         /// </summary>
         public string? User { get; init; }
+    }
+
+    // ===============================
+    // Video Generation Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when a video generation request is submitted.
+    /// Enables async processing across multiple service instances.
+    /// </summary>
+    public record VideoGenerationRequested : DomainEvent
+    {
+        /// <summary>
+        /// Unique request identifier for tracking
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The model to use for video generation
+        /// </summary>
+        public string Model { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The prompt describing what video to generate
+        /// </summary>
+        public string Prompt { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Virtual Key ID or hash for authorization and spend tracking
+        /// </summary>
+        public string VirtualKeyId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Whether this is an async generation request
+        /// </summary>
+        public bool IsAsync { get; init; } = false;
+
+        /// <summary>
+        /// When the request was submitted
+        /// </summary>
+        public DateTime RequestedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Optional video generation parameters
+        /// </summary>
+        public VideoGenerationParameters? Parameters { get; init; }
+
+        /// <summary>
+        /// Optional webhook URL to receive notifications when video generation completes
+        /// </summary>
+        public string? WebhookUrl { get; init; }
+
+        /// <summary>
+        /// Optional headers to include in the webhook request
+        /// </summary>
+        public Dictionary<string, string>? WebhookHeaders { get; init; }
+
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => VirtualKeyId;
+    }
+
+    /// <summary>
+    /// Raised when video generation starts processing
+    /// </summary>
+    public record VideoGenerationStarted : DomainEvent
+    {
+        /// <summary>
+        /// Request identifier
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Provider handling the generation
+        /// </summary>
+        public string Provider { get; init; } = string.Empty;
+
+        /// <summary>
+        /// When processing started
+        /// </summary>
+        public DateTime StartedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Estimated completion time in seconds
+        /// </summary>
+        public int? EstimatedSeconds { get; init; }
+    }
+
+    /// <summary>
+    /// Raised when video generation progress updates occur
+    /// </summary>
+    public record VideoGenerationProgress : DomainEvent
+    {
+        /// <summary>
+        /// Request identifier
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Progress percentage (0-100)
+        /// </summary>
+        public int ProgressPercentage { get; init; }
+
+        /// <summary>
+        /// Current status message
+        /// </summary>
+        public string Status { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Optional detailed message
+        /// </summary>
+        public string? Message { get; init; }
+
+        /// <summary>
+        /// Frames rendered (if applicable)
+        /// </summary>
+        public int? FramesCompleted { get; init; }
+
+        /// <summary>
+        /// Total frames to render (if applicable)
+        /// </summary>
+        public int? TotalFrames { get; init; }
+    }
+
+    /// <summary>
+    /// Raised when video generation completes successfully
+    /// </summary>
+    public record VideoGenerationCompleted : DomainEvent
+    {
+        /// <summary>
+        /// Request identifier
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// URL where the video can be accessed
+        /// </summary>
+        public string VideoUrl { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Optional preview/thumbnail URL
+        /// </summary>
+        public string? PreviewUrl { get; init; }
+
+        /// <summary>
+        /// Video duration in seconds
+        /// </summary>
+        public double Duration { get; init; }
+
+        /// <summary>
+        /// Video resolution (e.g., "1280x720")
+        /// </summary>
+        public string Resolution { get; init; } = string.Empty;
+
+        /// <summary>
+        /// File size in bytes
+        /// </summary>
+        public long FileSize { get; init; }
+
+        /// <summary>
+        /// Total generation duration
+        /// </summary>
+        public TimeSpan GenerationDuration { get; init; }
+
+        /// <summary>
+        /// Total cost incurred
+        /// </summary>
+        public decimal Cost { get; init; }
+
+        /// <summary>
+        /// Provider used for generation
+        /// </summary>
+        public string Provider { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Model used for generation
+        /// </summary>
+        public string Model { get; init; } = string.Empty;
+
+        /// <summary>
+        /// When generation completed
+        /// </summary>
+        public DateTime CompletedAt { get; init; } = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Raised when video generation fails
+    /// </summary>
+    public record VideoGenerationFailed : DomainEvent
+    {
+        /// <summary>
+        /// Request identifier
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Error message
+        /// </summary>
+        public string Error { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Error code (if available)
+        /// </summary>
+        public string? ErrorCode { get; init; }
+
+        /// <summary>
+        /// Provider that failed
+        /// </summary>
+        public string? Provider { get; init; }
+
+        /// <summary>
+        /// Whether the request can be retried
+        /// </summary>
+        public bool IsRetryable { get; init; } = true;
+
+        /// <summary>
+        /// Number of retry attempts made
+        /// </summary>
+        public int RetryCount { get; init; } = 0;
+
+        /// <summary>
+        /// Maximum number of retries allowed
+        /// </summary>
+        public int MaxRetries { get; init; } = 3;
+
+        /// <summary>
+        /// When the failure occurred
+        /// </summary>
+        public DateTime FailedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the task should be retried (if applicable)
+        /// </summary>
+        public DateTime? NextRetryAt { get; init; }
+    }
+
+    /// <summary>
+    /// Raised when a video generation is cancelled
+    /// </summary>
+    public record VideoGenerationCancelled : DomainEvent
+    {
+        /// <summary>
+        /// Request identifier
+        /// </summary>
+        public string RequestId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Reason for cancellation
+        /// </summary>
+        public string? Reason { get; init; }
+
+        /// <summary>
+        /// When the cancellation occurred
+        /// </summary>
+        public DateTime CancelledAt { get; init; } = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Video generation parameters
+    /// </summary>
+    public record VideoGenerationParameters
+    {
+        /// <summary>
+        /// Video resolution/size
+        /// </summary>
+        public string? Size { get; init; }
+
+        /// <summary>
+        /// Duration in seconds
+        /// </summary>
+        public int? Duration { get; init; }
+
+        /// <summary>
+        /// Frames per second
+        /// </summary>
+        public int? Fps { get; init; }
+
+        /// <summary>
+        /// Style or aesthetic
+        /// </summary>
+        public string? Style { get; init; }
+
+        /// <summary>
+        /// Response format (url, b64_json)
+        /// </summary>
+        public string? ResponseFormat { get; init; }
+
+        /// <summary>
+        /// Base64-encoded starting image
+        /// </summary>
+        public string? StartImage { get; init; }
+
+        /// <summary>
+        /// Base64-encoded ending image (for interpolation)
+        /// </summary>
+        public string? EndImage { get; init; }
+
+        /// <summary>
+        /// Additional provider-specific options
+        /// </summary>
+        public Dictionary<string, object>? ProviderOptions { get; init; }
+    }
+
+    // ===============================
+    // Media Lifecycle Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when any media (image or video) is successfully generated and stored to CDN.
+    /// Enables tracking of media lifecycle for future cleanup and cost management.
+    /// </summary>
+    public record MediaGenerationCompleted : DomainEvent
+    {
+        /// <summary>
+        /// Type of media generated (Image or Video)
+        /// </summary>
+        public MediaType MediaType { get; init; }
+
+        /// <summary>
+        /// Virtual Key ID that owns this media
+        /// </summary>
+        public int VirtualKeyId { get; init; }
+
+        /// <summary>
+        /// Public URL where the media is stored
+        /// </summary>
+        public string MediaUrl { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Storage key/path for the media file
+        /// </summary>
+        public string StorageKey { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Size of the media file in bytes
+        /// </summary>
+        public long FileSizeBytes { get; init; }
+
+        /// <summary>
+        /// MIME type of the media file
+        /// </summary>
+        public string ContentType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Model used to generate this media
+        /// </summary>
+        public string GeneratedByModel { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Prompt used to generate this media
+        /// </summary>
+        public string GenerationPrompt { get; init; } = string.Empty;
+
+        /// <summary>
+        /// When the media was generated
+        /// </summary>
+        public DateTime GeneratedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the media should expire (if applicable)
+        /// </summary>
+        public DateTime? ExpiresAt { get; init; }
+
+        /// <summary>
+        /// Additional metadata specific to the media type
+        /// </summary>
+        public Dictionary<string, object> Metadata { get; init; } = new();
+
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => VirtualKeyId.ToString();
+    }
+
+    // ===============================
+    // Webhook Delivery Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Event types for webhook notifications
+    /// </summary>
+    public enum WebhookEventType
+    {
+        /// <summary>
+        /// Task has started processing
+        /// </summary>
+        TaskStarted,
+        
+        /// <summary>
+        /// Task progress update
+        /// </summary>
+        TaskProgress,
+        
+        /// <summary>
+        /// Task completed successfully
+        /// </summary>
+        TaskCompleted,
+        
+        /// <summary>
+        /// Task failed with error
+        /// </summary>
+        TaskFailed,
+        
+        /// <summary>
+        /// Task was cancelled
+        /// </summary>
+        TaskCancelled
+    }
+
+    /// <summary>
+    /// Raised when a webhook needs to be delivered
+    /// Enables scalable webhook delivery with deduplication and retry logic
+    /// </summary>
+    public record WebhookDeliveryRequested : DomainEvent
+    {
+        /// <summary>
+        /// Unique task identifier (e.g., video/image generation request ID)
+        /// </summary>
+        public string TaskId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of task (e.g., "video", "image")
+        /// </summary>
+        public string TaskType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Webhook URL to deliver the payload to
+        /// </summary>
+        public string WebhookUrl { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of webhook event
+        /// </summary>
+        public WebhookEventType EventType { get; init; }
+        
+        /// <summary>
+        /// Webhook payload as JSON string (pre-serialized for size control)
+        /// Limited to 1MB to prevent memory issues
+        /// </summary>
+        public string PayloadJson { get; init; } = "{}";
+        
+        /// <summary>
+        /// Optional custom headers to include in the webhook request
+        /// </summary>
+        public Dictionary<string, string>? Headers { get; init; }
+        
+        /// <summary>
+        /// Current retry count (used for retry logic)
+        /// </summary>
+        public int RetryCount { get; init; } = 0;
+        
+        /// <summary>
+        /// When to retry next (if retry is needed)
+        /// </summary>
+        public DateTime? NextRetryAt { get; init; }
+        
+        /// <summary>
+        /// Partition key for ordered processing per task
+        /// Ensures single webhook delivery per task at a time
+        /// </summary>
+        public string PartitionKey => TaskId;
     }
 }

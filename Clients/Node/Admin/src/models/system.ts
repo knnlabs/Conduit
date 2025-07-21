@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import type { MaintenanceTaskConfig, ConfigValue } from './common-types';
 
 export interface SystemInfoDto {
   version: string;
@@ -88,23 +89,80 @@ export interface BackupRestoreResult {
 
 export interface NotificationDto {
   id: number;
-  type: 'info' | 'warning' | 'error' | 'success';
-  title: string;
+  virtualKeyId?: number;
+  virtualKeyName?: string;
+  type: NotificationType;
+  severity: NotificationSeverity;
   message: string;
-  timestamp: string;
   isRead: boolean;
-  metadata?: Record<string, any>;
-  actionUrl?: string;
-  expiresAt?: string;
+  createdAt: Date;
+}
+
+export enum NotificationType {
+  BudgetWarning = 0,
+  ExpirationWarning = 1,
+  System = 2
+}
+
+export enum NotificationSeverity {
+  Info = 0,
+  Warning = 1,
+  Error = 2
 }
 
 export interface CreateNotificationDto {
-  type: 'info' | 'warning' | 'error' | 'success';
-  title: string;
+  virtualKeyId?: number;
+  type: NotificationType;
+  severity: NotificationSeverity;
   message: string;
-  metadata?: Record<string, any>;
-  actionUrl?: string;
-  expiresAt?: string;
+}
+
+export interface UpdateNotificationDto {
+  message?: string;
+  isRead?: boolean;
+}
+
+export interface NotificationFilters {
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  type?: NotificationType;
+  severity?: NotificationSeverity;
+  isRead?: boolean;
+  virtualKeyId?: number;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface NotificationSummary {
+  totalNotifications: number;
+  unreadNotifications: number;
+  readNotifications: number;
+  notificationsByType: Record<NotificationType, number>;
+  notificationsBySeverity: Record<NotificationSeverity, number>;
+  mostRecentNotification?: NotificationDto;
+  oldestUnreadNotification?: NotificationDto;
+}
+
+export interface NotificationBulkResponse {
+  successCount: number;
+  totalCount: number;
+  failedIds?: number[];
+  errors?: string[];
+}
+
+export interface NotificationStatistics {
+  total: number;
+  unread: number;
+  read: number;
+  byType: Record<string, number>;
+  bySeverity: Record<string, number>;
+  recent: {
+    lastHour: number;
+    last24Hours: number;
+    lastWeek: number;
+  };
 }
 
 export interface MaintenanceTaskDto {
@@ -119,7 +177,7 @@ export interface MaintenanceTaskDto {
 
 export interface RunMaintenanceTaskRequest {
   taskName: string;
-  parameters?: Record<string, any>;
+  parameters?: MaintenanceTaskConfig;
 }
 
 export interface MaintenanceTaskResult {
@@ -142,8 +200,8 @@ export interface AuditLogDto {
   userAgent?: string;
   resourceType?: string;
   resourceId?: string;
-  oldValue?: any;
-  newValue?: any;
+  oldValue?: ConfigValue;
+  newValue?: ConfigValue;
   result: 'success' | 'failure';
   errorMessage?: string;
 }
@@ -159,30 +217,110 @@ export interface AuditLogFilters extends FilterOptions {
   result?: 'success' | 'failure';
 }
 
-export interface SystemMetricsDto {
+export interface FeatureAvailability {
+  features: Record<string, {
+    available: boolean;
+    status: 'available' | 'coming_soon' | 'in_development' | 'not_planned';
+    message?: string;
+    version?: string;
+    releaseDate?: string;
+  }>;
   timestamp: string;
-  cpu: {
-    usage: number;
-    cores: number;
+}
+
+// Issue #427 - System Health SDK Methods
+export interface SystemHealthDto {
+  overall: 'healthy' | 'degraded' | 'unhealthy';
+  components: {
+    api: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    database: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    cache: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
+    queue: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      message?: string;
+      lastChecked: string;
+    };
   };
-  memory: {
-    used: number;
-    total: number;
-    percentage: number;
+  metrics: {
+    cpu: number;
+    memory: number;
+    disk: number;
+    activeConnections: number;
   };
-  disk: {
-    used: number;
-    total: number;
-    percentage: number;
+}
+
+export interface SystemMetricsDto {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+  activeConnections: number;
+  uptime: number;
+}
+
+export interface ServiceStatusDto {
+  coreApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
   };
-  network: {
-    bytesIn: number;
-    bytesOut: number;
-    requestsPerSecond: number;
+  adminApi: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    endpoint: string;
   };
   database: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
     connections: number;
-    maxConnections: number;
-    queryTime: number;
   };
+  cache: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    latency: number;
+    hitRate: number;
+  };
+}
+
+// Issue #428 - Health Events SDK Methods
+export interface HealthEventDto {
+  id: string;
+  timestamp: string;
+  type: 'provider_down' | 'provider_up' | 'system_issue' | 'system_recovered';
+  message: string;
+  severity: 'info' | 'warning' | 'error';
+  source?: string;
+  metadata?: {
+    providerId?: string;
+    componentName?: string;
+    errorDetails?: string;
+    duration?: number;
+  };
+}
+
+export interface HealthEventsResponseDto {
+  events: HealthEventDto[];
+}
+
+export interface HealthEventSubscriptionOptions {
+  severityFilter?: ('info' | 'warning' | 'error')[];
+  typeFilter?: ('provider_down' | 'provider_up' | 'system_issue' | 'system_recovered')[];
+  sourceFilter?: string[];
+}
+
+export interface HealthEventSubscription {
+  unsubscribe(): void;
+  isConnected(): boolean;
+  onEvent(callback: (event: HealthEventDto) => void): void;
+  onConnectionStateChanged(callback: (connected: boolean) => void): void;
 }

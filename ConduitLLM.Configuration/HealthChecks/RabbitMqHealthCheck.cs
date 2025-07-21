@@ -44,8 +44,9 @@ namespace ConduitLLM.Configuration.HealthChecks
                     AutomaticRecoveryEnabled = _configuration.AutomaticRecoveryEnabled
                 };
 
-                using var connection = factory.CreateConnection();
-                using var channel = connection.CreateModel();
+                using var connection = await factory.CreateConnectionAsync();
+                // RabbitMQ.Client v7.x uses CreateChannel() instead of CreateModel()
+                using var channel = await connection.CreateChannelAsync();
                 
                 // Just verify we can create a channel successfully
                 // Don't check for specific exchanges as they may not exist on first startup

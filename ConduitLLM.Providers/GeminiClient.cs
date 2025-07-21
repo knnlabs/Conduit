@@ -18,6 +18,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -617,9 +618,9 @@ namespace ConduitLLM.Providers
                 Contents = contents,
                 GenerationConfig = new GeminiGenerationConfig
                 {
-                    Temperature = (float?)coreRequest.Temperature,
-                    TopP = (float?)coreRequest.TopP,
-                    // TopK = coreRequest.TopK, // Map if added to Core model
+                    Temperature = ParameterConverter.ToTemperature(coreRequest.Temperature),
+                    TopP = ParameterConverter.ToProbability(coreRequest.TopP, 0.0, 1.0),
+                    TopK = coreRequest.TopK,
                     CandidateCount = coreRequest.N, // Map N to candidateCount
                     MaxOutputTokens = coreRequest.MaxTokens,
                     StopSequences = coreRequest.Stop
@@ -827,6 +828,67 @@ namespace ConduitLLM.Providers
                 "RECITATION" => "content_filter", // Map recitation stop to content_filter
                 "OTHER" => null, // Unknown reason
                 _ => geminiFinishReason // Pass through null or unknown values
+            };
+        }
+
+        #endregion
+
+        #region Capabilities
+
+        /// <inheritdoc />
+        public override Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            var isVisionCapable = IsVisionCapableModel(model);
+
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = true, // Gemini supports top-k
+                    Stop = true,
+                    PresencePenalty = false, // Gemini doesn't support presence penalty
+                    FrequencyPenalty = false, // Gemini doesn't support frequency penalty
+                    LogitBias = false, // Gemini doesn't support logit bias
+                    N = false, // Gemini doesn't support multiple choices
+                    User = false, // Gemini doesn't support user parameter
+                    Seed = false, // Gemini doesn't support seed
+                    ResponseFormat = false, // Gemini doesn't support response format
+                    Tools = false, // Gemini doesn't support tools through this client
+                    Constraints = new ParameterConstraints
+                    {
+                        TemperatureRange = new Range<double>(0.0, 1.0),
+                        TopPRange = new Range<double>(0.0, 1.0),
+                        TopKRange = new Range<int>(1, 40),
+                        MaxStopSequences = 5,
+                        MaxTokenLimit = GetGeminiMaxTokens(model)
+                    }
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = false, // Gemini doesn't provide embeddings through this client
+                    ImageGeneration = false, // Gemini doesn't provide image generation
+                    VisionInput = isVisionCapable,
+                    FunctionCalling = false, // Gemini doesn't support function calling through this client
+                    AudioTranscription = false, // Gemini doesn't provide audio transcription
+                    TextToSpeech = false // Gemini doesn't provide text-to-speech
+                }
+            });
+        }
+
+        private int GetGeminiMaxTokens(string model)
+        {
+            return model.ToLowerInvariant() switch
+            {
+                var m when m.Contains("1.5") => 1000000, // Gemini 1.5 models have 1M token context
+                var m when m.Contains("1.0") => 32768,   // Gemini 1.0 models have 32K token context
+                _ => 32768 // Default fallback
             };
         }
 

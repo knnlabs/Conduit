@@ -179,8 +179,7 @@ namespace ConduitLLM.Core.Services
             var descriptionLower = model.Description?.ToLowerInvariant() ?? "";
             
             capabilities.Vision = modelIdLower.Contains("vision") || 
-                                 modelIdLower.Contains("gpt-4o") ||
-                                 modelIdLower.Contains("gpt-4-turbo") ||
+                                 modelIdLower.Contains("gpt-4") ||
                                  modelIdLower.Contains("claude-3") ||
                                  modelIdLower.Contains("gemini") ||
                                  descriptionLower.Contains("vision") ||

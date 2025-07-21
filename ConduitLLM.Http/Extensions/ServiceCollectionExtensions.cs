@@ -23,9 +23,8 @@ namespace ConduitLLM.Http.Extensions
             // Configure security options from environment variables
             services.ConfigureCoreApiSecurityOptions(configuration);
             
-            // Register distributed cache (in-memory for tests, Redis in production)
-            // Always add this to ensure it's available for SecurityService
-            services.AddDistributedMemoryCache();
+            // Note: Distributed cache should be registered in Program.cs before calling this method
+            // to ensure proper Redis configuration for production environments
             
             // Register security service with factory to make distributed cache optional
             services.AddSingleton<ISecurityService>(serviceProvider =>

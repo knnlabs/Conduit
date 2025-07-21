@@ -40,6 +40,7 @@ namespace ConduitLLM.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _distributedCache = distributedCache ?? throw new ArgumentNullException(nameof(distributedCache));
+            if (options == null) throw new ArgumentNullException(nameof(options));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
@@ -323,15 +324,6 @@ namespace ConduitLLM.Core.Services
         }
     }
 
-    /// <summary>
-    /// Cache entry for TTS responses.
-    /// </summary>
-    internal class TtsCacheEntry
-    {
-        public TextToSpeechResponse Response { get; set; } = new();
-        public DateTime CachedAt { get; set; }
-        public long SizeBytes { get; set; }
-    }
 
     /// <summary>
     /// Internal metrics tracking.

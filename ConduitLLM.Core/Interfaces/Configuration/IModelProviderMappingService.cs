@@ -57,5 +57,10 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Indicates whether this model supports image generation.
         /// </summary>
         public bool SupportsImageGeneration { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports embedding operations.
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; }
     }
 }

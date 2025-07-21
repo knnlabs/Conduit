@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
   ProviderCredentialDto,
@@ -38,12 +38,12 @@ const updateHealthConfigSchema = z.object({
   testModel: z.string().optional(),
 });
 
-export class ProviderService extends BaseApiClient {
+export class ProviderService extends FetchBaseApiClient {
   async create(request: CreateProviderCredentialDto): Promise<ProviderCredentialDto> {
     try {
       createProviderSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid provider credential request', error);
+      throw new ValidationError('Invalid provider credential request', { validationError: error });
     }
 
     const response = await this.post<ProviderCredentialDto>(
@@ -145,7 +145,7 @@ export class ProviderService extends BaseApiClient {
     try {
       updateHealthConfigSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid health configuration request', error);
+      throw new ValidationError('Invalid health configuration request', { validationError: error });
     }
 
     await this.put(ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerName), request);
@@ -166,8 +166,8 @@ export class ProviderService extends BaseApiClient {
     filters?: ProviderHealthFilters
   ): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
     const params = {
-      pageNumber: filters?.pageNumber || 1,
-      pageSize: filters?.pageSize || DEFAULT_PAGE_SIZE,
+      pageNumber: filters?.pageNumber ?? 1,
+      pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
       providerName: filters?.providerName,
       isHealthy: filters?.isHealthy,
       startDate: filters?.startDate,

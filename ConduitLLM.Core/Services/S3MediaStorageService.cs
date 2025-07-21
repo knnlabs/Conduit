@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,6 +25,7 @@ namespace ConduitLLM.Core.Services
         private readonly S3StorageOptions _options;
         private readonly ILogger<S3MediaStorageService> _logger;
         private readonly string _bucketName;
+        private readonly ConcurrentDictionary<string, InitiateMultipartUploadResponse> _multipartUploads = new();
 
         public S3MediaStorageService(
             IOptions<S3StorageOptions> options,
@@ -31,7 +33,26 @@ namespace ConduitLLM.Core.Services
         {
             _options = options.Value;
             _logger = logger;
+            
+            // Validate required configuration
+            if (string.IsNullOrEmpty(_options.AccessKey))
+            {
+                throw new InvalidOperationException("S3 AccessKey is required. Set CONDUITLLM__STORAGE__S3__ACCESSKEY environment variable.");
+            }
+            
+            if (string.IsNullOrEmpty(_options.SecretKey))
+            {
+                throw new InvalidOperationException("S3 SecretKey is required. Set CONDUITLLM__STORAGE__S3__SECRETKEY environment variable.");
+            }
+            
+            if (string.IsNullOrEmpty(_options.BucketName))
+            {
+                throw new InvalidOperationException("S3 BucketName is required. Set CONDUITLLM__STORAGE__S3__BUCKETNAME environment variable.");
+            }
+            
             _bucketName = _options.BucketName;
+            _logger.LogInformation("S3MediaStorageService initialized with bucket: {BucketName}, ServiceUrl: {ServiceUrl}, Region: {Region}", 
+                _bucketName, _options.ServiceUrl ?? "default", _options.Region);
 
             var config = new AmazonS3Config
             {
@@ -157,19 +178,40 @@ namespace ConduitLLM.Core.Services
                 var response = await _s3Client.GetObjectMetadataAsync(metadataRequest);
 
                 var mediaType = MediaType.Other;
-                if (response.Metadata.Keys.Contains("media-type"))
+                
+                // AWS SDK prefixes custom metadata with "x-amz-meta-" when returned
+                if (response.Metadata.Keys.Contains("x-amz-meta-media-type"))
                 {
-                    Enum.TryParse<MediaType>(response.Metadata["media-type"], out mediaType);
+                    Enum.TryParse<MediaType>(response.Metadata["x-amz-meta-media-type"], true, out mediaType);
+                }
+                else if (response.Metadata.Keys.Contains("media-type"))
+                {
+                    // Fallback for direct key access (might be used in some scenarios)
+                    Enum.TryParse<MediaType>(response.Metadata["media-type"], true, out mediaType);
                 }
 
                 var customMetadata = new Dictionary<string, string>();
+                // AWS SDK prefixes custom metadata with "x-amz-meta-"
+                foreach (var key in response.Metadata.Keys.Where(k => k.StartsWith("x-amz-meta-custom-")))
+                {
+                    // Remove "x-amz-meta-custom-" prefix to get the original key
+                    customMetadata[key.Substring(18)] = response.Metadata[key];
+                }
+                // Fallback for direct custom- keys (might be used in some scenarios)
                 foreach (var key in response.Metadata.Keys.Where(k => k.StartsWith("custom-")))
                 {
                     customMetadata[key.Substring(7)] = response.Metadata[key];
                 }
 
                 DateTime? expiresAt = null;
-                if (response.Metadata.Keys.Contains("expires-at"))
+                if (response.Metadata.Keys.Contains("x-amz-meta-expires-at"))
+                {
+                    if (DateTime.TryParse(response.Metadata["x-amz-meta-expires-at"], out var expires))
+                    {
+                        expiresAt = expires;
+                    }
+                }
+                else if (response.Metadata.Keys.Contains("expires-at"))
                 {
                     if (DateTime.TryParse(response.Metadata["expires-at"], out var expires))
                     {
@@ -177,14 +219,22 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
+                string fileName = "";
+                if (response.Metadata.Keys.Contains("x-amz-meta-original-filename"))
+                {
+                    fileName = response.Metadata["x-amz-meta-original-filename"];
+                }
+                else if (response.Metadata.Keys.Contains("original-filename"))
+                {
+                    fileName = response.Metadata["original-filename"];
+                }
+
                 return new MediaInfo
                 {
                     StorageKey = storageKey,
                     ContentType = response.Headers.ContentType,
                     SizeBytes = response.ContentLength,
-                    FileName = response.Metadata.Keys.Contains("original-filename") 
-                        ? response.Metadata["original-filename"] 
-                        : "",
+                    FileName = fileName,
                     MediaType = mediaType,
                     CreatedAt = response.LastModified ?? DateTime.UtcNow,
                     ExpiresAt = expiresAt,
@@ -326,6 +376,433 @@ namespace ConduitLLM.Core.Services
                 "audio/webm" => ".weba",
                 _ => ""
             };
+        }
+
+        /// <inheritdoc/>
+        public async Task<MediaStorageResult> StoreVideoAsync(
+            Stream content, 
+            VideoMediaMetadata metadata,
+            Action<long>? progressCallback = null)
+        {
+            try
+            {
+                // For large videos, we might want to use multipart upload
+                if (content.Length > 100 * 1024 * 1024) // 100MB
+                {
+                    return await StoreVideoMultipartAsync(content, metadata, progressCallback);
+                }
+
+                // For smaller videos, use regular upload with progress tracking
+                var progressStream = new ProgressStream(content, progressCallback);
+                
+                // Set metadata with video-specific information
+                var baseMetadata = new MediaMetadata
+                {
+                    ContentType = metadata.ContentType,
+                    FileName = metadata.FileName,
+                    MediaType = MediaType.Video,
+                    CustomMetadata = metadata.CustomMetadata,
+                    CreatedBy = metadata.CreatedBy,
+                    ExpiresAt = metadata.ExpiresAt
+                };
+
+                // Add video-specific metadata
+                baseMetadata.CustomMetadata["duration"] = metadata.Duration.ToString();
+                baseMetadata.CustomMetadata["resolution"] = metadata.Resolution;
+                baseMetadata.CustomMetadata["width"] = metadata.Width.ToString();
+                baseMetadata.CustomMetadata["height"] = metadata.Height.ToString();
+                baseMetadata.CustomMetadata["framerate"] = metadata.FrameRate.ToString();
+                
+                if (!string.IsNullOrEmpty(metadata.Codec))
+                    baseMetadata.CustomMetadata["codec"] = metadata.Codec;
+                
+                if (metadata.Bitrate.HasValue)
+                    baseMetadata.CustomMetadata["bitrate"] = metadata.Bitrate.Value.ToString();
+                
+                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                    baseMetadata.CustomMetadata["generated-by-model"] = metadata.GeneratedByModel;
+                
+                if (!string.IsNullOrEmpty(metadata.GenerationPrompt))
+                    baseMetadata.CustomMetadata["generation-prompt"] = metadata.GenerationPrompt;
+
+                return await StoreAsync(progressStream, baseMetadata);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to store video");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<MultipartUploadSession> InitiateMultipartUploadAsync(VideoMediaMetadata metadata)
+        {
+            try
+            {
+                // Generate storage key
+                var extension = GetExtensionFromContentType(metadata.ContentType);
+                var storageKey = GenerateStorageKey(Guid.NewGuid().ToString(), MediaType.Video, extension);
+                
+                var initiateRequest = new InitiateMultipartUploadRequest
+                {
+                    BucketName = _bucketName,
+                    Key = storageKey,
+                    ContentType = metadata.ContentType,
+                    ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+                };
+
+                // Add metadata
+                initiateRequest.Metadata.Add("content-type", metadata.ContentType);
+                initiateRequest.Metadata.Add("media-type", MediaType.Video.ToString());
+                initiateRequest.Metadata.Add("duration", metadata.Duration.ToString());
+                initiateRequest.Metadata.Add("resolution", metadata.Resolution);
+                
+                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                    initiateRequest.Metadata.Add("generated-by-model", metadata.GeneratedByModel);
+
+                var response = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
+                
+                var session = new MultipartUploadSession
+                {
+                    SessionId = Guid.NewGuid().ToString(),
+                    StorageKey = storageKey,
+                    S3UploadId = response.UploadId,
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddHours(24),
+                    MinimumPartSize = 5 * 1024 * 1024, // 5MB minimum part size for S3
+                    MaxParts = 10000 // S3 limit
+                };
+
+                _multipartUploads[session.SessionId] = response;
+                
+                _logger.LogInformation("Initiated multipart upload session {SessionId} for key {StorageKey}", 
+                    session.SessionId, storageKey);
+                
+                return session;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initiate multipart upload");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<PartUploadResult> UploadPartAsync(string sessionId, int partNumber, Stream content)
+        {
+            try
+            {
+                if (!_multipartUploads.TryGetValue(sessionId, out var uploadInfo))
+                {
+                    throw new InvalidOperationException($"Upload session {sessionId} not found");
+                }
+
+                var uploadRequest = new UploadPartRequest
+                {
+                    BucketName = _bucketName,
+                    Key = uploadInfo.Key,
+                    UploadId = uploadInfo.UploadId,
+                    PartNumber = partNumber,
+                    InputStream = content
+                };
+
+                var response = await _s3Client.UploadPartAsync(uploadRequest);
+                
+                _logger.LogDebug("Uploaded part {PartNumber} for session {SessionId}", partNumber, sessionId);
+                
+                return new PartUploadResult
+                {
+                    PartNumber = partNumber,
+                    ETag = response.ETag,
+                    SizeBytes = content.Length
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload part {PartNumber} for session {SessionId}", 
+                    partNumber, sessionId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<MediaStorageResult> CompleteMultipartUploadAsync(string sessionId, List<PartUploadResult> parts)
+        {
+            try
+            {
+                if (!_multipartUploads.TryRemove(sessionId, out var uploadInfo))
+                {
+                    throw new InvalidOperationException($"Upload session {sessionId} not found");
+                }
+
+                var completeRequest = new CompleteMultipartUploadRequest
+                {
+                    BucketName = _bucketName,
+                    Key = uploadInfo.Key,
+                    UploadId = uploadInfo.UploadId,
+                    PartETags = parts.Select(p => new PartETag(p.PartNumber, p.ETag)).ToList()
+                };
+
+                var response = await _s3Client.CompleteMultipartUploadAsync(completeRequest);
+                
+                _logger.LogInformation("Completed multipart upload for key {StorageKey}", uploadInfo.Key);
+                
+                // Generate URL
+                var url = await GenerateUrlAsync(uploadInfo.Key, _options.DefaultUrlExpiration);
+                
+                return new MediaStorageResult
+                {
+                    StorageKey = uploadInfo.Key,
+                    Url = url,
+                    SizeBytes = parts.Sum(p => p.SizeBytes),
+                    ContentHash = response.ETag,
+                    CreatedAt = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to complete multipart upload for session {SessionId}", sessionId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task AbortMultipartUploadAsync(string sessionId)
+        {
+            try
+            {
+                if (!_multipartUploads.TryRemove(sessionId, out var uploadInfo))
+                {
+                    // Already removed or doesn't exist
+                    return;
+                }
+
+                var abortRequest = new AbortMultipartUploadRequest
+                {
+                    BucketName = _bucketName,
+                    Key = uploadInfo.Key,
+                    UploadId = uploadInfo.UploadId
+                };
+
+                await _s3Client.AbortMultipartUploadAsync(abortRequest);
+                
+                _logger.LogInformation("Aborted multipart upload session {SessionId}", sessionId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to abort multipart upload for session {SessionId}", sessionId);
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<RangedStream?> GetVideoStreamAsync(string storageKey, long? rangeStart = null, long? rangeEnd = null)
+        {
+            try
+            {
+                // First get metadata to determine file size
+                var metadataRequest = new GetObjectMetadataRequest
+                {
+                    BucketName = _bucketName,
+                    Key = storageKey
+                };
+
+                var metadata = await _s3Client.GetObjectMetadataAsync(metadataRequest);
+                var totalSize = metadata.ContentLength;
+
+                // Setup range request
+                var getRequest = new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = storageKey
+                };
+
+                // Calculate actual range
+                var start = rangeStart ?? 0;
+                var end = rangeEnd ?? totalSize - 1;
+                
+                // Ensure range is valid
+                start = Math.Max(0, Math.Min(start, totalSize - 1));
+                end = Math.Max(start, Math.Min(end, totalSize - 1));
+
+                if (start > 0 || end < totalSize - 1)
+                {
+                    getRequest.ByteRange = new ByteRange(start, end);
+                }
+
+                var response = await _s3Client.GetObjectAsync(getRequest);
+
+                return new RangedStream
+                {
+                    Stream = response.ResponseStream,
+                    RangeStart = start,
+                    RangeEnd = end,
+                    TotalSize = totalSize,
+                    ContentType = response.Headers.ContentType
+                };
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("Video with key {StorageKey} not found", storageKey);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get video stream for {StorageKey}", storageKey);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<PresignedUploadUrl> GeneratePresignedUploadUrlAsync(VideoMediaMetadata metadata, TimeSpan expiration)
+        {
+            try
+            {
+                // Generate storage key
+                var extension = GetExtensionFromContentType(metadata.ContentType);
+                var storageKey = GenerateStorageKey(Guid.NewGuid().ToString(), MediaType.Video, extension);
+
+                var presignRequest = new GetPreSignedUrlRequest
+                {
+                    BucketName = _bucketName,
+                    Key = storageKey,
+                    Verb = HttpVerb.PUT,
+                    Expires = DateTime.UtcNow.Add(expiration),
+                    Protocol = Protocol.HTTPS,
+                    ContentType = metadata.ContentType
+                };
+
+                // Add headers that must be included in the upload
+                presignRequest.Headers["x-amz-server-side-encryption"] = ServerSideEncryptionMethod.AES256.Value;
+                
+                // Add metadata as headers
+                presignRequest.Headers["x-amz-meta-media-type"] = MediaType.Video.ToString();
+                presignRequest.Headers["x-amz-meta-duration"] = metadata.Duration.ToString();
+                presignRequest.Headers["x-amz-meta-resolution"] = metadata.Resolution;
+                
+                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                    presignRequest.Headers["x-amz-meta-generated-by-model"] = metadata.GeneratedByModel;
+
+                var url = await _s3Client.GetPreSignedURLAsync(presignRequest);
+
+                return new PresignedUploadUrl
+                {
+                    Url = url,
+                    HttpMethod = "PUT",
+                    RequiredHeaders = new Dictionary<string, string>
+                    {
+                        ["Content-Type"] = metadata.ContentType,
+                        ["x-amz-server-side-encryption"] = ServerSideEncryptionMethod.AES256.Value
+                    },
+                    ExpiresAt = DateTime.UtcNow.Add(expiration),
+                    StorageKey = storageKey,
+                    MaxFileSizeBytes = 5L * 1024 * 1024 * 1024 // 5GB max
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate presigned upload URL");
+                throw;
+            }
+        }
+
+        private async Task<MediaStorageResult> StoreVideoMultipartAsync(
+            Stream content, 
+            VideoMediaMetadata metadata,
+            Action<long>? progressCallback)
+        {
+            var session = await InitiateMultipartUploadAsync(metadata);
+            var parts = new List<PartUploadResult>();
+            var buffer = new byte[session.MinimumPartSize];
+            var partNumber = 1;
+            var totalBytesUploaded = 0L;
+
+            try
+            {
+                while (true)
+                {
+                    var bytesRead = await content.ReadAsync(buffer, 0, buffer.Length);
+                    if (bytesRead == 0)
+                        break;
+
+                    using var partStream = new MemoryStream(buffer, 0, bytesRead);
+                    var partResult = await UploadPartAsync(session.SessionId, partNumber++, partStream);
+                    parts.Add(partResult);
+                    
+                    totalBytesUploaded += bytesRead;
+                    progressCallback?.Invoke(totalBytesUploaded);
+                }
+
+                return await CompleteMultipartUploadAsync(session.SessionId, parts);
+            }
+            catch
+            {
+                await AbortMultipartUploadAsync(session.SessionId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Stream wrapper that reports progress during read operations.
+        /// </summary>
+        private class ProgressStream : Stream
+        {
+            private readonly Stream _innerStream;
+            private readonly Action<long>? _progressCallback;
+            private long _totalBytesRead;
+
+            public ProgressStream(Stream innerStream, Action<long>? progressCallback)
+            {
+                _innerStream = innerStream;
+                _progressCallback = progressCallback;
+                _totalBytesRead = 0;
+            }
+
+            public override bool CanRead => _innerStream.CanRead;
+            public override bool CanSeek => _innerStream.CanSeek;
+            public override bool CanWrite => _innerStream.CanWrite;
+            public override long Length => _innerStream.Length;
+            public override long Position 
+            { 
+                get => _innerStream.Position;
+                set => _innerStream.Position = value;
+            }
+
+            public override void Flush() => _innerStream.Flush();
+            
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var bytesRead = _innerStream.Read(buffer, offset, count);
+                if (bytesRead > 0)
+                {
+                    _totalBytesRead += bytesRead;
+                    _progressCallback?.Invoke(_totalBytesRead);
+                }
+                return bytesRead;
+            }
+
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                var bytesRead = await _innerStream.ReadAsync(buffer, offset, count, cancellationToken);
+                if (bytesRead > 0)
+                {
+                    _totalBytesRead += bytesRead;
+                    _progressCallback?.Invoke(_totalBytesRead);
+                }
+                return bytesRead;
+            }
+
+            public override long Seek(long offset, SeekOrigin origin) => _innerStream.Seek(offset, origin);
+            public override void SetLength(long value) => _innerStream.SetLength(value);
+            public override void Write(byte[] buffer, int offset, int count) => _innerStream.Write(buffer, offset, count);
+            
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    _innerStream?.Dispose();
+                }
+                base.Dispose(disposing);
+            }
         }
     }
 }

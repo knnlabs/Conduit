@@ -1,3 +1,13 @@
+// Import common client configuration types
+import {
+  RetryConfig as CommonRetryConfig,
+  ResponseInfo as CommonResponseInfo
+} from '@knn_labs/conduit-common';
+
+// Define types locally to avoid bundler issues with type-only exports
+/**
+ * Logger interface for client logging
+ */
 export interface Logger {
   debug(message: string, ...args: unknown[]): void;
   info(message: string, ...args: unknown[]): void;
@@ -5,6 +15,9 @@ export interface Logger {
   error(message: string, ...args: unknown[]): void;
 }
 
+/**
+ * Cache provider interface for client-side caching
+ */
 export interface CacheProvider {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttl?: number): Promise<void>;
@@ -12,28 +25,62 @@ export interface CacheProvider {
   clear(): Promise<void>;
 }
 
-// Type definition for axios errors
-export interface AxiosError {
-  code?: string;
-  message: string;
-  response?: {
+/**
+ * HTTP error class
+ */
+export class HttpError extends Error {
+  public code?: string;
+  public response?: {
     status: number;
     data: unknown;
     headers: Record<string, string>;
   };
-  request?: unknown;
-  config?: {
+  public request?: unknown;
+  public config?: {
     url?: string;
     method?: string;
     _retry?: number;
   };
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.code = code;
+  }
 }
 
-export interface RetryConfig {
-  maxRetries: number;
-  retryDelay: number;
-  retryCondition?: (error: AxiosError) => boolean;
+/**
+ * SignalR client configuration
+ */
+export interface SignalRConfig {
+  enabled?: boolean;
+  autoConnect?: boolean;
+  reconnectDelay?: number[];
+  logLevel?: number; // SignalRLogLevel enum value
+  transport?: number; // HttpTransportType enum value
+  headers?: Record<string, string>;
+  connectionTimeout?: number;
 }
+
+/**
+ * Request configuration info for callbacks
+ */
+export interface RequestConfigInfo {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  data?: unknown;
+  params?: Record<string, unknown>;
+}
+
+// Admin SDK specific RetryConfig (uses fixed delay)
+export interface RetryConfig extends CommonRetryConfig {
+  maxRetries: number;
+  retryDelay: number;  // Fixed delay between retries
+  retryCondition?: (error: unknown) => boolean;
+}
+
+// SignalRConfig now imported from Common package above
 
 export interface ConduitConfig {
   masterKey: string;
@@ -46,16 +93,36 @@ export interface ConduitConfig {
     cache?: CacheProvider;
     headers?: Record<string, string>;
     validateStatus?: (status: number) => boolean;
+    signalR?: SignalRConfig;
+    /**
+     * Custom retry delays in milliseconds
+     * @default [1000, 2000, 4000, 8000, 16000]
+     */
+    retryDelay?: number[];
+    /**
+     * Callback invoked on any error
+     */
+    onError?: (error: Error) => void;
+    /**
+     * Callback invoked before each request
+     */
+    onRequest?: (config: RequestConfigInfo) => void | Promise<void>;
+    /**
+     * Callback invoked after each response
+     */
+    onResponse?: (response: ResponseInfo) => void | Promise<void>;
   };
 }
 
 export interface RequestConfig {
-  method: string;
-  url: string;
+  method?: string;
+  url?: string;
   data?: unknown;
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   timeout?: number;
+  responseType?: 'json' | 'text' | 'blob' | 'arraybuffer' | 'document' | 'stream';
+  signal?: AbortSignal;
 }
 
 export interface ApiClientConfig {
@@ -66,4 +133,17 @@ export interface ApiClientConfig {
   logger?: Logger;
   cache?: CacheProvider;
   defaultHeaders?: Record<string, string>;
+  retryDelay?: number[];
+  onError?: (error: Error) => void;
+  onRequest?: (config: RequestConfigInfo) => void | Promise<void>;
+  onResponse?: (response: ResponseInfo) => void | Promise<void>;
+}
+
+// Extend ResponseInfo to maintain compatibility
+export interface ResponseInfo extends CommonResponseInfo {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  data: unknown;
+  config: RequestConfigInfo;
 }

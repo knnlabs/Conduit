@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ConduitLLM.Core.Data.Interfaces
 {
@@ -81,5 +83,31 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         string SanitizeConnectionString(string connectionStringValue);
+
+        /// <summary>
+        /// Validates PostgreSQL connectivity with exponential backoff retry logic.
+        /// </summary>
+        /// <param name="connectionString">The PostgreSQL connection string to validate.</param>
+        /// <param name="maxRetries">Maximum number of retry attempts (default: 5).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>True if connection is successful, false otherwise.</returns>
+        /// <example>
+        /// ```csharp
+        /// // Validate PostgreSQL connectivity with retries
+        /// var isConnected = await connectionManager.ValidatePostgreSQLConnectivityAsync(
+        ///     connectionString,
+        ///     maxRetries: 5,
+        ///     cancellationToken: cts.Token
+        /// );
+        /// 
+        /// if (!isConnected) {
+        ///     throw new InvalidOperationException("Cannot connect to PostgreSQL after multiple attempts");
+        /// }
+        /// ```
+        /// </example>
+        Task<bool> ValidatePostgreSQLConnectivityAsync(
+            string connectionString, 
+            int maxRetries = 5, 
+            CancellationToken cancellationToken = default);
     }
 }

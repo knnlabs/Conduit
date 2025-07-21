@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -23,12 +25,14 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Service for managing virtual keys through the Admin API
     /// </summary>
-    public class AdminVirtualKeyService : IAdminVirtualKeyService
+    public class AdminVirtualKeyService : EventPublishingServiceBase, IAdminVirtualKeyService
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly IVirtualKeyCache? _cache; // Optional cache for invalidation
-        private readonly IPublishEndpoint? _publishEndpoint; // Optional event publishing
+        private readonly IMediaLifecycleService? _mediaLifecycleService; // Optional media lifecycle service
+        private readonly IModelProviderMappingRepository _modelProviderMappingRepository;
+        private readonly IModelCapabilityService _modelCapabilityService;
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -40,18 +44,30 @@ namespace ConduitLLM.Admin.Services
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
+        /// <param name="modelProviderMappingRepository">The model provider mapping repository</param>
+        /// <param name="modelCapabilityService">The model capability service</param>
+        /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyCache? cache,
             IPublishEndpoint? publishEndpoint,
-            ILogger<AdminVirtualKeyService> logger)
+            ILogger<AdminVirtualKeyService> logger,
+            IModelProviderMappingRepository modelProviderMappingRepository,
+            IModelCapabilityService modelCapabilityService,
+            IMediaLifecycleService? mediaLifecycleService = null)
+            : base(publishEndpoint, logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache; // Optional - can be null if Redis not configured
-            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
+            _mediaLifecycleService = mediaLifecycleService; // Optional - can be null if media lifecycle management not configured
+            _modelProviderMappingRepository = modelProviderMappingRepository ?? throw new ArgumentNullException(nameof(modelProviderMappingRepository));
+            _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Log event publishing configuration status
+            LogEventPublishingConfiguration(nameof(AdminVirtualKeyService));
         }
 
         /// <inheritdoc />
@@ -113,6 +129,23 @@ namespace ConduitLLM.Admin.Services
 
                 await _spendHistoryRepository.CreateAsync(history);
             }
+
+            // Publish VirtualKeyCreated event for cache synchronization
+            // This is critical for the Core API to recognize the new key
+            await PublishEventAsync(
+                new VirtualKeyCreated
+                {
+                    KeyId = virtualKey.Id,
+                    KeyHash = virtualKey.KeyHash,
+                    KeyName = virtualKey.KeyName,
+                    CreatedAt = virtualKey.CreatedAt,
+                    IsEnabled = virtualKey.IsEnabled,
+                    AllowedModels = virtualKey.AllowedModels,
+                    MaxBudget = virtualKey.MaxBudget,
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                $"create virtual key {virtualKey.Id}",
+                new { KeyName = virtualKey.KeyName });
 
             // Map to response DTO
             var keyDto = MapToDto(virtualKey);
@@ -235,46 +268,16 @@ namespace ConduitLLM.Admin.Services
             if (result)
             {
                 // Publish VirtualKeyUpdated event for cache invalidation and cross-service coordination
-                if (_publishEndpoint != null)
-                {
-                    try
+                await PublishEventAsync(
+                    new VirtualKeyUpdated
                     {
-                        await _publishEndpoint.Publish(new VirtualKeyUpdated
-                        {
-                            KeyId = key.Id,
-                            KeyHash = key.KeyHash,
-                            ChangedProperties = changedProperties.ToArray(),
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-
-                        _logger.LogDebug("Published VirtualKeyUpdated event for key {KeyId} with changes: {ChangedProperties}", 
-                            id, string.Join(", ", changedProperties));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to publish VirtualKeyUpdated event for key {KeyId} - operation succeeded but event not sent", id);
-                        // Don't fail the operation if event publishing fails
-                    }
-                }
-                else
-                {
-                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyUpdated event for key {KeyId}", id);
-                }
-
-                // Legacy cache invalidation (will be replaced by event-driven invalidation)
-                if (_cache != null)
-                {
-                    try
-                    {
-                        await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
-                        _logger.LogDebug("Invalidated cache for Virtual Key after update: {KeyId}", id);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to invalidate cache for Virtual Key {KeyId} after update", id);
-                        // Don't fail the operation if cache invalidation fails
-                    }
-                }
+                        KeyId = key.Id,
+                        KeyHash = key.KeyHash,
+                        ChangedProperties = changedProperties.ToArray(),
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"update virtual key {id}",
+                    new { ChangedProperties = string.Join(", ", changedProperties) });
             }
 
             return result;
@@ -292,41 +295,43 @@ namespace ConduitLLM.Admin.Services
                 return false;
             }
 
-            // TODO: Media Cleanup - When deleting a virtual key, we need to also delete all associated
-            // media files (images/videos) from storage. Currently, these files become orphaned.
-            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
-            // IMPORTANT: This is a production concern - orphaned media will grow storage costs!
+            // Cleanup associated media files if media lifecycle service is available
+            if (_mediaLifecycleService != null)
+            {
+                try
+                {
+                    var deletedMediaCount = await _mediaLifecycleService.DeleteMediaForVirtualKeyAsync(id);
+                    if (deletedMediaCount > 0)
+                    {
+                        _logger.LogInformation("Deleted {Count} media files for virtual key {KeyId}", deletedMediaCount, id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't fail the virtual key deletion
+                    _logger.LogError(ex, "Failed to delete media files for virtual key {KeyId}, but continuing with key deletion", id);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Media lifecycle service not available, media files for virtual key {KeyId} will become orphaned", id);
+            }
             
             var result = await _virtualKeyRepository.DeleteAsync(id);
 
             if (result)
             {
                 // Publish VirtualKeyDeleted event for cache invalidation and cleanup
-                if (_publishEndpoint != null)
-                {
-                    try
+                await PublishEventAsync(
+                    new VirtualKeyDeleted
                     {
-                        await _publishEndpoint.Publish(new VirtualKeyDeleted
-                        {
-                            KeyId = key.Id,
-                            KeyHash = key.KeyHash,
-                            KeyName = key.KeyName,
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-
-                        _logger.LogDebug("Published VirtualKeyDeleted event for key {KeyId} (name: {KeyName})", 
-                            key.Id, key.KeyName);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to publish VirtualKeyDeleted event for key {KeyId} - operation succeeded but event not sent", id);
-                        // Don't fail the operation if event publishing fails
-                    }
-                }
-                else
-                {
-                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyDeleted event for key {KeyId}", id);
-                }
+                        KeyId = key.Id,
+                        KeyHash = key.KeyHash,
+                        KeyName = key.KeyName,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"delete virtual key {key.Id}",
+                    new { KeyName = key.KeyName });
             }
 
             return result;
@@ -795,6 +800,210 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogError(ex, "Error during virtual key maintenance");
                 throw;
             }
+        }
+
+        /// <inheritdoc />
+        public async Task<VirtualKeyDiscoveryPreviewDto?> PreviewDiscoveryAsync(int id, string? capability = null)
+        {
+            _logger.LogInformation("Previewing discovery for virtual key {KeyId} with capability filter: {Capability}", 
+                id, capability ?? "none");
+
+            // Get the virtual key
+            var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", id);
+                return null;
+            }
+
+            // Get all model mappings
+            var allMappings = await _modelProviderMappingRepository.GetAllAsync();
+            var enabledMappings = allMappings.Where(m => 
+                m.IsEnabled && 
+                m.ProviderCredential != null && 
+                m.ProviderCredential.IsEnabled).ToList();
+
+            var models = new List<DiscoveredModelDto>();
+
+            // Check each model mapping against the virtual key's allowed models
+            foreach (var mapping in enabledMappings)
+            {
+                // Check if model is allowed for this virtual key
+                if (!IsModelAllowed(virtualKey, mapping.ModelAlias))
+                {
+                    continue;
+                }
+
+                // Build capabilities dictionary for this model
+                var capabilities = await BuildCapabilitiesAsync(mapping.ModelAlias);
+
+                // Filter by capability if specified
+                if (!string.IsNullOrEmpty(capability))
+                {
+                    if (!capabilities.ContainsKey(capability))
+                    {
+                        continue;
+                    }
+
+                    if (capabilities[capability] is Dictionary<string, object> capDict)
+                    {
+                        if (!capDict.ContainsKey("supported") || capDict["supported"] is not bool supported || !supported)
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                var model = new DiscoveredModelDto
+                {
+                    Id = mapping.ModelAlias,
+                    Provider = mapping.ProviderCredential?.ProviderName?.ToLowerInvariant(),
+                    DisplayName = mapping.ModelAlias,
+                    Capabilities = capabilities
+                };
+
+                models.Add(model);
+            }
+
+            return new VirtualKeyDiscoveryPreviewDto
+            {
+                Data = models,
+                Count = models.Count
+            };
+        }
+
+        /// <summary>
+        /// Builds the capabilities dictionary for a model
+        /// </summary>
+        private async Task<Dictionary<string, object>> BuildCapabilitiesAsync(string modelAlias)
+        {
+            var capabilities = new Dictionary<string, object>();
+
+            // Basic capabilities - always included for all models
+            capabilities["chat"] = new Dictionary<string, object> { ["supported"] = true };
+            capabilities["chat_stream"] = new Dictionary<string, object> { ["supported"] = true };
+
+            // Check vision support
+            if (await _modelCapabilityService.SupportsVisionAsync(modelAlias))
+            {
+                capabilities["vision"] = new Dictionary<string, object> { ["supported"] = true };
+            }
+
+            // Check audio transcription support
+            if (await _modelCapabilityService.SupportsAudioTranscriptionAsync(modelAlias))
+            {
+                var audioCapabilities = new Dictionary<string, object> { ["supported"] = true };
+                
+                var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(modelAlias);
+                if (supportedLanguages.Any())
+                {
+                    audioCapabilities["supported_languages"] = supportedLanguages;
+                }
+
+                var supportedFormats = await _modelCapabilityService.GetSupportedFormatsAsync(modelAlias);
+                if (supportedFormats.Any())
+                {
+                    audioCapabilities["supported_formats"] = supportedFormats;
+                }
+
+                capabilities["audio_transcription"] = audioCapabilities;
+            }
+
+            // Check text-to-speech support
+            if (await _modelCapabilityService.SupportsTextToSpeechAsync(modelAlias))
+            {
+                var ttsCapabilities = new Dictionary<string, object> { ["supported"] = true };
+                
+                var supportedVoices = await _modelCapabilityService.GetSupportedVoicesAsync(modelAlias);
+                if (supportedVoices.Any())
+                {
+                    ttsCapabilities["supported_voices"] = supportedVoices;
+                }
+
+                var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(modelAlias);
+                if (supportedLanguages.Any())
+                {
+                    ttsCapabilities["supported_languages"] = supportedLanguages;
+                }
+
+                capabilities["text_to_speech"] = ttsCapabilities;
+            }
+
+            // Check realtime audio support
+            if (await _modelCapabilityService.SupportsRealtimeAudioAsync(modelAlias))
+            {
+                capabilities["realtime_audio"] = new Dictionary<string, object> { ["supported"] = true };
+            }
+
+            // Check video generation support
+            if (await _modelCapabilityService.SupportsVideoGenerationAsync(modelAlias))
+            {
+                capabilities["video_generation"] = new Dictionary<string, object> 
+                { 
+                    ["supported"] = true,
+                    ["max_duration_seconds"] = 6,
+                    ["supported_resolutions"] = new List<string> { "720x480", "1280x720", "1920x1080" },
+                    ["supported_fps"] = new List<int> { 24, 30 },
+                    ["supports_custom_styles"] = true
+                };
+            }
+
+            // TODO: Add image generation support when method is available
+            // For now, check if model contains "dall-e" or similar patterns
+            if (modelAlias.Contains("dall-e", StringComparison.OrdinalIgnoreCase) ||
+                modelAlias.Contains("stable-diffusion", StringComparison.OrdinalIgnoreCase) ||
+                modelAlias.Contains("midjourney", StringComparison.OrdinalIgnoreCase))
+            {
+                capabilities["image_generation"] = new Dictionary<string, object>
+                {
+                    ["supported"] = true,
+                    ["supported_sizes"] = new List<string> { "256x256", "512x512", "1024x1024", "1024x1792", "1792x1024" }
+                };
+            }
+
+            return capabilities;
+        }
+
+        /// <summary>
+        /// Checks if a model is allowed for a virtual key based on AllowedModels restrictions
+        /// </summary>
+        private bool IsModelAllowed(VirtualKey virtualKey, string modelAlias)
+        {
+            // If no AllowedModels specified, all models are allowed
+            if (string.IsNullOrWhiteSpace(virtualKey.AllowedModels))
+            {
+                return true;
+            }
+
+            var allowedModels = virtualKey.AllowedModels
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(m => m.Trim())
+                .ToList();
+
+            foreach (var allowedModel in allowedModels)
+            {
+                // Check for exact match
+                if (allowedModel.Equals(modelAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // Check for wildcard/prefix match (e.g., "gpt-4*")
+                if (allowedModel.EndsWith("*"))
+                {
+                    var prefix = allowedModel.Substring(0, allowedModel.Length - 1);
+                    if (modelAlias.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

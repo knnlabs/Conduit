@@ -27,38 +27,37 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
-            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
+            // Pass "AdminAPI" to get Admin API-specific connection pool settings
+            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("AdminAPI", msg => Console.WriteLine(msg));
+            
+            // Log the connection pool settings for verification
+            if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
+            {
+                Console.WriteLine($"[ConduitLLM.Admin] Admin API database connection pool configured:");
+                var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
+                if (match.Success)
+                {
+                    Console.WriteLine($"[ConduitLLM.Admin]   Min Pool Size: {match.Groups[1].Value}");
+                    Console.WriteLine($"[ConduitLLM.Admin]   Max Pool Size: {match.Groups[2].Value}");
+                }
+            }
 
-            if (dbProvider == "sqlite")
+            // Only PostgreSQL is supported
+            if (dbProvider != "postgres")
             {
-                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+                throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
+            }
+
+            services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+            {
+                options.UseNpgsql(dbConnectionString);
+                // Suppress PendingModelChangesWarning in production
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                if (environment == "Production")
                 {
-                    options.UseSqlite(dbConnectionString);
-                    // Suppress PendingModelChangesWarning in production
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                    if (environment == "Production")
-                    {
-                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                    }
-                });
-            }
-            else if (dbProvider == "postgres")
-            {
-                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-                {
-                    options.UseNpgsql(dbConnectionString);
-                    // Suppress PendingModelChangesWarning in production
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                    if (environment == "Production")
-                    {
-                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                    }
-                });
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
-            }
+                    options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+                }
+            });
 
             // Add context management services
             services.AddConduitContextManagement(configuration);

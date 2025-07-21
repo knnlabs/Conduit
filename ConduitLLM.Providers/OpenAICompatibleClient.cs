@@ -18,6 +18,7 @@ using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
 using InternalModels = ConduitLLM.Providers.InternalModels;
 using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
+using ConduitLLM.Providers.Utilities;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 
 namespace ConduitLLM.Providers
@@ -738,10 +739,18 @@ namespace ConduitLLM.Providers
                 Model = ProviderModelId,  // Always use the provider's model ID, not the alias
                 Messages = messages,
                 MaxTokens = request.MaxTokens,
-                Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null,
+                Temperature = ParameterConverter.ToTemperature(request.Temperature),
+                TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
+                N = request.N,
+                Stop = ParameterConverter.ConvertStopSequences(request.Stop),
+                PresencePenalty = ParameterConverter.ToProbability(request.PresencePenalty),
+                FrequencyPenalty = ParameterConverter.ToProbability(request.FrequencyPenalty),
+                LogitBias = ParameterConverter.ConvertLogitBias(request.LogitBias),
+                User = request.User,
+                Seed = request.Seed,
                 Tools = openAiTools,
                 ToolChoice = openAiToolChoice,
-                ResponseFormat = new OpenAIModels.ResponseFormat { Type = "text" },
+                ResponseFormat = request.ResponseFormat != null ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } : new OpenAIModels.ResponseFormat { Type = "text" },
                 Stream = request.Stream ?? false
             };
         }
@@ -1330,6 +1339,53 @@ namespace ConduitLLM.Providers
 
             // Add OpenAI API version header if needed
             // client.DefaultRequestHeaders.Add("OpenAI-Version", "2023-05-15");
+        }
+
+        /// <inheritdoc />
+        public override Task<CoreModels.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            
+            // For OpenAI-compatible providers, we provide sensible defaults
+            // Individual providers can override this with more specific capabilities
+            return Task.FromResult(new CoreModels.ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new CoreModels.ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = false, // Most OpenAI-compatible APIs don't support top-k
+                    Stop = true,
+                    PresencePenalty = true,
+                    FrequencyPenalty = true,
+                    LogitBias = true,
+                    N = true,
+                    User = true,
+                    Seed = true,
+                    ResponseFormat = true,
+                    Tools = true,
+                    Constraints = new CoreModels.ParameterConstraints
+                    {
+                        TemperatureRange = new CoreModels.Range<double>(0.0, 2.0),
+                        TopPRange = new CoreModels.Range<double>(0.0, 1.0),
+                        MaxStopSequences = 4,
+                        MaxTokenLimit = 4096 // Conservative default
+                    }
+                },
+                Features = new CoreModels.FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = false, // Usually separate models
+                    ImageGeneration = false, // Usually separate models
+                    VisionInput = false, // Provider-specific
+                    FunctionCalling = true,
+                    AudioTranscription = false, // Provider-specific
+                    TextToSpeech = false // Provider-specific
+                }
+            });
         }
 
         /// <summary>

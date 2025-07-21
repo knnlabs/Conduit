@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
@@ -239,7 +240,7 @@ namespace ConduitLLM.Core.Services
             foreach (var kvp in _providerQualityMetrics)
             {
                 var trend = kvp.Value.CalculateTrend();
-                if (trend != TrendDirection.Stable)
+                if (trend != AudioQualityTrendDirection.Stable)
                 {
                     trends.Add(new QualityTrend
                     {
@@ -327,7 +328,7 @@ namespace ConduitLLM.Core.Services
                 foreach (var kvp in _providerQualityMetrics)
                 {
                     var trend = kvp.Value.CalculateTrend();
-                    if (trend == TrendDirection.Declining)
+                    if (trend == AudioQualityTrendDirection.Declining)
                     {
                         _logger.LogWarning(
                             "Quality declining for provider {Provider}: Confidence dropped {Change:P1}",
@@ -424,22 +425,22 @@ namespace ConduitLLM.Core.Services
             return (double)highCount / samples.Count;
         }
 
-        public TrendDirection CalculateTrend()
+        public AudioQualityTrendDirection CalculateTrend()
         {
             var samples = _confidenceSamples
                 .OrderBy(s => s.Timestamp)
                 .ToList();
 
-            if (samples.Count < 10) return TrendDirection.Stable;
+            if (samples.Count < 10) return AudioQualityTrendDirection.Stable;
 
             var recentAvg = samples.TakeLast(5).Average(s => s.Value);
             var olderAvg = samples.Take(5).Average(s => s.Value);
 
             var change = (recentAvg - olderAvg) / olderAvg;
 
-            if (change > 0.05) return TrendDirection.Improving;
-            if (change < -0.05) return TrendDirection.Declining;
-            return TrendDirection.Stable;
+            if (change > 0.05) return AudioQualityTrendDirection.Improving;
+            if (change < -0.05) return AudioQualityTrendDirection.Declining;
+            return AudioQualityTrendDirection.Stable;
         }
 
         public double GetTrendChangePercent()

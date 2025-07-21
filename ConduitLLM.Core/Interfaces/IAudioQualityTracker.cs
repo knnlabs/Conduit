@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -275,7 +276,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Gets or sets the trend direction.
         /// </summary>
-        public TrendDirection Direction { get; set; }
+        public AudioQualityTrendDirection Direction { get; set; }
 
         /// <summary>
         /// Gets or sets the change percentage.
@@ -283,26 +284,6 @@ namespace ConduitLLM.Core.Interfaces
         public double ChangePercent { get; set; }
     }
 
-    /// <summary>
-    /// Trend direction.
-    /// </summary>
-    public enum TrendDirection
-    {
-        /// <summary>
-        /// Quality is improving.
-        /// </summary>
-        Improving,
-
-        /// <summary>
-        /// Quality is stable.
-        /// </summary>
-        Stable,
-
-        /// <summary>
-        /// Quality is declining.
-        /// </summary>
-        Declining
-    }
 
     /// <summary>
     /// Quality recommendation.

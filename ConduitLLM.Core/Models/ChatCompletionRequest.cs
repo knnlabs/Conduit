@@ -44,6 +44,21 @@ public class ChatCompletionRequest
     public double? TopP { get; set; }
 
     /// <summary>
+    /// Limits the number of tokens to consider for each step of generation.
+    /// Only the top K most likely tokens are considered for sampling.
+    /// Typical values range from 1 to 100. Lower values make output more focused.
+    /// </summary>
+    /// <remarks>
+    /// Top-k sampling is a technique that restricts the model to only consider 
+    /// the K most likely next tokens at each step. This can help prevent the model 
+    /// from selecting very unlikely tokens and can make the output more coherent.
+    /// Not all providers support this parameter.
+    /// </remarks>
+    [JsonPropertyName("top_k")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TopK { get; set; }
+
+    /// <summary>
     /// How many chat completion choices to generate for each input message.
     /// </summary>
     [JsonPropertyName("n")]

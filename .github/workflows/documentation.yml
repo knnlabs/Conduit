@@ -100,8 +100,20 @@ jobs:
           name: docusaurus-build
           path: website/build
           
+      - name: Check Netlify Configuration
+        id: check-netlify
+        run: |
+          if [[ -z "${{ secrets.NETLIFY_AUTH_TOKEN }}" ]] || [[ -z "${{ secrets.NETLIFY_SITE_ID }}" ]]; then
+            echo "netlify_configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Netlify deployment skipped: Missing NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID"
+          else
+            echo "netlify_configured=true" >> $GITHUB_OUTPUT
+            echo "✅ Netlify configuration found"
+          fi
+
       - name: Deploy to Netlify Preview
         id: netlify
+        if: steps.check-netlify.outputs.netlify_configured == 'true'
         uses: nwtgck/actions-netlify@v2
         with:
           publish-dir: ./website/build
@@ -112,10 +124,9 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        continue-on-error: true
         
       - name: Comment PR with preview URL
-        if: steps.netlify.outputs.deploy-url
+        if: steps.check-netlify.outputs.netlify_configured == 'true' && steps.netlify.outputs.deploy-url
         uses: actions/github-script@v7
         with:
           script: |

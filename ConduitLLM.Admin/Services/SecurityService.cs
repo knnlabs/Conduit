@@ -16,58 +16,6 @@ using ConduitLLM.Admin.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
-    /// Unified security service for Admin API
-    /// </summary>
-    public interface ISecurityService
-    {
-        /// <summary>
-        /// Checks if a request is allowed based on all security rules
-        /// </summary>
-        Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context);
-
-        /// <summary>
-        /// Records a failed authentication attempt
-        /// </summary>
-        Task RecordFailedAuthAsync(string ipAddress);
-
-        /// <summary>
-        /// Clears failed authentication attempts for an IP
-        /// </summary>
-        Task ClearFailedAuthAttemptsAsync(string ipAddress);
-
-        /// <summary>
-        /// Checks if an IP is banned due to failed authentication
-        /// </summary>
-        Task<bool> IsIpBannedAsync(string ipAddress);
-
-        /// <summary>
-        /// Validates the API key
-        /// </summary>
-        bool ValidateApiKey(string providedKey);
-    }
-
-    /// <summary>
-    /// Result of a security check
-    /// </summary>
-    public class SecurityCheckResult
-    {
-        /// <summary>
-        /// Whether the request is allowed
-        /// </summary>
-        public bool IsAllowed { get; set; }
-        
-        /// <summary>
-        /// Reason for denial if not allowed
-        /// </summary>
-        public string Reason { get; set; } = "";
-        
-        /// <summary>
-        /// HTTP status code to return
-        /// </summary>
-        public int? StatusCode { get; set; }
-    }
-
-    /// <summary>
     /// Implementation of unified security service for Admin API
     /// </summary>
     public class SecurityService : ISecurityService
@@ -113,7 +61,7 @@ namespace ConduitLLM.Admin.Services
             var path = context.Request.Path.Value ?? "";
 
             // First check API key authentication (unless excluded path)
-            if (!IsPathExcluded(path, new List<string> { "/health", "/swagger" }))
+            if (!IsPathExcluded(path, new List<string> { "/health", "/swagger", "/hubs" }))
             {
                 if (!IsApiKeyValid(context))
                 {
@@ -166,7 +114,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public bool ValidateApiKey(string providedKey)
         {
-            var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+            var masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY") 
                            ?? _configuration["AdminApi:MasterKey"];
 
             return !string.IsNullOrEmpty(masterKey) && providedKey == masterKey;
@@ -197,6 +145,18 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task RecordFailedAuthAsync(string ipAddress)
         {
+#if DEBUG
+            // Skip recording failed auth attempts in development mode
+            _logger.LogDebug("Failed auth recording is disabled in DEBUG mode for IP {IpAddress}", ipAddress);
+            await Task.CompletedTask;
+            return;
+#else
+            // Check if IP banning is enabled via configuration
+            if (!_options.FailedAuth.Enabled)
+            {
+                _logger.LogDebug("Failed auth recording is disabled via configuration for IP {IpAddress}", ipAddress);
+                return;
+            }
             var key = $"{FAILED_LOGIN_PREFIX}{ipAddress}";
             var banKey = $"{BAN_PREFIX}{ipAddress}";
 
@@ -285,6 +245,7 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogInformation("Failed authentication attempt {Attempts}/{MaxAttempts} for IP {IpAddress}", 
                     attempts, _options.FailedAuth.MaxAttempts, ipAddress);
             }
+#endif
         }
 
         /// <inheritdoc/>
@@ -307,6 +268,17 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<bool> IsIpBannedAsync(string ipAddress)
         {
+#if DEBUG
+            // IP banning is disabled in development mode
+            _logger.LogDebug("IP banning is disabled in DEBUG mode");
+            return await Task.FromResult(false);
+#else
+            // Check if IP banning is enabled via configuration
+            if (!_options.FailedAuth.Enabled)
+            {
+                _logger.LogDebug("IP banning is disabled via configuration");
+                return false;
+            }
             var banKey = $"{BAN_PREFIX}{ipAddress}";
 
             if (_options.UseDistributedTracking && _distributedCache != null)
@@ -325,6 +297,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             return false;
+#endif
         }
 
         private async Task<SecurityCheckResult> CheckRateLimitAsync(string ipAddress)

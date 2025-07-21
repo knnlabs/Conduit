@@ -55,7 +55,8 @@ namespace ConduitLLM.Http.Adapters
                     DeploymentName = m.DeploymentName,
                     IsEnabled = true, // Default
                     MaxContextTokens = null, // Default
-                    SupportsImageGeneration = m.SupportsImageGeneration
+                    SupportsImageGeneration = m.SupportsImageGeneration,
+                    SupportsEmbeddings = m.SupportsEmbeddings
                 }).ToList();
             }
 
@@ -72,7 +73,8 @@ namespace ConduitLLM.Http.Adapters
                     DeploymentName = mapping.DeploymentName,
                     IsEnabled = true, // Default
                     MaxContextTokens = null, // Default
-                    SupportsImageGeneration = mapping.SupportsImageGeneration
+                    SupportsImageGeneration = mapping.SupportsImageGeneration,
+                    SupportsEmbeddings = mapping.SupportsEmbeddings
                 };
             }
         }
@@ -122,13 +124,49 @@ namespace ConduitLLM.Http.Adapters
                 var modelCost = await _innerService.GetCostForModelAsync(modelId, cancellationToken);
                 if (modelCost == null) return null;
 
+                // Deserialize video resolution multipliers if present
+                Dictionary<string, decimal>? videoResolutionMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers))
+                {
+                    try
+                    {
+                        videoResolutionMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
+                // Deserialize image quality multipliers if present
+                Dictionary<string, decimal>? imageQualityMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers))
+                {
+                    try
+                    {
+                        imageQualityMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
                 return new ModelCostInfo
                 {
                     ModelIdPattern = modelCost.ModelIdPattern,
                     InputTokenCost = modelCost.InputTokenCost,
                     OutputTokenCost = modelCost.OutputTokenCost,
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = modelCost.ImageCostPerImage
+                    ImageCostPerImage = modelCost.ImageCostPerImage,
+                    VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                    VideoResolutionMultipliers = videoResolutionMultipliers,
+                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                    ImageQualityMultipliers = imageQualityMultipliers,
+                    CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                    CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                    CostPerSearchUnit = modelCost.CostPerSearchUnit
                 };
             }
         }

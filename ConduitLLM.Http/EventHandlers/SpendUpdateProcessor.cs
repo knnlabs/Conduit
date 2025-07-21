@@ -1,4 +1,5 @@
 using MassTransit;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Repositories;
@@ -8,25 +9,26 @@ namespace ConduitLLM.Http.EventHandlers
     /// <summary>
     /// Processes spend update requests in ordered fashion per virtual key
     /// Eliminates race conditions and dual update paths
+    /// Uses service locator pattern to handle cross-service dependencies gracefully
     /// </summary>
     public class SpendUpdateProcessor : IConsumer<SpendUpdateRequested>
     {
-        private readonly IVirtualKeyRepository _virtualKeyRepository;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ILogger<SpendUpdateProcessor> _logger;
 
         /// <summary>
         /// Initializes a new instance of the SpendUpdateProcessor
         /// </summary>
-        /// <param name="virtualKeyRepository">Virtual key repository for database operations</param>
+        /// <param name="serviceProvider">Service provider for resolving optional dependencies</param>
         /// <param name="publishEndpoint">MassTransit publish endpoint for publishing events</param>
         /// <param name="logger">Logger instance</param>
         public SpendUpdateProcessor(
-            IVirtualKeyRepository virtualKeyRepository,
+            IServiceProvider serviceProvider,
             IPublishEndpoint publishEndpoint,
             ILogger<SpendUpdateProcessor> logger)
         {
-            _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -47,13 +49,37 @@ namespace ConduitLLM.Http.EventHandlers
                 return;
             }
 
+            // Get virtual key repository from service provider
+            var virtualKeyRepository = _serviceProvider.GetService<IVirtualKeyRepository>();
+            
+            if (virtualKeyRepository == null)
+            {
+                _logger.LogWarning(
+                    "Virtual key repository not available - cannot process spend update for key {KeyId}. " +
+                    "This is expected in Core API context where repository is not registered.",
+                    request.KeyId);
+                
+                // Still publish the event so other services can react
+                // This allows the Admin API or other services to handle the update
+                await _publishEndpoint.Publish(new SpendUpdateDeferred
+                {
+                    KeyId = request.KeyId,
+                    Amount = request.Amount,
+                    RequestId = request.RequestId,
+                    CorrelationId = request.CorrelationId,
+                    Reason = "Repository not available in current context"
+                });
+                
+                return;
+            }
+
             try
             {
                 _logger.LogDebug("Processing spend update request for key {KeyId}: amount {Amount}, requestId {RequestId}",
                     request.KeyId, request.Amount, request.RequestId);
 
                 // Get current virtual key state
-                var virtualKey = await _virtualKeyRepository.GetByIdAsync(request.KeyId);
+                var virtualKey = await virtualKeyRepository.GetByIdAsync(request.KeyId);
                 if (virtualKey == null)
                 {
                     _logger.LogWarning("Spend update request for non-existent virtual key {KeyId} - ignoring", request.KeyId);
@@ -68,7 +94,7 @@ namespace ConduitLLM.Http.EventHandlers
                 virtualKey.CurrentSpend = newSpend;
                 virtualKey.UpdatedAt = DateTime.UtcNow;
                 
-                var success = await _virtualKeyRepository.UpdateAsync(virtualKey);
+                var success = await virtualKeyRepository.UpdateAsync(virtualKey);
                 
                 if (success)
                 {

@@ -1,4 +1,34 @@
 import { FilterOptions } from './common';
+import type { ModelConfigMetadata } from './metadata';
+
+export interface ModelCost {
+  id: number;
+  modelIdPattern: string;
+  providerName: string;
+  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
+  costPerRequest?: number;
+  costPerSecond?: number;
+  costPerImage?: number;
+  isActive: boolean;
+  priority: number;
+  effectiveDate: string;
+  expiryDate?: string;
+  metadata?: ModelConfigMetadata;
+  createdAt: string;
+  updatedAt: string;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
+}
 
 export interface ModelCostDto {
   id: number;
@@ -13,6 +43,16 @@ export interface ModelCostDto {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface CreateModelCostDto {
@@ -25,6 +65,16 @@ export interface CreateModelCostDto {
   providerId?: string;
   description?: string;
   isActive?: boolean;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface UpdateModelCostDto {
@@ -36,6 +86,16 @@ export interface UpdateModelCostDto {
   providerId?: string;
   description?: string;
   isActive?: boolean;
+  // Phase 1 fields
+  batchProcessingMultiplier?: number;
+  supportsBatchProcessing?: boolean;
+  imageQualityMultipliers?: string;
+  // Phase 2 fields
+  cachedInputTokenCost?: number;
+  cachedInputWriteCost?: number;
+  costPerSearchUnit?: number;
+  costPerInferenceStep?: number;
+  defaultInferenceSteps?: number;
 }
 
 export interface ModelCostFilters extends FilterOptions {
@@ -122,4 +182,29 @@ export interface ModelCostComparison {
     percentageDifference: number;
     currency: string;
   }[];
+}
+
+export interface ModelCostOverview {
+  modelName: string;
+  providerName: string;
+  modelType: string;
+  totalRequests: number;
+  totalTokens: number;
+  totalCost: number;
+  averageCostPerRequest: number;
+  costTrend: 'increasing' | 'decreasing' | 'stable';
+  trendPercentage: number;
+}
+
+export interface CostTrend {
+  date: string;
+  cost: number;
+  requests: number;
+  tokens: number;
+}
+
+export interface ImportResult {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
 }

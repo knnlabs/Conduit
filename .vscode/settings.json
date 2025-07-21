@@ -1,0 +1,64 @@
+{
+  "css.validate": false,
+  "less.validate": false,
+  "scss.validate": false,
+  "stylelint.enable": true,
+  "stylelint.validate": ["css", "scss", "less"],
+  "stylelint.snippet": ["css", "scss", "less"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.stylelint": "explicit"
+  },
+  "files.associations": {
+    "*.css": "css"
+  },
+  "emmet.includeLanguages": {
+    "razor": "html"
+  },
+  "css.customData": [
+    {
+      "version": 1.1,
+      "properties": [
+        {
+          "name": "--space-*",
+          "description": "Design token spacing values from the spacing scale"
+        },
+        {
+          "name": "--color-*",
+          "description": "Design token color values from the color system"
+        },
+        {
+          "name": "--radius-*",
+          "description": "Design token border radius values"
+        },
+        {
+          "name": "--shadow-*",
+          "description": "Design token shadow values"
+        },
+        {
+          "name": "--text-*",
+          "description": "Design token typography values"
+        },
+        {
+          "name": "--font-*",
+          "description": "Design token font values"
+        },
+        {
+          "name": "--leading-*",
+          "description": "Design token line height values"
+        },
+        {
+          "name": "--transition-*",
+          "description": "Design token transition values"
+        },
+        {
+          "name": "--gradient-*",
+          "description": "Design token gradient values"
+        },
+        {
+          "name": "--z-index-*",
+          "description": "Design token z-index values"
+        }
+      ]
+    }
+  ]
+}

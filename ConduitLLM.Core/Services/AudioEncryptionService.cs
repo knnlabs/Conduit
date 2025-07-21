@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,7 +19,7 @@ namespace ConduitLLM.Core.Services
     public class AudioEncryptionService : IAudioEncryptionService
     {
         private readonly ILogger<AudioEncryptionService> _logger;
-        private readonly Dictionary<string, byte[]> _keyStore = new(); // In production, use secure key management
+        private readonly ConcurrentDictionary<string, byte[]> _keyStore = new(); // In production, use secure key management
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AudioEncryptionService"/> class.
@@ -75,7 +76,7 @@ namespace ConduitLLM.Core.Services
                     EncryptedAt = DateTime.UtcNow
                 };
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Encrypted audio data: {Size} bytes -> {EncryptedSize} bytes",
                     audioData.Length,
                     ciphertext.Length);
@@ -127,7 +128,7 @@ namespace ConduitLLM.Core.Services
                     plaintext,
                     associatedData);
 
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Decrypted audio data: {EncryptedSize} bytes -> {Size} bytes",
                     encryptedData.EncryptedBytes.Length,
                     plaintext.Length);
@@ -153,7 +154,7 @@ namespace ConduitLLM.Core.Services
             RandomNumberGenerator.Fill(key);
 
             var keyId = Guid.NewGuid().ToString();
-            _keyStore[keyId] = key;
+            _keyStore.TryAdd(keyId, key);
 
             _logger.LogInformation("Generated new encryption key: {KeyId}", keyId);
 
@@ -184,12 +185,12 @@ namespace ConduitLLM.Core.Services
         private Task<byte[]> GetOrCreateKeyAsync()
         {
             // In production, this would retrieve from secure key management
-            if (!_keyStore.TryGetValue("default", out var key))
+            var key = _keyStore.GetOrAdd("default", keyId =>
             {
-                key = new byte[32];
-                RandomNumberGenerator.Fill(key);
-                _keyStore["default"] = key;
-            }
+                var newKey = new byte[32];
+                RandomNumberGenerator.Fill(newKey);
+                return newKey;
+            });
 
             return Task.FromResult(key);
         }

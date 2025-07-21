@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -274,9 +275,13 @@ _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate"
             if (_pricingModels.TryGetValue(provider.ToLowerInvariant(), out var pricingModel) &&
                 pricingModel.RealtimeRates.TryGetValue(model, out var realtimeRate))
             {
+                // For negative values (refunds), don't apply minimum duration
+                var effectiveInputMinutes = inputMinutes < 0 ? inputMinutes : Math.Max(inputMinutes, realtimeRate.MinimumDuration);
+                var effectiveOutputMinutes = outputMinutes < 0 ? outputMinutes : Math.Max(outputMinutes, realtimeRate.MinimumDuration);
+                
                 var audioCost = (double)(
-                    realtimeRate.InputAudioPerMinute * (decimal)Math.Max(inputMinutes, realtimeRate.MinimumDuration) +
-                    realtimeRate.OutputAudioPerMinute * (decimal)Math.Max(outputMinutes, realtimeRate.MinimumDuration));
+                    realtimeRate.InputAudioPerMinute * (decimal)effectiveInputMinutes +
+                    realtimeRate.OutputAudioPerMinute * (decimal)effectiveOutputMinutes);
 
                 var tokenCost = 0.0;
                 if (inputTokens.HasValue && realtimeRate.InputTokenRate.HasValue)
@@ -375,6 +380,301 @@ _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate"
 
             return null;
         }
+
+        /// <inheritdoc />
+        public async Task<AudioRefundResult> CalculateTranscriptionRefundAsync(
+            string provider,
+            string model,
+            double originalDurationSeconds,
+            double refundDurationSeconds,
+            string refundReason,
+            string? originalTransactionId = null,
+            string? virtualKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new AudioRefundResult
+            {
+                Provider = provider,
+                Operation = "transcription",
+                Model = model,
+                OriginalAmount = originalDurationSeconds / 60.0,
+                RefundAmount = refundDurationSeconds / 60.0,
+                UnitType = "minutes",
+                RefundReason = refundReason,
+                OriginalTransactionId = originalTransactionId,
+                VirtualKey = virtualKey,
+                RefundedAt = DateTime.UtcNow
+            };
+
+            // Validate inputs
+            if (string.IsNullOrEmpty(refundReason))
+            {
+                result.ValidationMessages.Add("Refund reason is required.");
+                return result;
+            }
+
+            if (refundDurationSeconds < 0)
+            {
+                result.ValidationMessages.Add("Refund duration must be non-negative.");
+                return result;
+            }
+
+            if (refundDurationSeconds > originalDurationSeconds)
+            {
+                result.ValidationMessages.Add($"Refund duration ({refundDurationSeconds}s) cannot exceed original duration ({originalDurationSeconds}s).");
+                result.IsPartialRefund = true;
+                refundDurationSeconds = originalDurationSeconds; // Cap the refund
+            }
+
+            var refundMinutes = refundDurationSeconds / 60.0;
+
+            // Check database for custom pricing first
+            var customRate = await GetCustomRateAsync(provider, "transcription", model);
+            decimal rate;
+            
+            if (customRate.HasValue)
+            {
+                rate = customRate.Value;
+            }
+            else if (_pricingModels.TryGetValue(provider.ToLowerInvariant(), out var pricingModel) &&
+                     pricingModel.TranscriptionRates.TryGetValue(model, out var builtinRate))
+            {
+                rate = builtinRate;
+            }
+            else
+            {
+                // Default fallback rate
+                rate = 0.01m;
+                _logger.LogWarning("No pricing found for {Provider}/{Model} during refund, using default rate", provider, model);
+            }
+
+            result.TotalRefund = (double)(rate * (decimal)refundMinutes);
+
+            _logger.LogInformation(
+                "Calculated transcription refund for {Provider}/{Model}: {RefundAmount} minutes = ${TotalRefund}. Reason: {RefundReason}",
+                provider, model, refundMinutes, result.TotalRefund, refundReason);
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<AudioRefundResult> CalculateTextToSpeechRefundAsync(
+            string provider,
+            string model,
+            int originalCharacterCount,
+            int refundCharacterCount,
+            string refundReason,
+            string? originalTransactionId = null,
+            string? voice = null,
+            string? virtualKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new AudioRefundResult
+            {
+                Provider = provider,
+                Operation = "text-to-speech",
+                Model = model,
+                OriginalAmount = originalCharacterCount / 1000.0,
+                RefundAmount = refundCharacterCount / 1000.0,
+                UnitType = "1k-characters",
+                RefundReason = refundReason,
+                OriginalTransactionId = originalTransactionId,
+                Voice = voice,
+                VirtualKey = virtualKey,
+                RefundedAt = DateTime.UtcNow
+            };
+
+            // Validate inputs
+            if (string.IsNullOrEmpty(refundReason))
+            {
+                result.ValidationMessages.Add("Refund reason is required.");
+                return result;
+            }
+
+            if (refundCharacterCount < 0)
+            {
+                result.ValidationMessages.Add("Refund character count must be non-negative.");
+                return result;
+            }
+
+            if (refundCharacterCount > originalCharacterCount)
+            {
+                result.ValidationMessages.Add($"Refund character count ({refundCharacterCount}) cannot exceed original ({originalCharacterCount}).");
+                result.IsPartialRefund = true;
+                refundCharacterCount = originalCharacterCount; // Cap the refund
+            }
+
+            var refundUnits = refundCharacterCount / 1000.0;
+
+            // Check database for custom pricing first
+            var customRate = await GetCustomRateAsync(provider, "text-to-speech", model);
+            decimal rate;
+
+            if (customRate.HasValue)
+            {
+                rate = customRate.Value;
+            }
+            else if (_pricingModels.TryGetValue(provider.ToLowerInvariant(), out var pricingModel) &&
+                     pricingModel.TextToSpeechRates.TryGetValue(model, out var modelRates) &&
+                     modelRates.TryGetValue("per-character", out var builtinRate))
+            {
+                rate = builtinRate * 1000; // Convert from per-character to per-1k-characters
+            }
+            else
+            {
+                // Default fallback rate
+                rate = 0.03m; // $0.03 per 1k characters
+                _logger.LogWarning("No pricing found for {Provider}/{Model} during TTS refund, using default rate", provider, model);
+            }
+
+            result.TotalRefund = (double)(rate * (decimal)refundUnits);
+
+            _logger.LogInformation(
+                "Calculated TTS refund for {Provider}/{Model}: {RefundAmount} 1k-chars = ${TotalRefund}. Reason: {RefundReason}",
+                provider, model, refundUnits, result.TotalRefund, refundReason);
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        public async Task<AudioRefundResult> CalculateRealtimeRefundAsync(
+            string provider,
+            string model,
+            double originalInputAudioSeconds,
+            double refundInputAudioSeconds,
+            double originalOutputAudioSeconds,
+            double refundOutputAudioSeconds,
+            int? originalInputTokens = null,
+            int? refundInputTokens = null,
+            int? originalOutputTokens = null,
+            int? refundOutputTokens = null,
+            string refundReason = "",
+            string? originalTransactionId = null,
+            string? virtualKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new AudioRefundResult
+            {
+                Provider = provider,
+                Operation = "realtime",
+                Model = model,
+                OriginalAmount = (originalInputAudioSeconds + originalOutputAudioSeconds) / 60.0,
+                RefundAmount = (refundInputAudioSeconds + refundOutputAudioSeconds) / 60.0,
+                UnitType = "minutes",
+                RefundReason = refundReason,
+                OriginalTransactionId = originalTransactionId,
+                VirtualKey = virtualKey,
+                RefundedAt = DateTime.UtcNow,
+                DetailedBreakdown = new Dictionary<string, double>()
+            };
+
+            // Validate inputs
+            if (string.IsNullOrEmpty(refundReason))
+            {
+                result.ValidationMessages.Add("Refund reason is required.");
+                return result;
+            }
+
+            // Validate audio seconds
+            if (refundInputAudioSeconds < 0 || refundOutputAudioSeconds < 0)
+            {
+                result.ValidationMessages.Add("Refund audio durations must be non-negative.");
+                return result;
+            }
+
+            if (refundInputAudioSeconds > originalInputAudioSeconds)
+            {
+                result.ValidationMessages.Add($"Refund input audio ({refundInputAudioSeconds}s) cannot exceed original ({originalInputAudioSeconds}s).");
+                result.IsPartialRefund = true;
+                refundInputAudioSeconds = originalInputAudioSeconds;
+            }
+
+            if (refundOutputAudioSeconds > originalOutputAudioSeconds)
+            {
+                result.ValidationMessages.Add($"Refund output audio ({refundOutputAudioSeconds}s) cannot exceed original ({originalOutputAudioSeconds}s).");
+                result.IsPartialRefund = true;
+                refundOutputAudioSeconds = originalOutputAudioSeconds;
+            }
+
+            // Validate tokens if provided
+            if (refundInputTokens.HasValue && originalInputTokens.HasValue && refundInputTokens.Value > originalInputTokens.Value)
+            {
+                result.ValidationMessages.Add($"Refund input tokens ({refundInputTokens}) cannot exceed original ({originalInputTokens}).");
+                result.IsPartialRefund = true;
+                refundInputTokens = originalInputTokens;
+            }
+
+            if (refundOutputTokens.HasValue && originalOutputTokens.HasValue && refundOutputTokens.Value > originalOutputTokens.Value)
+            {
+                result.ValidationMessages.Add($"Refund output tokens ({refundOutputTokens}) cannot exceed original ({originalOutputTokens}).");
+                result.IsPartialRefund = true;
+                refundOutputTokens = originalOutputTokens;
+            }
+
+            var refundInputMinutes = refundInputAudioSeconds / 60.0;
+            var refundOutputMinutes = refundOutputAudioSeconds / 60.0;
+
+            // Check database for custom pricing first
+            var customRate = await GetCustomRateAsync(provider, "realtime", model);
+            
+            if (customRate.HasValue)
+            {
+                // For custom rates, use a simplified calculation
+                var totalMinutes = refundInputMinutes + refundOutputMinutes;
+                result.TotalRefund = (double)(customRate.Value * (decimal)totalMinutes);
+                result.DetailedBreakdown["audio_refund"] = result.TotalRefund;
+            }
+            else if (_pricingModels.TryGetValue(provider.ToLowerInvariant(), out var pricingModel) &&
+                     pricingModel.RealtimeRates.TryGetValue(model, out var realtimeRate))
+            {
+                // Calculate audio refund
+                var audioRefund = (double)(
+                    realtimeRate.InputAudioPerMinute * (decimal)refundInputMinutes +
+                    realtimeRate.OutputAudioPerMinute * (decimal)refundOutputMinutes);
+
+                // Calculate token refund if applicable
+                var tokenRefund = 0.0;
+                if (realtimeRate.InputTokenRate.HasValue && realtimeRate.OutputTokenRate.HasValue)
+                {
+                    if (refundInputTokens.HasValue)
+                    {
+                        tokenRefund += (double)(realtimeRate.InputTokenRate.Value * refundInputTokens.Value);
+                    }
+                    if (refundOutputTokens.HasValue)
+                    {
+                        tokenRefund += (double)(realtimeRate.OutputTokenRate.Value * refundOutputTokens.Value);
+                    }
+                }
+
+                result.TotalRefund = audioRefund + tokenRefund;
+                result.DetailedBreakdown["audio_refund"] = audioRefund;
+                if (tokenRefund > 0) result.DetailedBreakdown["token_refund"] = tokenRefund;
+                result.DetailedBreakdown["refund_input_minutes"] = refundInputMinutes;
+                result.DetailedBreakdown["refund_output_minutes"] = refundOutputMinutes;
+                if (refundInputTokens.HasValue) result.DetailedBreakdown["refund_input_tokens"] = refundInputTokens.Value;
+                if (refundOutputTokens.HasValue) result.DetailedBreakdown["refund_output_tokens"] = refundOutputTokens.Value;
+            }
+            else
+            {
+                // Default fallback rates
+                var defaultInputRate = 0.05m;
+                var defaultOutputRate = 0.10m;
+                _logger.LogWarning("No pricing found for {Provider}/{Model} during realtime refund, using default rates", provider, model);
+
+                var audioRefund = (double)(
+                    defaultInputRate * (decimal)refundInputMinutes +
+                    defaultOutputRate * (decimal)refundOutputMinutes);
+
+                result.TotalRefund = audioRefund;
+                result.DetailedBreakdown["audio_refund"] = audioRefund;
+            }
+
+            _logger.LogInformation(
+                "Calculated realtime refund for {Provider}/{Model}: Input {RefundInputMinutes}min, Output {RefundOutputMinutes}min = ${TotalRefund}. Reason: {RefundReason}",
+                provider, model, refundInputMinutes, refundOutputMinutes, result.TotalRefund, refundReason);
+
+            return result;
+        }
     }
 
     /// <summary>
@@ -399,73 +699,4 @@ _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate"
         public double MinimumDuration { get; set; } = 0;
     }
 
-    /// <summary>
-    /// Result of audio cost calculation.
-    /// </summary>
-    public class AudioCostResult
-    {
-        public string Provider { get; set; } = string.Empty;
-        public string Operation { get; set; } = string.Empty;
-        public string Model { get; set; } = string.Empty;
-        public double UnitCount { get; set; }
-        public string UnitType { get; set; } = string.Empty;
-        public decimal RatePerUnit { get; set; }
-        public double TotalCost { get; set; }
-        public string? VirtualKey { get; set; }
-        public string? Voice { get; set; }
-        public bool IsEstimate { get; set; }
-        public Dictionary<string, double>? DetailedBreakdown { get; set; }
-    }
-
-    /// <summary>
-    /// Interface for audio cost calculation service.
-    /// </summary>
-    public interface IAudioCostCalculationService
-    {
-        /// <summary>
-        /// Calculates the cost of audio transcription.
-        /// </summary>
-        Task<AudioCostResult> CalculateTranscriptionCostAsync(
-            string provider,
-            string model,
-            double durationSeconds,
-            string? virtualKey = null,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Calculates the cost of text-to-speech.
-        /// </summary>
-        Task<AudioCostResult> CalculateTextToSpeechCostAsync(
-            string provider,
-            string model,
-            int characterCount,
-            string? voice = null,
-            string? virtualKey = null,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Calculates the cost of real-time audio session.
-        /// </summary>
-        Task<AudioCostResult> CalculateRealtimeCostAsync(
-            string provider,
-            string model,
-            double inputAudioSeconds,
-            double outputAudioSeconds,
-            int? inputTokens = null,
-            int? outputTokens = null,
-            string? virtualKey = null,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Generic method to calculate audio costs.
-        /// </summary>
-        Task<AudioCostResult> CalculateAudioCostAsync(
-            string provider,
-            string operation,
-            string model,
-            double durationSeconds,
-            int characterCount,
-            string? virtualKey = null,
-            CancellationToken cancellationToken = default);
-    }
 }

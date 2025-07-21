@@ -262,8 +262,14 @@ jobs:
               echo "✅ Version changes committed and pushed"
               break
             else
-              echo "⚠️ Push failed, attempt $i/3. Pulling and retrying..."
-              git pull --rebase
+              echo "⚠️ Push failed, attempt $i/3. Checking for remote changes..."
+              # Try to fast-forward only, fail if not possible
+              if ! git pull --ff-only; then
+                echo "❌ Cannot fast-forward merge. Manual intervention required."
+                echo "Another commit was pushed to the branch during versioning."
+                echo "Please resolve conflicts manually."
+                exit 1
+              fi
               if [[ $i == 3 ]]; then
                 echo "❌ Failed to push after 3 attempts"
                 exit 1
@@ -299,9 +305,10 @@ jobs:
           echo "📤 Publishing to NuGet.org..."
           
           if [[ -z "${{ secrets.NUGET_API_KEY }}" ]]; then
-            echo "⚠️ NUGET_API_KEY secret not found. Skipping NuGet.org publishing."
+            echo "❌ NUGET_API_KEY secret not found. Cannot publish to NuGet.org."
             echo "To enable NuGet.org publishing, add your API key as a repository secret."
-            exit 0
+            # Fail for master branch as we expect to publish to NuGet.org
+            exit 1
           fi
           
           for package in ./nupkgs/*.nupkg; do
@@ -316,32 +323,34 @@ jobs:
 
       - name: Create GitHub Release (master branch only)
         if: steps.strategy.outputs.commit-back == 'true'
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.strategy.outputs.new-version }}
-          release_name: Release v${{ steps.strategy.outputs.new-version }}
-          body: |
-            ## .NET Packages v${{ steps.strategy.outputs.new-version }}
-            
-            ### Changes
-            - Auto-generated release for .NET packages
-            - Version type: ${{ steps.strategy.outputs.version-type }}
-            
-            ### Packages
-            - `ConduitLLM.Configuration` v${{ steps.strategy.outputs.new-version }}
-            - `ConduitLLM.Core` v${{ steps.strategy.outputs.new-version }}
-            - `ConduitLLM.Providers` v${{ steps.strategy.outputs.new-version }}
-            
-            ### Installation
-            ```bash
-            dotnet add package ConduitLLM.Core --version ${{ steps.strategy.outputs.new-version }}
-            dotnet add package ConduitLLM.Providers --version ${{ steps.strategy.outputs.new-version }}
-            dotnet add package ConduitLLM.Configuration --version ${{ steps.strategy.outputs.new-version }}
-            ```
-          draft: false
-          prerelease: false
+        run: |
+          NEW_VERSION="${{ steps.strategy.outputs.new-version }}"
+          VERSION_TYPE="${{ steps.strategy.outputs.version-type }}"
+          
+          # Create release notes
+          RELEASE_NOTES=$'## .NET Packages v'"$NEW_VERSION"$'\n\n'
+          RELEASE_NOTES+=$'### Changes\n'
+          RELEASE_NOTES+=$'- Auto-generated release for .NET packages\n'
+          RELEASE_NOTES+=$'- Version type: '"$VERSION_TYPE"$'\n\n'
+          RELEASE_NOTES+=$'### Packages\n'
+          RELEASE_NOTES+=$'- `ConduitLLM.Configuration` v'"$NEW_VERSION"$'\n'
+          RELEASE_NOTES+=$'- `ConduitLLM.Core` v'"$NEW_VERSION"$'\n'
+          RELEASE_NOTES+=$'- `ConduitLLM.Providers` v'"$NEW_VERSION"$'\n\n'
+          RELEASE_NOTES+=$'### Installation\n'
+          RELEASE_NOTES+=$'```bash\n'
+          RELEASE_NOTES+=$'dotnet add package ConduitLLM.Core --version '"$NEW_VERSION"$'\n'
+          RELEASE_NOTES+=$'dotnet add package ConduitLLM.Providers --version '"$NEW_VERSION"$'\n'
+          RELEASE_NOTES+=$'dotnet add package ConduitLLM.Configuration --version '"$NEW_VERSION"$'\n'
+          RELEASE_NOTES+=$'```'
+          
+          # Create the release using GitHub CLI
+          gh release create "v$NEW_VERSION" \
+            --title "Release v$NEW_VERSION" \
+            --notes "$RELEASE_NOTES" \
+            --target "${{ github.sha }}" \
+            ./nupkgs/*.nupkg
 
       - name: Workflow Summary
         run: |

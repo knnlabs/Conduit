@@ -1,54 +1,41 @@
-# --- Database Configuration ---
-# For Postgres, set DATABASE_URL in the format:
-#   DATABASE_URL=postgresql://user:password@host:port/database
-# For SQLite, set CONDUIT_SQLITE_PATH to the desired file path (default: ConduitConfig.db)
-# Example (Postgres):
-#   ENV DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb
-# Example (SQLite):
-#   ENV CONDUIT_SQLITE_PATH=/data/ConduitConfig.db
-
+# HTTP API Dockerfile - Simplified for reliability
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy directories that are essential for the HTTP build
-COPY ["ConduitLLM.Http", "/src/ConduitLLM.Http"]
-COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
-COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
-COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
-COPY ["ConduitLLM.Admin", "/src/ConduitLLM.Admin"]
-COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
-# Copy solution file if it exists
-COPY ["*.sln", "/src/"]
+# Copy everything - simple and works
+COPY . .
 
-# List directories for debugging
-RUN echo "==== Directory structure ====" && \
-    ls -la /src && \
-    echo "==== HTTP directory ====" && \
-    ls -la /src/ConduitLLM.Http
+# Simple restore without problematic flags
+RUN dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj"
 
-# Create dummy Common directory if needed
-RUN if [ ! -d "/src/ConduitLLM.Common" ]; then \
-    echo "Creating missing ConduitLLM.Common directory" && \
-    mkdir -p /src/ConduitLLM.Common && \
-    echo "namespace ConduitLLM.Common { public class Dummy {} }" > /src/ConduitLLM.Common/Dummy.cs && \
-    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>' > /src/ConduitLLM.Common/ConduitLLM.Common.csproj; \
-    fi
+# Build and publish
+RUN dotnet publish "ConduitLLM.Http/ConduitLLM.Http.csproj" \
+    -c Release \
+    -o /app/publish
 
-# Restore and build HTTP project
-RUN dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj" || \
-    (echo "Restore failed - check directory structure" && exit 1)
-
-RUN dotnet publish "ConduitLLM.Http/ConduitLLM.Http.csproj" -c Release -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+# Runtime stage - Debian-based for reliability
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-COPY --from=build /app/publish ./
 
-# Install curl for healthcheck
+# Install curl for health checks
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables
+# Copy published application
+COPY --from=build /app/publish .
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Configure ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health/ready || exit 1
+
 ENTRYPOINT ["dotnet", "ConduitLLM.Http.dll"]

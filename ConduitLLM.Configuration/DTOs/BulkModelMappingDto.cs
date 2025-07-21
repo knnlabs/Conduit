@@ -95,6 +95,11 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsImageGeneration { get; set; } = false;
 
         /// <summary>
+        /// Whether this model supports video generation capabilities
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model
         /// </summary>
         public string? TokenizerType { get; set; }

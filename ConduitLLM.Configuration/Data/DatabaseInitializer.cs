@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -37,9 +38,8 @@ namespace ConduitLLM.Configuration.Data
             using var context = _dbContextFactory.CreateDbContext();
             _dbProvider = context.Database.ProviderName?.ToLowerInvariant() switch
             {
-                var p when p?.Contains("sqlite") == true => "sqlite",
                 var p when p?.Contains("npgsql") == true => "postgres",
-                _ => throw new InvalidOperationException($"Unsupported database provider: {context.Database.ProviderName}")
+                _ => throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {context.Database.ProviderName}")
             };
 
             _logger.LogInformation("Database provider detected: {Provider}", _dbProvider);
@@ -73,8 +73,34 @@ namespace ConduitLLM.Configuration.Data
                         continue;
                     }
 
-                    // Try both EnsureCreated and Migrate approaches
-                    await ApplyMigrationsWithFallbackAsync(context);
+                    // Use PostgreSQL advisory lock to prevent race conditions
+                    var migrationLockId = 7891011; // Unique ID for migration lock
+                    var gotLock = false;
+                    
+                    try
+                    {
+                        gotLock = await TryAcquireMigrationLockAsync(context, migrationLockId);
+                        
+                        if (gotLock)
+                        {
+                            _logger.LogInformation("Acquired migration lock, proceeding with database initialization");
+                            // Try both EnsureCreated and Migrate approaches
+                            await ApplyMigrationsWithFallbackAsync(context);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Another instance is running migrations, waiting for completion...");
+                            await WaitForMigrationsToCompleteAsync(context, maxWaitTime: TimeSpan.FromMinutes(5));
+                        }
+                    }
+                    finally
+                    {
+                        if (gotLock)
+                        {
+                            await ReleaseMigrationLockAsync(context, migrationLockId);
+                            _logger.LogInformation("Released migration lock");
+                        }
+                    }
 
                     // Verify critical tables exist
                     var tablesToVerify = new[]
@@ -88,7 +114,9 @@ namespace ConduitLLM.Configuration.Data
                         "IpFilters",
                         "AudioProviderConfigs",
                         "AudioCosts",
-                        "AudioUsageLogs"
+                        "AudioUsageLogs",
+                        "AsyncTasks",
+                        "MediaRecords"
                     };
 
                     if (!await AreTablesCreatedAsync(context, tablesToVerify))
@@ -174,6 +202,8 @@ namespace ConduitLLM.Configuration.Data
             {
                 // Check if this is a new database by looking for the migrations history table
                 bool isNewDatabase = false;
+                bool hasAnyTables = false;
+                
                 try
                 {
                     var sql = _dbProvider == "postgres"
@@ -188,21 +218,24 @@ namespace ConduitLLM.Configuration.Data
                     isNewDatabase = _dbProvider == "postgres"
                         ? !(bool)(result ?? false)
                         : Convert.ToInt32(result ?? 0) == 0;
+                        
+                    // Also check if we have any application tables
+                    hasAnyTables = await TableExistsAsync(context, "VirtualKeys") || 
+                                   await TableExistsAsync(context, "GlobalSettings") ||
+                                   await TableExistsAsync(context, "AsyncTasks");
                 }
                 catch
                 {
                     // If we can't check, assume it's a new database
                     isNewDatabase = true;
+                    hasAnyTables = false;
                 }
 
                 if (isNewDatabase)
                 {
                     _logger.LogInformation("No migration history found. Initializing database...");
 
-                    // Check if any tables already exist
-                    var hasExistingTables = await TableExistsAsync(context, "GlobalSettings");
-
-                    if (hasExistingTables)
+                    if (hasAnyTables)
                     {
                         _logger.LogWarning("Database has existing tables but no migration history. This might be from a previous run or manual creation.");
 
@@ -221,17 +254,19 @@ namespace ConduitLLM.Configuration.Data
                     }
                     else
                     {
-                        // Fresh database - use EnsureCreated for cross-database compatibility
-                        // This avoids issues with database-specific migration SQL
-                        _logger.LogInformation("Creating database schema using EnsureCreated for cross-database compatibility...");
+                        // Fresh database - use EnsureCreated for provider-agnostic schema creation
+                        _logger.LogInformation("Creating database schema for fresh database...");
 
                         try
                         {
+                            // Use EnsureCreated for fresh databases - it's provider-agnostic
+                            // and creates the schema based on the current model
                             await context.Database.EnsureCreatedAsync();
-                            _logger.LogInformation("Database schema created successfully");
+                            _logger.LogInformation("Database schema created successfully using EnsureCreated");
 
-                            // Create migration history table and mark all migrations as applied
-                            // This ensures future migrations can be applied correctly
+                            // Mark all migrations as applied to ensure future migrations work correctly
+                            // This is important so that when we add new migrations later, 
+                            // EF Core knows the current state
                             await CreateMigrationHistoryTableAsync(context);
                             await MarkAllMigrationsAsAppliedAsync(context);
                             _logger.LogInformation("Migration history initialized for future updates");
@@ -239,7 +274,20 @@ namespace ConduitLLM.Configuration.Data
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Failed to create database schema");
-                            throw;
+                            
+                            // If even EnsureCreated fails, try migrations as last resort
+                            // This handles edge cases where the model might have issues
+                            try
+                            {
+                                _logger.LogWarning("Attempting to use migrations as fallback...");
+                                await context.Database.MigrateAsync();
+                                _logger.LogInformation("Database schema created using migrations fallback");
+                            }
+                            catch (Exception innerEx)
+                            {
+                                _logger.LogError(innerEx, "Failed to create database schema with migrations fallback");
+                                throw new AggregateException("Failed to initialize database with both EnsureCreated and Migrations", ex, innerEx);
+                            }
                         }
                     }
                 }
@@ -259,6 +307,31 @@ namespace ConduitLLM.Configuration.Data
                     {
                         _logger.LogInformation("Database is up to date - no pending migrations");
                     }
+                }
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07") // relation already exists
+            {
+                _logger.LogWarning("Migration conflict detected: {Message}. Attempting to resolve...", ex.MessageText);
+                
+                // Check if this is a migration ordering issue
+                var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+                var allMigrations = context.Database.GetMigrations();
+                var orphanedMigrations = appliedMigrations.Where(m => !allMigrations.Contains(m)).ToList();
+                
+                if (orphanedMigrations.Any())
+                {
+                    _logger.LogWarning("Found {Count} orphaned migrations in database: {Migrations}",
+                        orphanedMigrations.Count, string.Join(", ", orphanedMigrations));
+                    
+                    // Mark current migrations as applied to bypass the conflict
+                    await MarkPendingMigrationsAsAppliedAsync(context);
+                    _logger.LogInformation("Marked pending migrations as applied to resolve conflict");
+                }
+                else
+                {
+                    // If no orphaned migrations, this might be a real schema issue
+                    _logger.LogError("Unable to resolve migration conflict automatically");
+                    throw;
                 }
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("PendingModelChangesWarning"))
@@ -425,6 +498,21 @@ namespace ConduitLLM.Configuration.Data
                     indexesToCreate.Add(("IX_IpFilters_FilterType_IpAddressOrCidr", new[] { "FilterType", "IpAddressOrCidr" }, false));
                     indexesToCreate.Add(("IX_IpFilters_IsEnabled", new[] { "IsEnabled" }, false));
                     break;
+
+                case "AsyncTasks":
+                    indexesToCreate.Add(("IX_AsyncTasks_CreatedAt", new[] { "CreatedAt" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_IsArchived", new[] { "IsArchived" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_State", new[] { "State" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_Type", new[] { "Type" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_VirtualKeyId", new[] { "VirtualKeyId" }, false));
+                    indexesToCreate.Add(("IX_AsyncTasks_VirtualKeyId_CreatedAt", new[] { "VirtualKeyId", "CreatedAt" }, false));
+                    break;
+
+                case "MediaRecords":
+                    indexesToCreate.Add(("IX_MediaRecords_VirtualKeyId", new[] { "VirtualKeyId" }, false));
+                    indexesToCreate.Add(("IX_MediaRecords_CreatedAt", new[] { "CreatedAt" }, false));
+                    indexesToCreate.Add(("IX_MediaRecords_StorageKey", new[] { "StorageKey" }, true));
+                    break;
             }
 
             var connection = context.Database.GetDbConnection();
@@ -576,6 +664,48 @@ namespace ConduitLLM.Configuration.Data
                     { "EndpointUrl", "VARCHAR(1000) NULL" },
                     { "TimestampUtc", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
+
+                definitions["AsyncTasks"] = new Dictionary<string, string>
+                {
+                    { "Id", "VARCHAR(50) PRIMARY KEY" },
+                    { "Type", "VARCHAR(100) NOT NULL" },
+                    { "State", "INTEGER NOT NULL DEFAULT 0" },
+                    { "Payload", "TEXT NULL" },
+                    { "Progress", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ProgressMessage", "VARCHAR(500) NULL" },
+                    { "Result", "TEXT NULL" },
+                    { "Error", "TEXT NULL" },
+                    { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "CompletedAt", "TIMESTAMP NULL" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "Metadata", "TEXT NULL" },
+                    { "IsArchived", "BOOLEAN NOT NULL DEFAULT FALSE" },
+                    { "ArchivedAt", "TIMESTAMP NULL" },
+                    { "LeasedBy", "VARCHAR(100) NULL" },
+                    { "LeaseExpiryTime", "TIMESTAMP NULL" },
+                    { "Version", "INTEGER NOT NULL DEFAULT 0" },
+                    { "RetryCount", "INTEGER NOT NULL DEFAULT 0" },
+                    { "MaxRetries", "INTEGER NOT NULL DEFAULT 3" },
+                    { "IsRetryable", "BOOLEAN NOT NULL DEFAULT TRUE" },
+                    { "NextRetryAt", "TIMESTAMP NULL" }
+                };
+
+                definitions["MediaRecords"] = new Dictionary<string, string>
+                {
+                    { "Id", "BIGSERIAL PRIMARY KEY" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "StorageKey", "VARCHAR(500) NOT NULL" },
+                    { "MediaType", "VARCHAR(50) NOT NULL" },
+                    { "ContentType", "VARCHAR(100) NULL" },
+                    { "SizeBytes", "BIGINT NOT NULL" },
+                    { "Provider", "VARCHAR(100) NULL" },
+                    { "Model", "VARCHAR(100) NULL" },
+                    { "Prompt", "TEXT NULL" },
+                    { "StorageUrl", "VARCHAR(1000) NULL" },
+                    { "PublicUrl", "VARCHAR(1000) NULL" },
+                    { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                };
             }
             else // sqlite
             {
@@ -614,6 +744,48 @@ namespace ConduitLLM.Configuration.Data
                     { "ResponseTimeMs", "INTEGER NULL" },
                     { "EndpointUrl", "TEXT NULL" },
                     { "TimestampUtc", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                };
+
+                definitions["AsyncTasks"] = new Dictionary<string, string>
+                {
+                    { "Id", "TEXT PRIMARY KEY" },
+                    { "Type", "TEXT NOT NULL" },
+                    { "State", "INTEGER NOT NULL DEFAULT 0" },
+                    { "Payload", "TEXT NULL" },
+                    { "Progress", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ProgressMessage", "TEXT NULL" },
+                    { "Result", "TEXT NULL" },
+                    { "Error", "TEXT NULL" },
+                    { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                    { "CompletedAt", "TEXT NULL" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "Metadata", "TEXT NULL" },
+                    { "IsArchived", "INTEGER NOT NULL DEFAULT 0" },
+                    { "ArchivedAt", "TEXT NULL" },
+                    { "LeasedBy", "TEXT NULL" },
+                    { "LeaseExpiryTime", "TEXT NULL" },
+                    { "Version", "INTEGER NOT NULL DEFAULT 0" },
+                    { "RetryCount", "INTEGER NOT NULL DEFAULT 0" },
+                    { "MaxRetries", "INTEGER NOT NULL DEFAULT 3" },
+                    { "IsRetryable", "INTEGER NOT NULL DEFAULT 1" },
+                    { "NextRetryAt", "TEXT NULL" }
+                };
+
+                definitions["MediaRecords"] = new Dictionary<string, string>
+                {
+                    { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
+                    { "VirtualKeyId", "INTEGER NOT NULL" },
+                    { "StorageKey", "TEXT NOT NULL" },
+                    { "MediaType", "TEXT NOT NULL" },
+                    { "ContentType", "TEXT NULL" },
+                    { "SizeBytes", "INTEGER NOT NULL" },
+                    { "Provider", "TEXT NULL" },
+                    { "Model", "TEXT NULL" },
+                    { "Prompt", "TEXT NULL" },
+                    { "StorageUrl", "TEXT NULL" },
+                    { "PublicUrl", "TEXT NULL" },
+                    { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
                 // Add audio table definitions
                 if (_dbProvider == "postgres")
@@ -743,6 +915,157 @@ namespace ConduitLLM.Configuration.Data
             // Add other table definitions as needed
 
             return definitions;
+        }
+
+        /// <summary>
+        /// Tries to acquire a PostgreSQL advisory lock for database migrations
+        /// </summary>
+        private async Task<bool> TryAcquireMigrationLockAsync(ConfigurationDbContext context, long lockId)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT pg_try_advisory_lock(@lockId)";
+                
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@lockId";
+                parameter.Value = lockId;
+                command.Parameters.Add(parameter);
+
+                var result = await command.ExecuteScalarAsync();
+                return result != null && (bool)result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to acquire migration lock");
+                // If we can't acquire the lock, assume someone else has it
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Releases a PostgreSQL advisory lock
+        /// </summary>
+        private async Task ReleaseMigrationLockAsync(ConfigurationDbContext context, long lockId)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT pg_advisory_unlock(@lockId)";
+                
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@lockId";
+                parameter.Value = lockId;
+                command.Parameters.Add(parameter);
+
+                await command.ExecuteScalarAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to release migration lock");
+                // Lock will be automatically released when connection closes
+            }
+        }
+
+        /// <summary>
+        /// Waits for database migrations to complete by checking if critical tables exist
+        /// </summary>
+        private async Task WaitForMigrationsToCompleteAsync(ConfigurationDbContext context, TimeSpan maxWaitTime)
+        {
+            var startTime = DateTime.UtcNow;
+            var checkInterval = TimeSpan.FromSeconds(2);
+            
+            while (DateTime.UtcNow - startTime < maxWaitTime)
+            {
+                try
+                {
+                    // Check if the migrations history table exists and has entries
+                    var hasMigrations = await context.Database.GetAppliedMigrationsAsync();
+                    if (hasMigrations.Any())
+                    {
+                        // Also verify at least one critical table exists
+                        if (await TableExistsAsync(context, "VirtualKeys"))
+                        {
+                            _logger.LogInformation("Migrations completed by another instance");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Waiting for migrations to complete...");
+                }
+
+                await Task.Delay(checkInterval);
+            }
+
+            throw new TimeoutException($"Timed out waiting for database migrations to complete after {maxWaitTime}");
+        }
+        
+        /// <summary>
+        /// Marks all pending migrations as applied without actually running them
+        /// Used to resolve migration conflicts when database schema already exists
+        /// </summary>
+        private async Task MarkPendingMigrationsAsAppliedAsync(ConfigurationDbContext context)
+        {
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (!pendingMigrations.Any())
+            {
+                _logger.LogInformation("No pending migrations to mark as applied");
+                return;
+            }
+            
+            var connection = context.Database.GetDbConnection();
+            await connection.OpenAsync();
+            
+            try
+            {
+                using var transaction = await connection.BeginTransactionAsync();
+                
+                foreach (var migration in pendingMigrations)
+                {
+                    var command = connection.CreateCommand();
+                    command.Transaction = transaction;
+                    command.CommandText = @"
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
+                        VALUES (@migrationId, @productVersion)
+                        ON CONFLICT (""MigrationId"") DO NOTHING";
+                    
+                    var migrationIdParam = command.CreateParameter();
+                    migrationIdParam.ParameterName = "@migrationId";
+                    migrationIdParam.Value = migration;
+                    command.Parameters.Add(migrationIdParam);
+                    
+                    var productVersionParam = command.CreateParameter();
+                    productVersionParam.ParameterName = "@productVersion";
+                    productVersionParam.Value = "9.0.5"; // Current EF Core version
+                    command.Parameters.Add(productVersionParam);
+                    
+                    await command.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Marked migration {Migration} as applied", migration);
+                }
+                
+                await transaction.CommitAsync();
+            }
+            finally
+            {
+                if (connection.State == ConnectionState.Open)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
     }
 }

@@ -1,12 +1,12 @@
 import { FilterOptions } from './common';
+import { ProviderConfigMetadata } from './metadata';
 
 export interface ProviderCredentialDto {
   id: number;
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -15,26 +15,23 @@ export interface ProviderCredentialDto {
 export interface CreateProviderCredentialDto {
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled?: boolean;
 }
 
 export interface UpdateProviderCredentialDto {
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
   isEnabled?: boolean;
 }
 
 export interface ProviderConnectionTestRequest {
   providerName: string;
   apiKey?: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  additionalConfig?: string;
+  apiBase?: string;
+  organization?: string;
 }
 
 export interface ProviderConnectionTestResultDto {
@@ -54,7 +51,7 @@ export interface ProviderDataDto {
   requiresApiKey: boolean;
   requiresEndpoint: boolean;
   requiresOrganizationId: boolean;
-  configSchema?: Record<string, any>;
+  configSchema?: ProviderConfigMetadata;
 }
 
 export interface ProviderHealthConfigurationDto {
@@ -110,6 +107,41 @@ export interface ProviderHealthSummaryDto {
   unhealthyProviders: number;
   unconfiguredProviders: number;
   providers: ProviderHealthStatusDto[];
+}
+
+export interface CreateProviderHealthConfigurationDto {
+  providerName: string;
+  monitoringEnabled?: boolean;
+  checkIntervalMinutes?: number;
+  timeoutSeconds?: number;
+  consecutiveFailuresThreshold?: number;
+  notificationsEnabled?: boolean;
+  customEndpointUrl?: string;
+}
+
+export interface ProviderHealthStatisticsDto {
+  totalProviders: number;
+  onlineProviders: number;
+  offlineProviders: number;
+  unknownProviders: number;
+  averageResponseTimeMs: number;
+  totalErrors: number;
+  errorCategoryDistribution: Record<string, number>;
+  timePeriodHours: number;
+}
+
+export enum StatusType {
+  Online = 0,
+  Offline = 1,
+  Unknown = 2
+}
+
+export interface ProviderStatus {
+  status: StatusType;
+  statusMessage?: string;
+  responseTimeMs: number;
+  lastCheckedUtc: Date;
+  errorCategory?: string;
 }
 
 export interface ProviderFilters extends FilterOptions {

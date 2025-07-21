@@ -1,6 +1,7 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
+  ModelCost,
   ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
@@ -10,7 +11,11 @@ import {
   ModelCostHistory,
   CostEstimate,
   ModelCostComparison,
+  ModelCostOverview,
+  CostTrend,
+  ImportResult,
 } from '../models/modelCost';
+import { PagedResult } from '../models/security';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -32,24 +37,42 @@ const calculateCostSchema = z.object({
   outputTokens: z.number().min(0),
 });
 
-export class ModelCostService extends BaseApiClient {
-  async create(request: CreateModelCostDto): Promise<ModelCostDto> {
+export class ModelCostService extends FetchBaseApiClient {
+  async create(modelCost: CreateModelCostDto): Promise<ModelCost> {
     try {
-      createCostSchema.parse(request);
+      createCostSchema.parse(modelCost);
     } catch (error) {
-      throw new ValidationError('Invalid model cost request', error);
+      throw new ValidationError('Invalid model cost request', { validationError: error });
     }
 
-    const response = await this.post<ModelCostDto>(
+    const response = await this.post<ModelCost>(
       ENDPOINTS.MODEL_COSTS.BASE,
-      request
+      modelCost
     );
 
     await this.invalidateCache();
     return response;
   }
 
-  async list(filters?: ModelCostFilters): Promise<ModelCostDto[]> {
+  async list(params?: { page?: number; pageSize?: number; provider?: string; isActive?: boolean }): Promise<PagedResult<ModelCost>> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const url = `${ENDPOINTS.MODEL_COSTS.BASE}?${queryParams.toString()}`;
+    return this.withCache(
+      url,
+      () => this.get<PagedResult<ModelCost>>(url),
+      CACHE_TTL.MEDIUM
+    );
+  }
+
+  async listLegacy(filters?: ModelCostFilters): Promise<ModelCostDto[]> {
     const params = filters
       ? {
           modelId: filters.modelId,
@@ -75,11 +98,11 @@ export class ModelCostService extends BaseApiClient {
     );
   }
 
-  async getById(id: number): Promise<ModelCostDto> {
+  async getById(id: number): Promise<ModelCost> {
     const cacheKey = this.getCacheKey('model-cost', id);
     return this.withCache(
       cacheKey,
-      () => super.get<ModelCostDto>(ENDPOINTS.MODEL_COSTS.BY_ID(id)),
+      () => super.get<ModelCost>(ENDPOINTS.MODEL_COSTS.BY_ID(id)),
       CACHE_TTL.LONG
     );
   }
@@ -93,9 +116,19 @@ export class ModelCostService extends BaseApiClient {
     );
   }
 
-  async update(id: number, request: UpdateModelCostDto): Promise<void> {
-    await this.put(ENDPOINTS.MODEL_COSTS.BY_ID(id), request);
+  async getByProvider(providerName: string): Promise<ModelCost[]> {
+    const cacheKey = this.getCacheKey('model-cost-by-provider', providerName);
+    return this.withCache(
+      cacheKey,
+      () => super.get<ModelCost[]>(ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerName)),
+      CACHE_TTL.LONG
+    );
+  }
+
+  async update(id: number, modelCost: UpdateModelCostDto): Promise<ModelCost> {
+    const response = await this.put<ModelCost>(ENDPOINTS.MODEL_COSTS.BY_ID(id), modelCost);
     await this.invalidateCache();
+    return response;
   }
 
   async deleteById(id: number): Promise<void> {
@@ -111,7 +144,7 @@ export class ModelCostService extends BaseApiClient {
     try {
       calculateCostSchema.parse({ modelId, inputTokens, outputTokens });
     } catch (error) {
-      throw new ValidationError('Invalid cost calculation request', error);
+      throw new ValidationError('Invalid cost calculation request', { validationError: error });
     }
 
     // Get active cost for the model
@@ -140,7 +173,7 @@ export class ModelCostService extends BaseApiClient {
 
   async getCurrentCost(modelId: string): Promise<ModelCostDto | null> {
     const costs = await this.getByModel(modelId);
-    return costs.find(c => c.isActive) || null;
+    return costs.find(c => c.isActive) ?? null;
   }
 
   async updateCosts(models: string[], inputCost: number, outputCost: number): Promise<void> {
@@ -167,15 +200,69 @@ export class ModelCostService extends BaseApiClient {
     await Promise.all(updates);
   }
 
-  // Stub methods
-  async bulkUpdate(_request: BulkModelCostUpdate): Promise<{
+  async import(modelCosts: CreateModelCostDto[]): Promise<ImportResult> {
+    const response = await this.post<ImportResult>(
+      ENDPOINTS.MODEL_COSTS.IMPORT,
+      { modelCosts }
+    );
+    await this.invalidateCache();
+    return response;
+  }
+
+  async bulkUpdate(updates: Array<{ id: number; changes: Partial<UpdateModelCostDto> }>): Promise<ModelCost[]> {
+    const response = await this.post<ModelCost[]>(
+      ENDPOINTS.MODEL_COSTS.BULK_UPDATE,
+      { updates }
+    );
+    await this.invalidateCache();
+    return response;
+  }
+
+  async getOverview(params: { startDate?: string; endDate?: string; groupBy?: 'provider' | 'model' }): Promise<ModelCostOverview[]> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const url = `${ENDPOINTS.MODEL_COSTS.OVERVIEW}?${queryParams.toString()}`;
+    return this.withCache(
+      url,
+      () => this.get<ModelCostOverview[]>(url),
+      CACHE_TTL.SHORT
+    );
+  }
+
+  async getCostTrends(params: { modelId?: string; providerId?: string; days?: number }): Promise<CostTrend[]> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const url = `${ENDPOINTS.MODEL_COSTS.TRENDS}?${queryParams.toString()}`;
+    return this.withCache(
+      url,
+      () => this.get<CostTrend[]>(url),
+      CACHE_TTL.SHORT
+    );
+  }
+
+  // Legacy stub methods for backward compatibility
+  async bulkUpdateLegacy(_request: BulkModelCostUpdate): Promise<{
     updated: ModelCostDto[];
     failed: { modelId: string; error: string }[];
   }> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
-      'bulkUpdate requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/modelcosts/bulk-update'
+      'bulkUpdateLegacy requires Admin API endpoint implementation. ' +
+        'Consider implementing POST /api/modelcosts/bulk-update-legacy'
     );
   }
 

@@ -1,0 +1,94 @@
+{
+  "name": "conduit-webui",
+  "version": "1.0.0",
+  "description": "Next.js WebUI for Conduit LLM Platform",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next lint && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "lint:fix": "next lint --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepare": "cd .. && husky install ConduitLLM.WebUI/.husky",
+    "pre-commit": "lint-staged"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.25.4",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
+    "@knn_labs/conduit-common": "file:../Clients/Node/Common",
+    "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
+    "@mantine/carousel": "^8.1.2",
+    "@mantine/charts": "^8.1.2",
+    "@mantine/code-highlight": "^8.1.2",
+    "@mantine/core": "^8.1.2",
+    "@mantine/dates": "^8.1.2",
+    "@mantine/form": "^8.1.2",
+    "@mantine/hooks": "^8.1.2",
+    "@mantine/modals": "^8.1.2",
+    "@mantine/notifications": "^8.1.2",
+    "@mantine/spotlight": "^8.1.2",
+    "@tabler/icons-react": "^3.34.1",
+    "@tanstack/react-query": "^5.0.0",
+    "@types/node": "^24.0.15",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/video.js": "^7.3.58",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "axios": "^1.10.0",
+    "date-fns": "^4.1.0",
+    "eslint": "^9.30.0",
+    "next": "^15.4.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^15.6.1",
+    "typescript": "^5.8.3",
+    "uuid": "^11.1.0",
+    "video.js": "^8.23.3",
+    "zod": "^4.0.5",
+    "zustand": "^5.0.6"
+  },
+  "keywords": [
+    "conduit",
+    "llm",
+    "nextjs",
+    "react",
+    "typescript",
+    "mantine"
+  ],
+  "author": "KNN Labs",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@types/jest": "^30.0.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/uuid": "^10.0.0",
+    "eslint-config-next": "^15.4.2",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "husky": "^9.0.11",
+    "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.0.4",
+    "lint-staged": "^16.1.2",
+    "playwright": "^1.54.1",
+    "ts-jest": "^29.4.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "tsc --noEmit"
+    ],
+    "*.{js,jsx}": [
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

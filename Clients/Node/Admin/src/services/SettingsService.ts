@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   GlobalSettingDto,
@@ -8,6 +8,7 @@ import {
   CreateAudioConfigurationDto,
   UpdateAudioConfigurationDto,
   RouterConfigurationDto,
+  RouterRule,
   UpdateRouterConfigurationDto,
   SystemConfiguration,
   SettingFilters,
@@ -33,10 +34,10 @@ const audioConfigSchema = z.object({
   defaultModel: z.string().optional(),
   maxDuration: z.number().positive().optional(),
   allowedVoices: z.array(z.string()).optional(),
-  customSettings: z.record(z.any()).optional(),
+  customSettings: z.record(z.string(), z.unknown()).optional(),
 });
 
-export class SettingsService extends BaseApiClient {
+export class SettingsService extends FetchBaseApiClient {
   // Global Settings
   async getGlobalSettings(filters?: SettingFilters): Promise<GlobalSettingDto[]> {
     const params = filters
@@ -69,7 +70,7 @@ export class SettingsService extends BaseApiClient {
     try {
       createSettingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid global setting request', error);
+      throw new ValidationError('Invalid global setting request', { validationError: error });
     }
 
     const response = await this.post<GlobalSettingDto>(
@@ -116,7 +117,7 @@ export class SettingsService extends BaseApiClient {
     try {
       audioConfigSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid audio configuration request', error);
+      throw new ValidationError('Invalid audio configuration request', { validationError: error });
     }
 
     const response = await this.post<AudioConfigurationDto>(
@@ -151,9 +152,122 @@ export class SettingsService extends BaseApiClient {
     );
   }
 
-  async updateRouterConfiguration(request: UpdateRouterConfigurationDto): Promise<void> {
-    await this.put(ENDPOINTS.SETTINGS.ROUTER, request);
+  async updateRouterConfiguration(request: UpdateRouterConfigurationDto): Promise<RouterConfigurationDto> {
+    const response = await this.put<RouterConfigurationDto>(ENDPOINTS.SETTINGS.ROUTER, request);
     await this.invalidateCache();
+    return response;
+  }
+
+  // Router Rules Management
+  async createRouterRule(rule: Omit<RouterRule, 'id'>): Promise<RouterRule> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Add new rule with generated ID
+    const newRule: RouterRule = {
+      ...rule,
+      id: Math.max(0, ...(config.customRules?.map(r => r.id ?? 0) ?? [0])) + 1
+    };
+    
+    // Update configuration with new rule
+    const updatedRules = [...(config.customRules ?? []), newRule];
+    await this.updateRouterConfiguration({ customRules: updatedRules });
+    
+    return newRule;
+  }
+
+  async updateRouterRule(id: number, rule: Partial<RouterRule>): Promise<RouterRule> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Find and update the rule
+    const rules = config.customRules ?? [];
+    const ruleIndex = rules.findIndex(r => r.id === id);
+    
+    if (ruleIndex === -1) {
+      throw new ValidationError(`Router rule with ID ${id} not found`);
+    }
+    
+    const updatedRule = { ...rules[ruleIndex], ...rule, id };
+    rules[ruleIndex] = updatedRule;
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: rules });
+    
+    return updatedRule;
+  }
+
+  async deleteRouterRule(id: number): Promise<void> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    
+    // Remove the rule
+    const rules = (config.customRules ?? []).filter(r => r.id !== id);
+    
+    if (rules.length === (config.customRules ?? []).length) {
+      throw new ValidationError(`Router rule with ID ${id} not found`);
+    }
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: rules });
+  }
+
+  async reorderRouterRules(ruleIds: number[]): Promise<RouterRule[]> {
+    // Get current configuration
+    const config = await this.getRouterConfiguration();
+    const rules = config.customRules ?? [];
+    
+    // Create a map of rules by ID
+    const ruleMap = new Map(rules.map(r => [r.id, r]));
+    
+    // Reorder rules based on provided IDs
+    const reorderedRules: RouterRule[] = [];
+    for (let i = 0; i < ruleIds.length; i++) {
+      const rule = ruleMap.get(ruleIds[i]);
+      if (!rule) {
+        throw new ValidationError(`Router rule with ID ${ruleIds[i]} not found`);
+      }
+      reorderedRules.push({ ...rule, priority: ruleIds.length - i });
+    }
+    
+    // Add any rules not in the provided list at the end
+    const remainingRules = rules
+      .filter(r => !ruleIds.includes(r.id ?? 0))
+      .map((r, index) => ({ ...r, priority: -index - 1 }));
+    
+    const allRules = [...reorderedRules, ...remainingRules];
+    
+    // Update configuration
+    await this.updateRouterConfiguration({ customRules: allRules });
+    
+    return allRules;
+  }
+
+  testRouterRule(rule: RouterRule): { success: boolean; message: string; details?: Record<string, unknown> } {
+    // This would typically call a test endpoint, but for now we'll do basic validation
+    if (!rule.name || rule.name.trim() === '') {
+      return { success: false, message: 'Rule name is required' };
+    }
+    
+    if (!rule.condition?.type || !rule.condition.operator) {
+      return { success: false, message: 'Rule condition is invalid' };
+    }
+    
+    if (!rule.action?.type) {
+      return { success: false, message: 'Rule action is invalid' };
+    }
+    
+    // In a real implementation, this would call a test endpoint
+    // For now, return success
+    return {
+      success: true,
+      message: 'Rule validation passed',
+      details: {
+        condition: rule.condition,
+        action: rule.action,
+        priority: rule.priority
+      }
+    };
   }
 
   // Convenience methods
@@ -172,7 +286,7 @@ export class SettingsService extends BaseApiClient {
       await this.getGlobalSetting(key);
       // Setting exists, update it
       await this.updateGlobalSetting(key, { value });
-    } catch (error) {
+    } catch {
       // Setting doesn't exist, create it
       await this.createGlobalSetting({
         key,
@@ -187,8 +301,33 @@ export class SettingsService extends BaseApiClient {
     return settings;
   }
 
+  async updateCategory(category: string, updates: Record<string, string>): Promise<void> {
+    // Get all settings in the category
+    const settings = await this.getSettingsByCategory(category);
+    
+    // Update each setting that has a new value
+    const updatePromises = settings
+      .filter(setting => Object.prototype.hasOwnProperty.call(updates, setting.key))
+      .map(setting => this.updateGlobalSetting(setting.key, { value: updates[setting.key] }));
+    
+    await Promise.all(updatePromises);
+  }
+
+  async update(key: string, value: string): Promise<void> {
+    await this.updateGlobalSetting(key, { value });
+  }
+
+  async set(key: string, value: string, options?: {
+    description?: string;
+    dataType?: 'string' | 'number' | 'boolean' | 'json';
+    category?: string;
+    isSecret?: boolean;
+  }): Promise<void> {
+    await this.setSetting(key, value, options);
+  }
+
   // Stub methods
-  async getSystemConfiguration(): Promise<SystemConfiguration> {
+  getSystemConfiguration(): Promise<SystemConfiguration> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getSystemConfiguration requires Admin API endpoint implementation. ' +
@@ -196,7 +335,7 @@ export class SettingsService extends BaseApiClient {
     );
   }
 
-  async exportSettings(_format: 'json' | 'env'): Promise<Blob> {
+  exportSettings(_format: 'json' | 'env'): Promise<Blob> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'exportSettings requires Admin API endpoint implementation. ' +
@@ -204,7 +343,7 @@ export class SettingsService extends BaseApiClient {
     );
   }
 
-  async importSettings(_file: File | Blob, _format: 'json' | 'env'): Promise<{
+  importSettings(_file: File | Blob, _format: 'json' | 'env'): Promise<{
     imported: number;
     skipped: number;
     errors: string[];
@@ -216,7 +355,7 @@ export class SettingsService extends BaseApiClient {
     );
   }
 
-  async validateConfiguration(): Promise<{
+  validateConfiguration(): Promise<{
     isValid: boolean;
     errors: string[];
     warnings: string[];

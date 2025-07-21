@@ -205,3 +205,131 @@ export const IMAGE_DEFAULTS = {
   size: '1024x1024' as const,
   style: 'vivid' as const,
 } as const;
+
+/**
+ * Async image generation request extending the basic generation request
+ */
+export interface AsyncImageGenerationRequest extends ImageGenerationRequest {
+  /**
+   * The webhook URL to receive the result when generation is complete
+   */
+  webhook_url?: string;
+
+  /**
+   * Additional metadata to include with the webhook callback
+   */
+  webhook_metadata?: Record<string, unknown>;
+
+  /**
+   * The timeout for the generation task in seconds (1-3600)
+   */
+  timeout_seconds?: number;
+}
+
+/**
+ * Task status for async operations
+ */
+export type TaskStatus = 
+  | 'pending' 
+  | 'running' 
+  | 'completed' 
+  | 'failed' 
+  | 'cancelled' 
+  | 'timedout';
+
+/**
+ * Response from an async image generation request
+ */
+export interface AsyncImageGenerationResponse {
+  /**
+   * The unique task identifier
+   */
+  task_id: string;
+
+  /**
+   * The current status of the task
+   */
+  status: TaskStatus;
+
+  /**
+   * The progress percentage (0-100)
+   */
+  progress: number;
+
+  /**
+   * An optional progress message
+   */
+  message?: string;
+
+  /**
+   * The estimated time to completion in seconds
+   */
+  estimated_time_to_completion?: number;
+
+  /**
+   * When the task was created
+   */
+  created_at: string;
+
+  /**
+   * When the task was last updated
+   */
+  updated_at: string;
+
+  /**
+   * The generation result, available when status is 'completed'
+   */
+  result?: ImageGenerationResponse;
+
+  /**
+   * Error information if the task failed
+   */
+  error?: string;
+}
+
+/**
+ * Options for polling task status
+ */
+export interface TaskPollingOptions {
+  /**
+   * The polling interval in milliseconds (default: 1000)
+   */
+  intervalMs?: number;
+
+  /**
+   * The maximum polling timeout in milliseconds (default: 300000 - 5 minutes)
+   */
+  timeoutMs?: number;
+
+  /**
+   * Whether to use exponential backoff for polling intervals (default: true)
+   */
+  useExponentialBackoff?: boolean;
+
+  /**
+   * The maximum interval between polls in milliseconds when using exponential backoff (default: 10000)
+   */
+  maxIntervalMs?: number;
+}
+
+/**
+ * Default polling options
+ */
+export const DEFAULT_POLLING_OPTIONS: Required<TaskPollingOptions> = {
+  intervalMs: 1000,
+  timeoutMs: 300000, // 5 minutes
+  useExponentialBackoff: true,
+  maxIntervalMs: 10000, // 10 seconds
+} as const;
+
+/**
+ * Image generation streaming chunk
+ */
+export interface ImageGenerationChunk {
+  id: string;
+  object: 'image.generation.chunk';
+  created: number;
+  data: Partial<ImageData>[];
+  progress?: number;
+  message?: string;
+}

@@ -12,6 +12,8 @@ using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
 
+using CoreModels = ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Providers
 {
     /// <summary>
@@ -56,14 +58,15 @@ namespace ConduitLLM.Providers
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, deploymentName, logger, httpClientFactory, providerName: "azure",
-                  baseUrl: credentials.ApiBase?.TrimEnd('/'), defaultModels)
+            : base(credentials ?? throw new ArgumentNullException(nameof(credentials)), 
+                  deploymentName, logger, httpClientFactory, providerName: "azure",
+                  baseUrl: credentials?.ApiBase?.TrimEnd('/'), defaultModels)
         {
             // Deployment name is equivalent to provider model ID in Azure
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");
 
             // Validate Azure-specific required fields
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials!.ApiBase))
             {
                 throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
             }
@@ -170,6 +173,48 @@ namespace ConduitLLM.Providers
         {
             // Return an empty list since Azure OpenAI deployments are specific to each customer
             return new List<InternalModels.ExtendedModelInfo>();
+        }
+
+        /// <summary>
+        /// Gets the capabilities for Azure OpenAI.
+        /// </summary>
+        /// <param name="modelId">Optional model ID to get capabilities for.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public override Task<CoreModels.ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            
+            // Azure OpenAI supports most OpenAI features plus some additional ones
+            return Task.FromResult(new CoreModels.ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new CoreModels.ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = false,
+                    Stop = true,
+                    PresencePenalty = true,
+                    FrequencyPenalty = true,
+                    LogitBias = true,
+                    N = true,
+                    User = true,
+                    Seed = true,
+                    ResponseFormat = true
+                },
+                Features = new CoreModels.FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = true,
+                    ImageGeneration = true,
+                    VisionInput = true,
+                    FunctionCalling = true,
+                    AudioTranscription = true,
+                    TextToSpeech = true
+                }
+            });
         }
     }
 }

@@ -91,7 +91,7 @@ namespace ConduitLLM.Http.Extensions
             // Add main audio service health check
             builder.AddTypeActivatedCheck<AudioServiceHealthCheck>(
                 "audio-service",
-                failureStatus: HealthStatus.Unhealthy,
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                 tags: new[] { "audio", "live", "ready" });
             
             // Add provider-specific health checks
@@ -105,7 +105,7 @@ namespace ConduitLLM.Http.Extensions
                 {
                     builder.AddTypeActivatedCheck<AudioProviderHealthCheck>(
                         $"audio-provider-{providerName.ToLower()}",
-                        failureStatus: HealthStatus.Unhealthy,
+                        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                         tags: new[] { "audio", "provider", providerName.ToLower() },
                         args: new object[] { providerName });
                 }
@@ -118,7 +118,7 @@ namespace ConduitLLM.Http.Extensions
                 builder.AddRedis(
                     redisConnectionString,
                     name: "audio-cache-redis",
-                    failureStatus: HealthStatus.Degraded,
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
                     tags: new[] { "audio", "cache", "redis" });
             }
             

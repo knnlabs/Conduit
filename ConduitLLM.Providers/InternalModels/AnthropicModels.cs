@@ -41,7 +41,9 @@ internal record AnthropicMessageRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<string>? StopSequences { get; init; }
 
-    // TODO: Add metadata if needed
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AnthropicMetadata? Metadata { get; init; } // For request tracking and analytics
 }
 
 internal record AnthropicMessage
@@ -139,6 +141,19 @@ internal record AnthropicImageSource
     /// </summary>
     [JsonPropertyName("data")]
     public required string Data { get; init; }
+}
+
+/// <summary>
+/// Metadata for request tracking and analytics.
+/// </summary>
+internal record AnthropicMetadata
+{
+    /// <summary>
+    /// A unique identifier for the user or session.
+    /// </summary>
+    [JsonPropertyName("user_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UserId { get; init; }
 }
 
 internal record AnthropicUsage

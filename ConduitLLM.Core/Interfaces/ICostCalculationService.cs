@@ -18,4 +18,22 @@ public interface ICostCalculationService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The calculated cost as a decimal, or 0 if cost cannot be determined.</returns>
     Task<decimal> CalculateCostAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculates a refund for a previous LLM operation.
+    /// </summary>
+    /// <param name="modelId">The specific model ID used in the original operation.</param>
+    /// <param name="originalUsage">The original usage data that was charged.</param>
+    /// <param name="refundUsage">The usage data to be refunded.</param>
+    /// <param name="refundReason">The reason for the refund.</param>
+    /// <param name="originalTransactionId">Optional original transaction ID for audit trail.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A RefundResult containing the refund details and any validation messages.</returns>
+    Task<RefundResult> CalculateRefundAsync(
+        string modelId,
+        Usage originalUsage,
+        Usage refundUsage,
+        string refundReason,
+        string? originalTransactionId = null,
+        CancellationToken cancellationToken = default);
 }

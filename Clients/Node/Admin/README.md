@@ -52,6 +52,7 @@ The client expects the following environment variables:
 ### 🔑 Virtual Key Management
 - Full CRUD operations for API keys
 - Budget tracking and spend management
+- Refund functionality with audit trail
 - Rate limiting configuration
 - Key validation and search
 

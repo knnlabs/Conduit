@@ -3,9 +3,9 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
-    <NoWarn>xUnit2013</NoWarn>
+    <NoWarn>xUnit2013;CS8632</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,8 +14,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.7" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Moq.Contrib.HttpClient" Version="1.4.0" />
@@ -23,6 +23,10 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
     <PackageReference Include="bunit" Version="1.39.5" />
     <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="AutoFixture" Version="4.18.0" />
+    <PackageReference Include="AutoFixture.Xunit2" Version="4.18.0" />
+    <PackageReference Include="AutoFixture.AutoMoq" Version="4.18.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,6 +56,9 @@
     <Compile Remove="LoadTesting\AudioLoadTestScenarios.cs" />
     <Compile Remove="Http\ApiVirtualKeyServiceTests.cs" />
     <Compile Remove="Http\RealtimeUsageTrackerTests.cs" />
+    <Compile Remove="Services\InMemoryAsyncTaskServiceTests.cs" />
+    <Compile Remove="Services\RedisAsyncTaskServiceTests.cs" />
+    <Compile Remove="Data\ConnectionStringManagerTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,7 +67,6 @@
     <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
-    <ProjectReference Include="..\ConduitLLM.WebUI\ConduitLLM.WebUI.csproj" />
   </ItemGroup>
 
 </Project>

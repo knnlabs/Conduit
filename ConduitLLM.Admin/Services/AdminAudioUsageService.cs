@@ -72,7 +72,7 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<Interfaces.AudioKeyUsageDto> GetUsageByKeyAsync(string virtualKey, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<AudioKeyUsageDto> GetUsageByKeyAsync(string virtualKey, DateTime? startDate = null, DateTime? endDate = null)
         {
             var logs = await _repository.GetByVirtualKeyAsync(virtualKey, startDate, endDate);
             var key = await _virtualKeyRepository.GetByKeyHashAsync(virtualKey);
@@ -83,53 +83,50 @@ namespace ConduitLLM.Admin.Services
             var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
             var providerBreakdown = await _repository.GetProviderBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
 
-            return new Interfaces.AudioKeyUsageDto
+            return new AudioKeyUsageDto
             {
                 VirtualKey = virtualKey,
-                KeyName = key?.KeyName,
+                KeyName = key?.KeyName ?? string.Empty,
                 TotalOperations = logs.Count,
                 TotalCost = logs.Sum(l => l.Cost),
-                OperationBreakdown = operationBreakdown,
-                ProviderBreakdown = providerBreakdown,
-                RecentLogs = logs.Take(10).Select(MapToDto).ToList()
+                TotalDurationSeconds = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value),
+                LastUsed = logs.OrderByDescending(l => l.Timestamp).FirstOrDefault()?.Timestamp,
+                SuccessRate = logs.Count > 0 ? (logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)logs.Count) * 100 : 100
             };
         }
 
         /// <inheritdoc/>
-        public async Task<Interfaces.AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
         {
             var logs = await _repository.GetByProviderAsync(provider, startDate, endDate);
-
-            var effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
-            var effectiveEndDate = endDate ?? DateTime.UtcNow;
-
-            var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate);
-
-            // Calculate daily trend
-            var dailyTrend = logs
-                .GroupBy(l => l.Timestamp.Date)
-                .Select(g => new Interfaces.DailyUsageTrend
-                {
-                    Date = g.Key,
-                    Operations = g.Count(),
-                    Cost = g.Sum(l => l.Cost)
-                })
-                .OrderBy(t => t.Date)
-                .ToList();
 
             var successCount = logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300));
             var totalDuration = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value);
             var avgResponseTime = logs.Count > 0 ? (totalDuration / logs.Count) * 1000 : 0; // Convert to ms
 
-            return new Interfaces.AudioProviderUsageDto
+            // Count operations by type
+            var transcriptionCount = logs.Count(l => l.OperationType?.ToLower() == "transcription");
+            var ttsCount = logs.Count(l => l.OperationType?.ToLower() == "tts" || l.OperationType?.ToLower() == "text-to-speech");
+            var realtimeCount = logs.Count(l => l.OperationType?.ToLower() == "realtime");
+
+            // Find most used model
+            var mostUsedModel = logs
+                .Where(l => !string.IsNullOrEmpty(l.Model))
+                .GroupBy(l => l.Model)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault()?.Key;
+
+            return new AudioProviderUsageDto
             {
                 Provider = provider,
                 TotalOperations = logs.Count,
-                SuccessRate = logs.Count > 0 ? (successCount / (double)logs.Count) * 100 : 0,
-                AverageResponseTime = avgResponseTime,
+                TranscriptionCount = transcriptionCount,
+                TextToSpeechCount = ttsCount,
+                RealtimeSessionCount = realtimeCount,
                 TotalCost = logs.Sum(l => l.Cost),
-                OperationBreakdown = operationBreakdown,
-                DailyTrend = dailyTrend
+                AverageResponseTime = avgResponseTime,
+                SuccessRate = logs.Count > 0 ? (successCount / (double)logs.Count) * 100 : 0,
+                MostUsedModel = mostUsedModel
             };
         }
 

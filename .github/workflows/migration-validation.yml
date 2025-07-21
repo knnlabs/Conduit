@@ -1,0 +1,128 @@
+name: EF Core Migration Validation
+
+on:
+  pull_request:
+    paths:
+      - '**.cs'
+      - '**/Migrations/**'
+      - '**/*.csproj'
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - '**.cs'
+      - '**/Migrations/**'
+      - '**/*.csproj'
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    # Define environment variables at job level for consistency
+    env:
+      DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Install EF Core tools
+      run: dotnet tool install --global dotnet-ef
+    
+    - name: Validate environment
+      run: |
+        echo "Validating environment setup..."
+        if [ -z "$DATABASE_URL" ]; then
+          echo "ERROR: DATABASE_URL is not set"
+          exit 1
+        fi
+        echo "✓ DATABASE_URL is set"
+        echo "✓ PostgreSQL service should be available at localhost:5432"
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build solution
+      run: dotnet build --no-restore
+    
+    - name: Validate migrations
+      run: ./scripts/migrations/validate-migrations.sh --check-pending
+    
+    - name: Test migration application
+      run: |
+        cd ConduitLLM.Configuration
+        dotnet ef database update --no-build
+    
+    - name: Generate migration script
+      if: github.event_name == 'pull_request'
+      run: |
+        cd ConduitLLM.Configuration
+        ../scripts/migrations/ef-wrapper.sh migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
+    
+    - name: Upload migration script
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: migration-script
+        path: migration-script.sql
+    
+    - name: Comment PR with migration info
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const migrationScript = fs.readFileSync('migration-script.sql', 'utf8');
+          const lineCount = migrationScript.split('\n').length;
+          
+          const comment = `## 🗄️ Database Migration Summary
+          
+          This PR includes database migrations.
+          
+          **Migration Script Stats:**
+          - Lines: ${lineCount}
+          - Size: ${(migrationScript.length / 1024).toFixed(2)} KB
+          
+          <details>
+          <summary>View Migration Script Preview (first 50 lines)</summary>
+          
+          \`\`\`sql
+          ${migrationScript.split('\n').slice(0, 50).join('\n')}
+          \`\`\`
+          
+          </details>
+          
+          **Action Required:** Review the migration script artifact for full details.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

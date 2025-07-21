@@ -359,6 +359,13 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
 
             return Task.FromResult(models);
         }
+
+        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            // Return basic capabilities for placeholder - using default constructor
+            var capabilities = new ProviderCapabilities();
+            return Task.FromResult(capabilities);
+        }
     }
 
     /// <summary>

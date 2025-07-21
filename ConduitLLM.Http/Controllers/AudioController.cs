@@ -28,12 +28,12 @@ namespace ConduitLLM.Http.Controllers
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
-        private readonly Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<AudioController> _logger;
 
         public AudioController(
             IAudioRouter audioRouter,
-            Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
             ILogger<AudioController> logger)
         {
             _audioRouter = audioRouter ?? throw new ArgumentNullException(nameof(audioRouter));
@@ -68,7 +68,7 @@ namespace ConduitLLM.Http.Controllers
             [FromForm] string[]? timestamp_granularities = null)
         {
             // Get virtual key from context
-            var virtualKey = HttpContext.Items["VirtualKey"] as string;
+            var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
             if (string.IsNullOrEmpty(virtualKey))
             {
                 return Unauthorized(new ProblemDetails
@@ -203,7 +203,7 @@ namespace ConduitLLM.Http.Controllers
         public async Task<IActionResult> GenerateSpeech([FromBody, Required] TextToSpeechRequestDto request)
         {
             // Get virtual key from context
-            var virtualKey = HttpContext.Items["VirtualKey"] as string;
+            var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
             if (string.IsNullOrEmpty(virtualKey))
             {
                 return Unauthorized(new ProblemDetails

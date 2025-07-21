@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./nextjs": {
+      "types": "./dist/nextjs.d.ts",
+      "import": "./dist/nextjs.mjs",
+      "require": "./dist/nextjs.js"
     }
   },
   "scripts": {
@@ -47,21 +52,28 @@
   "peerDependencies": {
     "next": ">=13.0.0"
   },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
   "dependencies": {
-    "axios": "^1.6.0",
-    "zod": "^3.22.0"
+    "@knn_labs/conduit-common": "file:../Common",
+    "@microsoft/signalr": "^8.0.7",
+    "zod": "^4.0.5"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
-    "jest": "^29.5.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.15",
+    "@types/react": "^19.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "eslint": "^9.31.0",
+    "jest": "^30.0.4",
     "prettier": "^3.0.0",
     "ts-jest": "^29.1.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">=16.0.0"

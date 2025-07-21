@@ -1,0 +1,9 @@
+Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Video Cost (per second),Batch Processing Multiplier,Supports Batch Processing,Image Quality Multipliers,Priority,Active,Description
+claude-3.5-sonnet-20241022,Anthropic,chat,0.003,0.015,,,,,0.5,Yes,,10,Yes,Claude 3.5 Sonnet latest with batch API
+claude-3.5-haiku-20241022,Anthropic,chat,0.001,0.005,,,,,0.5,Yes,,10,Yes,Claude 3.5 Haiku latest with batch API
+claude-3-opus-20240229,Anthropic,chat,0.015,0.075,,,,,0.5,Yes,,8,Yes,Claude 3 Opus with batch API
+claude-3-sonnet-20240229,Anthropic,chat,0.003,0.015,,,,,0.5,Yes,,8,Yes,Claude 3 Sonnet with batch API
+claude-3-haiku-20240307,Anthropic,chat,0.00025,0.00125,,,,,0.5,Yes,,8,Yes,Claude 3 Haiku with batch API
+claude-2.1,Anthropic,chat,0.008,0.024,,,,,,,5,Yes,Claude 2.1 (no batch support)
+claude-2.0,Anthropic,chat,0.008,0.024,,,,,,,3,Yes,Claude 2.0 (no batch support)
+claude-instant-1.2,Anthropic,chat,0.0008,0.0024,,,,,,,3,Yes,Claude Instant 1.2 (no batch support)

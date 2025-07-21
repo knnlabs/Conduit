@@ -1,4 +1,7 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import { HttpMethod } from '../client/HttpMethod';
+import type { DiagnosticChecks } from '../models/common-types';
+import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   SystemInfoDto,
@@ -14,11 +17,15 @@ import {
   MaintenanceTaskResult,
   AuditLogDto,
   AuditLogFilters,
-  SystemMetricsDto,
+  FeatureAvailability,
 } from '../models/system';
 import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
+import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
+import { SettingsService } from './SettingsService';
+// Get SDK version from package.json at build time
+const SDK_VERSION = process.env.npm_package_version ?? '1.0.0';
 
 const createBackupSchema = z.object({
   description: z.string().max(500).optional(),
@@ -41,7 +48,7 @@ const restoreBackupSchema = z.object({
   }).optional(),
 });
 
-export class SystemService extends BaseApiClient {
+export class SystemService extends FetchBaseApiClient {
   // System Information
   async getSystemInfo(): Promise<SystemInfoDto> {
     const cacheKey = 'system-info';
@@ -54,10 +61,6 @@ export class SystemService extends BaseApiClient {
 
   async getHealth(): Promise<HealthStatusDto> {
     return super.get<HealthStatusDto>(ENDPOINTS.SYSTEM.HEALTH);
-  }
-
-  async getSystemMetrics(): Promise<SystemMetricsDto> {
-    return super.get<SystemMetricsDto>('/api/systeminfo/metrics');
   }
 
   // Backup Management
@@ -75,13 +78,13 @@ export class SystemService extends BaseApiClient {
       try {
         createBackupSchema.parse(request);
       } catch (error) {
-        throw new ValidationError('Invalid backup request', error);
+        throw new ValidationError('Invalid backup request', { validationError: error });
       }
     }
 
     const response = await this.post<BackupDto>(
       ENDPOINTS.SYSTEM.BACKUP,
-      request || {}
+      request ?? {}
     );
 
     await this.invalidateCache();
@@ -89,12 +92,15 @@ export class SystemService extends BaseApiClient {
   }
 
   async downloadBackup(backupId: string): Promise<Blob> {
-    const response = await super.request<any>({
-      method: 'GET',
-      url: `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
-      headers: { Accept: 'application/octet-stream' }
-    });
-    return new Blob([response]);
+    const response = await super.request<Blob>(
+      `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
+      {
+        method: HttpMethod.GET,
+        headers: { Accept: 'application/octet-stream' },
+        responseType: 'blob'
+      }
+    );
+    return response;
   }
 
   async deleteBackup(backupId: string): Promise<void> {
@@ -106,7 +112,7 @@ export class SystemService extends BaseApiClient {
     try {
       restoreBackupSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid restore request', error);
+      throw new ValidationError('Invalid restore request', { validationError: error });
     }
 
     return this.post<BackupRestoreResult>(
@@ -176,7 +182,7 @@ export class SystemService extends BaseApiClient {
   }
 
   // Stub methods
-  async getAuditLogs(_filters?: AuditLogFilters): Promise<PaginatedResponse<AuditLogDto>> {
+  getAuditLogs(_filters?: AuditLogFilters): Promise<PaginatedResponse<AuditLogDto>> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getAuditLogs requires Admin API endpoint implementation. ' +
@@ -184,7 +190,7 @@ export class SystemService extends BaseApiClient {
     );
   }
 
-  async scheduledBackup(
+  scheduledBackup(
     _schedule: string,
     _config: CreateBackupRequest
   ): Promise<{
@@ -200,7 +206,7 @@ export class SystemService extends BaseApiClient {
     );
   }
 
-  async getScheduledBackups(): Promise<Array<{
+  getScheduledBackups(): Promise<Array<{
     id: string;
     schedule: string;
     nextRun: string;
@@ -214,7 +220,7 @@ export class SystemService extends BaseApiClient {
     );
   }
 
-  async exportAuditLogs(
+  exportAuditLogs(
     _filters: AuditLogFilters,
     _format: 'csv' | 'json'
   ): Promise<Blob> {
@@ -225,9 +231,9 @@ export class SystemService extends BaseApiClient {
     );
   }
 
-  async getDiagnostics(): Promise<{
+  getDiagnostics(): Promise<{
     timestamp: string;
-    checks: Record<string, any>;
+    checks: DiagnosticChecks;
     recommendations: string[];
     issues: Array<{
       severity: 'low' | 'medium' | 'high';
@@ -243,15 +249,70 @@ export class SystemService extends BaseApiClient {
     );
   }
 
-  async streamSystemMetrics(
-    _onMessage?: (metrics: SystemMetricsDto) => void,
-    _onError?: (error: Error) => void
-  ): Promise<() => void> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'streamSystemMetrics requires Admin API SSE endpoint implementation. ' +
-        'Consider implementing GET /api/systeminfo/metrics/stream as Server-Sent Events'
+  async getFeatureAvailability(): Promise<FeatureAvailability> {
+    const cacheKey = 'feature-availability';
+    return this.withCache(
+      cacheKey,
+      () => super.get<FeatureAvailability>('/api/systeminfo/features'),
+      CACHE_TTL.MEDIUM
     );
+  }
+
+  /**
+   * Gets or creates the special WebUI virtual key.
+   * This key is stored unencrypted in GlobalSettings for WebUI/TUI access.
+   * @returns The actual (unhashed) virtual key value
+   */
+  async getWebUIVirtualKey(): Promise<string> {
+    // Use the same config as the current service instance
+    const baseConfig: ApiClientConfig = {
+      baseUrl: this.baseUrl.replace('/api', ''),
+      masterKey: this.masterKey,
+      logger: this.logger,
+      cache: this.cache,
+      retries: this.retryConfig,
+      timeout: this.timeout,
+      defaultHeaders: this.defaultHeaders,
+    };
+    
+    const settingsService = new SettingsService(baseConfig);
+    
+    try {
+      // First try to get existing key from GlobalSettings
+      const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey');
+      if (setting?.value) {
+        return setting.value;
+      }
+    } catch {
+      // Key doesn't exist, we'll create it
+      this.log('debug', 'WebUI virtual key not found in GlobalSettings, creating new one');
+    }
+
+    // Create metadata
+    const metadata = {
+      visibility: 'hidden',
+      created: new Date().toISOString(),
+      originator: `Admin SDK ${SDK_VERSION}`
+    };
+
+    // Create the virtual key via VirtualKeyService
+    const virtualKeyService = new VirtualKeyService(this);
+    const response = await virtualKeyService.create({
+      keyName: 'WebUI Internal Key',
+      metadata: JSON.stringify(metadata)
+    });
+    
+    // Store the unhashed key in GlobalSettings
+    await settingsService.createGlobalSetting({
+      key: 'WebUI_VirtualKey',
+      value: response.virtualKey,
+      isSecret: true,
+      category: 'WebUI',
+      description: 'Virtual key for WebUI Core API access'
+    });
+    
+    this.log('info', 'Created new WebUI virtual key');
+    return response.virtualKey;
   }
 
   private async invalidateCache(): Promise<void> {

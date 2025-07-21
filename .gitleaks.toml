@@ -1,0 +1,81 @@
+# Gitleaks configuration for Conduit
+# https://github.com/gitleaks/gitleaks
+
+title = "Conduit Secret Detection"
+
+[extend]
+# Use default gitleaks rules as base
+useDefault = true
+
+# Additional custom rules for Conduit-specific secrets
+[[rules]]
+id = "conduit-master-key"
+description = "Conduit Master Key"
+regex = '''(?i)(conduit[_-]?master[_-]?key\s*[:=]\s*)["']?([a-zA-Z0-9+/]{32,})["']?'''
+secretGroup = 2
+
+[[rules]]
+id = "conduit-webui-auth-key"
+description = "Conduit WebUI Auth Key"
+regex = '''(?i)(conduit[_-]?webui[_-]?auth[_-]?key\s*[:=]\s*)["']?([a-zA-Z0-9+/]{32,})["']?'''
+secretGroup = 2
+
+[[rules]]
+id = "redis-connection-with-password"
+description = "Redis connection string with password"
+regex = '''redis://[^:]+:([^@]+)@'''
+secretGroup = 1
+
+[[rules]]
+id = "postgresql-connection-with-password"
+description = "PostgreSQL connection string with password"
+regex = '''(?i)(postgresql?://[^:]+:)([^@]+)(@)'''
+secretGroup = 2
+
+# Allowlist for false positives
+[allowlist]
+description = "Allowlist for false positives"
+files = [
+    '''\.md$''',  # Documentation files
+    '''\.txt$''', # Text files
+    '''\.example$''', # Example files
+]
+
+# Paths to exclude from scanning
+paths = [
+    '''(?i)example''',
+    '''(?i)test''',
+    '''(?i)mock''',
+    '''(?i)dummy''',
+    '''(?i)fake''',
+    '''(?i)sample''',
+]
+
+# Regexes for allowed patterns
+regexes = [
+    '''sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}''', # Example OpenAI key pattern
+    '''your-api-key-here''',
+    '''insert-your-key''',
+    '''replace-with-your''',
+    '''example-key''',
+    '''dummy-key''',
+    '''test-key''',
+    '''mock-key''',
+    '''sample-key''',
+    '''placeholder''',
+    '''<.*>''', # XML/HTML tags
+    '''\$\{.*\}''', # Environment variable references
+    '''%.*%''', # Windows environment variables
+]
+
+# Conduit-specific sample values (safe to commit)
+commits = [
+    '''alpha''', # Sample CONDUIT_MASTER_KEY in docker-compose.yml
+    '''conduit123''', # Sample CONDUIT_WEBUI_AUTH_KEY in docker-compose.yml
+]
+
+# Entropy settings
+[allowlist.entropy]
+min = 3.0
+max = 7.0
+group = 1

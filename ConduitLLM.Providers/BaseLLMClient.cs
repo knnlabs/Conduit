@@ -116,7 +116,22 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
-            // Default to Bearer authentication - override in derived classes if needed
+            // Configure authentication
+            ConfigureAuthentication(client, apiKey);
+            
+            // Configure timeout
+            client.Timeout = TimeSpan.FromMinutes(5);
+        }
+        
+        /// <summary>
+        /// Configures authentication for the HttpClient.
+        /// Override in derived classes to use provider-specific authentication methods.
+        /// </summary>
+        /// <param name="client">The HttpClient to configure.</param>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        protected virtual void ConfigureAuthentication(HttpClient client, string apiKey)
+        {
+            // Default Bearer token authentication - can be overridden by providers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         }
 
@@ -192,6 +207,31 @@ namespace ConduitLLM.Providers
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the capabilities for this provider. Override in derived classes to provide 
+        /// provider-specific capabilities.
+        /// </summary>
+        /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
+        /// <returns>The provider capabilities.</returns>
+        public virtual Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            // Return basic capabilities by default
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = modelId ?? ProviderModelId,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = true
+                }
+            });
+        }
 
         /// <summary>
         /// Reads error content from an HTTP response.

@@ -1,14 +1,20 @@
 using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Caching;
 using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using Prometheus;
 
 namespace ConduitLLM.Admin;
 
@@ -26,11 +32,23 @@ public partial class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                // Configure JSON to use camelCase for compatibility with TypeScript clients
+                options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            });
         builder.Services.AddEndpointsApiExplorer();
 
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
+        
+        // Add HttpClient for RabbitMQ Management API
+        builder.Services.AddHttpClient<IRabbitMQManagementClient, RabbitMQManagementClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>
@@ -108,6 +126,32 @@ public partial class Program
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+        // Add SignalR with configuration
+        var signalRBuilder = builder.Services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+            options.StreamBufferCapacity = 10;
+        });
+
+        // Configure SignalR Redis backplane for horizontal scaling if Redis is configured
+        var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
+        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
+        {
+            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+            {
+                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_admin_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
+                options.Configuration.DefaultDatabase = 3; // Separate database for Admin SignalR
+            });
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with Redis backplane for horizontal scaling");
+        }
+        else
+        {
+            Console.WriteLine("[ConduitLLM.Admin] SignalR configured without Redis backplane (single-instance mode)");
+        }
+
         // Configure RabbitMQ settings
         var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
             ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
@@ -118,27 +162,42 @@ public partial class Program
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>
         {
-            // Admin API is a publisher-only service, no consumers needed
+            // Register consumers for Admin API SignalR notifications
+            x.AddConsumer<ConduitLLM.Admin.Consumers.ProviderHealthChangedConsumer>();
             
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    // Configure RabbitMQ connection
+                    // Configure RabbitMQ connection with advanced settings
                     cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
                     {
                         h.Username(rabbitMqConfig.Username);
                         h.Password(rabbitMqConfig.Password);
-                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.RequestedHeartbeat));
+                        
+                        // Publisher settings
+                        h.PublisherConfirmation = rabbitMqConfig.PublisherConfirmation;
+                        
+                        // Advanced connection settings for publishers
+                        h.RequestedChannelMax(rabbitMqConfig.ChannelMax);
                     });
                     
-                    // Configure retry policy for publishing
+                    // Configure retry policy for publishing and consuming
                     cfg.UseMessageRetry(r => r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2)));
                     
-                    // Admin API only publishes events, no special configuration needed
+                    // Configure endpoints including consumers
+                    cfg.ConfigureEndpoints(context);
                 });
                 
                 Console.WriteLine($"[ConduitLLM.Admin] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+                Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
+                Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Core API)");
+                Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Core API)");
+                Console.WriteLine("  - ProviderCredentialUpdated events (triggers capability refresh)");
+                Console.WriteLine("  - ProviderCredentialDeleted events (triggers cache cleanup)");
+                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
+                Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
             else
             {
@@ -158,12 +217,50 @@ public partial class Program
                 });
                 
                 Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
+                Console.WriteLine("[ConduitLLM.Admin] Event publishing and consuming ENABLED - Events will be processed locally");
+                Console.WriteLine("[ConduitLLM.Admin] WARNING: For production multi-instance deployments, configure RabbitMQ");
+                Console.WriteLine("  - This ensures Core API instances receive cache invalidation events");
+                Console.WriteLine("  - Without RabbitMQ, only the local Core API instance will be notified");
+                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
+                Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
         });
 
         // Add standardized health checks
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString, false, rabbitMqConfig);
+        
+        // Add connection pool warmer for better startup performance
+        builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
+            return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
+        });
+
+        // Configure OpenTelemetry metrics
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(meterProviderBuilder =>
+            {
+                meterProviderBuilder
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddMeter("System.Runtime")
+                    .AddMeter("Microsoft.AspNetCore.Hosting")
+                    .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
+                    .AddPrometheusExporter();
+            });
+
+        // Add monitoring services
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
+        
+        // Add error queue metrics collection service
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
+        
+        // Add cache monitoring and alerting services
+        builder.Services.AddCacheMonitoring(builder.Configuration);
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();
 
         var app = builder.Build();
 
@@ -236,12 +333,36 @@ public partial class Program
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();
 
+        // Enable CORS for SignalR
+        app.UseCors("AdminCorsPolicy");
+
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();
+        
+        // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
+        app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
-        // Map standardized health check endpoints
-        app.MapConduitHealthChecks();
+        // Map health check endpoints with authentication requirement
+        app.MapSecureConduitHealthChecks(requireAuthorization: true);
+
+        // Map Prometheus metrics endpoint - requires authentication
+        app.UseOpenTelemetryPrometheusScrapingEndpoint(
+            context => context.Request.Path == "/metrics" && 
+                      (context.User.Identity?.IsAuthenticated ?? false)
+        );
+
+        // Alternative: Map metrics endpoint without authentication (for monitoring systems)
+        // app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+        // For the prometheus-net library metrics
+        app.UseHttpMetrics(options =>
+        {
+            options.ReduceStatusCodeCardinality();
+            options.RequestDuration.Enabled = false; // We're using our custom middleware
+            options.RequestCount.Enabled = false; // We're using our custom middleware
+        });
 
         app.Run();
     }

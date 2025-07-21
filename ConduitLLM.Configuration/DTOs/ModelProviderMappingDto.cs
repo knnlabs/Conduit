@@ -32,6 +32,11 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderId { get; set; } = string.Empty;
 
         /// <summary>
+        /// The human-readable provider name (e.g., "OpenAI", "Anthropic")
+        /// </summary>
+        public string? ProviderName { get; set; }
+
+        /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
         public int Priority { get; set; }
@@ -75,6 +80,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Whether this model supports image generation capabilities
         /// </summary>
         public bool SupportsImageGeneration { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports video generation capabilities
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports embedding generation capabilities
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports function calling
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports streaming responses
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
 
         /// <summary>
         /// The tokenizer type used by this model

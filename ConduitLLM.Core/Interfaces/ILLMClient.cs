@@ -184,4 +184,32 @@ public interface ILLMClient
         ImageGenerationRequest request,
         string? apiKey = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the capabilities supported by this provider/model combination.
+    /// </summary>
+    /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
+    /// <returns>The provider capabilities including supported parameters and features.</returns>
+    /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
+    /// <remarks>
+    /// <para>
+    /// This method returns information about what parameters and features are supported by
+    /// the provider and optionally a specific model. This enables better UX by allowing
+    /// interfaces to show/hide parameters based on capabilities.
+    /// </para>
+    /// <para>
+    /// The capabilities include information about:
+    /// </para>
+    /// <list type="bullet">
+    /// <item><description>Supported chat completion parameters (temperature, top_p, etc.)</description></item>
+    /// <item><description>Parameter constraints and valid ranges</description></item>
+    /// <item><description>Supported features (streaming, embeddings, vision, etc.)</description></item>
+    /// </list>
+    /// <para>
+    /// If a specific model ID is provided, the capabilities returned will be specific to that model.
+    /// Otherwise, the capabilities will be for the provider or default model.
+    /// </para>
+    /// </remarks>
+    Task<ProviderCapabilities> GetCapabilitiesAsync(
+        string? modelId = null);
 }

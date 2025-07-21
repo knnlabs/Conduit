@@ -17,78 +17,54 @@ namespace ConduitLLM.Configuration.Data
         /// </summary>
         public ConfigurationDbContext CreateDbContext(string[] args)
         {
-            // Read connection string from environment variable first
+            // Read connection string from environment variable
             var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
-            // If not set, use a default SQLite database for development
             if (string.IsNullOrEmpty(connectionString))
             {
-                // Get the directory where the application is running
-                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                throw new InvalidOperationException(
+                    "DATABASE_URL environment variable is not set. PostgreSQL is required for Conduit.\n" +
+                    "Set DATABASE_URL to a valid PostgreSQL connection string:\n" +
+                    "Example: postgresql://user:password@localhost:5432/conduitdb");
+            }
 
-                // Navigate to a common project directory if necessary
-                // Find solution root
-                var projectDir = baseDir;
-                while (!File.Exists(Path.Combine(projectDir, "Conduit.sln")) && Directory.GetParent(projectDir) != null && projectDir.Length > 3)
-                {
-                    var parent = Directory.GetParent(projectDir);
-                    if (parent == null) break;
-                    projectDir = parent.FullName;
-                }
+            Console.WriteLine("Using database connection from environment: DATABASE_URL");
 
-                // Use SQLite with file in project directory
-                var dbPath = Path.Combine(projectDir, "conduit-dev.db");
-                connectionString = $"Data Source={dbPath}";
+            // Parse the connection string
+            if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
+            {
+                // Format: postgresql://username:password@host:port/database
+                // Convert to Npgsql format
+                var uri = new Uri(connectionString);
+                var userInfo = uri.UserInfo.Split(':');
+                var host = uri.Host;
+                var port = uri.Port > 0 ? uri.Port : 5432;
+                var database = uri.AbsolutePath.TrimStart('/');
+                var username = userInfo[0];
+                var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
 
-                Console.WriteLine($"Using development SQLite database at: {dbPath}");
+                var npgsqlConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password}";
 
                 var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
-                optionsBuilder.UseSqlite(connectionString);
+                optionsBuilder.UseNpgsql(npgsqlConnectionString);
+
+                return new ConfigurationDbContext(optionsBuilder.Options);
+            }
+            else if (connectionString.Contains("Host=") || connectionString.Contains("Server="))
+            {
+                // Already in Npgsql format
+                var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
+                optionsBuilder.UseNpgsql(connectionString);
 
                 return new ConfigurationDbContext(optionsBuilder.Options);
             }
             else
             {
-                Console.WriteLine("Using database connection from environment: DATABASE_URL");
-
-                // Parse the connection string to determine the provider
-                if (connectionString.StartsWith("postgresql://"))
-                {
-                    // Format: postgresql://username:password@host:port/database
-                    // Convert to Npgsql format
-                    var uri = new Uri(connectionString);
-                    var userInfo = uri.UserInfo.Split(':');
-                    var host = uri.Host;
-                    var port = uri.Port;
-                    var database = uri.AbsolutePath.TrimStart('/');
-                    var username = userInfo[0];
-                    var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
-
-                    var npgsqlConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password}";
-
-                    var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
-                    optionsBuilder.UseNpgsql(npgsqlConnectionString);
-
-                    return new ConfigurationDbContext(optionsBuilder.Options);
-                }
-                else if (connectionString.StartsWith("Data Source=") ||
-                         connectionString.Contains(".db") ||
-                         connectionString.Contains("sqlite"))
-                {
-                    // Use SQLite
-                    var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
-                    optionsBuilder.UseSqlite(connectionString);
-
-                    return new ConfigurationDbContext(optionsBuilder.Options);
-                }
-                else
-                {
-                    // Assume PostgreSQL for other formats
-                    var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
-                    optionsBuilder.UseNpgsql(connectionString);
-
-                    return new ConfigurationDbContext(optionsBuilder.Options);
-                }
+                throw new InvalidOperationException(
+                    $"Invalid DATABASE_URL format. Must be a PostgreSQL connection string.\n" +
+                    $"Examples:\n" +
+                    $"  postgresql://user:password@localhost:5432/conduitdb\n" +
+                    $"  Host=localhost;Port=5432;Database=conduitdb;Username=user;Password=password");
             }
         }
     }

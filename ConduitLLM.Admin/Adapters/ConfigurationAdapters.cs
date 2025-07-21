@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -120,13 +121,46 @@ namespace ConduitLLM.Admin.Adapters
                 var modelCost = await _innerService.GetCostForModelAsync(modelId, cancellationToken);
                 if (modelCost == null) return null;
 
+                // Deserialize video resolution multipliers if present
+                Dictionary<string, decimal>? videoResolutionMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers))
+                {
+                    try
+                    {
+                        videoResolutionMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
+                // Deserialize image quality multipliers if present
+                Dictionary<string, decimal>? imageQualityMultipliers = null;
+                if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers))
+                {
+                    try
+                    {
+                        imageQualityMultipliers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    }
+                    catch
+                    {
+                        // If deserialization fails, leave as null
+                    }
+                }
+
                 return new ModelCostInfo
                 {
                     ModelIdPattern = modelCost.ModelIdPattern,
                     InputTokenCost = modelCost.InputTokenCost,
                     OutputTokenCost = modelCost.OutputTokenCost,
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = modelCost.ImageCostPerImage
+                    ImageCostPerImage = modelCost.ImageCostPerImage,
+                    VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                    VideoResolutionMultipliers = videoResolutionMultipliers,
+                    BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                    ImageQualityMultipliers = imageQualityMultipliers
                 };
             }
         }

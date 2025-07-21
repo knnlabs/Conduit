@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import { VirtualKeyMetadata } from './metadata';
 
 export type BudgetDuration = 'Total' | 'Daily' | 'Weekly' | 'Monthly';
 
@@ -74,6 +75,12 @@ export interface UpdateSpendRequest {
   description?: string;
 }
 
+export interface RefundSpendRequest {
+  amount: number;
+  reason: string;
+  originalTransactionId?: string;
+}
+
 export interface CheckBudgetRequest {
   estimatedCost: number;
 }
@@ -102,7 +109,7 @@ export interface VirtualKeyValidationInfo {
     rpm?: number;
     rpd?: number;
   };
-  metadata?: Record<string, any>;
+  metadata?: VirtualKeyMetadata;
 }
 
 export interface VirtualKeyMaintenanceRequest {
@@ -126,7 +133,7 @@ export interface VirtualKeyFilters extends FilterOptions {
   budgetDuration?: BudgetDuration;
   minBudget?: number;
   maxBudget?: number;
-  allowedModel?: string;
+  allowedModels?: string[];
   createdAfter?: string;
   createdBefore?: string;
   lastUsedAfter?: string;

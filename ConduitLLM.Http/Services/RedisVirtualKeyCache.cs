@@ -20,6 +20,12 @@ namespace ConduitLLM.Http.Services
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromMinutes(30); // Fallback expiry
         private const string KeyPrefix = "vkey:";
         private const string InvalidationChannel = "vkey_invalidated";
+        
+        // Statistics tracking keys
+        private const string STATS_HIT_KEY = "conduit:cache:stats:hits";
+        private const string STATS_MISS_KEY = "conduit:cache:stats:misses";
+        private const string STATS_INVALIDATION_KEY = "conduit:cache:stats:invalidations";
+        private const string STATS_RESET_TIME_KEY = "conduit:cache:stats:reset_time";
 
         public RedisVirtualKeyCache(
             IConnectionMultiplexer redis,
@@ -61,6 +67,8 @@ namespace ConduitLLM.Http.Services
                         if (virtualKey != null && IsKeyValid(virtualKey))
                         {
                             _logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
+                            // Increment hit counter
+                            await _database.StringIncrementAsync(STATS_HIT_KEY);
                             return virtualKey;
                         }
                         else
@@ -74,6 +82,8 @@ namespace ConduitLLM.Http.Services
                 
                 // Cache miss or invalid key - fallback to database
                 _logger.LogDebug("Virtual Key cache miss, querying database: {KeyHash}", keyHash);
+                // Increment miss counter
+                await _database.StringIncrementAsync(STATS_MISS_KEY);
                 var dbKey = await databaseFallback(keyHash);
                 
                 if (dbKey != null && IsKeyValid(dbKey))
@@ -137,6 +147,9 @@ namespace ConduitLLM.Http.Services
                 // Notify ALL instances to invalidate their caches
                 await _subscriber.PublishAsync(RedisChannel.Literal(InvalidationChannel), keyHash);
                 
+                // Increment invalidation counter
+                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
+                
                 _logger.LogInformation("Invalidated Virtual Key across all instances: {KeyHash}", keyHash);
             }
             catch (Exception ex)
@@ -178,17 +191,40 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var info = await _database.ExecuteAsync("INFO", "memory");
-                var keyCount = await _database.ExecuteAsync("EVAL", 
-                    "return #redis.call('keys', ARGV[1])", 0, KeyPrefix + "*");
+                // Get the actual statistics from Redis
+                var hitCountTask = _database.StringGetAsync(STATS_HIT_KEY);
+                var missCountTask = _database.StringGetAsync(STATS_MISS_KEY);
+                var invalidationCountTask = _database.StringGetAsync(STATS_INVALIDATION_KEY);
+                var resetTimeTask = _database.StringGetAsync(STATS_RESET_TIME_KEY);
+                
+                await Task.WhenAll(hitCountTask, missCountTask, invalidationCountTask, resetTimeTask);
+                
+                // Parse values with defaults for missing keys
+                long hitCount = hitCountTask.Result.HasValue ? (long)hitCountTask.Result : 0;
+                long missCount = missCountTask.Result.HasValue ? (long)missCountTask.Result : 0;
+                long invalidationCount = invalidationCountTask.Result.HasValue ? (long)invalidationCountTask.Result : 0;
+                
+                DateTime lastResetTime = DateTime.UtcNow;
+                if (resetTimeTask.Result.HasValue)
+                {
+                    if (long.TryParse(resetTimeTask.Result, out var ticks))
+                    {
+                        lastResetTime = new DateTime(ticks, DateTimeKind.Utc);
+                    }
+                }
+                else
+                {
+                    // If no reset time exists, set it now
+                    await _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.Ticks.ToString());
+                }
                 
                 return new ConduitLLM.Core.Interfaces.VirtualKeyCacheStats
                 {
-                    HitCount = 0, // TODO: Implement proper statistics tracking
-                    MissCount = 0, // TODO: Implement proper statistics tracking
-                    InvalidationCount = 0, // TODO: Implement proper statistics tracking
-                    AverageGetTime = TimeSpan.Zero,
-                    LastResetTime = DateTime.UtcNow
+                    HitCount = hitCount,
+                    MissCount = missCount,
+                    InvalidationCount = invalidationCount,
+                    AverageGetTime = TimeSpan.Zero, // Not tracked in this implementation
+                    LastResetTime = lastResetTime
                 };
             }
             catch (Exception ex)

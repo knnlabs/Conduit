@@ -1,46 +1,72 @@
-# --- ConduitLLM WebUI Docker Image ---
-# WebUI communicates with Admin API and HTTP API - no direct database access
+# Optimized multi-stage Dockerfile for ConduitLLM.WebUI
+# Features: Multi-stage build, Alpine base, non-root user, health checks
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-
-# Only copy directories that are essential for the WebUI build
-COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
-COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
-COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
-COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
-# Copy solution file if it exists
-COPY ["*.sln", "/src/"]
-
-# List directories for debugging
-RUN echo "==== Directory structure ====" && \
-    ls -la /src && \
-    echo "==== WebUI directory ====" && \
-    ls -la /src/ConduitLLM.WebUI
-
-# Create dummy Common directory if needed
-RUN if [ ! -d "/src/ConduitLLM.Common" ]; then \
-    echo "Creating missing ConduitLLM.Common directory" && \
-    mkdir -p /src/ConduitLLM.Common && \
-    echo "namespace ConduitLLM.Common { public class Dummy {} }" > /src/ConduitLLM.Common/Dummy.cs && \
-    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>' > /src/ConduitLLM.Common/ConduitLLM.Common.csproj; \
-    fi
-
-# Restore and build WebUI project
-RUN dotnet restore "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" || \
-    (echo "Restore failed - check directory structure" && exit 1)
-
-RUN dotnet publish "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" -c Release -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=build /app/publish ./
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# IMPORTANT: This is a monorepo where packages depend on each other via file: references
+# The WebUI package.json contains:
+#   "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin"
+#   "@knn_labs/conduit-core-client": "file:../Clients/Node/Core"
+# Therefore, we MUST copy the entire monorepo structure before running npm install
+# Otherwise npm will timeout trying to fetch these packages from the registry
+COPY . .
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+# Build Common package first (base dependency for other packages)
+WORKDIR /app/Clients/Node/Common
+RUN npm install --no-audit --no-fund && npm run build
 
-EXPOSE 8080
-ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
+# Build Admin SDK next (depends on Common package)
+WORKDIR /app/Clients/Node/Admin
+RUN npm install --no-audit --no-fund && npm run build
+
+# Build Core SDK next (depends on Common package)
+WORKDIR /app/Clients/Node/Core
+RUN npm install --no-audit --no-fund && npm run build
+
+# Build WebUI last (depends on Admin and Core SDKs via file: references)
+# The WebUI's npm install will symlink to the local Admin and Core packages
+WORKDIR /app/ConduitLLM.WebUI
+# Create public directory if it doesn't exist (Next.js 15 doesn't require it)
+RUN mkdir -p public
+# npm install here will resolve file: dependencies to the already-built SDKs above
+RUN npm install --no-audit --no-fund && npm run build
+
+# Production stage - smaller final image
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Set production environment
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy only what's needed from builder
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/package*.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
+
+# IMPORTANT: We must also copy the SDK packages because WebUI's node_modules contains
+# symlinks to these local packages (due to file: references in package.json)
+# Without these, the runtime will fail to resolve the packages
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Common /app/Clients/Node/Common
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Admin /app/Clients/Node/Admin
+COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Core /app/Clients/Node/Core
+
+# Switch to non-root user
+USER nextjs
+
+EXPOSE 3000
+
+# Health check for container orchestration
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
+
+# Start the application
+CMD ["npm", "start"]

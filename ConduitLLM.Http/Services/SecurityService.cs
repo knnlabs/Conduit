@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Http.Options;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Security.Interfaces;
 
 namespace ConduitLLM.Http.Services
 {
@@ -109,6 +110,7 @@ namespace ConduitLLM.Http.Services
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
         private readonly IIpFilterService _ipFilterService;
+        private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
 
         // Cache keys - same as WebUI/Admin for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
@@ -136,6 +138,7 @@ namespace ConduitLLM.Http.Services
             _memoryCache = memoryCache;
             _distributedCache = serviceProvider.GetService<IDistributedCache>();
             _ipFilterService = ipFilterService;
+            _securityEventMonitoring = serviceProvider.GetService<ISecurityEventMonitoringService>();
         }
 
         /// <inheritdoc/>
@@ -156,6 +159,9 @@ namespace ConduitLLM.Http.Services
                 // Record the failed attempt
                 var attemptedKey = context.Items["AttemptedKey"] as string ?? "unknown";
                 await RecordFailedAuthAsync(clientIp, attemptedKey);
+                
+                // Record in security event monitoring
+                _securityEventMonitoring?.RecordAuthenticationFailure(clientIp, attemptedKey, path);
             }
 
             // Check if IP is banned due to failed authentication
@@ -173,6 +179,10 @@ namespace ConduitLLM.Http.Services
             if (context.Items.ContainsKey("AuthSuccess") && context.Items["AuthSuccess"] is bool authSuccess && authSuccess)
             {
                 await ClearFailedAuthAttemptsAsync(clientIp);
+                
+                // Record successful authentication
+                var virtualKey = context.Items["VirtualKey"] as string ?? "";
+                _securityEventMonitoring?.RecordAuthenticationSuccess(clientIp, virtualKey, path);
             }
 
             // Check IP-based rate limiting (if enabled)
@@ -281,6 +291,9 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogWarning("IP {IpAddress} has been banned after {Attempts} failed Virtual Key authentication attempts", 
                     ipAddress, attempts);
+
+                // Record IP ban in security event monitoring
+                _securityEventMonitoring?.RecordIpBan(ipAddress, "Exceeded max failed Virtual Key authentication attempts", attempts);
 
                 // Clear the failed attempts counter
                 if (_options.UseDistributedTracking && _distributedCache != null)

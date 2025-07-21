@@ -113,6 +113,22 @@ namespace ConduitLLM.Http.Authentication
         /// </summary>
         private string? ExtractVirtualKey(Microsoft.AspNetCore.Http.HttpContext context)
         {
+            // For SignalR connections, check query string first
+            if (context.Request.Path.StartsWithSegments("/hubs"))
+            {
+                // Check for access_token in query string (standard for SignalR)
+                if (context.Request.Query.TryGetValue("access_token", out var accessToken))
+                {
+                    return accessToken.ToString();
+                }
+                
+                // Also check for api_key in query string
+                if (context.Request.Query.TryGetValue("api_key", out var apiKey))
+                {
+                    return apiKey.ToString();
+                }
+            }
+
             // Try Authorization header first (Bearer token)
             var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
             if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))

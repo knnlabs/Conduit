@@ -66,11 +66,11 @@ namespace ConduitLLM.Http.HealthChecks
 
                 // Check connection pool
                 var poolStatus = await CheckConnectionPoolAsync(data, cancellationToken);
-                if (poolStatus == HealthStatus.Unhealthy)
+                if (poolStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy)
                 {
                     unhealthyReasons.Add("Connection pool is exhausted");
                 }
-                else if (poolStatus == HealthStatus.Degraded)
+                else if (poolStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded)
                 {
                     degradedReasons.Add("Connection pool is under high load");
                 }
@@ -84,11 +84,11 @@ namespace ConduitLLM.Http.HealthChecks
 
                 // Check metrics
                 var metricsStatus = await CheckMetricsAsync(data, cancellationToken);
-                if (metricsStatus == HealthStatus.Unhealthy)
+                if (metricsStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy)
                 {
                     unhealthyReasons.Add("High error rate detected");
                 }
-                else if (metricsStatus == HealthStatus.Degraded)
+                else if (metricsStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded)
                 {
                     degradedReasons.Add("Elevated error rate or latency");
                 }
@@ -160,7 +160,7 @@ namespace ConduitLLM.Http.HealthChecks
             }
         }
 
-        private async Task<HealthStatus> CheckConnectionPoolAsync(
+        private async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> CheckConnectionPoolAsync(
             Dictionary<string, object> data,
             CancellationToken cancellationToken)
         {
@@ -181,21 +181,21 @@ namespace ConduitLLM.Http.HealthChecks
                 // PoolExhaustedCount doesn't exist on ConnectionPoolStatistics
                 // if (stats.PoolExhaustedCount > 10)
                 // {
-                //     return HealthStatus.Unhealthy;
+                //     return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
                 // }
 
                 if (utilizationRate > 0.8)
                 {
-                    return HealthStatus.Degraded;
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded;
                 }
 
-                return HealthStatus.Healthy;
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Connection pool health check failed");
                 data["pool_error"] = ex.Message;
-                return HealthStatus.Degraded;
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded;
             }
         }
 
@@ -227,7 +227,7 @@ namespace ConduitLLM.Http.HealthChecks
             }
         }
 
-        private async Task<HealthStatus> CheckMetricsAsync(
+        private async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> CheckMetricsAsync(
             Dictionary<string, object> data,
             CancellationToken cancellationToken)
         {
@@ -243,21 +243,21 @@ namespace ConduitLLM.Http.HealthChecks
 
                 if (snapshot.CurrentErrorRate > 0.1)
                 {
-                    return HealthStatus.Unhealthy;
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
                 }
 
                 if (snapshot.CurrentErrorRate > 0.05)
                 {
-                    return HealthStatus.Degraded;
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded;
                 }
 
-                return HealthStatus.Healthy;
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Metrics health check failed");
                 data["metrics_error"] = ex.Message;
-                return HealthStatus.Degraded;
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded;
             }
         }
     }

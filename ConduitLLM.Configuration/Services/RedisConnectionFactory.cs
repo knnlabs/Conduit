@@ -75,6 +75,9 @@ namespace ConduitLLM.Configuration.Services
                 {
                     var configOptions = ConfigurationOptions.Parse(connectionString);
                     configOptions.AbortOnConnectFail = false;
+                    
+                    // Enable admin mode for Redis INFO command used by metrics collection
+                    configOptions.AllowAdmin = true;
 
                     // Add any additional configuration based on _options
                     if (!string.IsNullOrEmpty(_options.RedisInstanceName))

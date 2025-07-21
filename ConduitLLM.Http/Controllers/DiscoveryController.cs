@@ -1,338 +1,273 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using static ConduitLLM.Core.Interfaces.IProviderDiscoveryService;
+using System.Text.Json;
 
 namespace ConduitLLM.Http.Controllers
 {
     /// <summary>
     /// Controller for discovering model capabilities and provider features.
+    /// Provides runtime discovery for virtual key holders to understand available models and their capabilities.
     /// </summary>
     [ApiController]
     [Route("v1/discovery")]
     [Authorize]
     public class DiscoveryController : ControllerBase
     {
-        private readonly IProviderDiscoveryService _discoveryService;
+        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IModelCapabilityService _modelCapabilityService;
+        private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<DiscoveryController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DiscoveryController"/> class.
         /// </summary>
         public DiscoveryController(
-            IProviderDiscoveryService discoveryService,
+            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IModelCapabilityService modelCapabilityService,
+            IVirtualKeyService virtualKeyService,
             ILogger<DiscoveryController> logger)
         {
-            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+            _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
+            _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Gets all discovered models and their capabilities.
+        /// Gets all discovered models and their capabilities, filtered by virtual key permissions.
         /// </summary>
-        /// <returns>Dictionary of models with their capabilities.</returns>
+        /// <param name="capability">Optional capability filter (e.g., "video_generation", "vision")</param>
+        /// <returns>List of models with their capabilities.</returns>
         [HttpGet("models")]
-        public async Task<IActionResult> GetModels()
+        public async Task<IActionResult> GetModels([FromQuery] string? capability = null)
         {
             try
             {
-                var models = await _discoveryService.DiscoverModelsAsync();
-                
-                var response = new
+                // Get virtual key from user claims
+                var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    data = models.Select(m => new
-                    {
-                        id = m.Key,
-                        provider = m.Value.Provider,
-                        display_name = m.Value.DisplayName,
-                        capabilities = new
-                        {
-                            chat = m.Value.Capabilities.Chat,
-                            chat_stream = m.Value.Capabilities.ChatStream,
-                            embeddings = m.Value.Capabilities.Embeddings,
-                            image_generation = m.Value.Capabilities.ImageGeneration,
-                            vision = m.Value.Capabilities.Vision,
-                            video_generation = m.Value.Capabilities.VideoGeneration,
-                            video_understanding = m.Value.Capabilities.VideoUnderstanding,
-                            function_calling = m.Value.Capabilities.FunctionCalling,
-                            tool_use = m.Value.Capabilities.ToolUse,
-                            json_mode = m.Value.Capabilities.JsonMode,
-                            max_tokens = m.Value.Capabilities.MaxTokens,
-                            max_output_tokens = m.Value.Capabilities.MaxOutputTokens,
-                            supported_image_sizes = m.Value.Capabilities.SupportedImageSizes,
-                            supported_video_resolutions = m.Value.Capabilities.SupportedVideoResolutions,
-                            max_video_duration_seconds = m.Value.Capabilities.MaxVideoDurationSeconds
-                        },
-                        metadata = m.Value.Metadata,
-                        last_verified = m.Value.LastVerified
-                    }).ToList(),
-                    count = models.Count
-                };
-                
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error discovering models");
-                return StatusCode(500, new { error = new { message = "An error occurred while discovering models", type = "server_error" } });
-            }
-        }
-
-        /// <summary>
-        /// Gets models for a specific provider.
-        /// </summary>
-        /// <param name="provider">The provider name.</param>
-        /// <returns>Dictionary of provider models with their capabilities.</returns>
-        [HttpGet("providers/{provider}/models")]
-        public async Task<IActionResult> GetProviderModels(string provider)
-        {
-            try
-            {
-                var models = await _discoveryService.DiscoverProviderModelsAsync(provider);
-                
-                var response = new
-                {
-                    provider = provider,
-                    data = models.Select(m => new
-                    {
-                        id = m.Key,
-                        display_name = m.Value.DisplayName,
-                        capabilities = new
-                        {
-                            chat = m.Value.Capabilities.Chat,
-                            chat_stream = m.Value.Capabilities.ChatStream,
-                            embeddings = m.Value.Capabilities.Embeddings,
-                            image_generation = m.Value.Capabilities.ImageGeneration,
-                            vision = m.Value.Capabilities.Vision,
-                            video_generation = m.Value.Capabilities.VideoGeneration,
-                            video_understanding = m.Value.Capabilities.VideoUnderstanding,
-                            function_calling = m.Value.Capabilities.FunctionCalling,
-                            tool_use = m.Value.Capabilities.ToolUse,
-                            json_mode = m.Value.Capabilities.JsonMode,
-                            max_tokens = m.Value.Capabilities.MaxTokens,
-                            max_output_tokens = m.Value.Capabilities.MaxOutputTokens
-                        },
-                        metadata = m.Value.Metadata,
-                        last_verified = m.Value.LastVerified
-                    }).ToList(),
-                    count = models.Count
-                };
-                
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error discovering models for provider {Provider}", provider);
-                return StatusCode(500, new { error = new { message = $"An error occurred while discovering models for provider {provider}", type = "server_error" } });
-            }
-        }
-
-        /// <summary>
-        /// Tests if a model supports a specific capability.
-        /// </summary>
-        /// <param name="model">The model name.</param>
-        /// <param name="capability">The capability to test.</param>
-        /// <returns>True if the model supports the capability.</returns>
-        [HttpGet("models/{model}/capabilities/{capability}")]
-        public async Task<IActionResult> TestModelCapability(string model, string capability)
-        {
-            try
-            {
-                if (!Enum.TryParse<ModelCapability>(capability, true, out var capabilityEnum))
-                {
-                    return BadRequest(new { error = new { message = $"Invalid capability: {capability}", type = "invalid_request_error" } });
+                    return Unauthorized(new { error = "Virtual key not found" });
                 }
 
-                var supported = await _discoveryService.TestModelCapabilityAsync(model, capabilityEnum);
+                // Get virtual key details to check allowed models
+                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
+                if (virtualKey == null)
+                {
+                    return Unauthorized(new { error = "Invalid virtual key" });
+                }
+
+                using var context = await _dbContextFactory.CreateDbContextAsync();
                 
-                return Ok(new
+                // Get all enabled model mappings with their providers
+                var modelMappings = await context.ModelProviderMappings
+                    .Include(m => m.ProviderCredential)
+                    .Where(m => m.IsEnabled && m.ProviderCredential != null && m.ProviderCredential.IsEnabled)
+                    .ToListAsync();
+
+                var models = new List<object>();
+
+                foreach (var mapping in modelMappings)
                 {
-                    model = model,
-                    capability = capability,
-                    supported = supported
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error testing capability {Capability} for model {Model}", capability, model);
-                return StatusCode(500, new { error = new { message = "An error occurred while testing model capability", type = "server_error" } });
-            }
-        }
-
-        /// <summary>
-        /// Tests multiple model capabilities in a single request to reduce API calls.
-        /// </summary>
-        /// <param name="request">The bulk capability test request.</param>
-        /// <returns>Results for all requested capability tests.</returns>
-        [HttpPost("bulk/capabilities")]
-        public async Task<IActionResult> TestBulkCapabilities([FromBody] BulkCapabilityTestRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var results = new List<CapabilityTestResult>();
-
-                foreach (var test in request.Tests)
-                {
-                    try
+                    // Check if model is allowed for this virtual key
+                    if (!IsModelAllowed(mapping.ModelAlias, virtualKey.AllowedModels))
                     {
-                        // Validate capability name
-                        if (!Enum.TryParse<ModelCapability>(test.Capability, true, out var capabilityEnum))
+                        continue;
+                    }
+
+                    // Build capabilities object with detailed metadata
+                    var capabilities = new Dictionary<string, object>();
+
+                    // Chat capabilities (assume all models support basic chat)
+                    capabilities["chat"] = new { supported = true };
+                    capabilities["chat_stream"] = new { supported = true };
+
+                    // Vision capability
+                    if (await _modelCapabilityService.SupportsVisionAsync(mapping.ModelAlias))
+                    {
+                        capabilities["vision"] = new { supported = true };
+                    }
+
+                    // Audio capabilities
+                    if (await _modelCapabilityService.SupportsAudioTranscriptionAsync(mapping.ModelAlias))
+                    {
+                        var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(mapping.ModelAlias);
+                        var supportedFormats = await _modelCapabilityService.GetSupportedFormatsAsync(mapping.ModelAlias);
+                        
+                        capabilities["audio_transcription"] = new
                         {
-                            results.Add(new CapabilityTestResult
-                            {
-                                Model = test.Model,
-                                Capability = test.Capability,
-                                Supported = false,
-                                Error = $"Unknown capability: {test.Capability}"
-                            });
-                            continue;
+                            supported = true,
+                            supported_languages = supportedLanguages,
+                            supported_formats = supportedFormats
+                        };
+                    }
+
+                    // Text-to-speech capability
+                    if (await _modelCapabilityService.SupportsTextToSpeechAsync(mapping.ModelAlias))
+                    {
+                        var supportedVoices = await _modelCapabilityService.GetSupportedVoicesAsync(mapping.ModelAlias);
+                        var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(mapping.ModelAlias);
+                        
+                        capabilities["text_to_speech"] = new
+                        {
+                            supported = true,
+                            supported_voices = supportedVoices,
+                            supported_languages = supportedLanguages
+                        };
+                    }
+
+                    // Real-time audio capability
+                    if (await _modelCapabilityService.SupportsRealtimeAudioAsync(mapping.ModelAlias))
+                    {
+                        capabilities["realtime_audio"] = new { supported = true };
+                    }
+
+                    // Video generation capability
+                    if (await _modelCapabilityService.SupportsVideoGenerationAsync(mapping.ModelAlias))
+                    {
+                        var videoCapability = new Dictionary<string, object>
+                        {
+                            ["supported"] = true
+                        };
+
+                        // TODO: Extract video-specific metadata from model configuration when available
+                        // For now, use default values for MiniMax video model
+                        if (mapping.ModelAlias.Contains("video", StringComparison.OrdinalIgnoreCase))
+                        {
+                            videoCapability["max_duration_seconds"] = 6;
+                            videoCapability["supported_resolutions"] = new[] { "720x480", "1280x720", "1920x1080", "720x1280", "1080x1920" };
+                            videoCapability["supported_fps"] = new[] { 24, 30 };
+                            videoCapability["supports_custom_styles"] = true;
                         }
 
-                        var supported = await _discoveryService.TestModelCapabilityAsync(test.Model, capabilityEnum);
-                        
-                        results.Add(new CapabilityTestResult
-                        {
-                            Model = test.Model,
-                            Capability = test.Capability,
-                            Supported = supported
-                        });
+                        capabilities["video_generation"] = videoCapability;
                     }
-                    catch (Exception ex)
+
+                    // Image generation capability
+                    if (mapping.SupportsImageGeneration)
                     {
-                        _logger.LogError(ex, "Error testing capability {Capability} for model {Model}", test.Capability, test.Model);
-                        results.Add(new CapabilityTestResult
+                        var imageCapability = new Dictionary<string, object>
                         {
-                            Model = test.Model,
-                            Capability = test.Capability,
-                            Supported = false,
-                            Error = $"Error testing capability: {ex.Message}"
-                        });
+                            ["supported"] = true
+                        };
+
+                        // TODO: Extract image-specific metadata from model configuration when available
+                        // For now, use common image sizes
+                        imageCapability["supported_sizes"] = new[] { "256x256", "512x512", "1024x1024", "1792x1024", "1024x1792" };
+
+                        capabilities["image_generation"] = imageCapability;
                     }
+
+                    // Apply capability filter if specified
+                    if (!string.IsNullOrEmpty(capability))
+                    {
+                        var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
+                        if (!capabilities.ContainsKey(capabilityKey))
+                        {
+                            continue;
+                        }
+                    }
+
+                    models.Add(new
+                    {
+                        id = mapping.ModelAlias,
+                        provider = mapping.ProviderCredential?.ProviderName?.ToLowerInvariant(),
+                        display_name = mapping.ModelAlias,
+                        capabilities = capabilities
+                    });
                 }
 
-                return Ok(new BulkCapabilityTestResponse
+                // TODO: Consider implementing caching for discovery results to improve performance
+
+                return Ok(new
                 {
-                    Results = results,
-                    TotalTests = request.Tests.Count,
-                    SuccessfulTests = results.Count(r => r.Error == null),
-                    FailedTests = results.Count(r => r.Error != null)
+                    data = models,
+                    count = models.Count
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing bulk capability tests");
-                return StatusCode(500, new { error = new { message = "An error occurred while processing bulk capability tests", type = "server_error" } });
+                _logger.LogError(ex, "Error retrieving model discovery information");
+                return StatusCode(500, new { error = "Failed to retrieve model discovery information" });
             }
         }
 
         /// <summary>
-        /// Gets discovery information for multiple models in a single request.
+        /// Gets all available capabilities in the system.
         /// </summary>
-        /// <param name="request">The bulk discovery request.</param>
-        /// <returns>Discovery information for all requested models.</returns>
-        [HttpPost("bulk/models")]
-        public async Task<IActionResult> GetBulkModels([FromBody] BulkModelDiscoveryRequest request)
+        /// <returns>List of all available capabilities.</returns>
+        [HttpGet("capabilities")]
+        public Task<IActionResult> GetCapabilities()
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
-                var allModels = await _discoveryService.DiscoverModelsAsync();
-                var results = new List<ModelDiscoveryResult>();
-
-                foreach (var modelId in request.Models)
+                // Return all known capabilities
+                var capabilities = new[]
                 {
-                    if (allModels.TryGetValue(modelId, out var modelInfo))
-                    {
-                        results.Add(new ModelDiscoveryResult
-                        {
-                            Model = modelId,
-                            Provider = modelInfo.Provider,
-                            DisplayName = modelInfo.DisplayName,
-                            Capabilities = ConvertCapabilitiesToDictionary(modelInfo.Capabilities),
-                            Found = true
-                        });
-                    }
-                    else
-                    {
-                        results.Add(new ModelDiscoveryResult
-                        {
-                            Model = modelId,
-                            Found = false,
-                            Error = $"Model '{modelId}' not found"
-                        });
-                    }
+                    "chat",
+                    "chat_stream",
+                    "vision",
+                    "audio_transcription",
+                    "text_to_speech",
+                    "realtime_audio",
+                    "video_generation",
+                    "image_generation",
+                    "embeddings",
+                    "function_calling",
+                    "tool_use",
+                    "json_mode"
+                };
+
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    capabilities = capabilities
+                }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving capabilities list");
+                return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to retrieve capabilities" }));
+            }
+        }
+
+        /// <summary>
+        /// Checks if a model is allowed for a virtual key based on the allowed models list.
+        /// </summary>
+        private bool IsModelAllowed(string requestedModel, string? allowedModels)
+        {
+            if (string.IsNullOrEmpty(allowedModels))
+                return true; // No restrictions
+
+            var allowedModelsList = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            // First check for exact match
+            if (allowedModelsList.Any(m => string.Equals(m, requestedModel, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            // Then check for wildcard/prefix matches
+            foreach (var allowedModel in allowedModelsList)
+            {
+                // Handle wildcards like "gpt-4*" to match any GPT-4 model
+                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) && allowedModel.Length > 1)
+                {
+                    string prefix = allowedModel.Substring(0, allowedModel.Length - 1);
+                    if (requestedModel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        return true;
                 }
+            }
 
-                return Ok(new BulkModelDiscoveryResponse
-                {
-                    Results = results,
-                    TotalRequested = request.Models.Count,
-                    FoundModels = results.Count(r => r.Found),
-                    NotFoundModels = results.Count(r => !r.Found)
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing bulk model discovery");
-                return StatusCode(500, new { error = new { message = "An error occurred while processing bulk model discovery", type = "server_error" } });
-            }
-        }
-
-        /// <summary>
-        /// Refreshes the capability cache for all providers.
-        /// </summary>
-        /// <returns>No content on success.</returns>
-        [HttpPost("refresh")]
-        [Authorize(Policy = "MasterKey")] // Require admin access
-        public async Task<IActionResult> RefreshCapabilities()
-        {
-            try
-            {
-                await _discoveryService.RefreshCapabilitiesAsync();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing capabilities");
-                return StatusCode(500, new { error = new { message = "An error occurred while refreshing capabilities", type = "server_error" } });
-            }
-        }
-
-        /// <summary>
-        /// Converts ModelCapabilities to a dictionary for serialization.
-        /// Uses snake_case naming to match client expectations.
-        /// </summary>
-        private static Dictionary<string, bool> ConvertCapabilitiesToDictionary(ModelCapabilities capabilities)
-        {
-            return new Dictionary<string, bool>
-            {
-                ["chat"] = capabilities.Chat,
-                ["chat_stream"] = capabilities.ChatStream,
-                ["embeddings"] = capabilities.Embeddings,
-                ["image_generation"] = capabilities.ImageGeneration,
-                ["vision"] = capabilities.Vision,
-                ["video_generation"] = capabilities.VideoGeneration,
-                ["video_understanding"] = capabilities.VideoUnderstanding,
-                ["function_calling"] = capabilities.FunctionCalling,
-                ["tool_use"] = capabilities.ToolUse,
-                ["json_mode"] = capabilities.JsonMode
-            };
+            return false;
         }
     }
+
+    // TODO: Add audit logging for discovery requests to track which virtual keys are querying model information
+    // TODO: Consider adding pricing information to model discovery responses once pricing data is available in the system
 }

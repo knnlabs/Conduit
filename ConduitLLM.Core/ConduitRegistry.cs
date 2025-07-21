@@ -43,7 +43,7 @@ namespace ConduitLLM.Core
         public void RegisterProvider<TClient>(
             string providerName, 
             Func<ProviderCredentials, string, IServiceProvider, TClient> factory,
-            ProviderCapabilities? capabilities = null) 
+            ProviderRegistrationInfo? capabilities = null) 
             where TClient : ILLMClient
         {
             if (string.IsNullOrWhiteSpace(providerName))
@@ -56,7 +56,7 @@ namespace ConduitLLM.Core
             {
                 ProviderName = providerName,
                 Factory = (credentials, modelId, serviceProvider) => factory(credentials, modelId, serviceProvider),
-                Capabilities = capabilities ?? new ProviderCapabilities(),
+                Capabilities = capabilities ?? new ProviderRegistrationInfo(),
                 ClientType = typeof(TClient)
             };
 
@@ -126,7 +126,7 @@ namespace ConduitLLM.Core
         /// </summary>
         /// <param name="providerName">The name of the provider.</param>
         /// <returns>The provider capabilities.</returns>
-        public ProviderCapabilities GetProviderCapabilities(string providerName)
+        public ProviderRegistrationInfo GetProviderCapabilities(string providerName)
         {
             if (!_providers.TryGetValue(providerName, out var registration))
             {
@@ -156,18 +156,18 @@ namespace ConduitLLM.Core
             // For now, we register placeholder factories since the real factories
             // are in the ConduitLLM.Providers assembly and would create circular dependencies
             
-            var defaultCapabilities = new ProviderCapabilities
+            var defaultCapabilities = new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
-                SupportsEmbeddings = false,
+                SupportsEmbeddings = true,
                 SupportsImageGeneration = false,
                 SupportsAudio = false,
                 MaxContextLength = 4096
             };
 
             // Register common providers with their typical capabilities
-            RegisterProviderPlaceholder("openai", new ProviderCapabilities
+            RegisterProviderPlaceholder("openai", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
@@ -177,7 +177,7 @@ namespace ConduitLLM.Core
                 MaxContextLength = 128000
             });
             
-            RegisterProviderPlaceholder("anthropic", new ProviderCapabilities
+            RegisterProviderPlaceholder("anthropic", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
@@ -187,7 +187,7 @@ namespace ConduitLLM.Core
                 MaxContextLength = 200000
             });
             
-            RegisterProviderPlaceholder("cohere", new ProviderCapabilities
+            RegisterProviderPlaceholder("cohere", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
@@ -197,7 +197,7 @@ namespace ConduitLLM.Core
                 MaxContextLength = 8192
             });
             
-            RegisterProviderPlaceholder("google", new ProviderCapabilities
+            RegisterProviderPlaceholder("google", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
@@ -210,17 +210,17 @@ namespace ConduitLLM.Core
             RegisterProviderPlaceholder("mistral", defaultCapabilities);
             RegisterProviderPlaceholder("groq", defaultCapabilities);
             RegisterProviderPlaceholder("openrouter", defaultCapabilities);
-            RegisterProviderPlaceholder("huggingface", new ProviderCapabilities
+            RegisterProviderPlaceholder("huggingface", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
-                SupportsEmbeddings = false,
+                SupportsEmbeddings = true,
                 SupportsImageGeneration = true,
                 SupportsAudio = false,
                 MaxContextLength = 4096
             });
             
-            RegisterProviderPlaceholder("bedrock", new ProviderCapabilities
+            RegisterProviderPlaceholder("bedrock", new ProviderRegistrationInfo
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
@@ -236,7 +236,7 @@ namespace ConduitLLM.Core
         /// <summary>
         /// Helper method to register placeholder providers.
         /// </summary>
-        private void RegisterProviderPlaceholder(string providerName, ProviderCapabilities capabilities)
+        private void RegisterProviderPlaceholder(string providerName, ProviderRegistrationInfo capabilities)
         {
             var registration = new ProviderRegistration
             {
@@ -259,7 +259,7 @@ namespace ConduitLLM.Core
         /// <summary>
         /// Registers a provider factory function.
         /// </summary>
-        void RegisterProvider<TClient>(string providerName, Func<ProviderCredentials, string, IServiceProvider, TClient> factory, ProviderCapabilities? capabilities = null) where TClient : ILLMClient;
+        void RegisterProvider<TClient>(string providerName, Func<ProviderCredentials, string, IServiceProvider, TClient> factory, ProviderRegistrationInfo? capabilities = null) where TClient : ILLMClient;
         
         /// <summary>
         /// Creates an LLM client for the specified provider.
@@ -279,7 +279,7 @@ namespace ConduitLLM.Core
         /// <summary>
         /// Gets the capabilities of a registered provider.
         /// </summary>
-        ProviderCapabilities GetProviderCapabilities(string providerName);
+        ProviderRegistrationInfo GetProviderCapabilities(string providerName);
     }
 
     /// <summary>
@@ -300,7 +300,7 @@ namespace ConduitLLM.Core
         /// <summary>
         /// Capabilities of this provider.
         /// </summary>
-        public ProviderCapabilities Capabilities { get; set; } = new();
+        public ProviderRegistrationInfo Capabilities { get; set; } = new();
 
         /// <summary>
         /// The type of client this factory creates.
@@ -309,9 +309,9 @@ namespace ConduitLLM.Core
     }
 
     /// <summary>
-    /// Capabilities of an LLM provider.
+    /// Registration information for an LLM provider, including basic capabilities used during provider registration.
     /// </summary>
-    public class ProviderCapabilities
+    public class ProviderRegistrationInfo
     {
         /// <summary>
         /// Whether the provider supports chat completions.

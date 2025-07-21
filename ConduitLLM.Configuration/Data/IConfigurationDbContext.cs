@@ -50,6 +50,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; }
 
         /// <summary>
+        /// Database set for media records
+        /// </summary>
+        DbSet<MediaRecord> MediaRecords { get; }
+
+        /// <summary>
         /// Database set for provider credentials
         /// </summary>
         DbSet<ProviderCredential> ProviderCredentials { get; }
@@ -103,6 +108,11 @@ namespace ConduitLLM.Configuration.Data
         /// Database set for audio usage logs
         /// </summary>
         DbSet<AudioUsageLog> AudioUsageLogs { get; }
+
+        /// <summary>
+        /// Database set for async tasks
+        /// </summary>
+        DbSet<AsyncTask> AsyncTasks { get; }
 
         /// <summary>
         /// Flag indicating if this is a test environment

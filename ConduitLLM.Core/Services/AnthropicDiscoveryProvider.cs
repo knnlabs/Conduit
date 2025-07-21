@@ -40,6 +40,19 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc />
         public override bool SupportsDiscovery => !string.IsNullOrEmpty(_apiKey);
+        
+        /// <inheritdoc />
+        public override async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
+        {
+            // If no API key, return false for availability
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                return false;
+            }
+            
+            // Use base implementation for actual API discovery
+            return await base.IsAvailableAsync(cancellationToken);
+        }
 
         /// <inheritdoc />
         public override async Task<List<ModelMetadata>> DiscoverModelsAsync(CancellationToken cancellationToken = default)
@@ -52,6 +65,8 @@ namespace ConduitLLM.Core.Services
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 Logger.LogInformation("Discovering models from Anthropic API");
 
                 var request = new HttpRequestMessage(HttpMethod.Get, ModelsEndpoint);
@@ -59,7 +74,7 @@ namespace ConduitLLM.Core.Services
                 // Anthropic uses custom headers instead of Authorization
                 request.Headers.Add("x-api-key", _apiKey);
                 request.Headers.Add("anthropic-version", AnthropicVersion);
-                request.Headers.Add("Content-Type", "application/json");
+                request.Headers.Add("Accept", "application/json");
 
                 var response = await HttpClient.SendAsync(request, cancellationToken);
                 
@@ -77,7 +92,7 @@ namespace ConduitLLM.Core.Services
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (apiResponse?.Data == null)
+                if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
                 {
                     Logger.LogWarning("Anthropic API returned null or empty response");
                     return GetFallbackModels();
@@ -87,6 +102,12 @@ namespace ConduitLLM.Core.Services
                     .Where(model => !string.IsNullOrEmpty(model.Id))
                     .Select(ConvertToModelMetadata)
                     .ToList();
+
+                if (models.Count == 0)
+                {
+                    Logger.LogWarning("No valid models found in Anthropic API response");
+                    return GetFallbackModels();
+                }
 
                 Logger.LogInformation("Successfully discovered {Count} models from Anthropic", models.Count);
                 return models;

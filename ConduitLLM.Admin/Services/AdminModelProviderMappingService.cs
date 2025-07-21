@@ -9,7 +9,10 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -19,7 +22,7 @@ namespace ConduitLLM.Admin.Services;
 /// <summary>
 /// Service for managing model provider mappings through the Admin API
 /// </summary>
-public class AdminModelProviderMappingService : IAdminModelProviderMappingService
+public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdminModelProviderMappingService
 {
     private readonly IModelProviderMappingRepository _mappingRepository;
     private readonly IProviderCredentialRepository _credentialRepository;
@@ -30,15 +33,20 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// </summary>
     /// <param name="mappingRepository">The model provider mapping repository</param>
     /// <param name="credentialRepository">The provider credential repository</param>
+    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminModelProviderMappingService(
         IModelProviderMappingRepository mappingRepository,
         IProviderCredentialRepository credentialRepository,
+        IPublishEndpoint? publishEndpoint,
         ILogger<AdminModelProviderMappingService> logger)
+        : base(publishEndpoint, logger)
     {
         _mappingRepository = mappingRepository ?? throw new ArgumentNullException(nameof(mappingRepository));
         _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        LogEventPublishingConfiguration(nameof(AdminModelProviderMappingService));
     }
 
     /// <inheritdoc />
@@ -102,6 +110,21 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
 
             // Add the mapping
             await _mappingRepository.AddAsync(mapping);
+            
+            // Publish ModelMappingChanged event for creation
+            await PublishEventAsync(
+                new ModelMappingChanged
+                {
+                    MappingId = mapping.Id,
+                    ModelAlias = mapping.ModelAlias,
+                    ProviderId = mapping.ProviderCredentialId,
+                    IsEnabled = mapping.IsEnabled,
+                    ChangeType = "Created",
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                $"create model mapping for {mapping.ModelAlias}",
+                new { ModelAlias = mapping.ModelAlias, ProviderId = mapping.ProviderCredentialId });
+            
             return true;
         }
         catch (Exception ex)
@@ -173,6 +196,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             existingMapping.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
             existingMapping.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
             existingMapping.SupportsImageGeneration = mapping.SupportsImageGeneration;
+            existingMapping.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
             existingMapping.TokenizerType = mapping.TokenizerType;
             existingMapping.SupportedVoices = mapping.SupportedVoices;
             existingMapping.SupportedLanguages = mapping.SupportedLanguages;
@@ -183,7 +207,26 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             existingMapping.UpdatedAt = DateTime.UtcNow;
 
             // Update the mapping
-            return await _mappingRepository.UpdateAsync(existingMapping);
+            var result = await _mappingRepository.UpdateAsync(existingMapping);
+            
+            if (result)
+            {
+                // Publish ModelMappingChanged event for update
+                await PublishEventAsync(
+                    new ModelMappingChanged
+                    {
+                        MappingId = existingMapping.Id,
+                        ModelAlias = existingMapping.ModelAlias,
+                        ProviderId = existingMapping.ProviderCredentialId,
+                        IsEnabled = existingMapping.IsEnabled,
+                        ChangeType = "Updated",
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"update model mapping {existingMapping.Id}",
+                    new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderCredentialId });
+            }
+            
+            return result;
         }
         catch (Exception ex)
         {
@@ -208,7 +251,26 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             }
 
             // Delete the mapping
-            return await _mappingRepository.DeleteAsync(id);
+            var result = await _mappingRepository.DeleteAsync(id);
+            
+            if (result)
+            {
+                // Publish ModelMappingChanged event for deletion
+                await PublishEventAsync(
+                    new ModelMappingChanged
+                    {
+                        MappingId = existingMapping.Id,
+                        ModelAlias = existingMapping.ModelAlias,
+                        ProviderId = existingMapping.ProviderCredentialId,
+                        IsEnabled = existingMapping.IsEnabled,
+                        ChangeType = "Deleted",
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"delete model mapping {existingMapping.Id}",
+                    new { ModelAlias = existingMapping.ModelAlias, ProviderId = existingMapping.ProviderCredentialId });
+            }
+            
+            return result;
         }
         catch (Exception ex)
         {
@@ -305,6 +367,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                             SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
                             SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                             SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                            SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
                             TokenizerType = mappingDto.TokenizerType,
                             SupportedVoices = mappingDto.SupportedVoices,
                             SupportedLanguages = mappingDto.SupportedLanguages,
@@ -364,6 +427,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                     SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
                     SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                     SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                    SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
                     TokenizerType = mappingDto.TokenizerType,
                     SupportedVoices = mappingDto.SupportedVoices,
                     SupportedLanguages = mappingDto.SupportedLanguages,

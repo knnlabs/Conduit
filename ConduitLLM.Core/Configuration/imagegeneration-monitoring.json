@@ -1,0 +1,51 @@
+{
+  "ImageGeneration": {
+    "Monitoring": {
+      "Metrics": {
+        "MetricsRetentionHours": 168,
+        "MaxResponseTimeHistorySize": 1000,
+        "MaxResourceHistorySize": 100,
+        "SlaTargets": {
+          "MinAvailabilityPercent": 99.9,
+          "MaxP95ResponseTimeMs": 45000,
+          "MaxErrorRatePercent": 1.0
+        }
+      },
+      "Alerting": {
+        "MaxHistorySize": 10000,
+        "DefaultCooldownPeriod": "00:05:00",
+        "EvaluationInterval": "00:01:00"
+      },
+      "Health": {
+        "Enabled": true,
+        "HealthCheckIntervalMinutes": 5,
+        "MetricsEvaluationIntervalMinutes": 1,
+        "HealthCheckTimeoutSeconds": 30,
+        "SlowResponseThresholdMs": 5000,
+        "CircuitBreakerThreshold": 5,
+        "CircuitBreakerTimeout": "00:10:00"
+      },
+      "Resilience": {
+        "Enabled": true,
+        "HealthCheckIntervalMinutes": 2,
+        "RecoveryCheckIntervalMinutes": 5,
+        "FailureThreshold": 3,
+        "SlowResponseThresholdMs": 30000,
+        "RecoveryHealthScoreThreshold": 0.8,
+        "MinimumQuarantineTime": "00:10:00",
+        "MaximumQuarantineTime": "24:00:00",
+        "QueueDepthThreshold": 100
+      },
+      "Prometheus": {
+        "Enabled": true,
+        "ExportIntervalSeconds": 60,
+        "InitialDelaySeconds": 10,
+        "MetricsWindowMinutes": 60,
+        "SlaWindowHours": 24,
+        "StartHttpListener": true,
+        "HttpListenerHostname": "localhost",
+        "HttpListenerPort": 9091
+      }
+    }
+  }
+}

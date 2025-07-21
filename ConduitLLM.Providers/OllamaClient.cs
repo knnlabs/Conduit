@@ -17,6 +17,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -529,13 +530,14 @@ namespace ConduitLLM.Providers
             // Map options - only map supported ones from Core request
             OllamaOptions? options = null;
             if (coreRequest.Temperature.HasValue || coreRequest.MaxTokens.HasValue || coreRequest.TopP.HasValue ||
-                (coreRequest.Stop != null && coreRequest.Stop.Any()))
+                coreRequest.TopK.HasValue || (coreRequest.Stop != null && coreRequest.Stop.Any()))
             {
                 options = new OllamaOptions
                 {
-                    Temperature = (float?)coreRequest.Temperature,
+                    Temperature = ParameterConverter.ToTemperature(coreRequest.Temperature),
                     NumPredict = coreRequest.MaxTokens,
-                    TopP = (float?)coreRequest.TopP,
+                    TopP = ParameterConverter.ToProbability(coreRequest.TopP, 0.0, 1.0),
+                    TopK = coreRequest.TopK,
                     Stop = coreRequest.Stop?.ToList()
                 };
             }
@@ -686,6 +688,58 @@ namespace ConduitLLM.Providers
 
             // Approximately 4 characters per token for English text
             return text.Length / 4;
+        }
+
+        #endregion
+
+        #region Capabilities
+
+        /// <inheritdoc />
+        public override Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        {
+            var model = modelId ?? ProviderModelId;
+            var isVisionCapable = model.Contains("llava", StringComparison.OrdinalIgnoreCase) ||
+                                  model.Contains("vision", StringComparison.OrdinalIgnoreCase);
+
+            return Task.FromResult(new ProviderCapabilities
+            {
+                Provider = ProviderName,
+                ModelId = model,
+                ChatParameters = new ChatParameterSupport
+                {
+                    Temperature = true,
+                    MaxTokens = true,
+                    TopP = true,
+                    TopK = true, // Ollama supports top-k
+                    Stop = true,
+                    PresencePenalty = false, // Ollama doesn't support presence penalty
+                    FrequencyPenalty = false, // Ollama doesn't support frequency penalty
+                    LogitBias = false, // Ollama doesn't support logit bias
+                    N = false, // Ollama doesn't support multiple choices
+                    User = false, // Ollama doesn't support user parameter
+                    Seed = true, // Ollama supports seed
+                    ResponseFormat = false, // Ollama doesn't support response format
+                    Tools = false, // Ollama doesn't support tools
+                    Constraints = new ParameterConstraints
+                    {
+                        TemperatureRange = new Range<double>(0.0, 2.0),
+                        TopPRange = new Range<double>(0.0, 1.0),
+                        TopKRange = new Range<int>(1, 100),
+                        MaxStopSequences = 10,
+                        MaxTokenLimit = EstimateMaxInputTokens(new OllamaModelInfo { Name = model })
+                    }
+                },
+                Features = new FeatureSupport
+                {
+                    Streaming = true,
+                    Embeddings = true, // Ollama supports embeddings
+                    ImageGeneration = false, // Ollama doesn't provide image generation
+                    VisionInput = isVisionCapable,
+                    FunctionCalling = false, // Ollama doesn't support function calling
+                    AudioTranscription = false, // Ollama doesn't provide audio transcription
+                    TextToSpeech = false // Ollama doesn't provide text-to-speech
+                }
+            });
         }
 
         #endregion

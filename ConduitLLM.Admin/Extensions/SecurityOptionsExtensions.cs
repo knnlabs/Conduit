@@ -51,6 +51,7 @@ namespace ConduitLLM.Admin.Extensions
                 }
 
                 // Failed Authentication Protection
+                options.FailedAuth.Enabled = configuration.GetValue<bool>("CONDUIT_ADMIN_IP_BANNING_ENABLED", true);
                 options.FailedAuth.MaxAttempts = configuration.GetValue<int>("CONDUIT_ADMIN_MAX_FAILED_AUTH_ATTEMPTS", 5);
                 options.FailedAuth.BanDurationMinutes = configuration.GetValue<int>("CONDUIT_ADMIN_AUTH_BAN_DURATION_MINUTES", 30);
 

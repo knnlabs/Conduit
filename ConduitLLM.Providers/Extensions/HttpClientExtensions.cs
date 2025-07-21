@@ -232,6 +232,30 @@ public static class HttpClientExtensions
                     retryOptions.EnableRetryLogging ? logger : null);
             });
 
+        // Register MiniMaxClient with standard timeout/retry policies for non-video operations
+        // This will be overridden by VideoHttpClientExtensions for video generation
+        services.AddHttpClient("minimaxLLMClient")
+            // --- Outer Policy: Timeout ---
+            .AddPolicyHandler((provider, _) =>
+            {
+                var logger = provider.GetService<ILogger<MiniMaxClient>>();
+                var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
+                return ResiliencePolicies.GetTimeoutPolicy(
+                    TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
+                    timeoutOptions.EnableTimeoutLogging ? logger : null);
+            })
+            // --- Inner Policy: Retry ---
+            .AddPolicyHandler((provider, _) =>
+            {
+                var logger = provider.GetService<ILogger<MiniMaxClient>>();
+                var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
+                return ResiliencePolicies.GetRetryPolicy(
+                    retryOptions.MaxRetries,
+                    TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                    TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds),
+                    retryOptions.EnableRetryLogging ? logger : null);
+            });
+
         // Note: We're not registering BedrockClient and SageMakerClient here since they 
         // use the AWS SDK which has its own retry mechanism
 

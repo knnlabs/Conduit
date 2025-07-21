@@ -71,6 +71,11 @@ namespace ConduitLLM.Providers.InternalModels
         public List<AudioOperation>? SupportedAudioOperations { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the model supports video generation.
+        /// </summary>
+        public bool VideoGeneration { get; set; }
+
+        /// <summary>
         /// Converts the capabilities to a dictionary for serialization.
         /// </summary>
         /// <returns>A dictionary representation of the capabilities.</returns>
@@ -89,7 +94,8 @@ namespace ConduitLLM.Providers.InternalModels
                 [nameof(AudioTranscription)] = AudioTranscription,
                 [nameof(TextToSpeech)] = TextToSpeech,
                 [nameof(RealtimeAudio)] = RealtimeAudio,
-                [nameof(SupportedAudioOperations)] = SupportedAudioOperations
+                [nameof(SupportedAudioOperations)] = SupportedAudioOperations,
+                [nameof(VideoGeneration)] = VideoGeneration
             };
         }
     }

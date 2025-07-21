@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
@@ -77,7 +79,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return Ok(modelCost);
@@ -128,7 +130,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return Ok(modelCost);
@@ -203,7 +205,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return NoContent();
@@ -237,7 +239,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound("Model cost not found");
+                    return NotFound(new { error = "Model cost not found" });
                 }
 
                 return NoContent();
@@ -305,6 +307,150 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error importing model costs");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Exports model costs in CSV format
+        /// </summary>
+        /// <param name="provider">Optional provider name to filter by</param>
+        /// <returns>CSV file containing model costs</returns>
+        [HttpGet("export/csv")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportCsv([FromQuery] string? provider = null)
+        {
+            try
+            {
+                var csvData = await _modelCostService.ExportModelCostsAsync("csv", provider);
+                var bytes = Encoding.UTF8.GetBytes(csvData);
+                var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.csv";
+                
+                return File(bytes, "text/csv", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting model costs as CSV");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Exports model costs in JSON format
+        /// </summary>
+        /// <param name="provider">Optional provider name to filter by</param>
+        /// <returns>JSON file containing model costs</returns>
+        [HttpGet("export/json")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ExportJson([FromQuery] string? provider = null)
+        {
+            try
+            {
+                var jsonData = await _modelCostService.ExportModelCostsAsync("json", provider);
+                var bytes = Encoding.UTF8.GetBytes(jsonData);
+                var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
+                
+                return File(bytes, "application/json", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting model costs as JSON");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Imports model costs from CSV file
+        /// </summary>
+        /// <param name="file">CSV file containing model costs</param>
+        /// <returns>Import result with statistics</returns>
+        [HttpPost("import/csv")]
+        [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ImportCsv([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file provided for import");
+            }
+
+            if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("File must be a CSV file");
+            }
+
+            try
+            {
+                using var reader = new StreamReader(file.OpenReadStream());
+                var csvData = await reader.ReadToEndAsync();
+
+                var result = await _modelCostService.ImportModelCostsAsync(csvData, "csv");
+                
+                if (result.SuccessCount == 0 && result.FailureCount > 0)
+                {
+                    return BadRequest(new { 
+                        message = "Import failed", 
+                        errors = result.Errors,
+                        successCount = result.SuccessCount,
+                        failureCount = result.FailureCount 
+                    });
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing model costs from CSV");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Imports model costs from JSON file
+        /// </summary>
+        /// <param name="file">JSON file containing model costs</param>
+        /// <returns>Import result with statistics</returns>
+        [HttpPost("import/json")]
+        [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ImportJson([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file provided for import");
+            }
+
+            if (!file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("File must be a JSON file");
+            }
+
+            try
+            {
+                using var reader = new StreamReader(file.OpenReadStream());
+                var jsonData = await reader.ReadToEndAsync();
+
+                var result = await _modelCostService.ImportModelCostsAsync(jsonData, "json");
+                
+                if (result.SuccessCount == 0 && result.FailureCount > 0)
+                {
+                    return BadRequest(new { 
+                        message = "Import failed", 
+                        errors = result.Errors,
+                        successCount = result.SuccessCount,
+                        failureCount = result.FailureCount 
+                    });
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error importing model costs from JSON");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

@@ -1,4 +1,4 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   ModelProviderMappingDto,
@@ -9,8 +9,10 @@ import {
   BulkMappingRequest,
   BulkMappingResponse,
   ModelMappingSuggestion,
+  DiscoveredModel,
+  CapabilityTestResult,
 } from '../models/modelMapping';
-import { ValidationError, NotImplementedError } from '../utils/errors';
+import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
 const createMappingSchema = z.object({
@@ -18,24 +20,68 @@ const createMappingSchema = z.object({
   providerId: z.string().min(1),
   providerModelId: z.string().min(1),
   isEnabled: z.boolean().optional(),
-  priority: z.number().min(0).max(100).optional(),
+  priority: z.number().min(0).max(1000).optional(),
   metadata: z.string().optional(),
+  // Model Capability Flags
+  supportsVision: z.boolean().optional(),
+  supportsImageGeneration: z.boolean().optional(),
+  supportsAudioTranscription: z.boolean().optional(),
+  supportsTextToSpeech: z.boolean().optional(),
+  supportsRealtimeAudio: z.boolean().optional(),
+  supportsFunctionCalling: z.boolean().optional(),
+  supportsStreaming: z.boolean().optional(),
+  supportsVideoGeneration: z.boolean().optional(),
+  supportsEmbeddings: z.boolean().optional(),
+  // Extended Metadata Fields
+  capabilities: z.string().optional(),
+  maxContextLength: z.number().optional(),
+  maxOutputTokens: z.number().optional(),
+  supportedLanguages: z.string().optional(),
+  supportedVoices: z.string().optional(),
+  supportedFormats: z.string().optional(),
+  tokenizerType: z.string().optional(),
+  // Advanced Routing Fields
+  isDefault: z.boolean().optional(),
+  defaultCapabilityType: z.string().optional(),
 });
 
 const updateMappingSchema = z.object({
+  id: z.number().optional(),
+  modelId: z.string().min(1).optional(),
   providerId: z.string().min(1).optional(),
   providerModelId: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),
-  priority: z.number().min(0).max(100).optional(),
+  priority: z.number().min(0).max(1000).optional(),
   metadata: z.string().optional(),
+  // Model Capability Flags
+  supportsVision: z.boolean().optional(),
+  supportsImageGeneration: z.boolean().optional(),
+  supportsAudioTranscription: z.boolean().optional(),
+  supportsTextToSpeech: z.boolean().optional(),
+  supportsRealtimeAudio: z.boolean().optional(),
+  supportsFunctionCalling: z.boolean().optional(),
+  supportsStreaming: z.boolean().optional(),
+  supportsVideoGeneration: z.boolean().optional(),
+  supportsEmbeddings: z.boolean().optional(),
+  // Extended Metadata Fields
+  capabilities: z.string().optional(),
+  maxContextLength: z.number().optional(),
+  maxOutputTokens: z.number().optional(),
+  supportedLanguages: z.string().optional(),
+  supportedVoices: z.string().optional(),
+  supportedFormats: z.string().optional(),
+  tokenizerType: z.string().optional(),
+  // Advanced Routing Fields
+  isDefault: z.boolean().optional(),
+  defaultCapabilityType: z.string().optional(),
 });
 
-export class ModelMappingService extends BaseApiClient {
+export class ModelMappingService extends FetchBaseApiClient {
   async create(request: CreateModelProviderMappingDto): Promise<ModelProviderMappingDto> {
     try {
       createMappingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid model mapping request', error);
+      throw new ValidationError('Invalid model mapping request', { validationError: error });
     }
 
     const response = await this.post<ModelProviderMappingDto>(
@@ -91,10 +137,10 @@ export class ModelMappingService extends BaseApiClient {
     try {
       updateMappingSchema.parse(request);
     } catch (error) {
-      throw new ValidationError('Invalid model mapping update request', error);
+      throw new ValidationError('Invalid model mapping update request', { validationError: error });
     }
 
-    await this.put(ENDPOINTS.MODEL_MAPPINGS.BY_ID(id), request);
+    await this.put<void>(ENDPOINTS.MODEL_MAPPINGS.BY_ID(id), request);
     await this.invalidateCache();
   }
 
@@ -137,44 +183,149 @@ export class ModelMappingService extends BaseApiClient {
     );
   }
 
-  // Stub methods
-  async getRoutingInfo(_modelId: string): Promise<ModelRoutingInfo> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'getRoutingInfo requires Admin API endpoint implementation. ' +
-        'Consider implementing GET /api/modelprovidermapping/routing/{modelId}'
+  // Bulk Operations
+  async bulkCreate(request: BulkMappingRequest): Promise<BulkMappingResponse> {
+    if (!request.mappings || request.mappings.length === 0) {
+      throw new ValidationError('At least one mapping must be provided');
+    }
+
+    if (request.mappings.length > 100) {
+      throw new ValidationError('Cannot create more than 100 mappings in a single request');
+    }
+
+    // Validate each mapping
+    request.mappings.forEach((mapping, index) => {
+      try {
+        createMappingSchema.parse(mapping);
+      } catch (error) {
+        throw new ValidationError(`Invalid mapping at index ${index}`, { validationError: error, index });
+      }
+    });
+
+    const response = await this.post<BulkMappingResponse>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK,
+      request
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async importMappings(file: File | Blob, format: 'csv' | 'json'): Promise<BulkMappingResponse> {
+    if (!['csv', 'json'].includes(format)) {
+      throw new ValidationError(`Unsupported format: ${format}. Supported formats: csv, json`);
+    }
+
+    const formData = new FormData();
+    formData.append('file', file, `mappings.${format}`);
+    formData.append('format', format);
+
+    const response = await this.post<BulkMappingResponse>(
+      ENDPOINTS.MODEL_MAPPINGS.IMPORT,
+      formData
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  async exportMappings(format: 'csv' | 'json'): Promise<Blob> {
+    if (!['csv', 'json'].includes(format)) {
+      throw new ValidationError(`Unsupported format: ${format}. Supported formats: csv, json`);
+    }
+
+    const response = await this.get<Blob>(
+      ENDPOINTS.MODEL_MAPPINGS.EXPORT,
+      { format },
+      {
+        responseType: 'blob',
+      }
+    );
+
+    return response;
+  }
+
+  // Discovery Operations
+  async discoverProviderModels(providerName: string): Promise<DiscoveredModel[]> {
+    if (!providerName?.trim()) {
+      throw new ValidationError('Provider name is required');
+    }
+
+    const cacheKey = this.getCacheKey('discover-provider', providerName);
+    return this.withCache(
+      cacheKey,
+      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerName)),
+      CACHE_TTL.SHORT
     );
   }
 
-  async bulkCreate(_request: BulkMappingRequest): Promise<BulkMappingResponse> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'bulkCreate requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/modelprovidermapping/bulk'
+  async discoverModelCapabilities(providerName: string, modelId: string): Promise<DiscoveredModel> {
+    if (!providerName?.trim()) {
+      throw new ValidationError('Provider name is required');
+    }
+    if (!modelId?.trim()) {
+      throw new ValidationError('Model ID is required');
+    }
+
+    const cacheKey = this.getCacheKey('discover-model', providerName, modelId);
+    return this.withCache(
+      cacheKey,
+      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerName, modelId)),
+      CACHE_TTL.MEDIUM
     );
   }
 
-  async importMappings(_file: File | Blob, _format: 'csv' | 'json'): Promise<BulkMappingResponse> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'importMappings requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/modelprovidermapping/import'
+  async testCapability(modelAlias: string, capability: string): Promise<CapabilityTestResult> {
+    if (!modelAlias?.trim()) {
+      throw new ValidationError('Model alias is required');
+    }
+    if (!capability?.trim()) {
+      throw new ValidationError('Capability is required');
+    }
+
+    const cacheKey = this.getCacheKey('test-capability', modelAlias, capability);
+    return this.withCache(
+      cacheKey,
+      () => super.get<CapabilityTestResult>(ENDPOINTS.MODEL_MAPPINGS.TEST_CAPABILITY(modelAlias, capability)),
+      CACHE_TTL.SHORT
     );
   }
 
-  async exportMappings(_format: 'csv' | 'json'): Promise<Blob> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'exportMappings requires Admin API endpoint implementation. ' +
-        'Consider implementing GET /api/modelprovidermapping/export'
+  // Advanced Operations
+  async getRoutingInfo(modelId: string): Promise<ModelRoutingInfo> {
+    if (!modelId?.trim()) {
+      throw new ValidationError('Model ID is required');
+    }
+
+    const cacheKey = this.getCacheKey('model-routing-info', modelId);
+    return this.withCache(
+      cacheKey,
+      () => super.get<ModelRoutingInfo>(ENDPOINTS.MODEL_MAPPINGS.ROUTING(modelId)),
+      CACHE_TTL.MEDIUM
     );
   }
 
-  async suggestOptimalMapping(_modelId: string): Promise<ModelMappingSuggestion> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'suggestOptimalMapping requires Admin API endpoint implementation. ' +
-        'Consider implementing POST /api/modelprovidermapping/suggest'
+  async suggestOptimalMapping(modelId: string): Promise<ModelMappingSuggestion> {
+    if (!modelId?.trim()) {
+      throw new ValidationError('Model ID is required');
+    }
+
+    return super.post<ModelMappingSuggestion>(
+      ENDPOINTS.MODEL_MAPPINGS.SUGGEST,
+      { modelId }
+    );
+  }
+
+  /**
+   * Discover all available models across all configured providers
+   * @returns Array of discovered models with their capabilities
+   */
+  async discoverModels(): Promise<DiscoveredModel[]> {
+    const cacheKey = 'discover-all-models';
+    return this.withCache(
+      cacheKey,
+      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_ALL),
+      CACHE_TTL.SHORT
     );
   }
 

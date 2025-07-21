@@ -19,14 +19,13 @@ namespace ConduitLLM.Core.Services
     /// Service for discovering provider capabilities and available models.
     /// Enhanced with dynamic discovery providers for comprehensive metadata extraction.
     /// </summary>
-    public class ProviderDiscoveryService : IProviderDiscoveryService
+    public class ProviderDiscoveryService : EventPublishingServiceBase, IProviderDiscoveryService
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly ConduitLLM.Configuration.IProviderCredentialService _credentialService;
         private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
-        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly IEnumerable<IModelDiscoveryProvider> _discoveryProviders;
         private const string CacheKeyPrefix = "provider_capabilities_";
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
@@ -165,6 +164,12 @@ namespace ConduitLLM.Core.Services
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> { "512x512", "768x768", "1024x1024" }
             },
+            ["stable-video-diffusion"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = new List<string> { "576x1024", "1024x576" },
+                MaxVideoDurationSeconds = 4
+            },
             
             // Mistral
             ["mistral"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
@@ -184,6 +189,22 @@ namespace ConduitLLM.Core.Services
                 FunctionCalling = false,
                 ToolUse = false,
                 JsonMode = false
+            },
+            
+            // Video Generation Models
+            ["runway-gen"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = modelId.Contains("gen3") 
+                    ? new List<string> { "1280x768", "768x1280", "1344x768", "768x1344" }
+                    : new List<string> { "1280x720", "720x1280" },
+                MaxVideoDurationSeconds = modelId.Contains("gen3") ? 10 : 4
+            },
+            ["pika"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = new List<string> { "1024x576", "576x1024", "1088x640", "640x1088" },
+                MaxVideoDurationSeconds = 3
             }
         };
 
@@ -205,6 +226,7 @@ namespace ConduitLLM.Core.Services
             IMemoryCache cache,
             IEnumerable<IModelDiscoveryProvider> discoveryProviders,
             IPublishEndpoint? publishEndpoint = null)
+            : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
@@ -212,7 +234,9 @@ namespace ConduitLLM.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _discoveryProviders = discoveryProviders ?? throw new ArgumentNullException(nameof(discoveryProviders));
-            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
+            
+            // Log event publishing configuration status
+            LogEventPublishingConfiguration(nameof(ProviderDiscoveryService));
         }
 
         /// <inheritdoc/>
@@ -358,62 +382,49 @@ namespace ConduitLLM.Core.Services
             _cache.Set(cacheKey, models, _cacheExpiration);
 
             // Publish ModelCapabilitiesDiscovered event to eliminate redundant discovery calls
-            if (_publishEndpoint != null && models.Count > 0)
+            if (models.Count > 0)
             {
-                try
-                {
-                    // Convert DiscoveredModel to ModelCapabilities for the event
-                    var modelCapabilities = models.ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => new ConduitLLM.Core.Events.ModelCapabilities
+                // Convert DiscoveredModel to ModelCapabilities for the event
+                var modelCapabilities = models.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => new ConduitLLM.Core.Events.ModelCapabilities
+                    {
+                        SupportsImageGeneration = kvp.Value.Capabilities.ImageGeneration,
+                        SupportsVision = kvp.Value.Capabilities.Vision,
+                        SupportsEmbeddings = kvp.Value.Capabilities.Embeddings,
+                        SupportsAudioTranscription = false, // Not supported in current interface
+                        SupportsTextToSpeech = false, // Not supported in current interface
+                        SupportsRealtimeAudio = false, // Not supported in current interface
+                        SupportsFunctionCalling = kvp.Value.Capabilities.FunctionCalling,
+                        AdditionalCapabilities = new Dictionary<string, object>
                         {
-                            SupportsImageGeneration = kvp.Value.Capabilities.ImageGeneration,
-                            SupportsVision = kvp.Value.Capabilities.Vision,
-                            SupportsEmbeddings = kvp.Value.Capabilities.Embeddings,
-                            SupportsAudioTranscription = false, // Not supported in current interface
-                            SupportsTextToSpeech = false, // Not supported in current interface
-                            SupportsRealtimeAudio = false, // Not supported in current interface
-                            SupportsFunctionCalling = kvp.Value.Capabilities.FunctionCalling,
-                            AdditionalCapabilities = new Dictionary<string, object>
-                            {
-                                ["chat"] = kvp.Value.Capabilities.Chat,
-                                ["chatStream"] = kvp.Value.Capabilities.ChatStream,
-                                ["toolUse"] = kvp.Value.Capabilities.ToolUse,
-                                ["jsonMode"] = kvp.Value.Capabilities.JsonMode,
-                                ["maxTokens"] = kvp.Value.Capabilities.MaxTokens ?? 0,
-                                ["maxOutputTokens"] = kvp.Value.Capabilities.MaxOutputTokens ?? 0
-                            }
-                        });
+                            ["chat"] = kvp.Value.Capabilities.Chat,
+                            ["chatStream"] = kvp.Value.Capabilities.ChatStream,
+                            ["toolUse"] = kvp.Value.Capabilities.ToolUse,
+                            ["jsonMode"] = kvp.Value.Capabilities.JsonMode,
+                            ["maxTokens"] = kvp.Value.Capabilities.MaxTokens ?? 0,
+                            ["maxOutputTokens"] = kvp.Value.Capabilities.MaxOutputTokens ?? 0
+                        }
+                    });
 
-                    // Get provider ID from credentials
-                    var providerId = await GetProviderIdAsync(providerName);
+                // Get provider ID from credentials
+                var providerId = await GetProviderIdAsync(providerName);
 
-                    await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
+                await PublishEventAsync(
+                    new ModelCapabilitiesDiscovered
                     {
                         ProviderId = providerId,
                         ProviderName = providerName,
                         ModelCapabilities = modelCapabilities,
                         DiscoveredAt = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogDebug("Published ModelCapabilitiesDiscovered event for provider {ProviderName} with {ModelCount} models",
-                        providerName, models.Count);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish ModelCapabilitiesDiscovered event for provider {ProviderName} - discovery succeeded but event not sent",
-                        providerName);
-                    // Don't fail the operation if event publishing fails
-                }
-            }
-            else if (models.Count == 0)
-            {
-                _logger.LogDebug("No models discovered for provider {ProviderName} - skipping ModelCapabilitiesDiscovered event", providerName);
+                    },
+                    $"model discovery for provider {providerName}",
+                    new { ProviderName = providerName, ModelCount = models.Count });
             }
             else
             {
-                _logger.LogDebug("Event publishing not configured - skipping ModelCapabilitiesDiscovered event for provider {ProviderName}", providerName);
+                _logger.LogDebug("No models discovered for provider {ProviderName} - skipping ModelCapabilitiesDiscovered event", providerName);
             }
 
             return models;

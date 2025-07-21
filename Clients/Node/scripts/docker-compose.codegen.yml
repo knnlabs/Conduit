@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduit
+      POSTGRES_DB: conduit
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conduit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  core-api:
+    build:
+      context: ../../..
+      dockerfile: ConduitLLM.Http/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://conduit:conduit@postgres:5432/conduit
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  admin-api:
+    build:
+      context: ../../..
+      dockerfile: ConduitLLM.Admin/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://conduit:conduit@postgres:5432/conduit
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  codegen:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ../..:/app
+    environment:
+      CORE_API_URL: http://core-api:5000
+      ADMIN_API_URL: http://admin-api:5001
+    depends_on:
+      core-api:
+        condition: service_healthy
+      admin-api:
+        condition: service_healthy
+    command: |
+      sh -c "
+        cd scripts && 
+        npm install &&
+        npm run generate:docker &&
+        echo '✅ TypeScript types generated successfully!'
+      "

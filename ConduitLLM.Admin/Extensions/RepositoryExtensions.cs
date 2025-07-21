@@ -115,6 +115,7 @@ namespace ConduitLLM.Admin.Extensions
                 ModelId = mapping.ModelAlias,
                 ProviderModelId = mapping.ProviderModelName,
                 ProviderId = mapping.ProviderCredentialId.ToString(),
+                ProviderName = mapping.ProviderCredential?.ProviderName,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields
@@ -124,6 +125,7 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsTextToSpeech = mapping.SupportsTextToSpeech,
                 SupportsRealtimeAudio = mapping.SupportsRealtimeAudio,
                 SupportsImageGeneration = mapping.SupportsImageGeneration,
+                SupportsVideoGeneration = mapping.SupportsVideoGeneration,
                 TokenizerType = mapping.TokenizerType,
                 SupportedVoices = mapping.SupportedVoices,
                 SupportedLanguages = mapping.SupportedLanguages,
@@ -167,6 +169,7 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsTextToSpeech = dto.SupportsTextToSpeech,
                 SupportsRealtimeAudio = dto.SupportsRealtimeAudio,
                 SupportsImageGeneration = dto.SupportsImageGeneration,
+                SupportsVideoGeneration = dto.SupportsVideoGeneration,
                 TokenizerType = dto.TokenizerType,
                 SupportedVoices = dto.SupportedVoices,
                 SupportedLanguages = dto.SupportedLanguages,
@@ -198,8 +201,6 @@ namespace ConduitLLM.Admin.Extensions
                 ApiKey = "********", // Mask API key in DTOs
                 IsEnabled = credential.IsEnabled,
                 Organization = null, // Organization not available in entity
-                ModelEndpoint = null, // ModelEndpoint not available in entity
-                AdditionalConfig = null, // AdditionalConfig not available in entity
                 CreatedAt = credential.CreatedAt,
                 UpdatedAt = credential.UpdatedAt
             };
@@ -243,7 +244,7 @@ namespace ConduitLLM.Admin.Extensions
                 BaseUrl = dto.ApiBase,
                 ApiVersion = null, // Not in the DTO
                 IsEnabled = dto.IsEnabled,
-                // Organization, ModelEndpoint, and AdditionalConfig are not available in entity
+                // Organization is not available in entity
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -279,7 +280,7 @@ namespace ConduitLLM.Admin.Extensions
             }
 
             entity.IsEnabled = dto.IsEnabled;
-            // Organization, ModelEndpoint, and AdditionalConfig are not available in entity
+            // Organization is not available in entity
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;
@@ -528,6 +529,18 @@ namespace ConduitLLM.Admin.Extensions
                 OutputTokenCost = modelCost.OutputTokenCost,
                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
+                VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
+                CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                CostPerSearchUnit = modelCost.CostPerSearchUnit,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -552,6 +565,18 @@ namespace ConduitLLM.Admin.Extensions
                 OutputTokenCost = dto.OutputTokenCost,
                 EmbeddingTokenCost = dto.EmbeddingTokenCost,
                 ImageCostPerImage = dto.ImageCostPerImage,
+                AudioCostPerMinute = dto.AudioCostPerMinute,
+                AudioCostPerKCharacters = dto.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = dto.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute,
+                VideoCostPerSecond = dto.VideoCostPerSecond,
+                VideoResolutionMultipliers = dto.VideoResolutionMultipliers,
+                BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
+                SupportsBatchProcessing = dto.SupportsBatchProcessing,
+                ImageQualityMultipliers = dto.ImageQualityMultipliers,
+                CachedInputTokenCost = dto.CachedInputTokenCost,
+                CachedInputWriteCost = dto.CachedInputWriteCost,
+                CostPerSearchUnit = dto.CostPerSearchUnit,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -580,6 +605,18 @@ namespace ConduitLLM.Admin.Extensions
             entity.OutputTokenCost = dto.OutputTokenCost;
             entity.EmbeddingTokenCost = dto.EmbeddingTokenCost;
             entity.ImageCostPerImage = dto.ImageCostPerImage;
+            entity.AudioCostPerMinute = dto.AudioCostPerMinute;
+            entity.AudioCostPerKCharacters = dto.AudioCostPerKCharacters;
+            entity.AudioInputCostPerMinute = dto.AudioInputCostPerMinute;
+            entity.AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute;
+            entity.VideoCostPerSecond = dto.VideoCostPerSecond;
+            entity.VideoResolutionMultipliers = dto.VideoResolutionMultipliers;
+            entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
+            entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
+            entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
+            entity.CachedInputTokenCost = dto.CachedInputTokenCost;
+            entity.CachedInputWriteCost = dto.CachedInputWriteCost;
+            entity.CostPerSearchUnit = dto.CostPerSearchUnit;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

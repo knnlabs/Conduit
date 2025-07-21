@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -188,165 +189,6 @@ namespace ConduitLLM.Core.Interfaces
         Custom
     }
 
-    /// <summary>
-    /// Alert condition.
-    /// </summary>
-    public class AlertCondition
-    {
-        /// <summary>
-        /// Gets or sets the operator.
-        /// </summary>
-        public ComparisonOperator Operator { get; set; }
-
-        /// <summary>
-        /// Gets or sets the threshold value.
-        /// </summary>
-        public double Threshold { get; set; }
-
-        /// <summary>
-        /// Gets or sets the time window for evaluation.
-        /// </summary>
-        public TimeSpan TimeWindow { get; set; } = TimeSpan.FromMinutes(5);
-
-        /// <summary>
-        /// Gets or sets the minimum occurrences.
-        /// </summary>
-        public int MinimumOccurrences { get; set; } = 1;
-
-        /// <summary>
-        /// Gets or sets provider filter.
-        /// </summary>
-        public string? ProviderFilter { get; set; }
-
-        /// <summary>
-        /// Gets or sets custom expression.
-        /// </summary>
-        public string? CustomExpression { get; set; }
-    }
-
-    /// <summary>
-    /// Comparison operators.
-    /// </summary>
-    public enum ComparisonOperator
-    {
-        /// <summary>
-        /// Greater than.
-        /// </summary>
-        GreaterThan,
-
-        /// <summary>
-        /// Less than.
-        /// </summary>
-        LessThan,
-
-        /// <summary>
-        /// Equal to.
-        /// </summary>
-        Equals,
-
-        /// <summary>
-        /// Not equal to.
-        /// </summary>
-        NotEquals,
-
-        /// <summary>
-        /// Greater than or equal.
-        /// </summary>
-        GreaterThanOrEqual,
-
-        /// <summary>
-        /// Less than or equal.
-        /// </summary>
-        LessThanOrEqual
-    }
-
-    /// <summary>
-    /// Alert severity levels.
-    /// </summary>
-    public enum AlertSeverity
-    {
-        /// <summary>
-        /// Informational alert.
-        /// </summary>
-        Info,
-
-        /// <summary>
-        /// Warning alert.
-        /// </summary>
-        Warning,
-
-        /// <summary>
-        /// Error alert.
-        /// </summary>
-        Error,
-
-        /// <summary>
-        /// Critical alert.
-        /// </summary>
-        Critical
-    }
-
-    /// <summary>
-    /// Notification channel configuration.
-    /// </summary>
-    public class NotificationChannel
-    {
-        /// <summary>
-        /// Gets or sets the channel type.
-        /// </summary>
-        public NotificationChannelType Type { get; set; }
-
-        /// <summary>
-        /// Gets or sets the target (email, webhook URL, etc.).
-        /// </summary>
-        public string Target { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets channel-specific configuration.
-        /// </summary>
-        public Dictionary<string, string> Configuration { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Types of notification channels.
-    /// </summary>
-    public enum NotificationChannelType
-    {
-        /// <summary>
-        /// Email notification.
-        /// </summary>
-        Email,
-
-        /// <summary>
-        /// Webhook notification.
-        /// </summary>
-        Webhook,
-
-        /// <summary>
-        /// Slack notification.
-        /// </summary>
-        Slack,
-
-        /// <summary>
-        /// Teams notification.
-        /// </summary>
-        Teams,
-
-        /// <summary>
-        /// PagerDuty integration.
-        /// </summary>
-        PagerDuty,
-
-        /// <summary>
-        /// SMS notification.
-        /// </summary>
-        Sms,
-
-        /// <summary>
-        /// Custom notification.
-        /// </summary>
-        Custom
-    }
 
     /// <summary>
     /// Triggered alert instance.
@@ -410,66 +252,9 @@ namespace ConduitLLM.Core.Interfaces
     }
 
     /// <summary>
-    /// Alert states.
+    /// Audio-specific notification test result.
     /// </summary>
-    public enum AlertState
-    {
-        /// <summary>
-        /// Alert is active.
-        /// </summary>
-        Active,
-
-        /// <summary>
-        /// Alert has been acknowledged.
-        /// </summary>
-        Acknowledged,
-
-        /// <summary>
-        /// Alert has been resolved.
-        /// </summary>
-        Resolved,
-
-        /// <summary>
-        /// Alert was suppressed.
-        /// </summary>
-        Suppressed
-    }
-
-    /// <summary>
-    /// Alert test result.
-    /// </summary>
-    public class AlertTestResult
-    {
-        /// <summary>
-        /// Gets or sets whether the test passed.
-        /// </summary>
-        public bool Success { get; set; }
-
-        /// <summary>
-        /// Gets or sets the test message.
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets whether the condition would trigger.
-        /// </summary>
-        public bool WouldTrigger { get; set; }
-
-        /// <summary>
-        /// Gets or sets simulated metric value.
-        /// </summary>
-        public double SimulatedMetricValue { get; set; }
-
-        /// <summary>
-        /// Gets or sets notification test results.
-        /// </summary>
-        public List<NotificationTestResult> NotificationTests { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Notification test result.
-    /// </summary>
-    public class NotificationTestResult
+    public class AudioNotificationTestResult
     {
         /// <summary>
         /// Gets or sets the channel type.

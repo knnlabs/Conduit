@@ -1,16 +1,8 @@
 import type { ModelProviderMappingDto } from '../models/modelMapping';
+import { ModelCapability, getCapabilityDisplayName as getDisplayName } from '@knn_labs/conduit-common';
 
-/**
- * Model capability types
- */
-export enum ModelCapability {
-  CHAT = 'chat',
-  VISION = 'vision',
-  IMAGE_GENERATION = 'image-generation',
-  AUDIO_TRANSCRIPTION = 'audio-transcription',
-  TEXT_TO_SPEECH = 'text-to-speech',
-  REALTIME_AUDIO = 'realtime-audio',
-}
+// Re-export for backward compatibility
+export { ModelCapability };
 
 /**
  * Check if a model mapping supports a specific capability
@@ -116,7 +108,7 @@ export function getBestMapping(
 ): ModelProviderMappingDto | undefined {
   // First try to find default mapping
   const defaultMapping = findDefaultMapping(mappings, capability);
-  if (defaultMapping && defaultMapping.isEnabled) {
+  if (defaultMapping?.isEnabled) {
     return defaultMapping;
   }
 
@@ -184,20 +176,5 @@ export function validateMappingCapabilities(mapping: ModelProviderMappingDto): s
  * @returns Human-readable display name
  */
 export function getCapabilityDisplayName(capability: ModelCapability): string {
-  switch (capability) {
-    case ModelCapability.CHAT:
-      return 'Chat Completion';
-    case ModelCapability.VISION:
-      return 'Vision (Image Understanding)';
-    case ModelCapability.IMAGE_GENERATION:
-      return 'Image Generation';
-    case ModelCapability.AUDIO_TRANSCRIPTION:
-      return 'Audio Transcription';
-    case ModelCapability.TEXT_TO_SPEECH:
-      return 'Text-to-Speech';
-    case ModelCapability.REALTIME_AUDIO:
-      return 'Realtime Audio';
-    default:
-      return capability;
-  }
+  return getDisplayName(capability);
 }

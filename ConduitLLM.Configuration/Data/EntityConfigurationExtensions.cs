@@ -33,14 +33,8 @@ namespace ConduitLLM.Configuration.Data
             // Configure Provider Health entities
             modelBuilder.ApplyProviderHealthConfigurations();
 
-            // Ignore entities in test environments if needed
-            if (isTestEnvironment)
-            {
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
-                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ProviderCredential>();
-                modelBuilder.Ignore<ProviderHealthRecord>();
-                modelBuilder.Ignore<ProviderHealthConfiguration>();
-            }
+            // Note: Previously ignored entities are now included in test environments
+            // as they are required by the application code during tests
         }
 
         /// <summary>

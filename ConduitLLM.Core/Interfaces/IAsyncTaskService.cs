@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -20,12 +21,22 @@ namespace ConduitLLM.Core.Interfaces
         Task<string> CreateTaskAsync(string taskType, object metadata, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Creates a new async task with explicit virtual key ID and returns a task ID for tracking.
+        /// </summary>
+        /// <param name="taskType">The type of task (e.g., "image_generation", "video_generation")</param>
+        /// <param name="virtualKeyId">The virtual key ID associated with this task</param>
+        /// <param name="metadata">Additional metadata about the task</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A unique task ID for tracking the task</returns>
+        Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets the current status of a task.
         /// </summary>
         /// <param name="taskId">The ID of the task to check</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The current task status</returns>
-        Task<AsyncTaskStatus> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default);
+        Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates the status of a task.
@@ -35,7 +46,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="result">Optional result data</param>
         /// <param name="error">Optional error message</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        Task UpdateTaskStatusAsync(string taskId, TaskState status, object? result = null, string? error = null, CancellationToken cancellationToken = default);
+        Task UpdateTaskStatusAsync(string taskId, TaskState status, int? progress = null, object? result = null, string? error = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Polls a task until it completes, fails, or times out.
@@ -59,12 +70,28 @@ namespace ConduitLLM.Core.Interfaces
         Task CancelTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Deletes a task and its associated data.
+        /// </summary>
+        /// <param name="taskId">The ID of the task to delete</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        Task DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Cleans up old completed or failed tasks.
         /// </summary>
         /// <param name="olderThan">Remove tasks older than this timespan</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Number of tasks cleaned up</returns>
         Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets all pending tasks that need to be processed.
+        /// </summary>
+        /// <param name="taskType">Optional filter by task type</param>
+        /// <param name="limit">Maximum number of tasks to return</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of pending tasks</returns>
+        Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -115,17 +142,37 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Additional metadata about the task.
         /// </summary>
-        public object? Metadata { get; set; }
+        public TaskMetadata? Metadata { get; set; }
 
         /// <summary>
         /// Progress percentage (0-100) if available.
         /// </summary>
-        public int? ProgressPercentage { get; set; }
+        public int Progress { get; set; }
 
         /// <summary>
         /// Progress message if available.
         /// </summary>
         public string? ProgressMessage { get; set; }
+
+        /// <summary>
+        /// Number of retry attempts made for this task.
+        /// </summary>
+        public int RetryCount { get; set; }
+
+        /// <summary>
+        /// Maximum number of retry attempts allowed for this task.
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+
+        /// <summary>
+        /// Whether the task is retryable if it fails.
+        /// </summary>
+        public bool IsRetryable { get; set; } = true;
+
+        /// <summary>
+        /// When the task should be retried next (null if not scheduled for retry).
+        /// </summary>
+        public DateTime? NextRetryAt { get; set; }
     }
 
     /// <summary>
@@ -141,7 +188,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Task is currently being processed.
         /// </summary>
-        Running,
+        Processing,
 
         /// <summary>
         /// Task completed successfully.

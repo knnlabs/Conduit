@@ -1,0 +1,356 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Core.HealthChecks;
+
+namespace ConduitLLM.Core.Extensions
+{
+    /// <summary>
+    /// Extension methods for registering cache manager services.
+    /// </summary>
+    public static class CacheManagerExtensions
+    {
+        /// <summary>
+        /// Adds the unified cache manager to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCacheManager(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+
+            // Configure options from configuration
+            services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
+            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
+
+            // Register statistics collector (local mode only)
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                return new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+            });
+
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
+
+            // Register the cache manager as singleton
+            services.AddSingleton<ICacheManager, CacheManager>();
+
+            // Register health checks
+            services.AddHealthChecks()
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the unified cache manager with custom options.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configureOptions">Action to configure options.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCacheManager(this IServiceCollection services, Action<CacheManagerOptions> configureOptions)
+        {
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+
+            // Configure options
+            services.Configure(configureOptions);
+
+            // Register statistics collector with default options
+            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
+
+            // Register the cache manager as singleton
+            services.AddSingleton<ICacheManager, CacheManager>();
+
+            // Register health checks
+            services.AddHealthChecks()
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the unified cache manager with Redis distributed cache.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="redisConnectionString">Redis connection string.</param>
+        /// <param name="configureOptions">Optional action to configure options.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCacheManagerWithRedis(
+            this IServiceCollection services, 
+            string redisConnectionString,
+            Action<CacheManagerOptions>? configureOptions = null)
+        {
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+
+            // Add Redis distributed cache
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "conduit:cache:";
+            });
+
+            // Configure options
+            if (configureOptions != null)
+            {
+                services.Configure(configureOptions);
+            }
+
+            // Register statistics store for Redis
+            services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+
+            // Register Redis connection multiplexer
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                return ConnectionMultiplexer.Connect(redisConnectionString);
+            });
+
+            // Register distributed statistics collector
+            services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+            
+            // Register statistics health check
+            services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
+            services.AddHostedService(sp => 
+            {
+                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
+                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
+            });
+
+            // Register hybrid collector as the main statistics collector
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
+                var localCollector = new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+                
+                return new HybridCacheStatisticsCollector(
+                    localCollector,
+                    distributedCollector,
+                    sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
+            });
+
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
+
+            // Register the cache manager as singleton
+            services.AddSingleton<ICacheManager, CacheManager>();
+
+            // Register health checks
+            services.AddHealthChecks()
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager")
+                .AddRedis(redisConnectionString, name: "redis_cache")
+                .AddCheck<CacheStatisticsHealthCheckAdapter>("cache_statistics");
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the cache registry for automatic discovery and management.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="autoDiscover">Whether to automatically discover cache regions on startup.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCacheRegistry(this IServiceCollection services, bool autoDiscover = true)
+        {
+            // Register the cache registry as singleton
+            services.AddSingleton<ICacheRegistry, CacheRegistry>();
+
+            if (autoDiscover)
+            {
+                // Add hosted service for discovery
+                services.AddHostedService<CacheDiscoveryHostedService>();
+            }
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the complete cache infrastructure with manager and registry.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <param name="autoDiscover">Whether to automatically discover cache regions.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddCacheInfrastructure(
+            this IServiceCollection services, 
+            IConfiguration configuration,
+            bool autoDiscover = true)
+        {
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+
+            // Configure options from configuration
+            services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
+            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
+
+            // Add cache registry
+            services.AddCacheRegistry(autoDiscover);
+
+            // Register policy engine
+            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
+
+            // Check if we have Redis configuration for statistics store
+            var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
+            if (!string.IsNullOrEmpty(redisConnection))
+            {
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnection;
+                    options.InstanceName = "conduit:cache:";
+                });
+                services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
+                
+                // Register Redis connection multiplexer
+                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    return ConnectionMultiplexer.Connect(redisConnection);
+                });
+
+                // Register distributed statistics collector
+                services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
+                
+                // Register statistics health check
+                services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
+                services.AddHostedService(sp => 
+            {
+                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
+                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
+            });
+            }
+
+            // Register statistics collector (hybrid if Redis is available, local otherwise)
+            services.AddSingleton<ICacheStatisticsCollector>(sp =>
+            {
+                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
+                var localCollector = new CacheStatisticsCollector(
+                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
+                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
+                    sp.GetService<ICacheStatisticsStore>());
+                
+                if (distributedCollector != null)
+                {
+                    return new HybridCacheStatisticsCollector(
+                        localCollector,
+                        distributedCollector,
+                        sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
+                }
+                
+                return localCollector;
+            });
+
+            // Register cache manager with registry integration
+            services.AddSingleton<ICacheManager>(provider =>
+            {
+                var memoryCache = provider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                var distributedCache = provider.GetService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+                var logger = provider.GetRequiredService<ILogger<CacheManager>>();
+                var options = provider.GetService<Microsoft.Extensions.Options.IOptions<CacheManagerOptions>>();
+                var registry = provider.GetService<ICacheRegistry>();
+                var statisticsCollector = provider.GetService<ICacheStatisticsCollector>();
+
+                var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options, statisticsCollector);
+
+                // Sync configurations from registry if available
+                if (registry != null)
+                {
+                    foreach (var (region, config) in registry.GetAllRegions())
+                    {
+                        cacheManager.UpdateRegionConfigAsync(config).GetAwaiter().GetResult();
+                    }
+
+                    // Subscribe to registry changes
+                    registry.RegionUpdated += (sender, args) =>
+                    {
+                        cacheManager.UpdateRegionConfigAsync(args.Config).GetAwaiter().GetResult();
+                    };
+                }
+
+                return cacheManager;
+            });
+
+            // Register health checks
+            services.AddHealthChecks()
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+
+            return services;
+        }
+
+        /// <summary>
+        /// Discovers and registers cache regions from specific assemblies.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="assemblies">Assemblies to scan.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection DiscoverCacheRegions(
+            this IServiceCollection services,
+            params Assembly[] assemblies)
+        {
+            services.AddSingleton<IHostedService>(provider =>
+            {
+                var registry = provider.GetRequiredService<ICacheRegistry>();
+                var logger = provider.GetRequiredService<ILogger<CacheDiscoveryHostedService>>();
+                return new CacheDiscoveryHostedService(registry, logger, assemblies);
+            });
+
+            return services;
+        }
+    }
+
+    /// <summary>
+    /// Hosted service for automatic cache region discovery.
+    /// </summary>
+    internal class CacheDiscoveryHostedService : IHostedService
+    {
+        private readonly ICacheRegistry _registry;
+        private readonly ILogger<CacheDiscoveryHostedService> _logger;
+        private readonly Assembly[]? _assemblies;
+
+        public CacheDiscoveryHostedService(
+            ICacheRegistry registry,
+            ILogger<CacheDiscoveryHostedService> logger,
+            Assembly[]? assemblies = null)
+        {
+            _registry = registry;
+            _logger = logger;
+            _assemblies = assemblies;
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Starting cache region discovery...");
+
+            try
+            {
+                var count = await _registry.DiscoverRegionsAsync(_assemblies);
+                _logger.LogInformation("Cache region discovery completed. Found {Count} regions", count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to discover cache regions");
+                // Don't throw - cache discovery failure shouldn't prevent app startup
+            }
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}

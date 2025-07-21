@@ -23,6 +23,8 @@ public class AdminSystemInfoService : IAdminSystemInfoService
 {
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
+    private readonly IAdminProviderHealthService _providerHealthService;
+    private readonly IAdminProviderCredentialService _providerCredentialService;
     private readonly DateTime _startTime;
 
     /// <summary>
@@ -30,12 +32,18 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// </summary>
     /// <param name="dbContext">The configuration database context</param>
     /// <param name="logger">The logger</param>
+    /// <param name="providerHealthService">The provider health service</param>
+    /// <param name="providerCredentialService">The provider credential service</param>
     public AdminSystemInfoService(
         IConfigurationDbContext dbContext,
-        ILogger<AdminSystemInfoService> logger)
+        ILogger<AdminSystemInfoService> logger,
+        IAdminProviderHealthService providerHealthService,
+        IAdminProviderCredentialService providerCredentialService)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
+        _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
         _startTime = Process.GetCurrentProcess().StartTime;
     }
 
@@ -61,21 +69,36 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     {
         _logger.LogInformation("Getting health status");
 
-        var components = new Dictionary<string, ComponentHealth>();
+        var sw = Stopwatch.StartNew();
+        var checks = new Dictionary<string, ComponentHealth>();
 
         // Database health
+        var dbSw = Stopwatch.StartNew();
         var dbHealth = await CheckDatabaseHealthAsync();
-        components.Add("Database", dbHealth);
+        dbHealth.Duration = dbSw.ElapsedMilliseconds;
+        checks.Add("database", dbHealth);
+
+        // Provider health
+        var providerSw = Stopwatch.StartNew();
+        var providerHealth = await CheckProviderHealthAsync();
+        providerHealth.Duration = providerSw.ElapsedMilliseconds;
+        checks.Add("providers", providerHealth);
+
+        sw.Stop();
 
         // Overall health is determined by component statuses
-        string overallStatus = components.All(c => c.Value.Status == "Healthy")
-            ? "Healthy"
-            : "Unhealthy";
+        string overallStatus = checks.All(c => c.Value.Status == "healthy")
+            ? "healthy"
+            : checks.Any(c => c.Value.Status == "unhealthy")
+                ? "unhealthy"
+                : "degraded";
 
         return new HealthStatusDto
         {
             Status = overallStatus,
-            Components = components
+            Timestamp = DateTime.UtcNow,
+            Checks = checks,
+            TotalDuration = sw.ElapsedMilliseconds
         };
     }
 
@@ -148,24 +171,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 var connectionString = _dbContext.GetDatabase().GetConnectionString();
                 info.ConnectionString = MaskConnectionString(connectionString);
 
-                if (info.Provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
-                {
-                    var version = await _dbContext.GetDatabase().ExecuteSqlRawAsync("SELECT @@VERSION");
-                    info.Version = version.ToString();
-                }
-                else if (info.Provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
-                {
-                    info.Version = "SQLite";
-                    info.Location = ExtractDatabasePathFromConnectionString(connectionString);
-
-                    // Get database file size if it's SQLite
-                    if (!string.IsNullOrEmpty(info.Location) && File.Exists(info.Location))
-                    {
-                        var fileInfo = new FileInfo(info.Location);
-                        info.Size = FormatFileSize(fileInfo.Length);
-                    }
-                }
-                else if (info.Provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+                if (info.Provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
                 {
                     info.Version = "-1"; // We'll get this with raw SQL below
                     info.Location = ExtractHostFromConnectionString(connectionString);
@@ -249,38 +255,78 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     {
         var health = new ComponentHealth
         {
-            Description = "Database connection and migrations",
-            Data = new Dictionary<string, string>()
+            Description = "Database connection and migrations"
         };
 
         try
         {
             // Check connection
             bool canConnect = await _dbContext.GetDatabase().CanConnectAsync();
-            health.Data["Connection"] = canConnect ? "Success" : "Failed";
 
             if (canConnect)
             {
                 // Check migrations
                 bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Any();
-                health.Data["Pending Migrations"] = pendingMigrations ? "Yes" : "No";
 
                 // Get migration history
                 var migrations = await _dbContext.GetDatabase().GetAppliedMigrationsAsync();
-                health.Data["Applied Migrations"] = migrations.Count().ToString();
 
-                health.Status = pendingMigrations ? "Degraded" : "Healthy";
+                health.Status = pendingMigrations ? "degraded" : "healthy";
+                if (pendingMigrations)
+                {
+                    health.Description = "Database connected but has pending migrations";
+                }
             }
             else
             {
-                health.Status = "Unhealthy";
+                health.Status = "unhealthy";
+                health.Description = "Database connection failed";
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking database health");
-            health.Status = "Unhealthy";
-            health.Data["Error"] = ex.Message;
+            health.Status = "unhealthy";
+            health.Error = ex.Message;
+        }
+
+        return health;
+    }
+
+    private async Task<ComponentHealth> CheckProviderHealthAsync()
+    {
+        var health = new ComponentHealth
+        {
+            Description = "LLM provider configuration status"
+        };
+
+        try
+        {
+            // Simple check: just see if we have enabled providers
+            var allProviders = await _providerCredentialService.GetAllProviderCredentialsAsync();
+            var enabledProviders = allProviders.Where(p => p.IsEnabled).ToList();
+
+            if (!enabledProviders.Any())
+            {
+                health.Status = "unhealthy";
+                health.Description = "No enabled providers configured";
+            }
+            else if (enabledProviders.Count == 1)
+            {
+                health.Status = "degraded";
+                health.Description = $"1 provider configured ({enabledProviders[0].ProviderName})";
+            }
+            else
+            {
+                health.Status = "healthy";
+                health.Description = $"{enabledProviders.Count} providers configured";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking provider configuration");
+            health.Status = "unhealthy";
+            health.Error = ex.Message;
         }
 
         return health;
@@ -386,23 +432,6 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         return string.Join("; ", maskedParts);
     }
 
-    private string ExtractDatabasePathFromConnectionString(string? connectionString)
-    {
-        if (string.IsNullOrEmpty(connectionString))
-            return "Unknown";
-
-        var parts = connectionString.Split(';');
-        foreach (var part in parts)
-        {
-            var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-            {
-                return trimmedPart.Split('=')[1].Trim();
-            }
-        }
-
-        return "Unknown";
-    }
 
     private string ExtractHostFromConnectionString(string? connectionString)
     {

@@ -1,0 +1,151 @@
+groups:
+  - name: error_queue_alerts
+    interval: 30s
+    rules:
+      # Critical alert when any error queue has more than 1000 messages
+      - alert: ErrorQueueCritical
+        expr: conduit_error_queue_depth > 1000
+        for: 5m
+        labels:
+          severity: critical
+          component: error_queue
+        annotations:
+          summary: "Critical error queue depth"
+          description: "Error queue {{ $labels.queue_name }} has {{ $value }} messages (threshold: 1000)"
+          runbook_url: "https://github.com/knnlabs/Conduit/wiki/Error-Queue-Critical"
+          
+      # Warning alert when any error queue has more than 100 messages
+      - alert: ErrorQueueWarning
+        expr: conduit_error_queue_depth > 100 and conduit_error_queue_depth <= 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "Error queue depth warning"
+          description: "Error queue {{ $labels.queue_name }} has {{ $value }} messages"
+          
+      # Alert when error queue is growing rapidly
+      - alert: ErrorQueueGrowingRapidly
+        expr: rate(conduit_error_queue_depth[15m]) > 10
+        for: 15m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "Error queue growing rapidly"
+          description: "Error queue {{ $labels.queue_name }} is growing at {{ $value | humanize }} messages/minute"
+          
+      # Alert when messages are too old in error queue
+      - alert: OldMessagesInErrorQueue
+        expr: conduit_error_queue_oldest_message_age_seconds > 86400  # 24 hours
+        for: 30m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "Old messages in error queue"
+          description: "Error queue {{ $labels.queue_name }} has messages older than 24 hours (oldest: {{ $value | humanizeDuration }})"
+          
+      # Alert when overall error rate is high
+      - alert: HighErrorRate
+        expr: sum(rate(conduit_error_queue_messages_total[5m])) * 60 > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "High error rate across all queues"
+          description: "Error rate is {{ $value | humanize }} messages/minute (threshold: 100/min)"
+          
+      # Alert when replay success rate is low
+      - alert: LowReplaySuccessRate
+        expr: |
+          (
+            sum(rate(conduit_error_queue_messages_replayed_total{status="success"}[30m])) 
+            / 
+            sum(rate(conduit_error_queue_messages_replayed_total[30m]))
+          ) < 0.5
+        for: 30m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "Low replay success rate"
+          description: "Replay success rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+          
+      # Alert when total error messages exceed threshold
+      - alert: TotalErrorMessagesHigh
+        expr: sum(conduit_error_queue_depth) > 5000
+        for: 10m
+        labels:
+          severity: critical
+          component: error_queue
+        annotations:
+          summary: "Total error messages very high"
+          description: "Total error messages across all queues: {{ $value }} (threshold: 5000)"
+          
+      # Alert when multiple queues are in critical state
+      - alert: MultipleQueuesInCriticalState
+        expr: count(conduit_error_queue_depth > 1000) > 3
+        for: 5m
+        labels:
+          severity: critical
+          component: error_queue
+        annotations:
+          summary: "Multiple error queues in critical state"
+          description: "{{ $value }} error queues have more than 1000 messages"
+          
+      # Alert when error queue operations are slow
+      - alert: SlowErrorQueueOperations
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(conduit_error_queue_operation_duration_seconds_bucket[5m])) 
+            by (operation, le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: error_queue
+        annotations:
+          summary: "Slow error queue operations"
+          description: "Error queue operation {{ $labels.operation }} p95 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+          
+      # Alert when no metrics are being collected (service down)
+      - alert: ErrorQueueMetricsDown
+        expr: up{job="conduit-admin"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: error_queue
+        annotations:
+          summary: "Error queue metrics collection down"
+          description: "Error queue metrics are not being collected - Admin API may be down"
+
+  # Separate group for less critical alerts with longer evaluation periods
+  - name: error_queue_maintenance_alerts
+    interval: 5m
+    rules:
+      # Alert when error queues need cleanup (sustained high volume)
+      - alert: ErrorQueuesNeedCleanup
+        expr: sum(conduit_error_queue_depth) > 1000
+        for: 24h
+        labels:
+          severity: info
+          component: error_queue
+        annotations:
+          summary: "Error queues need cleanup"
+          description: "Total error messages have been above 1000 for 24 hours - consider manual cleanup"
+          
+      # Alert when specific message types are failing frequently
+      - alert: FrequentMessageTypeFailures
+        expr: |
+          sum(rate(conduit_error_queue_messages_total[1h])) 
+          by (message_type) > 10
+        for: 1h
+        labels:
+          severity: info
+          component: error_queue
+        annotations:
+          summary: "Frequent failures for message type"
+          description: "Message type {{ $labels.message_type }} is failing at {{ $value | humanize }} messages/hour"

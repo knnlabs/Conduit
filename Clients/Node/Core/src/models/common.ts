@@ -1,9 +1,7 @@
-export interface Usage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-}
+// Re-export base types from Common package
+export type { Usage, PerformanceMetrics } from '@knn_labs/conduit-common';
 
+// Core-specific types that aren't in Common
 export interface ResponseFormat {
   type: 'text' | 'json_object';
 }
@@ -31,13 +29,6 @@ export interface Tool {
 }
 
 export type FinishReason = 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
-
-export interface PerformanceMetrics {
-  provider_name: string;
-  provider_response_time_ms: number;
-  total_response_time_ms: number;
-  tokens_per_second?: number;
-}
 
 export interface ErrorResponse {
   error: {

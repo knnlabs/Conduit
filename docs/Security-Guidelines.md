@@ -2,6 +2,12 @@
 
 This document provides security guidelines and best practices for the Conduit project.
 
+## Secret Detection and Pre-commit Hooks
+
+Conduit uses automated secret detection to prevent API keys, passwords, and other sensitive information from being committed to the repository. 
+
+For setup instructions and detailed information, see [Security Pre-commit Hooks](./Security-Pre-commit-Hooks.md).
+
 ## CodeQL Security Analysis
 
 ### Fixing Log Injection Vulnerabilities (CWE-117)
@@ -75,7 +81,62 @@ codeql database analyze conduit-codeql-db --format=csv --output=results.csv \
 
 A successful fix will show 0 results in the CSV file.
 
+### Unicode Line/Paragraph Separator Sanitization
+
+The `LoggingSanitizer` class includes protection against Unicode line separator (U+2028) and paragraph separator (U+2029) characters. These characters can be interpreted as line breaks by some systems, potentially allowing log injection attacks.
+
+#### The Security Fix
+
+The sanitizer removes these Unicode separators along with standard CRLF characters:
+
+```csharp
+// Unicode separators that could be interpreted as newlines
+private static readonly Regex UnicodeSeparatorPattern = new(@"[\u2028\u2029]", RegexOptions.Compiled);
+
+// In the sanitization method
+str = UnicodeSeparatorPattern.Replace(str, " ");
+```
+
+#### Why This Matters
+
+- **U+2028 (LINE SEPARATOR)** and **U+2029 (PARAGRAPH SEPARATOR)** are not included in standard ASCII control character ranges
+- Some log parsers and analysis tools interpret these as line breaks
+- Attackers could use these to inject fake log entries or corrupt structured log formats
+- This fix prevents log injection attacks that bypass traditional CRLF sanitization
+
+#### Using the Sanitizer
+
+Always use `LoggingSanitizer.S()` for user-controlled data:
+
+```csharp
+_logger.LogInformation("User input: {Input}", LoggingSanitizer.S(userInput));
+```
+
 ## Other Security Considerations
+
+### Insecure Mode Protection
+
+ConduitLLM includes an "insecure mode" (`CONDUIT_INSECURE=true`) that bypasses authentication for development purposes. This mode has strict security controls:
+
+#### Environment Restrictions
+- **Development Only**: Insecure mode can ONLY be enabled in development environments
+- **Automatic Validation**: The application validates the environment at startup
+- **Hard Failure**: If insecure mode is detected in Production or Staging environments, the application will:
+  - Throw an `InvalidOperationException`
+  - Display an error message: "SECURITY VIOLATION: Insecure mode cannot be enabled in [environment]"
+  - Refuse to start until the environment variable is removed
+
+#### Security Indicators
+When insecure mode is active in development:
+- **Console Warnings**: Prominent warnings are displayed at startup with emoji indicators
+- **UI Banner**: A yellow warning banner appears at the top of all pages
+- **Log Warnings**: Warning-level logs are written throughout the application lifecycle
+
+#### Best Practices
+- **Never** set `CONDUIT_INSECURE=true` in production environments
+- Use proper authentication keys (`CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_MASTER_KEY`) for all non-development deployments
+- Regularly audit environment variables in deployment pipelines
+- Consider using separate configuration files for development vs production
 
 ### API Key Security
 - Virtual keys are hashed before storage using SHA256

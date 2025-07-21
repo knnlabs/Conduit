@@ -35,6 +35,7 @@ namespace ConduitLLM.Core.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            if (options == null) throw new ArgumentNullException(nameof(options));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
 
             // Start cleanup timer
@@ -70,6 +71,11 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc />
         public Task ReturnConnectionAsync(IAudioProviderConnection connection)
         {
+            if (connection == null)
+            {
+                return Task.CompletedTask;
+            }
+
             if (_pools.TryGetValue(connection.Provider, out var pool))
             {
                 pool.ReturnConnection(connection);

@@ -1,4 +1,5 @@
-import { BaseApiClient } from '../client/BaseApiClient';
+import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { AnalyticsOptions } from '../models/common-types';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
   CostSummaryDto,
@@ -12,6 +13,13 @@ import {
   CostForecastDto,
   AnomalyDto,
 } from '../models/analytics';
+import {
+  ExportResult,
+  ExportRequestLogsParams,
+  RequestLogStatistics,
+  RequestLog,
+  ExportStatus,
+} from '../models/analyticsExport';
 import { PaginatedResponse, DateRange } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
@@ -22,19 +30,19 @@ const dateRangeSchema = z.object({
 });
 
 
-export class AnalyticsService extends BaseApiClient {
+export class AnalyticsService extends FetchBaseApiClient {
   // Cost Analytics
   async getCostSummary(dateRange: DateRange): Promise<CostSummaryDto> {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-summary', dateRange);
     return this.withCache(
       cacheKey,
-      () => super.get<CostSummaryDto>(ENDPOINTS.ANALYTICS.COST_SUMMARY, dateRange),
+      () => super.get<CostSummaryDto>(ENDPOINTS.ANALYTICS.COST_SUMMARY, { ...dateRange }),
       CACHE_TTL.SHORT
     );
   }
@@ -46,7 +54,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { ...dateRange, groupBy };
@@ -65,7 +73,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-by-model', dateRange);
@@ -73,7 +81,7 @@ export class AnalyticsService extends BaseApiClient {
       cacheKey,
       () => super.get<{ models: ModelUsageDto[]; totalCost: number }>(
         ENDPOINTS.ANALYTICS.COST_BY_MODEL,
-        dateRange
+        { ...dateRange }
       ),
       CACHE_TTL.SHORT
     );
@@ -86,7 +94,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('cost-by-key', dateRange);
@@ -94,7 +102,7 @@ export class AnalyticsService extends BaseApiClient {
       cacheKey,
       () => super.get<{ keys: KeyUsageDto[]; totalCost: number }>(
         ENDPOINTS.ANALYTICS.COST_BY_KEY,
-        dateRange
+        { ...dateRange }
       ),
       CACHE_TTL.SHORT
     );
@@ -105,8 +113,8 @@ export class AnalyticsService extends BaseApiClient {
     filters?: RequestLogFilters
   ): Promise<PaginatedResponse<RequestLogDto>> {
     const params = {
-      pageNumber: filters?.pageNumber || 1,
-      pageSize: filters?.pageSize || DEFAULT_PAGE_SIZE,
+      pageNumber: filters?.pageNumber ?? 1,
+      pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
       startDate: filters?.startDate,
       endDate: filters?.endDate,
       virtualKeyId: filters?.virtualKeyId,
@@ -146,13 +154,13 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const cacheKey = this.getCacheKey('usage-metrics', dateRange);
     return this.withCache(
       cacheKey,
-      () => super.get<UsageMetricsDto>('/api/analytics/usage-metrics', dateRange),
+      () => super.get<UsageMetricsDto>('/api/analytics/usage-metrics', { ...dateRange }),
       CACHE_TTL.SHORT
     );
   }
@@ -161,7 +169,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { modelId, ...dateRange };
@@ -177,7 +185,7 @@ export class AnalyticsService extends BaseApiClient {
     try {
       dateRangeSchema.parse(dateRange);
     } catch (error) {
-      throw new ValidationError('Invalid date range', error);
+      throw new ValidationError('Invalid date range', { validationError: error });
     }
 
     const params = { keyId, ...dateRange };
@@ -204,8 +212,100 @@ export class AnalyticsService extends BaseApiClient {
     return this.getCostSummary({ startDate, endDate });
   }
 
+
+  // Request logs export and analytics
+  async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
+    const response = await this.post<ExportResult>(
+      ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
+      params
+    );
+    return response;
+  }
+
+  getRequestLogStatistics(logs: RequestLog[]): RequestLogStatistics {
+    // Client-side calculation of statistics
+    const stats: RequestLogStatistics = {
+      totalRequests: logs.length,
+      uniqueVirtualKeys: new Set(logs.map(l => l.virtualKeyId)).size,
+      uniqueIpAddresses: new Set(logs.map(l => l.ipAddress)).size,
+      averageResponseTime: 0,
+      medianResponseTime: 0,
+      p95ResponseTime: 0,
+      p99ResponseTime: 0,
+      totalCost: 0,
+      totalTokensUsed: 0,
+      errorRate: 0,
+      statusCodeDistribution: {},
+      endpointDistribution: [],
+      hourlyDistribution: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
+    };
+
+    if (logs.length === 0) return stats;
+
+    // Calculate response times
+    const responseTimes = logs.map(l => l.responseTime).sort((a, b) => a - b);
+    stats.averageResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+    stats.medianResponseTime = responseTimes[Math.floor(responseTimes.length / 2)];
+    stats.p95ResponseTime = responseTimes[Math.floor(responseTimes.length * 0.95)];
+    stats.p99ResponseTime = responseTimes[Math.floor(responseTimes.length * 0.99)];
+
+    // Calculate other metrics
+    stats.totalCost = logs.reduce((sum, log) => sum + (log.cost ?? 0), 0);
+    stats.totalTokensUsed = logs.reduce((sum, log) => sum + (log.tokensUsed?.total ?? 0), 0);
+    const errorCount = logs.filter(l => l.error).length;
+    stats.errorRate = (errorCount / logs.length) * 100;
+
+    // Status code distribution
+    logs.forEach(log => {
+      stats.statusCodeDistribution[log.statusCode] = 
+        (stats.statusCodeDistribution[log.statusCode] ?? 0) + 1;
+    });
+
+    // Endpoint distribution
+    const endpointMap = new Map<string, { count: number; totalTime: number }>();
+    logs.forEach(log => {
+      const current = endpointMap.get(log.endpoint) ?? { count: 0, totalTime: 0 };
+      current.count++;
+      current.totalTime += log.responseTime;
+      endpointMap.set(log.endpoint, current);
+    });
+    
+    stats.endpointDistribution = Array.from(endpointMap.entries())
+      .map(([endpoint, data]) => ({
+        endpoint,
+        count: data.count,
+        avgResponseTime: data.totalTime / data.count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Hourly distribution
+    logs.forEach(log => {
+      const hour = new Date(log.timestamp).getHours();
+      stats.hourlyDistribution[hour].count++;
+    });
+
+    return stats;
+  }
+
+
+
+
+
+
+  async getExportStatus(exportId: string): Promise<ExportStatus> {
+    return this.get<ExportStatus>(ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId));
+  }
+
+  async downloadExport(exportId: string): Promise<Blob> {
+    const response = await this.get<Blob>(ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId), {
+      responseType: 'blob',
+    });
+    return response;
+  }
+
   // Stub methods
-  async getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<any> {
+  getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<never> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'getDetailedCostBreakdown requires Admin API endpoint implementation. ' +
@@ -213,7 +313,7 @@ export class AnalyticsService extends BaseApiClient {
     );
   }
 
-  async predictFutureCosts(_basePeriod: DateRange, _forecastDays: number): Promise<CostForecastDto> {
+  predictFutureCosts(_basePeriod: DateRange, _forecastDays: number): Promise<CostForecastDto> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'predictFutureCosts requires Admin API endpoint implementation. ' +
@@ -221,18 +321,34 @@ export class AnalyticsService extends BaseApiClient {
     );
   }
 
-  async exportAnalytics(
-    _filters: AnalyticsFilters,
-    _format: 'csv' | 'excel' | 'json'
+  async export(
+    filters: AnalyticsFilters,
+    format: 'csv' | 'excel' | 'json' = 'csv'
   ): Promise<Blob> {
-    // STUB: This endpoint needs to be implemented in the Admin API
-    throw new NotImplementedError(
-      'exportAnalytics requires Admin API endpoint implementation. ' +
-        'Consider implementing GET /api/analytics/export'
-    );
+    const params = {
+      format,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      virtualKeyIds: filters.virtualKeyIds,
+      models: filters.models,
+      providers: filters.providers,
+      includeMetadata: filters.includeMetadata,
+    };
+
+    return this.get<Blob>('/api/analytics/export', params, {
+      responseType: 'blob',
+    });
   }
 
-  async detectAnomalies(_dateRange: DateRange): Promise<AnomalyDto[]> {
+  async exportAnalytics(
+    filters: AnalyticsFilters,
+    format: 'csv' | 'excel' | 'json'
+  ): Promise<Blob> {
+    // Deprecated: Use export() instead
+    return this.export(filters, format);
+  }
+
+  detectAnomalies(_dateRange: DateRange): Promise<AnomalyDto[]> {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'detectAnomalies requires Admin API endpoint implementation. ' +
@@ -240,11 +356,11 @@ export class AnalyticsService extends BaseApiClient {
     );
   }
 
-  async streamRequestLogs(
+  streamRequestLogs(
     _filters?: RequestLogFilters,
     _onMessage?: (log: RequestLogDto) => void,
     _onError?: (error: Error) => void
-  ): Promise<() => void> {
+  ): never {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'streamRequestLogs requires Admin API SSE endpoint implementation. ' +
@@ -252,11 +368,11 @@ export class AnalyticsService extends BaseApiClient {
     );
   }
 
-  async generateReport(
+  generateReport(
     _type: 'cost' | 'usage' | 'performance',
     _dateRange: DateRange,
-    _options?: Record<string, any>
-  ): Promise<Blob> {
+    _options?: AnalyticsOptions
+  ): never {
     // STUB: This endpoint needs to be implemented in the Admin API
     throw new NotImplementedError(
       'generateReport requires Admin API endpoint implementation. ' +

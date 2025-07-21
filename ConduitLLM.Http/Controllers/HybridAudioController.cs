@@ -29,7 +29,7 @@ namespace ConduitLLM.Http.Controllers
     public class HybridAudioController : ControllerBase
     {
         private readonly IHybridAudioService _hybridAudioService;
-        private readonly Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<HybridAudioController> _logger;
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="logger">The logger instance.</param>
         public HybridAudioController(
             IHybridAudioService hybridAudioService,
-            Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
             ILogger<HybridAudioController> logger)
         {
             _hybridAudioService = hybridAudioService ?? throw new ArgumentNullException(nameof(hybridAudioService));
@@ -276,7 +276,9 @@ namespace ConduitLLM.Http.Controllers
                 "audio/webm" => "webm",
                 "audio/flac" => "flac",
                 "audio/ogg" => "ogg",
-                _ => Path.GetExtension(fileName)?.TrimStart('.').ToLower() ?? "mp3"
+                _ => string.IsNullOrEmpty(Path.GetExtension(fileName)?.TrimStart('.').ToLower()) 
+                    ? "mp3" 
+                    : Path.GetExtension(fileName).TrimStart('.').ToLower()
             };
         }
 

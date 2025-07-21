@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>conduit-tui</AssemblyName>
+    <RootNamespace>ConduitLLM.TUI</RootNamespace>
+    
+    <!-- .NET Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>conduit-tui</ToolCommandName>
+    <PackageId>ConduitLLM.TUI</PackageId>
+    <Title>Conduit LLM TUI</Title>
+    <Description>Terminal User Interface for managing Conduit LLM services, virtual keys, and monitoring system performance.</Description>
+    <Authors>KNN Labs, Inc.</Authors>
+    <Company>KNN Labs, Inc.</Company>
+    <Product>Conduit LLM</Product>
+    <Copyright>© 2025 KNN Labs, Inc.</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/knnlabs/Conduit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>conduit;llm;tui;terminal;ai;management;dotnet-tool</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" Version="1.16.0" />
+    <PackageReference Include="Spectre.Console" Version="0.48.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.5" />
+    <PackageReference Include="Polly" Version="8.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Clients\DotNet\ConduitLLM.AdminClient\src\ConduitLLM.AdminClient.csproj" />
+    <ProjectReference Include="..\Clients\DotNet\ConduitLLM.CoreClient\src\ConduitLLM.CoreClient.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" Condition="Exists('icon.png')" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Extensions;
@@ -8,7 +10,10 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -18,7 +23,7 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Service implementation for managing model costs through the Admin API
     /// </summary>
-    public class AdminModelCostService : IAdminModelCostService
+    public class AdminModelCostService : EventPublishingServiceBase, IAdminModelCostService
     {
         private readonly IModelCostRepository _modelCostRepository;
         private readonly IRequestLogRepository _requestLogRepository;
@@ -29,11 +34,14 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
+        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
+            IPublishEndpoint? publishEndpoint,
             ILogger<AdminModelCostService> logger)
+            : base(publishEndpoint, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
@@ -70,6 +78,18 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
                 }
 
+                // Publish ModelCostChanged event for cache invalidation and cross-service coordination
+                await PublishEventAsync(
+                    new ModelCostChanged
+                    {
+                        ModelCostId = createdModelCost.Id,
+                        ModelIdPattern = createdModelCost.ModelIdPattern,
+                        ChangeType = "Created",
+                        ChangedProperties = new[] { "Created" },
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    "CreateModelCost");
+
                 _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
@@ -85,10 +105,28 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                // Get model cost info before deletion for event publishing
+                var modelCostToDelete = await _modelCostRepository.GetByIdAsync(id);
+                
                 var result = await _modelCostRepository.DeleteAsync(id);
 
                 if (result)
                 {
+                    // Publish ModelCostChanged event for cache invalidation and cleanup
+                    if (modelCostToDelete != null)
+                    {
+                        await PublishEventAsync(
+                            new ModelCostChanged
+                            {
+                                ModelCostId = id,
+                                ModelIdPattern = modelCostToDelete.ModelIdPattern,
+                                ChangeType = "Deleted",
+                                ChangedProperties = new[] { "Deleted" },
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "DeleteModelCost");
+                    }
+                    
                     _logger.LogInformation("Deleted model cost with ID {Id}",
                 id);
                 }
@@ -261,17 +299,52 @@ namespace ConduitLLM.Admin.Services
                                 InputTokenCost = modelCost.InputTokenCost,
                                 OutputTokenCost = modelCost.OutputTokenCost,
                                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
-                                ImageCostPerImage = modelCost.ImageCostPerImage
+                                ImageCostPerImage = modelCost.ImageCostPerImage,
+                                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
+                                VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                                CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                                CostPerInferenceStep = modelCost.CostPerInferenceStep,
+                                DefaultInferenceSteps = modelCost.DefaultInferenceSteps
                             };
 
                             existingModelCost.UpdateFrom(updateDto);
                             await _modelCostRepository.UpdateAsync(existingModelCost);
+                            
+                            // Publish ModelCostChanged event for updated model cost
+                            await PublishEventAsync(
+                                new ModelCostChanged
+                                {
+                                    ModelCostId = existingModelCost.Id,
+                                    ModelIdPattern = existingModelCost.ModelIdPattern,
+                                    ChangeType = "Updated",
+                                    ChangedProperties = new[] { "ImportUpdated" },
+                                    CorrelationId = Guid.NewGuid().ToString()
+                                },
+                                "ImportModelCosts");
                         }
                         else
                         {
                             // Create new model cost
                             var modelCostEntity = modelCost.ToEntity();
-                            await _modelCostRepository.CreateAsync(modelCostEntity);
+                            var newId = await _modelCostRepository.CreateAsync(modelCostEntity);
+                            
+                            // Publish ModelCostChanged event for new model cost
+                            await PublishEventAsync(
+                                new ModelCostChanged
+                                {
+                                    ModelCostId = newId,
+                                    ModelIdPattern = modelCost.ModelIdPattern,
+                                    ChangeType = "Created",
+                                    ChangedProperties = new[] { "ImportCreated" },
+                                    CorrelationId = Guid.NewGuid().ToString()
+                                },
+                                "ImportModelCosts");
                         }
 
                         importedCount++;
@@ -326,6 +399,19 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
+                // Track changes for event publishing
+                var changedProperties = new List<string>();
+                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
+                    changedProperties.Add(nameof(modelCost.ModelIdPattern));
+                if (existingModelCost.InputTokenCost != modelCost.InputTokenCost)
+                    changedProperties.Add(nameof(modelCost.InputTokenCost));
+                if (existingModelCost.OutputTokenCost != modelCost.OutputTokenCost)
+                    changedProperties.Add(nameof(modelCost.OutputTokenCost));
+                if (existingModelCost.EmbeddingTokenCost != modelCost.EmbeddingTokenCost)
+                    changedProperties.Add(nameof(modelCost.EmbeddingTokenCost));
+                if (existingModelCost.ImageCostPerImage != modelCost.ImageCostPerImage)
+                    changedProperties.Add(nameof(modelCost.ImageCostPerImage));
+
                 // Update entity
                 existingModelCost.UpdateFrom(modelCost);
 
@@ -334,6 +420,21 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
+                    // Publish ModelCostChanged event for cache invalidation and cross-service coordination
+                    if (changedProperties.Any())
+                    {
+                        await PublishEventAsync(
+                            new ModelCostChanged
+                            {
+                                ModelCostId = modelCost.Id,
+                                ModelIdPattern = existingModelCost.ModelIdPattern,
+                                ChangeType = "Updated",
+                                ChangedProperties = changedProperties.ToArray(),
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "UpdateModelCost");
+                    }
+                    
                     _logger.LogInformation("Updated model cost with ID {Id}",
                 modelCost.Id);
                 }
@@ -353,5 +454,295 @@ namespace ConduitLLM.Admin.Services
                 throw;
             }
         }
+
+        /// <inheritdoc />
+        public async Task<string> ExportModelCostsAsync(string format, string? providerName = null)
+        {
+            var modelCosts = providerName != null 
+                ? await _modelCostRepository.GetByProviderAsync(providerName)
+                : await _modelCostRepository.GetAllAsync();
+
+            format = format?.ToLowerInvariant() ?? "json";
+
+            return format switch
+            {
+                "json" => GenerateJsonExport(modelCosts),
+                "csv" => GenerateCsvExport(modelCosts),
+                _ => throw new ArgumentException($"Unsupported export format: {format}")
+            };
+        }
+
+        /// <inheritdoc />
+        public async Task<BulkImportResult> ImportModelCostsAsync(string data, string format)
+        {
+            var result = new BulkImportResult
+            {
+                SuccessCount = 0,
+                FailureCount = 0,
+                Errors = new List<string>()
+            };
+
+            try
+            {
+                format = format?.ToLowerInvariant() ?? "json";
+                var modelCosts = format switch
+                {
+                    "json" => ParseJsonImport(data),
+                    "csv" => ParseCsvImport(data),
+                    _ => throw new ArgumentException($"Unsupported import format: {format}")
+                };
+
+                foreach (var modelCost in modelCosts)
+                {
+                    try
+                    {
+                        // Check if model cost with the same pattern already exists
+                        var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+
+                        if (existingModelCost != null)
+                        {
+                            // Update existing model cost
+                            var updateDto = new UpdateModelCostDto
+                            {
+                                Id = existingModelCost.Id,
+                                ModelIdPattern = modelCost.ModelIdPattern,
+                                InputTokenCost = modelCost.InputTokenCost,
+                                OutputTokenCost = modelCost.OutputTokenCost,
+                                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                                ImageCostPerImage = modelCost.ImageCostPerImage,
+                                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
+                                VideoCostPerSecond = modelCost.VideoCostPerSecond,
+                                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                                CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                                CostPerInferenceStep = modelCost.CostPerInferenceStep,
+                                DefaultInferenceSteps = modelCost.DefaultInferenceSteps
+                            };
+
+                            existingModelCost.UpdateFrom(updateDto);
+                            await _modelCostRepository.UpdateAsync(existingModelCost);
+                        }
+                        else
+                        {
+                            // Create new model cost
+                            var modelCostEntity = modelCost.ToEntity();
+                            await _modelCostRepository.CreateAsync(modelCostEntity);
+                        }
+
+                        result.SuccessCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.FailureCount++;
+                        result.Errors.Add($"Failed to import model cost for pattern '{modelCost.ModelIdPattern}': {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FailureCount++;
+                result.Errors.Add($"Failed to parse import data: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        private string GenerateJsonExport(List<ModelCost> modelCosts)
+        {
+            var exportData = modelCosts.Select(mc => new ModelCostExportDto
+            {
+                ModelIdPattern = mc.ModelIdPattern,
+                InputTokenCost = mc.InputTokenCost,
+                OutputTokenCost = mc.OutputTokenCost,
+                EmbeddingTokenCost = mc.EmbeddingTokenCost,
+                ImageCostPerImage = mc.ImageCostPerImage,
+                AudioCostPerMinute = mc.AudioCostPerMinute,
+                AudioCostPerKCharacters = mc.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = mc.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = mc.AudioOutputCostPerMinute,
+                VideoCostPerSecond = mc.VideoCostPerSecond,
+                VideoResolutionMultipliers = mc.VideoResolutionMultipliers,
+                BatchProcessingMultiplier = mc.BatchProcessingMultiplier,
+                SupportsBatchProcessing = mc.SupportsBatchProcessing,
+                CostPerSearchUnit = mc.CostPerSearchUnit,
+                CostPerInferenceStep = mc.CostPerInferenceStep,
+                DefaultInferenceSteps = mc.DefaultInferenceSteps
+            });
+
+            return JsonSerializer.Serialize(exportData, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+
+        private string GenerateCsvExport(List<ModelCost> modelCosts)
+        {
+            var csv = new StringBuilder();
+            csv.AppendLine("Model Pattern,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+
+            foreach (var modelCost in modelCosts.OrderBy(mc => mc.ModelIdPattern))
+            {
+                csv.AppendLine($"{EscapeCsvValue(modelCost.ModelIdPattern)}," +
+                    $"{(modelCost.InputTokenCost * 1000):F6}," +
+                    $"{(modelCost.OutputTokenCost * 1000):F6}," +
+                    $"{(modelCost.EmbeddingTokenCost.HasValue ? (modelCost.EmbeddingTokenCost.Value * 1000).ToString("F6") : "")}," +
+                    $"{(modelCost.ImageCostPerImage?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.AudioCostPerMinute?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.AudioCostPerKCharacters?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.AudioInputCostPerMinute?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.AudioOutputCostPerMinute?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.VideoCostPerSecond?.ToString("F4") ?? "")}," +
+                    $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}," +
+                    $"{(modelCost.BatchProcessingMultiplier?.ToString("F4") ?? "")}," +
+                    $"{(modelCost.SupportsBatchProcessing ? "Yes" : "No")}," +
+                    $"{(modelCost.CostPerSearchUnit?.ToString("F6") ?? "")}," +
+                    $"{(modelCost.CostPerInferenceStep?.ToString("F6") ?? "")}," +
+                    $"{(modelCost.DefaultInferenceSteps?.ToString() ?? "")}");
+            }
+
+            return csv.ToString();
+        }
+
+        private List<CreateModelCostDto> ParseJsonImport(string jsonData)
+        {
+            try
+            {
+                var importData = JsonSerializer.Deserialize<List<ModelCostExportDto>>(jsonData);
+                if (importData == null) return new List<CreateModelCostDto>();
+
+                return importData.Select(d => new CreateModelCostDto
+                {
+                    ModelIdPattern = d.ModelIdPattern,
+                    InputTokenCost = d.InputTokenCost,
+                    OutputTokenCost = d.OutputTokenCost,
+                    EmbeddingTokenCost = d.EmbeddingTokenCost,
+                    ImageCostPerImage = d.ImageCostPerImage,
+                    AudioCostPerMinute = d.AudioCostPerMinute,
+                    AudioCostPerKCharacters = d.AudioCostPerKCharacters,
+                    AudioInputCostPerMinute = d.AudioInputCostPerMinute,
+                    AudioOutputCostPerMinute = d.AudioOutputCostPerMinute,
+                    VideoCostPerSecond = d.VideoCostPerSecond,
+                    VideoResolutionMultipliers = d.VideoResolutionMultipliers,
+                    BatchProcessingMultiplier = d.BatchProcessingMultiplier,
+                    SupportsBatchProcessing = d.SupportsBatchProcessing,
+                    CostPerSearchUnit = d.CostPerSearchUnit,
+                    CostPerInferenceStep = d.CostPerInferenceStep,
+                    DefaultInferenceSteps = d.DefaultInferenceSteps
+                }).ToList();
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse JSON import data");
+                throw new ArgumentException("Invalid JSON format", ex);
+            }
+        }
+
+        private List<CreateModelCostDto> ParseCsvImport(string csvData)
+        {
+            var modelCosts = new List<CreateModelCostDto>();
+            var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+            if (lines.Length < 2)
+            {
+                throw new ArgumentException("CSV data must contain header and at least one data row");
+            }
+
+            // Skip header
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var parts = lines[i].Split(',');
+                if (parts.Length < 2)
+                {
+                    _logger.LogWarning("Skipping invalid CSV line: {Line}", lines[i].Replace(Environment.NewLine, ""));
+                    continue;
+                }
+
+                try
+                {
+                    var modelCost = new CreateModelCostDto
+                    {
+                        ModelIdPattern = UnescapeCsvValue(parts[0]),
+                        InputTokenCost = decimal.TryParse(parts[1], out var inputCost) ? inputCost / 1000 : 0,
+                        OutputTokenCost = decimal.TryParse(parts[2], out var outputCost) ? outputCost / 1000 : 0,
+                        EmbeddingTokenCost = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost / 1000 : null,
+                        ImageCostPerImage = decimal.TryParse(parts[4], out var imageCost) ? imageCost : null,
+                        AudioCostPerMinute = decimal.TryParse(parts[5], out var audioCost) ? audioCost : null,
+                        AudioCostPerKCharacters = decimal.TryParse(parts[6], out var audioKCharCost) ? audioKCharCost : null,
+                        AudioInputCostPerMinute = decimal.TryParse(parts[7], out var audioInputCost) ? audioInputCost : null,
+                        AudioOutputCostPerMinute = decimal.TryParse(parts[8], out var audioOutputCost) ? audioOutputCost : null,
+                        VideoCostPerSecond = decimal.TryParse(parts[9], out var videoCost) ? videoCost : null,
+                        VideoResolutionMultipliers = parts.Length > 10 ? UnescapeCsvValue(parts[10]) : null,
+                        BatchProcessingMultiplier = parts.Length > 11 && decimal.TryParse(parts[11], out var batchMultiplier) ? batchMultiplier : null,
+                        SupportsBatchProcessing = parts.Length > 12 && (parts[12].Trim().ToLower() == "yes" || parts[12].Trim().ToLower() == "true"),
+                        CostPerSearchUnit = parts.Length > 13 && decimal.TryParse(parts[13], out var searchUnitCost) ? searchUnitCost : null,
+                        CostPerInferenceStep = parts.Length > 14 && decimal.TryParse(parts[14], out var inferenceStepCost) ? inferenceStepCost : null,
+                        DefaultInferenceSteps = parts.Length > 15 && int.TryParse(parts[15], out var defaultSteps) ? defaultSteps : null
+                    };
+
+                    modelCosts.Add(modelCost);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to parse CSV line: {Line}", lines[i].Replace(Environment.NewLine, ""));
+                    throw new ArgumentException($"Invalid CSV data at line {i + 1}", ex);
+                }
+            }
+
+            return modelCosts;
+        }
+
+        private static string EscapeCsvValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "";
+
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            {
+                return $"\"{value.Replace("\"", "\"\"")}\"";
+            }
+
+            return value;
+        }
+
+        private static string UnescapeCsvValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "";
+
+            if (value.StartsWith("\"") && value.EndsWith("\""))
+            {
+                value = value.Substring(1, value.Length - 2);
+                value = value.Replace("\"\"", "\"");
+            }
+
+            return value;
+        }
+    }
+
+    /// <summary>
+    /// DTO for exporting model costs
+    /// </summary>
+    internal class ModelCostExportDto
+    {
+        public string ModelIdPattern { get; set; } = string.Empty;
+        public decimal InputTokenCost { get; set; }
+        public decimal OutputTokenCost { get; set; }
+        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? ImageCostPerImage { get; set; }
+        public decimal? AudioCostPerMinute { get; set; }
+        public decimal? AudioCostPerKCharacters { get; set; }
+        public decimal? AudioInputCostPerMinute { get; set; }
+        public decimal? AudioOutputCostPerMinute { get; set; }
+        public decimal? VideoCostPerSecond { get; set; }
+        public string? VideoResolutionMultipliers { get; set; }
+        public decimal? BatchProcessingMultiplier { get; set; }
+        public bool SupportsBatchProcessing { get; set; }
+        public decimal? CostPerSearchUnit { get; set; }
+        public decimal? CostPerInferenceStep { get; set; }
+        public int? DefaultInferenceSteps { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ![ConduitLLM Logo](docs/assets/conduit.png)
 [![CodeQL](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml)
+[![Build & Test](https://github.com/knnlabs/Conduit/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/build-and-release.yml)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-brightgreen.svg)](https://platform.openai.com/docs/api-reference)
 [![Built with .NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
@@ -14,12 +15,34 @@ Are you juggling multiple LLM provider APIs in your applications? ConduitLLM sol
 - **Vendor Independence**: Avoid lock-in to any single LLM provider
 - **Simplified API Management**: Centralized key management and usage tracking
 - **Cost Optimization**: Route requests to the most cost-effective or performant models
+- **🚀 Enterprise Scale**: Built to handle **10,000+ concurrent sessions** with a lean, efficient tech stack ([see scaling architecture](docs/Scaling-Architecture.md))
 
 ## Overview
 
 ConduitLLM is a unified, modular, and extensible platform designed to simplify interaction with multiple Large Language Models (LLMs). It provides a single, consistent OpenAI-compatible REST API endpoint, acting as a gateway or "conduit" to various LLM backends such as OpenAI, Anthropic, Azure OpenAI, Google Gemini, Cohere, and others.
 
 Built with .NET and designed for containerization (Docker), ConduitLLM streamlines the development, deployment, and management of LLM-powered applications by abstracting provider-specific complexities.
+
+## 🚧 Project Status
+
+> **Note**: ConduitLLM is actively under development. We recommend using the provided Client SDKs for the most stable integration experience.
+
+### ✅ **Production Ready Features**
+- **Text Generation**: Fully tested with OpenAI, Anthropic, and MiniMax providers
+- **Image Generation**: Complete implementation with manual testing across multiple providers  
+- **Video Generation**: Feature complete with provider integration
+- **Client SDKs**: Stable APIs for Node.js and other platforms
+
+### ⚠️ **In Development**
+- **Audio Support**: Not feature complete - expect significant changes in upcoming releases
+- **Core & Admin APIs**: May evolve without backward compatibility - use Client SDKs instead
+
+### 💡 **Recommended Integration**
+```bash
+# Use Client SDKs for stable integration
+npm install @knn_labs/conduit-core-client
+npm install @knn_labs/conduit-admin-client
+```
 
 ## Key Features
 
@@ -28,7 +51,7 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
 - **Streaming Support**: Real-time token streaming for responsive applications
-- **Audio API Support**: Complete audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming
+- **Audio API Support**: Audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming ⚠️ *In Development*
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
@@ -81,7 +104,7 @@ flowchart LR
 ### Components
 
 - **ConduitLLM.Http**: OpenAI-compatible REST API gateway handling authentication and request forwarding
-- **ConduitLLM.WebUI**: Blazor-based admin interface for configuration and monitoring
+- **ConduitLLM.WebUI**: Next.js-based admin interface for configuration and monitoring
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
@@ -97,7 +120,7 @@ To configure the Admin API client in your deployment:
 # Docker Compose environment variables
 environment:
   CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
-  CONDUIT_MASTER_KEY: your_master_key       # Master key for authentication
+  CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_backend_key  # Backend service authentication
   CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
   CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
 ```
@@ -120,7 +143,7 @@ Key features:
 
 As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
-- **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
+- **WebUI Image**: The Next.js-based admin dashboard (`ConduitLLM.WebUI`)
 - **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
 - **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
@@ -150,7 +173,7 @@ services:
       - "5001:8080"
     environment:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
       CONDUIT_USE_ADMIN_API: "true"
       CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
     depends_on:
@@ -162,7 +185,7 @@ services:
       - "5002:8080"
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
     depends_on:
       - postgres
 
@@ -190,21 +213,18 @@ volumes:
 
 > **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
 
-## Database Configuration (Postgres & SQLite)
+## Database Configuration (PostgreSQL Only)
 
-Conduit now supports robust, container-friendly database configuration via environment variables ONLY (no appsettings.json required).
+Conduit requires PostgreSQL as its database. Configure it via the `DATABASE_URL` environment variable.
 
-- **Postgres:**
+- **PostgreSQL (Required):**
   - Set `DATABASE_URL` in the format:
     - `postgresql://user:password@host:port/database`
-  - Example:
+  - Examples:
     - `DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb`
-- **SQLite:**
-  - Set `CONDUIT_SQLITE_PATH` to the file path (default: `ConduitConfig.db`)
-  - Example:
-    - `CONDUIT_SQLITE_PATH=/data/ConduitConfig.db`
+    - `DATABASE_URL=postgres://conduit:conduitpass@localhost:5432/conduitdb`
 
-No other database-related environment variables are needed. The application will auto-detect which provider to use.
+The application will fail to start if PostgreSQL is not available. Connection retry logic with exponential backoff is implemented to handle temporary connection issues.
 
 For more details, see the per-service README files.
 
@@ -273,19 +293,50 @@ CONDUIT_CACHE_TYPE=Redis
 
 When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
 
-#### Master Key Configuration
+#### Authentication Configuration
 ```bash
-# Standardized across all services
-CONDUIT_MASTER_KEY=your-secure-master-key
+# Core API Authentication (uses Virtual Keys)
+# Virtual keys are created via Admin API and used for LLM access
+# Format: condt_your-virtual-key-here
+
+# Admin API Authentication
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-backend-key  # For backend service authentication
+
+# WebUI Authentication (separate from Admin API)
+CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # For human admin login to WebUI
 
 # Legacy format (still supported)
 AdminApi__MasterKey=your-secure-master-key
 ```
 
+**CRITICAL SECURITY:** The `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` and `CONDUIT_ADMIN_LOGIN_PASSWORD` serve different purposes:
+- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication
+- **CONDUIT_ADMIN_LOGIN_PASSWORD**: Used by human administrators to log into the WebUI dashboard
+- **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
+
+#### Next.js WebUI Configuration
+```bash
+# Server-side URLs (for API routes only - never exposed to browser)
+CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
+CONDUIT_API_BASE_URL=http://localhost:5000
+
+# Session management
+SESSION_SECRET=your-session-secret-key-change-in-production
+
+# SignalR real-time updates
+NEXT_PUBLIC_SIGNALR_AUTO_RECONNECT=true
+NEXT_PUBLIC_SIGNALR_RECONNECT_INTERVAL=5000
+
+# Feature flags
+NEXT_PUBLIC_ENABLE_REAL_TIME_UPDATES=true
+NEXT_PUBLIC_ENABLE_ANALYTICS=true
+NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
+```
+
 #### Security Configuration (WebUI)
 ```bash
 # WebUI Authentication
-CONDUIT_WEBUI_AUTH_KEY=your-webui-auth-key  # Separate key for WebUI access
+CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # Separate password for human admin login
 
 # IP Filtering
 CONDUIT_IP_FILTERING_ENABLED=true
@@ -303,6 +354,19 @@ CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
 CONDUIT_MAX_FAILED_ATTEMPTS=5
 CONDUIT_IP_BAN_DURATION_MINUTES=30
 ```
+
+#### WebUI Configuration Notes
+
+**Security Architecture:**
+- All API calls are made server-side through Next.js API routes
+- No API keys or sensitive URLs are exposed to the browser
+- WebUI authenticates administrators separately from API consumers
+- SignalR connections use server-side authentication
+
+**Required Configuration:**
+1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
+2. **Separate WebUI authentication** - Set `CONDUIT_ADMIN_LOGIN_PASSWORD` distinct from `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
+3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
 
@@ -340,32 +404,115 @@ response = client.chat.completions.create(
 )
 ```
 
+### Using the Terminal UI (TUI)
+
+Conduit includes a Terminal User Interface (TUI) for debugging and testing without a web browser. The TUI provides all the functionality of the WebUI through a text-based interface.
+
+#### Quick Start
+
+```bash
+# Linux/macOS
+./conduit-tui --master-key YOUR_MASTER_KEY
+
+# Windows (PowerShell)
+.\conduit-tui.ps1 --master-key YOUR_MASTER_KEY
+
+# Windows (Command Prompt)
+conduit-tui.bat --master-key YOUR_MASTER_KEY
+```
+
+#### TUI Features
+
+- **Full WebUI Functionality**: Chat, provider management, model mappings, virtual keys, image/video generation
+- **Real-time Updates**: SignalR integration for live status updates
+- **Cross-platform**: Works on Linux, macOS, and Windows
+- **Keyboard Navigation**: Fast access with F1-F9 shortcuts
+
+#### Command Line Options
+
+```bash
+conduit-tui --master-key <KEY> [OPTIONS]
+
+Options:
+  -k, --master-key <KEY>     Master API key for authentication (required)
+  -c, --core-api <URL>       Core API URL (default: http://localhost:5000)
+  -a, --admin-api <URL>      Admin API URL (default: http://localhost:5002)
+  -h, --help                 Show help information
+  --build                    Force rebuild before running
+```
+
+#### Examples
+
+```bash
+# Use with default API URLs
+./conduit-tui --master-key YOUR_MASTER_KEY
+
+# Specify custom API URLs
+./conduit-tui -k YOUR_MASTER_KEY -c https://api.example.com:5000 -a https://api.example.com:5002
+
+# Force rebuild and run
+./conduit-tui --build --master-key YOUR_MASTER_KEY
+```
+
+See [TUI Documentation](ConduitLLM.TUI/README.md) for detailed usage instructions.
+
 ## Documentation
 
 See the `docs/` directory for detailed documentation:
 
+
+### Core Documentation
 - [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
   - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
   - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
   - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
+- [🚀 Scaling Architecture](docs/Scaling-Architecture.md) - **10,000+ concurrent sessions architecture and roadmap**
+- [Getting Started](docs/Getting-Started.md)
+- [Current Status](docs/Current-Status.md)
+
+### Development Guides
+- [SDK Migration Guide](docs/development/sdk-migration-guide.md)
+- [API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)
+- [SDK Migration Complete](docs/development/SDK-MIGRATION-COMPLETE.md)
+- [Next.js 15 Migration](docs/development/nextjs15-migration.md)
+- [SDK Feature Gaps](docs/development/sdk-gaps.md)
+
+### Deployment & Configuration
+- [Deployment Configuration](docs/deployment/DEPLOYMENT-CONFIGURATION.md)
+- [Docker Optimization](docs/deployment/docker-optimization.md)
+- [Configuration Guide](docs/Configuration-Guide.md)
+- [Environment Variables](docs/Environment-Variables.md)
+- [Cache Configuration](docs/Cache-Configuration.md)
+- [Distributed Cache Statistics](docs/claude/distributed-cache-statistics.md) - **Horizontal Scaling Guide**
+
+### API Reference
+- [API Reference](docs/api-reference/API-REFERENCE.md)
+- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
+
+### Examples & Integration
+- [Integration Examples](docs/examples/INTEGRATION-EXAMPLES.md)
+- [OpenAI Compatible Example](docs/examples/openai-compatible-example.md)
+
+### Troubleshooting
+- [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
+
+### Feature Documentation
 - [Audio API Guide](docs/Audio-API-Guide.md)
 - [Audio Architecture](docs/Audio-Architecture.md)
 - [Real-time Architecture](docs/Realtime-Architecture.md)
 - [Audio Implementation Status](docs/Audio-Implementation-Status.md)
 - [Budget Management](docs/Budget-Management.md)
-- [Cache Configuration](docs/Cache-Configuration.md)
-- [Configuration Guide](docs/Configuration-Guide.md)
 - [Dashboard Features](docs/Dashboard-Features.md)
-- [Environment Variables](docs/Environment-Variables.md)
-- [Getting Started](docs/Getting-Started.md)
 - [LLM Routing](docs/LLM-Routing.md)
 - [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
-- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
-- [Current Status](docs/Current-Status.md)
+
+### Project Documentation
+- [SDK Integration Epic](docs/epics/sdk-integration.md)
+- [Archived Documentation](docs/archive/webui-migration/)
 
 ## Contributing
 
