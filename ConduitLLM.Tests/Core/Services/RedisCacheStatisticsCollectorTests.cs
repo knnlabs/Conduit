@@ -36,6 +36,9 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(new HashEntry[0]);
             _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(true);
+            // Also setup the overload with SortedSetWhen parameter
+            _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<SortedSetWhen>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
             _mockDatabase.Setup(db => db.SortedSetRemoveRangeByRankAsync(It.IsAny<RedisKey>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(0L);
             _mockDatabase.Setup(db => db.PublishAsync(It.IsAny<RedisChannel>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
@@ -121,11 +124,12 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             await _collector.RecordOperationAsync(operation);
 
-            // Assert - Match the actual signature without When parameter
+            // Assert - Match the actual signature with SortedSetWhen parameter
             _mockDatabase.Verify(db => db.SortedSetAddAsync(
                 It.Is<RedisKey>(k => k.ToString().Contains("conduit:cache:response") && k.ToString().Contains("ProviderHealth") && k.ToString().Contains("Get")),
                 It.IsAny<RedisValue>(),
                 25.0,
+                It.IsAny<SortedSetWhen>(),
                 It.IsAny<CommandFlags>()), Times.Once);
         }
 

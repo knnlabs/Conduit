@@ -133,6 +133,21 @@ namespace ConduitLLM.Tests.Core.Services
                         return true;
                     }
                 });
+                
+            // Also setup the overload with SortedSetWhen parameter (some implementations may use this)
+            _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<SortedSetWhen>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync((RedisKey key, RedisValue member, double score, SortedSetWhen when, CommandFlags flags) =>
+                {
+                    lock (_lockObj)
+                    {
+                        var keyStr = key.ToString();
+                        if (!_sortedSetStorage.ContainsKey(keyStr))
+                            _sortedSetStorage[keyStr] = new List<(RedisValue, double)>();
+                        
+                        _sortedSetStorage[keyStr].Add((member, score));
+                        return true;
+                    }
+                });
             
             // Also setup the overload with When parameter for other tests
             _mockDatabase.Setup(db => db.SortedSetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<double>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
@@ -466,6 +481,18 @@ namespace ConduitLLM.Tests.Core.Services
             }
 
             // Assert
+            // First verify that response times were actually recorded
+            var getKey1 = $"conduit:cache:response:{region}:Get:instance-1";
+            var getKey2 = $"conduit:cache:response:{region}:Get:instance-2";
+            
+            lock (_lockObj)
+            {
+                _sortedSetStorage.Should().ContainKey(getKey1);
+                _sortedSetStorage.Should().ContainKey(getKey2);
+                _sortedSetStorage[getKey1].Should().HaveCount(10);
+                _sortedSetStorage[getKey2].Should().HaveCount(10);
+            }
+            
             var stats = await instance1.GetAggregatedStatisticsAsync(region);
             
             // Average should be around 55ms (sum of all times / count)
@@ -552,7 +579,8 @@ namespace ConduitLLM.Tests.Core.Services
             // Each operation with DataSizeBytes makes 4 HashIncrement calls (2 for Hit, 2 for DataBytes)
             // We make 5 operations, so we expect at least some calls before failure
             callCount.Should().BeGreaterThan(3);
-            exceptions.Should().NotBeEmpty("Some operations should fail after Redis connection errors");
+            // RedisCacheStatisticsCollector handles errors gracefully, so no exceptions should bubble up
+            exceptions.Should().BeEmpty("Redis failures should be handled gracefully without throwing exceptions");
         }
 
         [Fact]
