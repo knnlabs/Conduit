@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OPENAPI_SPEC="$PROJECT_ROOT/ConduitLLM.Http/openapi.yaml"
-OUTPUT_DIR="$PROJECT_ROOT/Clients/generated"
+OUTPUT_DIR="$PROJECT_ROOT/SDKs/generated"
 
 echo "Generating API clients from OpenAPI specification..."
 echo "OpenAPI spec: $OPENAPI_SPEC"

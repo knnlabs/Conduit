@@ -9,7 +9,7 @@ Module not found: Can't resolve '@tanstack/react-query'
 ```
 
 ## Root Cause
-The issue occurs when using local file dependencies (`file:../Clients/Node/Core`) with tsup bundling. The bundled output references peer dependencies that webpack can't resolve properly in the Next.js build process.
+The issue occurs when using local file dependencies (`file:../SDKs/Node/Core`) with tsup bundling. The bundled output references peer dependencies that webpack can't resolve properly in the Next.js build process.
 
 ## Current Workaround
 The `ConduitProviders` component has been temporarily disabled, and the WebUI continues to use its existing API route hooks instead of the SDK React Query hooks.

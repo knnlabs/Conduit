@@ -19,9 +19,9 @@
   "dependencies": {
     "@clerk/nextjs": "^6.25.4",
     "@hello-pangea/dnd": "^18.0.1",
-    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
-    "@knn_labs/conduit-common": "file:../Clients/Node/Common",
-    "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
+    "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin",
+    "@knn_labs/conduit-common": "file:../SDKs/Node/Common",
+    "@knn_labs/conduit-core-client": "file:../SDKs/Node/Core",
     "@mantine/carousel": "^8.1.2",
     "@mantine/charts": "^8.1.2",
     "@mantine/code-highlight": "^8.1.2",

@@ -42,8 +42,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Clients\DotNet\ConduitLLM.AdminClient\src\ConduitLLM.AdminClient.csproj" />
-    <ProjectReference Include="..\Clients\DotNet\ConduitLLM.CoreClient\src\ConduitLLM.CoreClient.csproj" />
+    <ProjectReference Include="..\SDKs\DotNet\ConduitLLM.AdminClient\src\ConduitLLM.AdminClient.csproj" />
+    <ProjectReference Include="..\SDKs\DotNet\ConduitLLM.CoreClient\src\ConduitLLM.CoreClient.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
   </ItemGroup>
 

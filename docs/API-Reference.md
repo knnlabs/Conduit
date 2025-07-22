@@ -11,8 +11,8 @@ ConduitLLM provides two distinct APIs:
 
 Both APIs are available through official Node.js SDKs with full TypeScript support:
 
-- **[@knn_labs/conduit-core-client](../Clients/Node/Core/)**: Type-safe client for LLM API (v1.0.0+)
-- **[@knn_labs/conduit-admin-client](../Clients/Node/Admin/)**: Type-safe client for Admin API (v2.0.0+)
+- **[@knn_labs/conduit-core-client](../SDKs/Node/Core/)**: Type-safe client for LLM API (v1.0.0+)
+- **[@knn_labs/conduit-admin-client](../SDKs/Node/Admin/)**: Type-safe client for Admin API (v2.0.0+)
 
 ### Recent SDK Updates (v2.0.0 / v1.0.0)
 

@@ -1,34 +1,34 @@
-# Conduit Client Libraries
+# Conduit SDKs
 
-This directory contains client libraries for the Conduit API across multiple programming languages and platforms.
+This directory contains SDKs for the Conduit API across multiple programming languages and platforms.
 
 ## 📁 Directory Structure
 
 ```
-Clients/
-├── Node/                   # Node.js/TypeScript clients
-│   ├── Admin/             # Admin API client
-│   ├── Core/              # Core API client (planned)
-│   └── Realtime/          # Realtime/WebSocket client (planned)
-├── Python/                # Python clients (planned)
+SDKs/
+├── Node/                   # Node.js/TypeScript SDKs
+│   ├── Admin/             # Admin API SDK
+│   ├── Core/              # Core API SDK (planned)
+│   └── Realtime/          # Realtime/WebSocket SDK (planned)
+├── Python/                # Python SDKs (planned)
 │   ├── Admin/
 │   ├── Core/
 │   └── Realtime/
-├── Go/                    # Go clients (planned)
+├── Go/                    # Go SDKs (planned)
 │   ├── Admin/
 │   ├── Core/
 │   └── Realtime/
-├── DotNet/                # .NET clients (planned)
+├── DotNet/                # .NET SDKs (planned)
 │   ├── Admin/
 │   ├── Core/
 │   └── Realtime/
 └── README.md              # This file
 ```
 
-## 🚀 Available Clients
+## 🚀 Available SDKs
 
 ### Node.js/TypeScript
-- **Admin API Client** (`Clients/Node/Admin/`) - ✅ Available
+- **Admin API SDK** (`SDKs/Node/Admin/`) - ✅ Available
   - Full TypeScript support with comprehensive type definitions
   - Automatic retry logic and error handling
   - Caching support for improved performance
@@ -37,19 +37,19 @@ Clients/
   - **Installation**: `npm install @conduit/admin-client`
 
 ### Python (Planned)
-- **Admin API Client** - 🔄 Coming Soon
-- **Core API Client** - 🔄 Coming Soon
-- **Realtime Client** - 🔄 Coming Soon
+- **Admin API SDK** - 🔄 Coming Soon
+- **Core API SDK** - 🔄 Coming Soon
+- **Realtime SDK** - 🔄 Coming Soon
 
 ### Go (Planned)
-- **Admin API Client** - 🔄 Coming Soon
-- **Core API Client** - 🔄 Coming Soon
-- **Realtime Client** - 🔄 Coming Soon
+- **Admin API SDK** - 🔄 Coming Soon
+- **Core API SDK** - 🔄 Coming Soon
+- **Realtime SDK** - 🔄 Coming Soon
 
 ### .NET (Planned)
-- **Admin API Client** - 🔄 Coming Soon
-- **Core API Client** - 🔄 Coming Soon
-- **Realtime Client** - 🔄 Coming Soon
+- **Admin API SDK** - 🔄 Coming Soon
+- **Core API SDK** - 🔄 Coming Soon
+- **Realtime SDK** - 🔄 Coming Soon
 
 ## 🎯 API Types
 
@@ -72,14 +72,14 @@ Clients/
 
 ## 🔧 Development Guidelines
 
-### Adding New Clients
+### Adding New SDKs
 
 1. **Choose the appropriate directory** (`Node/`, `Python/`, `Go/`, `DotNet/`)
 2. **Create service subdirectory** (`Admin/`, `Core/`, `Realtime/`)
 3. **Follow platform conventions** for package structure and naming
 4. **Include comprehensive documentation** and usage examples
 5. **Add appropriate testing** and CI/CD pipelines
-6. **Update this README** with the new client information
+6. **Update this README** with the new SDK information
 
 ### Platform-Specific Guidelines
 
@@ -90,7 +90,7 @@ Clients/
 
 ## 📚 Documentation
 
-Each client library includes:
+Each SDK includes:
 - **README.md** - Installation and basic usage
 - **API Documentation** - Comprehensive API reference
 - **Examples** - Code samples and common use cases
@@ -112,4 +112,4 @@ Each client library includes:
 
 ---
 
-*This multi-platform approach ensures developers can use Conduit with their preferred programming language while maintaining consistency across all client libraries.*
+*This multi-platform approach ensures developers can use Conduit with their preferred programming language while maintaining consistency across all SDKs.*

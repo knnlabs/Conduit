@@ -370,5 +370,5 @@ interface SignalRConfig {
 
 For migration assistance:
 - Review the [Migration Guide](./SDK-TYPE-SAFETY-MIGRATION-GUIDE.md)
-- Check [examples directory](../Clients/Node/*/examples/) for updated patterns
+- Check [examples directory](../SDKs/Node/*/examples/) for updated patterns
 - Create issues at [GitHub Issues](https://github.com/knnlabs/Conduit/issues)

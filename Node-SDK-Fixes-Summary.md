@@ -15,8 +15,8 @@ This document summarizes the fixes made to the ConduitLLM Node.js SDK to address
 - Updated the task status endpoint to use the correct path with `/tasks/`
 
 **Files Modified**:
-- `/Clients/Node/Core/src/services/VideosService.ts`
-- `/Clients/Node/Core/src/constants/endpoints.ts`
+- `/SDKs/Node/Core/src/services/VideosService.ts`
+- `/SDKs/Node/Core/src/constants/endpoints.ts`
 
 ### 2. ❌ Image Edit/Variations - Not Fixed
 **Status**: These endpoints (`/v1/images/edits` and `/v1/images/variations`) are defined in the SDK but not implemented in the Core API.
@@ -24,7 +24,7 @@ This document summarizes the fixes made to the ConduitLLM Node.js SDK to address
 **Action Taken**: Added comments in the endpoints file noting that these endpoints are not implemented.
 
 **Files Modified**:
-- `/Clients/Node/Core/src/constants/endpoints.ts`
+- `/SDKs/Node/Core/src/constants/endpoints.ts`
 
 ### 3. ✅ Health Endpoints - Fixed Wrong Paths
 **Problem**: The SDK was using wrong health endpoint paths (`/health/live`, `/health/ready`) and trying to use authenticated endpoints when the health endpoint is at root level without authentication.
@@ -35,7 +35,7 @@ This document summarizes the fixes made to the ConduitLLM Node.js SDK to address
 - Added comments explaining that health checks don't require authentication
 
 **Files Modified**:
-- `/Clients/Node/Core/src/services/HealthService.ts`
+- `/SDKs/Node/Core/src/services/HealthService.ts`
 
 ### 4. ✅ Batch Operations - Updated Documentation
 **Problem**: The SDK defined a generic `/v1/batch` endpoint that doesn't exist. The Core API uses specific batch endpoints.
@@ -46,7 +46,7 @@ This document summarizes the fixes made to the ConduitLLM Node.js SDK to address
 - The `BatchOperationsService.ts` was already using the correct specific endpoints
 
 **Files Modified**:
-- `/Clients/Node/Core/src/constants/endpoints.ts`
+- `/SDKs/Node/Core/src/constants/endpoints.ts`
 
 ### 5. ✅ Missing Embeddings Support - Added
 **Problem**: The Core API has a `/v1/embeddings` endpoint but it was missing from the SDK.
@@ -63,13 +63,13 @@ This document summarizes the fixes made to the ConduitLLM Node.js SDK to address
 - Exported all embeddings types and services in `index.ts`
 
 **New Files Created**:
-- `/Clients/Node/Core/src/models/embeddings.ts`
-- `/Clients/Node/Core/src/services/EmbeddingsService.ts`
+- `/SDKs/Node/Core/src/models/embeddings.ts`
+- `/SDKs/Node/Core/src/services/EmbeddingsService.ts`
 
 **Files Modified**:
-- `/Clients/Node/Core/src/constants/endpoints.ts`
-- `/Clients/Node/Core/src/client/ConduitCoreClient.ts`
-- `/Clients/Node/Core/src/index.ts`
+- `/SDKs/Node/Core/src/constants/endpoints.ts`
+- `/SDKs/Node/Core/src/client/ConduitCoreClient.ts`
+- `/SDKs/Node/Core/src/index.ts`
 
 ## Additional Features Added
 
@@ -97,7 +97,7 @@ The Node.js SDK now includes comprehensive JSDoc examples for all embeddings met
 ## Build Status
 The Node.js SDK should build successfully with these changes. Run:
 ```bash
-cd Clients/Node/Core
+cd SDKs/Node/Core
 npm install
 npm run build
 ```

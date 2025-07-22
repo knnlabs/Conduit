@@ -6,7 +6,7 @@ set -e
 
 echo "🔧 Fixing Admin Client ESLint errors..."
 
-cd Clients/Node/Admin
+cd SDKs/Node/Admin
 
 # Count initial errors
 INITIAL_ERRORS=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1 || echo "0")

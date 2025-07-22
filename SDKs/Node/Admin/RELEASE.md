@@ -1,6 +1,6 @@
 # Release Strategy for Conduit Admin Client
 
-> **Location**: `Clients/Node/Admin/` - Part of the multi-platform Conduit client library collection.
+> **Location**: `SDKs/Node/Admin/` - Part of the multi-platform Conduit SDK collection.
 
 ## Automated Publishing
 

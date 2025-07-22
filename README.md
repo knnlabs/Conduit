@@ -25,21 +25,21 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 
 ## 🚧 Project Status
 
-> **Note**: ConduitLLM is actively under development. We recommend using the provided Client SDKs for the most stable integration experience.
+> **Note**: ConduitLLM is actively under development. We recommend using the provided SDKs for the most stable integration experience.
 
 ### ✅ **Production Ready Features**
 - **Text Generation**: Fully tested with OpenAI, Anthropic, and MiniMax providers
 - **Image Generation**: Complete implementation with manual testing across multiple providers  
 - **Video Generation**: Feature complete with provider integration
-- **Client SDKs**: Stable APIs for Node.js and other platforms
+- **SDKs**: Stable APIs for Node.js and other platforms
 
 ### ⚠️ **In Development**
 - **Audio Support**: Not feature complete - expect significant changes in upcoming releases
-- **Core & Admin APIs**: May evolve without backward compatibility - use Client SDKs instead
+- **Core & Admin APIs**: May evolve without backward compatibility - use SDKs instead
 
 ### 💡 **Recommended Integration**
 ```bash
-# Use Client SDKs for stable integration
+# Use SDKs for stable integration
 npm install @knn_labs/conduit-core-client
 npm install @knn_labs/conduit-admin-client
 ```

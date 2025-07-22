@@ -18,5 +18,5 @@ echo "   - Core API: ConduitLLM.Http/openapi-core.json"
 echo "   - Admin API: ConduitLLM.Admin/openapi-admin.json"
 
 # Generate TypeScript types
-cd Clients/Node/scripts
+cd SDKs/Node/scripts
 npm run generate:from-files

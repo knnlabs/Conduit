@@ -26,7 +26,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
   3. Calls Admin SDK: `adminClient.providers.testConnectionById(numericId)`
 
 ### 4. Admin SDK
-- File: `Clients/Node/Admin/src/services/ProviderService.ts`
+- File: `SDKs/Node/Admin/src/services/ProviderService.ts`
 - Makes HTTP request to: `POST /api/providercredentials/test/{id}`
 - Target: Admin API on port 5002
 

@@ -367,8 +367,8 @@ Special thanks to:
 - [Discussions](https://github.com/knnlabs/Conduit/discussions)
 
 ### Examples
-- [Admin SDK Examples](../Clients/Node/Admin/examples/)
-- [Core SDK Examples](../Clients/Node/Core/examples/)
+- [Admin SDK Examples](../SDKs/Node/Admin/examples/)
+- [Core SDK Examples](../SDKs/Node/Core/examples/)
 
 ---
 

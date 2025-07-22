@@ -6,22 +6,22 @@ WORKDIR /app
 
 # IMPORTANT: This is a monorepo where packages depend on each other via file: references
 # The WebUI package.json contains:
-#   "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin"
-#   "@knn_labs/conduit-core-client": "file:../Clients/Node/Core"
+#   "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin"
+#   "@knn_labs/conduit-core-client": "file:../SDKs/Node/Core"
 # Therefore, we MUST copy the entire monorepo structure before running npm install
 # Otherwise npm will timeout trying to fetch these packages from the registry
 COPY . .
 
 # Build Common package first (base dependency for other packages)
-WORKDIR /app/Clients/Node/Common
+WORKDIR /app/SDKs/Node/Common
 RUN npm install --no-audit --no-fund && npm run build
 
 # Build Admin SDK next (depends on Common package)
-WORKDIR /app/Clients/Node/Admin
+WORKDIR /app/SDKs/Node/Admin
 RUN npm install --no-audit --no-fund && npm run build
 
 # Build Core SDK next (depends on Common package)
-WORKDIR /app/Clients/Node/Core
+WORKDIR /app/SDKs/Node/Core
 RUN npm install --no-audit --no-fund && npm run build
 
 # Build WebUI last (depends on Admin and Core SDKs via file: references)
@@ -55,9 +55,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
 # IMPORTANT: We must also copy the SDK packages because WebUI's node_modules contains
 # symlinks to these local packages (due to file: references in package.json)
 # Without these, the runtime will fail to resolve the packages
-COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Common /app/Clients/Node/Common
-COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Admin /app/Clients/Node/Admin
-COPY --from=builder --chown=nextjs:nodejs /app/Clients/Node/Core /app/Clients/Node/Core
+COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Common /app/SDKs/Node/Common
+COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Admin /app/SDKs/Node/Admin
+COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Core /app/SDKs/Node/Core
 
 # Switch to non-root user
 USER nextjs
