@@ -132,6 +132,7 @@ builder.Services.AddOpenTelemetry()
 
 // Register monitoring services
 builder.Services.AddSingleton<ConduitLLM.Http.Services.SignalRMetricsService>();
+// TODO: Debug startup hang (issue #562)
 builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMetricsService>(provider => 
     provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
 
@@ -156,7 +157,8 @@ builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessag
 builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Metrics.SignalRMetrics>();
 builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalROpenTelemetryService>();
 
-builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
+// TODO: Fix blocking Redis connection during startup (issue #562)
+// builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.TaskProcessingMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
@@ -248,9 +250,9 @@ builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ITaskHub, ConduitLLM.Ht
 
 // Register Batch Operation Services
 builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IBatchOperationHistoryRepository, ConduitLLM.Configuration.Repositories.BatchOperationHistoryRepository>();
-builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Http.Services.BatchOperationHistoryService>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Http.Services.BatchOperationHistoryService>();
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationNotificationService, ConduitLLM.Http.Services.BatchOperationNotificationService>();
-builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchSpendUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchVirtualKeyUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchWebhookSendOperation, ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
@@ -390,10 +392,7 @@ builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookCircuitBreaker>(s
         counterResetDuration: TimeSpan.FromMinutes(15));
 });
 
-// Discovery providers moved to Admin API - Core API should not handle discovery
-
 // Virtual Key service registration will be done after Redis configuration
-// Discovery service moved to Admin API - Core API should not handle discovery
 
 // Register cache service based on configuration
 builder.Services.AddCacheService(builder.Configuration);
@@ -439,15 +438,21 @@ else
 // Register Virtual Key service with optional Redis caching
 if (!string.IsNullOrEmpty(redisConnectionString))
 {
+    Console.WriteLine($"[Conduit] Redis connection string configured: {redisConnectionString}");
+    
     // Register Redis connection factory for proper connection pooling
     builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
     
     // Use Redis-cached Virtual Key service for high-performance validation
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
+        Console.WriteLine("[Conduit] Creating Redis connection during service registration...");
         var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
         var connectionTask = factory.GetConnectionAsync(redisConnectionString);
-        return connectionTask.GetAwaiter().GetResult();
+        Console.WriteLine("[Conduit] Waiting for Redis connection to complete...");
+        var connection = connectionTask.GetAwaiter().GetResult();
+        Console.WriteLine("[Conduit] Redis connection established successfully");
+        return connection;
     });
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
@@ -1015,7 +1020,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Register VirtualKeyHubFilter for SignalR authentication
-builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
+builder.Services.AddScoped<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
 
 // Register rate limit cache service for SignalR
 builder.Services.AddSingleton<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>();
@@ -1044,7 +1049,8 @@ builder.Services.AddHostedService<ConduitLLM.Http.Services.MetricsAggregationSer
     (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>());
 
 // Register Infrastructure and Business Metrics Background Services
-builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
+// TODO: Fix blocking Redis connection during startup (issue #562)
+// builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
 // Add SignalR for real-time navigation state updates
@@ -1192,6 +1198,7 @@ builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>
 });
 
 // Add cache statistics registration service
+// TODO: Fix blocking Redis connection during startup (issue #562)
 builder.Services.AddHostedService<ConduitLLM.Http.Services.CacheStatisticsRegistrationService>();
 
 var app = builder.Build();
@@ -1227,7 +1234,7 @@ if (!skipDatabaseInit)
             var maxRetries = 10;
             var retryDelay = 3000; // 3 seconds between retries
 
-            var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
+            var success = dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay).GetAwaiter().GetResult();
 
             if (success)
             {
@@ -1258,8 +1265,11 @@ else
     }
 }
 
+Console.WriteLine("[Conduit] Database initialization phase completed, configuring middleware...");
+
 // Enable CORS
 app.UseCors();
+Console.WriteLine("[Conduit] CORS configured");
 
 // Enable Swagger UI in development
 if (app.Environment.IsDevelopment())
@@ -1372,6 +1382,8 @@ app.MapSecureConduitHealthChecks(requireAuthorization: false);
 // Map Prometheus metrics endpoint for scraping
 app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
 Console.WriteLine("[Conduit API] Prometheus metrics endpoint registered at /metrics");
+
+Console.WriteLine("[Conduit API] Starting to map API endpoints...");
 
 // Add completions endpoint (legacy)
 app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>
@@ -1581,6 +1593,7 @@ app.MapPost("/v1/chat/completions", async (
     }
 });
 
+Console.WriteLine("[Conduit] All endpoints configured, starting application...");
 app.Run();
 
 // Helper class for OpenAI-compatible error response
@@ -1622,7 +1635,20 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
 
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
     {
-        LoadSettingsFromDatabaseAsync().GetAwaiter().GetResult(); // Load synchronously during startup
+        // Don't block startup - load settings in background
+        Task.Run(async () =>
+        {
+            try
+            {
+                await LoadSettingsFromDatabaseAsync();
+                _logger.LogInformation("Settings loaded from database successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load settings from database");
+            }
+        });
+        
         return next;
     }
 
