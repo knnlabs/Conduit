@@ -13,6 +13,7 @@ using StackExchange.Redis;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.HealthChecks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -183,21 +184,25 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Adds the cache registry for automatic discovery and management.
+        /// Adds the cache registry for cache region management.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        /// <param name="autoDiscover">Whether to automatically discover cache regions on startup.</param>
+        /// <param name="autoDiscover">DEPRECATED: Auto-discovery is no longer supported. This parameter is ignored.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCacheRegistry(this IServiceCollection services, bool autoDiscover = true)
+        public static IServiceCollection AddCacheRegistry(this IServiceCollection services, bool autoDiscover = false)
         {
             // Register the cache registry as singleton
             services.AddSingleton<ICacheRegistry, CacheRegistry>();
 
+            // Auto-discovery is permanently disabled to prevent startup hangs (Issue #562)
+            // All standard cache regions are pre-registered in CacheRegistry.InitializeDefaultRegions()
+            // For custom regions, use configuration-based registration instead
             if (autoDiscover)
             {
-                // Add hosted service for discovery
-                // Now runs as a BackgroundService with delayed startup to avoid blocking
-                services.AddHostedService<CacheDiscoveryHostedService>();
+                throw new NotSupportedException(
+                    "Cache auto-discovery is no longer supported due to performance issues. " +
+                    "All standard cache regions are automatically registered. " + 
+                    "For custom regions, use configuration-based registration.");
             }
 
             return services;
@@ -355,74 +360,55 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Discovers and registers cache regions from specific assemblies.
+        /// Registers custom cache regions from configuration.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        /// <param name="assemblies">Assemblies to scan.</param>
+        /// <param name="configuration">Configuration section containing custom regions.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection DiscoverCacheRegions(
+        public static IServiceCollection RegisterCustomCacheRegions(
             this IServiceCollection services,
-            params Assembly[] assemblies)
+            IConfiguration configuration)
         {
             services.AddSingleton<IHostedService>(provider =>
             {
                 var registry = provider.GetRequiredService<ICacheRegistry>();
-                var logger = provider.GetRequiredService<ILogger<CacheDiscoveryHostedService>>();
-                return new CacheDiscoveryHostedService(registry, logger, assemblies);
+                var logger = provider.GetRequiredService<ILogger<CacheRegistry>>();
+                
+                // Register custom regions from configuration
+                var customRegions = configuration.GetSection("Cache:CustomRegions");
+                foreach (var region in customRegions.GetChildren())
+                {
+                    var config = new CacheRegionConfig
+                    {
+                        Region = CacheRegion.Default, // Custom regions use Default enum
+                        Enabled = region.GetValue("enabled", true),
+                        DefaultTTL = region.GetValue("defaultTTL", TimeSpan.FromMinutes(15)),
+                        MaxTTL = region.GetValue<TimeSpan?>("maxTTL", null),
+                        UseDistributedCache = region.GetValue("useDistributedCache", true),
+                        UseMemoryCache = region.GetValue("useMemoryCache", true),
+                        Priority = region.GetValue("priority", 50),
+                        EvictionPolicy = region.GetValue("evictionPolicy", CacheEvictionPolicy.LRU),
+                        MaxEntries = region.GetValue<int?>("maxEntries", null),
+                        EnableDetailedStats = region.GetValue("enableDetailedStats", false)
+                    };
+                    
+                    registry.RegisterCustomRegion(region.Key, config);
+                    logger.LogInformation("Registered custom cache region '{RegionName}' from configuration", region.Key);
+                }
+                
+                return new NoOpHostedService();
             });
 
             return services;
         }
-    }
-
-    /// <summary>
-    /// Hosted service for automatic cache region discovery.
-    /// </summary>
-    internal class CacheDiscoveryHostedService : BackgroundService
-    {
-        private readonly ICacheRegistry _registry;
-        private readonly ILogger<CacheDiscoveryHostedService> _logger;
-        private readonly Assembly[]? _assemblies;
-
-        public CacheDiscoveryHostedService(
-            ICacheRegistry registry,
-            ILogger<CacheDiscoveryHostedService> logger,
-            Assembly[]? assemblies = null)
+        
+        /// <summary>
+        /// No-op hosted service for registration purposes.
+        /// </summary>
+        private class NoOpHostedService : IHostedService
         {
-            _registry = registry;
-            _logger = logger;
-            _assemblies = assemblies;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            // Delay discovery to avoid blocking startup
-            // This allows the application to start while discovery happens in the background
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-            
-            if (stoppingToken.IsCancellationRequested)
-                return;
-
-            _logger.LogInformation("Starting background cache region discovery...");
-
-            try
-            {
-                // Run the potentially slow assembly scanning in a background task
-                await Task.Run(async () =>
-                {
-                    var count = await _registry.DiscoverRegionsAsync(_assemblies);
-                    _logger.LogInformation("Cache region discovery completed. Found {Count} regions", count);
-                }, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("Cache region discovery was cancelled");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to discover cache regions");
-                // Don't throw - cache discovery failure shouldn't prevent app startup
-            }
+            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         }
     }
 }
