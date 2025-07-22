@@ -15,9 +15,9 @@ This document summarizes the fixes made to the ConduitLLM.CoreClient SDK to addr
 - Fixed TUI's `CoreApiService.cs` to remove the synchronous method
 
 **Files Modified**:
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Services/VideosService.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/ConduitCoreClient.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Services/VideosService.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/ConduitCoreClient.cs`
 - `/ConduitLLM.TUI/Services/CoreApiService.cs`
 
 ### 2. ❌ Image Edit/Variations - Not Fixed
@@ -35,9 +35,9 @@ This document summarizes the fixes made to the ConduitLLM.CoreClient SDK to addr
 - Removed the invalid `/v1/health` endpoint constant
 
 **Files Modified**:
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Services/HealthService.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Client/BaseClient.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Services/HealthService.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Client/BaseClient.cs`
 
 ### 4. ✅ Batch Operations - Updated Documentation
 **Problem**: The SDK defined a generic `/v1/batch` endpoint that doesn't exist. The Core API uses specific batch endpoints.
@@ -48,8 +48,8 @@ This document summarizes the fixes made to the ConduitLLM.CoreClient SDK to addr
 - Updated `BatchOperationsService.cs` to use the constants
 
 **Files Modified**:
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Services/BatchOperationsService.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Services/BatchOperationsService.cs`
 
 ### 5. ✅ Missing Embeddings Support - Added
 **Problem**: The Core API has a `/v1/embeddings` endpoint but it was missing from the SDK.
@@ -62,12 +62,12 @@ This document summarizes the fixes made to the ConduitLLM.CoreClient SDK to addr
 - Added extension methods for easy embeddings usage
 
 **New Files Created**:
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Models/Embeddings.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Services/EmbeddingsService.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Models/Embeddings.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Services/EmbeddingsService.cs`
 
 **Files Modified**:
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
-- `/Clients/DotNet/ConduitLLM.CoreClient/src/ConduitCoreClient.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/Constants/ApiEndpoints.cs`
+- `/SDKs/DotNet/ConduitLLM.CoreClient/src/ConduitCoreClient.cs`
 
 ## Additional Features Added
 

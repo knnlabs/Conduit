@@ -9,7 +9,7 @@ echo ""
 
 # Admin SDK
 echo "📦 Updating Admin SDK package-lock.json..."
-cd Clients/Node/Admin
+cd SDKs/Node/Admin
 rm -f package-lock.json
 npm install
 echo "✅ Admin SDK done"
@@ -25,7 +25,7 @@ echo ""
 
 # WebUI
 echo "📦 Updating WebUI package-lock.json..."
-cd ../../ConduitLLM.WebUI
+cd ../../../ConduitLLM.WebUI
 rm -f package-lock.json
 npm install
 echo "✅ WebUI done"
@@ -37,8 +37,8 @@ cd ..
 echo "🎉 All package-lock.json files have been regenerated!"
 echo ""
 echo "Please review and commit these changes:"
-echo "  git add Clients/Node/Admin/package-lock.json"
-echo "  git add Clients/Node/Core/package-lock.json"
+echo "  git add SDKs/Node/Admin/package-lock.json"
+echo "  git add SDKs/Node/Core/package-lock.json"
 echo "  git add ConduitLLM.WebUI/package-lock.json"
 echo "  git commit -m 'fix: regenerate package-lock.json files'"
 echo ""

@@ -12,8 +12,8 @@ This repository uses ESLint v9 with the new flat configuration format (`eslint.c
 
 ## Configuration Locations
 
-- **Admin Client**: `/Clients/Node/Admin/eslint.config.js`
-- **Core Client**: `/Clients/Node/Core/eslint.config.js`
+- **Admin SDK**: `/SDKs/Node/Admin/eslint.config.js`
+- **Core SDK**: `/SDKs/Node/Core/eslint.config.js`
 - **WebUI**: `/ConduitLLM.WebUI/eslint.config.js`
 
 ## Testing ESLint Configurations
@@ -36,7 +36,7 @@ This script will:
 To test a specific project:
 
 ```bash
-cd Clients/Node/Core
+cd SDKs/Node/Core
 npm run lint
 ```
 

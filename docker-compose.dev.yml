@@ -8,12 +8,12 @@ services:
     volumes:
       # Mount source code for hot reloading
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated
-      - ./Clients/Node/Admin:/app/Clients/Node/Admin:delegated
-      - ./Clients/Node/Core:/app/Clients/Node/Core:delegated
+      - ./SDKs/Node/Admin:/app/SDKs/Node/Admin:delegated
+      - ./SDKs/Node/Core:/app/SDKs/Node/Core:delegated
       # Prevent node_modules from being overwritten
       - /app/ConduitLLM.WebUI/node_modules
-      - /app/Clients/Node/Admin/node_modules
-      - /app/Clients/Node/Core/node_modules
+      - /app/SDKs/Node/Admin/node_modules
+      - /app/SDKs/Node/Core/node_modules
     environment:
       # Enable Next.js development mode
       NODE_ENV: development
@@ -26,4 +26,4 @@ services:
       FAST_REFRESH: "true"
     working_dir: /app/ConduitLLM.WebUI
     # HACKY FIX: Build SDKs and install deps before starting
-    command: sh -c "cd /app/Clients/Node/Admin && npm run build && cd /app/Clients/Node/Core && npm run build && cd /app/ConduitLLM.WebUI && npm install && npm run dev"
+    command: sh -c "cd /app/SDKs/Node/Admin && npm run build && cd /app/SDKs/Node/Core && npm run build && cd /app/ConduitLLM.WebUI && npm install && npm run dev"

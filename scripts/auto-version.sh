@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Auto-version script for Conduit Node.js clients
+# Auto-version script for Conduit Node.js SDKs
 # Usage: ./scripts/auto-version.sh [core|admin|both] [patch|minor|major]
 
 set -e
@@ -9,7 +9,7 @@ CLIENT=${1:-both}
 VERSION_TYPE=${2:-patch}
 CURRENT_BRANCH=$(git branch --show-current)
 
-echo "🔄 Auto-versioning Conduit Node.js clients..."
+echo "🔄 Auto-versioning Conduit Node.js SDKs..."
 echo "📂 Client: $CLIENT"
 echo "📦 Version type: $VERSION_TYPE"
 echo "🌿 Current branch: $CURRENT_BRANCH"
@@ -53,12 +53,12 @@ version_client() {
 
 # Version Core client
 if [[ "$CLIENT" == "core" || "$CLIENT" == "both" ]]; then
-    version_client "Clients/Node/Core" "Core"
+    version_client "SDKs/Node/Core" "Core"
 fi
 
 # Version Admin client
 if [[ "$CLIENT" == "admin" || "$CLIENT" == "both" ]]; then
-    version_client "Clients/Node/Admin" "Admin"
+    version_client "SDKs/Node/Admin" "Admin"
 fi
 
 echo ""

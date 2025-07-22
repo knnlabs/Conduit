@@ -184,4 +184,4 @@ If upgrading from previous SignalR implementations:
 
 ---
 
-*For framework-specific examples, see the [SDK Documentation](../../Clients/Node/docs/README.md).*
+*For framework-specific examples, see the [SDK Documentation](../../SDKs/Node/docs/README.md).*

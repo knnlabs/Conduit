@@ -38,7 +38,7 @@ docker-compose down -v || true
 # Step 2: Clean all build artifacts
 echo ""
 echo "Step 2: Cleaning build artifacts..."
-find . -type d -name "bin" -o -type d -name "obj" | grep -E "(ConduitLLM\.|Clients/)" | xargs rm -rf
+find . -type d -name "bin" -o -type d -name "obj" | grep -E "(ConduitLLM\.|SDKs/)" | xargs rm -rf
 
 # Step 3: Clear NuGet cache for local packages
 echo ""

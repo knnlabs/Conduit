@@ -49,8 +49,8 @@ fix_lint() {
 }
 
 # Fix all TypeScript projects
-fix_lint "Clients/Node/Admin" "Admin Client"
-fix_lint "Clients/Node/Core" "Core Client"
+fix_lint "SDKs/Node/Admin" "Admin Client"
+fix_lint "SDKs/Node/Core" "Core Client"
 fix_lint "ConduitLLM.WebUI" "WebUI"
 
 echo -e "\n📊 Summary:"

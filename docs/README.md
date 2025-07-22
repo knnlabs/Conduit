@@ -50,8 +50,8 @@ Welcome to the Conduit documentation! This guide will help you navigate through 
 ## 🛠️ Development
 
 ### SDKs & Clients
-- **[SDK Quick Reference](./sdk-quick-reference.md)** - Client library usage
-- **[Node.js SDK Documentation](../Clients/Node/docs/README.md)** - JavaScript/TypeScript clients
+- **[SDK Quick Reference](./sdk-quick-reference.md)** - SDK usage
+- **[Node.js SDK Documentation](../SDKs/Node/docs/README.md)** - JavaScript/TypeScript SDKs
 - **[SDK Best Practices](./sdk-best-practices.md)** - Integration patterns
 
 ### Development Guides

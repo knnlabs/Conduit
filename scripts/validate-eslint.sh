@@ -63,8 +63,8 @@ validate_eslint() {
 }
 
 # Validate all TypeScript projects
-validate_eslint "Clients/Node/Admin" "Admin Client"
-validate_eslint "Clients/Node/Core" "Core Client"
+validate_eslint "SDKs/Node/Admin" "Admin Client"
+validate_eslint "SDKs/Node/Core" "Core Client"
 validate_eslint "ConduitLLM.WebUI" "WebUI"
 
 echo -e "\n📊 Summary:"

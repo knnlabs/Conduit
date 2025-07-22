@@ -41,8 +41,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Project-Specific Build Commands
 - **WebUI**: `cd ConduitLLM.WebUI && npm run build`
 - **Core API**: `dotnet build ConduitLLM.Http`
-- **Admin Client**: `cd Clients/Node/Admin && npm run build`
-- **Core Client**: `cd Clients/Node/Core && npm run build`
+- **Admin Client**: `cd SDKs/Node/Admin && npm run build`
+- **Core Client**: `cd SDKs/Node/Core && npm run build`
 - **Full Solution**: `dotnet build`
 
 ### Incremental Development Rules
