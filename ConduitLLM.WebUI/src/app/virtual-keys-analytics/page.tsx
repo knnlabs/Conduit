@@ -303,7 +303,7 @@ export default function VirtualKeysAnalyticsPage() {
                 Total Cost
               </Text>
               <Text size="xl" fw={700}>
-                ${formatters.currency(aggregateMetrics.totalCost)}
+                {formatters.currency(aggregateMetrics.totalCost)}
               </Text>
             </Card>
           )}
@@ -449,7 +449,7 @@ export default function VirtualKeysAnalyticsPage() {
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs">
-                          <Text size="sm">${formatters.currency(key.usage.cost)}</Text>
+                          <Text size="sm">{formatters.currency(key.usage.cost)}</Text>
                           <ThemeIcon 
                             size="xs" 
                             variant="subtle" 
@@ -601,7 +601,7 @@ export default function VirtualKeysAnalyticsPage() {
                           <Table.Tr key={provider.name}>
                             <Table.Td>{provider.name}</Table.Td>
                             <Table.Td>{formatters.number(provider.requests)}</Table.Td>
-                            <Table.Td>${formatters.currency(provider.cost)}</Table.Td>
+                            <Table.Td>{formatters.currency(provider.cost)}</Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
@@ -631,7 +631,7 @@ export default function VirtualKeysAnalyticsPage() {
                           </Table.Td>
                           <Table.Td>{formatters.number(model.requests)}</Table.Td>
                           <Table.Td>{formatters.shortNumber(model.tokens)}</Table.Td>
-                          <Table.Td>${formatters.currency(model.cost)}</Table.Td>
+                          <Table.Td>{formatters.currency(model.cost)}</Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>

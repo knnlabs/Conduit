@@ -47,18 +47,20 @@ export async function GET(req: NextRequest) {
     try {
       // Fetch data from Admin SDK and Core SDK in parallel
       const promises = [
-        adminClient.analytics.getCostSummary(
+        adminClient.costDashboard.getCostSummary(
+          'daily', // timeframe
           startDate.toISOString().split('T')[0], // Extract date part only
           now.toISOString().split('T')[0]
         ),
         adminClient.analytics.getRequestLogs({
           startDate: startDate.toISOString(),
           endDate: now.toISOString(),
-          pageSize: 1000,
+          pageSize: 100, // Maximum allowed page size
           page: 1
         }),
         // Previous period data for change calculations
-        adminClient.analytics.getCostSummary(
+        adminClient.costDashboard.getCostSummary(
+          'daily', // timeframe
           previousStartDate.toISOString().split('T')[0],
           previousEndDate.toISOString().split('T')[0]
         ).catch(() => null), // Allow this to fail gracefully
@@ -81,11 +83,14 @@ export async function GET(req: NextRequest) {
       ] = await Promise.all(promises);
 
       // Import types for proper typing
-      type CostSummaryDto = { 
+      type CostDashboardDto = { 
         totalCost: number; 
-        totalInputTokens?: number; 
-        totalOutputTokens?: number;
-        costByKey: Array<{ requestCount: number }>;
+        last24HoursCost: number;
+        last7DaysCost: number;
+        last30DaysCost: number;
+        topModelsBySpend: Array<{ name: string; cost: number; percentage: number }>;
+        topProvidersBySpend: Array<{ name: string; cost: number; percentage: number }>;
+        topVirtualKeysBySpend: Array<{ name: string; cost: number; percentage: number }>;
       };
       type RequestLogPage = { totalCount: number; items: Array<{ 
         virtualKeyName?: string;
@@ -119,8 +124,10 @@ export async function GET(req: NextRequest) {
 
       // Calculate main metrics from available data, enhanced with real-time metrics
       const totalRequests = (currentRequestLogs as RequestLogPage)?.totalCount ?? (currentRequestLogs as RequestLogPage)?.items?.length ?? 0;
-      const totalCost = (currentCostSummary as CostSummaryDto)?.totalCost ?? 0;
-      const totalTokens = ((currentCostSummary as CostSummaryDto)?.totalInputTokens ?? 0) + ((currentCostSummary as CostSummaryDto)?.totalOutputTokens ?? 0);
+      const totalCost = (currentCostSummary as CostDashboardDto)?.totalCost ?? 0;
+      // Calculate total tokens from request logs since CostDashboard doesn't provide it
+      const totalTokens = (currentRequestLogs as RequestLogPage)?.items?.reduce((sum, log) => 
+        sum + (log.inputTokens ?? 0) + (log.outputTokens ?? 0), 0) ?? 0;
       
       // Get unique virtual keys count (enhanced with real-time data if available)
       const uniqueKeysFromLogs = new Set(
@@ -134,24 +141,17 @@ export async function GET(req: NextRequest) {
 
       // Calculate change percentages (derive from cost summary data)
       let requestsChange = 0;
-      const typedPreviousCostSummary = previousCostSummary as CostSummaryDto | null;
-      const typedCurrentCostSummary = currentCostSummary as CostSummaryDto;
+      const typedPreviousCostSummary = previousCostSummary as CostDashboardDto | null;
       
-      if (typedPreviousCostSummary && typedCurrentCostSummary.costByKey.length > 0 && typedPreviousCostSummary.costByKey.length > 0) {
-        const currentTotalRequests = typedCurrentCostSummary.costByKey.reduce((sum: number, key: { requestCount: number }) => sum + key.requestCount, 0);
-        const previousTotalRequests = typedPreviousCostSummary.costByKey.reduce((sum: number, key: { requestCount: number }) => sum + key.requestCount, 0);
-        if (previousTotalRequests > 0) {
-          requestsChange = ((currentTotalRequests - previousTotalRequests) / previousTotalRequests) * 100;
-        }
-      }
+      // Since CostDashboard doesn't provide request counts, we'll calculate from logs
+      // For now, set to 0 since we don't have previous period logs
+      requestsChange = 0;
       
       const costChange = (typedPreviousCostSummary && typedPreviousCostSummary.totalCost > 0)
         ? ((totalCost - typedPreviousCostSummary.totalCost) / typedPreviousCostSummary.totalCost) * 100 
         : 0;
-      const previousTokens = (typedPreviousCostSummary?.totalInputTokens ?? 0) + (typedPreviousCostSummary?.totalOutputTokens ?? 0);
-      const tokensChange = (typedPreviousCostSummary && previousTokens > 0)
-        ? ((totalTokens - previousTokens) / previousTokens) * 100 
-        : 0;
+      // Since we calculate tokens from logs, we can't get previous period tokens easily
+      const tokensChange = 0;
       const virtualKeysChange = 0; // This would require historical tracking
 
       // Build metrics object with real-time enhancements
@@ -537,21 +537,22 @@ export async function GET(req: NextRequest) {
 
       try {
         // Attempt to get cost summary separately as a fallback
-        const fallbackCostSummary = await adminClient.analytics.getCostSummary(
+        const fallbackCostSummary = await adminClient.costDashboard.getCostSummary(
+          'daily', // timeframe
           startDate.toISOString().split('T')[0],
           now.toISOString().split('T')[0]
         );
         
         partialData = {
           totalCost: fallbackCostSummary.totalCost ?? 0,
-          totalTokens: (fallbackCostSummary.totalInputTokens ?? 0) + (fallbackCostSummary.totalOutputTokens ?? 0),
+          totalTokens: 0, // Not available from CostDashboard
           // Basic provider data from cost summary
-          providerUsage: fallbackCostSummary.costByProvider?.map((provider: { providerName?: string; providerId?: string; requestCount: number; cost: number }) => ({
-            provider: provider.providerName ?? provider.providerId,
-            requests: provider.requestCount,
+          providerUsage: fallbackCostSummary.topProvidersBySpend?.map((provider: { name: string; cost: number; percentage: number }) => ({
+            provider: provider.name,
+            requests: 0, // Not available from CostDashboard
             cost: provider.cost,
             tokens: 0,
-            percentage: 0 // Will be calculated if we have total requests
+            percentage: provider.percentage
           })) ?? []
         };
         

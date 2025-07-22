@@ -222,6 +222,16 @@ export function IpRulesTable({
     );
   });
 
+  if (data.length === 0) {
+    return (
+      <Paper withBorder radius="md">
+        <Box p="xl" style={{ textAlign: 'center' }}>
+          <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
+        </Box>
+      </Paper>
+    );
+  }
+
   return (
     <Paper withBorder radius="md">
       <Box pos="relative">
@@ -248,12 +258,6 @@ export function IpRulesTable({
             <Table.Tbody>{rows}</Table.Tbody>
           </Table>
         </Table.ScrollContainer>
-
-        {data.length === 0 && (
-          <Box p="xl" style={{ textAlign: 'center' }}>
-            <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
-          </Box>
-        )}
       </Box>
     </Paper>
   );

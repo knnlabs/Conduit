@@ -12,7 +12,7 @@ export async function POST() {
       );
     }
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/check`, {
       method: 'POST',
       headers: new Headers([

@@ -2,8 +2,6 @@ import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { AnalyticsOptions } from '../models/common-types';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
 import {
-  CostSummaryDto,
-  CostByPeriodDto,
   RequestLogDto,
   RequestLogFilters,
   UsageMetricsDto,
@@ -31,83 +29,6 @@ const dateRangeSchema = z.object({
 
 
 export class AnalyticsService extends FetchBaseApiClient {
-  // Cost Analytics
-  async getCostSummary(dateRange: DateRange): Promise<CostSummaryDto> {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError('Invalid date range', { validationError: error });
-    }
-
-    const cacheKey = this.getCacheKey('cost-summary', dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get<CostSummaryDto>(ENDPOINTS.ANALYTICS.COST_SUMMARY, { ...dateRange }),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async getCostByPeriod(
-    dateRange: DateRange,
-    groupBy: 'hour' | 'day' | 'week' | 'month' = 'day'
-  ): Promise<CostByPeriodDto> {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError('Invalid date range', { validationError: error });
-    }
-
-    const params = { ...dateRange, groupBy };
-    const cacheKey = this.getCacheKey('cost-by-period', params);
-    return this.withCache(
-      cacheKey,
-      () => super.get<CostByPeriodDto>(ENDPOINTS.ANALYTICS.COST_BY_PERIOD, params),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async getCostByModel(dateRange: DateRange): Promise<{
-    models: ModelUsageDto[];
-    totalCost: number;
-  }> {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError('Invalid date range', { validationError: error });
-    }
-
-    const cacheKey = this.getCacheKey('cost-by-model', dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get<{ models: ModelUsageDto[]; totalCost: number }>(
-        ENDPOINTS.ANALYTICS.COST_BY_MODEL,
-        { ...dateRange }
-      ),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async getCostByKey(dateRange: DateRange): Promise<{
-    keys: KeyUsageDto[];
-    totalCost: number;
-  }> {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError('Invalid date range', { validationError: error });
-    }
-
-    const cacheKey = this.getCacheKey('cost-by-key', dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get<{ keys: KeyUsageDto[]; totalCost: number }>(
-        ENDPOINTS.ANALYTICS.COST_BY_KEY,
-        { ...dateRange }
-      ),
-      CACHE_TTL.SHORT
-    );
-  }
-
   // Request Logs
   async getRequestLogs(
     filters?: RequestLogFilters
@@ -196,22 +117,6 @@ export class AnalyticsService extends FetchBaseApiClient {
       CACHE_TTL.SHORT
     );
   }
-
-  // Convenience methods
-  async getTodayCosts(): Promise<CostSummaryDto> {
-    const today = new Date();
-    const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-    return this.getCostSummary({ startDate, endDate });
-  }
-
-  async getMonthCosts(): Promise<CostSummaryDto> {
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
-    return this.getCostSummary({ startDate, endDate });
-  }
-
 
   // Request logs export and analytics
   async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {

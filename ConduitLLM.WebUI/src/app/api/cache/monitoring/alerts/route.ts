@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const count = searchParams.get('count') ?? '10';
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts?count=${count}`, {
       headers: new Headers([
         ['Authorization', `Bearer ${apiKey}`],
@@ -53,7 +53,7 @@ export async function DELETE() {
       );
     }
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/alerts`, {
       method: 'DELETE',
       headers: new Headers([

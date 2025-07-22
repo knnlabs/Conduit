@@ -126,10 +126,10 @@ export const ENDPOINTS = {
 
   // Analytics & Cost Dashboard
   ANALYTICS: {
-    COST_SUMMARY: '/api/CostDashboard/summary',
-    COST_BY_PERIOD: '/api/CostDashboard/by-period',
-    COST_BY_MODEL: '/api/CostDashboard/by-model',
-    COST_BY_KEY: '/api/CostDashboard/by-key',
+    COST_SUMMARY: '/api/CostDashboard/summary', // DEPRECATED: Use COSTS.SUMMARY instead
+    COST_BY_PERIOD: '/api/CostDashboard/by-period', // DEPRECATED: Use COSTS endpoints
+    COST_BY_MODEL: '/api/CostDashboard/by-model', // DEPRECATED: Use COSTS endpoints
+    COST_BY_KEY: '/api/CostDashboard/by-key', // DEPRECATED: Use COSTS endpoints
     REQUEST_LOGS: '/api/Logs',
     REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
     

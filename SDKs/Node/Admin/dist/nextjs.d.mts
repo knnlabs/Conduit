@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bf as FetchConduitAdminClient } from './FetchConduitAdminClient-D6NInU34.mjs';
+import { bd as FetchConduitAdminClient } from './FetchConduitAdminClient-D4nt09xQ.mjs';
 import '@knn_labs/conduit-common';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';

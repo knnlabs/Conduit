@@ -11,7 +11,7 @@ export async function GET() {
       );
     }
 
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/thresholds`, {
       headers: new Headers([
         ['Authorization', `Bearer ${apiKey}`],
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body: unknown = await request.json();
-    const adminApiUrl = process.env.CONDUIT_ADMIN_API_URL ?? 'http://localhost:5001';
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
     const response = await fetch(`${adminApiUrl}/api/cache/monitoring/thresholds`, {
       method: 'PUT',
       headers: new Headers([

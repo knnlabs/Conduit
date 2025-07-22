@@ -127,9 +127,13 @@ var ENDPOINTS = {
   // Analytics & Cost Dashboard
   ANALYTICS: {
     COST_SUMMARY: "/api/CostDashboard/summary",
+    // DEPRECATED: Use COSTS.SUMMARY instead
     COST_BY_PERIOD: "/api/CostDashboard/by-period",
+    // DEPRECATED: Use COSTS endpoints
     COST_BY_MODEL: "/api/CostDashboard/by-model",
+    // DEPRECATED: Use COSTS endpoints
     COST_BY_KEY: "/api/CostDashboard/by-key",
+    // DEPRECATED: Use COSTS endpoints
     REQUEST_LOGS: "/api/Logs",
     REQUEST_LOG_BY_ID: (id) => `/api/Logs/${id}`,
     // Export management
@@ -2623,40 +2627,6 @@ var FetchAnalyticsService = class {
     return this.client["post"](
       ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
       params,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers
-      }
-    );
-  }
-  /**
-   * Get cost summary (legacy endpoint)
-   */
-  async getCostSummary(startDate, endDate, config) {
-    const queryParams = new URLSearchParams();
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-    const queryString = queryParams.toString();
-    const url = queryString ? `${ENDPOINTS.ANALYTICS.COST_SUMMARY}?${queryString}` : ENDPOINTS.ANALYTICS.COST_SUMMARY;
-    return this.client["get"](
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers
-      }
-    );
-  }
-  /**
-   * Get cost by period (legacy endpoint)
-   */
-  async getCostByPeriod(period, startDate, endDate, config) {
-    const queryParams = new URLSearchParams({ period });
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-    return this.client["get"](
-      `${ENDPOINTS.ANALYTICS.COST_BY_PERIOD}?${queryParams.toString()}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,

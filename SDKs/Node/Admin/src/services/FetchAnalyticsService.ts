@@ -5,8 +5,6 @@ import type {
   RequestLogParams,
   RequestLogPage,
   RequestLogDto,
-  CostSummaryDto,
-  CostByPeriodDto,
   ExportParams,
   ExportResult,
 } from '../models/analytics';
@@ -87,49 +85,6 @@ export class FetchAnalyticsService {
 
 
 
-  /**
-   * Get cost summary (legacy endpoint)
-   */
-  async getCostSummary(startDate?: string, endDate?: string, config?: RequestConfig): Promise<CostSummaryDto> {
-    const queryParams = new URLSearchParams();
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-
-    const queryString = queryParams.toString();
-    const url = queryString ? `${ENDPOINTS.ANALYTICS.COST_SUMMARY}?${queryString}` : ENDPOINTS.ANALYTICS.COST_SUMMARY;
-
-    return this.client['get']<CostSummaryDto>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get cost by period (legacy endpoint)
-   */
-  async getCostByPeriod(
-    period: 'hour' | 'day' | 'week' | 'month',
-    startDate?: string,
-    endDate?: string,
-    config?: RequestConfig
-  ): Promise<CostByPeriodDto> {
-    const queryParams = new URLSearchParams({ period });
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-
-    return this.client['get']<CostByPeriodDto>(
-      `${ENDPOINTS.ANALYTICS.COST_BY_PERIOD}?${queryParams.toString()}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Helper method to get export status

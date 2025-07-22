@@ -29,6 +29,13 @@ const nextConfig = {
       config.devtool = 'eval-source-map';
     }
     
+    // Disable minification
+    config.optimization = {
+      ...config.optimization,
+      minimize: false,
+      minimizer: [],
+    };
+    
     // Disable optimization in development
     if (dev) {
       config.optimization = {

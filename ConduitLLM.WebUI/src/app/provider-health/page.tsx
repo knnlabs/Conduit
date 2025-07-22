@@ -230,7 +230,7 @@ export default function ProviderHealthPage() {
       {/* Overall Health Summary */}
       <Grid>
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder>
+          <Card withBorder h={120}>
             <Group justify="space-between" mb="md">
               <div>
                 <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -255,7 +255,7 @@ export default function ProviderHealthPage() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder>
+          <Card withBorder h={120}>
             <Group justify="space-between" mb="md">
               <div>
                 <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -269,11 +269,14 @@ export default function ProviderHealthPage() {
                 <IconCircleCheck size={24} />
               </ThemeIcon>
             </Group>
+            <Text size="xs" c="dimmed">
+              Operating normally
+            </Text>
           </Card>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder>
+          <Card withBorder h={120}>
             <Group justify="space-between" mb="md">
               <div>
                 <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -287,11 +290,14 @@ export default function ProviderHealthPage() {
                 <IconAlertTriangle size={24} />
               </ThemeIcon>
             </Group>
+            <Text size="xs" c="dimmed">
+              Performance issues
+            </Text>
           </Card>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Card withBorder>
+          <Card withBorder h={120}>
             <Group justify="space-between" mb="md">
               <div>
                 <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -305,6 +311,9 @@ export default function ProviderHealthPage() {
                 <IconCircleX size={24} />
               </ThemeIcon>
             </Group>
+            <Text size="xs" c="dimmed">
+              Service unavailable
+            </Text>
           </Card>
         </Grid.Col>
       </Grid>
