@@ -1,8 +1,6 @@
 name: "CodeQL Scheduled Scan"
 
 on:
-  schedule:
-    - cron: '0 0 * * 0' # Weekly scan on Sundays at midnight
   workflow_dispatch: # Allow manual runs
     inputs:
       branch:
@@ -13,6 +11,10 @@ on:
         options:
           - master
           - dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   DOTNET_VERSION: '9.0.x'

@@ -8,12 +8,16 @@ on:
       - '**/*.csproj'
   push:
     branches:
-      - main
+      - master
       - dev
     paths:
       - '**.cs'
       - '**/Migrations/**'
       - '**/*.csproj'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   validate-migrations:
