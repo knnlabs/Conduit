@@ -201,7 +201,11 @@ namespace ConduitLLM.Core.Services
                 ? assemblies 
                 : AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.FullName) && 
-                            !a.FullName.StartsWith("System") && !a.FullName.StartsWith("Microsoft"))
+                            // Only scan ConduitLLM assemblies to avoid scanning all dependencies
+                            a.FullName.StartsWith("ConduitLLM", StringComparison.OrdinalIgnoreCase) &&
+                            // Skip test assemblies
+                            !a.FullName.Contains(".Tests", StringComparison.OrdinalIgnoreCase) &&
+                            !a.FullName.Contains(".Test.", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
             var discoveredCount = 0;

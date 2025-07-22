@@ -274,9 +274,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(expectedUrl, response.url.ToString());
             Assert.Equal(30, (int)response.expiration_minutes);
             
-            // Check expires_at is approximately correct (within 1 second)
+            // Check expires_at is approximately correct (within 5 seconds to account for test execution time)
             var expiresAt = DateTime.Parse(response.expires_at.ToString());
-            Assert.True(Math.Abs((expiresAt - DateTime.UtcNow.AddMinutes(30)).TotalSeconds) < 1);
+            var expectedExpiresAt = DateTime.UtcNow.AddMinutes(30);
+            var timeDifference = Math.Abs((expiresAt - expectedExpiresAt).TotalSeconds);
+            Assert.True(timeDifference < 5, $"Expected expires_at to be within 5 seconds of {expectedExpiresAt:O}, but was {expiresAt:O} (difference: {timeDifference:F1} seconds)");
         }
 
         [Fact]

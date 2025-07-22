@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,6 +13,7 @@ using StackExchange.Redis;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.HealthChecks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -114,10 +117,29 @@ namespace ConduitLLM.Core.Extensions
             // Register statistics store for Redis
             services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
 
-            // Register Redis connection multiplexer
+            // Register Redis connection multiplexer with lazy initialization
             services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
-                return ConnectionMultiplexer.Connect(redisConnectionString);
+                var logger = sp.GetRequiredService<ILogger<CacheManager>>();
+                logger.LogInformation("Creating Redis connection multiplexer (lazy initialization)");
+                
+                // Parse connection string and set non-blocking options
+                var configOptions = ConfigurationOptions.Parse(redisConnectionString);
+                configOptions.AbortOnConnectFail = false; // Don't block on startup
+                configOptions.ConnectTimeout = 5000; // 5 second timeout
+                configOptions.ConnectRetry = 3;
+                
+                try
+                {
+                    var multiplexer = ConnectionMultiplexer.Connect(configOptions);
+                    logger.LogInformation("Redis connection multiplexer created successfully");
+                    return multiplexer;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to create Redis connection multiplexer. Cache functionality may be degraded.");
+                    throw;
+                }
             });
 
             // Register distributed statistics collector
@@ -162,20 +184,25 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Adds the cache registry for automatic discovery and management.
+        /// Adds the cache registry for cache region management.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        /// <param name="autoDiscover">Whether to automatically discover cache regions on startup.</param>
+        /// <param name="autoDiscover">DEPRECATED: Auto-discovery is no longer supported. This parameter is ignored.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCacheRegistry(this IServiceCollection services, bool autoDiscover = true)
+        public static IServiceCollection AddCacheRegistry(this IServiceCollection services, bool autoDiscover = false)
         {
             // Register the cache registry as singleton
             services.AddSingleton<ICacheRegistry, CacheRegistry>();
 
+            // Auto-discovery is permanently disabled to prevent startup hangs (Issue #562)
+            // All standard cache regions are pre-registered in CacheRegistry.InitializeDefaultRegions()
+            // For custom regions, use configuration-based registration instead
             if (autoDiscover)
             {
-                // Add hosted service for discovery
-                services.AddHostedService<CacheDiscoveryHostedService>();
+                throw new NotSupportedException(
+                    "Cache auto-discovery is no longer supported due to performance issues. " +
+                    "All standard cache regions are automatically registered. " + 
+                    "For custom regions, use configuration-based registration.");
             }
 
             return services;
@@ -191,7 +218,7 @@ namespace ConduitLLM.Core.Extensions
         public static IServiceCollection AddCacheInfrastructure(
             this IServiceCollection services, 
             IConfiguration configuration,
-            bool autoDiscover = true)
+            bool autoDiscover = false) // DISABLED: Issue #562 - causes startup hang
         {
             // Ensure memory cache is registered
             services.AddMemoryCache();
@@ -217,22 +244,43 @@ namespace ConduitLLM.Core.Extensions
                 });
                 services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
                 
-                // Register Redis connection multiplexer
-                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                // Use existing RedisConnectionFactory if available, otherwise register a lazy connection
+                services.TryAddSingleton<IConnectionMultiplexer>(sp =>
                 {
-                    return ConnectionMultiplexer.Connect(redisConnection);
+                    var logger = sp.GetRequiredService<ILogger<CacheManager>>();
+                    
+                    // Parse connection string and set non-blocking options
+                    logger.LogInformation("Creating Redis connection for cache infrastructure: {Connection}", 
+                        redisConnection.Contains("password=") ? redisConnection.Replace("password=", "password=******") : redisConnection);
+                    var configOptions = ConfigurationOptions.Parse(redisConnection);
+                    configOptions.AbortOnConnectFail = false; // Don't block on startup
+                    configOptions.ConnectTimeout = 5000; // 5 second timeout
+                    configOptions.ConnectRetry = 3;
+                    
+                    try
+                    {
+                        return ConnectionMultiplexer.Connect(configOptions);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to create Redis connection. Cache functionality may be degraded.");
+                        throw;
+                    }
                 });
 
                 // Register distributed statistics collector
                 services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
                 
                 // Register statistics health check
-                services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
-                services.AddHostedService(sp => 
-            {
-                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
-                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
-            });
+                // IMPORTANT: Disabled to prevent startup hang (issue #562)
+                // Even with non-blocking Redis connection, this service causes hangs
+                // TODO: Implement proper async initialization pattern
+                // services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
+                // services.AddHostedService(sp => 
+                // {
+                //     var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
+                //     return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
+                // });
             }
 
             // Register statistics collector (hybrid if Redis is available, local otherwise)
@@ -267,18 +315,37 @@ namespace ConduitLLM.Core.Extensions
 
                 var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options, statisticsCollector);
 
-                // Sync configurations from registry if available
+                // Defer registry sync to avoid blocking during startup
                 if (registry != null)
                 {
-                    foreach (var (region, config) in registry.GetAllRegions())
+                    // Use Task.Run to sync configurations in the background
+                    Task.Run(async () =>
                     {
-                        cacheManager.UpdateRegionConfigAsync(config).GetAwaiter().GetResult();
-                    }
+                        try
+                        {
+                            foreach (var (region, config) in registry.GetAllRegions())
+                            {
+                                await cacheManager.UpdateRegionConfigAsync(config);
+                            }
+                            logger.LogInformation("Cache manager synchronized with registry");
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Failed to sync cache configurations from registry");
+                        }
+                    });
 
-                    // Subscribe to registry changes
-                    registry.RegionUpdated += (sender, args) =>
+                    // Subscribe to registry changes (make async)
+                    registry.RegionUpdated += async (sender, args) =>
                     {
-                        cacheManager.UpdateRegionConfigAsync(args.Config).GetAwaiter().GetResult();
+                        try
+                        {
+                            await cacheManager.UpdateRegionConfigAsync(args.Config);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Failed to update cache region {Region}", args.Region);
+                        }
                     };
                 }
 
@@ -293,64 +360,55 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Discovers and registers cache regions from specific assemblies.
+        /// Registers custom cache regions from configuration.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        /// <param name="assemblies">Assemblies to scan.</param>
+        /// <param name="configuration">Configuration section containing custom regions.</param>
         /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection DiscoverCacheRegions(
+        public static IServiceCollection RegisterCustomCacheRegions(
             this IServiceCollection services,
-            params Assembly[] assemblies)
+            IConfiguration configuration)
         {
             services.AddSingleton<IHostedService>(provider =>
             {
                 var registry = provider.GetRequiredService<ICacheRegistry>();
-                var logger = provider.GetRequiredService<ILogger<CacheDiscoveryHostedService>>();
-                return new CacheDiscoveryHostedService(registry, logger, assemblies);
+                var logger = provider.GetRequiredService<ILogger<CacheRegistry>>();
+                
+                // Register custom regions from configuration
+                var customRegions = configuration.GetSection("Cache:CustomRegions");
+                foreach (var region in customRegions.GetChildren())
+                {
+                    var config = new CacheRegionConfig
+                    {
+                        Region = CacheRegion.Default, // Custom regions use Default enum
+                        Enabled = region.GetValue("enabled", true),
+                        DefaultTTL = region.GetValue("defaultTTL", TimeSpan.FromMinutes(15)),
+                        MaxTTL = region.GetValue<TimeSpan?>("maxTTL", null),
+                        UseDistributedCache = region.GetValue("useDistributedCache", true),
+                        UseMemoryCache = region.GetValue("useMemoryCache", true),
+                        Priority = region.GetValue("priority", 50),
+                        EvictionPolicy = region.GetValue("evictionPolicy", CacheEvictionPolicy.LRU),
+                        MaxEntries = region.GetValue<int?>("maxEntries", null),
+                        EnableDetailedStats = region.GetValue("enableDetailedStats", false)
+                    };
+                    
+                    registry.RegisterCustomRegion(region.Key, config);
+                    logger.LogInformation("Registered custom cache region '{RegionName}' from configuration", region.Key);
+                }
+                
+                return new NoOpHostedService();
             });
 
             return services;
         }
-    }
-
-    /// <summary>
-    /// Hosted service for automatic cache region discovery.
-    /// </summary>
-    internal class CacheDiscoveryHostedService : IHostedService
-    {
-        private readonly ICacheRegistry _registry;
-        private readonly ILogger<CacheDiscoveryHostedService> _logger;
-        private readonly Assembly[]? _assemblies;
-
-        public CacheDiscoveryHostedService(
-            ICacheRegistry registry,
-            ILogger<CacheDiscoveryHostedService> logger,
-            Assembly[]? assemblies = null)
+        
+        /// <summary>
+        /// No-op hosted service for registration purposes.
+        /// </summary>
+        private class NoOpHostedService : IHostedService
         {
-            _registry = registry;
-            _logger = logger;
-            _assemblies = assemblies;
-        }
-
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Starting cache region discovery...");
-
-            try
-            {
-                var count = await _registry.DiscoverRegionsAsync(_assemblies);
-                _logger.LogInformation("Cache region discovery completed. Found {Count} regions", count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to discover cache regions");
-                // Don't throw - cache discovery failure shouldn't prevent app startup
-            }
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
+            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         }
     }
 }

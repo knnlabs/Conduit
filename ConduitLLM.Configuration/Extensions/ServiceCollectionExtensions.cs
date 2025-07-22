@@ -10,6 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Configuration.Extensions
@@ -124,11 +125,16 @@ namespace ConduitLLM.Configuration.Extensions
             // Register the ICacheService as a singleton but with factory-based initialization
             services.AddSingleton<ICacheService>(serviceProvider =>
             {
+                var logger = serviceProvider.GetRequiredService<ILogger<CacheServiceFactory>>();
+                logger.LogInformation("[CacheService] Creating cache service during service registration...");
+                
                 var factory = serviceProvider.GetRequiredService<CacheServiceFactory>();
 
                 // Create the appropriate cache service based on configuration
                 // For simplicity in the synchronous service provider context, we'll block on the async result here
-                return factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
+                var cacheService = factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
+                logger.LogInformation("[CacheService] Cache service created successfully");
+                return cacheService;
             });
 
             return services;
