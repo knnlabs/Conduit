@@ -76,17 +76,21 @@ jobs:
       run: dotnet build --no-restore
     
     - name: Validate migrations
-      run: ./scripts/migrations/validate-migrations.sh --check-pending
+      run: |
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
+        ./scripts/migrations/validate-migrations.sh --check-pending
     
     - name: Test migration application
       run: |
         cd ConduitLLM.Configuration
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
         dotnet ef database update --no-build
     
     - name: Generate migration script
       if: github.event_name == 'pull_request'
       run: |
         cd ConduitLLM.Configuration
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
         ../scripts/migrations/ef-wrapper.sh migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
     
     - name: Upload migration script
