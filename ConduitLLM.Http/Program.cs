@@ -314,6 +314,29 @@ builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryCon
     options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
 });
 
+// Register HTTP client for image downloads with retry policies
+builder.Services.AddHttpClient("ImageDownload", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60); // Timeout for large images
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-ImageDownloader/1.0");
+    client.DefaultRequestHeaders.Add("Accept", "image/*");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+    MaxConnectionsPerServer = 20,
+    EnableMultipleHttp2Connections = true,
+    MaxResponseHeadersLength = 64 * 1024,
+    ResponseDrainTimeout = TimeSpan.FromSeconds(10),
+    ConnectTimeout = TimeSpan.FromSeconds(10),
+    AutomaticDecompression = System.Net.DecompressionMethods.All, // Handle gzip/deflate
+    AllowAutoRedirect = true, // Handle redirects automatically
+    MaxAutomaticRedirections = 5 // Limit redirect chains
+})
+.AddPolicyHandler(GetImageDownloadRetryPolicy())
+.AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(120))); // Overall timeout including retries
+
 // Register Webhook Notification Service with optimized configuration for high throughput
 builder.Services.AddTransient<ConduitLLM.Http.Handlers.WebhookMetricsHandler>();
 builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(
@@ -339,6 +362,23 @@ builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationS
     .AddPolicyHandler(GetWebhookRetryPolicy())
     .AddPolicyHandler(GetWebhookCircuitBreakerPolicy())
     .AddHttpMessageHandler<ConduitLLM.Http.Handlers.WebhookMetricsHandler>();
+
+// Polly retry policy for image downloads with exponential backoff
+static IAsyncPolicy<HttpResponseMessage> GetImageDownloadRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError() // Handles HttpRequestException and 5XX, 408 status codes
+        .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        .WaitAndRetryAsync(
+            3, // Retry up to 3 times
+            retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff: 2, 4, 8 seconds
+            onRetry: (outcome, timespan, retryCount, context) =>
+            {
+                // Log retry attempts (logger will be injected via DI in actual use)
+                var logger = context.Values.FirstOrDefault() as ILogger;
+                logger?.LogWarning("Image download retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
+            });
+}
 
 // Polly retry policy for webhook delivery
 static IAsyncPolicy<HttpResponseMessage> GetWebhookRetryPolicy()

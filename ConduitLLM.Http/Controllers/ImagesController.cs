@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -32,6 +33,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IImageGenerationMetricsService _metricsService;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -42,7 +44,8 @@ namespace ConduitLLM.Http.Controllers
             IPublishEndpoint publishEndpoint,
             IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IImageGenerationMetricsService metricsService)
+            IImageGenerationMetricsService metricsService,
+            IHttpClientFactory httpClientFactory)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
@@ -53,6 +56,7 @@ namespace ConduitLLM.Http.Controllers
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
             _metricsService = metricsService;
+            _httpClientFactory = httpClientFactory;
         }
 
         /// <summary>
@@ -181,55 +185,57 @@ namespace ConduitLLM.Http.Controllers
                                 (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
                                  imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
                         {
-                            // Download external image to proxy it through our storage
-                            using var httpClient = new System.Net.Http.HttpClient();
-                            httpClient.Timeout = TimeSpan.FromSeconds(30);
+                            // Stream external image directly to storage without buffering
+                            using var httpClient = _httpClientFactory.CreateClient("ImageDownload");
+                            httpClient.Timeout = TimeSpan.FromSeconds(60); // Increased timeout for streaming
                             
-                            var imageResponse = await httpClient.GetAsync(imageData.Url);
-                            if (imageResponse.IsSuccessStatusCode)
+                            try
                             {
-                                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
-                                imageStream = new MemoryStream(imageBytes);
+                                // Use GetAsync with HttpCompletionOption.ResponseHeadersRead for streaming
+                                using var imageResponse = await httpClient.GetAsync(imageData.Url, 
+                                    System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
                                 
-                                // Try to determine content type from response
-                                if (imageResponse.Content.Headers.ContentType != null)
+                                if (imageResponse.IsSuccessStatusCode)
                                 {
-                                    contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
-                                    extension = contentType.Split('/').LastOrDefault() ?? "png";
-                                    if (extension == "jpeg") extension = "jpg";
+                                    // Try to determine content type from response
+                                    if (imageResponse.Content.Headers.ContentType != null)
+                                    {
+                                        contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
+                                        extension = contentType.Split('/').LastOrDefault() ?? "png";
+                                        if (extension == "jpeg") extension = "jpg";
+                                    }
+                                    else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
+                                             imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        contentType = "image/jpeg";
+                                        extension = "jpg";
+                                    }
+                                    
+                                    // Get the stream directly without buffering
+                                    imageStream = await imageResponse.Content.ReadAsStreamAsync();
                                 }
-                                else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
-                                         imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                else
                                 {
-                                    contentType = "image/jpeg";
-                                    extension = "jpg";
+                                    _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
+                                        imageData.Url, imageResponse.StatusCode);
+                                    continue;
                                 }
                             }
-                            else
+                            catch (TaskCanceledException ex)
                             {
-                                _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
-                                    imageData.Url, imageResponse.StatusCode);
+                                _logger.LogWarning(ex, "Timeout downloading image from {Url}", imageData.Url);
+                                continue;
+                            }
+                            catch (System.Net.Http.HttpRequestException ex)
+                            {
+                                _logger.LogWarning(ex, "HTTP error downloading image from {Url}", imageData.Url);
                                 continue;
                             }
                         }
                         
                         if (imageStream != null)
                         {
-                            // Read the image bytes first if we need base64
-                            byte[]? imageBytes = null;
-                            if (request.ResponseFormat == "b64_json")
-                            {
-                                // Read bytes for base64 conversion
-                                using (var ms = new MemoryStream())
-                                {
-                                    await imageStream.CopyToAsync(ms);
-                                    imageBytes = ms.ToArray();
-                                }
-                                // Create new stream for storage
-                                imageStream = new MemoryStream(imageBytes);
-                            }
-                            
-                            // Store in media storage
+                            // Store in media storage directly with streaming
                             var metadata = new MediaMetadata
                             {
                                 ContentType = contentType,
@@ -249,7 +255,13 @@ namespace ConduitLLM.Http.Controllers
                                 metadata.CreatedBy = request.User;
                             }
 
-                            var storageResult = await _storageService.StoreAsync(imageStream, metadata);
+                            // Create progress reporter for large image downloads
+                            var progress = new Progress<long>(bytesProcessed =>
+                            {
+                                _logger.LogDebug("Image storage progress: {BytesProcessed} bytes processed", bytesProcessed);
+                            });
+                            
+                            var storageResult = await _storageService.StoreAsync(imageStream, metadata, progress);
 
                             // Track media ownership for lifecycle management
                             try
@@ -293,10 +305,19 @@ namespace ConduitLLM.Http.Controllers
                             imageData.Url = storageResult.Url;
                             
                             // Handle response format
-                            if (request.ResponseFormat == "b64_json" && imageBytes != null)
+                            if (request.ResponseFormat == "b64_json")
                             {
-                                // Use the bytes we already read
-                                imageData.B64Json = Convert.ToBase64String(imageBytes);
+                                // Read from storage to convert to base64
+                                var storedStream = await _storageService.GetStreamAsync(storageResult.StorageKey);
+                                if (storedStream != null)
+                                {
+                                    using (var ms = new MemoryStream())
+                                    {
+                                        await storedStream.CopyToAsync(ms);
+                                        imageData.B64Json = Convert.ToBase64String(ms.ToArray());
+                                    }
+                                    storedStream.Dispose();
+                                }
                                 imageData.Url = null; // Clear URL when returning base64
                             }
                             else if (request.ResponseFormat == "url")

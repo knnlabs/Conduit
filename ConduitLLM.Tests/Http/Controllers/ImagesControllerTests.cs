@@ -33,6 +33,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IImageGenerationMetricsService> _mockMetricsService;
+        private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILLMClient> _mockLLMClient;
         private readonly Mock<IUrlHelper> _mockUrlHelper;
         private readonly ImagesController _controller;
@@ -48,6 +49,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockMetricsService = new Mock<IImageGenerationMetricsService>();
+            _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLLMClient = new Mock<ILLMClient>();
             _mockUrlHelper = new Mock<IUrlHelper>();
 
@@ -60,7 +62,8 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockPublishEndpoint.Object,
                 _mockVirtualKeyService.Object,
                 _mockMediaLifecycleService.Object,
-                _mockMetricsService.Object);
+                _mockMetricsService.Object,
+                _mockHttpClientFactory.Object);
 
             // Setup default controller context
             _controller.ControllerContext = CreateControllerContext();
