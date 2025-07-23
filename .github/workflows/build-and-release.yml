@@ -17,9 +17,10 @@ on:
     types: [published]
 
 # Prevent concurrent runs on the same branch
+# Cancel old runs for PRs and dev branch, but not for master/production
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/dev' }}
 
 env:
   DOTNET_VERSION: '9.0.x'

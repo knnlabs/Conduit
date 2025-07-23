@@ -22,6 +22,11 @@ on:
         type: boolean
 
 # Ensure only one release runs at a time
+# IMPORTANT: Never set cancel-in-progress to true for this workflow!
+# Interrupting releases could lead to:
+# - Partially published packages
+# - Inconsistent version numbers across components
+# - Broken release tags
 concurrency:
   group: release-orchestration
   cancel-in-progress: false

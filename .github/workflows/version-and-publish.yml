@@ -25,6 +25,11 @@ on:
         default: false
         type: boolean
 
+# IMPORTANT: Never set cancel-in-progress to true for versioning workflows!
+# Interrupting could cause:
+# - Duplicate version numbers
+# - Partially published NPM packages
+# - Git push conflicts with version commits
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

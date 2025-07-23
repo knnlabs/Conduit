@@ -15,6 +15,11 @@ on:
       - '**/Migrations/**'
       - '**/*.csproj'
 
+# IMPORTANT: Never set cancel-in-progress to true for migration validation!
+# Database migrations must complete validation to ensure:
+# - Schema changes are valid
+# - Migration scripts can be applied successfully
+# - No breaking changes are introduced
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

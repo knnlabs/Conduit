@@ -12,6 +12,11 @@ on:
           - master
           - dev
 
+# IMPORTANT: Never set cancel-in-progress to true for security scans!
+# CodeQL analysis must complete to ensure:
+# - All security vulnerabilities are detected
+# - Complete code coverage for security issues
+# - Consistent security reporting
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
