@@ -146,6 +146,18 @@ For comprehensive documentation on specific topics, see:
 - **[Provider Models](docs/claude/provider-models.md)** - Supported models by provider (MiniMax, OpenAI, Replicate)
 - **[R2 Health Check](docs/claude/r2-health-check.md)** - Cloudflare R2 health monitoring and connectivity checks
 
+## Environment Variables
+
+### Database Management
+- **FORCE_MIGRATION_ON_FAILURE**: Set to `TRUE` to enable forceful database recreation when migrations fail
+  - **WARNING**: This will DELETE ALL DATA in the database!
+  - Only use in development environments or when you're willing to lose all data
+  - When enabled, if normal migrations fail, the system will:
+    1. Drop the entire database (or all tables if drop fails)
+    2. Recreate a fresh database from scratch
+    3. Mark all migrations as applied
+  - Example: `FORCE_MIGRATION_ON_FAILURE=TRUE`
+
 ## Key Points from Detailed Docs
 
 ### Media Storage

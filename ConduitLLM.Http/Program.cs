@@ -1266,8 +1266,8 @@ if (builder.Environment.EnvironmentName != "Test")
 // Add health monitoring services
 builder.Services.AddHealthMonitoring(builder.Configuration);
 
-// Add database initialization services
-builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
+// Add database migration services
+builder.Services.AddDatabaseMigration();
 
 // Add connection pool warmer for better startup performance
 builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
@@ -1296,53 +1296,8 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Initialize database - Always run unless explicitly told to skip
-// This ensures users get automatic schema updates when pulling new versions
-if (!skipDatabaseInit)
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
-        var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-        try
-        {
-            initLogger.LogInformation("Starting database initialization...");
-
-            // Wait for database to be available (especially important in Docker)
-            var maxRetries = 10;
-            var retryDelay = 3000; // 3 seconds between retries
-
-            var success = dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay).GetAwaiter().GetResult();
-
-            if (success)
-            {
-                initLogger.LogInformation("Database initialization completed successfully");
-            }
-            else
-            {
-                initLogger.LogError("Database initialization failed after {MaxRetries} attempts", maxRetries);
-                // Always fail hard if database initialization fails
-                // This prevents running with an incomplete schema
-                throw new InvalidOperationException($"Database initialization failed after {maxRetries} attempts. Please check database connectivity and logs.");
-            }
-        }
-        catch (Exception ex)
-        {
-            initLogger.LogError(ex, "Critical error during database initialization");
-            // Re-throw to prevent the application from starting with a broken database
-            throw new InvalidOperationException("Failed to initialize database. Application cannot start.", ex);
-        }
-    }
-}
-else
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        initLogger.LogWarning("Database initialization is skipped. Ensure database schema is up to date.");
-    }
-}
+// Run database migrations
+await app.RunDatabaseMigrationAsync();
 
 Console.WriteLine("[Conduit] Database initialization phase completed, configuring middleware...");
 

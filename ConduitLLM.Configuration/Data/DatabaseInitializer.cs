@@ -57,6 +57,13 @@ namespace ConduitLLM.Configuration.Data
         public async Task<bool> InitializeDatabaseAsync(int maxRetries = 5, int retryDelayMs = 1000)
         {
             _logger.LogInformation("Starting database initialization with {Provider} provider", _dbProvider);
+            
+            // Check if forceful migration is enabled
+            var forceMigrationOnFailure = Environment.GetEnvironmentVariable("FORCE_MIGRATION_ON_FAILURE")?.ToUpperInvariant() == "TRUE";
+            if (forceMigrationOnFailure)
+            {
+                _logger.LogWarning("FORCE_MIGRATION_ON_FAILURE is enabled. Database will be WIPED if migrations fail!");
+            }
 
             for (int retry = 0; retry < maxRetries; retry++)
             {
@@ -137,11 +144,121 @@ namespace ConduitLLM.Configuration.Data
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to initialize database after {MaxRetries} attempts", maxRetries);
+                    
+                    // Check if we should force recreate the database
+                    if (forceMigrationOnFailure)
+                    {
+                        _logger.LogWarning("FORCE_MIGRATION_ON_FAILURE is enabled. Attempting to forcefully recreate the database...");
+                        
+                        try
+                        {
+                            var recreateSuccess = await ForceRecreateDatabase();
+                            if (recreateSuccess)
+                            {
+                                _logger.LogWarning("Database forcefully recreated successfully. ALL DATA HAS BEEN LOST!");
+                                return true;
+                            }
+                            else
+                            {
+                                _logger.LogError("Failed to forcefully recreate database");
+                                return false;
+                            }
+                        }
+                        catch (Exception forceEx)
+                        {
+                            _logger.LogError(forceEx, "Critical error during forced database recreation");
+                            return false;
+                        }
+                    }
+                    
                     return false;
                 }
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Forcefully drops and recreates the database when migrations fail
+        /// WARNING: This will DELETE ALL DATA in the database
+        /// </summary>
+        /// <returns>True if the database was recreated successfully, false otherwise</returns>
+        public async Task<bool> ForceRecreateDatabase()
+        {
+            _logger.LogWarning("FORCE DATABASE RECREATION INITIATED - ALL DATA WILL BE LOST!");
+            
+            try
+            {
+                using var context = _dbContextFactory.CreateDbContext();
+                
+                // First, try to drop the database
+                _logger.LogWarning("Attempting to drop database...");
+                try
+                {
+                    await context.Database.EnsureDeletedAsync();
+                    _logger.LogWarning("Database dropped successfully");
+                }
+                catch (Exception dropEx)
+                {
+                    _logger.LogError(dropEx, "Failed to drop database, attempting to drop all tables individually");
+                    
+                    // If we can't drop the database, try to drop all tables
+                    await DropAllTablesAsync(context);
+                }
+                
+                // Now recreate the database
+                _logger.LogWarning("Creating fresh database...");
+                await context.Database.EnsureCreatedAsync();
+                _logger.LogInformation("Fresh database created successfully");
+                
+                // Create migration history table and mark all migrations as applied
+                await CreateMigrationHistoryTableAsync(context);
+                await MarkAllMigrationsAsAppliedAsync(context);
+                _logger.LogInformation("Migration history initialized");
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to forcefully recreate database");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Drops all tables in the database
+        /// </summary>
+        private async Task DropAllTablesAsync(ConfigurationDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+            
+            using var command = connection.CreateCommand();
+            
+            if (_dbProvider == "postgres")
+            {
+                // Drop all tables in public schema
+                command.CommandText = @"
+                    DO $$ 
+                    DECLARE 
+                        r RECORD;
+                    BEGIN
+                        -- Drop all tables
+                        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+                            EXECUTE 'DROP TABLE IF EXISTS ""' || r.tablename || '"" CASCADE';
+                        END LOOP;
+                    END $$;";
+                
+                await command.ExecuteNonQueryAsync();
+                _logger.LogWarning("All PostgreSQL tables dropped");
+            }
+            else
+            {
+                throw new NotSupportedException("Force database recreation is only supported for PostgreSQL");
+            }
         }
 
         /// <summary>
@@ -198,6 +315,8 @@ namespace ConduitLLM.Configuration.Data
 
         private async Task ApplyMigrationsWithFallbackAsync(ConfigurationDbContext context)
         {
+            var forceMigrationOnFailure = Environment.GetEnvironmentVariable("FORCE_MIGRATION_ON_FAILURE")?.ToUpperInvariant() == "TRUE";
+            
             try
             {
                 // Check if this is a new database by looking for the migrations history table
@@ -222,7 +341,9 @@ namespace ConduitLLM.Configuration.Data
                     // Also check if we have any application tables
                     hasAnyTables = await TableExistsAsync(context, "VirtualKeys") || 
                                    await TableExistsAsync(context, "GlobalSettings") ||
-                                   await TableExistsAsync(context, "AsyncTasks");
+                                   await TableExistsAsync(context, "AsyncTasks") ||
+                                   await TableExistsAsync(context, "BatchOperationHistory") ||
+                                   await TableExistsAsync(context, "MediaLifecycleRecords");
                 }
                 catch
                 {
@@ -354,6 +475,14 @@ namespace ConduitLLM.Configuration.Data
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error applying migrations. This may indicate a schema mismatch.");
+
+                // Check if we should force recreate the database
+                if (forceMigrationOnFailure)
+                {
+                    _logger.LogWarning("FORCE_MIGRATION_ON_FAILURE is enabled. Migration will be retried after database recreation in parent method.");
+                    // Re-throw to let the parent method handle the forceful recreation
+                    throw;
+                }
 
                 // Don't fall back to EnsureCreated in production - it's dangerous
                 // EnsureCreated can't work with migrations and could cause data loss
