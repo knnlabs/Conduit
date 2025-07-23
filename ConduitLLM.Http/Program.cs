@@ -337,6 +337,29 @@ builder.Services.AddHttpClient("ImageDownload", client =>
 .AddPolicyHandler(GetImageDownloadRetryPolicy())
 .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(120))); // Overall timeout including retries
 
+// Register HTTP client for video downloads with retry policies
+builder.Services.AddHttpClient("VideoDownload", client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(10); // Much longer timeout for large videos
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-VideoDownloader/1.0");
+    client.DefaultRequestHeaders.Add("Accept", "video/*");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+    MaxConnectionsPerServer = 10, // Fewer connections for large transfers
+    EnableMultipleHttp2Connections = true,
+    MaxResponseHeadersLength = 64 * 1024,
+    ResponseDrainTimeout = TimeSpan.FromSeconds(30),
+    ConnectTimeout = TimeSpan.FromSeconds(30),
+    AutomaticDecompression = System.Net.DecompressionMethods.All,
+    AllowAutoRedirect = true,
+    MaxAutomaticRedirections = 5
+})
+.AddPolicyHandler(GetVideoDownloadRetryPolicy())
+.AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromMinutes(15))); // Overall timeout including retries
+
 // Register Webhook Notification Service with optimized configuration for high throughput
 builder.Services.AddTransient<ConduitLLM.Http.Handlers.WebhookMetricsHandler>();
 builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(
@@ -377,6 +400,22 @@ static IAsyncPolicy<HttpResponseMessage> GetImageDownloadRetryPolicy()
                 // Log retry attempts (logger will be injected via DI in actual use)
                 var logger = context.Values.FirstOrDefault() as ILogger;
                 logger?.LogWarning("Image download retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
+            });
+}
+
+// Polly retry policy for video downloads with longer exponential backoff
+static IAsyncPolicy<HttpResponseMessage> GetVideoDownloadRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        .WaitAndRetryAsync(
+            3, // Retry up to 3 times
+            retryAttempt => TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)), // Longer backoff: 3, 9, 27 seconds
+            onRetry: (outcome, timespan, retryCount, context) =>
+            {
+                var logger = context.Values.FirstOrDefault() as ILogger;
+                logger?.LogWarning("Video download retry {RetryCount} after {Delay}s", retryCount, timespan.TotalSeconds);
             });
 }
 

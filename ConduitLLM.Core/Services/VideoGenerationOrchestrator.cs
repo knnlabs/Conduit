@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
@@ -34,6 +35,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly IWebhookNotificationService _webhookService;
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -48,6 +50,7 @@ namespace ConduitLLM.Core.Services
             ICancellableTaskRegistry taskRegistry,
             IWebhookNotificationService webhookService,
             IOptions<VideoGenerationRetryConfiguration> retryConfiguration,
+            IHttpClientFactory httpClientFactory,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -61,6 +64,7 @@ namespace ConduitLLM.Core.Services
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -500,7 +504,7 @@ namespace ConduitLLM.Core.Services
                             response = await task;
                             
                             // Process the response when it completes
-                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch);
+                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch, taskCts.Token);
                         }
                         else
                         {
@@ -662,7 +666,8 @@ namespace ConduitLLM.Core.Services
             VideoGenerationResponse response,
             ModelInfo modelInfo,
             ConduitLLM.Configuration.Entities.VirtualKey virtualKeyInfo,
-            Stopwatch stopwatch)
+            Stopwatch stopwatch,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -797,19 +802,23 @@ namespace ConduitLLM.Core.Services
                         // Handle external URLs (e.g., from MiniMax)
                         else if (!string.IsNullOrEmpty(video.Url) && (video.Url.Contains("minimax.io") || video.Url.Contains("api.minimax")))
                         {
-                            _logger.LogInformation("Downloading video from external URL: {Url}", video.Url);
+                            _logger.LogInformation("Streaming video from external URL: {Url}", video.Url);
                             
                             try
                             {
-                                // Download the video from the external URL
-                                using var httpClient = new HttpClient();
-                                httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow time for large video downloads
+                                // Stream the video directly from the external URL to storage
+                                using var httpClient = _httpClientFactory.CreateClient("VideoDownload");
+                                httpClient.Timeout = TimeSpan.FromMinutes(10); // Allow time for large video downloads
                                 
-                                using var videoResponse = await httpClient.GetAsync(video.Url);
+                                // Use ResponseHeadersRead for streaming
+                                using var videoResponse = await httpClient.GetAsync(
+                                    video.Url, 
+                                    HttpCompletionOption.ResponseHeadersRead,
+                                    cancellationToken);
                                 videoResponse.EnsureSuccessStatusCode();
                                 
-                                using var videoStream = await videoResponse.Content.ReadAsStreamAsync();
                                 var contentLength = videoResponse.Content.Headers.ContentLength ?? 0;
+                                using var videoStream = await videoResponse.Content.ReadAsStreamAsync();
                                 
                                 var videoMediaMetadata = new VideoMediaMetadata
                                 {
@@ -828,11 +837,39 @@ namespace ConduitLLM.Core.Services
                                     Resolution = videoRequest.Size ?? "1280x720"
                                 };
                                 
-                                var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata);
+                                // Create progress callback that updates task status
+                                Action<long>? progressCallback = async (bytesProcessed) =>
+                                {
+                                    try
+                                    {
+                                        var percentage = contentLength > 0 
+                                            ? (int)((bytesProcessed * 100) / contentLength) 
+                                            : -1;
+                                        
+                                        var progressMessage = contentLength > 0
+                                            ? $"Uploading video: {bytesProcessed / 1024 / 1024}MB of {contentLength / 1024 / 1024}MB ({percentage}%)"
+                                            : $"Uploading video: {bytesProcessed / 1024 / 1024}MB";
+                                        
+                                        await _taskService.UpdateTaskStatusAsync(
+                                            request.RequestId, 
+                                            TaskState.Processing,
+                                            progress: percentage
+                                        );
+                                        
+                                        _logger.LogDebug("Video upload progress: {BytesProcessed} bytes ({Percentage}%)", 
+                                            bytesProcessed, percentage);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogWarning(ex, "Failed to update task progress");
+                                    }
+                                };
+                                
+                                var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata, progressCallback);
                                 video.Url = storageResult.Url;
                                 videoUrl = storageResult.Url;
                                 
-                                _logger.LogInformation("Successfully stored video in R2: {StorageUrl}", storageResult.Url);
+                                _logger.LogInformation("Successfully stored video in storage: {StorageUrl}", storageResult.Url);
                                 
                                 // Publish MediaGenerationCompleted event for lifecycle tracking
                                 await _publishEndpoint.Publish(new MediaGenerationCompleted
@@ -856,6 +893,21 @@ namespace ConduitLLM.Core.Services
                                     },
                                     CorrelationId = request.CorrelationId
                                 });
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                _logger.LogInformation("Video download timed out or cancelled for URL: {Url}", video.Url);
+                                throw; // Re-throw to handle cancellation properly
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                _logger.LogInformation("Video download cancelled for URL: {Url}", video.Url);
+                                throw; // Re-throw to handle cancellation properly
+                            }
+                            catch (HttpRequestException ex)
+                            {
+                                _logger.LogError(ex, "HTTP error downloading video from URL: {Url}", video.Url);
+                                // Keep the original URL if download fails
                             }
                             catch (Exception ex)
                             {

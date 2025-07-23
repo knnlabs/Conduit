@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
@@ -32,6 +33,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<ICostCalculationService> _mockCostService;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
         private readonly Mock<IWebhookNotificationService> _mockWebhookService;
+        private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILogger<VideoGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<VideoGenerationRetryConfiguration>> _mockRetryOptions;
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
@@ -49,6 +51,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockCostService = new Mock<ICostCalculationService>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
             _mockWebhookService = new Mock<IWebhookNotificationService>();
+            _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLogger = new Mock<ILogger<VideoGenerationOrchestrator>>();
             _mockRetryOptions = new Mock<IOptions<VideoGenerationRetryConfiguration>>();
 
@@ -74,6 +77,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockTaskRegistry.Object,
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
+                _mockHttpClientFactory.Object,
                 _mockLogger.Object);
         }
 
@@ -95,6 +99,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockTaskRegistry.Object,
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
+                _mockHttpClientFactory.Object,
                 _mockLogger.Object));
         }
 
@@ -114,6 +119,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockTaskRegistry.Object,
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
+                _mockHttpClientFactory.Object,
                 _mockLogger.Object));
         }
 
@@ -133,6 +139,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockTaskRegistry.Object,
                 _mockWebhookService.Object,
                 null,
+                _mockHttpClientFactory.Object,
                 _mockLogger.Object);
 
             // Assert - Should not throw and use default configuration
