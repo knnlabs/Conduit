@@ -10,7 +10,7 @@ export interface VideoSettings {
 export interface VideoTask {
   id: string;
   prompt: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timedout';
   progress: number;
   message?: string;
   estimatedTimeToCompletion?: number;
@@ -19,6 +19,13 @@ export interface VideoTask {
   result?: VideoGenerationResult;
   error?: string;
   settings: VideoSettings;
+  retryCount: number;
+  lastRetryAt?: string;
+  retryHistory: Array<{
+    attemptNumber: number;
+    timestamp: string;
+    error: string;
+  }>;
 }
 
 export interface VideoGenerationResult {
@@ -86,8 +93,25 @@ export const VideoDefaults = {
   RESPONSE_FORMAT: 'url' as const,
   POLLING_INTERVAL_MS: 2000,
   POLLING_TIMEOUT_MS: 600000,
-  MAX_POLLING_INTERVAL_MS: 30000
+  MAX_POLLING_INTERVAL_MS: 30000,
+  MAX_RETRY_COUNT: 3,
+  MIN_RETRY_DELAY_MS: 1000,
+  MAX_RETRY_DELAY_MS: 10000
 } as const;
+
+// Helper functions for retry logic
+export const calculateRetryDelay = (retryCount: number): number => {
+  // Exponential backoff: 1s, 2s, 4s (capped at 10s)
+  return Math.min(
+    VideoDefaults.MIN_RETRY_DELAY_MS * Math.pow(2, retryCount), 
+    VideoDefaults.MAX_RETRY_DELAY_MS
+  );
+};
+
+export const canRetry = (task: VideoTask): boolean => {
+  return task.retryCount < VideoDefaults.MAX_RETRY_COUNT && 
+         ['failed', 'timedout'].includes(task.status);
+};
 
 export interface VideoStoreState {
   // UI State

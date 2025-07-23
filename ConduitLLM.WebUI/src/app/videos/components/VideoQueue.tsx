@@ -1,11 +1,38 @@
 'use client';
 
+import { useState } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useVideoGeneration } from '../hooks/useVideoGeneration';
+import { canRetry, type VideoTask } from '../types';
+
+// Retry button component
+function RetryButton({ task, onRetry }: { task: VideoTask; onRetry: (task: VideoTask) => Promise<void> }) {
+  const [isRetrying, setIsRetrying] = useState(false);
+  
+  if (!canRetry(task)) return null;
+  
+  const handleRetry = () => {
+    setIsRetrying(true);
+    void onRetry(task).finally(() => {
+      setIsRetrying(false);
+    });
+  };
+  
+  return (
+    <button
+      onClick={handleRetry}
+      disabled={isRetrying}
+      className="btn btn-secondary btn-sm"
+      title="Retry generation"
+    >
+      {isRetrying ? 'Retrying...' : `Retry (${3 - task.retryCount} left)`}
+    </button>
+  );
+}
 
 export default function VideoQueue() {
   const { currentTask } = useVideoStore();
-  const { cancelGeneration } = useVideoGeneration();
+  const { cancelGeneration, retryGeneration } = useVideoGeneration();
 
   if (!currentTask) {
     return null;
@@ -22,9 +49,9 @@ export default function VideoQueue() {
       
       <div className="video-queue-items">
         <div className="video-queue-item">
-          {isActive && (
-            <div className="video-queue-item-spinner">⏳</div>
-          )}
+          <div className="video-queue-item-icon">
+            {getStatusIcon(currentTask.status)}
+          </div>
           
           <div className="video-queue-item-info">
             <div className="video-queue-item-prompt">
@@ -36,6 +63,9 @@ export default function VideoQueue() {
               {currentTask.message && ` - ${currentTask.message}`}
               {currentTask.estimatedTimeToCompletion && (
                 <span> (ETA: {formatTime(currentTask.estimatedTimeToCompletion)})</span>
+              )}
+              {currentTask.retryCount > 0 && (
+                <span className="retry-info"> (Attempt {currentTask.retryCount + 1}/{3 + 1})</span>
               )}
             </div>
             
@@ -59,15 +89,54 @@ export default function VideoQueue() {
             </button>
           )}
           
-          {currentTask.status === 'failed' && currentTask.error && (
-            <div className="error-message">
+          {(currentTask.status === 'failed' || currentTask.status === 'timedout') && (
+            <RetryButton task={currentTask} onRetry={retryGeneration} />
+          )}
+          
+          {(currentTask.status === 'failed' || currentTask.status === 'timedout' || currentTask.status === 'cancelled') && currentTask.error && (
+            <div className={`error-message ${currentTask.status}-message`}>
               {currentTask.error}
+            </div>
+          )}
+          
+          {currentTask.retryHistory.length > 0 && (
+            <div className="retry-history">
+              <details>
+                <summary>Retry History ({currentTask.retryHistory.length})</summary>
+                <ul>
+                  {currentTask.retryHistory.map((retry) => (
+                    <li key={`${retry.attemptNumber}-${retry.timestamp}`}>
+                      Attempt {retry.attemptNumber}: {retry.error} 
+                      <span className="retry-timestamp"> ({new Date(retry.timestamp).toLocaleTimeString()})</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </div>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+function getStatusIcon(status: string): string {
+  switch (status) {
+    case 'pending':
+      return '⏱️';
+    case 'running':
+      return '⏳';
+    case 'completed':
+      return '✅';
+    case 'failed':
+      return '❌';
+    case 'cancelled':
+      return '🚫';
+    case 'timedout':
+      return '⏰';
+    default:
+      return '❓';
+  }
 }
 
 function getStatusText(status: string): string {
@@ -82,6 +151,8 @@ function getStatusText(status: string): string {
       return 'Failed';
     case 'cancelled':
       return 'Cancelled';
+    case 'timedout':
+      return 'Timed Out';
     default:
       return status;
   }

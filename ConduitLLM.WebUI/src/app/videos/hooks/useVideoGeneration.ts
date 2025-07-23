@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useVideoStore } from './useVideoStore';
-import type { VideoSettings, VideoTask, VideoGenerationResult } from '../types';
+import { calculateRetryDelay, canRetry, type VideoSettings, type VideoTask, type VideoGenerationResult } from '../types';
 
 interface GenerateVideoParams {
   prompt: string;
@@ -52,10 +52,45 @@ interface ErrorResponse {
   error: string;
 }
 
+// Helper function to get user-friendly error messages
+function getErrorMessage(status: string, error?: string): string {
+  switch (status.toLowerCase()) {
+    case 'timedout':
+      return 'Video generation timed out. Large videos may take longer - please try again.';
+    case 'cancelled':
+      return 'Video generation was cancelled.';
+    case 'failed':
+      return error ?? 'Video generation failed. Please check your prompt and try again.';
+    default:
+      return error ?? 'An unexpected error occurred.';
+  }
+}
+
+// Validate state transitions to prevent invalid state changes
+function isValidStateTransition(currentStatus: VideoTask['status'], newStatus: VideoTask['status']): boolean {
+  // Terminal states cannot transition to anything
+  if (['completed', 'failed', 'cancelled', 'timedout'].includes(currentStatus)) {
+    return false;
+  }
+  
+  // Valid transitions
+  const validTransitions: Record<VideoTask['status'], VideoTask['status'][]> = {
+    'pending': ['running', 'cancelled', 'failed', 'timedout'],
+    'running': ['completed', 'failed', 'cancelled', 'timedout'],
+    'completed': [],
+    'failed': [],
+    'cancelled': [],
+    'timedout': []
+  };
+  
+  return validTransitions[currentStatus]?.includes(newStatus) ?? false;
+}
+
 export function useVideoGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addTask, updateTask, setError } = useVideoStore();
+  const { addTask, updateTask, setError, taskHistory, currentTask } = useVideoStore();
 
   const pollTaskStatus = useCallback(async (taskId: string) => {
     try {
@@ -69,9 +104,20 @@ export function useVideoGeneration() {
       // Convert API response to camelCase
       const taskStatus = mapTaskStatusResponse(apiResponse);
       
+      // Map API status to our internal status
+      const mappedStatus = taskStatus.status === 'Processing' ? 'running' : 
+                          taskStatus.status.toLowerCase() as VideoTask['status'];
+      
+      // Get current task to validate state transition
+      const currentTask = taskHistory.find(t => t.id === taskId);
+      if (currentTask && !isValidStateTransition(currentTask.status, mappedStatus)) {
+        console.warn(`Invalid state transition attempted: ${currentTask.status} -> ${mappedStatus}`);
+        return false; // Continue polling but skip invalid update
+      }
+      
       // Update task in store
       updateTask(taskId, {
-        status: taskStatus.status.toLowerCase() as VideoTask['status'],
+        status: mappedStatus,
         progress: taskStatus.progress,
         message: taskStatus.message,
         estimatedTimeToCompletion: taskStatus.estimatedTimeToCompletion,
@@ -80,19 +126,39 @@ export function useVideoGeneration() {
 
       // Check if task is complete
       if (taskStatus.status === 'Completed') {
-        if (taskStatus.result) {
+        if (taskStatus.result && (!currentTask || isValidStateTransition(currentTask.status, 'completed'))) {
           updateTask(taskId, {
             status: 'completed',
             result: taskStatus.result as VideoGenerationResult,
           });
         }
         return true; // Stop polling
-      } else if (taskStatus.status === 'Failed' || taskStatus.status === 'Cancelled' || taskStatus.status === 'TimedOut') {
-        updateTask(taskId, {
-          status: 'failed',
-          error: taskStatus.error ?? `Task ${taskStatus.status.toLowerCase()}`,
-        });
-        setError(taskStatus.error ?? `Video generation ${taskStatus.status.toLowerCase()}`);
+      } else if (taskStatus.status === 'Failed') {
+        if (!currentTask || isValidStateTransition(currentTask.status, 'failed')) {
+          updateTask(taskId, {
+            status: 'failed',
+            error: getErrorMessage('failed', taskStatus.error),
+          });
+          setError(getErrorMessage('failed', taskStatus.error));
+        }
+        return true; // Stop polling
+      } else if (taskStatus.status === 'Cancelled') {
+        if (!currentTask || isValidStateTransition(currentTask.status, 'cancelled')) {
+          updateTask(taskId, {
+            status: 'cancelled',
+            error: getErrorMessage('cancelled'),
+          });
+          setError(getErrorMessage('cancelled'));
+        }
+        return true; // Stop polling
+      } else if (taskStatus.status === 'TimedOut') {
+        if (!currentTask || isValidStateTransition(currentTask.status, 'timedout')) {
+          updateTask(taskId, {
+            status: 'timedout',
+            error: getErrorMessage('timedout'),
+          });
+          setError(getErrorMessage('timedout'));
+        }
         return true; // Stop polling
       }
       
@@ -106,7 +172,7 @@ export function useVideoGeneration() {
       setError(error instanceof Error ? error.message : 'Failed to get task status');
       return true; // Stop polling on error
     }
-  }, [updateTask, setError]);
+  }, [updateTask, setError, taskHistory]);
 
   const generateVideo = useCallback(async ({ prompt, settings }: GenerateVideoParams) => {
     setIsGenerating(true);
@@ -151,6 +217,8 @@ export function useVideoGeneration() {
         createdAt: data.createdAt ?? new Date().toISOString(),
         updatedAt: data.updatedAt ?? new Date().toISOString(),
         settings,
+        retryCount: 0,
+        retryHistory: [],
       };
       
       addTask(newTask);
@@ -173,6 +241,70 @@ export function useVideoGeneration() {
       setIsGenerating(false);
     }
   }, [addTask, setError, pollTaskStatus]);
+
+  const retryGeneration = useCallback(async (task: VideoTask) => {
+    // Prevent concurrent retries
+    if (isRetrying || isGenerating) {
+      setError('Another operation is already in progress');
+      return;
+    }
+
+    if (!canRetry(task)) {
+      setError('This task cannot be retried');
+      return;
+    }
+
+    setIsRetrying(true);
+    try {
+      // Calculate retry delay
+      const delay = calculateRetryDelay(task.retryCount);
+      
+      // Update task to show retry is pending
+      const retryHistory = [...task.retryHistory];
+      if (task.error) {
+        retryHistory.push({
+          attemptNumber: task.retryCount + 1,
+          timestamp: new Date().toISOString(),
+          error: task.error,
+        });
+      }
+
+      updateTask(task.id, {
+        status: 'pending',
+        error: undefined,
+        message: `Retrying in ${delay / 1000}s...`,
+        retryCount: task.retryCount + 1,
+        lastRetryAt: new Date().toISOString(),
+        retryHistory,
+      });
+
+      // Wait for the retry delay
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      // Update the task ID for the retry attempt
+      const retryTask = currentTask?.id === task.id ? currentTask : task;
+      
+      // Update message to indicate retry is starting
+      updateTask(retryTask.id, {
+        message: 'Starting retry...',
+      });
+
+      // Start polling for the same task ID (backend handles retry)
+      setIsGenerating(true);
+      pollingIntervalRef.current = setInterval(() => {
+        void (async () => {
+          const shouldStop = await pollTaskStatus(retryTask.id);
+          if (shouldStop && pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+            setIsGenerating(false);
+          }
+        })();
+      }, 2000);
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [isRetrying, isGenerating, updateTask, setError, pollTaskStatus, currentTask]);
 
   const cancelGeneration = useCallback(async (taskId: string) => {
     try {
@@ -208,8 +340,10 @@ export function useVideoGeneration() {
 
   return {
     generateVideo,
+    retryGeneration,
     cancelGeneration,
     isGenerating,
+    isRetrying,
     cleanup,
   };
 }
