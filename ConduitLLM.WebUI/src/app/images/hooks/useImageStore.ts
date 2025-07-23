@@ -51,7 +51,12 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         },
         body: JSON.stringify({
           prompt,
-          ...settings,
+          model: settings.model,
+          size: settings.size,
+          quality: settings.quality,
+          style: settings.style,
+          n: settings.n,
+          response_format: settings.responseFormat,
         }),
       });
 
@@ -80,6 +85,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       }
 
       const result = await response.json() as ImageGenerationResponse;
+      console.warn('Image generation response:', result);
       set({ 
         status: 'completed', 
         results: result.data.map(img => ({

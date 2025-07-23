@@ -57,10 +57,13 @@ export default function ImageGallery() {
 
   const getImageSrc = (image: GeneratedImage): string => {
     if (image.url) {
+      console.warn('Image URL:', image.url);
       return image.url;
     } else if (image.b64Json) {
+      console.warn('Using base64 image');
       return `data:image/png;base64,${image.b64Json}`;
     }
+    console.warn('No image data available');
     return '';
   };
 
@@ -109,6 +112,11 @@ export default function ImageGallery() {
                   fill
                   style={{ objectFit: 'cover' }}
                   loading="lazy"
+                  unoptimized={true}
+                  onError={(e) => {
+                    console.error('Image failed to load:', e);
+                    console.error('Failed URL:', getImageSrc(image));
+                  }}
                 />
                 <div 
                   style={{
@@ -182,6 +190,7 @@ export default function ImageGallery() {
               alt={selectedImage.revisedPrompt ?? 'Generated image'}
               fill
               style={{ objectFit: 'contain' }}
+              unoptimized={true}
             />
             {selectedImage.revisedPrompt && (
               <div style={{ marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, right: 0 }}>

@@ -17,6 +17,27 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  // Image configuration to allow loading from API server
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '5000',
+        pathname: '/v1/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'api',
+        port: '8080',
+        pathname: '/v1/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
   // Enhanced webpack configuration for hot reload
   webpack: (config, { dev, isServer }) => {
     config.externals.push({
