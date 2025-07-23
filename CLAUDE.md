@@ -27,6 +27,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Start web UI: `dotnet run --project ConduitLLM.WebUI`
 - Start both services: `docker compose up -d`
 
+## Database Migrations - CRITICAL
+**⚠️ ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE MAKING DATABASE CHANGES**
+- We use PostgreSQL ONLY - no SQL Server syntax allowed
+- Always run `./scripts/migrations/validate-postgresql-syntax.sh` after creating migrations
+- Common mistake: Using `IsActive = 1` instead of `"IsActive" = true`
+
 ## Build Verification - CRITICAL
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
 
