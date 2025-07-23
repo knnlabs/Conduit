@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
       isAllowed: result.isAllowed,
       reason: result.deniedReason ?? (result.isAllowed ? 'IP is allowed' : 'IP is blocked'),
       matchedRule: result.matchedFilter,
-      ruleType: result.filterType ? (result.filterType === 'whitelist' ? 'allow' : 'block') : undefined,
+      ruleType: (() => {
+        if (!result.filterType) return undefined;
+        return result.filterType === 'whitelist' ? 'allow' : 'block';
+      })(),
       isDefault: result.isDefaultAction ?? false,
     };
     

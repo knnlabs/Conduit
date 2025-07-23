@@ -3,8 +3,7 @@ import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { 
   VirtualKeyDto, 
-  CreateVirtualKeyRequest,
-  PaginatedResponse 
+  CreateVirtualKeyRequest
 } from '@knn_labs/conduit-admin-client';
 
 // GET /api/virtualkeys - List all virtual keys
@@ -43,7 +42,7 @@ export async function GET(req: NextRequest) {
       console.error('[VirtualKeys GET] Response is a string, attempting to parse...');
       console.error('[VirtualKeys GET] String value:', response);
       try {
-        const parsed = JSON.parse(response) as PaginatedResponse<VirtualKeyDto> | VirtualKeyDto[];
+        const parsed = JSON.parse(response) as unknown;
         console.error('[VirtualKeys GET] Parsed response:', parsed);
         return NextResponse.json(parsed);
       } catch (e) {
@@ -58,22 +57,28 @@ export async function GET(req: NextRequest) {
     
     // Handle both array and paginated response formats
     let virtualKeys: VirtualKeyDto[];
-    let paginatedResponse: PaginatedResponse<VirtualKeyDto>;
+    let paginatedResponse: { items: VirtualKeyDto[]; totalItems: number; pageSize: number; currentPage: number; totalPages: number };
     
     if (Array.isArray(response)) {
       console.error('[VirtualKeys GET] Response is array, wrapping in paginated format');
       virtualKeys = response as VirtualKeyDto[];
       paginatedResponse = {
         items: virtualKeys,
-        totalCount: virtualKeys.length,
-        pageNumber: page,
+        totalItems: virtualKeys.length,
+        currentPage: page,
         pageSize: pageSize,
         totalPages: Math.ceil(virtualKeys.length / pageSize)
       };
     } else if (response && typeof response === 'object' && 'items' in response) {
-      const paginatedResp = response as unknown as PaginatedResponse<VirtualKeyDto>;
+      const paginatedResp = response as { items: VirtualKeyDto[]; totalItems?: number; pageSize?: number; currentPage?: number; totalPages?: number };
       virtualKeys = paginatedResp.items;
-      paginatedResponse = paginatedResp;
+      paginatedResponse = {
+        items: paginatedResp.items,
+        totalItems: paginatedResp.totalItems ?? paginatedResp.items.length,
+        pageSize: paginatedResp.pageSize ?? pageSize,
+        currentPage: paginatedResp.currentPage ?? page,
+        totalPages: paginatedResp.totalPages ?? Math.ceil((paginatedResp.totalItems ?? paginatedResp.items.length) / pageSize)
+      };
     } else {
       // Fallback for unexpected response format
       return NextResponse.json(response);
@@ -92,7 +97,7 @@ export async function GET(req: NextRequest) {
             return null;
           }
         }
-        return key.metadata;
+        return key.metadata as Record<string, unknown>;
       })(),
       // Add display key field for UI (since apiKey is only returned on creation)
       displayKey: key.keyPrefix ?? `key_${String(key.id)}`

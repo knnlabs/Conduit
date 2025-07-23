@@ -114,16 +114,29 @@ export async function GET() {
 
     try {
       // Try to get alerts
-      const alerts = await adminClient.monitoring.listAlerts({
+      const alertsResponse = await adminClient.monitoring.listAlerts({
         status: 'active',
-      });
+      }) as unknown;
       
-      if (alerts?.data) {
-        transformedAlerts = alerts.data.map((alert) => ({
+      // Type guard to ensure the response has the expected structure
+      if (alertsResponse && 
+          typeof alertsResponse === 'object' && 
+          'data' in alertsResponse && 
+          Array.isArray((alertsResponse as { data: unknown[] }).data)) {
+        const alertsData = (alertsResponse as { data: Array<{
+          id: string;
+          condition?: { type?: string };
+          severity: string;
+          name?: string;
+          createdAt: string;
+          status: string;
+        }> }).data;
+        
+        transformedAlerts = alertsData.map((alert) => ({
           id: alert.id,
           type: alert.condition?.type ?? 'system',
           severity: alert.severity,
-          message: alert.name || 'System alert',
+          message: alert.name ?? 'System alert',
           timestamp: alert.createdAt,
           resolved: alert.status === 'resolved',
         }));

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { 
-  VirtualKeyDto,
-  PaginatedResponse 
+  VirtualKeyDto
 } from '@knn_labs/conduit-admin-client';
 
 export async function GET(req: NextRequest) {
@@ -35,25 +34,38 @@ export async function GET(req: NextRequest) {
       // Try to get analytics data, but don't fail if unavailable
       
       // Analytics endpoints don't exist - just get virtual keys
-      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
+      const allKeysResponse = await adminClient.virtualKeys.list(1, 100) as unknown;
       
-      // Transform virtual keys data without analytics
-      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => {
-        return {
-          id: key.id,
+      // Type guard for paginated response
+      let virtualKeysData: Array<{
+        id: string;
+        name: string;
+        status: string;
+        requests: number;
+        cost: number;
+        budget: number;
+        budgetUsed: number;
+      }> = [];
+      
+      if (allKeysResponse && 
+          typeof allKeysResponse === 'object' && 
+          'items' in allKeysResponse && 
+          Array.isArray((allKeysResponse as { items: unknown[] }).items)) {
+        const keys = (allKeysResponse as { items: VirtualKeyDto[] }).items;
+        virtualKeysData = keys.map((key) => ({
+          id: String(key.id),
           name: key.keyName,
           status: key.isEnabled ? 'active' : 'inactive',
           requests: 0,
           cost: 0,
           budget: key.maxBudget ?? 0,
           budgetUsed: 0,
-        };
-      });
+        }));
       
       // No analytics data available
       const totalRequests = 0;
       const totalCost = 0;
-      const activeKeys = virtualKeysData.filter(k => k.status === 'active').length;
+      const activeKeys = virtualKeysData.filter((k: { status: string }) => k.status === 'active').length;
       const averageBudgetUsed = 0;
       
       // Growth rates not available
@@ -81,21 +93,38 @@ export async function GET(req: NextRequest) {
         timeSeriesData,
         modelUsage,
       });
+    }
     } catch (sdkError) {
       console.error('SDK Error in dashboard:', sdkError);
       
       // If analytics methods fail, provide fallback with just virtual keys data
-      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
+      const allKeysResponse = await adminClient.virtualKeys.list(1, 100) as unknown;
       
-      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => ({
-        id: key.id,
-        name: key.keyName,
-        status: key.isEnabled ? 'active' : 'inactive',
-        requests: 0,
-        cost: 0,
-        budget: key.maxBudget ?? 0,
-        budgetUsed: 0,
-      }));
+      let virtualKeysData: Array<{
+        id: string;
+        name: string;
+        status: string;
+        requests: number;
+        cost: number;
+        budget: number;
+        budgetUsed: number;
+      }> = [];
+      
+      if (allKeysResponse && 
+          typeof allKeysResponse === 'object' && 
+          'items' in allKeysResponse && 
+          Array.isArray((allKeysResponse as { items: unknown[] }).items)) {
+        const keys = (allKeysResponse as { items: VirtualKeyDto[] }).items;
+        virtualKeysData = keys.map((key) => ({
+          id: String(key.id),
+          name: key.keyName,
+          status: key.isEnabled ? 'active' : 'inactive',
+          requests: 0,
+          cost: 0,
+          budget: key.maxBudget ?? 0,
+          budgetUsed: 0,
+        }));
+      }
       
       // Return minimal data structure
       return NextResponse.json({
@@ -103,7 +132,7 @@ export async function GET(req: NextRequest) {
         summary: {
           totalRequests: 0,
           totalCost: 0,
-          activeKeys: virtualKeysData.filter(k => k.status === 'active').length,
+          activeKeys: virtualKeysData.filter((k: { status: string }) => k.status === 'active').length,
           averageBudgetUsed: 0,
           requestsGrowth: null,
           costGrowth: null,

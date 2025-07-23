@@ -64,7 +64,7 @@ export function IpRuleModal({
   const form = useForm({
     initialValues: {
       ipAddress: rule?.ipAddress ?? '',
-      action: (rule?.action ?? 'block') as 'allow' | 'block',
+      action: rule?.action ?? 'block',
       description: rule?.description ?? '',
     },
     validate: {

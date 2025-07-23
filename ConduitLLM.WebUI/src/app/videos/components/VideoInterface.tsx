@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Stack, Title, Text, Group, Button, LoadingOverlay, Alert } from '@mantine/core';
+import { IconSettings } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useVideoModels } from '../hooks/useVideoModels';
 import VideoSettings from './VideoSettings';
@@ -37,59 +39,59 @@ export default function VideoInterface() {
 
   if (modelsLoading) {
     return (
-      <div className="video-interface">
-        <div className="video-generation-status">
-          Loading video generation models...
-        </div>
-      </div>
+      <Stack h="100vh" p="md" pos="relative">
+        <LoadingOverlay visible={true} overlayProps={{ radius: 'sm', blur: 2 }} />
+      </Stack>
     );
   }
 
   if (modelsError || !models || !Array.isArray(models) || models.length === 0) {
     return (
-      <div className="video-interface">
-        <div className="video-generation-status status-error">
+      <Stack h="100vh" p="md">
+        <Alert variant="light" color="red" title={modelsError ? 'Error loading models' : 'No video generation models available'}>
           {modelsError 
-            ? `Error loading models: ${modelsError.message}`
+            ? modelsError.message
             : (
-              <div>
-                <strong>No video generation models available.</strong>
-                <p>To use video generation, you need to:</p>
+              <Stack gap="sm">
+                <Text>To use video generation, you need to:</Text>
                 <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
                   <li>Configure providers (MiniMax, etc.) in <strong>LLM Providers</strong></li>
                   <li>Add video generation models in <strong>Model Mappings</strong></li>
                   <li>Enable the <strong>&ldquo;Supports Video Generation&rdquo;</strong> checkbox for those models</li>
                 </ol>
-                <p style={{ marginTop: '0.5rem' }}>
+                <Text size="sm" c="dimmed">
                   Example model: <code>minimax-video</code>
-                </p>
-              </div>
+                </Text>
+              </Stack>
             )
           }
-        </div>
-      </div>
+        </Alert>
+      </Stack>
     );
   }
 
   return (
-    <div className="video-interface">
+    <Stack h="100vh" p="md" gap="md">
       {/* Header */}
-      <div className="video-header">
-        <h1>🎬 Video Generation</h1>
-        <button 
-          className="settings-toggle"
+      <Group justify="space-between">
+        <div>
+          <Title order={1}>Video Generation</Title>
+          <Text c="dimmed">Create AI-generated videos from text prompts</Text>
+        </div>
+        <Button 
+          variant="light"
+          leftSection={<IconSettings size={16} />}
           onClick={toggleSettings}
-          aria-label="Toggle settings"
         >
-          ⚙️ Settings
-        </button>
-      </div>
+          Settings
+        </Button>
+      </Group>
 
       {/* Error Display */}
       {error && (
-        <div className="video-generation-status status-error">
+        <Alert variant="light" color="red" onClose={() => setError('')} withCloseButton>
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Settings Panel */}
@@ -107,6 +109,6 @@ export default function VideoInterface() {
 
       {/* Video Gallery */}
       <VideoGallery />
-    </div>
+    </Stack>
   );
 }

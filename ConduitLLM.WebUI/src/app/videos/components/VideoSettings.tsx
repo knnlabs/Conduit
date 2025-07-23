@@ -1,5 +1,6 @@
 'use client';
 
+import { Paper, Title, Select, NumberInput, TextInput, SimpleGrid } from '@mantine/core';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { VideoResolutions, type VideoModel } from '../types';
 
@@ -14,125 +15,94 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
   const capabilities = selectedModel?.capabilities;
 
   return (
-    <div className="video-settings-panel">
-      <h3>Video Generation Settings</h3>
-      <div className="video-settings-grid">
+    <Paper p="md" withBorder>
+      <Title order={3} mb="md">Video Generation Settings</Title>
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
         {/* Model Selection */}
-        <div className="setting-group">
-          <label htmlFor="video-model">Model</label>
-          <select
-            id="video-model"
-            value={settings.model}
-            onChange={(e) => updateSettings({ model: e.target.value })}
-            className="form-select"
-          >
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Model"
+          value={settings.model}
+          onChange={(value) => value && updateSettings({ model: value })}
+          data={models.map(model => ({
+            value: model.id,
+            label: model.displayName ?? model.id
+          }))}
+          required
+        />
 
         {/* Duration */}
-        <div className="setting-group">
-          <label htmlFor="video-duration">
-            Duration (seconds)
-            {capabilities?.maxDuration && (
-              <span className="label-hint"> (max: {capabilities.maxDuration}s)</span>
-            )}
-          </label>
-          <input
-            id="video-duration"
-            type="number"
-            min="1"
-            max={capabilities?.maxDuration ?? 60}
-            value={settings.duration}
-            onChange={(e) => updateSettings({ duration: parseInt(e.target.value) || 5 })}
-            className="form-input"
-          />
-        </div>
+        <NumberInput
+          label="Duration (seconds)"
+          description={capabilities?.maxDuration ? `Maximum: ${capabilities.maxDuration}s` : undefined}
+          min={1}
+          max={capabilities?.maxDuration ?? 60}
+          value={settings.duration}
+          onChange={(value) => updateSettings({ duration: typeof value === 'number' ? value : 5 })}
+          required
+        />
 
         {/* Resolution */}
-        <div className="setting-group">
-          <label htmlFor="video-resolution">Resolution</label>
-          <select
-            id="video-resolution"
-            value={settings.size}
-            onChange={(e) => updateSettings({ size: e.target.value })}
-            className="form-select"
-          >
-            {capabilities?.supportedResolutions ? (
-              capabilities.supportedResolutions.map((res) => (
-                <option key={res} value={res}>
-                  {res} {getResolutionLabel(res)}
-                </option>
-              ))
-            ) : (
-              Object.entries(VideoResolutions).map(([key, value]) => (
-                <option key={value} value={value}>
-                  {value} ({key.replace(/_/g, ' ')})
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+        <Select
+          label="Resolution"
+          value={settings.size}
+          onChange={(value) => value && updateSettings({ size: value })}
+          data={
+            capabilities?.supportedResolutions 
+              ? capabilities.supportedResolutions.map((res) => ({
+                  value: res,
+                  label: `${res} ${getResolutionLabel(res)}`
+                }))
+              : Object.entries(VideoResolutions).map(([key, value]) => ({
+                  value: value,
+                  label: `${value} (${key.replace(/_/g, ' ')})`
+                }))
+          }
+          required
+        />
 
         {/* FPS */}
-        <div className="setting-group">
-          <label htmlFor="video-fps">Frames Per Second</label>
-          <select
-            id="video-fps"
-            value={settings.fps}
-            onChange={(e) => updateSettings({ fps: parseInt(e.target.value) })}
-            className="form-select"
-          >
-            {capabilities?.supportedFps ? (
-              capabilities.supportedFps.map((fps) => (
-                <option key={fps} value={fps}>
-                  {fps} FPS
-                </option>
-              ))
-            ) : (
-              [24, 30, 60].map((fps) => (
-                <option key={fps} value={fps}>
-                  {fps} FPS
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+        <Select
+          label="Frames Per Second"
+          value={settings.fps.toString()}
+          onChange={(value) => value && updateSettings({ fps: parseInt(value) })}
+          data={
+            capabilities?.supportedFps 
+              ? capabilities.supportedFps.map((fps) => ({
+                  value: fps.toString(),
+                  label: `${fps} FPS`
+                }))
+              : [24, 30, 60].map((fps) => ({
+                  value: fps.toString(),
+                  label: `${fps} FPS`
+                }))
+          }
+          required
+        />
 
         {/* Style */}
         {capabilities?.supportsCustomStyles !== false && (
-          <div className="setting-group">
-            <label htmlFor="video-style">Style (optional)</label>
-            <input
-              id="video-style"
-              type="text"
-              value={settings.style ?? ''}
-              onChange={(e) => updateSettings({ style: e.target.value || undefined })}
-              placeholder="e.g., cinematic, anime, realistic"
-              className="form-input"
-            />
-          </div>
+          <TextInput
+            label="Style"
+            description="Optional style modifier"
+            value={settings.style ?? ''}
+            onChange={(e) => updateSettings({ style: e.currentTarget.value || undefined })}
+            placeholder="e.g., cinematic, anime, realistic"
+          />
         )}
 
         {/* Response Format */}
-        <div className="setting-group">
-          <label htmlFor="video-format">Response Format</label>
-          <select
-            id="video-format"
-            value={settings.responseFormat}
-            onChange={(e) => updateSettings({ responseFormat: e.target.value as 'url' | 'b64_json' })}
-            className="form-select"
-          >
-            <option value="url">URL (Recommended)</option>
-            <option value="b64_json">Base64 JSON</option>
-          </select>
-        </div>
-      </div>
-    </div>
+        <Select
+          label="Response Format"
+          value={settings.responseFormat}
+          onChange={(value) => value && updateSettings({ responseFormat: value as 'url' | 'b64_json' })}
+          data={[
+            { value: 'url', label: 'URL (Recommended)' },
+            { value: 'b64_json', label: 'Base64 JSON' }
+          ]}
+          required
+        />
+      </SimpleGrid>
+    </Paper>
   );
 }
 

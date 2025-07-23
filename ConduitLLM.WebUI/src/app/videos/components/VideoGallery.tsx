@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { Stack, Title, Text, Group, Button, Card, SimpleGrid, Badge } from '@mantine/core';
+import { IconDownload, IconTrash } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import VideoPlayer from './VideoPlayer';
 import type { VideoTask } from '../types';
@@ -15,28 +17,27 @@ export default function VideoGallery() {
 
   if (completedVideos.length === 0) {
     return (
-      <div className="video-gallery">
-        <div className="empty-state">
-          <h3>No videos generated yet</h3>
-          <p>Your generated videos will appear here</p>
-        </div>
-      </div>
+      <Stack align="center" justify="center" h="100%" gap="sm">
+        <Title order={3} c="dimmed">No videos generated yet</Title>
+        <Text c="dimmed">Your generated videos will appear here</Text>
+      </Stack>
     );
   }
 
   return (
-    <div className="video-gallery">
-      <div className="video-gallery-header">
-        <h3>Generated Videos ({completedVideos.length})</h3>
-        <button
+    <Stack h="100%" gap="md">
+      <Group justify="space-between">
+        <Title order={3}>Generated Videos ({completedVideos.length})</Title>
+        <Button
+          variant="light"
+          size="sm"
           onClick={clearHistory}
-          className="btn btn-secondary btn-sm"
         >
           Clear History
-        </button>
-      </div>
+        </Button>
+      </Group>
       
-      <div className="video-gallery-content">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg" style={{ flex: 1, overflow: 'auto' }}>
         {completedVideos.map((task) => (
           <VideoCard 
             key={task.id} 
@@ -44,8 +45,8 @@ export default function VideoGallery() {
             onRemove={() => removeTask(task.id)}
           />
         ))}
-      </div>
-    </div>
+      </SimpleGrid>
+    </Stack>
   );
 }
 
@@ -85,9 +86,9 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   };
 
   return (
-    <div className="video-card">
-      <div className="video-card-player">
-{(() => {
+    <Card p="sm" withBorder>
+      <Card.Section>
+        {(() => {
           if (video.url) {
             return (
               <VideoPlayer
@@ -106,43 +107,52 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
               />
             );
           }
-          return <div className="video-placeholder">No video available</div>;
+          return (
+            <div style={{ width: '100%', aspectRatio: '16/9', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Text c="dimmed">No video available</Text>
+            </div>
+          );
         })()}
-      </div>
+      </Card.Section>
       
-      <div className="video-card-content">
-        <div className="video-card-prompt">
+      <Card.Section p="sm">
+        <Text size="sm" lineClamp={2} mb="xs">
           {task.prompt}
-        </div>
+        </Text>
         
         {metadata && (
-          <div className="video-card-metadata">
-            {metadata.duration && <span>{metadata.duration}s</span>}
-            {metadata.resolution && <span>{metadata.resolution}</span>}
-            {metadata.fps && <span>{metadata.fps} FPS</span>}
+          <Group gap="xs" mb="sm">
+            {metadata.duration && <Badge size="sm" variant="light">{metadata.duration}s</Badge>}
+            {metadata.resolution && <Badge size="sm" variant="light">{metadata.resolution}</Badge>}
+            {metadata.fps && <Badge size="sm" variant="light">{metadata.fps} FPS</Badge>}
             {metadata.fileSizeBytes && (
-              <span>{formatFileSize(Number(metadata.fileSizeBytes))}</span>
+              <Badge size="sm" variant="light">{formatFileSize(Number(metadata.fileSizeBytes))}</Badge>
             )}
-          </div>
+          </Group>
         )}
         
-        <div className="video-card-actions">
-          <button
+        <Group gap="xs">
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconDownload size={14} />}
             onClick={() => void handleDownload()}
-            className="btn btn-primary btn-sm"
             disabled={!downloadUrl}
           >
             Download
-          </button>
-          <button
+          </Button>
+          <Button
+            size="xs"
+            variant="light"
+            color="red"
+            leftSection={<IconTrash size={14} />}
             onClick={onRemove}
-            className="btn btn-secondary btn-sm"
           >
             Remove
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Card.Section>
+    </Card>
   );
 }
 
