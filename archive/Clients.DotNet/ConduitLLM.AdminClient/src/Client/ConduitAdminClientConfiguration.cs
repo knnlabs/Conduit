@@ -66,14 +66,14 @@ public class ConduitAdminClientConfiguration
     /// <returns>A new configuration instance populated from environment variables.</returns>
     public static ConduitAdminClientConfiguration FromEnvironment()
     {
-        var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+        var masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY");
         var adminApiUrl = Environment.GetEnvironmentVariable("CONDUIT_ADMIN_API_URL") 
                          ?? Environment.GetEnvironmentVariable("CONDUIT_ADMIN_API_BASE_URL");
         var conduitApiUrl = Environment.GetEnvironmentVariable("CONDUIT_API_URL");
 
         if (string.IsNullOrEmpty(masterKey))
         {
-            throw new InvalidOperationException("CONDUIT_MASTER_KEY environment variable is required");
+            throw new InvalidOperationException("CONDUIT_API_TO_API_BACKEND_AUTH_KEY environment variable is required");
         }
 
         if (string.IsNullOrEmpty(adminApiUrl))

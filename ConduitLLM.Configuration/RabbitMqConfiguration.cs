@@ -16,6 +16,11 @@ namespace ConduitLLM.Configuration
         public int Port { get; set; } = 5672;
 
         /// <summary>
+        /// The RabbitMQ Management API port number.
+        /// </summary>
+        public int ManagementPort { get; set; } = 15672;
+
+        /// <summary>
         /// The RabbitMQ username for authentication.
         /// </summary>
         public string Username { get; set; } = "guest";
