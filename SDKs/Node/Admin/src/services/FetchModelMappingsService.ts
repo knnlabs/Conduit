@@ -10,6 +10,7 @@ import type {
   CapabilityTestResult,
   ModelMappingSuggestion,
   ModelRoutingInfo,
+  BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';
 
@@ -190,19 +191,18 @@ export class FetchModelMappingsService {
    * Bulk create model mappings
    */
   async bulkCreate(
-    mappings: CreateModelProviderMappingDto[],
-    replaceExisting: boolean = false,
+    request: BulkMappingRequest,
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
-    const request: BulkModelMappingRequest = {
-      mappings: mappings as unknown as BulkModelMappingRequest['mappings'], // Type compatibility
-      replaceExisting,
+    const apiRequest: BulkModelMappingRequest = {
+      mappings: request.mappings as unknown as BulkModelMappingRequest['mappings'], // Type compatibility
+      replaceExisting: request.replaceExisting ?? false,
       validateProviderModels: true,
     };
 
     return this.client['post']<BulkMappingResponse, BulkModelMappingRequest>(
       ENDPOINTS.MODEL_MAPPINGS.BULK,
-      request,
+      apiRequest,
       {
         signal: config?.signal,
         timeout: config?.timeout,

@@ -2168,16 +2168,16 @@ var FetchModelMappingsService = class {
   /**
    * Bulk create model mappings
    */
-  async bulkCreate(mappings, replaceExisting = false, config) {
-    const request = {
-      mappings,
+  async bulkCreate(request, config) {
+    const apiRequest = {
+      mappings: request.mappings,
       // Type compatibility
-      replaceExisting,
+      replaceExisting: request.replaceExisting ?? false,
       validateProviderModels: true
     };
     return this.client["post"](
       ENDPOINTS.MODEL_MAPPINGS.BULK,
-      request,
+      apiRequest,
       {
         signal: config?.signal,
         timeout: config?.timeout,

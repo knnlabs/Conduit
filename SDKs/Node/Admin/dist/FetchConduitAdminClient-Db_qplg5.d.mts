@@ -3893,7 +3893,7 @@ declare class FetchModelMappingsService {
     /**
      * Bulk create model mappings
      */
-    bulkCreate(mappings: CreateModelProviderMappingDto[], replaceExisting?: boolean, config?: RequestConfig): Promise<BulkMappingResponse>;
+    bulkCreate(request: BulkMappingRequest, config?: RequestConfig): Promise<BulkMappingResponse>;
     /**
      * Bulk update model mappings
      */
