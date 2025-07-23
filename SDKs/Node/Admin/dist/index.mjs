@@ -139,9 +139,13 @@ var ENDPOINTS = {
   // Analytics & Cost Dashboard
   ANALYTICS: {
     COST_SUMMARY: "/api/CostDashboard/summary",
+    // DEPRECATED: Use COSTS.SUMMARY instead
     COST_BY_PERIOD: "/api/CostDashboard/by-period",
+    // DEPRECATED: Use COSTS endpoints
     COST_BY_MODEL: "/api/CostDashboard/by-model",
+    // DEPRECATED: Use COSTS endpoints
     COST_BY_KEY: "/api/CostDashboard/by-key",
+    // DEPRECATED: Use COSTS endpoints
     REQUEST_LOGS: "/api/Logs",
     REQUEST_LOG_BY_ID: (id) => `/api/Logs/${id}`,
     // Export management
@@ -2067,16 +2071,16 @@ var FetchModelMappingsService = class {
   /**
    * Bulk create model mappings
    */
-  async bulkCreate(mappings, replaceExisting = false, config) {
-    const request = {
-      mappings,
+  async bulkCreate(request, config) {
+    const apiRequest = {
+      mappings: request.mappings,
       // Type compatibility
-      replaceExisting,
+      replaceExisting: request.replaceExisting ?? false,
       validateProviderModels: true
     };
     return this.client["post"](
       ENDPOINTS.MODEL_MAPPINGS.BULK,
-      request,
+      apiRequest,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -2651,40 +2655,6 @@ var FetchAnalyticsService = class {
     return this.client["post"](
       ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
       params,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers
-      }
-    );
-  }
-  /**
-   * Get cost summary (legacy endpoint)
-   */
-  async getCostSummary(startDate, endDate, config) {
-    const queryParams = new URLSearchParams();
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-    const queryString = queryParams.toString();
-    const url = queryString ? `${ENDPOINTS.ANALYTICS.COST_SUMMARY}?${queryString}` : ENDPOINTS.ANALYTICS.COST_SUMMARY;
-    return this.client["get"](
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers
-      }
-    );
-  }
-  /**
-   * Get cost by period (legacy endpoint)
-   */
-  async getCostByPeriod(period, startDate, endDate, config) {
-    const queryParams = new URLSearchParams({ period });
-    if (startDate) queryParams.append("startDate", startDate);
-    if (endDate) queryParams.append("endDate", endDate);
-    return this.client["get"](
-      `${ENDPOINTS.ANALYTICS.COST_BY_PERIOD}?${queryParams.toString()}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -8066,66 +8036,6 @@ var dateRangeSchema = z8.object({
   endDate: z8.string().datetime()
 });
 var AnalyticsService = class extends FetchBaseApiClient {
-  // Cost Analytics
-  async getCostSummary(dateRange) {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError("Invalid date range", { validationError: error });
-    }
-    const cacheKey = this.getCacheKey("cost-summary", dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get(ENDPOINTS.ANALYTICS.COST_SUMMARY, { ...dateRange }),
-      CACHE_TTL.SHORT
-    );
-  }
-  async getCostByPeriod(dateRange, groupBy = "day") {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError("Invalid date range", { validationError: error });
-    }
-    const params = { ...dateRange, groupBy };
-    const cacheKey = this.getCacheKey("cost-by-period", params);
-    return this.withCache(
-      cacheKey,
-      () => super.get(ENDPOINTS.ANALYTICS.COST_BY_PERIOD, params),
-      CACHE_TTL.SHORT
-    );
-  }
-  async getCostByModel(dateRange) {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError("Invalid date range", { validationError: error });
-    }
-    const cacheKey = this.getCacheKey("cost-by-model", dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get(
-        ENDPOINTS.ANALYTICS.COST_BY_MODEL,
-        { ...dateRange }
-      ),
-      CACHE_TTL.SHORT
-    );
-  }
-  async getCostByKey(dateRange) {
-    try {
-      dateRangeSchema.parse(dateRange);
-    } catch (error) {
-      throw new ValidationError("Invalid date range", { validationError: error });
-    }
-    const cacheKey = this.getCacheKey("cost-by-key", dateRange);
-    return this.withCache(
-      cacheKey,
-      () => super.get(
-        ENDPOINTS.ANALYTICS.COST_BY_KEY,
-        { ...dateRange }
-      ),
-      CACHE_TTL.SHORT
-    );
-  }
   // Request Logs
   async getRequestLogs(filters) {
     const params = {
@@ -8202,19 +8112,6 @@ var AnalyticsService = class extends FetchBaseApiClient {
       () => super.get("/api/analytics/key-usage", params),
       CACHE_TTL.SHORT
     );
-  }
-  // Convenience methods
-  async getTodayCosts() {
-    const today = /* @__PURE__ */ new Date();
-    const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-    return this.getCostSummary({ startDate, endDate });
-  }
-  async getMonthCosts() {
-    const now = /* @__PURE__ */ new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
-    return this.getCostSummary({ startDate, endDate });
   }
   // Request logs export and analytics
   async exportRequestLogs(params) {

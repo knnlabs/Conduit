@@ -51,8 +51,6 @@ export type {
   UsageMetricsDto,
   ModelUsageDto,
   KeyUsageDto,
-  CostSummaryDto,
-  CostByPeriodDto,
   CostForecastDto,
   RequestLogDto,
   RequestLogFilters,

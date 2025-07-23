@@ -18,6 +18,7 @@ export interface StreamOptions {
   onProgress?: (event: ProgressEvent) => void;
   onStart?: () => void;
   onEnd?: () => void;
+  timeout?: number; // Timeout in milliseconds
 }
 
 export interface ProgressEvent {

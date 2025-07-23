@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import {
   Modal,
   TextInput,
@@ -64,9 +63,9 @@ export function IpRuleModal({
   
   const form = useForm({
     initialValues: {
-      ipAddress: '',
-      action: 'block' as 'allow' | 'block',
-      description: '',
+      ipAddress: rule?.ipAddress ?? '',
+      action: (rule?.action ?? 'block') as 'allow' | 'block',
+      description: rule?.description ?? '',
     },
     validate: {
       ipAddress: validateIpAddress,
@@ -79,18 +78,6 @@ export function IpRuleModal({
     },
   });
 
-  useEffect(() => {
-    if (rule) {
-      form.setValues({
-        ipAddress: rule.ipAddress,
-        action: rule.action,
-        description: rule.description ?? '',
-      });
-    } else {
-      form.reset();
-    }
-  }, [rule, form]);
-
   const handleSubmit = async (values: typeof form.values) => {
     try {
       await onSubmit({
@@ -98,17 +85,23 @@ export function IpRuleModal({
         id: rule?.id,
       });
       form.reset();
-      onClose();
+      // Don't close here - let the parent handle it after successful save
     } catch (error) {
-      // Error is handled by the parent component
+      // Re-throw so parent can handle the error properly
       console.error('Failed to save IP rule:', error);
+      throw error;
     }
+  };
+
+  const handleClose = () => {
+    form.reset();
+    onClose();
   };
 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={isEditing ? 'Edit IP Rule' : 'Add IP Rule'}
       size="md"
     >
@@ -149,7 +142,7 @@ export function IpRuleModal({
           />
 
           <Group justify="flex-end" mt="md">
-            <Button variant="light" onClick={onClose} disabled={isLoading}>
+            <Button variant="light" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" loading={isLoading}>

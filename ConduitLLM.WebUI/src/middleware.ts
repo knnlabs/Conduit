@@ -1,8 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Only the access-denied page is public
-const isPublicRoute = createRouteMatcher(['/access-denied']);
+// Public routes that don't require authentication
+const isPublicRoute = createRouteMatcher([
+  '/access-denied',
+  '/api/health'
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {

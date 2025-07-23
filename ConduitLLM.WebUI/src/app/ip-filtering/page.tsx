@@ -85,10 +85,7 @@ export default function IpFilteringPage() {
     void fetchIpRules();
   }, [fetchIpRules]);
 
-  const handleCreateRule = () => {
-    setSelectedRule(null);
-    openModal();
-  };
+  // Removed old handleCreateRule
 
   const handleBulkOperation = async (operation: string) => {
     if (selectedRules.length === 0) return;
@@ -244,25 +241,17 @@ export default function IpFilteringPage() {
       if (selectedRule?.id) {
         // Update existing rule
         await updateIpRule(selectedRule.id, values);
-        notifications.show({
-          title: 'Success',
-          message: 'IP rule updated successfully',
-          color: 'green',
-        });
       } else {
         // Create new rule
         await createIpRule(values as IpRule);
-        notifications.show({
-          title: 'Success',
-          message: 'IP rule created successfully',
-          color: 'green',
-        });
       }
       await fetchIpRules();
       closeModal();
+      setSelectedRule(null); // Clear selection after successful save
     } catch (error) {
-      // Error is already handled by useSecurityApi
+      // Error is already handled by useSecurityApi which shows notifications
       console.error('Failed to save IP rule:', error);
+      // Don't close modal on error so user can fix and retry
     } finally {
       setIsSubmitting(false);
     }
@@ -305,25 +294,6 @@ export default function IpFilteringPage() {
       color: 'orange',
     },
   ];
-
-  if (error) {
-    return (
-      <Stack gap="xl">
-        <div>
-          <Title order={1}>IP Filtering</Title>
-          <Text c="dimmed">Manage IP access control and filtering rules</Text>
-        </div>
-        
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          title="Error loading IP rules"
-          color="red"
-        >
-          {error}
-        </Alert>
-      </Stack>
-    );
-  }
 
   return (
     <>
@@ -382,13 +352,27 @@ export default function IpFilteringPage() {
             
             <Button
               leftSection={<IconPlus size={16} />}
-              onClick={handleCreateRule}
+              onClick={() => {
+                setSelectedRule(null);
+                openModal();
+              }}
             >
               Add Rule
             </Button>
           </Group>
         </Group>
       </Card>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert 
+          icon={<IconAlertCircle size={16} />} 
+          title="Error loading IP rules"
+          color="red"
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* Statistics Cards */}
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
@@ -512,7 +496,10 @@ export default function IpFilteringPage() {
     {/* IP Rule Modal */}
     <IpRuleModal
       opened={modalOpened}
-      onClose={closeModal}
+      onClose={() => {
+        closeModal();
+        setSelectedRule(null); // Clear selection when modal is closed
+      }}
       onSubmit={handleModalSubmit}
       rule={selectedRule}
       isLoading={isSubmitting}

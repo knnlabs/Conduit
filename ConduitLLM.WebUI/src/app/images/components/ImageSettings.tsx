@@ -1,5 +1,6 @@
 'use client';
 
+import { Select, NumberInput, Grid, Text } from '@mantine/core';
 import { useImageStore } from '../hooks/useImageStore';
 import { ImageModel } from '../hooks/useImageModels';
 
@@ -10,28 +11,28 @@ interface ImageSettingsProps {
 export default function ImageSettings({ models }: ImageSettingsProps) {
   const { settings, updateSettings } = useImageStore();
 
-  const handleModelChange = (modelId: string) => {
-    updateSettings({ model: modelId });
+  const handleModelChange = (value: string | null) => {
+    if (value) updateSettings({ model: value });
   };
 
-  const handleSizeChange = (size: string) => {
-    updateSettings({ size });
+  const handleSizeChange = (value: string | null) => {
+    if (value) updateSettings({ size: value });
   };
 
-  const handleQualityChange = (quality: 'standard' | 'hd') => {
-    updateSettings({ quality });
+  const handleQualityChange = (value: string | null) => {
+    if (value) updateSettings({ quality: value as 'standard' | 'hd' });
   };
 
-  const handleStyleChange = (style: 'vivid' | 'natural') => {
-    updateSettings({ style });
+  const handleStyleChange = (value: string | null) => {
+    if (value) updateSettings({ style: value as 'vivid' | 'natural' });
   };
 
-  const handleCountChange = (n: number) => {
-    updateSettings({ n });
+  const handleCountChange = (value: string | number) => {
+    updateSettings({ n: Number(value) });
   };
 
-  const handleResponseFormatChange = (responseFormat: 'url' | 'b64_json') => {
-    updateSettings({ responseFormat });
+  const handleResponseFormatChange = (value: string | null) => {
+    if (value) updateSettings({ responseFormat: value as 'url' | 'b64_json' });
   };
 
   // Get size options based on selected model
@@ -86,115 +87,100 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
   const sizeOptions = getSizeOptions();
   const maxCount = getMaxCount();
 
+  const modelOptions = models.map((model) => ({
+    value: model.id,
+    label: model.displayName,
+  }));
+
+  const sizeSelectOptions = sizeOptions.map((size) => ({
+    value: size,
+    label: size,
+  }));
+
   return (
-    <div className="image-settings-panel">
-      <div className="image-settings-grid">
+    <>
+      <Text fw={600} mb="md">Settings</Text>
+      <Grid>
         {/* Model Selection */}
-        <div>
-          <label htmlFor="model-select" className="block text-sm font-medium mb-1">
-            Model
-          </label>
-          <select
-            id="model-select"
+        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+          <Select
+            label="Model"
             value={settings.model}
-            onChange={(e) => handleModelChange(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded"
-          >
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
+            onChange={handleModelChange}
+            data={modelOptions}
+            required
+          />
+        </Grid.Col>
 
         {/* Size Selection */}
-        <div>
-          <label htmlFor="size-select" className="block text-sm font-medium mb-1">
-            Size
-          </label>
-          <select
-            id="size-select"
+        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+          <Select
+            label="Size"
             value={settings.size}
-            onChange={(e) => handleSizeChange(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded"
-          >
-            {sizeOptions.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </div>
+            onChange={handleSizeChange}
+            data={sizeSelectOptions}
+            required
+          />
+        </Grid.Col>
 
         {/* Quality Selection (if supported) */}
         {supportsQuality() && (
-          <div>
-            <label htmlFor="quality-select" className="block text-sm font-medium mb-1">
-              Quality
-            </label>
-            <select
-              id="quality-select"
+          <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+            <Select
+              label="Quality"
               value={settings.quality}
-              onChange={(e) => handleQualityChange(e.target.value as 'standard' | 'hd')}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="standard">Standard</option>
-              <option value="hd">HD</option>
-            </select>
-          </div>
+              onChange={handleQualityChange}
+              data={[
+                { value: 'standard', label: 'Standard' },
+                { value: 'hd', label: 'HD' },
+              ]}
+              required
+            />
+          </Grid.Col>
         )}
 
         {/* Style Selection (DALL-E 3 only) */}
         {supportsStyle() && (
-          <div>
-            <label htmlFor="style-select" className="block text-sm font-medium mb-1">
-              Style
-            </label>
-            <select
-              id="style-select"
+          <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+            <Select
+              label="Style"
               value={settings.style}
-              onChange={(e) => handleStyleChange(e.target.value as 'vivid' | 'natural')}
-              className="w-full p-2 border border-gray-300 rounded"
-            >
-              <option value="vivid">Vivid</option>
-              <option value="natural">Natural</option>
-            </select>
-          </div>
+              onChange={handleStyleChange}
+              data={[
+                { value: 'vivid', label: 'Vivid' },
+                { value: 'natural', label: 'Natural' },
+              ]}
+              required
+            />
+          </Grid.Col>
         )}
 
         {/* Count Selection */}
-        <div>
-          <label htmlFor="count-input" className="block text-sm font-medium mb-1">
-            Number of Images (max {maxCount})
-          </label>
-          <input
-            id="count-input"
-            type="number"
+        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+          <NumberInput
+            label={`Number of Images (max ${maxCount})`}
+            value={settings.n}
+            onChange={handleCountChange}
             min={1}
             max={maxCount}
-            value={settings.n}
-            onChange={(e) => handleCountChange(Math.min(maxCount, Math.max(1, parseInt(e.target.value) || 1)))}
-            className="w-full p-2 border border-gray-300 rounded"
+            required
           />
-        </div>
+        </Grid.Col>
 
         {/* Response Format */}
-        <div>
-          <label htmlFor="format-select" className="block text-sm font-medium mb-1">
-            Response Format
-          </label>
-          <select
-            id="format-select"
+        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+          <Select
+            label="Response Format"
             value={settings.responseFormat}
-            onChange={(e) => handleResponseFormatChange(e.target.value as 'url' | 'b64_json')}
-            className="w-full p-2 border border-gray-300 rounded"
-          >
-            <option value="url">URL</option>
-            <option value="b64_json">Base64</option>
-          </select>
-        </div>
-      </div>
-    </div>
+            onChange={handleResponseFormatChange}
+            data={[
+              { value: 'url', label: 'URL' },
+              { value: 'b64_json', label: 'Base64' },
+            ]}
+            required
+          />
+        </Grid.Col>
+      </Grid>
+    </>
   );
 }

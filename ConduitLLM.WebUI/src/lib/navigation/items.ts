@@ -242,13 +242,6 @@ export const navigationSections: NavigationSection[] = [
         description: 'Monitor provider status',
       },
       {
-        id: 'health-monitoring',
-        label: 'Health Monitoring',
-        icon: IconHealth,
-        href: '/health-monitoring',
-        description: 'System health checks',
-      },
-      {
         id: 'security-monitoring',
         label: 'Security Monitoring',
         icon: IconShield,

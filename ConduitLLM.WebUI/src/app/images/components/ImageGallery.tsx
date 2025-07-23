@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { Card, SimpleGrid, Text, Button, Group, Modal, Center } from '@mantine/core';
+import { IconDownload, IconZoomIn } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 import { GeneratedImage } from '../types';
 
@@ -55,10 +57,13 @@ export default function ImageGallery() {
 
   const getImageSrc = (image: GeneratedImage): string => {
     if (image.url) {
+      console.warn('Image URL:', image.url);
       return image.url;
     } else if (image.b64Json) {
+      console.warn('Using base64 image');
       return `data:image/png;base64,${image.b64Json}`;
     }
+    console.warn('No image data available');
     return '';
   };
 
@@ -72,80 +77,131 @@ export default function ImageGallery() {
 
   if (status === 'idle' || (status !== 'generating' && results.length === 0)) {
     return (
-      <div className="image-gallery">
-        <div className="text-center text-gray-500 py-8">
+      <Center py="xl">
+        <Text c="dimmed">
           Generated images will appear here. Enter a prompt and click &quot;Generate Images&quot; to get started.
-        </div>
-      </div>
+        </Text>
+      </Center>
     );
   }
 
   return (
     <>
-      <div className="image-gallery">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
         {results.map((image, index) => (
-          <div key={`image-${image.id ?? index}`} className="image-card">
-            <Image
-              src={getImageSrc(image)}
-              alt={image.revisedPrompt ?? `Generated image ${index + 1}`}
-              onClick={() => handleImageClick(image)}
-              className="cursor-pointer"
-              loading="lazy"
-              width={300}
-              height={300}
-            />
-            <div className="image-card-actions">
-              <div className="text-sm text-gray-600">
-                Image {index + 1}
-                {image.revisedPrompt && (
-                  <div className="text-xs text-gray-500 mt-1 truncate" title={image.revisedPrompt}>
-                    {image.revisedPrompt}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => void handleDownload(image, index)}
-                className="btn btn-secondary text-sm"
-                title="Download image"
+          <Card 
+            key={`image-${image.id ?? index}`} 
+            p="sm" 
+            radius="md" 
+            withBorder
+            style={{ overflow: 'hidden' }}
+          >
+            <Card.Section>
+              <div 
+                style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  height: '250px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => handleImageClick(image)}
               >
-                📥 Download
-              </button>
-            </div>
-          </div>
+                <Image
+                  src={getImageSrc(image)}
+                  alt={image.revisedPrompt ?? `Generated image ${index + 1}`}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  loading="lazy"
+                  unoptimized={true}
+                  onError={(e) => {
+                    console.error('Image failed to load:', e);
+                    console.error('Failed URL:', getImageSrc(image));
+                  }}
+                />
+                <div 
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0)',
+                    transition: 'background 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.5)';
+                    const icon = e.currentTarget.querySelector('svg');
+                    if (icon) icon.style.opacity = '1';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0)';
+                    const icon = e.currentTarget.querySelector('svg');
+                    if (icon) icon.style.opacity = '0';
+                  }}
+                >
+                  <IconZoomIn 
+                    size={48} 
+                    color="white" 
+                    style={{ opacity: 0, transition: 'opacity 0.2s' }}
+                  />
+                </div>
+              </div>
+            </Card.Section>
+
+            <Card.Section p="sm">
+              <Group justify="space-between">
+                <div style={{ flex: 1 }}>
+                  <Text size="sm" fw={500}>Image {index + 1}</Text>
+                  {image.revisedPrompt && (
+                    <Text size="xs" c="dimmed" lineClamp={1} title={image.revisedPrompt}>
+                      {image.revisedPrompt}
+                    </Text>
+                  )}
+                </div>
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconDownload size={14} />}
+                  onClick={() => void handleDownload(image, index)}
+                >
+                  Download
+                </Button>
+              </Group>
+            </Card.Section>
+          </Card>
         ))}
-      </div>
+      </SimpleGrid>
 
       {/* Image Modal */}
-      {selectedImage && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={closeModal}
-        >
-          <div className="relative max-w-full max-h-full">
+      <Modal
+        opened={!!selectedImage}
+        onClose={closeModal}
+        size="xl"
+        title={selectedImage?.revisedPrompt ? "Generated Image" : undefined}
+        centered
+      >
+        {selectedImage && (
+          <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
             <Image
               src={getImageSrc(selectedImage)}
               alt={selectedImage.revisedPrompt ?? 'Generated image'}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-              width={800}
-              height={600}
+              fill
+              style={{ objectFit: 'contain' }}
+              unoptimized={true}
             />
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75"
-            >
-              ✕
-            </button>
             {selectedImage.revisedPrompt && (
-              <div className="absolute bottom-4 left-4 right-4 text-white bg-black bg-opacity-75 p-2 rounded">
-                <div className="text-sm">
+              <div style={{ marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+                <Text size="sm" c="dimmed">
                   <strong>Revised Prompt:</strong> {selectedImage.revisedPrompt}
-                </div>
+                </Text>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </>
   );
 }

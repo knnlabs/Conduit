@@ -176,48 +176,6 @@ export interface ExportResult {
   recordCount: number;
 }
 
-export interface CostSummaryDto {
-  totalCost: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  currency: string;
-  period: DateRange;
-  costByModel: {
-    modelId: string;
-    cost: number;
-    inputTokens: number;
-    outputTokens: number;
-    requestCount: number;
-  }[];
-  costByKey: {
-    keyId: number;
-    keyName: string;
-    cost: number;
-    requestCount: number;
-  }[];
-  costByProvider: {
-    providerId: string;
-    providerName: string;
-    cost: number;
-    requestCount: number;
-  }[];
-}
-
-export interface CostByPeriodDto {
-  periods: {
-    period: string;
-    startDate: string;
-    endDate: string;
-    totalCost: number;
-    inputTokens: number;
-    outputTokens: number;
-    requestCount: number;
-  }[];
-  totalCost: number;
-  averageCostPerPeriod: number;
-  trend: 'increasing' | 'decreasing' | 'stable';
-  trendPercentage: number;
-}
 
 export interface RequestLogDto {
   id: string;

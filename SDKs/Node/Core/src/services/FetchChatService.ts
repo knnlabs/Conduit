@@ -3,8 +3,11 @@ import { HttpMethod } from '../client/HttpMethod';
 import type { ClientConfig, RequestOptions } from '../client/types';
 import type { components } from '../generated/core-api';
 import type { StreamingResponse } from '../models/streaming';
-import { createWebStream } from '../utils/web-streaming';
+import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
+import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import { API_ENDPOINTS } from '../constants';
+import { createWebStream } from '../utils/web-streaming';
+import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
 
 // Type aliases for better readability
 type ChatCompletionRequest = components['schemas']['ChatCompletionRequest'];
@@ -65,19 +68,23 @@ export class FetchChatService extends FetchBasedClient {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<StreamingResponse<ChatCompletionChunk>> {
-    // For streaming, we need to handle the response differently
     const response = await this.createStreamingRequest(request, options);
     const stream = response.body;
+    
     if (!stream) {
       throw new Error('Response body is not a stream');
     }
-    
-    // Return stream without validation
-    
-    return createWebStream<ChatCompletionChunk>(stream, options);
+
+    return createWebStream<ChatCompletionChunk>(
+      stream,
+      {
+        signal: options?.signal,
+        timeout: options?.timeout,
+      }
+    );
   }
 
-  private async createStreamingRequest(
+  protected async createStreamingRequest(
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<Response> {
@@ -114,60 +121,6 @@ export class FetchChatService extends FetchBasedClient {
     }
   }
 
-  /**
-   * Convert legacy function format to tools format for backward compatibility
-   */
-  private convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest {
-    const legacyRequest = request as ChatCompletionRequest & { 
-      functions?: Array<{
-        name: string;
-        description?: string;
-        parameters?: Record<string, unknown>;
-      }>;
-      function_call?: string | { name: string };
-    };
-
-    if (!legacyRequest.functions || legacyRequest.functions.length === 0) {
-      return request;
-    }
-
-    // Convert functions to tools - OpenAPI spec expects Record<string, never> for empty params
-    const tools: NonNullable<ChatCompletionRequest['tools']> = legacyRequest.functions.map(func => ({
-      type: 'function' as const,
-      function: {
-        name: func.name,
-        description: func.description,
-        // If parameters exist and have properties, we need to handle the type mismatch
-        // The OpenAPI spec incorrectly types this as Record<string, never>
-        parameters: func.parameters && Object.keys(func.parameters).length > 0 
-          ? func.parameters as Record<string, never>
-          : {} as Record<string, never>,
-      }
-    }))
-
-    // Convert function_call to tool_choice
-    let tool_choice: ChatCompletionRequest['tool_choice'];
-    if (legacyRequest.function_call) {
-      if (typeof legacyRequest.function_call === 'string') {
-        tool_choice = legacyRequest.function_call as 'none' | 'auto';
-      } else {
-        tool_choice = {
-          type: 'function',
-          function: { name: legacyRequest.function_call.name }
-        };
-      }
-    }
-
-    // Remove legacy function properties from the request
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { functions, function_call, ...cleanRequest } = legacyRequest;
-    
-    return {
-      ...cleanRequest,
-      tools,
-      tool_choice,
-    };
-  }
 
   /**
    * Count tokens in messages (placeholder - actual implementation would use tiktoken)
@@ -198,5 +151,77 @@ export class FetchChatService extends FetchBasedClient {
       tokens,
       limit,
     };
+  }
+
+  /**
+   * Creates an enhanced streaming chat completion that preserves SSE event types.
+   * This allows access to metrics events and other enhanced streaming features.
+   * 
+   * @param request - The chat completion request with stream: true
+   * @param options - Optional request configuration
+   * @returns A streaming response with enhanced events
+   * 
+   * @example
+   * const stream = await chatService.createEnhancedStream({
+   *   model: 'gpt-4',
+   *   messages: [{ role: 'user', content: 'Hello!' }],
+   *   stream: true
+   * });
+   * 
+   * for await (const event of stream) {
+   *   switch (event.type) {
+   *     case 'content':
+   *       console.log('Content:', event.data);
+   *       break;
+   *     case 'metrics':
+   *       console.log('Metrics:', event.data);
+   *       break;
+   *   }
+   * }
+   */
+  async createEnhancedStream(
+    request: ChatCompletionRequest & { stream: true },
+    options?: RequestOptions
+  ): Promise<EnhancedStreamingResponse<EnhancedStreamEvent>> {
+    const processedRequest = this.convertLegacyFunctions(request);
+    
+    const response = await this.createStreamingRequest(processedRequest, options);
+    const stream = response.body;
+    
+    if (!stream) {
+      throw new Error('Response body is not a stream');
+    }
+
+    return createEnhancedWebStream(
+      stream,
+      {
+        signal: options?.signal,
+        timeout: options?.timeout,
+      }
+    );
+  }
+  
+  /**
+   * Converts legacy function parameters to the tools format
+   * for backward compatibility
+   */
+  protected convertLegacyFunctions(request: any): any {
+    if (request.functions && !request.tools) {
+      request.tools = request.functions.map((fn: any) => ({
+        type: 'function',
+        function: fn
+      }));
+      delete request.functions;
+    }
+    
+    if (request.function_call && !request.tool_choice) {
+      request.tool_choice = {
+        type: 'function',
+        function: request.function_call
+      };
+      delete request.function_call;
+    }
+    
+    return request;
   }
 }
