@@ -2,6 +2,7 @@ using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Caching;
@@ -278,43 +279,8 @@ public partial class Program
             }
         }
 
-        // Initialize database - Always run unless explicitly told to skip
-        // This ensures users get automatic schema updates when pulling new versions
-        var skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
-        if (!skipDatabaseInit)
-        {
-            using (var scope = app.Services.CreateScope())
-            {
-                var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
-                var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-                try
-                {
-                    initLogger.LogInformation("Starting database initialization for Admin API...");
-
-                    // Wait for database to be available (especially important in Docker)
-                    var maxRetries = 10;
-                    var retryDelay = 3000; // 3 seconds between retries
-
-                    var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
-
-                    if (success)
-                    {
-                        initLogger.LogInformation("Database initialization completed successfully");
-                    }
-                    else
-                    {
-                        initLogger.LogError("Database initialization failed after {MaxRetries} attempts", maxRetries);
-                        throw new InvalidOperationException($"Database initialization failed after {maxRetries} attempts. Please check database connectivity and logs.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    initLogger.LogError(ex, "Critical error during database initialization");
-                    throw new InvalidOperationException("Failed to initialize database. Application cannot start.", ex);
-                }
-            }
-        }
+        // Run database migrations
+        await app.RunDatabaseMigrationAsync();
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())

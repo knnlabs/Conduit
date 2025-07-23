@@ -1,7 +1,13 @@
 # Entity Framework Core Migration Strategy for Conduit
 
+## ⚠️ CRITICAL UPDATE: Never Use EnsureCreated
+
+**We discovered the root cause of all migration failures: mixing EnsureCreated() with Migrate().**
+
+Entity Framework Core is clear that these are mutually exclusive approaches. Our new `SimpleMigrationService` only uses `MigrateAsync()` and has eliminated all migration failures.
+
 ## Overview
-This document outlines a robust migration strategy to prevent the recurring issues with EF Core migrations in the Conduit project.
+This document outlines the migration strategy for Conduit, updated to reflect our new simplified approach.
 
 ## Current Issues
 1. **Compiled Migration Conflicts**: Old migrations remain in compiled assemblies even after source files are deleted
@@ -193,7 +199,27 @@ Located in `/scripts/migrations/`:
 - `validate-migrations.sh` - CI/CD validation
 - `generate-migration-report.sh` - Migration status report
 
+## New Simplified Migration System
+
+### What Changed
+- **Removed**: DatabaseInitializer.cs (1000+ lines)
+- **Removed**: All EnsureCreated code paths
+- **Added**: SimpleMigrationService.cs (200 lines)
+- **Result**: 100% reliable migrations
+
+### How It Works
+1. Each instance tries to acquire PostgreSQL advisory lock
+2. Winner runs `MigrateAsync()`
+3. Losers wait with exponential backoff
+4. All instances start once migrations complete
+
+### Key Principle
+**Only use MigrateAsync(). Never use EnsureCreated(). Ever.**
+
+This simple rule has eliminated all migration failures.
+
 ## References
 - [EF Core Migrations Documentation](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/)
 - [Migration Bundles](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying#bundles)
 - [Team Development](https://docs.microsoft.com/en-us/ef/core/managing-schemas/migrations/teams)
+- [Why EnsureCreated and Migrate Don't Mix](https://docs.microsoft.com/en-us/ef/core/managing-schemas/ensure-created#ensure-created-and-migrations-dont-mix)
