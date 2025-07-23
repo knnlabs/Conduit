@@ -48,13 +48,26 @@ async function* enhancedWebStreamAsyncIterator(
   let buffer = '';
   let currentEventType: string | undefined;
   let currentData = '';
+  let lineNumber = 0;
+  const startTime = Date.now();
+  const timeout = options?.timeout ?? 300000; // 5 minutes default
 
   try {
     while (true) {
+      // Check for timeout
+      if (Date.now() - startTime > timeout) {
+        throw new StreamError(`Stream timeout after ${timeout}ms`);
+      }
+
       const { done, value } = await reader.read();
       
       if (done) {
         break;
+      }
+
+      // Validate chunk size
+      if (value.length > 1048576) { // 1MB limit per chunk
+        throw new StreamError(`Stream chunk too large: ${value.length} bytes`);
       }
 
       buffer += decoder.decode(value, { stream: true });
@@ -64,6 +77,7 @@ async function* enhancedWebStreamAsyncIterator(
       buffer = lines.pop() ?? '';
 
       for (const line of lines) {
+        lineNumber++;
         const trimmedLine = line.trim();
         
         // Empty line signals end of event
@@ -81,15 +95,38 @@ async function* enhancedWebStreamAsyncIterator(
         
         // Parse event type
         if (line.startsWith('event: ')) {
-          currentEventType = line.slice(7).trim();
+          const eventType = line.slice(7).trim();
+          // Validate event type
+          if (eventType.length > 50) {
+            if (options?.onError) {
+              options.onError(new StreamError(`Invalid event type at line ${lineNumber}: too long`));
+            }
+            continue;
+          }
+          currentEventType = eventType;
         } 
         // Parse data
         else if (line.startsWith('data: ')) {
           const data = line.slice(6);
+          // Prevent excessive data accumulation
+          if (currentData.length + data.length > 1048576) { // 1MB limit
+            if (options?.onError) {
+              options.onError(new StreamError(`Data too large at line ${lineNumber}`));
+            }
+            currentData = '';
+            currentEventType = undefined;
+            continue;
+          }
           if (currentData) {
             currentData += '\n' + data;
           } else {
             currentData = data;
+          }
+        }
+        // Ignore other fields or malformed lines
+        else if (!line.startsWith(':')) { // Comments start with :
+          if (options?.onError) {
+            options.onError(new StreamError(`Malformed SSE line at ${lineNumber}: ${line}`));
           }
         }
       }
@@ -112,6 +149,14 @@ function processEvent(
   data: string,
   options?: StreamOptions
 ): EnhancedStreamEvent | null {
+  // Validate data
+  if (!data || data.length === 0) {
+    if (options?.onError) {
+      options.onError(new StreamError('Empty event data'));
+    }
+    return null;
+  }
+
   // Handle [DONE] marker
   if (data === '[DONE]') {
     return {
@@ -139,13 +184,29 @@ function processEvent(
 
   try {
     const parsed = JSON.parse(data);
+    
+    // Basic validation based on event type
+    if (type === 'content' && parsed && typeof parsed === 'object' && !parsed.object) {
+      if (options?.onError) {
+        options.onError(new StreamError('Invalid content event: missing object field'));
+      }
+      return null;
+    }
+    
     return {
       type,
       data: parsed
     };
   } catch (error) {
     if (options?.onError) {
-      options.onError(new StreamError(`Failed to parse SSE ${type} event`, { cause: error }));
+      options.onError(new StreamError(`Failed to parse SSE ${type} event: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error }));
+    }
+    // For non-critical errors, try to return raw data
+    if (type === 'error') {
+      return {
+        type,
+        data: { message: data, parse_error: true }
+      };
     }
     return null;
   }

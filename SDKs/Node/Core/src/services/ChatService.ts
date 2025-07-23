@@ -10,21 +10,21 @@ import type { StreamingResponse } from '../models/streaming';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import { validateChatCompletionRequest } from '../utils/validation';
-import { createWebStream } from '../utils/web-streaming';
-import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
 import { API_ENDPOINTS } from '../constants';
 import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
+import { BaseStreamingService } from './BaseStreamingService';
 
 interface FetchBasedClientWithConfig {
   config: Required<Omit<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>> & 
     Pick<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>;
 }
 
-export class ChatService {
+export class ChatService extends BaseStreamingService {
   private readonly clientAdapter: IFetchBasedClientAdapter;
   private readonly config: ClientConfig;
 
   constructor(client: FetchBasedClient) {
+    super();
     this.clientAdapter = createClientAdapter(client);
     // Access config through type assertion - this is a known architectural limitation
     // The config is protected in FetchBasedClient, but we need it for streaming
@@ -96,24 +96,10 @@ export class ChatService {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<StreamingResponse<ChatCompletionChunk>> {
-    // Create streaming request using fetch API directly
-    const response = await this.createStreamingRequest(request, options);
-    const stream = response.body;
-    
-    if (!stream) {
-      throw new Error('Response body is not a stream');
-    }
-
-    // Use web streaming for browser compatibility
-    return createWebStream<ChatCompletionChunk>(
-      stream,
-      {
-        signal: options?.signal,
-      }
-    );
+    return this.createStandardStream<ChatCompletionChunk>(request, options);
   }
 
-  private async createStreamingRequest(
+  protected async createStreamingRequest(
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<Response> {
@@ -167,39 +153,6 @@ export class ChatService {
    * 
    * @private
    */
-  private convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest {
-    const processedRequest = { ...request };
-    
-    // Convert legacy functions to tools
-    if (processedRequest.functions && !processedRequest.tools) {
-      processedRequest.tools = processedRequest.functions.map(fn => ({
-        type: 'function' as const,
-        function: {
-          name: fn.name,
-          description: fn.description,
-          parameters: fn.parameters,
-        },
-      }));
-      delete processedRequest.functions;
-    }
-    
-    // Convert legacy function_call to tool_choice
-    if (processedRequest.function_call && !processedRequest.tool_choice) {
-      if (processedRequest.function_call === 'none') {
-        processedRequest.tool_choice = 'none';
-      } else if (processedRequest.function_call === 'auto') {
-        processedRequest.tool_choice = 'auto';
-      } else if (typeof processedRequest.function_call === 'object' && processedRequest.function_call.name) {
-        processedRequest.tool_choice = {
-          type: 'function',
-          function: { name: processedRequest.function_call.name },
-        };
-      }
-      delete processedRequest.function_call;
-    }
-    
-    return processedRequest;
-  }
 
   /**
    * Creates a chat completion stream with pause/resume/cancel controls.
@@ -274,19 +227,6 @@ export class ChatService {
     const processedRequest = this.convertLegacyFunctions(request);
     validateChatCompletionRequest(processedRequest);
 
-    const response = await this.createStreamingRequest(processedRequest, options);
-    const stream = response.body;
-    
-    if (!stream) {
-      throw new Error('Response body is not a stream');
-    }
-
-    // Use enhanced web streaming that preserves SSE event types
-    return createEnhancedWebStream(
-      stream,
-      {
-        signal: options?.signal,
-      }
-    );
+    return this.createEnhancedStreamInternal(processedRequest, options);
   }
 }
