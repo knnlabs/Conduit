@@ -113,8 +113,6 @@ services:
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://localhost:3000
-      AdminApi__AllowedOrigins__1: http://localhost:3001
-      AdminApi__AllowedOrigins__2: http://localhost:5001
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
@@ -146,9 +144,6 @@ services:
       # Next.js specific environment variables
       NODE_ENV: production
       PORT: 3000
-      # Public environment variables (accessible in browser)
-      NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
-      # Admin API is accessed through proxy routes, not directly
       # Server-side environment variables
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       CONDUIT_API_BASE_URL: http://api:8080
@@ -156,8 +151,6 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Redis configuration
-      REDIS_URL: "redis://redis:6379"
       # Clerk authentication for WebUI access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
       # Users must have siteadmin: true in their public metadata to access the WebUI
