@@ -3,7 +3,7 @@ import { ConduitAdminClient } from '../src';
 async function connectionManagementExample() {
   // Initialize the admin client
   const client = new ConduitAdminClient({
-    masterKey: process.env.CONDUIT_MASTER_KEY || 'your-master-key',
+    masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || 'your-master-key',
     adminApiUrl: process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5002',
   });
 
@@ -84,7 +84,7 @@ async function connectionManagementExample() {
 async function manualConnectionExample() {
   // Initialize client with auto-connect disabled
   const client = new ConduitAdminClient({
-    masterKey: process.env.CONDUIT_MASTER_KEY || 'your-master-key',
+    masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || 'your-master-key',
     adminApiUrl: process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5002',
     options: {
       signalR: {

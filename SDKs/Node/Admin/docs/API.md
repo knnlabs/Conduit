@@ -31,7 +31,7 @@ const client = new ConduitAdminClient({
 
 ```typescript
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
   options: {
     timeout: 30000, // 30 seconds
@@ -49,7 +49,7 @@ const client = new ConduitAdminClient({
 
 ```typescript
 const client = ConduitAdminClient.fromEnvironment();
-// Expects: CONDUIT_MASTER_KEY, CONDUIT_ADMIN_API_URL
+// Expects: CONDUIT_API_TO_API_BACKEND_AUTH_KEY, CONDUIT_ADMIN_API_URL
 ```
 
 ## Virtual Keys

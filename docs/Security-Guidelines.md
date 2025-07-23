@@ -134,7 +134,7 @@ When insecure mode is active in development:
 
 #### Best Practices
 - **Never** set `CONDUIT_INSECURE=true` in production environments
-- Use proper authentication keys (`CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_MASTER_KEY`) for all non-development deployments
+- Use proper authentication keys (`CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`) for all non-development deployments
 - Regularly audit environment variables in deployment pipelines
 - Consider using separate configuration files for development vs production
 

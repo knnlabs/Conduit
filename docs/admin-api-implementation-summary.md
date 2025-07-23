@@ -42,7 +42,7 @@ All adapters follow a consistent pattern:
 - Added `AdminApiOptions` class for configuring the Admin API client
 - Added support for environment variable configuration:
   - `CONDUIT_ADMIN_API_URL`: Base URL of the Admin API
-  - `CONDUIT_MASTER_KEY`: Master key for authentication
+  - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`: Master key for authentication
   - `CONDUIT_USE_ADMIN_API`: Toggle between API and direct repository access
   - `CONDUIT_ADMIN_TIMEOUT_SECONDS`: Request timeout
 

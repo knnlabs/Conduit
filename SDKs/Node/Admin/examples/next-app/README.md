@@ -11,7 +11,7 @@ npm install @conduit/admin-client
 
 2. Set environment variables in `.env.local`:
 ```
-CONDUIT_MASTER_KEY=your-master-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 CONDUIT_ADMIN_API_URL=http://localhost:5002
 ```
 

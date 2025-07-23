@@ -32,7 +32,7 @@ The WebUI service uses the following environment variables:
 - `CONDUIT_ADMIN_API_EXTERNAL_URL=http://localhost:5002`
 
 #### Authentication & Storage
-- `CONDUIT_MASTER_KEY=alpha`
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY=alpha`
 - `SESSION_SECRET=your-session-secret-key-change-in-production`
 - `REDIS_URL=redis://redis:6379`
 - `REDIS_SESSION_PREFIX=conduit:session:`

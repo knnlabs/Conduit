@@ -26,7 +26,7 @@ Please follow the detailed migration guide: [Admin API Migration Guide](admin-ap
 3. Update your WebUI configuration to use the Admin API:
    ```
    CONDUIT_ADMIN_API_BASE_URL=http://your-admin-api:8080
-   CONDUIT_MASTER_KEY=your-master-key
+   CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
    ```
 4. Remove any database connection strings from WebUI environment variables
 5. Test thoroughly before upgrading to v2025.11.0

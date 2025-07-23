@@ -374,7 +374,7 @@ The WebUI includes comprehensive security features:
 
 #### Authentication
 - **WebUI Auth Key**: Dedicated authentication key for WebUI access (`CONDUIT_WEBUI_AUTH_KEY`)
-- **Master Key Fallback**: Can use `CONDUIT_MASTER_KEY` if WebUI key not set
+- **Master Key Fallback**: Can use `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` if WebUI key not set
 - **Session Management**: Automatic logout on inactivity
 - **Remember Me**: Optional persistent authentication
 

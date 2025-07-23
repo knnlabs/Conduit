@@ -1,22 +1,22 @@
-# WebUI Authentication Pattern
+# WebUI Authentication with Clerk
 
 ## Overview
 
-Conduit uses a two-tier authentication model that separates WebUI user authentication from API authentication. This guide explains the authentication pattern and how to implement it in custom WebUI applications.
+The Conduit WebUI uses Clerk for user authentication. Human administrators authenticate through Clerk to access the WebUI dashboard. Server-to-server communication between the WebUI backend and other services (Core API, Admin API) uses the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 
-## Two-Tier Authentication Model
+## Authentication Model
 
-### 1. WebUI Authentication (User Login)
-- **Key**: `CONDUIT_WEBUI_AUTH_KEY`
+### 1. Human Administrator Authentication (Clerk)
+- **Provider**: Clerk (https://clerk.com)
 - **Purpose**: Authenticates administrators to access the WebUI dashboard
 - **Scope**: WebUI access only
-- **Storage**: Session cookies and localStorage
+- **Requirements**: Users must have `siteadmin: true` in their Clerk public metadata
 
-### 2. API Authentication (SDK Operations)
-- **Key**: `CONDUIT_MASTER_KEY`
-- **Purpose**: Authenticates API requests to the Core API
-- **Scope**: All LLM operations (chat, completions, embeddings)
-- **Usage**: Used by the Admin SDK for all API calls
+### 2. Backend Service Authentication
+- **Key**: `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
+- **Purpose**: Authenticates server-to-server requests between WebUI backend and APIs
+- **Scope**: Backend service communication only
+- **Usage**: Configured on the WebUI service for API calls
 
 ## Authentication Flow
 
@@ -24,22 +24,24 @@ Conduit uses a two-tier authentication model that separates WebUI user authentic
 sequenceDiagram
     participant User
     participant WebUI
-    participant AuthAPI
+    participant Clerk
     participant AdminSDK
+    participant AdminAPI
     participant CoreAPI
 
-    User->>WebUI: Enter auth key
-    WebUI->>AuthAPI: POST /api/auth/validate
-    AuthAPI->>AuthAPI: Validate against CONDUIT_WEBUI_AUTH_KEY
-    AuthAPI->>WebUI: Return session token
-    WebUI->>WebUI: Store session (cookie + localStorage)
+    User->>WebUI: Access dashboard
+    WebUI->>Clerk: Redirect to authentication
+    Clerk->>User: Login prompt
+    User->>Clerk: Provide credentials
+    Clerk->>WebUI: Return auth token + user metadata
+    WebUI->>WebUI: Check siteadmin: true
     
-    Note over WebUI: User is now authenticated to WebUI
+    Note over WebUI: User is now authenticated
     
     User->>WebUI: Perform admin action
-    WebUI->>AdminSDK: Initialize with CONDUIT_MASTER_KEY
-    AdminSDK->>CoreAPI: API request with master key
-    CoreAPI->>AdminSDK: Response
+    WebUI->>AdminSDK: Initialize with CONDUIT_API_TO_API_BACKEND_AUTH_KEY
+    AdminSDK->>AdminAPI: API request with backend auth key
+    AdminAPI->>AdminSDK: Response
     AdminSDK->>WebUI: Data
     WebUI->>User: Display result
 ```
@@ -49,264 +51,230 @@ sequenceDiagram
 ### 1. Environment Configuration
 
 ```bash
-# WebUI authentication key (for admin login)
-CONDUIT_WEBUI_AUTH_KEY=your-secure-webui-key
+# Clerk authentication (required)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-clerk-key
+CLERK_SECRET_KEY=sk_test_your-clerk-secret
 
-# Master key for API operations (used by SDK)
-CONDUIT_MASTER_KEY=your-master-api-key
+# Backend service authentication
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-backend-auth-key
 
-# Admin API URL
-CONDUIT_ADMIN_API_URL=http://localhost:3001/api
+# API endpoints
+CONDUIT_API_BASE_URL=http://api:8080
+CONDUIT_ADMIN_API_BASE_URL=http://admin:8080
+
+# Optional: Redirect URL for users without admin access
+ACCESS_DENIED_REDIRECT=https://your-main-site.com
 ```
 
-### 2. WebUI Authentication Endpoint
+### 2. Clerk Configuration
+
+1. **Create a Clerk Application**:
+   - Sign up at https://clerk.com
+   - Create a new application
+   - Configure authentication methods (email, OAuth, etc.)
+
+2. **Set User Metadata**:
+   Users must have `siteadmin: true` in their public metadata to access the WebUI:
+   
+   ```javascript
+   // Using Clerk Dashboard or API
+   await clerkClient.users.updateUser(userId, {
+     publicMetadata: {
+       siteadmin: true
+     }
+   });
+   ```
+
+3. **Configure Middleware**:
+   ```typescript
+   // middleware.ts
+   import { authMiddleware } from "@clerk/nextjs";
+
+   export default authMiddleware({
+     publicRoutes: ["/api/health"],
+   });
+
+   export const config = {
+     matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+   };
+   ```
+
+### 3. Access Control
 
 ```typescript
-// /api/auth/validate/route.ts
-import { webUIAuthHelpers } from '@conduit/admin/utils/webui-auth';
+// Check admin access in server components
+import { currentUser } from "@clerk/nextjs";
 
-export async function POST(request: Request) {
-  const { authKey } = await request.json();
-  const configuredKey = process.env.CONDUIT_WEBUI_AUTH_KEY;
-
-  if (!configuredKey) {
-    return Response.json({ error: 'Server not configured' }, { status: 500 });
+export async function checkAdminAccess() {
+  const user = await currentUser();
+  
+  if (!user) {
+    return { hasAccess: false, reason: 'Not authenticated' };
   }
 
-  // Validate the provided key
-  const isValid = webUIAuthHelpers.validateAuthKey(authKey, configuredKey);
-
-  if (!isValid) {
-    return Response.json({ error: 'Invalid authentication key' }, { status: 401 });
+  const isAdmin = user.publicMetadata?.siteadmin === true;
+  
+  if (!isAdmin) {
+    return { hasAccess: false, reason: 'Not an administrator' };
   }
 
-  // Create a session
-  const session = webUIAuthHelpers.createSession({
-    role: 'admin',
-  });
-
-  // Return session data
-  return Response.json({
-    success: true,
-    session,
-  });
+  return { hasAccess: true };
 }
 ```
 
-### 3. Session Management
+### 4. Backend API Integration
 
 ```typescript
-// Store session after successful authentication
-const storeSession = (session: SessionData) => {
-  // Store in httpOnly cookie
-  document.cookie = `conduit-session=${JSON.stringify(session)}; ${
-    webUIAuthHelpers.getCookieOptions().path
-  }`;
-  
-  // Also store in localStorage for client-side access
-  localStorage.setItem('conduit-session', JSON.stringify(session));
-};
-
-// Check session validity
-const checkSession = (): boolean => {
-  const sessionStr = localStorage.getItem('conduit-session');
-  if (!sessionStr) return false;
-
-  const session = webUIAuthHelpers.parseSessionCookie(sessionStr);
-  if (!session) return false;
-
-  return !webUIAuthHelpers.isSessionExpired(session);
-};
-```
-
-### 4. SDK Initialization
-
-```typescript
-// Initialize Admin SDK with master key (after WebUI auth)
+// Initialize Admin SDK with backend auth key
 import { ConduitAdminClient } from '@conduit/admin';
 
 const adminClient = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
-  adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
+  adminApiUrl: process.env.CONDUIT_ADMIN_API_BASE_URL!,
 });
 
-// Now use the SDK for all API operations
-const virtualKeys = await adminClient.virtualKeys.list();
+// Use in API routes
+export async function GET(request: Request) {
+  // Clerk handles user authentication
+  const { userId } = auth();
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Backend uses service auth key
+  const virtualKeys = await adminClient.virtualKeys.list();
+  return Response.json(virtualKeys);
+}
 ```
 
 ## Security Best Practices
 
-### 1. Key Management
-- **Never use the same value** for `CONDUIT_WEBUI_AUTH_KEY` and `CONDUIT_MASTER_KEY`
-- Use strong, randomly generated keys (minimum 32 characters)
-- Rotate keys periodically
-- Store keys in environment variables, never in code
+### 1. Clerk Configuration
+- Enable appropriate authentication methods
+- Configure session lifetime appropriately
+- Use webhook endpoints to sync user changes
+- Enable Clerk's security features (bot protection, etc.)
 
-### 2. Session Security
-- Use httpOnly cookies for session storage
-- Implement CSRF protection
-- Set appropriate session expiration (24 hours recommended)
-- Clear sessions on logout
+### 2. Backend Authentication
+- Store `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` securely
+- Rotate the backend auth key periodically
+- Never expose the backend auth key to the frontend
+- Use environment variables, never hardcode keys
 
-### 3. HTTPS Requirements
-- Always use HTTPS in production
-- Set secure cookie flags
-- Implement proper CORS policies
-
-### 4. Rate Limiting
-- Implement rate limiting on authentication endpoints
-- Track failed authentication attempts
-- Temporarily block IPs after multiple failures
-
-## Helper Utilities
-
-The Admin SDK provides optional helper utilities for WebUI authentication:
-
-```typescript
-import { WebUIAuthHelpers } from '@conduit/admin/utils/webui-auth';
-
-// Create an instance with custom configuration
-const authHelpers = new WebUIAuthHelpers({
-  sessionDurationMs: 12 * 60 * 60 * 1000, // 12 hours
-  hashAlgorithm: 'sha256',
-  tokenLength: 32,
-});
-
-// Available methods:
-authHelpers.validateAuthKey(providedKey, configuredKey);
-authHelpers.generateSessionToken();
-authHelpers.createSession(user, metadata);
-authHelpers.parseSessionCookie(cookieValue);
-authHelpers.isSessionExpired(session);
-authHelpers.extendSession(session);
-authHelpers.getCookieOptions(secure);
-authHelpers.hashSessionToken(token);
-```
+### 3. Access Control
+- Always verify `siteadmin: true` in public metadata
+- Implement proper RBAC if needed
+- Log admin actions for audit trails
+- Monitor for suspicious access patterns
 
 ## Common Patterns
 
-### 1. Authentication Hook (React)
+### 1. Protected Page Component
 
 ```typescript
-const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+import { currentUser } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
-  useEffect(() => {
-    const session = localStorage.getItem('conduit-session');
-    if (session) {
-      const parsed = webUIAuthHelpers.parseSessionCookie(session);
-      if (parsed && !webUIAuthHelpers.isSessionExpired(parsed)) {
-        setIsAuthenticated(true);
-      }
-    }
-    setIsLoading(false);
-  }, []);
+export default async function AdminPage() {
+  const user = await currentUser();
+  
+  if (!user || user.publicMetadata?.siteadmin !== true) {
+    redirect(process.env.ACCESS_DENIED_REDIRECT || '/access-denied');
+  }
 
-  const login = async (authKey: string) => {
-    const response = await fetch('/api/auth/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authKey }),
-    });
-
-    if (response.ok) {
-      const { session } = await response.json();
-      storeSession(session);
-      setIsAuthenticated(true);
-      return true;
-    }
-    return false;
-  };
-
-  const logout = () => {
-    localStorage.removeItem('conduit-session');
-    document.cookie = 'conduit-session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    setIsAuthenticated(false);
-  };
-
-  return { isAuthenticated, isLoading, login, logout };
-};
+  return <AdminDashboard />;
+}
 ```
 
-### 2. Protected Route Component
+### 2. Client-Side Access Check
 
 ```typescript
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+import { useUser } from "@clerk/nextjs";
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  if (isLoading) return <LoadingSpinner />;
-  if (!isAuthenticated) return null;
-
-  return <>{children}</>;
-};
+export function useAdminAccess() {
+  const { user, isLoaded } = useUser();
+  
+  const isAdmin = user?.publicMetadata?.siteadmin === true;
+  
+  return {
+    isAdmin,
+    isLoading: !isLoaded,
+    user
+  };
+}
 ```
 
-### 3. API Middleware
+### 3. API Route Protection
 
 ```typescript
-const requireAuth = (handler: NextApiHandler): NextApiHandler => {
-  return async (req, res) => {
-    const session = req.cookies['conduit-session'];
-    
-    if (!session) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
+import { auth } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
 
-    const parsed = webUIAuthHelpers.parseSessionCookie(session);
-    if (!parsed || webUIAuthHelpers.isSessionExpired(parsed)) {
-      return res.status(401).json({ error: 'Session expired' });
-    }
+export async function requireAdmin() {
+  const { userId, sessionClaims } = auth();
+  
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
 
-    // Attach session to request for handler use
-    (req as any).session = parsed;
-    
-    return handler(req, res);
-  };
-};
+  const user = await clerkClient.users.getUser(userId);
+  if (user.publicMetadata?.siteadmin !== true) {
+    return NextResponse.json(
+      { error: "Forbidden - Admin access required" },
+      { status: 403 }
+    );
+  }
+
+  return null; // Access granted
+}
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Invalid authentication key" error**
-   - Verify `CONDUIT_WEBUI_AUTH_KEY` is set correctly
-   - Check for whitespace or special characters in the key
-   - Ensure you're not using the `CONDUIT_MASTER_KEY` for WebUI login
+1. **"Unauthorized" errors**
+   - Verify Clerk keys are configured correctly
+   - Check that the user is signed in
+   - Ensure cookies are enabled
 
-2. **Session expires immediately**
-   - Check system time synchronization
-   - Verify cookie settings (secure flag on HTTP)
-   - Check session duration configuration
+2. **"Access Denied" for admin users**
+   - Verify `siteadmin: true` is set in public metadata
+   - Check metadata is synchronized
+   - Clear browser cache and re-authenticate
 
-3. **SDK calls fail after WebUI auth**
-   - Ensure `CONDUIT_MASTER_KEY` is configured
-   - Verify the Admin API URL is correct
-   - Check network connectivity to the API
+3. **Backend API calls failing**
+   - Ensure `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` is set
+   - Verify API URLs are correct
+   - Check network connectivity between services
 
 ### Debug Checklist
 
-- [ ] Both authentication keys are configured
-- [ ] Keys are different values
-- [ ] HTTPS is used in production
-- [ ] Cookies are being set correctly
-- [ ] Session storage is working
-- [ ] Admin SDK is initialized with master key
-- [ ] API endpoints are accessible
+- [ ] Clerk publishable and secret keys are configured
+- [ ] User has `siteadmin: true` in public metadata
+- [ ] Backend auth key is configured for API calls
+- [ ] Middleware is properly configured
+- [ ] API routes check for admin access
+- [ ] Environment variables are loaded correctly
+
+## Migration from Password-Based Auth
+
+If migrating from the old `CONDUIT_ADMIN_LOGIN_PASSWORD` system:
+
+1. Set up Clerk authentication
+2. Add `siteadmin: true` to existing admin users
+3. Remove all password-based authentication code
+4. Update environment variables
+5. Test thoroughly before removing old system
 
 ## Summary
 
-The two-tier authentication model provides:
-- **Security**: Separate keys for different access levels
-- **Flexibility**: WebUI auth can be customized without affecting API security
-- **Clarity**: Clear separation between user authentication and API authentication
+The Conduit WebUI uses:
+- **Clerk** for human administrator authentication
+- **Public metadata** (`siteadmin: true`) for access control  
+- **Backend auth key** for server-to-server API communication
 
-Remember: The WebUI auth key (`CONDUIT_WEBUI_AUTH_KEY`) gates access to the admin interface, while the master key (`CONDUIT_MASTER_KEY`) is used for all API operations through the SDK.
+This provides a secure, scalable authentication system with proper separation between user authentication and service authentication.

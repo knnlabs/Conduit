@@ -92,7 +92,7 @@ export function getServerAdminClient(): ConduitAdminClient {
   if (!adminClient) {
     adminClient = new ConduitAdminClient({
       baseURL: process.env.CONDUIT_ADMIN_API_BASE_URL!,
-      apiKey: process.env.CONDUIT_MASTER_KEY!,
+      apiKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
       timeout: 30000,
       maxRetries: 3,
     });

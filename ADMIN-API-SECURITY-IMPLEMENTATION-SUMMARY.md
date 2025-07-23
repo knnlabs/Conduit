@@ -28,7 +28,7 @@
 ### 3. Security Features Implemented
 
 1. **API Key Authentication**
-   - Validates against `CONDUIT_MASTER_KEY`
+   - Validates against `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
    - Supports multiple header names
    - Tracks failed attempts
 

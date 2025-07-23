@@ -12,7 +12,7 @@ Conduit can be configured using environment variables, which is particularly use
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `CONDUIT_MASTER_KEY` | Master key for admin access | (Required) | `your-secure-master-key` |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Master key for admin access | (Required) | `your-secure-master-key` |
 | `CONDUIT_HOST` | Host to bind the HTTP server | `localhost` | `0.0.0.0` |
 | `CONDUIT_PORT` | Port for the HTTP server | `5000` | `8080` |
 | `CONDUIT_WEBUI_PORT` | Port for the Web UI | `5001` | `8081` |
@@ -86,7 +86,7 @@ services:
   conduit-api:
     image: ghcr.io/knnlabs/conduit-http:latest
     environment:
-      - CONDUIT_MASTER_KEY=your-secure-key
+      - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-key
       - CONDUIT_HOST=0.0.0.0
       - CONDUIT_PORT=5000
       - CONDUIT_CACHE_ENABLED=true
@@ -97,7 +97,7 @@ services:
 
 ```bash
 docker run -p 5000:5000 \
-  -e CONDUIT_MASTER_KEY=your-secure-key \
+  -e CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-key \
   -e CONDUIT_HOST=0.0.0.0 \
   -e CONDUIT_CACHE_ENABLED=true \
   ghcr.io/knnlabs/conduit-http:latest
@@ -108,7 +108,7 @@ docker run -p 5000:5000 \
 You can also use a `.env` file:
 
 ```
-CONDUIT_MASTER_KEY=your-secure-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-key
 CONDUIT_HOST=0.0.0.0
 CONDUIT_PORT=5000
 CONDUIT_CACHE_ENABLED=true

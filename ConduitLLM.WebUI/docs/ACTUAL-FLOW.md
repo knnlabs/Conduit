@@ -95,7 +95,7 @@ CONDUIT_ADMIN_API_KEY=your-admin-key
 
 ### Admin API
 ```
-CONDUIT_MASTER_KEY=alpha
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=alpha
 DATABASE_URL=postgresql://conduit:conduitpass@postgres:5432/conduitdb
 ```
 

@@ -18,7 +18,7 @@ A single `SecurityMiddleware` handles all security checks in one pass:
 
 - Primary header: `X-API-Key` (configurable)
 - Alternative headers: `X-Master-Key` (backward compatibility)
-- Uses `CONDUIT_MASTER_KEY` environment variable
+- Uses `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` environment variable
 - Failed authentication attempts are tracked
 
 ### 3. IP Filtering
@@ -148,7 +148,7 @@ app.UseMiddleware<AdminRequestTrackingMiddleware>();
 2. **Set Rate Limits**: Prevent API abuse
 3. **Monitor Failed Attempts**: Review security dashboard regularly
 4. **Use HTTPS**: Enable HSTS headers for secure transport
-5. **Rotate API Keys**: Change `CONDUIT_MASTER_KEY` periodically
+5. **Rotate API Keys**: Change `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` periodically
 
 ## Troubleshooting
 

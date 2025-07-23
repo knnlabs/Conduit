@@ -204,7 +204,6 @@ export { AdminNotificationHubClient } from './signalr/AdminNotificationHubClient
 // Utilities
 export * from './utils/errors';
 export * from './utils/capabilities';
-export * from './utils/webui-auth';
 
 // Models
 export * from './models/metadata';

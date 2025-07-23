@@ -20,9 +20,7 @@ import {
   ContentHelpers, 
   type TextContent, 
   type ImageContent,
-  type ChatCompletionRequest,
-  type PerformanceMetrics,
-  type Usage 
+  type ChatCompletionRequest
 } from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
@@ -181,7 +179,7 @@ export function ChatInterface() {
         if (!reader) throw new Error('No response body reader');
         
         let fullContent = '';
-        const finalMetrics: Partial<PerformanceMetrics & Usage> = {};
+        const finalMetrics: Partial<StreamingPerformanceMetrics & UsageData> = {};
 
         // Process SSE stream with proper event parsing
         for await (const event of parseSSEStream(reader)) {
@@ -194,8 +192,8 @@ export function ChatInterface() {
             console.warn('Final metrics collected:', finalMetrics);
           }
           const totalTokens = finalMetrics.total_tokens ?? finalMetrics.completion_tokens ?? 0;
-          const tokensPerSec = finalMetrics.tokens_per_second ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
-          const latencyMs = finalMetrics.total_response_time_ms ?? duration * 1000;
+          const tokensPerSec = (finalMetrics as StreamingPerformanceMetrics).tokens_per_second ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
+          const latencyMs = (finalMetrics as MetricsEventData).total_latency_ms ?? duration * 1000;
           
           const metadata = performanceSettings.trackPerformanceMetrics
             ? {
@@ -234,9 +232,8 @@ export function ChatInterface() {
             const performanceData = event.data as { performance?: StreamingPerformanceMetrics };
             if (performanceData?.performance && performanceSettings.useServerMetrics) {
               Object.assign(finalMetrics, performanceData.performance);
-              // Type assertion needed for legacy metrics format compatibility
-              const perf = performanceData.performance as unknown as PerformanceMetrics;
-              const tps = perf.tokens_per_second;
+              // Access tokens_per_second directly from the performance data
+              const tps = performanceData.performance.tokens_per_second;
               if (tps && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -258,9 +255,8 @@ export function ChatInterface() {
                 console.warn('Metrics event received:', metricsData);
               }
               Object.assign(finalMetrics, metricsData);
-              // Type assertion needed for dynamic metrics event format
-              const metrics = metricsData as unknown as PerformanceMetrics;
-              const tps = metrics.tokens_per_second;
+              // Access tokens_per_second directly from the metrics data
+              const tps = metricsData.tokens_per_second;
               if (tps !== undefined && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -293,7 +289,7 @@ export function ChatInterface() {
         
         const requestDuration = (Date.now() - startTime) / 1000;
         // Type assertion needed for response format compatibility
-        const usage = data.usage as unknown as Usage | undefined;
+        const usage = data.usage as unknown as UsageData | undefined;
         const totalTokens = usage?.total_tokens ?? 0;
         
         const metadata = performanceSettings.trackPerformanceMetrics && data.usage

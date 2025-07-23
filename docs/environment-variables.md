@@ -49,8 +49,7 @@ ConduitLLM provides comprehensive security configuration options:
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_ADMIN_LOGIN_PASSWORD` | String | *None* | Password for human administrators to log into the WebUI dashboard. Recommended for production deployments to separate human access from service-to-service authentication. |
-| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | Backend authentication key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). Also used for WebUI authentication if `CONDUIT_ADMIN_LOGIN_PASSWORD` is not set. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | Backend authentication key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). |
 | `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. **ONLY works in Development environments**. The application will throw an error and refuse to start if this is enabled in Production or Staging environments. A prominent warning banner is displayed in the UI when enabled. |
 
 ### Failed Login Protection
@@ -152,28 +151,21 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_ADMIN_API_BASE_URL` | String | `http://localhost:5002` | The base URL of the Admin API service. This is the primary variable for configuring Admin API connection. |
 | `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | Legacy alias for `CONDUIT_ADMIN_API_BASE_URL`. Use the BASE_URL version for new deployments. |
 | `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
-| `CONDUIT_ADMIN_LOGIN_PASSWORD` | String | *None* | The password required for human administrators to log into the WebUI. If not set, falls back to `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` for backward compatibility. |
-| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for authentication with the Admin API. Also used for WebUI authentication if `CONDUIT_ADMIN_LOGIN_PASSWORD` is not set. |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | String | *Must be provided* | The backend authentication key used for authentication with the Admin API. |
 | `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in October 2025). |
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
 | `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. **ONLY works in Development environments**. The application will throw an error and refuse to start if this is enabled in Production or Staging environments. |
 
-### AutoLogin Feature
+### Clerk Authentication
 
-The WebUI supports an AutoLogin feature that automatically authenticates users when:
-1. The `AutoLogin` global setting is set to `true` in the database
-2. Either `CONDUIT_ADMIN_LOGIN_PASSWORD` or `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` environment variable is set
+The WebUI uses Clerk for authentication. Configure the following environment variables:
 
-To enable AutoLogin in development environments:
-```bash
-# Using the provided script
-./enable-autologin.sh
-
-# Or manually with PostgreSQL
-psql $DATABASE_URL -c "INSERT INTO \"GlobalSettings\" (\"Key\", \"Value\", \"CreatedAt\", \"UpdatedAt\") VALUES ('AutoLogin', 'true', NOW(), NOW()) ON CONFLICT(\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\", \"UpdatedAt\" = NOW()"
-```
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | String | *Must be provided* | Your Clerk publishable key from the Clerk dashboard. |
+| `CLERK_SECRET_KEY` | String | *Must be provided* | Your Clerk secret key from the Clerk dashboard. |
 
 **Note**: AutoLogin should only be used in development or single-user environments. It bypasses the login screen entirely when enabled.
 
@@ -213,8 +205,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5000
-      - CONDUIT_ADMIN_LOGIN_PASSWORD=your_secure_admin_password_here
       - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_backend_key_here
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+      - CLERK_SECRET_KEY=sk_test_xxxxx
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_LLM_API_URL=http://api:5002
       - CONDUIT_USE_ADMIN_API=true
@@ -318,8 +311,9 @@ COPY --from=build /app/webui/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5000
-ENV CONDUIT_ADMIN_LOGIN_PASSWORD=""
 ENV CONDUIT_API_TO_API_BACKEND_AUTH_KEY=""
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+ENV CLERK_SECRET_KEY=""
 ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
 ENV CONDUIT_LLM_API_URL=http://localhost:5002
 ENV CONDUIT_USE_ADMIN_API=true

@@ -109,7 +109,7 @@ The Admin API client is configured through environment variables:
 
 ```bash
 CONDUIT_ADMIN_API_BASE_URL=http://localhost:5000
-CONDUIT_MASTER_KEY=your-master-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 ```
 
 In docker-compose, this configuration looks like:
@@ -117,7 +117,7 @@ In docker-compose, this configuration looks like:
 ```yaml
 webui:
   environment:
-    CONDUIT_MASTER_KEY: alpha
+    CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
     CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
 ```
 

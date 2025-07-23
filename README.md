@@ -302,16 +302,15 @@ When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
 # Admin API Authentication
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-backend-key  # For backend service authentication
 
-# WebUI Authentication (separate from Admin API)
-CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # For human admin login to WebUI
-
 # Legacy format (still supported)
 AdminApi__MasterKey=your-secure-master-key
 ```
 
-**CRITICAL SECURITY:** The `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` and `CONDUIT_ADMIN_LOGIN_PASSWORD` serve different purposes:
-- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication
-- **CONDUIT_ADMIN_LOGIN_PASSWORD**: Used by human administrators to log into the WebUI dashboard
+**CRITICAL SECURITY:** Authentication in Conduit:
+- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication between WebUI backend and API services
+- **WebUI Authentication**: Human administrators authenticate exclusively via Clerk (OAuth/SAML)
+  - Users must have `siteadmin: true` in their Clerk public metadata to access the WebUI
+  - Configure with `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
 - **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
 
 #### Next.js WebUI Configuration
@@ -335,9 +334,6 @@ NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
 
 #### Security Configuration (WebUI)
 ```bash
-# WebUI Authentication
-CONDUIT_ADMIN_LOGIN_PASSWORD=your-admin-password  # Separate password for human admin login
-
 # IP Filtering
 CONDUIT_IP_FILTERING_ENABLED=true
 CONDUIT_IP_FILTER_MODE=permissive          # or "restrictive"
@@ -365,7 +361,7 @@ CONDUIT_IP_BAN_DURATION_MINUTES=30
 
 **Required Configuration:**
 1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
-2. **Separate WebUI authentication** - Set `CONDUIT_ADMIN_LOGIN_PASSWORD` distinct from `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
+2. **Clerk Authentication** - Configure Clerk publishable and secret keys for WebUI authentication
 3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).

@@ -55,7 +55,7 @@ services:
     environment:
       # Admin API configuration
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_master_key
       CONDUIT_USE_ADMIN_API: "true"  # Now the default
       CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Recommended
       # No longer need DATABASE_URL in the WebUI in Admin API mode
@@ -77,7 +77,7 @@ If you're running a single-server deployment:
 
 1. Configure these environment variables for the WebUI:
    ```
-   CONDUIT_MASTER_KEY=<your-master-key>
+   CONDUIT_API_TO_API_BACKEND_AUTH_KEY=<your-master-key>
    CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
    CONDUIT_USE_ADMIN_API=true
    CONDUIT_DISABLE_DIRECT_DB_ACCESS=true  # Recommended
@@ -108,7 +108,7 @@ If you're running a distributed deployment with WebUI and API on separate server
 
 2. On the WebUI server, configure:
    ```
-   CONDUIT_MASTER_KEY=<your-master-key>  # Must match Admin API's key
+   CONDUIT_API_TO_API_BACKEND_AUTH_KEY=<your-master-key>  # Must match Admin API's key
    CONDUIT_ADMIN_API_BASE_URL=https://your-admin-api-url.com
    CONDUIT_USE_ADMIN_API=true
    CONDUIT_DISABLE_DIRECT_DB_ACCESS=true  # Recommended
@@ -202,7 +202,7 @@ If the WebUI cannot connect to the Admin API:
 If you get authentication errors:
 
 1. **Check Key Configuration**:
-   - Verify that `CONDUIT_MASTER_KEY` on WebUI matches `AdminApi__MasterKey` on Admin API
+   - Verify that `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` on WebUI matches `AdminApi__MasterKey` on Admin API
    - Ensure there are no extra spaces or special characters in the keys
    - Check if the key is being properly set in the environment
 

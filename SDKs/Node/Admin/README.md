@@ -21,7 +21,7 @@ import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 
 // Initialize the client
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
 });
 
@@ -43,7 +43,7 @@ console.log(`Created key: ${virtualKey}`);
 
 The client expects the following environment variables:
 
-- `CONDUIT_MASTER_KEY` - Your Conduit master API key (required)
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` - Your Conduit master API key (required)
 - `CONDUIT_ADMIN_API_URL` - The Admin API base URL (required)
 - `CONDUIT_API_URL` - The Conduit API base URL (optional)
 
@@ -136,7 +136,7 @@ const health = await client.system.getHealth();
 
 ```typescript
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
   options: {
     timeout: 30000, // 30 seconds

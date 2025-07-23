@@ -30,7 +30,7 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
    docker run -d \
      -p 5000:5000 \
      -e DATABASE_URL=postgresql://youruser:yourpassword@yourhost:5432/conduitllm \
-     -e CONDUIT_MASTER_KEY=your_secure_master_key \
+     -e CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_master_key \
      ghcr.io/knnlabs/conduit:latest
    ```
 
@@ -76,7 +76,7 @@ Note: For WebUI to communicate with the Admin API, set the environment variables
 ```bash
 export CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
 export CONDUIT_USE_ADMIN_API=true
-export CONDUIT_MASTER_KEY=your_secure_master_key
+export CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_master_key
 ```
 
 ## Architecture Overview: Admin API
@@ -110,7 +110,7 @@ To enable Admin API mode, set these environment variables:
 ```bash
 CONDUIT_USE_ADMIN_API=true
 CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
-CONDUIT_MASTER_KEY=your_secure_master_key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_master_key
 ```
 
 ## Docker Images: Component Separation
@@ -139,7 +139,7 @@ services:
       - "5001:8080"
     environment:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_master_key
       CONDUIT_USE_ADMIN_API: "true"
     depends_on:
       - admin
@@ -150,7 +150,7 @@ services:
       - "5002:8080"
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_master_key
     depends_on:
       - postgres
 

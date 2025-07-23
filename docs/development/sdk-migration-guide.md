@@ -156,7 +156,7 @@ export const POST = withSDKAuth(
 
 ```bash
 # Required
-CONDUIT_MASTER_KEY=your-master-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 NEXT_PUBLIC_CONDUIT_ADMIN_API_URL=http://localhost:5002
 NEXT_PUBLIC_CONDUIT_CORE_API_URL=http://localhost:5000
 

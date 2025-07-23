@@ -10666,136 +10666,6 @@ function getCapabilityDisplayName(capability) {
   return getDisplayName(capability);
 }
 
-// src/utils/webui-auth.ts
-import { createHash, randomBytes } from "crypto";
-var WebUIAuthHelpers = class {
-  constructor(config) {
-    this.config = {
-      sessionDurationMs: config?.sessionDurationMs ?? 24 * 60 * 60 * 1e3,
-      // 24 hours
-      hashAlgorithm: config?.hashAlgorithm ?? "sha256",
-      tokenLength: config?.tokenLength ?? 32
-    };
-  }
-  /**
-   * Validate a provided WebUI auth key against the configured key
-   * Uses constant-time comparison to prevent timing attacks
-   * 
-   * @param providedKey - The key provided by the user
-   * @param configuredKey - The configured CONDUIT_ADMIN_LOGIN_PASSWORD
-   * @returns true if the keys match, false otherwise
-   */
-  validateAuthKey(providedKey, configuredKey) {
-    if (!providedKey || !configuredKey) {
-      return false;
-    }
-    const providedHash = createHash(this.config.hashAlgorithm).update(providedKey).digest();
-    const configuredHash = createHash(this.config.hashAlgorithm).update(configuredKey).digest();
-    return providedHash.length === configuredHash.length && providedHash.equals(configuredHash);
-  }
-  /**
-   * Generate a cryptographically secure session token
-   * 
-   * @returns A secure random session token
-   */
-  generateSessionToken() {
-    return randomBytes(this.config.tokenLength).toString("hex");
-  }
-  /**
-   * Create a new session with expiration
-   * 
-   * @param user - Optional user information
-   * @param metadata - Optional metadata
-   * @returns A new session data object
-   */
-  createSession(user, metadata) {
-    const now = /* @__PURE__ */ new Date();
-    const expiresAt = new Date(now.getTime() + this.config.sessionDurationMs);
-    return {
-      sessionId: this.generateSessionToken(),
-      createdAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      user,
-      metadata
-    };
-  }
-  /**
-   * Parse and validate a session cookie value
-   * 
-   * @param cookieValue - The session cookie value (should be JSON)
-   * @returns Parsed session data or null if invalid
-   */
-  parseSessionCookie(cookieValue) {
-    try {
-      if (!cookieValue) {
-        return null;
-      }
-      const session = JSON.parse(cookieValue);
-      if (!session.sessionId || !session.createdAt || !session.expiresAt) {
-        return null;
-      }
-      const createdAt = new Date(session.createdAt);
-      const expiresAt = new Date(session.expiresAt);
-      if (isNaN(createdAt.getTime()) || isNaN(expiresAt.getTime())) {
-        return null;
-      }
-      return session;
-    } catch {
-      return null;
-    }
-  }
-  /**
-   * Check if a session has expired
-   * 
-   * @param session - The session to check
-   * @returns true if expired, false if still valid
-   */
-  isSessionExpired(session) {
-    const expiresAt = new Date(session.expiresAt);
-    return expiresAt <= /* @__PURE__ */ new Date();
-  }
-  /**
-   * Extend a session's expiration time
-   * 
-   * @param session - The session to extend
-   * @returns A new session object with updated expiration
-   */
-  extendSession(session) {
-    const now = /* @__PURE__ */ new Date();
-    const newExpiresAt = new Date(now.getTime() + this.config.sessionDurationMs);
-    return {
-      ...session,
-      expiresAt: newExpiresAt.toISOString()
-    };
-  }
-  /**
-   * Create a secure cookie options object for session storage
-   * 
-   * @param secure - Whether to use secure flag (HTTPS only)
-   * @returns Cookie options for use with cookie libraries
-   */
-  getCookieOptions(secure = true) {
-    return {
-      httpOnly: true,
-      secure,
-      sameSite: "strict",
-      path: "/",
-      maxAge: this.config.sessionDurationMs
-    };
-  }
-  /**
-   * Hash a session token for storage
-   * Useful for storing session identifiers in databases
-   * 
-   * @param token - The session token to hash
-   * @returns Hashed token
-   */
-  hashSessionToken(token) {
-    return createHash(this.config.hashAlgorithm).update(token).digest("hex");
-  }
-};
-var webUIAuthHelpers = new WebUIAuthHelpers();
-
 // src/models/metadata.ts
 function isValidMetadata(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -10906,7 +10776,6 @@ export {
   TimeoutError,
   ValidationError,
   FetchVirtualKeyService as VirtualKeyService,
-  WebUIAuthHelpers,
   createErrorFromResponse,
   src_default as default,
   deserializeError,
@@ -10940,7 +10809,6 @@ export {
   validateAudioCostConfigRequest,
   validateAudioProviderRequest,
   validateAudioUsageFilters,
-  validateMappingCapabilities,
-  webUIAuthHelpers
+  validateMappingCapabilities
 };
 //# sourceMappingURL=index.mjs.map

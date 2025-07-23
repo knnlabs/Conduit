@@ -40,7 +40,7 @@ These adapters implement the existing WebUI service interfaces but delegate to t
 ### How It Works
 
 1. **Service Registration**: WebUI registers the Admin API client and service adapters in Program.cs
-2. **Configuration**: Uses environment variables (CONDUIT_ADMIN_API_URL, CONDUIT_MASTER_KEY, CONDUIT_USE_ADMIN_API) for flexible configuration
+2. **Configuration**: Uses environment variables (CONDUIT_ADMIN_API_URL, CONDUIT_API_TO_API_BACKEND_AUTH_KEY, CONDUIT_USE_ADMIN_API) for flexible configuration
 3. **Adapter Pattern**: The adapter pattern allows WebUI to choose between direct database access or API access based on configuration
 4. **Error Handling**: Comprehensive error handling with logging ensures resilient behavior
 
@@ -61,7 +61,7 @@ The API client interface is organized by feature areas:
 ### Environment Variables
 
 - `CONDUIT_ADMIN_API_URL`: Base URL for the Admin API (default: http://localhost:5000)
-- `CONDUIT_MASTER_KEY`: Authentication key for secure API access
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`: Authentication key for secure API access
 - `CONDUIT_USE_ADMIN_API`: Flag to toggle between API access and direct DB access (true/false)
 
 ### appsettings.json Example

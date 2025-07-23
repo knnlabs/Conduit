@@ -43,7 +43,7 @@
    ```
 
 2. Ensure keys are different:
-   - `CONDUIT_WEBUI_AUTH_KEY` ≠ `CONDUIT_MASTER_KEY`
+   - `CONDUIT_WEBUI_AUTH_KEY` ≠ `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
    - These must be different values
 
 3. Check for trailing spaces or quotes in env file

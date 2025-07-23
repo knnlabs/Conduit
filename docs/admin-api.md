@@ -42,7 +42,7 @@ The Admin API client is a component in the WebUI project that provides a type-sa
 The Admin API client can be configured using environment variables:
 
 - `CONDUIT_ADMIN_API_URL`: Base URL for the Admin API (default: `http://localhost:5000`)
-- `CONDUIT_MASTER_KEY`: Master key for authenticating with the Admin API
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`: Master key for authenticating with the Admin API
 - `CONDUIT_USE_ADMIN_API`: Toggle between API access (`true`) and direct DB access (`false`)
 
 Or using appsettings.json:
@@ -100,7 +100,7 @@ services:
     image: ghcr.io/knnlabs/conduit-webui:latest
     environment:
       CONDUIT_ADMIN_API_URL: http://admin:8080
-      CONDUIT_MASTER_KEY: your_master_key
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_master_key
       CONDUIT_USE_ADMIN_API: "true"
     ports:
       - "5001:8080"

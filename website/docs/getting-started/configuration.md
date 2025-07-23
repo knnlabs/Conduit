@@ -16,7 +16,7 @@ Conduit's core settings can be configured through environment variables or the W
 
 | Setting | Description | Default | Environment Variable |
 |---------|-------------|---------|---------------------|
-| Master Key | Authentication key for administrative access | (Required) | `CONDUIT_MASTER_KEY` |
+| Master Key | Authentication key for administrative access | (Required) | `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` |
 | Host | Interface to bind the HTTP server | `localhost` | `CONDUIT_HOST` |
 | Port | Port to run the HTTP server | `5000` | `CONDUIT_PORT` |
 | Database Path | Location of the SQLite database | `./data/conduit.db` | `CONDUIT_DATABASE_PATH` |

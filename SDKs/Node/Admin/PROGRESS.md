@@ -77,7 +77,7 @@
 import { ConduitAdminClient } from '@conduit/admin-client';
 
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
 });
 

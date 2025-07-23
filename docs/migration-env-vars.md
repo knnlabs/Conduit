@@ -51,7 +51,7 @@ AdminApi__MasterKey="your-master-key"
 ### New Configuration
 ```bash
 # All services now use the same variable:
-CONDUIT_MASTER_KEY="your-master-key"
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY="your-master-key"
 ```
 
 ## Migration Steps
@@ -81,7 +81,7 @@ services:
       
   admin:
     environment:
-      CONDUIT_MASTER_KEY: "your-key"
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: "your-key"
 ```
 
 ### 2. Update Environment Files
@@ -97,7 +97,7 @@ AdminApi__MasterKey=your-master-key
 
 # New .env
 REDIS_URL=redis://localhost:6379
-CONDUIT_MASTER_KEY=your-master-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 ```
 
 ### 3. Update System Environment Variables
@@ -112,7 +112,7 @@ unset CONDUIT_CACHE_TYPE
 
 # Set new variables
 export REDIS_URL="redis://localhost:6379"
-export CONDUIT_MASTER_KEY="your-master-key"
+export CONDUIT_API_TO_API_BACKEND_AUTH_KEY="your-master-key"
 ```
 
 ### 4. Update CI/CD Pipelines
@@ -123,7 +123,7 @@ Update your CI/CD configuration files to use the new variables:
 # GitHub Actions example
 env:
   REDIS_URL: redis://localhost:6379
-  CONDUIT_MASTER_KEY: ${{ secrets.MASTER_KEY }}
+  CONDUIT_API_TO_API_BACKEND_AUTH_KEY: ${{ secrets.MASTER_KEY }}
 ```
 
 ## Backward Compatibility
@@ -132,7 +132,7 @@ env:
 
 Priority order:
 1. For Redis: `REDIS_URL` → `CONDUIT_REDIS_CONNECTION_STRING`
-2. For Master Key: `CONDUIT_MASTER_KEY` → `AdminApi__MasterKey`
+2. For Master Key: `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` → `AdminApi__MasterKey`
 
 This means you can migrate gradually without breaking existing deployments.
 
@@ -183,7 +183,7 @@ If cache isn't automatically enabling:
 ### Authentication Issues
 
 If you're getting authentication errors with the Admin API:
-1. Ensure `CONDUIT_MASTER_KEY` is set in the Admin service environment
+1. Ensure `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` is set in the Admin service environment
 2. Check that you're using the correct header: `X-API-Key: your-master-key`
 
 ### Connection String Format Errors
@@ -200,7 +200,7 @@ While backward compatibility is currently maintained, we recommend migrating to 
 - `CONDUIT_REDIS_CONNECTION_STRING` → Use `REDIS_URL` instead
 - `CONDUIT_CACHE_ENABLED` → No longer needed (auto-enabled with Redis)
 - `CONDUIT_CACHE_TYPE` → No longer needed (auto-detected)
-- `AdminApi__MasterKey` → Use `CONDUIT_MASTER_KEY` instead
+- `AdminApi__MasterKey` → Use `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` instead
 
 ## Questions or Issues?
 

@@ -29,7 +29,7 @@ The pre-commit hooks scan for:
 - Docker registry credentials
 
 ### Conduit-Specific Secrets
-- `CONDUIT_MASTER_KEY` values (except sample values)
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` values (except sample values)
 - `CONDUIT_WEBUI_AUTH_KEY` values (except sample values)
 - JWT signing keys
 - Webhook secrets
@@ -77,7 +77,7 @@ Configures Gitleaks behavior:
 
 These sample values are allowlisted and won't trigger secret detection:
 
-- `CONDUIT_MASTER_KEY: alpha` (from docker-compose.yml)
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha` (from docker-compose.yml)
 - `CONDUIT_WEBUI_AUTH_KEY: conduit123` (from docker-compose.yml)
 
 **Important**: These are for Docker testing only. Use strong, unique keys in production.
@@ -98,7 +98,7 @@ Detect secrets....................................................Failed
 - hook id: gitleaks
 - exit code: 1
 
-Finding: CONDUIT_MASTER_KEY=sk-1234567890abcdef1234567890abcdef
+Finding: CONDUIT_API_TO_API_BACKEND_AUTH_KEY=sk-1234567890abcdef1234567890abcdef
 Secret:  sk-1234567890abcdef1234567890abcdef
 RuleID:  conduit-master-key
 Entropy: 4.8
@@ -123,10 +123,10 @@ git commit -m "Add API configuration"
 ### 2. Use Environment Variables
 ```bash
 # Instead of hardcoding:
-CONDUIT_MASTER_KEY=sk-1234567890abcdef1234567890abcdef
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=sk-1234567890abcdef1234567890abcdef
 
 # Use reference:
-CONDUIT_MASTER_KEY=${CONDUIT_MASTER_KEY}
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=${CONDUIT_API_TO_API_BACKEND_AUTH_KEY}
 ```
 
 ### 3. Add to .gitignore

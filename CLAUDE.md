@@ -9,23 +9,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Issues URL**: https://github.com/knnlabs/Conduit/issues
 - **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
 
-## CRITICAL SECURITY: Authentication Keys
-**NEVER CONFUSE THESE TWO KEYS - THEY SERVE COMPLETELY DIFFERENT PURPOSES:**
+## CRITICAL SECURITY: Authentication
+**WebUI Authentication**: The WebUI now uses Clerk for authentication. Human administrators authenticate through Clerk, not through password-based authentication.
 
-1. **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: 
+**Backend Authentication Key**:
+- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: 
    - Used by WebUI backend to authenticate with the Core API and Admin API
    - This is for server-to-server communication between backend services
    - NOT for end-users or client applications
    - Configured on the WebUI service to talk to other backend services
-
-2. **CONDUIT_ADMIN_LOGIN_PASSWORD**:
-   - Used by human administrators to log into the WebUI dashboard
-   - This is a password for human users, NOT an API key
-   - Provides access to admin functions (virtual key management, provider configuration)
-   - This is for system administrators only
-   - Configured on the WebUI service (ConduitLLM.WebUI)
-
-**SECURITY RULE**: These keys must NEVER be the same value and serve completely different authentication boundaries. The API_TO_API_BACKEND_AUTH_KEY is for backend services, the ADMIN_LOGIN_PASSWORD is for human administrators.
 
 ## Build Commands
 - Build solution: `dotnet build`
