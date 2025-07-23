@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ConduitLLM.Core.Options
 {
@@ -61,5 +62,33 @@ namespace ConduitLLM.Core.Options
         /// Gets or sets whether to automatically create the bucket if it doesn't exist.
         /// </summary>
         public bool AutoCreateBucket { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to automatically configure CORS on bucket initialization.
+        /// </summary>
+        public bool AutoConfigureCors { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the allowed origins for CORS configuration.
+        /// Default is "*" to allow all origins.
+        /// </summary>
+        public List<string> CorsAllowedOrigins { get; set; } = new() { "*" };
+
+        /// <summary>
+        /// Gets or sets the allowed methods for CORS configuration.
+        /// Default is GET and HEAD for media access.
+        /// </summary>
+        public List<string> CorsAllowedMethods { get; set; } = new() { "GET", "HEAD" };
+
+        /// <summary>
+        /// Gets or sets the exposed headers for CORS configuration.
+        /// </summary>
+        public List<string> CorsExposeHeaders { get; set; } = new() { "ETag", "Content-Length", "Content-Type" };
+
+        /// <summary>
+        /// Gets or sets the max age in seconds for CORS preflight cache.
+        /// Default is 3600 seconds (1 hour).
+        /// </summary>
+        public int CorsMaxAgeSeconds { get; set; } = 3600;
     }
 }

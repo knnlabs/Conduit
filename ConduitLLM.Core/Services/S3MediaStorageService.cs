@@ -429,11 +429,16 @@ namespace ConduitLLM.Core.Services
         private async Task EnsureBucketExistsAsync()
         {
             if (!_options.AutoCreateBucket)
+            {
+                // Even if we don't auto-create, we should still configure CORS if the bucket exists
+                await ConfigureBucketCorsAsync();
                 return;
+            }
 
             try
             {
                 await _s3Client.HeadBucketAsync(new HeadBucketRequest { BucketName = _bucketName });
+                _logger.LogInformation("Bucket {BucketName} exists", _bucketName);
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -445,8 +450,12 @@ namespace ConduitLLM.Core.Services
                 catch (Exception createEx)
                 {
                     _logger.LogError(createEx, "Failed to create bucket {BucketName}", _bucketName);
+                    return; // Don't try to configure CORS if bucket creation failed
                 }
             }
+
+            // Configure CORS after ensuring bucket exists
+            await ConfigureBucketCorsAsync();
         }
 
         private static async Task<string> ComputeHashAsync(Stream stream)
@@ -970,6 +979,85 @@ namespace ConduitLLM.Core.Services
                     _innerStream?.Dispose();
                 }
                 base.Dispose(disposing);
+            }
+        }
+
+        /// <summary>
+        /// Configures CORS rules for the S3 bucket to allow browser access to media files.
+        /// </summary>
+        private async Task ConfigureBucketCorsAsync()
+        {
+            if (!_options.AutoConfigureCors)
+            {
+                _logger.LogInformation("Auto CORS configuration is disabled");
+                return;
+            }
+
+            try
+            {
+                // Check if bucket already has CORS configuration
+                try
+                {
+                    var corsConfig = await _s3Client.GetCORSConfigurationAsync(_bucketName);
+                    if (corsConfig.Configuration?.Rules?.Any() == true)
+                    {
+                        _logger.LogInformation("Bucket {BucketName} already has {RuleCount} CORS rules configured", 
+                            _bucketName, corsConfig.Configuration.Rules.Count);
+                        return;
+                    }
+                }
+                catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // No CORS configured, proceed with setup
+                    _logger.LogInformation("No CORS configuration found for bucket {BucketName}, configuring default rules", _bucketName);
+                }
+                catch (AmazonS3Exception ex) when (ex.ErrorCode == "AccessDenied")
+                {
+                    _logger.LogWarning("Access denied when checking CORS configuration for bucket {BucketName}. " +
+                        "Ensure the IAM policy includes s3:GetBucketCors permission", _bucketName);
+                    return;
+                }
+
+                // Apply default CORS configuration
+                var putCorsRequest = new PutCORSConfigurationRequest
+                {
+                    BucketName = _bucketName,
+                    Configuration = new CORSConfiguration
+                    {
+                        Rules = new List<CORSRule>
+                        {
+                            new CORSRule
+                            {
+                                AllowedMethods = _options.CorsAllowedMethods,
+                                AllowedOrigins = _options.CorsAllowedOrigins,
+                                AllowedHeaders = new List<string> { "*" },
+                                ExposeHeaders = _options.CorsExposeHeaders,
+                                MaxAgeSeconds = _options.CorsMaxAgeSeconds
+                            }
+                        }
+                    }
+                };
+
+                await _s3Client.PutCORSConfigurationAsync(putCorsRequest);
+                _logger.LogInformation("Successfully configured CORS for bucket {BucketName} with origins: {Origins}", 
+                    _bucketName, string.Join(", ", _options.CorsAllowedOrigins));
+            }
+            catch (AmazonS3Exception ex) when (ex.ErrorCode == "AccessDenied")
+            {
+                _logger.LogWarning(ex, "Access denied when configuring CORS for bucket {BucketName}. " +
+                    "Ensure the IAM policy includes s3:PutBucketCors permission. " +
+                    "The service will continue without CORS configuration", _bucketName);
+            }
+            catch (AmazonS3Exception ex) when (ex.ErrorCode == "NotImplemented" || ex.ErrorCode == "MethodNotAllowed")
+            {
+                // Some S3-compatible services (like certain MinIO configurations) might not support CORS
+                _logger.LogInformation("CORS configuration not supported by this S3 provider. " +
+                    "This is common with some S3-compatible services like MinIO in certain configurations");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error configuring CORS for bucket {BucketName}. " +
+                    "The service will continue without CORS configuration", _bucketName);
             }
         }
     }
