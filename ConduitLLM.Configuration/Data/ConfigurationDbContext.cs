@@ -408,7 +408,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<CacheConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.Region).IsUnique().HasFilter("IsActive = 1");
+                entity.HasIndex(e => e.Region).IsUnique().HasFilter("\"IsActive\" = true");
                 entity.HasIndex(e => new { e.Region, e.IsActive });
                 entity.HasIndex(e => e.UpdatedAt);
                 entity.Property(e => e.Version).IsConcurrencyToken();

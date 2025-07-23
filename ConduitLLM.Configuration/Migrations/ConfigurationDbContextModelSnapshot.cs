@@ -116,7 +116,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("IsArchived", "CompletedAt", "State")
                         .HasDatabaseName("IX_AsyncTasks_Archival");
 
-                    b.ToTable("AsyncTasks");
+                    b.ToTable("AsyncTasks", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
@@ -176,7 +176,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Provider", "OperationType", "Model", "IsActive");
 
-                    b.ToTable("AudioCosts");
+                    b.ToTable("AudioCosts", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
@@ -236,7 +236,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderCredentialId")
                         .IsUnique();
 
-                    b.ToTable("AudioProviderConfigs");
+                    b.ToTable("AudioProviderConfigs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
@@ -328,7 +328,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Provider", "OperationType");
 
-                    b.ToTable("AudioUsageLogs");
+                    b.ToTable("AudioUsageLogs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BatchOperationHistory", b =>
@@ -409,7 +409,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("OperationType", "Status", "StartedAt");
 
-                    b.ToTable("BatchOperationHistory");
+                    b.ToTable("BatchOperationHistory", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfiguration", b =>
@@ -496,13 +496,13 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Region")
                         .IsUnique()
-                        .HasFilter("IsActive = 1");
+                        .HasFilter("\"IsActive\" = true");
 
                     b.HasIndex("UpdatedAt");
 
                     b.HasIndex("Region", "IsActive");
 
-                    b.ToTable("CacheConfigurations");
+                    b.ToTable("CacheConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfigurationAudit", b =>
@@ -562,7 +562,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Region", "ChangedAt");
 
-                    b.ToTable("CacheConfigurationAudits");
+                    b.ToTable("CacheConfigurationAudits", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
@@ -599,7 +599,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("FallbackConfigurations");
+                    b.ToTable("FallbackConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
@@ -637,7 +637,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("FallbackConfigurationId", "Order")
                         .IsUnique();
 
-                    b.ToTable("FallbackModelMappings");
+                    b.ToTable("FallbackModelMappings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
@@ -673,7 +673,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("GlobalSettings");
+                    b.ToTable("GlobalSettings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.IpFilterEntity", b =>
@@ -718,7 +718,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("FilterType", "IpAddressOrCidr");
 
-                    b.ToTable("IpFilters");
+                    b.ToTable("IpFilters", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaLifecycleRecord", b =>
@@ -795,7 +795,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId", "IsDeleted");
 
-                    b.ToTable("MediaLifecycleRecords");
+                    b.ToTable("MediaLifecycleRecords", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
@@ -870,7 +870,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId", "CreatedAt");
 
-                    b.ToTable("MediaRecords");
+                    b.ToTable("MediaRecords", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
@@ -950,7 +950,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ModelIdPattern");
 
-                    b.ToTable("ModelCosts");
+                    b.ToTable("ModelCosts", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
@@ -1027,7 +1027,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("ModelDeployments");
+                    b.ToTable("ModelDeployments", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
@@ -1117,7 +1117,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ModelAlias", "ProviderCredentialId")
                         .IsUnique();
 
-                    b.ToTable("ModelProviderMappings");
+                    b.ToTable("ModelProviderMappings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
@@ -1152,7 +1152,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderCredential", b =>
@@ -1191,7 +1191,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderName")
                         .IsUnique();
 
-                    b.ToTable("ProviderCredentials");
+                    b.ToTable("ProviderCredentials", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
@@ -1233,7 +1233,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderName")
                         .IsUnique();
 
-                    b.ToTable("ProviderHealthConfigurations");
+                    b.ToTable("ProviderHealthConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthRecord", b =>
@@ -1283,7 +1283,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderName", "TimestampUtc");
 
-                    b.ToTable("ProviderHealthRecords");
+                    b.ToTable("ProviderHealthRecords", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>
@@ -1341,7 +1341,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("RequestLogs");
+                    b.ToTable("RequestLogs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
@@ -1389,7 +1389,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("LastUpdated");
 
-                    b.ToTable("RouterConfigEntity");
+                    b.ToTable("RouterConfigEntity", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
@@ -1461,7 +1461,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("KeyHash")
                         .IsUnique();
 
-                    b.ToTable("VirtualKeys");
+                    b.ToTable("VirtualKeys", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
@@ -1488,7 +1488,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("VirtualKeySpendHistory");
+                    b.ToTable("VirtualKeySpendHistory", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AsyncTask", b =>

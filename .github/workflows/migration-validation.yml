@@ -85,6 +85,10 @@ jobs:
         export DATABASE_URL="${{ env.DATABASE_URL }}"
         ./scripts/migrations/validate-migrations.sh --check-pending
     
+    - name: Validate PostgreSQL syntax
+      run: |
+        ./scripts/migrations/validate-postgresql-syntax.sh
+    
     - name: Test migration application
       run: |
         cd ConduitLLM.Configuration

@@ -799,7 +799,7 @@ namespace ConduitLLM.Configuration.Migrations
                 table: "CacheConfigurations",
                 column: "Region",
                 unique: true,
-                filter: "IsActive = 1");
+                filter: "\"IsActive\" = true");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CacheConfigurations_Region_IsActive",
