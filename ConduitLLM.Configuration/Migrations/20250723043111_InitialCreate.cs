@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialPostgreSQLMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -176,7 +176,15 @@ namespace ConduitLLM.Configuration.Migrations
                     AudioInputCostPerMinute = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     AudioOutputCostPerMinute = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     VideoCostPerSecond = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
-                    VideoResolutionMultipliers = table.Column<string>(type: "text", nullable: true)
+                    VideoResolutionMultipliers = table.Column<string>(type: "text", nullable: true),
+                    BatchProcessingMultiplier = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
+                    SupportsBatchProcessing = table.Column<bool>(type: "boolean", nullable: false),
+                    ImageQualityMultipliers = table.Column<string>(type: "text", nullable: true),
+                    CachedInputTokenCost = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
+                    CachedInputWriteCost = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
+                    CostPerSearchUnit = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
+                    CostPerInferenceStep = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
+                    DefaultInferenceSteps = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -344,6 +352,8 @@ namespace ConduitLLM.Configuration.Migrations
                     SupportsImageGeneration = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsVideoGeneration = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsEmbeddings = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsFunctionCalling = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsStreaming = table.Column<bool>(type: "boolean", nullable: false),
                     TokenizerType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     SupportedVoices = table.Column<string>(type: "text", nullable: true),
                     SupportedLanguages = table.Column<string>(type: "text", nullable: true),
@@ -789,7 +799,7 @@ namespace ConduitLLM.Configuration.Migrations
                 table: "CacheConfigurations",
                 column: "Region",
                 unique: true,
-                filter: "\"IsActive\" = true");
+                filter: "IsActive = 1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CacheConfigurations_Region_IsActive",

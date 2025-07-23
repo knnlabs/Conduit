@@ -8,15 +8,15 @@ interface ApiModelResponse {
 interface ApiModel {
   id: string;
   provider: string;
-  displayName?: string;
+  display_name?: string;
   capabilities?: {
-    videoGeneration?: boolean;
-    maxVideoDurationSeconds?: number;
-    supportedVideoResolutions?: string[];
-    supportedFps?: number[];
-    supportsCustomStyles?: boolean;
-    supportsSeed?: boolean;
-    maxVideos?: number;
+    video_generation?: {
+      supported: boolean;
+      max_duration_seconds?: number;
+      supported_resolutions?: string[];
+      supported_fps?: number[];
+      supports_custom_styles?: boolean;
+    };
   };
 }
 
@@ -30,20 +30,21 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
   
   // Filter and transform models that support video generation
   return data.data
-    .filter((model: ApiModel) => model.capabilities?.videoGeneration === true)
+    .filter((model: ApiModel) => model.capabilities?.video_generation?.supported === true)
     .map((model: ApiModel) => {
+      const videoCapability = model.capabilities?.video_generation;
       return {
         id: model.id,
         provider: model.provider,
-        displayName: model.displayName ?? model.id,
+        displayName: model.display_name ?? model.id,
         capabilities: {
-          videoGeneration: model.capabilities?.videoGeneration ?? false,
-          maxDuration: model.capabilities?.maxVideoDurationSeconds,
-          supportedResolutions: model.capabilities?.supportedVideoResolutions,
-          supportedFps: model.capabilities?.supportedFps,
-          supportsCustomStyles: model.capabilities?.supportsCustomStyles,
-          supportsSeed: model.capabilities?.supportsSeed,
-          maxVideos: model.capabilities?.maxVideos ?? 1,
+          videoGeneration: true,
+          maxDuration: videoCapability?.max_duration_seconds,
+          supportedResolutions: videoCapability?.supported_resolutions,
+          supportedFps: videoCapability?.supported_fps,
+          supportsCustomStyles: videoCapability?.supports_custom_styles,
+          supportsSeed: false, // Not provided by API yet
+          maxVideos: 1, // Default value
         },
       };
     });
