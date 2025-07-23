@@ -581,7 +581,8 @@ async function* enhancedWebStreamAsyncIterator(stream, options) {
             continue;
           }
           if (currentData) {
-            currentData += "\n" + data;
+            currentData += `
+${data}`;
           } else {
             currentData = data;
           }
@@ -790,10 +791,14 @@ var FetchChatService = class extends FetchBasedClient {
       delete request.functions;
     }
     if (request.function_call && !request.tool_choice) {
-      request.tool_choice = {
-        type: "function",
-        function: request.function_call
-      };
+      if (typeof request.function_call === "string") {
+        request.tool_choice = request.function_call;
+      } else {
+        request.tool_choice = {
+          type: "function",
+          function: request.function_call
+        };
+      }
       delete request.function_call;
     }
     return request;

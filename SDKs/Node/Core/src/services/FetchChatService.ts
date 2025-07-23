@@ -1,18 +1,14 @@
 import { FetchBasedClient } from '../client/FetchBasedClient';
 import { HttpMethod } from '../client/HttpMethod';
 import type { ClientConfig, RequestOptions } from '../client/types';
-import type { components } from '../generated/core-api';
 import type { StreamingResponse } from '../models/streaming';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
+import type { ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChunk } from '../models/chat';
+import type { ToolParameters } from '../models/metadata';
 import { API_ENDPOINTS } from '../constants';
 import { createWebStream } from '../utils/web-streaming';
 import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
-
-// Type aliases for better readability
-type ChatCompletionRequest = components['schemas']['ChatCompletionRequest'];
-type ChatCompletionResponse = components['schemas']['ChatCompletionResponse'];
-type ChatCompletionChunk = components['schemas']['ChatCompletionChunk'];
 
 /**
  * Type-safe Chat service using generated OpenAPI types and native fetch
@@ -205,20 +201,24 @@ export class FetchChatService extends FetchBasedClient {
    * Converts legacy function parameters to the tools format
    * for backward compatibility
    */
-  protected convertLegacyFunctions(request: any): any {
+  protected convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest {
     if (request.functions && !request.tools) {
-      request.tools = request.functions.map((fn: any) => ({
-        type: 'function',
+      request.tools = request.functions.map((fn: { name: string; description?: string; parameters?: ToolParameters }) => ({
+        type: 'function' as const,
         function: fn
       }));
       delete request.functions;
     }
     
     if (request.function_call && !request.tool_choice) {
-      request.tool_choice = {
-        type: 'function',
-        function: request.function_call
-      };
+      if (typeof request.function_call === 'string') {
+        request.tool_choice = request.function_call as 'none' | 'auto';
+      } else {
+        request.tool_choice = {
+          type: 'function',
+          function: request.function_call
+        };
+      }
       delete request.function_call;
     }
     

@@ -118,7 +118,7 @@ async function* enhancedWebStreamAsyncIterator(
             continue;
           }
           if (currentData) {
-            currentData += '\n' + data;
+            currentData += `\n${data}`;
           } else {
             currentData = data;
           }

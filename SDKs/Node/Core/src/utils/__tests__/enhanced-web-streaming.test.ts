@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { createEnhancedWebStream } from '../enhanced-web-streaming';
 import { StreamError } from '../errors';
-import type { EnhancedSSEEventType } from '../../models/enhanced-streaming';
 
 // Mock TextDecoder
 global.TextDecoder = jest.fn().mockImplementation(() => ({
@@ -11,18 +10,20 @@ global.TextDecoder = jest.fn().mockImplementation(() => ({
 }));
 
 describe('enhanced-web-streaming', () => {
-  let mockReader: any;
+  let mockReader: ReadableStreamDefaultReader<Uint8Array>;
   let mockStream: ReadableStream<Uint8Array>;
 
   beforeEach(() => {
     mockReader = {
       read: jest.fn(),
-      releaseLock: jest.fn()
-    };
+      releaseLock: jest.fn(),
+      closed: Promise.resolve(undefined),
+      cancel: jest.fn()
+    } as unknown as ReadableStreamDefaultReader<Uint8Array>;
     
     mockStream = {
       getReader: jest.fn().mockReturnValue(mockReader)
-    } as any;
+    } as unknown as ReadableStream<Uint8Array>;
   });
 
   afterEach(() => {
@@ -54,12 +55,6 @@ describe('enhanced-web-streaming', () => {
 
   describe('SSE parsing', () => {
     const encoder = new TextEncoder();
-
-    async function* createMockReader(chunks: string[]) {
-      for (const chunk of chunks) {
-        yield encoder.encode(chunk);
-      }
-    }
 
     it('should parse content events', async () => {
       const chunks = [

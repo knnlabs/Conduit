@@ -158,7 +158,7 @@ export function isChatCompletionChunk(data: unknown): data is ChatCompletionChun
     typeof data === 'object' &&
     data !== null &&
     'object' in data &&
-    (data as any).object === 'chat.completion.chunk'
+    (data as Record<string, unknown>).object === 'chat.completion.chunk'
   );
 }
 

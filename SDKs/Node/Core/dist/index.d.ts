@@ -101,356 +101,6 @@ declare abstract class FetchBasedClient {
     private handleError;
 }
 
-interface components {
-    schemas: {
-        ChatCompletionRequest: {
-            /**
-             * @description ID of the model to use
-             * @example gpt-4
-             */
-            model: string;
-            /** @description List of messages comprising the conversation so far */
-            messages: components["schemas"]["Message"][];
-            /**
-             * Format: double
-             * @description Sampling temperature between 0 and 2
-             * @default 1
-             */
-            temperature: number;
-            /**
-             * @description Maximum number of tokens to generate
-             * @example 1024
-             */
-            max_tokens?: number;
-            /**
-             * Format: double
-             * @description Nucleus sampling parameter
-             * @default 1
-             */
-            top_p: number;
-            /**
-             * @description Number of chat completion choices to generate
-             * @default 1
-             */
-            n: number;
-            /**
-             * @description Whether to stream back partial progress
-             * @default false
-             */
-            stream: boolean;
-            /** @description Sequences where the API will stop generating further tokens */
-            stop?: string | string[];
-            /**
-             * Format: double
-             * @description Penalize new tokens based on whether they appear in the text so far
-             * @default 0
-             */
-            presence_penalty: number;
-            /**
-             * Format: double
-             * @description Penalize new tokens based on their existing frequency in the text
-             * @default 0
-             */
-            frequency_penalty: number;
-            /** @description Modify the likelihood of specified tokens appearing in the completion */
-            logit_bias?: {
-                [key: string]: number;
-            };
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-            /** @description List of tools the model may call */
-            tools?: components["schemas"]["Tool"][];
-            /** @description Controls which tool is called by the model */
-            tool_choice?: ("none" | "auto") | components["schemas"]["ToolChoice"];
-            response_format?: components["schemas"]["ResponseFormat"];
-            /** @description Random seed for deterministic outputs */
-            seed?: number;
-        };
-        Message: {
-            /**
-             * @description Role of the message author
-             * @enum {string}
-             */
-            role: "system" | "user" | "assistant" | "function" | "tool";
-            /** @description Content of the message */
-            content: string | components["schemas"]["ContentPart"][];
-            /** @description Name of the function (when role is function) */
-            name?: string;
-            /** @description Function call made by the assistant */
-            function_call?: components["schemas"]["FunctionCall"];
-            /** @description Tool calls made by the assistant */
-            tool_calls?: components["schemas"]["ToolCall"][];
-        };
-        ContentPart: {
-            /** @enum {string} */
-            type: "text";
-            text: string;
-        } | {
-            /** @enum {string} */
-            type: "image_url";
-            image_url: {
-                /** Format: uri */
-                url: string;
-                /**
-                 * @default auto
-                 * @enum {string}
-                 */
-                detail: "auto" | "low" | "high";
-            };
-        };
-        Tool: {
-            /** @enum {string} */
-            type: "function";
-            function: components["schemas"]["FunctionDefinition"];
-        };
-        FunctionDefinition: {
-            /** @description Name of the function */
-            name: string;
-            /** @description Description of what the function does */
-            description?: string;
-            /** @description Parameters the function accepts (JSON Schema) */
-            parameters?: Record<string, never>;
-        };
-        ToolChoice: {
-            /** @enum {string} */
-            type: "function";
-            function: {
-                name: string;
-            };
-        };
-        ResponseFormat: {
-            /** @enum {string} */
-            type: "text" | "json_object";
-            /** @description JSON Schema for structured outputs */
-            schema?: Record<string, never>;
-        };
-        ChatCompletionResponse: {
-            /** @description Unique identifier for the chat completion */
-            id: string;
-            /** @enum {string} */
-            object: "chat.completion";
-            /**
-             * Format: int64
-             * @description Unix timestamp of when the completion was created
-             */
-            created: number;
-            /** @description Model used for the completion */
-            model: string;
-            /** @description System fingerprint for the model configuration */
-            system_fingerprint?: string;
-            choices: components["schemas"]["Choice"][];
-            usage?: components["schemas"]["Usage"];
-        };
-        Choice: {
-            /** @description Index of the choice in the list */
-            index: number;
-            message: components["schemas"]["Message"];
-            /**
-             * @description Reason the model stopped generating tokens
-             * @enum {string}
-             */
-            finish_reason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call";
-            /** @description Log probabilities for the output tokens */
-            logprobs?: Record<string, never> | null;
-        };
-        ChatCompletionChunk: {
-            id: string;
-            /** @enum {string} */
-            object: "chat.completion.chunk";
-            /** Format: int64 */
-            created: number;
-            model: string;
-            system_fingerprint?: string;
-            choices: components["schemas"]["StreamingChoice"][];
-        };
-        StreamingChoice: {
-            index: number;
-            delta: components["schemas"]["DeltaContent"];
-            /** @enum {string|null} */
-            finish_reason?: "stop" | "length" | "tool_calls" | "content_filter" | "function_call" | null;
-        };
-        DeltaContent: {
-            /** @enum {string} */
-            role?: "system" | "user" | "assistant" | "function" | "tool";
-            content?: string | null;
-            function_call?: components["schemas"]["FunctionCall"];
-            tool_calls?: components["schemas"]["ToolCall"][];
-        };
-        FunctionCall: {
-            name: string;
-            /** @description JSON-encoded arguments */
-            arguments: string;
-        };
-        ToolCall: {
-            id: string;
-            /** @enum {string} */
-            type: "function";
-            function: components["schemas"]["FunctionCall"];
-        };
-        Usage: {
-            /** @description Number of tokens in the prompt */
-            prompt_tokens: number;
-            /** @description Number of tokens in the generated completion */
-            completion_tokens: number;
-            /** @description Total number of tokens used */
-            total_tokens: number;
-        };
-        Model: {
-            /** @description Model identifier */
-            id: string;
-            /** @enum {string} */
-            object: "model";
-            /**
-             * Format: int64
-             * @description Unix timestamp of model creation
-             */
-            created?: number;
-            /** @description Organization that owns the model */
-            owned_by?: string;
-        };
-        EmbeddingRequest: {
-            /** @description ID of the model to use */
-            model: string;
-            /** @description Input text to embed */
-            input: string | string[];
-            /**
-             * @description Format to return embeddings in
-             * @default float
-             * @enum {string}
-             */
-            encoding_format: "float" | "base64";
-            /** @description Number of dimensions for the output embeddings */
-            dimensions?: number;
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-        };
-        EmbeddingResponse: {
-            /** @enum {string} */
-            object: "list";
-            data: {
-                /** @enum {string} */
-                object: "embedding";
-                embedding: number[];
-                index: number;
-            }[];
-            model: string;
-            usage: {
-                prompt_tokens: number;
-                total_tokens: number;
-            };
-        };
-        ImageGenerationRequest: {
-            /** @description ID of the model to use */
-            model: string;
-            /** @description Text description of the desired image(s) */
-            prompt: string;
-            /**
-             * @description Number of images to generate
-             * @default 1
-             */
-            n: number;
-            /**
-             * @description Quality of the image
-             * @default standard
-             * @enum {string}
-             */
-            quality: "standard" | "hd";
-            /**
-             * @description Format in which generated images are returned
-             * @default url
-             * @enum {string}
-             */
-            response_format: "url" | "b64_json";
-            /**
-             * @description Size of the generated images
-             * @default 1024x1024
-             * @enum {string}
-             */
-            size: "256x256" | "512x512" | "1024x1024" | "1792x1024" | "1024x1792";
-            /**
-             * @description Style of the generated images
-             * @default vivid
-             * @enum {string}
-             */
-            style: "vivid" | "natural";
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-        };
-        ImageGenerationResponse: {
-            /**
-             * Format: int64
-             * @description Unix timestamp of when the images were created
-             */
-            created: number;
-            data: {
-                /**
-                 * Format: uri
-                 * @description URL of the generated image
-                 */
-                url?: string;
-                /** @description Base64-encoded JSON of the generated image */
-                b64_json?: string;
-                /** @description The prompt that was used to generate the image */
-                revised_prompt?: string;
-            }[];
-        };
-        Error: {
-            error: string | {
-                /** @description Human-readable error message */
-                message: string;
-                /** @description Error type */
-                type: string;
-                /** @description Error code */
-                code?: string;
-                /** @description Parameter related to the error */
-                param?: string | null;
-            };
-        };
-    };
-    responses: {
-        /** @description Bad request */
-        BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Authentication required */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Rate limit exceeded */
-        RateLimitExceeded: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Internal server error */
-        InternalServerError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-    };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
-}
-
 interface ResponseFormat {
     type: 'text' | 'json_object';
 }
@@ -601,7 +251,7 @@ interface ChatCompletionMessage {
     tool_calls?: ToolCall[];
     tool_call_id?: string;
 }
-interface ChatCompletionRequest$1 {
+interface ChatCompletionRequest {
     model: string;
     messages: ChatCompletionMessage[];
     frequency_penalty?: number;
@@ -653,7 +303,7 @@ interface ChatCompletionChoice {
     logprobs?: unknown;
     finish_reason: FinishReason;
 }
-interface ChatCompletionResponse$1 {
+interface ChatCompletionResponse {
     id: string;
     object: 'chat.completion';
     created: number;
@@ -669,7 +319,7 @@ interface ChatCompletionChunkChoice {
     logprobs?: unknown;
     finish_reason: FinishReason;
 }
-interface ChatCompletionChunk$1 {
+interface ChatCompletionChunk {
     id: string;
     object: 'chat.completion.chunk';
     created: number;
@@ -1600,7 +1250,7 @@ interface EnhancedStreamEvent {
     /** The type of SSE event */
     type: EnhancedSSEEventType;
     /** The event data, type depends on the event type */
-    data: ChatCompletionChunk$1 | StreamingMetrics | FinalMetrics | string;
+    data: ChatCompletionChunk | StreamingMetrics | FinalMetrics | string;
 }
 /**
  * Type guard to check if data is a ChatCompletionChunk.
@@ -1617,7 +1267,7 @@ interface EnhancedStreamEvent {
  * }
  * ```
  */
-declare function isChatCompletionChunk(data: unknown): data is ChatCompletionChunk$1;
+declare function isChatCompletionChunk(data: unknown): data is ChatCompletionChunk;
 /**
  * Type guard to check if data is StreamingMetrics.
  *
@@ -1713,9 +1363,6 @@ interface EnhancedStreamingResponse<T> {
     cancel(): void;
 }
 
-type ChatCompletionRequest = components['schemas']['ChatCompletionRequest'];
-type ChatCompletionResponse = components['schemas']['ChatCompletionResponse'];
-type ChatCompletionChunk = components['schemas']['ChatCompletionChunk'];
 /**
  * Type-safe Chat service using generated OpenAPI types and native fetch
  */
@@ -1779,7 +1426,7 @@ declare class FetchChatService extends FetchBasedClient {
      * Converts legacy function parameters to the tools format
      * for backward compatibility
      */
-    protected convertLegacyFunctions(request: any): any;
+    protected convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest;
 }
 
 /**
@@ -4627,4 +4274,4 @@ declare class NotificationsService {
     private generateSubscriptionId;
 }
 
-export { type AsyncVideoApiRequest, type AsyncVideoGenerationRequest, type AsyncVideoGenerationResponse, type AudioError, type AudioFile, type AudioFormat, type AudioMetadata, type AudioProcessingOptions, AudioService, type AudioTranscriptionRequest, type AudioTranscriptionResponse, type AudioTranslationRequest, type AudioTranslationResponse, AudioUtils, type AudioValidation, type BatchItemError, type BatchItemResult, type BatchOperationMetadata, type BatchOperationPollOptions, type BatchOperationStartResponse, BatchOperationStatusEnum, type BatchOperationStatusResponse, BatchOperationsService, type BatchSpendUpdateRequest, type BatchValidationOptions, type BatchValidationResult, type BatchVirtualKeyUpdateRequest, type BatchWebhookSendRequest, type BulkCapabilityTestRequest, type BulkCapabilityTestResponse, type BulkModelDiscoveryRequest, type BulkModelDiscoveryResponse, type BusinessMetrics, type CapabilityTest, type CapabilityTestResponse, type CapabilityTestResult, type ChatCompletionChoice, type ChatCompletionChunk$1 as ChatCompletionChunk, type ChatCompletionChunkChoice, type ChatCompletionMessage, type ChatCompletionRequest$1 as ChatCompletionRequest, type ChatCompletionResponse$1 as ChatCompletionResponse, type ChatMetadata, type CleanupTasksResponse, type ClientConfig, FetchConduitCoreClient as ConduitCoreClient, ContentHelpers, CoreModelCapability, type CostMetrics, type DatabaseMetrics, type DiscoveredModel, DiscoveryService, type EmbeddingData, EmbeddingEncodingFormats, EmbeddingHelpers, EmbeddingModels, type EmbeddingRequest, type EmbeddingResponse, type EmbeddingUsage, EmbeddingsService, EnhancedSSEEventType, type EnhancedStreamEvent, type EnhancedStreamingResponse, type ErrorResponse, FetchConduitCoreClient, type FinalMetrics, type FinishReason, type FunctionCall, type FunctionDefinition, type HealthCheckItem, type HealthCheckOptions, type HealthCheckResponse, HealthStatus, type HealthSummary, type HistoricalMetricsRequest, type HistoricalMetricsResponse, type HttpMetrics, type HybridAudioRequest, type HybridAudioResponse, type IImageGenerationHubServer, IMAGE_DEFAULTS, IMAGE_MODELS, IMAGE_MODEL_CAPABILITIES, type ITaskHubServer, type IVideoGenerationHubServer, type ImageContent, type ImageData, type ImageEditRequest, type ImageEditResponse, type ImageGenerationCompletedEvent, ImageGenerationHubClient, type ImageGenerationProgressEvent, type ImageGenerationRequest, type ImageGenerationResponse, type ImageGenerationStartedEvent, type ImageModel, type ImageProgressCallback, type ImageProgressEvent, type ImageVariationRequest, type ImageVariationResponse, ImagesService, type InfrastructureMetrics, type KPISummary, type MessageContent, type MetricDataPoint, type MetricSeries, MetricsService, type MetricsSnapshot, type Model, type ModelCapabilities, ModelCapability, type ModelDiscoveryResult, type ModelUsageStats, type ModelsDiscoveryResponse, type ModelsResponse, type NotificationFilters, type NotificationMetadata, type NotificationOptions, type NotificationSubscription, NotificationsService, type ProviderHealthStatus, type ProviderModelsDiscoveryResponse, ProviderModelsService, type RabbitMQMetrics, type RealtimeConnectionRequest, type RealtimeMessage, type RealtimeSession, type RealtimeSessionConfig, type RedisMetrics, type RequestOptions, type ResponseFormat, type ResponseTimeMetrics, SignalREndpoints, type SignalRMetrics, SignalRService, type SimpleHealthStatus, type SpendLimitAlertCallback, type SpendLimitAlertEvent, type SpendUpdateCallback, type SpendUpdateDto, type SpendUpdateEvent, type StreamingMetrics, type SystemMetrics, type TaskCancelledEvent, type TaskCompletedEvent, TaskDefaults, type TaskFailedEvent, TaskHelpers, TaskHubClient, type TaskMetadata, type TaskPollingOptions, type TaskProgressEvent, type TaskResult, type TaskStartedEvent, type TaskStatusResponse, type TaskTimedOutEvent, type TaskUpdateCallback, type TaskUpdateEvent, type TextContent, type TextToSpeechModel, type TextToSpeechRequest, type TextToSpeechResponse, type TimestampGranularity, type Tool, type ToolCall, type ToolParameters, type TranscriptionFormat, type TranscriptionModel, type TranscriptionSegment, type TranscriptionWord, type VideoApiRequest, type VideoCompletionWebhookPayload, type VideoData, VideoDefaults, type VideoGenerationCompletedEvent, VideoGenerationHubClient, type VideoGenerationProgressEvent, type VideoGenerationRequest, type VideoGenerationResponse, type VideoGenerationStartedEvent, type VideoMetadata, type VideoModelCapabilities, VideoModels, type VideoProgressCallback, type VideoProgressEvent, type VideoProgressWebhookPayload, VideoResolutions, VideoResponseFormats, type VideoTaskPollingOptions, VideoTaskStatus, type VideoUsage, type VideoWebhookMetadata, VideosService, type VirtualKeyStats, type VirtualKeyUpdateDto, type Voice, type VoiceSettings, type WaitForHealthOptions, type WebhookPayloadBase, type WebhookSendDto, areModelsEquivalent, calculateCosineSimilarity, convertEmbeddingToFloatArray, getCapabilityDisplayName, getModelCapabilities, getRecommendedModels, getVideoModelCapabilities, isChatCompletionChunk, isFinalMetrics, isStreamingMetrics, isValidMetadata, modelSupportsCapability, parseMetadata, stringifyMetadata, validateAsyncVideoGenerationRequest, validateEmbeddingRequest, validateModelCompatibility, validateVideoGenerationRequest };
+export { type AsyncVideoApiRequest, type AsyncVideoGenerationRequest, type AsyncVideoGenerationResponse, type AudioError, type AudioFile, type AudioFormat, type AudioMetadata, type AudioProcessingOptions, AudioService, type AudioTranscriptionRequest, type AudioTranscriptionResponse, type AudioTranslationRequest, type AudioTranslationResponse, AudioUtils, type AudioValidation, type BatchItemError, type BatchItemResult, type BatchOperationMetadata, type BatchOperationPollOptions, type BatchOperationStartResponse, BatchOperationStatusEnum, type BatchOperationStatusResponse, BatchOperationsService, type BatchSpendUpdateRequest, type BatchValidationOptions, type BatchValidationResult, type BatchVirtualKeyUpdateRequest, type BatchWebhookSendRequest, type BulkCapabilityTestRequest, type BulkCapabilityTestResponse, type BulkModelDiscoveryRequest, type BulkModelDiscoveryResponse, type BusinessMetrics, type CapabilityTest, type CapabilityTestResponse, type CapabilityTestResult, type ChatCompletionChoice, type ChatCompletionChunk, type ChatCompletionChunkChoice, type ChatCompletionMessage, type ChatCompletionRequest, type ChatCompletionResponse, type ChatMetadata, type CleanupTasksResponse, type ClientConfig, FetchConduitCoreClient as ConduitCoreClient, ContentHelpers, CoreModelCapability, type CostMetrics, type DatabaseMetrics, type DiscoveredModel, DiscoveryService, type EmbeddingData, EmbeddingEncodingFormats, EmbeddingHelpers, EmbeddingModels, type EmbeddingRequest, type EmbeddingResponse, type EmbeddingUsage, EmbeddingsService, EnhancedSSEEventType, type EnhancedStreamEvent, type EnhancedStreamingResponse, type ErrorResponse, FetchConduitCoreClient, type FinalMetrics, type FinishReason, type FunctionCall, type FunctionDefinition, type HealthCheckItem, type HealthCheckOptions, type HealthCheckResponse, HealthStatus, type HealthSummary, type HistoricalMetricsRequest, type HistoricalMetricsResponse, type HttpMetrics, type HybridAudioRequest, type HybridAudioResponse, type IImageGenerationHubServer, IMAGE_DEFAULTS, IMAGE_MODELS, IMAGE_MODEL_CAPABILITIES, type ITaskHubServer, type IVideoGenerationHubServer, type ImageContent, type ImageData, type ImageEditRequest, type ImageEditResponse, type ImageGenerationCompletedEvent, ImageGenerationHubClient, type ImageGenerationProgressEvent, type ImageGenerationRequest, type ImageGenerationResponse, type ImageGenerationStartedEvent, type ImageModel, type ImageProgressCallback, type ImageProgressEvent, type ImageVariationRequest, type ImageVariationResponse, ImagesService, type InfrastructureMetrics, type KPISummary, type MessageContent, type MetricDataPoint, type MetricSeries, MetricsService, type MetricsSnapshot, type Model, type ModelCapabilities, ModelCapability, type ModelDiscoveryResult, type ModelUsageStats, type ModelsDiscoveryResponse, type ModelsResponse, type NotificationFilters, type NotificationMetadata, type NotificationOptions, type NotificationSubscription, NotificationsService, type ProviderHealthStatus, type ProviderModelsDiscoveryResponse, ProviderModelsService, type RabbitMQMetrics, type RealtimeConnectionRequest, type RealtimeMessage, type RealtimeSession, type RealtimeSessionConfig, type RedisMetrics, type RequestOptions, type ResponseFormat, type ResponseTimeMetrics, SignalREndpoints, type SignalRMetrics, SignalRService, type SimpleHealthStatus, type SpendLimitAlertCallback, type SpendLimitAlertEvent, type SpendUpdateCallback, type SpendUpdateDto, type SpendUpdateEvent, type StreamingMetrics, type SystemMetrics, type TaskCancelledEvent, type TaskCompletedEvent, TaskDefaults, type TaskFailedEvent, TaskHelpers, TaskHubClient, type TaskMetadata, type TaskPollingOptions, type TaskProgressEvent, type TaskResult, type TaskStartedEvent, type TaskStatusResponse, type TaskTimedOutEvent, type TaskUpdateCallback, type TaskUpdateEvent, type TextContent, type TextToSpeechModel, type TextToSpeechRequest, type TextToSpeechResponse, type TimestampGranularity, type Tool, type ToolCall, type ToolParameters, type TranscriptionFormat, type TranscriptionModel, type TranscriptionSegment, type TranscriptionWord, type VideoApiRequest, type VideoCompletionWebhookPayload, type VideoData, VideoDefaults, type VideoGenerationCompletedEvent, VideoGenerationHubClient, type VideoGenerationProgressEvent, type VideoGenerationRequest, type VideoGenerationResponse, type VideoGenerationStartedEvent, type VideoMetadata, type VideoModelCapabilities, VideoModels, type VideoProgressCallback, type VideoProgressEvent, type VideoProgressWebhookPayload, VideoResolutions, VideoResponseFormats, type VideoTaskPollingOptions, VideoTaskStatus, type VideoUsage, type VideoWebhookMetadata, VideosService, type VirtualKeyStats, type VirtualKeyUpdateDto, type Voice, type VoiceSettings, type WaitForHealthOptions, type WebhookPayloadBase, type WebhookSendDto, areModelsEquivalent, calculateCosineSimilarity, convertEmbeddingToFloatArray, getCapabilityDisplayName, getModelCapabilities, getRecommendedModels, getVideoModelCapabilities, isChatCompletionChunk, isFinalMetrics, isStreamingMetrics, isValidMetadata, modelSupportsCapability, parseMetadata, stringifyMetadata, validateAsyncVideoGenerationRequest, validateEmbeddingRequest, validateModelCompatibility, validateVideoGenerationRequest };
