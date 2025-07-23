@@ -1,0 +1,152 @@
+import type { StreamOptions } from '../models/streaming';
+import type { EnhancedStreamEvent, EnhancedSSEEventType } from '../models/enhanced-streaming';
+import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
+import { StreamError } from './errors';
+
+/**
+ * Creates an enhanced streaming response that preserves SSE event types
+ */
+export function createEnhancedWebStream(
+  stream: ReadableStream<Uint8Array>,
+  options?: StreamOptions
+): EnhancedStreamingResponse<EnhancedStreamEvent> {
+  const abortController = new AbortController();
+  
+  // If the options signal is aborted, abort our controller too
+  if (options?.signal) {
+    options.signal.addEventListener('abort', () => abortController.abort());
+  }
+  
+  const generator = enhancedWebStreamAsyncIterator(stream, options);
+  
+  // Create the enhanced streaming response
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield* generator;
+    },
+    
+    async toArray(): Promise<EnhancedStreamEvent[]> {
+      const events: EnhancedStreamEvent[] = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+      return events;
+    },
+    
+    cancel(): void {
+      abortController.abort();
+    }
+  };
+}
+
+async function* enhancedWebStreamAsyncIterator(
+  stream: ReadableStream<Uint8Array>,
+  options?: StreamOptions
+): AsyncGenerator<EnhancedStreamEvent, void, unknown> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let currentEventType: string | undefined;
+  let currentData = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      // Keep the last line if it's incomplete
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        
+        // Empty line signals end of event
+        if (trimmedLine === '') {
+          if (currentData) {
+            const event = processEvent(currentEventType, currentData, options);
+            if (event) {
+              yield event;
+            }
+            currentEventType = undefined;
+            currentData = '';
+          }
+          continue;
+        }
+        
+        // Parse event type
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7).trim();
+        } 
+        // Parse data
+        else if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (currentData) {
+            currentData += '\n' + data;
+          } else {
+            currentData = data;
+          }
+        }
+      }
+    }
+
+    // Process any remaining event
+    if (currentData) {
+      const event = processEvent(currentEventType, currentData, options);
+      if (event) {
+        yield event;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function processEvent(
+  eventType: string | undefined,
+  data: string,
+  options?: StreamOptions
+): EnhancedStreamEvent | null {
+  // Handle [DONE] marker
+  if (data === '[DONE]') {
+    return {
+      type: 'done' as EnhancedSSEEventType,
+      data: '[DONE]'
+    };
+  }
+
+  // Determine event type
+  let type: EnhancedSSEEventType;
+  switch (eventType) {
+    case 'metrics':
+      type = 'metrics' as EnhancedSSEEventType;
+      break;
+    case 'metrics-final':
+      type = 'metrics-final' as EnhancedSSEEventType;
+      break;
+    case 'error':
+      type = 'error' as EnhancedSSEEventType;
+      break;
+    default:
+      // Default to content event for backwards compatibility
+      type = 'content' as EnhancedSSEEventType;
+  }
+
+  try {
+    const parsed = JSON.parse(data);
+    return {
+      type,
+      data: parsed
+    };
+  } catch (error) {
+    if (options?.onError) {
+      options.onError(new StreamError(`Failed to parse SSE ${type} event`, { cause: error }));
+    }
+    return null;
+  }
+}

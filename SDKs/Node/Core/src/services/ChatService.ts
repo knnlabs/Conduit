@@ -7,8 +7,11 @@ import type {
   ChatCompletionChunk 
 } from '../models/chat';
 import type { StreamingResponse } from '../models/streaming';
+import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
+import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import { validateChatCompletionRequest } from '../utils/validation';
 import { createWebStream } from '../utils/web-streaming';
+import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
 import { API_ENDPOINTS } from '../constants';
 import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
 
@@ -236,5 +239,54 @@ export class ChatService {
     );
 
     return new ControllableChatStream(baseStream, options?.streamControl ?? {});
+  }
+
+  /**
+   * Creates an enhanced streaming chat completion that preserves SSE event types.
+   * This allows access to metrics events and other enhanced streaming features.
+   * 
+   * @param request - The chat completion request with stream: true
+   * @param options - Optional request configuration
+   * @returns A streaming response with enhanced events
+   * 
+   * @example
+   * const stream = await chatService.createEnhancedStream({
+   *   model: 'gpt-4',
+   *   messages: [{ role: 'user', content: 'Hello!' }],
+   *   stream: true
+   * });
+   * 
+   * for await (const event of stream) {
+   *   switch (event.type) {
+   *     case 'content':
+   *       console.log('Content:', event.data);
+   *       break;
+   *     case 'metrics':
+   *       console.log('Metrics:', event.data);
+   *       break;
+   *   }
+   * }
+   */
+  async createEnhancedStream(
+    request: ChatCompletionRequest & { stream: true },
+    options?: RequestOptions
+  ): Promise<EnhancedStreamingResponse<EnhancedStreamEvent>> {
+    const processedRequest = this.convertLegacyFunctions(request);
+    validateChatCompletionRequest(processedRequest);
+
+    const response = await this.createStreamingRequest(processedRequest, options);
+    const stream = response.body;
+    
+    if (!stream) {
+      throw new Error('Response body is not a stream');
+    }
+
+    // Use enhanced web streaming that preserves SSE event types
+    return createEnhancedWebStream(
+      stream,
+      {
+        signal: options?.signal,
+      }
+    );
   }
 }

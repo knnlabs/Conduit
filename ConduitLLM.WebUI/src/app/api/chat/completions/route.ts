@@ -20,28 +20,49 @@ export async function POST(request: NextRequest) {
       // Start the streaming request
       void (async () => {
         try {
-          // Create the streaming request - the SDK will handle validation
-          const streamResponse = await coreClient.chat.create(body);
+          // Create the enhanced streaming request to get SSE events with types
+          const streamResponse = await coreClient.chat.createEnhancedStream(body);
           
           // Handle the async iterator from the SDK
           let chunkCount = 0;
-          for await (const chunk of streamResponse) {
-            // Debug first few chunks to see what we're receiving
+          for await (const event of streamResponse) {
+            // Debug first few events to see what we're receiving
             if (process.env.NODE_ENV === 'development' && chunkCount < 3) {
-              console.warn('SDK chunk:', JSON.stringify(chunk, null, 2));
+              console.warn('SDK event:', JSON.stringify(event, null, 2));
               chunkCount++;
             }
             
-            // The SDK returns ChatCompletionChunk objects
-            // Format as SSE data event
-            const data = `data: ${JSON.stringify(chunk)}\n\n`;
-            await writer.write(encoder.encode(data));
-            
-            // Check for metrics in the chunk - using generic type due to SDK export issues
-            const typedChunk = chunk as { performance?: Record<string, unknown> };
-            if (typedChunk.performance && Object.keys(typedChunk.performance).length > 0) {
-              const metricsEvent = `event: metrics\ndata: ${JSON.stringify(typedChunk.performance)}\n\n`;
-              await writer.write(encoder.encode(metricsEvent));
+            // Handle different event types
+            const eventType = event.type as string;
+            switch (eventType) {
+              case 'content': {
+                // Regular chat completion chunk
+                const data = `data: ${JSON.stringify(event.data)}\n\n`;
+                await writer.write(encoder.encode(data));
+                break;
+              }
+                
+              case 'metrics': {
+                // Live metrics update
+                const metricsEvent = `event: metrics\ndata: ${JSON.stringify(event.data)}\n\n`;
+                await writer.write(encoder.encode(metricsEvent));
+                break;
+              }
+                
+              case 'metrics-final': {
+                // Final metrics
+                const finalMetricsEvent = `event: metrics-final\ndata: ${JSON.stringify(event.data)}\n\n`;
+                await writer.write(encoder.encode(finalMetricsEvent));
+                break;
+              }
+                
+              case 'done':
+                // Stream is done
+                break;
+                
+              default:
+                // Unknown event type, log it
+                console.warn('Unknown event type:', eventType);
             }
           }
           
