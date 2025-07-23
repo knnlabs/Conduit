@@ -16,8 +16,9 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="content">The media content stream.</param>
         /// <param name="metadata">Metadata about the media content.</param>
+        /// <param name="progress">Optional progress reporter for upload tracking.</param>
         /// <returns>Storage result containing the storage key and URL.</returns>
-        Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata);
+        Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null);
 
         /// <summary>
         /// Retrieves a media file stream by its storage key.

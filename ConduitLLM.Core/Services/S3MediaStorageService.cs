@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Options;
@@ -25,6 +27,7 @@ namespace ConduitLLM.Core.Services
         private readonly S3StorageOptions _options;
         private readonly ILogger<S3MediaStorageService> _logger;
         private readonly string _bucketName;
+        private readonly TransferUtility _transferUtility;
         private readonly ConcurrentDictionary<string, InitiateMultipartUploadResponse> _multipartUploads = new();
 
         public S3MediaStorageService(
@@ -70,52 +73,106 @@ namespace ConduitLLM.Core.Services
             }
 
             _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
+            _transferUtility = new TransferUtility(_s3Client);
 
             // Initialize bucket if needed
             Task.Run(async () => await EnsureBucketExistsAsync());
         }
 
         /// <inheritdoc/>
-        public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata)
+        public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
             try
             {
-                // Generate storage key based on content hash
-                var contentHash = await ComputeHashAsync(content);
+                // For streaming, we can't compute hash beforehand, so generate a unique key
+                var temporaryKey = Guid.NewGuid().ToString();
                 var extension = GetExtensionFromContentType(metadata.ContentType);
-                var storageKey = GenerateStorageKey(contentHash, metadata.MediaType, extension);
+                var storageKey = GenerateStorageKey(temporaryKey, metadata.MediaType, extension);
 
-                // Reset stream position after hashing
-                content.Position = 0;
+                // Wrap stream with progress reporting if needed
+                var uploadStream = progress != null ? new ProgressReportingStream(content, progress) : content;
 
-                // Upload to S3
-                var putRequest = new PutObjectRequest
+                // Check if we need to use multipart upload based on stream length
+                bool useTransferUtility = content.CanSeek && content.Length > 5 * 1024 * 1024; // 5MB threshold
+
+                long contentLength = 0;
+                string? etag = null;
+
+                if (useTransferUtility)
                 {
-                    BucketName = _bucketName,
-                    Key = storageKey,
-                    InputStream = content,
-                    ContentType = metadata.ContentType,
-                    ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
-                };
+                    // Use TransferUtility for large files
+                    var uploadRequest = new TransferUtilityUploadRequest
+                    {
+                        BucketName = _bucketName,
+                        Key = storageKey,
+                        InputStream = uploadStream,
+                        ContentType = metadata.ContentType,
+                        ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256,
+                        PartSize = 5 * 1024 * 1024, // 5MB parts
+                        CannedACL = S3CannedACL.Private
+                    };
 
-                // Add metadata
-                putRequest.Metadata.Add("content-type", metadata.ContentType);
-                putRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
-                putRequest.Metadata.Add("original-filename", metadata.FileName ?? "");
-                putRequest.Metadata.Add("created-by", metadata.CreatedBy ?? "");
+                    // Add metadata
+                    uploadRequest.Metadata.Add("content-type", metadata.ContentType);
+                    uploadRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
+                    uploadRequest.Metadata.Add("original-filename", metadata.FileName ?? "");
+                    uploadRequest.Metadata.Add("created-by", metadata.CreatedBy ?? "");
 
-                // Add custom metadata
-                foreach (var (key, value) in metadata.CustomMetadata ?? new Dictionary<string, string>())
-                {
-                    putRequest.Metadata.Add($"custom-{key}", value);
+                    // Add custom metadata
+                    foreach (var (key, value) in metadata.CustomMetadata ?? new Dictionary<string, string>())
+                    {
+                        uploadRequest.Metadata.Add($"custom-{key}", value);
+                    }
+
+                    if (metadata.ExpiresAt.HasValue)
+                    {
+                        uploadRequest.Metadata.Add("expires-at", metadata.ExpiresAt.Value.ToString("O"));
+                    }
+
+                    // Subscribe to upload progress events
+                    uploadRequest.UploadProgressEvent += (sender, args) =>
+                    {
+                        // TransferUtility already reports progress
+                        _logger.LogDebug("Upload progress: {TransferredBytes}/{TotalBytes}", 
+                            args.TransferredBytes, args.TotalBytes);
+                    };
+
+                    await _transferUtility.UploadAsync(uploadRequest);
+                    contentLength = content.CanSeek ? content.Length : 0;
                 }
-
-                if (metadata.ExpiresAt.HasValue)
+                else
                 {
-                    putRequest.Metadata.Add("expires-at", metadata.ExpiresAt.Value.ToString("O"));
-                }
+                    // Use regular PutObject for smaller files
+                    var putRequest = new PutObjectRequest
+                    {
+                        BucketName = _bucketName,
+                        Key = storageKey,
+                        InputStream = uploadStream,
+                        ContentType = metadata.ContentType,
+                        ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+                    };
 
-                var response = await _s3Client.PutObjectAsync(putRequest);
+                    // Add metadata
+                    putRequest.Metadata.Add("content-type", metadata.ContentType);
+                    putRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
+                    putRequest.Metadata.Add("original-filename", metadata.FileName ?? "");
+                    putRequest.Metadata.Add("created-by", metadata.CreatedBy ?? "");
+
+                    // Add custom metadata
+                    foreach (var (key, value) in metadata.CustomMetadata ?? new Dictionary<string, string>())
+                    {
+                        putRequest.Metadata.Add($"custom-{key}", value);
+                    }
+
+                    if (metadata.ExpiresAt.HasValue)
+                    {
+                        putRequest.Metadata.Add("expires-at", metadata.ExpiresAt.Value.ToString("O"));
+                    }
+
+                    var response = await _s3Client.PutObjectAsync(putRequest);
+                    etag = response.ETag;
+                    contentLength = content.CanSeek ? content.Length : 0;
+                }
 
                 _logger.LogInformation("Stored media with key {StorageKey} to S3", storageKey);
 
@@ -126,15 +183,60 @@ namespace ConduitLLM.Core.Services
                 {
                     StorageKey = storageKey,
                     Url = url,
-                    SizeBytes = content.Length,
-                    ContentHash = contentHash,
+                    SizeBytes = contentLength,
+                    ContentHash = etag ?? temporaryKey,
                     CreatedAt = DateTime.UtcNow
                 };
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex, "AWS S3 error while storing media: {ErrorCode}", ex.ErrorCode);
+                
+                if (ex.StatusCode == System.Net.HttpStatusCode.RequestEntityTooLarge)
+                {
+                    throw new InvalidOperationException("File size exceeds S3 limits", ex);
+                }
+                else if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                         ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to upload to S3", ex);
+                }
+                else if (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || 
+                         ex.ErrorCode == "SlowDown")
+                {
+                    throw new InvalidOperationException("S3 service is throttling requests. Please retry later.", ex);
+                }
+                
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to store media to S3");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Stores base64 encoded media content with streaming support.
+        /// </summary>
+        public async Task<MediaStorageResult> StoreBase64Async(string base64Content, MediaMetadata metadata, IProgress<long>? progress = null)
+        {
+            try
+            {
+                using var base64Stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(base64Content));
+                using var decodedStream = new CryptoStream(base64Stream, new FromBase64Transform(), CryptoStreamMode.Read);
+                
+                return await StoreAsync(decodedStream, metadata, progress);
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "Invalid base64 format in content");
+                throw new InvalidOperationException("The provided content is not valid base64 encoded data", ex);
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogError(ex, "Failed to decode base64 content");
+                throw new InvalidOperationException("Failed to decode base64 content", ex);
             }
         }
 
@@ -387,13 +489,15 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // For large videos, we might want to use multipart upload
-                if (content.Length > 100 * 1024 * 1024) // 100MB
+                if (content.CanSeek && content.Length > 100 * 1024 * 1024) // 100MB
                 {
                     return await StoreVideoMultipartAsync(content, metadata, progressCallback);
                 }
 
-                // For smaller videos, use regular upload with progress tracking
-                var progressStream = new ProgressStream(content, progressCallback);
+                // Convert Action<long> callback to IProgress<long> if needed
+                IProgress<long>? progress = progressCallback != null 
+                    ? new Progress<long>(progressCallback) 
+                    : null;
                 
                 // Set metadata with video-specific information
                 var baseMetadata = new MediaMetadata
@@ -425,7 +529,7 @@ namespace ConduitLLM.Core.Services
                 if (!string.IsNullOrEmpty(metadata.GenerationPrompt))
                     baseMetadata.CustomMetadata["generation-prompt"] = metadata.GenerationPrompt;
 
-                return await StoreAsync(progressStream, baseMetadata);
+                return await StoreAsync(content, baseMetadata, progress);
             }
             catch (Exception ex)
             {
@@ -787,6 +891,70 @@ namespace ConduitLLM.Core.Services
                 {
                     _totalBytesRead += bytesRead;
                     _progressCallback?.Invoke(_totalBytesRead);
+                }
+                return bytesRead;
+            }
+
+            public override long Seek(long offset, SeekOrigin origin) => _innerStream.Seek(offset, origin);
+            public override void SetLength(long value) => _innerStream.SetLength(value);
+            public override void Write(byte[] buffer, int offset, int count) => _innerStream.Write(buffer, offset, count);
+            
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    _innerStream?.Dispose();
+                }
+                base.Dispose(disposing);
+            }
+        }
+
+        /// <summary>
+        /// Stream wrapper that reports progress using IProgress interface.
+        /// </summary>
+        private class ProgressReportingStream : Stream
+        {
+            private readonly Stream _innerStream;
+            private readonly IProgress<long> _progress;
+            private long _totalBytesRead;
+
+            public ProgressReportingStream(Stream innerStream, IProgress<long> progress)
+            {
+                _innerStream = innerStream ?? throw new ArgumentNullException(nameof(innerStream));
+                _progress = progress ?? throw new ArgumentNullException(nameof(progress));
+                _totalBytesRead = 0;
+            }
+
+            public override bool CanRead => _innerStream.CanRead;
+            public override bool CanSeek => _innerStream.CanSeek;
+            public override bool CanWrite => _innerStream.CanWrite;
+            public override long Length => _innerStream.Length;
+            public override long Position 
+            { 
+                get => _innerStream.Position;
+                set => _innerStream.Position = value;
+            }
+
+            public override void Flush() => _innerStream.Flush();
+            
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var bytesRead = _innerStream.Read(buffer, offset, count);
+                if (bytesRead > 0)
+                {
+                    _totalBytesRead += bytesRead;
+                    _progress.Report(_totalBytesRead);
+                }
+                return bytesRead;
+            }
+
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                var bytesRead = await _innerStream.ReadAsync(buffer, offset, count, cancellationToken);
+                if (bytesRead > 0)
+                {
+                    _totalBytesRead += bytesRead;
+                    _progress.Report(_totalBytesRead);
                 }
                 return bytesRead;
             }

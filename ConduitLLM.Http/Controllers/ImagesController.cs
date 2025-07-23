@@ -170,9 +170,12 @@ namespace ConduitLLM.Http.Controllers
                     {
                         if (!string.IsNullOrEmpty(imageData.B64Json))
                         {
-                            // Convert base64 to bytes
-                            var imageBytes = Convert.FromBase64String(imageData.B64Json);
-                            imageStream = new MemoryStream(imageBytes);
+                            // Use streaming to decode base64 without loading entire content into memory
+                            var base64Stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(imageData.B64Json));
+                            imageStream = new System.Security.Cryptography.CryptoStream(
+                                base64Stream, 
+                                new System.Security.Cryptography.FromBase64Transform(), 
+                                System.Security.Cryptography.CryptoStreamMode.Read);
                         }
                         else if (!string.IsNullOrEmpty(imageData.Url) && 
                                 (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 

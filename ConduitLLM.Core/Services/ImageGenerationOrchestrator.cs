@@ -540,8 +540,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (!string.IsNullOrEmpty(imageData.B64Json))
                 {
-                    // Store base64 image
-                    var imageBytes = Convert.FromBase64String(imageData.B64Json);
+                    // Store base64 image using streaming to avoid loading entire content into memory
                     var metadata = new Dictionary<string, string>
                     {
                         ["prompt"] = request.Request.Prompt,
@@ -557,8 +556,14 @@ namespace ConduitLLM.Core.Services
                         CustomMetadata = metadata
                     };
                     
-                    using var imageStream = new System.IO.MemoryStream(imageBytes);
-                    var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
+                    // Use streaming to decode base64
+                    using var base64Stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(imageData.B64Json));
+                    using var decodedStream = new System.Security.Cryptography.CryptoStream(
+                        base64Stream, 
+                        new System.Security.Cryptography.FromBase64Transform(), 
+                        System.Security.Cryptography.CryptoStreamMode.Read);
+                    
+                    var storageResult = await _storageService.StoreAsync(decodedStream, mediaMetadata);
                     finalUrl = storageResult.Url;
                     
                     // Publish MediaGenerationCompleted event for lifecycle tracking
@@ -568,7 +573,7 @@ namespace ConduitLLM.Core.Services
                         VirtualKeyId = request.VirtualKeyId,
                         MediaUrl = storageResult.Url,
                         StorageKey = storageResult.StorageKey,
-                        FileSizeBytes = imageBytes.Length,
+                        FileSizeBytes = storageResult.SizeBytes,
                         ContentType = mediaMetadata.ContentType,
                         GeneratedByModel = modelInfo.ModelId,
                         GenerationPrompt = request.Request.Prompt,

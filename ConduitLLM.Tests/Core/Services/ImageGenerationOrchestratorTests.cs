@@ -233,7 +233,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockStorageService.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
-                It.IsAny<MediaMetadata>()))
+                It.IsAny<MediaMetadata>(),
+                It.IsAny<IProgress<long>>()))
                 .ReturnsAsync(storageResult);
 
             // Act
@@ -242,7 +243,8 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             _mockStorageService.Verify(x => x.StoreAsync(
                 It.IsAny<Stream>(),
-                It.Is<MediaMetadata>(m => m.ContentType == "image/png")), Times.Once);
+                It.Is<MediaMetadata>(m => m.ContentType == "image/png"),
+                It.IsAny<IProgress<long>>()), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
                 It.Is<MediaGenerationCompleted>(e => 
@@ -788,7 +790,8 @@ namespace ConduitLLM.Tests.Core.Services
                 It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => 
                     m.ContentType == "image/png" && 
-                    m.MediaType == MediaType.Image)), Times.Once);
+                    m.MediaType == MediaType.Image),
+                It.IsAny<IProgress<long>>()), Times.Once);
         }
 
         [Fact]
@@ -828,7 +831,8 @@ namespace ConduitLLM.Tests.Core.Services
                 It.IsAny<Stream>(),
                 It.Is<MediaMetadata>(m => 
                     m.ContentType == "image/jpeg" && 
-                    m.MediaType == MediaType.Image)), Times.Once);
+                    m.MediaType == MediaType.Image),
+                It.IsAny<IProgress<long>>()), Times.Once);
         }
 
         #endregion
@@ -912,7 +916,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockStorageService.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
-                It.IsAny<MediaMetadata>()))
+                It.IsAny<MediaMetadata>(),
+                It.IsAny<IProgress<long>>()))
                 .ReturnsAsync(storageResult);
 
             // Setup HTTP client for URL downloads
@@ -985,7 +990,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockStorageService.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
-                It.IsAny<MediaMetadata>()))
+                It.IsAny<MediaMetadata>(),
+                It.IsAny<IProgress<long>>()))
                 .ReturnsAsync(storageResult);
 
             // Setup HTTP client for URL downloads

@@ -736,14 +736,18 @@ namespace ConduitLLM.Core.Services
                         // Handle base64 data
                         if (!string.IsNullOrEmpty(video.B64Json))
                         {
-                            var videoBytes = Convert.FromBase64String(video.B64Json);
-                            using var videoStream = new System.IO.MemoryStream(videoBytes);
+                            // Use streaming to decode base64 without loading entire content into memory
+                            using var base64Stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(video.B64Json));
+                            using var decodedStream = new System.Security.Cryptography.CryptoStream(
+                                base64Stream, 
+                                new System.Security.Cryptography.FromBase64Transform(), 
+                                System.Security.Cryptography.CryptoStreamMode.Read);
                             
                             var videoMediaMetadata = new VideoMediaMetadata
                             {
                                 MediaType = MediaType.Video,
                                 ContentType = video.Metadata?.MimeType ?? "video/mp4",
-                                FileSizeBytes = videoBytes.Length,
+                                FileSizeBytes = 0, // Will be set by storage service
                                 FileName = $"video_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.mp4",
                                 Width = video.Metadata?.Width ?? 1280,
                                 Height = video.Metadata?.Height ?? 720,
@@ -756,7 +760,13 @@ namespace ConduitLLM.Core.Services
                                 Resolution = videoRequest.Size ?? "1280x720"
                             };
                             
-                            var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata);
+                            // Create a progress callback
+                            Action<long>? progressCallback = bytesProcessed =>
+                            {
+                                _logger.LogDebug("Video upload progress: {BytesProcessed} bytes", bytesProcessed);
+                            };
+                            
+                            var storageResult = await _storageService.StoreVideoAsync(decodedStream, videoMediaMetadata, progressCallback);
                             video.Url = storageResult.Url;
                             video.B64Json = null; // Clear base64 data after storing
                             videoUrl = storageResult.Url;

@@ -37,13 +37,23 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata)
+        public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
             try
             {
                 // Read content into memory
                 using var memoryStream = new MemoryStream();
-                await content.CopyToAsync(memoryStream);
+                var buffer = new byte[81920]; // 80KB buffer
+                int bytesRead;
+                long totalBytesRead = 0;
+                
+                while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await memoryStream.WriteAsync(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                    progress?.Report(totalBytesRead);
+                }
+                
                 var data = memoryStream.ToArray();
 
                 // Generate storage key

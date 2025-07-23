@@ -30,8 +30,8 @@ namespace ConduitLLM.Tests.Core.Fixtures
             var mock = new Mock<IMediaStorageService>();
 
             // Setup default behaviors
-            mock.Setup(x => x.StoreAsync(It.IsAny<Stream>(), It.IsAny<MediaMetadata>()))
-                .ReturnsAsync((Stream stream, MediaMetadata metadata) => 
+            mock.Setup(x => x.StoreAsync(It.IsAny<Stream>(), It.IsAny<MediaMetadata>(), It.IsAny<IProgress<long>>()))
+                .ReturnsAsync((Stream stream, MediaMetadata metadata, IProgress<long> progress) => 
                 {
                     var storageKey = TestValueFactory.CreateStorageKey(metadata.MediaType);
                     return new MediaStorageResultBuilder()
