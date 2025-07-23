@@ -144,6 +144,7 @@ For comprehensive documentation on specific topics, see:
 - **[SignalR Configuration](docs/claude/signalr-configuration.md)** - Real-time updates, Redis backplane, multi-instance setup
 - **[RabbitMQ High-Throughput](docs/claude/rabbitmq-high-throughput.md)** - Production scaling, 1000+ tasks/minute configuration
 - **[Provider Models](docs/claude/provider-models.md)** - Supported models by provider (MiniMax, OpenAI, Replicate)
+- **[R2 Health Check](docs/claude/r2-health-check.md)** - Cloudflare R2 health monitoring and connectivity checks
 
 ## Key Points from Detailed Docs
 
@@ -151,6 +152,13 @@ For comprehensive documentation on specific topics, see:
 - Development uses in-memory storage by default
 - Production requires S3-compatible storage (AWS S3, Cloudflare R2, MinIO)
 - **WARNING**: Media files are not cleaned up when virtual keys are deleted (see `docs/TODO-Media-Lifecycle-Management.md`)
+
+### Cloudflare R2 Specific Configuration
+- **Automatic Detection**: The system automatically detects R2 based on the service URL
+- **Optimized Settings**: When R2 is detected, multipart uploads use 10MB chunks (vs 5MB default)
+- **CORS Configuration**: R2 may require manual CORS setup in the Cloudflare dashboard
+- **Public Access**: Enable public access in R2 dashboard for CDN functionality
+- **Benefits**: R2 offers free egress bandwidth, making it cost-effective for media delivery
 
 ### Event-Driven Architecture
 - Uses MassTransit for event processing

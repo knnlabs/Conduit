@@ -532,24 +532,18 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var instance1 = CreateCollector("instance-1");
             var instance2 = CreateCollector("instance-2");
-            var instance3 = CreateCollector("instance-3");
-
-            // Act - Register instances with different heartbeat times
+            
+            // Act - Register only instance1 and instance2
             await instance1.RegisterInstanceAsync();
-            lock (_lockObj)
-            {
-                _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-            }
-
             await instance2.RegisterInstanceAsync();
+            
+            // Manually add instance-3 to the set without registering (so no heartbeat timer)
             lock (_lockObj)
             {
+                _instanceSet.Add("instance-3");
+                // Set heartbeat times - instance-3 will have an expired heartbeat
+                _redisStorage[$"conduit:cache:heartbeat:instance-1"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
                 _redisStorage[$"conduit:cache:heartbeat:instance-2"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeMilliseconds().ToString();
-            }
-
-            await instance3.RegisterInstanceAsync();
-            lock (_lockObj)
-            {
                 _redisStorage[$"conduit:cache:heartbeat:instance-3"] = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeMilliseconds().ToString(); // Expired
             }
 
@@ -559,6 +553,10 @@ namespace ConduitLLM.Tests.Core.Services
             activeInstances.Should().Contain("instance-1");
             activeInstances.Should().Contain("instance-2");
             activeInstances.Should().NotContain("instance-3"); // Expired heartbeat
+            
+            // Clean up
+            instance1.Dispose();
+            instance2.Dispose();
         }
 
         [Fact]

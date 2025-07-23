@@ -90,5 +90,22 @@ namespace ConduitLLM.Core.Options
         /// Default is 3600 seconds (1 hour).
         /// </summary>
         public int CorsMaxAgeSeconds { get; set; } = 3600;
+
+        /// <summary>
+        /// Gets whether this is Cloudflare R2 service (auto-detected from ServiceUrl).
+        /// </summary>
+        public bool IsR2 => ServiceUrl?.Contains("r2.cloudflarestorage.com", StringComparison.OrdinalIgnoreCase) ?? false;
+
+        /// <summary>
+        /// Gets or sets the size of each part in bytes for multipart uploads.
+        /// Default is 10MB which is optimal for R2. AWS S3 minimum is 5MB.
+        /// </summary>
+        public long MultipartChunkSizeBytes { get; set; } = 10 * 1024 * 1024; // 10MB
+
+        /// <summary>
+        /// Gets or sets the threshold in bytes for when to use multipart upload.
+        /// Default is 100MB. Files larger than this will use multipart upload.
+        /// </summary>
+        public long MultipartThresholdBytes { get; set; } = 100 * 1024 * 1024; // 100MB
     }
 }

@@ -54,6 +54,15 @@ namespace ConduitLLM.Core.Services
             }
             
             _bucketName = _options.BucketName;
+            
+            // Log R2 detection and configuration
+            if (_options.IsR2)
+            {
+                _logger.LogInformation("Cloudflare R2 detected. Using optimized settings: MultipartChunkSize={ChunkSize}MB, MultipartThreshold={Threshold}MB", 
+                    _options.MultipartChunkSizeBytes / (1024 * 1024), 
+                    _options.MultipartThresholdBytes / (1024 * 1024));
+            }
+            
             _logger.LogInformation("S3MediaStorageService initialized with bucket: {BucketName}, ServiceUrl: {ServiceUrl}, Region: {Region}", 
                 _bucketName, _options.ServiceUrl ?? "default", _options.Region);
 
@@ -93,7 +102,7 @@ namespace ConduitLLM.Core.Services
                 var uploadStream = progress != null ? new ProgressReportingStream(content, progress) : content;
 
                 // Check if we need to use multipart upload based on stream length
-                bool useTransferUtility = content.CanSeek && content.Length > 5 * 1024 * 1024; // 5MB threshold
+                bool useTransferUtility = content.CanSeek && content.Length > _options.MultipartThresholdBytes;
 
                 long contentLength = 0;
                 string? etag = null;
@@ -108,7 +117,7 @@ namespace ConduitLLM.Core.Services
                         InputStream = uploadStream,
                         ContentType = metadata.ContentType,
                         ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256,
-                        PartSize = 5 * 1024 * 1024, // 5MB parts
+                        PartSize = _options.MultipartChunkSizeBytes,
                         CannedACL = S3CannedACL.Private
                     };
 
@@ -582,7 +591,7 @@ namespace ConduitLLM.Core.Services
                     S3UploadId = response.UploadId,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddHours(24),
-                    MinimumPartSize = 5 * 1024 * 1024, // 5MB minimum part size for S3
+                    MinimumPartSize = _options.MultipartChunkSizeBytes,
                     MaxParts = 10000 // S3 limit
                 };
 

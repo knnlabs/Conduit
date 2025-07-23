@@ -570,7 +570,13 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public void Dispose()
         {
+            // Stop the timer first to prevent any new lock acquisitions
             _aggregationTimer?.Dispose();
+            
+            // Wait a bit to ensure any ongoing timer callbacks complete
+            Thread.Sleep(100);
+            
+            // Now safely dispose the lock
             _aggregationLock?.Dispose();
         }
     }
