@@ -1028,7 +1028,11 @@ namespace ConduitLLM.Configuration.Data
             }
             
             var connection = context.Database.GetDbConnection();
-            await connection.OpenAsync();
+            var wasConnectionClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasConnectionClosed)
+            {
+                await connection.OpenAsync();
+            }
             
             try
             {
@@ -1061,7 +1065,7 @@ namespace ConduitLLM.Configuration.Data
             }
             finally
             {
-                if (connection.State == ConnectionState.Open)
+                if (wasConnectionClosed && connection.State == ConnectionState.Open)
                 {
                     await connection.CloseAsync();
                 }
