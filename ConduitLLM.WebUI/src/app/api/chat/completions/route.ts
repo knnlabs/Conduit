@@ -56,6 +56,14 @@ export async function POST(request: NextRequest) {
                 break;
               }
                 
+              case 'error': {
+                // Handle error events
+                const errorEvent = `event: error\ndata: ${JSON.stringify(event.data)}\n\n`;
+                await writer.write(encoder.encode(errorEvent));
+                console.error('Error event from SDK:', event.data);
+                break;
+              }
+                
               case 'done':
                 // Stream is done
                 break;

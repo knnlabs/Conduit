@@ -276,10 +276,17 @@ export function ChatInterface() {
             break;
           }
             
-          case SSEEventType.Error:
+          case SSEEventType.Error: {
             // Handle error events
             console.error('SSE Error event:', event.data);
-            break;
+            const errorData = event.data as { error?: string; message?: string };
+            const errorMessage = errorData.error ?? errorData.message ?? 'Unknown error occurred';
+            setError(`Stream error: ${errorMessage}`);
+            // Stop processing on error
+            setStreamingContent('');
+            setIsLoading(false);
+            return;
+          }
         }
       }
       } else {
