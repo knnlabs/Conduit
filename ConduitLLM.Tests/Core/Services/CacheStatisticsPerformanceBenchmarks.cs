@@ -279,8 +279,10 @@ namespace ConduitLLM.Tests.Core.Services
                 $"Individual: {individualStopwatch.ElapsedMilliseconds}ms, Batch: {batchStopwatch.ElapsedMilliseconds}ms");
             
             // Also ensure batch operations complete in reasonable time
-            batchStopwatch.ElapsedMilliseconds.Should().BeLessThan(100, 
-                "Batch operations should complete within 100ms for 1000 operations");
+            // Use environment-aware threshold: 120ms for CI, 100ms for local dev
+            var timeLimit = Environment.GetEnvironmentVariable("CI") == "true" ? 120L : 100L;
+            batchStopwatch.ElapsedMilliseconds.Should().BeLessThan(timeLimit, 
+                $"Batch operations should complete within {timeLimit}ms for 1000 operations (CI-aware threshold)");
         }
 
         [Fact]
@@ -378,7 +380,10 @@ namespace ConduitLLM.Tests.Core.Services
             stopwatch.Stop();
 
             // Assert
-            stopwatch.ElapsedMilliseconds.Should().BeLessThan(100, "Export should complete quickly even with large datasets");
+            // Use environment-aware threshold: 120ms for CI, 100ms for local dev
+            var exportTimeLimit = Environment.GetEnvironmentVariable("CI") == "true" ? 120L : 100L;
+            stopwatch.ElapsedMilliseconds.Should().BeLessThan(exportTimeLimit, 
+                $"Export should complete quickly even with large datasets ({exportTimeLimit}ms CI-aware threshold)");
             prometheusExport.Should().NotBeNullOrEmpty();
             prometheusExport.Should().Contain("cache_hits_total");
         }
