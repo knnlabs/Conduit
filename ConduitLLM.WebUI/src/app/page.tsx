@@ -43,7 +43,7 @@ async function getHealthStatus() {
     let signalrStatus: 'healthy' | 'degraded' | 'unavailable' = 'unavailable';
     try {
       const coreClient = await getServerCoreClient();
-      const coreHealth = await coreClient.health.check();
+      const coreHealth = await coreClient.health.checkReady();
       
       // Find SignalR health check in the Core API response
       const signalrCheck = coreHealth.checks?.find(

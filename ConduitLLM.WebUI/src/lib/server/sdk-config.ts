@@ -31,7 +31,7 @@ export const SDK_CONFIG = {
   },
   
   // Common settings
-  timeout: 30000,
+  timeout: 60000, // Increased from 30s to 60s for better reliability in docker environment
   maxRetries: 3,
   
   // Disable SignalR for server-side usage

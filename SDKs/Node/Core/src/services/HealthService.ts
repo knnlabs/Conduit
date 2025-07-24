@@ -11,6 +11,10 @@ export class HealthService extends FetchBasedClient {
     return this.get<HealthCheckResponse>('/health', options);
   }
 
+  async checkReady(options?: HealthCheckOptions): Promise<HealthCheckResponse> {
+    return this.get<HealthCheckResponse>('/health/ready', options);
+  }
+
   async waitForHealth(options?: WaitForHealthOptions): Promise<HealthCheckResponse> {
     const timeout = options?.timeout ?? 30000;
     const pollingInterval = options?.pollingInterval ?? 1000;
