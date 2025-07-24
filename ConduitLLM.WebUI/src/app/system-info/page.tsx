@@ -583,7 +583,11 @@ export default function SystemInfoPage() {
                         <Code>Pending Migrations</Code>
                       </Table.Td>
                       <Table.Td>
-                        <Code>{systemInfo.database.pendingMigrations.join(', ')}</Code>
+                        <Stack gap="xs">
+                          {systemInfo.database.pendingMigrations.map((migration) => (
+                            <Code key={migration}>{migration}</Code>
+                          ))}
+                        </Stack>
                       </Table.Td>
                       <Table.Td>
                         <Badge variant="light" size="sm" color="orange">
