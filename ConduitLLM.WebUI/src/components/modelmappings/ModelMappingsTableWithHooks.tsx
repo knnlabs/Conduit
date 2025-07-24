@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   Table,
   Group,
@@ -19,11 +19,11 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
+import { useRouter } from 'next/navigation';
 import { 
   useModelMappings, 
   useDeleteModelMapping
 } from '@/hooks/useModelMappingsApi';
-import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface ModelMappingsTableProps {
@@ -33,7 +33,7 @@ interface ModelMappingsTableProps {
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
   const deleteMapping = useDeleteModelMapping();
-  const [editingMapping, setEditingMapping] = useState<ModelProviderMappingDto | null>(null);
+  const router = useRouter();
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -43,7 +43,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   }, [onRefresh, refetch]);
 
   const handleEdit = (mapping: ModelProviderMappingDto) => {
-    setEditingMapping(mapping);
+    router.push(`/model-mappings/edit/${mapping.id}`);
   };
 
 
@@ -211,37 +211,23 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   ));
 
   return (
-    <>
-      <Box pos="relative">
-        <LoadingOverlay visible={isLoading} />
-        <Table.ScrollContainer minWidth={800}>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Model Mapping</Table.Th>
-                <Table.Th>Provider</Table.Th>
-                <Table.Th>Capabilities</Table.Th>
-                <Table.Th>Priority</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Box>
-
-      {editingMapping && (
-        <EditModelMappingModal
-          mapping={editingMapping}
-          isOpen={!!editingMapping}
-          onClose={() => setEditingMapping(null)}
-          onSave={() => {
-            setEditingMapping(null);
-            void refetch();
-          }}
-        />
-      )}
-    </>
+    <Box pos="relative">
+      <LoadingOverlay visible={isLoading} />
+      <Table.ScrollContainer minWidth={800}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Model Mapping</Table.Th>
+              <Table.Th>Provider</Table.Th>
+              <Table.Th>Capabilities</Table.Th>
+              <Table.Th>Priority</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>{rows}</Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Box>
   );
 }

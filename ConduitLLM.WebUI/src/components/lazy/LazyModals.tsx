@@ -51,7 +51,7 @@ export const LazyCreateModelMappingModal = (props: React.ComponentProps<typeof C
   </Suspense>
 );
 
-const EditModelMappingModalLazy = lazy(() => import('../modelmappings/EditModelMappingModal').then(mod => ({ default: mod.EditModelMappingModal })));
+const EditModelMappingModalLazy = lazy(() => import('../modelmappings/EditModelMappingModalWithHooks').then(mod => ({ default: mod.EditModelMappingModal })));
 export const LazyEditModelMappingModal = (props: React.ComponentProps<typeof EditModelMappingModalLazy>) => (
   <Suspense fallback={<ModalSkeleton />}>
     <EditModelMappingModalLazy {...props} />

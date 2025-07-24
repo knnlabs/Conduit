@@ -74,7 +74,12 @@ export async function PUT(
     if (body.supportsStreaming !== undefined) {
       transformedBody.supportsStreaming = body.supportsStreaming;
     }
-    // Note: supportsVideoGeneration and supportsEmbeddings are not part of UpdateModelProviderMappingDto
+    if (body.supportsVideoGeneration !== undefined) {
+      transformedBody.supportsVideoGeneration = body.supportsVideoGeneration;
+    }
+    if (body.supportsEmbeddings !== undefined) {
+      transformedBody.supportsEmbeddings = body.supportsEmbeddings;
+    }
     if (body.maxContextLength !== undefined && body.maxContextLength !== null) {
       transformedBody.maxContextLength = body.maxContextLength;
     }
