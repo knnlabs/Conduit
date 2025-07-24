@@ -17,8 +17,6 @@ export interface SystemInfoDto {
     dotnetVersion: string;
     os: string;
     architecture: string;
-    memoryUsage: number;
-    cpuUsage?: number;
   };
   database: {
     provider: string;

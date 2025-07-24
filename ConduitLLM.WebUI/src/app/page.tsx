@@ -1,5 +1,6 @@
 import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { getServerCoreClient } from '@/lib/server/coreClient';
 import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
 
 // Force dynamic rendering to ensure health check runs at request time
@@ -21,6 +22,7 @@ async function getHealthStatus() {
       return {
         adminApi: 'unavailable' as const,
         coreApi: 'unavailable' as const,
+        signalr: 'unavailable' as const,
         isNoProvidersIssue: false,
         lastChecked: new Date().toISOString(),
       };
@@ -37,9 +39,39 @@ async function getHealthStatus() {
     // Since providers ARE the core functionality
     const coreApiStatus = providerCheck ? mapHealthStatus(providerCheck.status) : 'unavailable';
     
+    // Try to get SignalR status from Core API using SDK
+    let signalrStatus: 'healthy' | 'degraded' | 'unavailable' = 'unavailable';
+    try {
+      const coreClient = await getServerCoreClient();
+      const coreHealth = await coreClient.health.check();
+      
+      // Find SignalR health check in the Core API response
+      const signalrCheck = coreHealth.checks?.find(
+        check => check.name?.toLowerCase() === 'signalr'
+      );
+      
+      if (signalrCheck) {
+        // Map Core API health status (0=Healthy, 1=Degraded, 2=Unhealthy)
+        switch (signalrCheck.status) {
+          case 0:
+            signalrStatus = 'healthy';
+            break;
+          case 1:
+            signalrStatus = 'degraded';
+            break;
+          default:
+            signalrStatus = 'unavailable';
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch Core API health for SignalR status:', error);
+      // Keep signalrStatus as 'unavailable'
+    }
+    
     return {
       adminApi: mapHealthStatus(health.status),
       coreApi: coreApiStatus,
+      signalr: signalrStatus,
       isNoProvidersIssue: hasNoProviders,
       coreApiMessage: providerCheck?.description,
       lastChecked: new Date().toISOString(),
@@ -49,6 +81,7 @@ async function getHealthStatus() {
     return {
       adminApi: 'unavailable' as const,
       coreApi: 'unavailable' as const,
+      signalr: 'unavailable' as const,
       isNoProvidersIssue: false,
       lastChecked: new Date().toISOString(),
     };

@@ -300,7 +300,7 @@ export default function EditModelMappingPage() {
       <Paper shadow="sm" p="lg" pos="relative">
         <LoadingOverlay visible={isLoading} />
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }}>
           <Stack gap="md">
             <TextInput
               label="Model Alias"

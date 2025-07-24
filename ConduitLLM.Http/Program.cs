@@ -1250,7 +1250,7 @@ if (builder.Environment.EnvironmentName != "Test")
         healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.RabbitMQHealthCheck>(
             "rabbitmq_comprehensive",
             failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-            tags: new[] { "messaging", "rabbitmq", "ready", "performance" });
+            tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
     }
 
     // Add audio-specific health checks if audio services are configured

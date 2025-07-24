@@ -17,6 +17,8 @@ namespace ConduitLLM.Http.HealthChecks
         private readonly ILogger<SystemResourcesHealthCheck> _logger;
         private readonly SystemResourcesHealthCheckOptions _options;
         private readonly Process _currentProcess;
+        private DateTime _lastCpuCheckTime = DateTime.UtcNow;
+        private TimeSpan _lastCpuUsage = TimeSpan.Zero;
 
         public SystemResourcesHealthCheck(
             ILogger<SystemResourcesHealthCheck> logger,
@@ -41,19 +43,26 @@ namespace ConduitLLM.Http.HealthChecks
 
             try
             {
-                // Check CPU usage
-                var cpuUsage = await GetCpuUsageAsync();
-                data["cpuUsagePercent"] = cpuUsage;
+                // Check CPU usage (skip if option is disabled)
+                if (_options.EnableCpuCheck)
+                {
+                    var cpuUsage = await GetCpuUsageAsync();
+                    data["cpuUsagePercent"] = cpuUsage;
 
-                if (cpuUsage > _options.CpuCriticalThreshold)
-                {
-                    issues.Add($"CPU usage critical: {cpuUsage:F1}%");
-                    isUnhealthy = true;
-                }
-                else if (cpuUsage > _options.CpuWarningThreshold)
-                {
-                    issues.Add($"CPU usage high: {cpuUsage:F1}%");
-                    isDegraded = true;
+                    // Only check thresholds if we have a valid reading (not the first check)
+                    if (cpuUsage > 0)
+                    {
+                        if (cpuUsage > _options.CpuCriticalThreshold)
+                        {
+                            issues.Add($"CPU usage critical: {cpuUsage:F1}%");
+                            isUnhealthy = true;
+                        }
+                        else if (cpuUsage > _options.CpuWarningThreshold)
+                        {
+                            issues.Add($"CPU usage high: {cpuUsage:F1}%");
+                            isDegraded = true;
+                        }
+                    }
                 }
 
                 // Check memory usage
@@ -147,19 +156,29 @@ namespace ConduitLLM.Http.HealthChecks
 
         private async Task<double> GetCpuUsageAsync()
         {
-            var startTime = DateTime.UtcNow;
-            var startCpuUsage = _currentProcess.TotalProcessorTime;
-            
-            await Task.Delay(100); // Small delay for measurement
-            
-            var endTime = DateTime.UtcNow;
-            var endCpuUsage = _currentProcess.TotalProcessorTime;
-            
-            var cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
-            var totalMsPassed = (endTime - startTime).TotalMilliseconds;
-            var cpuUsageTotal = cpuUsedMs / (Environment.ProcessorCount * totalMsPassed);
-            
-            return Math.Round(cpuUsageTotal * 100, 2);
+            return await Task.Run(() =>
+            {
+                var currentTime = DateTime.UtcNow;
+                var currentCpuUsage = _currentProcess.TotalProcessorTime;
+                
+                // Calculate CPU usage based on time elapsed since last check
+                var timeDelta = (currentTime - _lastCpuCheckTime).TotalMilliseconds;
+                
+                // If this is the first check or very little time has passed, return 0
+                if (timeDelta < 10)
+                {
+                    return 0.0;
+                }
+                
+                var cpuDelta = (currentCpuUsage - _lastCpuUsage).TotalMilliseconds;
+                var cpuUsagePercent = (cpuDelta / (Environment.ProcessorCount * timeDelta)) * 100;
+                
+                // Update last check values for next calculation
+                _lastCpuCheckTime = currentTime;
+                _lastCpuUsage = currentCpuUsage;
+                
+                return Math.Round(Math.Max(0, Math.Min(100, cpuUsagePercent)), 2);
+            });
         }
 
         private MemoryInfo GetMemoryInfo()
@@ -211,6 +230,11 @@ namespace ConduitLLM.Http.HealthChecks
     /// </summary>
     public class SystemResourcesHealthCheckOptions
     {
+        /// <summary>
+        /// Enable CPU usage checking (default: true)
+        /// Set to false to skip CPU checks for better performance
+        /// </summary>
+        public bool EnableCpuCheck { get; set; } = true;
         /// <summary>
         /// CPU usage warning threshold (percentage)
         /// </summary>

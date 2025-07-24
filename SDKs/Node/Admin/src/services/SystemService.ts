@@ -54,9 +54,53 @@ export class SystemService extends FetchBaseApiClient {
     const cacheKey = 'system-info';
     return this.withCache(
       cacheKey,
-      () => super.get<SystemInfoDto>(ENDPOINTS.SYSTEM.INFO),
+      async () => {
+        const response = await super.get<any>(ENDPOINTS.SYSTEM.INFO);
+        // Transform the C# response to TypeScript-friendly format
+        return {
+          version: response.Version?.AppVersion || 'Unknown',
+          buildDate: response.Version?.BuildDate || '',
+          environment: response.environment || 'production',
+          uptime: this.parseTimeSpan(response.Runtime?.Uptime) || 0,
+          systemTime: new Date().toISOString(),
+          features: {
+            ipFiltering: false,
+            providerHealth: true,
+            costTracking: false,
+            audioSupport: false
+          },
+          runtime: {
+            dotnetVersion: response.Runtime?.RuntimeVersion || 'Unknown',
+            os: response.OperatingSystem?.Description || 'Unknown',
+            architecture: response.OperatingSystem?.Architecture || 'Unknown',
+            memoryUsage: 0,
+            cpuUsage: undefined
+          },
+          database: {
+            provider: response.Database?.Provider || 'Unknown',
+            connectionString: response.Database?.ConnectionString,
+            isConnected: response.Database?.Connected || false,
+            pendingMigrations: []
+          }
+        };
+      },
       CACHE_TTL.SHORT
     );
+  }
+
+  private parseTimeSpan(timespan: string | undefined): number {
+    if (!timespan) return 0;
+    
+    // Parse .NET TimeSpan format (e.g., "00:05:30" or "1.02:03:04.5")
+    const match = timespan.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
+    if (!match) return 0;
+    
+    const days = parseInt(match[1] || '0', 10);
+    const hours = parseInt(match[2], 10);
+    const minutes = parseInt(match[3], 10);
+    const seconds = parseInt(match[4], 10);
+    
+    return (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60) + seconds;
   }
 
   async getHealth(): Promise<HealthStatusDto> {

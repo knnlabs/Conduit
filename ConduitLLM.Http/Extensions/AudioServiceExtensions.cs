@@ -106,7 +106,7 @@ namespace ConduitLLM.Http.Extensions
                     builder.AddTypeActivatedCheck<AudioProviderHealthCheck>(
                         $"audio-provider-{providerName.ToLower()}",
                         failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                        tags: new[] { "audio", "provider", providerName.ToLower() },
+                        tags: new[] { "audio", "provider", providerName.ToLower(), "monitoring" },
                         args: new object[] { providerName });
                 }
             }

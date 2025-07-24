@@ -104,6 +104,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             app.UseHealthChecks("/health", new HealthCheckOptions
             {
+                Predicate = check => !check.Tags.Contains("monitoring"),
                 ResponseWriter = WriteHealthCheckResponse
             });
 
@@ -150,6 +151,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             app.MapHealthChecks("/health", new HealthCheckOptions
             {
+                Predicate = check => !check.Tags.Contains("monitoring"),
                 ResponseWriter = WriteHealthCheckResponse
             });
 
@@ -209,9 +211,10 @@ namespace ConduitLLM.Configuration.Extensions
                     ResponseWriter = WriteHealthCheckResponse
                 }).RequireAuthorization();
 
-                // Full health check - all details (requires auth)
+                // Full health check - all details except monitoring checks (requires auth)
                 app.MapHealthChecks("/health", new HealthCheckOptions
                 {
+                    Predicate = check => !check.Tags.Contains("monitoring"),
                     ResponseWriter = WriteHealthCheckResponse
                 }).RequireAuthorization();
             }
@@ -226,6 +229,7 @@ namespace ConduitLLM.Configuration.Extensions
 
                 app.MapHealthChecks("/health", new HealthCheckOptions
                 {
+                    Predicate = check => !check.Tags.Contains("monitoring"),
                     ResponseWriter = WriteHealthCheckResponse
                 });
             }

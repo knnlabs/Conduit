@@ -50,12 +50,21 @@ const nextConfig = {
       config.devtool = 'eval-source-map';
     }
     
-    // Disable minification
+    // Disable minification and enable React development mode
     config.optimization = {
       ...config.optimization,
       minimize: false,
       minimizer: [],
     };
+    
+    // Force React to run in development mode for better debugging
+    const webpack = require('webpack');
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.NODE_ENV': JSON.stringify('development'),
+        '__REACT_DEVTOOLS_GLOBAL_HOOK__': '({ isDisabled: false })',
+      })
+    );
     
     // Disable optimization in development
     if (dev) {

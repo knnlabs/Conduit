@@ -2,6 +2,50 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+
+// Backend response type with PascalCase properties
+interface BackendSystemInfoResponse {
+  version?: string | {
+    appVersion?: string;
+    buildDate?: string;
+  };
+  Version?: {
+    AppVersion?: string;
+    BuildDate?: string;
+  };
+  runtime?: {
+    uptime?: string;
+    runtimeVersion?: string;
+  };
+  Runtime?: {
+    Uptime?: string;
+    RuntimeVersion?: string;
+  };
+  operatingSystem?: {
+    description?: string;
+    architecture?: string;
+  };
+  OperatingSystem?: {
+    Description?: string;
+    Architecture?: string;
+  };
+  database?: {
+    provider?: string;
+    connectionString?: string;
+    connected?: boolean;
+  };
+  Database?: {
+    Provider?: string;
+    ConnectionString?: string;
+    Connected?: boolean;
+  };
+  IpBanningEnabled?: boolean;
+  ProviderHealthMonitoringEnabled?: boolean;
+  CostTrackingEnabled?: boolean;
+  AudioProcessingEnabled?: boolean;
+  [key: string]: unknown;
+}
+
 import type { 
   SystemInfoDto, 
   HealthStatusDto,
@@ -68,7 +112,7 @@ export class FetchSystemService {
    * Get system information
    */
   async getSystemInfo(config?: RequestConfig): Promise<SystemInfoDto> {
-    return this.client['get']<SystemInfoDto>(
+    const response = await this.client['get']<BackendSystemInfoResponse>(
       ENDPOINTS.SYSTEM.INFO,
       {
         signal: config?.signal,
@@ -76,6 +120,57 @@ export class FetchSystemService {
         headers: config?.headers,
       }
     );
+    
+    return this.transformSystemInfoResponse(response);
+  }
+  
+  /**
+   * Transform backend SystemInfo response to match frontend expectations
+   */
+  private transformSystemInfoResponse(response: BackendSystemInfoResponse): SystemInfoDto {
+    // C# returns PascalCase properties, we need camelCase
+    // Calculate uptime in seconds from the TimeSpan if available
+    let uptimeSeconds = 0;
+    if (response.runtime?.uptime || response.Runtime?.Uptime) {
+      const uptimeValue = response.runtime?.uptime ?? response.Runtime?.Uptime ?? '';
+      // Parse TimeSpan format (e.g., "00:05:30" or "1.02:03:04.5")
+      const timeSpanMatch = uptimeValue.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
+      if (timeSpanMatch) {
+        const days = parseInt(timeSpanMatch[1] ?? '0', 10);
+        const hours = parseInt(timeSpanMatch[2], 10);
+        const minutes = parseInt(timeSpanMatch[3], 10);
+        const seconds = parseInt(timeSpanMatch[4], 10);
+        uptimeSeconds = (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60) + seconds;
+      }
+    }
+    
+    // Handle both PascalCase (C# default) and camelCase (if already transformed)
+    return {
+      version: response.version?.appVersion ?? response.Version?.AppVersion ?? response.version ?? 'Unknown',
+      buildDate: response.version?.buildDate ?? response.Version?.BuildDate 
+        ? new Date((response.version?.buildDate ?? response.Version?.BuildDate) as string).toISOString()
+        : '',
+      environment: 'production',
+      uptime: uptimeSeconds,
+      systemTime: new Date().toISOString(),
+      features: {
+        ipFiltering: false,
+        providerHealth: true,
+        costTracking: false,
+        audioSupport: false
+      },
+      runtime: {
+        dotnetVersion: response.runtime?.runtimeVersion ?? response.Runtime?.RuntimeVersion ?? 'Unknown',
+        os: response.operatingSystem?.description ?? response.OperatingSystem?.Description ?? 'Unknown',
+        architecture: response.operatingSystem?.architecture ?? response.OperatingSystem?.Architecture ?? 'Unknown'
+      },
+      database: {
+        provider: response.database?.provider ?? response.Database?.Provider ?? 'Unknown',
+        connectionString: response.database?.connectionString ?? response.Database?.ConnectionString,
+        isConnected: response.database?.connected ?? response.Database?.Connected ?? false,
+        pendingMigrations: []
+      }
+    };
   }
 
   /**
@@ -256,8 +351,8 @@ export class FetchSystemService {
       overall,
       components,
       metrics: {
-        cpu: systemInfo.runtime.cpuUsage ?? 0,
-        memory: systemInfo.runtime.memoryUsage ?? 0,
+        cpu: 0, // CPU usage not available from backend
+        memory: 0, // Memory usage not available from backend
         disk: 0, // Will be enhanced when disk monitoring is available
         activeConnections,
       },
@@ -297,8 +392,8 @@ export class FetchSystemService {
       const activeConnections = await this.getActiveConnections(config);
       
       return {
-        cpuUsage: systemInfo.runtime.cpuUsage ?? 0,
-        memoryUsage: systemInfo.runtime.memoryUsage ?? 0,
+        cpuUsage: 0, // CPU usage not available from backend
+        memoryUsage: 0, // Memory usage not available from backend
         diskUsage: 0, // Will be enhanced when disk monitoring is available
         activeConnections,
         uptime: systemInfo.uptime,
@@ -451,15 +546,8 @@ export class FetchSystemService {
       
       return typedMetrics.activeConnections ?? typedMetrics.database?.connectionCount ?? 0;
     } catch {
-      // Fallback: estimate based on system load or return default
-      const systemInfo = await this.getSystemInfo(config);
-      
-      // Simple heuristic: estimate connections based on memory usage
-      // Higher memory usage might indicate more active connections
-      const memoryUsage = systemInfo.runtime.memoryUsage ?? 0;
-      const estimatedConnections = Math.max(1, Math.floor(memoryUsage / 10));
-      
-      return Math.min(estimatedConnections, 100); // Cap at reasonable maximum
+      // Fallback: return default value when metrics endpoint is not available
+      return 1;
     }
   }
 

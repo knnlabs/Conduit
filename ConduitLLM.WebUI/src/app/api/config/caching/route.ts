@@ -1,81 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { BackendCacheConfigurationDto, BackendCacheRegionDto, BackendCachePolicyDto } from '@/types/backend-cache-types';
+import type { CacheConfig, CacheStats, CacheDataResponse } from '@/types/cache-types';
+
 // GET /api/config/caching - Get cache configuration and statistics
 export async function GET() {
-
   try {
-    const adminClient = getServerAdminClient();
+    // Make direct HTTP request to backend since SDK doesn't have the correct method
+    const baseUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
+    const masterKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY ?? '';
     
-    // Fetch real cache configuration
-    const cacheConfig = await adminClient.configuration.getCachingConfiguration();
+    const headers = new Headers();
+    headers.set('x-api-key', masterKey);
+    headers.set('content-type', 'application/json');
+    
+    const response = await fetch(`${baseUrl}/api/config/caching`, {
+      method: 'GET',
+      headers,
+    });
 
-    // Transform to match frontend expectations
-    // For now, create static regions based on configuration
-    const regions = [
-      {
-        id: 'provider-responses',
-        name: 'Provider Responses',
-        type: 'memory' as 'redis' | 'memory' | 'distributed',
+    if (!response.ok) {
+      throw new Error(`Failed to fetch cache configuration: ${response.statusText}`);
+    }
+
+    const data = await response.json() as BackendCacheConfigurationDto;
+
+    // Transform backend response to match frontend expectations
+    const configs: CacheConfig[] = (data.cacheRegions ?? []).map((region: BackendCacheRegionDto) => {
+      // Find the matching policy for this region
+      const matchingPolicy = (data.cachePolicies ?? []).find((p: BackendCachePolicyDto) => 
+        p.id.startsWith(region.id)
+      );
+      
+      return {
+        id: region.id,
+        name: region.name,
+        type: region.type as 'redis' | 'memory' | 'distributed',
         enabled: true,
-        ttl: cacheConfig.defaultTTLSeconds || 3600,
-        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.4),
-        evictionPolicy: (cacheConfig.evictionPolicy || 'lru') as 'lru' | 'lfu' | 'ttl' | 'random',
-        compression: cacheConfig.compressionEnabled ?? true,
-        persistent: false,
-      },
-      {
-        id: 'embeddings',
-        name: 'Embeddings Cache',
-        type: (cacheConfig.distributedCacheEnabled ? 'redis' : 'memory') as 'redis' | 'memory' | 'distributed',
-        enabled: cacheConfig.distributedCacheEnabled ?? false,
-        ttl: (cacheConfig.defaultTTLSeconds || 3600) * 24,
-        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.3),
-        evictionPolicy: (cacheConfig.evictionPolicy || 'lru') as 'lru' | 'lfu' | 'ttl' | 'random',
-        compression: cacheConfig.compressionEnabled ?? true,
-        persistent: cacheConfig.distributedCacheEnabled ?? false,
-      },
-      {
-        id: 'model-metadata',
-        name: 'Model Metadata',
-        type: 'memory' as 'redis' | 'memory' | 'distributed',
-        enabled: true,
-        ttl: 600,
-        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
-        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
-        compression: false,
-        persistent: false,
-      },
-      {
-        id: 'rate-limits',
-        name: 'Rate Limit Counters',
-        type: 'memory' as 'redis' | 'memory' | 'distributed',
-        enabled: true,
-        ttl: 60,
-        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
-        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
-        compression: false,
-        persistent: false,
-      },
-      {
-        id: 'auth-tokens',
-        name: 'Auth Token Cache',
-        type: (cacheConfig.distributedCacheEnabled ? 'distributed' : 'memory') as 'redis' | 'memory' | 'distributed',
-        enabled: true,
-        ttl: 1800,
-        maxSize: Math.floor((cacheConfig.maxMemorySizeMB || 1024) * 0.1),
-        evictionPolicy: 'ttl' as 'lru' | 'lfu' | 'ttl' | 'random',
-        compression: false,
-        persistent: cacheConfig.distributedCacheEnabled ?? false,
-      },
-    ];
+        ttl: matchingPolicy?.ttl ?? 3600,
+        maxSize: matchingPolicy?.maxSize ?? 1024,
+        evictionPolicy: (matchingPolicy?.strategy ?? 'lru').toLowerCase() as 'lru' | 'lfu' | 'ttl' | 'random',
+        compression: data.configuration?.compressionEnabled ?? true,
+        persistent: region.type === 'distributed' || region.type === 'redis',
+      };
+    });
+
+    // Transform statistics
+    const stats: Record<string, CacheStats> = {};
+    (data.cacheRegions ?? []).forEach((region: BackendCacheRegionDto) => {
+      const sizeStr = region.metrics?.size ?? '0';
+      const sizeNumber = parseInt(sizeStr.replace(/[^\d]/g, ''), 10) || 0;
+      
+      stats[region.id] = {
+        hits: 0,
+        misses: 0,
+        hitRate: region.metrics?.hitRate ?? 0,
+        evictions: 0,
+        size: sizeNumber,
+        entries: region.metrics?.items ?? 0,
+        avgLatency: 0.5,
+      };
+    });
     
-    const response = {
-      configs: regions,
-      stats: {},
+    const result: CacheDataResponse = {
+      configs,
+      stats,
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(result);
   } catch (error) {
     return handleSDKError(error);
   }

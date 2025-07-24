@@ -86,17 +86,17 @@ namespace ConduitLLM.Http.Extensions
             this IHealthChecksBuilder healthChecksBuilder,
             IConfiguration configuration)
         {
-            // Add system resources health check
+            // Add system resources health check (excluded from main /health endpoint)
             healthChecksBuilder.AddCheck<SystemResourcesHealthCheck>(
                 "system_resources",
                 failureStatus: HealthStatus.Degraded,
-                tags: new[] { "system", "resources", "performance" });
+                tags: new[] { "system", "resources", "performance", "monitoring" });
 
-            // Add HTTP connection pool health check
+            // Add HTTP connection pool health check (excluded from main /health endpoint)
             healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
                 "http_connection_pool",
                 failureStatus: HealthStatus.Degraded,
-                tags: new[] { "http", "pool", "performance" });
+                tags: new[] { "http", "pool", "performance", "monitoring" });
 
             // Add SignalR health check if available
             healthChecksBuilder.AddCheck<SignalRHealthCheck>(

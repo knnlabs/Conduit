@@ -24,11 +24,11 @@ import {
   IconAlertCircle
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
 
 interface HealthData {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
   coreApi: 'healthy' | 'degraded' | 'unavailable';
+  signalr: 'healthy' | 'degraded' | 'unavailable';
   isNoProvidersIssue: boolean;
   coreApiMessage?: string;
   lastChecked: string;
@@ -41,36 +41,6 @@ interface HomePageClientProps {
 export function HomePageClient({ initialHealthData }: HomePageClientProps) {
   const router = useRouter();
   const healthData = initialHealthData;
-  const [signalRStatus, setSignalRStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
-
-  // Check SSE connection status
-  useEffect(() => {
-    // TODO: DIRECT API CALLS ARE FORBIDDEN - USE SDK INSTEAD
-    // const checkSSE = () => {
-    //   // Simple check for SSE connection
-    //   const eventSource = new EventSource('/api/admin/events/stream');
-    //   
-    //   eventSource.onopen = () => {
-    //     setSignalRStatus('connected');
-    //   };
-    //
-    //   eventSource.onerror = () => {
-    //     setSignalRStatus('disconnected');
-    //     eventSource.close();
-    //   };
-    //
-    //   setTimeout(() => {
-    //     eventSource.close();
-    //   }, 1000); // Quick check
-    // };
-    //
-    // checkSSE();
-    // const interval = setInterval(checkSSE, 30000);
-    // return () => clearInterval(interval);
-    
-    // Functionality broken - SDK not available for SSE
-    setSignalRStatus('disconnected');
-  }, []);
 
   const quickAccessCards = [
     {
@@ -256,12 +226,12 @@ export function HomePageClient({ initialHealthData }: HomePageClientProps) {
             <Badge color={getStatusColor(healthData.adminApi)} variant="dot">
               Admin API: {getStatusText(healthData.adminApi)}
             </Badge>
-            <Badge color={getStatusColor(signalRStatus)} variant="dot">
-              Real-time Updates: {getStatusText(signalRStatus)}
+            <Badge color={getStatusColor(healthData.signalr)} variant="dot">
+              Real-time Updates: {getStatusText(healthData.signalr)}
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            Real-time features {signalRStatus === 'connected' ? 'are active' : 'will be available once connection is established'}.
+            Real-time features {healthData.signalr === 'healthy' ? 'are active' : 'will be available once connection is established'}.
             {healthData.lastChecked && ` Last checked: ${new Date(healthData.lastChecked).toLocaleTimeString()}`}
           </Text>
         </Stack>
