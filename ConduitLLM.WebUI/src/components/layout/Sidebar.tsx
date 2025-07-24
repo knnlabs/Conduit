@@ -55,7 +55,6 @@ const navigationSections = [
     items: [
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'request-logs', label: 'Request Logs', href: '/request-logs', icon: IconFileText },
-      { id: 'health-monitoring', label: 'Health Monitoring', href: '/health-monitoring', icon: IconActivity },
       { id: 'system-performance', label: 'System Performance', href: '/system-performance', icon: IconActivity },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
     ]

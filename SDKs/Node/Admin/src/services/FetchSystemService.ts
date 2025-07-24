@@ -3,47 +3,38 @@ import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 
-// Backend response type with PascalCase properties
+// Exact backend response type based on C# SystemInfoDto
+// From ConduitLLM.Admin/Interfaces/IAdminSystemInfoService.cs
 interface BackendSystemInfoResponse {
-  version?: string | {
-    appVersion?: string;
-    buildDate?: string;
+  version: {
+    appVersion: string;
+    buildDate: string | null; // DateTime? serialized as ISO string or null
   };
-  Version?: {
-    AppVersion?: string;
-    BuildDate?: string;
+  operatingSystem: {
+    description: string;
+    architecture: string;
   };
-  runtime?: {
-    uptime?: string;
-    runtimeVersion?: string;
+  database: {
+    provider: string;
+    version: string;
+    connected: boolean;
+    connectionString: string;
+    location: string;
+    size: string;
+    tableCount: number;
   };
-  Runtime?: {
-    Uptime?: string;
-    RuntimeVersion?: string;
+  runtime: {
+    runtimeVersion: string;
+    startTime: string; // DateTime serialized as ISO string
+    uptime: string;    // TimeSpan serialized as string (e.g., "1.02:03:04.5")
   };
-  operatingSystem?: {
-    description?: string;
-    architecture?: string;
+  recordCounts: {
+    virtualKeys: number;
+    requests: number;
+    settings: number;
+    providers: number;
+    modelMappings: number;
   };
-  OperatingSystem?: {
-    Description?: string;
-    Architecture?: string;
-  };
-  database?: {
-    provider?: string;
-    connectionString?: string;
-    connected?: boolean;
-  };
-  Database?: {
-    Provider?: string;
-    ConnectionString?: string;
-    Connected?: boolean;
-  };
-  IpBanningEnabled?: boolean;
-  ProviderHealthMonitoringEnabled?: boolean;
-  CostTrackingEnabled?: boolean;
-  AudioProcessingEnabled?: boolean;
-  [key: string]: unknown;
 }
 
 import type { 
@@ -128,13 +119,11 @@ export class FetchSystemService {
    * Transform backend SystemInfo response to match frontend expectations
    */
   private transformSystemInfoResponse(response: BackendSystemInfoResponse): SystemInfoDto {
-    // C# returns PascalCase properties, we need camelCase
-    // Calculate uptime in seconds from the TimeSpan if available
+    // Calculate uptime in seconds from the TimeSpan format
     let uptimeSeconds = 0;
-    if (response.runtime?.uptime || response.Runtime?.Uptime) {
-      const uptimeValue = response.runtime?.uptime ?? response.Runtime?.Uptime ?? '';
+    if (response.runtime.uptime) {
       // Parse TimeSpan format (e.g., "00:05:30" or "1.02:03:04.5")
-      const timeSpanMatch = uptimeValue.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
+      const timeSpanMatch = response.runtime.uptime.match(/^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
       if (timeSpanMatch) {
         const days = parseInt(timeSpanMatch[1] ?? '0', 10);
         const hours = parseInt(timeSpanMatch[2], 10);
@@ -144,12 +133,9 @@ export class FetchSystemService {
       }
     }
     
-    // Handle both PascalCase (C# default) and camelCase (if already transformed)
     return {
-      version: response.version?.appVersion ?? response.Version?.AppVersion ?? response.version ?? 'Unknown',
-      buildDate: response.version?.buildDate ?? response.Version?.BuildDate 
-        ? new Date((response.version?.buildDate ?? response.Version?.BuildDate) as string).toISOString()
-        : '',
+      version: response.version.appVersion,
+      buildDate: response.version.buildDate ? new Date(response.version.buildDate).toISOString() : '',
       environment: 'production',
       uptime: uptimeSeconds,
       systemTime: new Date().toISOString(),
@@ -160,14 +146,14 @@ export class FetchSystemService {
         audioSupport: false
       },
       runtime: {
-        dotnetVersion: response.runtime?.runtimeVersion ?? response.Runtime?.RuntimeVersion ?? 'Unknown',
-        os: response.operatingSystem?.description ?? response.OperatingSystem?.Description ?? 'Unknown',
-        architecture: response.operatingSystem?.architecture ?? response.OperatingSystem?.Architecture ?? 'Unknown'
+        dotnetVersion: response.runtime.runtimeVersion,
+        os: response.operatingSystem.description,
+        architecture: response.operatingSystem.architecture
       },
       database: {
-        provider: response.database?.provider ?? response.Database?.Provider ?? 'Unknown',
-        connectionString: response.database?.connectionString ?? response.Database?.ConnectionString,
-        isConnected: response.database?.connected ?? response.Database?.Connected ?? false,
+        provider: response.database.provider,
+        connectionString: response.database.connectionString,
+        isConnected: response.database.connected,
         pendingMigrations: []
       }
     };

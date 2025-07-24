@@ -398,6 +398,8 @@ usage_tracking*.json
 # Node.js build artifacts
 Clients/Node/*/dist/
 Clients/Node/*/node_modules/
+SDKs/Node/*/dist/
+SDKs/Node/*/node_modules/
 
 # Local database files
 *.db

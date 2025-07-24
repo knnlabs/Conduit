@@ -51,12 +51,12 @@ async function getHealthStatus() {
       );
       
       if (signalrCheck) {
-        // Map Core API health status (0=Healthy, 1=Degraded, 2=Unhealthy)
-        switch (signalrCheck.status) {
-          case 0:
+        // Map Core API health status string values
+        switch (signalrCheck.status.toLowerCase()) {
+          case 'healthy':
             signalrStatus = 'healthy';
             break;
-          case 1:
+          case 'degraded':
             signalrStatus = 'degraded';
             break;
           default:
