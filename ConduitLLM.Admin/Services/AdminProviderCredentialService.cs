@@ -993,7 +993,7 @@ namespace ConduitLLM.Admin.Services
                 "anthropic" => "https://api.anthropic.com",
                 "cohere" => "https://api.cohere.ai",
                 "mistral" or "mistralai" => "https://api.mistral.ai",
-                "groq" => "https://api.groq.com",
+                "groq" => "https://api.groq.com/openai",
                 "openrouter" => "https://openrouter.ai",
                 "ollama" => "http://localhost:11434",
                 "google" or "gemini" => "https://generativelanguage.googleapis.com",

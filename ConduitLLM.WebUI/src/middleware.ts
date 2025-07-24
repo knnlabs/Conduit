@@ -4,7 +4,13 @@ import { NextResponse } from 'next/server';
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/access-denied',
-  '/api/health'
+  '/api/health',
+  '/api/chat/completions',
+  '/api/model-mappings',
+  '/api/discovery/models',
+  '/api/videos/generate',
+  '/api/videos/tasks/(.*)',
+  '/api/images/generate'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

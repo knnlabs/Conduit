@@ -35,7 +35,7 @@ namespace ConduitLLM.Providers
         {
             public static class Urls
             {
-                public const string DefaultApiBase = "https://api.groq.com/v1";
+                public const string DefaultApiBase = "https://api.groq.com/openai/v1";
             }
 
             public static class Endpoints
