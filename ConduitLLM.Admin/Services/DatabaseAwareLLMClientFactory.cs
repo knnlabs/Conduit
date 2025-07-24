@@ -19,14 +19,14 @@ namespace ConduitLLM.Admin.Services
         private readonly ILoggerFactory _loggerFactory;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
-        private readonly ConduitSettings _settings;
+        private readonly IOptionsMonitor<ConduitSettings> _settingsMonitor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabaseAwareLLMClientFactory"/> class.
         /// </summary>
         public DatabaseAwareLLMClientFactory(
             IProviderCredentialService credentialService,
-            IOptions<ConduitSettings> settingsOptions,
+            IOptionsMonitor<ConduitSettings> settingsMonitor,
             ILoggerFactory loggerFactory,
             IHttpClientFactory httpClientFactory,
             ILogger<DatabaseAwareLLMClientFactory> logger)
@@ -35,15 +35,34 @@ namespace ConduitLLM.Admin.Services
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settings = settingsOptions?.Value ?? new ConduitSettings();
+            _settingsMonitor = settingsMonitor ?? throw new ArgumentNullException(nameof(settingsMonitor));
         }
 
         /// <inheritdoc />
         public ILLMClient GetClient(string modelName)
         {
-            // For model-based lookup, use the base factory with existing settings
+            // Get current settings from the monitor to ensure we have the latest
+            var currentSettings = _settingsMonitor.CurrentValue;
+            
+            _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClient called for model: {ModelName}", modelName);
+            _logger.LogDebug("Current settings - ModelMappings count: {Count}", currentSettings.ModelMappings?.Count ?? 0);
+            
+            if (currentSettings.ModelMappings != null && currentSettings.ModelMappings.Any())
+            {
+                foreach (var mapping in currentSettings.ModelMappings)
+                {
+                    _logger.LogDebug("Settings contain mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
+                        mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("No model mappings found in settings!");
+            }
+            
+            // For model-based lookup, use the base factory with current settings
             var baseFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(_settings),
+                Microsoft.Extensions.Options.Options.Create(currentSettings),
                 _loggerFactory,
                 _httpClientFactory);
             
@@ -70,7 +89,8 @@ namespace ConduitLLM.Admin.Services
                 throw new ConfigurationException($"No provider credentials found for provider '{providerName}'. Please check your Conduit configuration.");
             }
 
-            // Create a temporary ConduitSettings with the database credentials
+            // Get current settings and create a temporary ConduitSettings with the database credentials
+            var currentSettings = _settingsMonitor.CurrentValue;
             var tempSettings = new ConduitSettings
             {
                 ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
@@ -80,7 +100,11 @@ namespace ConduitLLM.Admin.Services
                         ProviderName = credentials.ProviderName,
                         ApiKey = credentials.ApiKey
                     }
-                }
+                },
+                // Copy other relevant settings from current settings
+                ModelMappings = currentSettings.ModelMappings,
+                DefaultModels = currentSettings.DefaultModels,
+                PerformanceTracking = currentSettings.PerformanceTracking
             };
 
             // Create a new factory with the database credentials

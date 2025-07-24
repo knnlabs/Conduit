@@ -60,12 +60,13 @@ export function ChatInterface() {
         interface ModelMapping {
           modelId: string;
           providerId: string;
+          providerName?: string;
           supportsVision?: boolean;
         }
         const data = await response.json() as ModelMapping[];
         const modelOptions = data.map((m) => ({
           value: m.modelId,
-          label: `${m.modelId} (${m.providerId})`,
+          label: `${m.modelId} (${m.providerName ?? m.providerId})`,
           supportsVision: m.supportsVision ?? false
         }));
         setModels(modelOptions);

@@ -104,6 +104,7 @@ export type ToolChoice = 'auto' | 'none' | 'required' | { type: 'function'; func
 export interface ModelWithCapabilities {
   id: string;
   providerId: string;
+  providerName?: string;
   displayName: string;
   maxContextTokens?: number;
   supportsVision?: boolean;

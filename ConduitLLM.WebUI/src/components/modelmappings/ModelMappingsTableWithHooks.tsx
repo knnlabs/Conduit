@@ -26,6 +26,11 @@ import {
 } from '@/hooks/useModelMappingsApi';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
+// Extend the DTO type to include providerName which is returned by the backend
+interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
+  providerName?: string;
+}
+
 interface ModelMappingsTableProps {
   onRefresh?: () => void;
 }
@@ -42,12 +47,12 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     }
   }, [onRefresh, refetch]);
 
-  const handleEdit = (mapping: ModelProviderMappingDto) => {
+  const handleEdit = (mapping: ExtendedModelProviderMappingDto) => {
     router.push(`/model-mappings/edit/${mapping.id}`);
   };
 
 
-  const handleDelete = (mapping: ModelProviderMappingDto) => {
+  const handleDelete = (mapping: ExtendedModelProviderMappingDto) => {
     modals.openConfirmModal({
       title: 'Delete Model Mapping',
       children: (
@@ -62,7 +67,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     });
   };
 
-  const getCapabilityBadges = (mapping: ModelProviderMappingDto) => {
+  const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
     const capabilities = [];
     if (mapping.supportsVision) capabilities.push({ label: 'Vision', color: 'blue' });
     if (mapping.supportsImageGeneration) capabilities.push({ label: 'Images', color: 'pink' });
@@ -114,7 +119,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     );
   }
 
-  const rows = mappings.map((mapping: ModelProviderMappingDto) => (
+  const rows = (mappings as ExtendedModelProviderMappingDto[]).map((mapping) => (
     <Table.Tr key={mapping.id}>
       <Table.Td>
         <Group gap="xs">
@@ -126,7 +131,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       
       <Table.Td>
         <Text size="sm">
-          {mapping.providerId}
+          {mapping.providerName ?? mapping.providerId}
         </Text>
       </Table.Td>
 

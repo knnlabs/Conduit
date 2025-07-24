@@ -28,7 +28,7 @@ export function ModelSelector() {
           <Text size="sm" fw={500}>{model.id}</Text>
           <Group gap={4}>
             <Badge size="xs" variant="light" color="blue">
-              {model.providerId}
+              {model.providerName ?? model.providerId}
             </Badge>
             {model.maxContextTokens && (
               <Badge size="xs" variant="light" color="gray">

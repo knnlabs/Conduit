@@ -55,12 +55,29 @@ public class LLMClientFactory : ILLMClientFactory
             throw new ArgumentException("Model alias cannot be null or whitespace.", nameof(modelAlias));
         }
 
+        // Log available mappings for debugging
+        var logger = _loggerFactory.CreateLogger<LLMClientFactory>();
+        logger.LogDebug("GetClient called for model alias: {ModelAlias}", modelAlias);
+        logger.LogDebug("Total model mappings available: {Count}", _settings.ModelMappings?.Count ?? 0);
+        
+        if (_settings.ModelMappings != null && _settings.ModelMappings.Any())
+        {
+            foreach (var m in _settings.ModelMappings)
+            {
+                logger.LogDebug("Available mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
+                    m.ModelAlias, m.ProviderName, m.ProviderModelId);
+            }
+        }
+
         // 1. Find the model mapping
         var mapping = _settings.ModelMappings?.FirstOrDefault(m =>
             string.Equals(m.ModelAlias, modelAlias, StringComparison.OrdinalIgnoreCase));
 
         if (mapping == null)
         {
+            logger.LogError("No model mapping found for alias '{ModelAlias}'. Available aliases: {AvailableAliases}", 
+                modelAlias, 
+                string.Join(", ", _settings.ModelMappings?.Select(m => m.ModelAlias) ?? Enumerable.Empty<string>()));
             throw new ConfigurationException($"No model mapping found for alias '{modelAlias}'. Please check your Conduit configuration.");
         }
 

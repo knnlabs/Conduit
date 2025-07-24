@@ -68,11 +68,7 @@ export default function SystemInfoPage() {
 
   const fetchSystemInfo = async () => {
     try {
-      const response = await fetch('/api/settings/system-info', {
-        headers: {
-          'xAdminAuthKey': localStorage.getItem('adminAuthKey') ?? '',
-        },
-      });
+      const response = await fetch('/api/settings/system-info');
 
       if (!response.ok) {
         throw new Error('Failed to fetch system information');

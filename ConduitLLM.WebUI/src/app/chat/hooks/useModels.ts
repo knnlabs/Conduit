@@ -14,6 +14,7 @@ export function useModels() {
       interface ModelMapping {
         modelId: string;
         providerId: string;
+        providerName?: string;
         maxContextTokens?: number;
         supportsVision?: boolean;
       }
@@ -24,7 +25,8 @@ export function useModels() {
         return {
           id: mapping.modelId,
           providerId: mapping.providerId,
-          displayName: `${mapping.modelId} (${mapping.providerId})`,
+          providerName: mapping.providerName,
+          displayName: `${mapping.modelId} (${mapping.providerName ?? mapping.providerId})`,
           maxContextTokens: mapping.maxContextTokens,
           supportsVision: mapping.supportsVision ?? false,
           // Function calling support will need to be detected at runtime
