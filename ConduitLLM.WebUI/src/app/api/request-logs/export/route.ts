@@ -1,23 +1,63 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-export async function GET() {
+import { getServerAdminClient } from '@/lib/server/adminClient';
 
+function getStatusCode(status: string): number {
+  if (status === 'success') {
+    return 200;
+  }
+  if (status === 'timeout') {
+    return 408;
+  }
+  return 500;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    // In production, this would use the Admin SDK to export logs
-    // const adminClient = getServerAdminClient();
-    // const exportData = await adminClient.analytics.exportRequestLogs({ format: 'csv', ... });
+    const { searchParams } = new URL(req.url);
+    const adminClient = getServerAdminClient();
     
-    // For now, create a simple CSV
-    const csv = `Timestamp,Method,Path,Status,Duration,Virtual Key,Provider,Model,Tokens,Cost,Error
-2024-01-10T10:30:00Z,POST,/v1/chat/completions,200,450ms,Production API,OpenAI,gpt-4,1500,$0.0450,
-2024-01-10T10:29:00Z,POST,/v1/completions,200,320ms,Development API,Anthropic,claude-3-opus,1200,$0.0360,
-2024-01-10T10:28:00Z,GET,/v1/models,200,50ms,Production API,-,-,-,-,
-2024-01-10T10:27:00Z,POST,/v1/chat/completions,429,100ms,Customer A,OpenAI,gpt-4,-,-,Rate limit exceeded
-2024-01-10T10:26:00Z,POST,/v1/embeddings,200,200ms,Production API,OpenAI,text-embedding-3-small,500,$0.0001,`;
-
+    // Fetch all logs for export (up to 1000)
+    const logsResponse = await adminClient.analytics.getRequestLogs({
+      page: 1,
+      pageSize: 1000,
+      startDate: searchParams.get('dateFrom') ?? undefined,
+      endDate: searchParams.get('dateTo') ?? undefined,
+      virtualKeyId: searchParams.get('virtualKeyId') ?? undefined,
+      provider: searchParams.get('provider') ?? undefined,
+      model: searchParams.get('model') ?? undefined,
+    });
+    
+    // Create CSV header
+    const csvRows = [
+      'Timestamp,Status Code,Duration (ms),Virtual Key,Provider,Model,Input Tokens,Output Tokens,Total Tokens,Cost,Error,IP Address,User Agent'
+    ];
+    
+    // Add data rows
+    logsResponse.items.forEach((log) => {
+      const totalTokens = log.inputTokens + log.outputTokens;
+      const row = [
+        log.timestamp,
+        getStatusCode(log.status),
+        log.duration,
+        log.virtualKeyName ?? log.virtualKeyId,
+        log.provider,
+        log.model,
+        log.inputTokens,
+        log.outputTokens,
+        totalTokens,
+        log.cost ?? '',
+        log.errorMessage ? `"${log.errorMessage.replace(/"/g, '""')}"` : '',
+        log.ipAddress ?? '',
+        log.userAgent ? `"${log.userAgent.replace(/"/g, '""')}"` : ''
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    const csv = csvRows.join('\n');
     const responseHeaders: Record<string, string> = {};
     responseHeaders['Content-Type'] = 'text/csv';
-    responseHeaders['Content-Disposition'] = `attachment; filename="request-logs-${new Date().toISOString()}.csv"`;
+    responseHeaders['Content-Disposition'] = `attachment; filename="request-logs-${new Date().toISOString().split('T')[0]}.csv"`;
     
     return new NextResponse(csv, { headers: responseHeaders });
   } catch (error) {
