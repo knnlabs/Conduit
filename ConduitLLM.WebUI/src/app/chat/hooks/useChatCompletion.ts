@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useCoreApi } from '@/hooks/useCoreApi';
-import { ChatMessage, FunctionDefinition, ToolDefinition, ToolChoice } from '../types';
+import { ChatMessage, FunctionDefinition, ToolDefinition, ToolChoice, ChatErrorType } from '../types';
 import { notifications } from '@mantine/notifications';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -9,6 +9,68 @@ interface UseChatCompletionOptions {
   onStreamEnd?: (message: ChatMessage) => void;
   onStreamError?: (error: Error) => void;
   onTokensPerSecond?: (tps: number) => void;
+}
+
+// Helper function to map errors to ChatMessage error metadata
+function mapErrorToMetadata(error: unknown): ChatMessage['error'] {
+  let type: ChatErrorType = 'server_error';
+  let code: string | undefined;
+  let statusCode: number | undefined;
+  let retryAfter: number | undefined;
+  let suggestions: string[] | undefined;
+  let technical: string | undefined;
+  let recoverable = false;
+
+  if (error instanceof Error) {
+    technical = error.message;
+    
+    // Check for specific error patterns
+    if (error.message.toLowerCase().includes('rate limit')) {
+      type = 'rate_limit';
+      recoverable = true;
+      // Extract retry-after if present (e.g., "Rate limit exceeded. Retry after 60 seconds")
+      const retryMatch = error.message.match(/retry after (\d+)/i);
+      if (retryMatch) {
+        retryAfter = parseInt(retryMatch[1], 10);
+      }
+    } else if (error.message.toLowerCase().includes('authentication') || error.message.toLowerCase().includes('unauthorized')) {
+      type = 'auth_error';
+      suggestions = ['Check your API key configuration', 'Verify your credentials'];
+    } else if (error.message.toLowerCase().includes('model') && (error.message.includes('not found') || error.message.includes('404'))) {
+      type = 'model_not_found';
+      suggestions = ['Try a different model', 'Check model availability'];
+    } else if (error.message.toLowerCase().includes('network') || error.name === 'NetworkError' || error.name === 'AbortError') {
+      type = 'network_error';
+      recoverable = true;
+      suggestions = ['Check your internet connection', 'Retry the request'];
+    }
+  }
+
+  // Try to extract status code from fetch errors
+  if (error && typeof error === 'object' && 'status' in error) {
+    const errorWithStatus = error as { status: number };
+    statusCode = errorWithStatus.status;
+    
+    // Map status codes to error types
+    if (statusCode === 429) {
+      type = 'rate_limit';
+      recoverable = true;
+    } else if (statusCode === 401 || statusCode === 403) {
+      type = 'auth_error';
+    } else if (statusCode === 404) {
+      type = 'model_not_found';
+    }
+  }
+
+  return {
+    type,
+    code,
+    statusCode,
+    retryAfter,
+    suggestions,
+    technical,
+    recoverable,
+  };
 }
 
 export function useChatCompletion(options: UseChatCompletionOptions = {}) {
@@ -85,8 +147,12 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
           });
 
           if (!response.ok) {
-            const error = await response.json() as { error?: string };
-            throw new Error(error.error ?? 'Failed to send message');
+            const errorData = await response.json() as { error?: string; code?: string; statusCode?: number };
+            const error = new Error(errorData.error ?? 'Failed to send message');
+            const errorWithMeta = error as Error & { status: number; code?: string };
+            errorWithMeta.status = response.status;
+            errorWithMeta.code = errorData.code;
+            throw errorWithMeta;
           }
 
           const reader = response.body?.getReader();
@@ -189,7 +255,22 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
                     }
                   }
                 } catch (e) {
-                  console.error('Failed to parse SSE data:', e);
+                  console.warn('Failed to parse SSE data:', e);
+                  // Check if this is an error message from the server
+                  if (data.includes('error')) {
+                    try {
+                      const errorData = JSON.parse(data) as { error?: string; code?: string; statusCode?: number };
+                      if (errorData.error) {
+                        const error = new Error(errorData.error);
+                        const errorWithMeta = error as Error & { code?: string; statusCode?: number };
+                        errorWithMeta.code = errorData.code;
+                        errorWithMeta.statusCode = errorData.statusCode;
+                        throw errorWithMeta;
+                      }
+                    } catch {
+                      // Ignore if not a valid error object
+                    }
+                  }
                 }
               }
             }
@@ -228,14 +309,27 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
           return null;
         }
         
+        // Create error message with metadata
+        const errorMetadata = mapErrorToMetadata(error);
+        const errorMessage: ChatMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: `Error: ${errorMetadata?.technical ?? 'An unexpected error occurred'}`,
+          timestamp: new Date(),
+          model,
+          error: errorMetadata,
+        };
+        
         notifications.show({
           title: 'Chat Error',
-          message: (error instanceof Error ? error.message : 'Unknown error') ?? 'Failed to send message',
+          message: errorMetadata?.technical ?? 'Failed to send message',
           color: 'red',
         });
         
         options.onStreamError?.(error instanceof Error ? error : new Error(String(error)));
-        throw error;
+        
+        // Return the error message instead of throwing
+        return errorMessage;
       } finally {
         setIsStreaming(false);
         abortControllerRef.current = null;

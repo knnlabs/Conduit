@@ -187,3 +187,71 @@
 .markdown-content a:hover {
   text-decoration: underline;
 }
+
+/* Error message styling */
+.chat-message-error {
+  border-style: solid !important;
+  border-width: 1px !important;
+}
+
+.chat-message-error-rate-limit {
+  background: var(--mantine-color-orange-0) !important;
+  border-color: var(--mantine-color-orange-3) !important;
+}
+
+.chat-message-error-model-not-found {
+  background: var(--mantine-color-blue-0) !important;
+  border-color: var(--mantine-color-blue-3) !important;
+}
+
+.chat-message-error-auth-error {
+  background: var(--mantine-color-red-0) !important;
+  border-color: var(--mantine-color-red-3) !important;
+}
+
+.chat-message-error-network {
+  background: var(--mantine-color-gray-0) !important;
+  border-color: var(--mantine-color-gray-3) !important;
+}
+
+.chat-message-error-server {
+  background: var(--mantine-color-red-0) !important;
+  border-color: var(--mantine-color-red-3) !important;
+}
+
+/* Dark mode error message overrides */
+[data-mantine-color-scheme="dark"] .chat-message-error-rate-limit {
+  background: rgba(255, 152, 0, 0.05) !important;
+  border-color: rgba(255, 152, 0, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .chat-message-error-model-not-found {
+  background: rgba(33, 150, 243, 0.05) !important;
+  border-color: rgba(33, 150, 243, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .chat-message-error-auth-error {
+  background: rgba(244, 67, 54, 0.05) !important;
+  border-color: rgba(244, 67, 54, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .chat-message-error-network {
+  background: rgba(158, 158, 158, 0.05) !important;
+  border-color: rgba(158, 158, 158, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .chat-message-error-server {
+  background: rgba(244, 67, 54, 0.05) !important;
+  border-color: rgba(244, 67, 54, 0.3) !important;
+}
+
+/* Error details styling */
+.error-details-box {
+  background: var(--mantine-color-gray-0);
+  border: 1px dashed var(--mantine-color-gray-4);
+}
+
+[data-mantine-color-scheme="dark"] .error-details-box {
+  background: var(--conduit-bg-elevated);
+  border-color: var(--conduit-border-secondary);
+}

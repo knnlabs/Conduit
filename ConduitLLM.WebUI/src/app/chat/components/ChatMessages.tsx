@@ -1,7 +1,7 @@
-import { ScrollArea, Stack, Text, Group, Badge, Paper, Code } from '@mantine/core';
-import { IconUser, IconRobot, IconClock, IconBolt } from '@tabler/icons-react';
-import { ChatMessage } from '../types';
-import { useEffect, useRef } from 'react';
+import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert } from '@mantine/core';
+import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { ChatMessage, ChatErrorType } from '../types';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
@@ -13,9 +13,27 @@ interface ChatMessagesProps {
   tokensPerSecond?: number | null;
 }
 
+// Helper function to get error type styling
+function getErrorTypeConfig(type: ChatErrorType) {
+  switch (type) {
+    case 'rate_limit':
+      return { icon: IconClock, color: 'orange', label: 'Rate Limit' };
+    case 'model_not_found':
+      return { icon: IconSearch, color: 'blue', label: 'Model Not Found' };
+    case 'auth_error':
+      return { icon: IconLock, color: 'red', label: 'Authentication Error' };
+    case 'network_error':
+      return { icon: IconNetwork, color: 'gray', label: 'Network Error' };
+    case 'server_error':
+    default:
+      return { icon: IconAlertTriangle, color: 'red', label: 'Server Error' };
+  }
+}
+
 export function ChatMessages({ messages, streamingContent, tokensPerSecond }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (lastMessageRef.current) {
@@ -23,10 +41,115 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
     }
   }, [messages, streamingContent]);
 
+  const toggleErrorDetails = (messageId: string) => {
+    setExpandedErrors(prev => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  };
+
   const renderMessage = (message: ChatMessage, isStreaming = false) => {
     const isUser = message.role === 'user';
     const content = isStreaming ? streamingContent : message.content;
+    const hasError = message.error && !isUser;
+    const errorConfig = hasError && message.error ? getErrorTypeConfig(message.error.type) : null;
+    const isExpanded = expandedErrors.has(message.id);
 
+    // For error messages, render special error UI
+    if (hasError && errorConfig && message.error) {
+      const Icon = errorConfig.icon;
+      return (
+        <Paper
+          key={message.id}
+          p="md"
+          radius="md"
+          withBorder
+          className={`chat-message-error chat-message-error-${message.error.type.replace('_', '-')}`}
+          style={{
+            alignSelf: 'flex-start',
+            maxWidth: '80%',
+          }}
+        >
+          <Stack gap="sm">
+            {/* Error header with icon and type */}
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="sm">
+                <Icon size={20} color={`var(--mantine-color-${errorConfig.color}-6)`} />
+                <Badge color={errorConfig.color} variant="light">
+                  {errorConfig.label}
+                </Badge>
+              </Group>
+              {message.error.retryAfter && (
+                <Badge size="sm" variant="light" color="gray">
+                  Retry after {message.error.retryAfter}s
+                </Badge>
+              )}
+            </Group>
+
+            {/* User-friendly error message */}
+            <Text size="sm">
+              {content?.replace('Error: ', '')}
+            </Text>
+
+            {/* Suggestions if available */}
+            {message.error.suggestions && message.error.suggestions.length > 0 && (
+              <Alert icon={<IconAlertCircle size={16} />} color={errorConfig.color} variant="light">
+                <Stack gap="xs">
+                  <Text size="sm" fw={500}>Suggestions:</Text>
+                  {message.error.suggestions.map((suggestion) => (
+                    <Text key={suggestion} size="xs">• {suggestion}</Text>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+
+            {/* Technical details (expandable) */}
+            {(message.error.technical ?? message.error.code ?? message.error.statusCode) && (
+              <>
+                <Group gap="xs">
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => toggleErrorDetails(message.id)}
+                  >
+                    {isExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+                  </ActionIcon>
+                  <Text size="xs" c="dimmed">Technical Details</Text>
+                </Group>
+                <Collapse in={isExpanded}>
+                  <Paper p="sm" radius="sm" withBorder className="error-details-box">
+                    <Stack gap="xs">
+                      {message.error.statusCode && (
+                        <Text size="xs">
+                          <Text span fw={500}>HTTP Status:</Text> {message.error.statusCode}
+                        </Text>
+                      )}
+                      {message.error.code && (
+                        <Text size="xs">
+                          <Text span fw={500}>Error Code:</Text> {message.error.code}
+                        </Text>
+                      )}
+                      {message.error.technical && (
+                        <Code block style={{ fontSize: '0.75rem' }}>
+                          {message.error.technical}
+                        </Code>
+                      )}
+                    </Stack>
+                  </Paper>
+                </Collapse>
+              </>
+            )}
+          </Stack>
+        </Paper>
+      );
+    }
+
+    // Regular message rendering
     return (
       <Paper
         key={message.id}

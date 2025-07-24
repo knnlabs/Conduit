@@ -6,6 +6,8 @@ export interface ImageAttachment {
   name: string;
 }
 
+export type ChatErrorType = 'rate_limit' | 'model_not_found' | 'auth_error' | 'network_error' | 'server_error';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'function';
@@ -31,6 +33,15 @@ export interface ChatMessage {
     tokensPerSecond?: number;
     latency?: number;
     finishReason?: string;
+  };
+  error?: {
+    type: ChatErrorType;
+    code?: string;           // Provider-specific error code
+    statusCode?: number;     // HTTP status code
+    retryAfter?: number;     // Seconds until retry allowed (for rate limits)
+    suggestions?: string[];  // Actionable suggestions (e.g., alternative models)
+    technical?: string;      // Technical details for developers
+    recoverable: boolean;    // Whether error can be automatically retried
   };
 }
 
