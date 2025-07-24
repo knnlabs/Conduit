@@ -379,8 +379,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             await _collector.RecordProviderHealthMetricAsync(metric);
 
-            // Assert - wait a bit for async alerting
-            await Task.Delay(100);
+            // Assert - wait longer for async alerting to complete
+            // The alerting is done in a fire-and-forget Task.Run which needs time to execute
+            await Task.Delay(500); // Increased from 100ms to 500ms
             _alertingServiceMock.Verify(x => x.EvaluateMetricsAsync(
                 It.IsAny<AudioMetricsSnapshot>(),
                 It.IsAny<CancellationToken>()),

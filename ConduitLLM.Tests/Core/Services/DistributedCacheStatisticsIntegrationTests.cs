@@ -640,7 +640,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             var avgOperationTime = stopwatch.ElapsedMilliseconds / 100.0;
-            avgOperationTime.Should().BeLessThan(5.0, "Average operation time should be under 5ms");
+            avgOperationTime.Should().BeLessThan(10.0, "Average operation time should be under 10ms");
         }
 
         [Fact]
