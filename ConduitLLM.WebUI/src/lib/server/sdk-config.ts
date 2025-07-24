@@ -23,15 +23,11 @@ export const SDK_CONFIG = {
   
   // Base URLs
   get adminBaseURL() {
-    return process.env.NODE_ENV === 'production' 
-      ? 'http://admin:8080' 
-      : (process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002');
+    return process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
   },
     
   get coreBaseURL() {
-    return process.env.NODE_ENV === 'production' 
-      ? 'http://api:8080' 
-      : (process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000');
+    return process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000';
   },
   
   // Common settings
