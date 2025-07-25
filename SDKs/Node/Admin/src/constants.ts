@@ -64,6 +64,15 @@ export const ENDPOINTS = {
     TEST: '/api/ProviderCredentials/test',
   },
 
+  // Provider Key Credentials
+  PROVIDER_KEYS: {
+    BASE: (providerId: number) => `/api/ProviderCredentials/${providerId}/keys`,
+    BY_ID: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}`,
+    SET_PRIMARY: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/set-primary`,
+    ROTATE: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/rotate`,
+    TEST: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/test`,
+  },
+
   // Provider Models (Note: These endpoints don't exist in Admin API, use MODEL_MAPPINGS.DISCOVER_* instead)
   // TODO: Remove this section once all references are updated
   PROVIDER_MODELS: {

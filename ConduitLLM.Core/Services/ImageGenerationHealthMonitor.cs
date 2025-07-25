@@ -32,8 +32,8 @@ namespace ConduitLLM.Core.Services
         private readonly ImageGenerationHealthOptions _options;
         private readonly IPublishEndpoint? _publishEndpoint;
         
-        private readonly ConcurrentDictionary<string, ProviderHealthData> _providerHealth = new();
-        private readonly ConcurrentDictionary<string, CircuitBreakerState> _circuitBreakers = new();
+        private readonly ConcurrentDictionary<int, ProviderHealthData> _providerHealth = new();
+        private readonly ConcurrentDictionary<int, CircuitBreakerState> _circuitBreakers = new();
         private Timer? _healthCheckTimer;
         private Timer? _metricsEvaluationTimer;
 
@@ -97,7 +97,7 @@ namespace ConduitLLM.Core.Services
                 var allMappings = await mappingService.GetAllMappingsAsync();
                 var imageProviders = allMappings
                     .Where(m => m.SupportsImageGeneration)
-                    .GroupBy(m => m.ProviderName)
+                    .GroupBy(m => m.ProviderId)
                     .ToList();
                 
                 foreach (var providerGroup in imageProviders)
@@ -105,16 +105,17 @@ namespace ConduitLLM.Core.Services
                     if (cancellationToken.IsCancellationRequested)
                         break;
                     
-                    var providerName = providerGroup.Key;
+                    var providerId = providerGroup.Key;
                     var models = providerGroup.Select(m => m.ModelAlias).ToList();
+                    var providerName = providerGroup.First().ProviderName; // For logging purposes
                     
                     try
                     {
-                        await CheckProviderHealthAsync(providerName, models, providerHealthRepository);
+                        await CheckProviderHealthAsync(providerId, providerName, models, providerHealthRepository);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error checking health for provider: {Provider}", providerName);
+                        _logger.LogError(ex, "Error checking health for provider ID {ProviderId} ({ProviderName})", providerId, providerName);
                     }
                 }
                 
@@ -128,17 +129,19 @@ namespace ConduitLLM.Core.Services
         }
 
         private async Task CheckProviderHealthAsync(
+            int providerId,
             string providerName,
             List<string> models,
             IProviderHealthRepository healthRepository)
         {
-            var healthData = _providerHealth.GetOrAdd(providerName, new ProviderHealthData
+            var healthData = _providerHealth.GetOrAdd(providerId, new ProviderHealthData
             {
+                ProviderId = providerId,
                 ProviderName = providerName,
                 Models = models
             });
             
-            var circuitBreaker = _circuitBreakers.GetOrAdd(providerName, new CircuitBreakerState());
+            var circuitBreaker = _circuitBreakers.GetOrAdd(providerId, new CircuitBreakerState());
             
             // Check if circuit breaker is open
             if (circuitBreaker.IsOpen && DateTime.UtcNow < circuitBreaker.NextRetryTime)
@@ -154,7 +157,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // Perform provider-specific health check
-                success = await PerformProviderHealthCheckAsync(providerName, models.FirstOrDefault());
+                success = await PerformProviderHealthCheckAsync(providerId, providerName, models.FirstOrDefault());
                 stopwatch.Stop();
                 
                 if (success)
@@ -217,32 +220,48 @@ namespace ConduitLLM.Core.Services
             // Publish health change event if status changed
             if (healthData.PreviousHealthy != success && _publishEndpoint != null)
             {
-                await PublishHealthChangeEventAsync(providerName, success, healthScore, errorMessage);
+                await PublishHealthChangeEventAsync(providerId, providerName, success, healthScore, errorMessage);
             }
             
             healthData.PreviousHealthy = success;
         }
 
-        private async Task<bool> PerformProviderHealthCheckAsync(string providerName, string? model)
+        private async Task<bool> PerformProviderHealthCheckAsync(int providerId, string providerName, string? model)
         {
             using var scope = _serviceProvider.CreateScope();
             
             try
             {
+                // Use provider ID-based lookup first
+                var clientFactory = scope.ServiceProvider.GetService<ILLMClientFactory>();
+                if (clientFactory != null)
+                {
+                    try
+                    {
+                        var client = clientFactory.GetClientByProviderId(providerId);
+                        // If we can create a client, consider it healthy for now
+                        return client != null;
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // Fall back to name-based checks for backward compatibility
+                    }
+                }
+                
+                // Fall back to provider name-based checks for specific providers
                 switch (providerName.ToLowerInvariant())
                 {
                     case "openai":
-                        return await CheckOpenAIImageHealthAsync(scope);
+                        return await CheckOpenAIImageHealthAsync(scope, providerId);
                         
                     case "minimax":
-                        return await CheckMiniMaxImageHealthAsync(scope);
+                        return await CheckMiniMaxImageHealthAsync(scope, providerId);
                         
                     case "replicate":
-                        return await CheckReplicateHealthAsync(scope);
+                        return await CheckReplicateHealthAsync(scope, providerId);
                         
                     default:
                         // For unknown providers, check if we can create a client
-                        var clientFactory = scope.ServiceProvider.GetService<ILLMClientFactory>();
                         if (clientFactory != null && !string.IsNullOrEmpty(model))
                         {
                             try
@@ -265,14 +284,14 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<bool> CheckOpenAIImageHealthAsync(IServiceScope scope)
+        private async Task<bool> CheckOpenAIImageHealthAsync(IServiceScope scope, int providerId)
         {
             try
             {
                 var credentialRepository = scope.ServiceProvider.GetService<IProviderCredentialRepository>();
                 if (credentialRepository == null) return false;
                 
-                var credentials = await credentialRepository.GetByProviderNameAsync("OpenAI");
+                var credentials = await credentialRepository.GetByIdAsync(providerId);
                 if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
                 
                 using var httpClient = new HttpClient();
@@ -293,14 +312,14 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<bool> CheckMiniMaxImageHealthAsync(IServiceScope scope)
+        private async Task<bool> CheckMiniMaxImageHealthAsync(IServiceScope scope, int providerId)
         {
             try
             {
                 var credentialRepository = scope.ServiceProvider.GetService<IProviderCredentialRepository>();
                 if (credentialRepository == null) return false;
                 
-                var credentials = await credentialRepository.GetByProviderNameAsync("MiniMax");
+                var credentials = await credentialRepository.GetByIdAsync(providerId);
                 if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
                 
                 using var httpClient = new HttpClient();
@@ -322,14 +341,14 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<bool> CheckReplicateHealthAsync(IServiceScope scope)
+        private async Task<bool> CheckReplicateHealthAsync(IServiceScope scope, int providerId)
         {
             try
             {
                 var credentialRepository = scope.ServiceProvider.GetService<IProviderCredentialRepository>();
                 if (credentialRepository == null) return false;
                 
-                var credentials = await credentialRepository.GetByProviderNameAsync("Replicate");
+                var credentials = await credentialRepository.GetByIdAsync(providerId);
                 if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
                 
                 using var httpClient = new HttpClient();
@@ -417,14 +436,16 @@ namespace ConduitLLM.Core.Services
         private async Task CheckAutomaticRecoveryActionsAsync(ImageGenerationMetricsSnapshot metrics)
         {
             // Check for providers that might need recovery
-            foreach (var (provider, status) in metrics.ProviderStatuses)
+            foreach (var (providerName, status) in metrics.ProviderStatuses)
             {
-                if (!status.IsHealthy && _circuitBreakers.TryGetValue(provider, out var circuitBreaker))
+                // Find the provider ID by name from our health data
+                var healthDataEntry = _providerHealth.Values.FirstOrDefault(h => h.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+                if (healthDataEntry != null && !status.IsHealthy && _circuitBreakers.TryGetValue(healthDataEntry.ProviderId, out var circuitBreaker))
                 {
                     // Check if it's time to retry
                     if (circuitBreaker.IsOpen && DateTime.UtcNow >= circuitBreaker.NextRetryTime)
                     {
-                        _logger.LogInformation("Attempting recovery for provider {Provider}", provider);
+                        _logger.LogInformation("Attempting recovery for provider {Provider} (ID: {ProviderId})", providerName, healthDataEntry.ProviderId);
                         circuitBreaker.AttemptReset();
                     }
                 }
@@ -452,6 +473,7 @@ namespace ConduitLLM.Core.Services
         }
 
         private async Task PublishHealthChangeEventAsync(
+            int providerId,
             string providerName,
             bool isHealthy,
             double healthScore,
@@ -463,7 +485,7 @@ namespace ConduitLLM.Core.Services
             {
                 await _publishEndpoint.Publish(new ProviderHealthChanged
                 {
-                    ProviderId = 0, // Would need actual provider ID
+                    ProviderId = providerId,
                     ProviderName = providerName,
                     IsHealthy = isHealthy,
                     Status = $"Health score: {healthScore:F2}, Status: {(isHealthy ? "Healthy" : "Unhealthy")}" +
@@ -507,6 +529,7 @@ namespace ConduitLLM.Core.Services
 
         private class ProviderHealthData
         {
+            public int ProviderId { get; set; }
             public string ProviderName { get; set; } = string.Empty;
             public List<string> Models { get; set; } = new();
             public bool IsHealthy { get; set; }

@@ -3,8 +3,8 @@
 
 services:
   webui:
-    # Override user to root in development to avoid permission issues
-    user: root
+    # Use host user to avoid permission issues with mounted volumes
+    user: "1000:1000"
     volumes:
       # Mount source code for hot reloading
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated

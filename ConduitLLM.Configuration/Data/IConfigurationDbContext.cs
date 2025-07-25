@@ -60,6 +60,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<ProviderCredential> ProviderCredentials { get; }
 
         /// <summary>
+        /// Database set for provider key credentials
+        /// </summary>
+        DbSet<ProviderKeyCredential> ProviderKeyCredentials { get; }
+
+        /// <summary>
         /// Database set for router configurations
         /// </summary>
         DbSet<RouterConfigEntity> RouterConfigurations { get; }

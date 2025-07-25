@@ -51,6 +51,7 @@ namespace ConduitLLM.Admin.Adapters
                 return mappings.Select(m => new ModelProviderMapping
                 {
                     ModelAlias = m.ModelAlias,
+                    ProviderId = m.ProviderId,
                     ProviderName = m.ProviderName,
                     ProviderModelId = m.ProviderModelId,
                     DeploymentName = m.DeploymentName,
@@ -67,6 +68,7 @@ namespace ConduitLLM.Admin.Adapters
                 return new ModelProviderMapping
                 {
                     ModelAlias = mapping.ModelAlias,
+                    ProviderId = mapping.ProviderId,
                     ProviderName = mapping.ProviderName,
                     ProviderModelId = mapping.ProviderModelId,
                     DeploymentName = mapping.DeploymentName,
@@ -95,6 +97,23 @@ namespace ConduitLLM.Admin.Adapters
 
                 return new ProviderCredentials
                 {
+                    ProviderId = credential.Id,
+                    ProviderName = credential.ProviderName,
+                    ApiKey = credential.ApiKey,
+                    BaseUrl = credential.BaseUrl,
+                    ApiVersion = credential.ApiVersion,
+                    IsEnabled = credential.IsEnabled
+                };
+            }
+            
+            public async Task<ProviderCredentials?> GetCredentialByIdAsync(int providerId)
+            {
+                var credential = await _innerService.GetCredentialByIdAsync(providerId);
+                if (credential == null) return null;
+
+                return new ProviderCredentials
+                {
+                    ProviderId = credential.Id,
                     ProviderName = credential.ProviderName,
                     ApiKey = credential.ApiKey,
                     BaseUrl = credential.BaseUrl,

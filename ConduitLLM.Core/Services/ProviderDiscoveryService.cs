@@ -257,6 +257,7 @@ namespace ConduitLLM.Core.Services
             var modelMappings = await mappingsTask;
             
             var credentialLookup = allCredentials.ToDictionary(c => c.ProviderName.ToLowerInvariant(), c => c);
+            var credentialIdLookup = allCredentials.ToDictionary(c => c.Id, c => c);
 
             foreach (var providerName in knownProviders)
             {
@@ -287,9 +288,16 @@ namespace ConduitLLM.Core.Services
             {
                 if (!allModels.ContainsKey(mapping.ModelAlias))
                 {
+                    // Use provider ID to look up the provider name if needed
+                    string providerName = mapping.ProviderName;
+                    if (mapping.ProviderId > 0 && credentialIdLookup.TryGetValue(mapping.ProviderId, out var credential))
+                    {
+                        providerName = credential.ProviderName;
+                    }
+                    
                     allModels[mapping.ModelAlias] = InferModelCapabilities(
                         mapping.ModelAlias, 
-                        mapping.ProviderName, 
+                        providerName, 
                         mapping.ProviderModelId);
                 }
             }
@@ -346,8 +354,18 @@ namespace ConduitLLM.Core.Services
             {
                 try
                 {
-                    // Get client for provider
-                    var client = _clientFactory.GetClientByProvider(providerName);
+                    // Get client for provider - try to get provider ID first
+                    ILLMClient client;
+                    var providerId = await GetProviderIdAsync(providerName);
+                    if (providerId > 0)
+                    {
+                        client = _clientFactory.GetClientByProviderId(providerId);
+                    }
+                    else
+                    {
+                        // Fall back to name-based lookup for backward compatibility
+                        client = _clientFactory.GetClientByProvider(providerName);
+                    }
 
                     // Try to list models from the provider
                     try
@@ -722,7 +740,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // Get provider credential to find the ID
+                #pragma warning disable CS0618 // Type or member is obsolete
                 var credential = await _credentialService.GetCredentialByProviderNameAsync(providerName);
+                #pragma warning restore CS0618 // Type or member is obsolete
                 if (credential != null)
                 {
                     return credential.Id;

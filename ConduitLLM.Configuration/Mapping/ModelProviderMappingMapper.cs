@@ -26,6 +26,7 @@ namespace ConduitLLM.Configuration.Mapping
             return new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = entity.ModelAlias,
+                ProviderId = entity.ProviderCredentialId,
                 ProviderName = entity.ProviderCredential?.ProviderName ?? string.Empty,
                 ProviderModelId = entity.ProviderModelName,
                 DeploymentName = null, // DeploymentName is not stored in the entity currently

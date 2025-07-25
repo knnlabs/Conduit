@@ -31,23 +31,27 @@ namespace ConduitLLM.Admin.Services
         private readonly IProviderCredentialRepository _providerCredentialRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AdminProviderCredentialService> _logger;
+        private readonly ConduitLLM.Configuration.IProviderCredentialService _configProviderCredentialService;
 
         /// <summary>
         /// Initializes a new instance of the AdminProviderCredentialService
         /// </summary>
         /// <param name="providerCredentialRepository">The provider credential repository</param>
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
+        /// <param name="configProviderCredentialService">The configuration provider credential service</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
             IProviderCredentialRepository providerCredentialRepository,
             IHttpClientFactory httpClientFactory,
+            ConduitLLM.Configuration.IProviderCredentialService configProviderCredentialService,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminProviderCredentialService> logger)
             : base(publishEndpoint, logger)
         {
             _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _configProviderCredentialService = configProviderCredentialService ?? throw new ArgumentNullException(nameof(configProviderCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Log event publishing configuration status
@@ -1010,6 +1014,297 @@ namespace ConduitLLM.Admin.Services
                 "minimax" => "https://api.minimax.io",
                 _ => "https://api.example.com" // Generic fallback
             };
+        }
+
+        /// <inheritdoc />
+        public async Task<IEnumerable<ProviderKeyCredentialDto>> GetProviderKeyCredentialsAsync(int providerId)
+        {
+            try
+            {
+                var keys = await _configProviderCredentialService.GetKeyCredentialsByProviderIdAsync(providerId);
+                
+                return keys.Select(k => new ProviderKeyCredentialDto
+                {
+                    Id = k.Id,
+                    ProviderCredentialId = k.ProviderCredentialId,
+                    ProviderAccountGroup = k.ProviderAccountGroup,
+                    ApiKey = MaskApiKey(k.ApiKey),
+                    BaseUrl = k.BaseUrl,
+                    ApiVersion = k.ApiVersion,
+                    Organization = k.Organization,
+                    IsPrimary = k.IsPrimary,
+                    IsEnabled = k.IsEnabled,
+                    KeyName = k.KeyName,
+                    CreatedAt = k.CreatedAt,
+                    UpdatedAt = k.UpdatedAt
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting key credentials for provider {ProviderId}", providerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderKeyCredentialDto?> GetProviderKeyCredentialAsync(int keyId)
+        {
+            try
+            {
+                var key = await _configProviderCredentialService.GetKeyCredentialByIdAsync(keyId);
+
+                if (key == null)
+                {
+                    return null;
+                }
+
+                return new ProviderKeyCredentialDto
+                {
+                    Id = key.Id,
+                    ProviderCredentialId = key.ProviderCredentialId,
+                    ProviderAccountGroup = key.ProviderAccountGroup,
+                    ApiKey = MaskApiKey(key.ApiKey),
+                    BaseUrl = key.BaseUrl,
+                    ApiVersion = key.ApiVersion,
+                    Organization = key.Organization,
+                    IsPrimary = key.IsPrimary,
+                    IsEnabled = key.IsEnabled,
+                    KeyName = key.KeyName,
+                    CreatedAt = key.CreatedAt,
+                    UpdatedAt = key.UpdatedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting key credential {KeyId}", keyId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderKeyCredentialDto> CreateProviderKeyCredentialAsync(int providerId, CreateProviderKeyCredentialDto keyCredential)
+        {
+            if (keyCredential == null)
+            {
+                throw new ArgumentNullException(nameof(keyCredential));
+            }
+
+            try
+            {
+                var keyEntity = new ProviderKeyCredential
+                {
+                    ProviderAccountGroup = keyCredential.ProviderAccountGroup,
+                    ApiKey = keyCredential.ApiKey,
+                    BaseUrl = keyCredential.BaseUrl,
+                    ApiVersion = keyCredential.ApiVersion,
+                    Organization = keyCredential.Organization,
+                    IsPrimary = keyCredential.IsPrimary,
+                    IsEnabled = keyCredential.IsEnabled,
+                    KeyName = keyCredential.KeyName
+                };
+
+                var created = await _configProviderCredentialService.AddKeyCredentialAsync(providerId, keyEntity);
+                
+                _logger.LogInformation("Created key credential {KeyId} for provider {ProviderId}", created.Id, providerId);
+
+                return new ProviderKeyCredentialDto
+                {
+                    Id = created.Id,
+                    ProviderCredentialId = created.ProviderCredentialId,
+                    ProviderAccountGroup = created.ProviderAccountGroup,
+                    ApiKey = MaskApiKey(created.ApiKey),
+                    BaseUrl = created.BaseUrl,
+                    ApiVersion = created.ApiVersion,
+                    Organization = created.Organization,
+                    IsPrimary = created.IsPrimary,
+                    IsEnabled = created.IsEnabled,
+                    KeyName = created.KeyName,
+                    CreatedAt = created.CreatedAt,
+                    UpdatedAt = created.UpdatedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating key credential for provider {ProviderId}", providerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> UpdateProviderKeyCredentialAsync(int keyId, UpdateProviderKeyCredentialDto keyCredential)
+        {
+            if (keyCredential == null)
+            {
+                throw new ArgumentNullException(nameof(keyCredential));
+            }
+
+            try
+            {
+                // Get the existing key to preserve values not being updated
+                var existing = await _configProviderCredentialService.GetKeyCredentialByIdAsync(keyId);
+                if (existing == null)
+                {
+                    _logger.LogWarning("Key credential {KeyId} not found for update", keyId);
+                    return false;
+                }
+
+                // Update only the fields that are provided
+                if (!string.IsNullOrEmpty(keyCredential.ApiKey))
+                    existing.ApiKey = keyCredential.ApiKey;
+                    
+                existing.BaseUrl = keyCredential.BaseUrl;
+                existing.ApiVersion = keyCredential.ApiVersion;
+                existing.Organization = keyCredential.Organization;
+                existing.IsEnabled = keyCredential.IsEnabled;
+                existing.KeyName = keyCredential.KeyName;
+
+                var success = await _configProviderCredentialService.UpdateKeyCredentialAsync(keyId, existing);
+                
+                if (success)
+                {
+                    _logger.LogInformation("Updated key credential {KeyId}", keyId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to update key credential {KeyId}", keyId);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating key credential {KeyId}", keyId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> DeleteProviderKeyCredentialAsync(int keyId)
+        {
+            try
+            {
+                var success = await _configProviderCredentialService.DeleteKeyCredentialAsync(keyId);
+                
+                if (success)
+                {
+                    _logger.LogInformation("Deleted key credential {KeyId}", keyId);
+                }
+                else
+                {
+                    _logger.LogWarning("Key credential {KeyId} not found for deletion", keyId);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting key credential {KeyId}", keyId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> SetPrimaryKeyAsync(int providerId, int keyId)
+        {
+            try
+            {
+                var success = await _configProviderCredentialService.SetPrimaryKeyAsync(providerId, keyId);
+                
+                if (success)
+                {
+                    _logger.LogInformation("Set key {KeyId} as primary for provider {ProviderId}", keyId, providerId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to set key {KeyId} as primary - key not found", keyId);
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderConnectionTestResultDto> TestProviderKeyCredentialAsync(int providerId, int keyId)
+        {
+            try
+            {
+                // Get the specific key
+                var provider = await _providerCredentialRepository.GetByIdAsync(providerId);
+                if (provider == null)
+                {
+                    return new ProviderConnectionTestResultDto
+                    {
+                        Success = false,
+                        Message = "Provider not found",
+                        ErrorDetails = $"Provider with ID {providerId} was not found",
+                        ProviderName = "Unknown",
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+
+                var key = provider.ProviderKeyCredentials?.FirstOrDefault(k => k.Id == keyId);
+                if (key == null)
+                {
+                    return new ProviderConnectionTestResultDto
+                    {
+                        Success = false,
+                        Message = "Key not found",
+                        ErrorDetails = $"Key with ID {keyId} was not found for provider {provider.ProviderName}",
+                        ProviderName = provider.ProviderName,
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+
+                // Create a test credential using the specific key's values
+                var testCredential = new ProviderCredentialDto
+                {
+                    Id = provider.Id,
+                    ProviderName = provider.ProviderName,
+                    ApiKey = key.ApiKey ?? provider.ApiKey ?? string.Empty, // Use key's API key or fall back to provider's
+                    ApiBase = key.BaseUrl ?? provider.BaseUrl ?? string.Empty, // Use key's base URL or fall back  
+                    IsEnabled = key.IsEnabled
+                };
+
+                // Use the existing test method
+                return await TestProviderConnectionAsync(testCredential);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing key credential {KeyId} for provider {ProviderId}", keyId, providerId);
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = "Test failed",
+                    ErrorDetails = ex.ToString(),
+                    ProviderName = "Unknown",
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
+
+        /// <summary>
+        /// Masks an API key for display
+        /// </summary>
+        /// <param name="apiKey">The API key to mask</param>
+        /// <returns>The masked API key</returns>
+        private static string? MaskApiKey(string? apiKey)
+        {
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                return apiKey;
+            }
+
+            if (apiKey.Length <= 8)
+            {
+                return new string('*', apiKey.Length);
+            }
+
+            return $"{apiKey.Substring(0, 4)}...{apiKey.Substring(apiKey.Length - 4)}";
         }
     }
 }

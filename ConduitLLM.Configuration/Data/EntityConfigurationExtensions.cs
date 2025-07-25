@@ -30,6 +30,43 @@ namespace ConduitLLM.Configuration.Data
                 entity.HasIndex(e => e.ProviderName).IsUnique();
             });
 
+            // Configure ProviderKeyCredential entity
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderKeyCredential>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                // Foreign key relationship
+                entity.HasOne(e => e.ProviderCredential)
+                    .WithMany(e => e.ProviderKeyCredentials)
+                    .HasForeignKey(e => e.ProviderCredentialId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                // Index for performance
+                entity.HasIndex(e => e.ProviderCredentialId)
+                    .HasDatabaseName("IX_ProviderKeyCredential_ProviderCredentialId");
+                
+                // Unique constraint: Only one primary key per provider
+                entity.HasIndex(e => new { e.ProviderCredentialId, e.IsPrimary })
+                    .IsUnique()
+                    .HasFilter("\"IsPrimary\" = true")
+                    .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider");
+                
+                // Configure check constraints in table configuration
+                entity.ToTable(t => {
+                    // Check constraint: Primary keys must be enabled
+                    t.HasCheckConstraint(
+                        "CK_ProviderKeyCredential_PrimaryMustBeEnabled",
+                        "\"IsPrimary\" = false OR \"IsEnabled\" = true"
+                    );
+                    
+                    // Check constraint: ProviderAccountGroup range (0-32)
+                    t.HasCheckConstraint(
+                        "CK_ProviderKeyCredential_AccountGroupRange",
+                        "\"ProviderAccountGroup\" >= 0 AND \"ProviderAccountGroup\" <= 32"
+                    );
+                });
+            });
+
             // Configure Provider Health entities
             modelBuilder.ApplyProviderHealthConfigurations();
 

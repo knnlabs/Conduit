@@ -115,6 +115,14 @@ public class LLMClientFactory : ILLMClientFactory
         // This is mainly for operations like listing available models
         return CreateClientForProvider(providerName, credentials, "default-model-id");
     }
+    
+    /// <inheritdoc />
+    public ILLMClient GetClientByProviderId(int providerId)
+    {
+        // This factory works with configuration-based settings which don't have provider IDs yet
+        // For now, we'll throw a NotSupportedException until the configuration system is updated to use IDs
+        throw new NotSupportedException("Provider ID-based lookups are not yet supported in the configuration-based factory. Please use GetClientByProvider with a provider name instead.");
+    }
 
     private ILLMClient CreateClientForProvider(string providerName, ProviderCredentials credentials, string modelId)
     {
@@ -237,6 +245,11 @@ public class LLMClientFactory : ILLMClientFactory
             case "gcp":
                 var googleCloudLogger = _loggerFactory.CreateLogger<GoogleCloudAudioClient>();
                 client = new GoogleCloudAudioClient(credentials, modelId, googleCloudLogger, _httpClientFactory, defaultModels);
+                break;
+
+            case "cerebras":
+                var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();
+                client = new CerebrasClient(credentials, modelId, cerebrasLogger, _httpClientFactory, defaultModels);
                 break;
 
             case "aws":

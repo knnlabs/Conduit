@@ -190,6 +190,13 @@ export class ProviderService extends FetchBaseApiClient {
     );
   }
 
+  // Provider Key Credential methods
+  async testKey(providerId: number, keyId: number): Promise<ProviderConnectionTestResultDto> {
+    return this.post<ProviderConnectionTestResultDto>(
+      `${ENDPOINTS.PROVIDERS.BASE}/${providerId}/keys/${keyId}/test`
+    );
+  }
+
   // Stub methods
   async getUsageStatistics(
     _providerName: string,

@@ -76,6 +76,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
 
         /// <summary>
+        /// Database set for provider key credentials
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Configuration.Entities.ProviderKeyCredential> ProviderKeyCredentials { get; set; } = null!;
+
+        /// <summary>
         /// Database set for router configurations
         /// </summary>
         public virtual DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;

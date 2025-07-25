@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
           log.model.toLowerCase().includes(searchLower) ||
           log.provider.toLowerCase().includes(searchLower) ||
           log.virtualKeyName.toLowerCase().includes(searchLower) ||
-          (log.error && log.error.toLowerCase().includes(searchLower))
+          log.error?.toLowerCase().includes(searchLower)
         );
       }
       

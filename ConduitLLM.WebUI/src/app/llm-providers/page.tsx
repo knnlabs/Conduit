@@ -179,6 +179,7 @@ export default function ProvidersPage() {
     openEditModal();
   };
 
+
   const handleExportCSV = () => {
     if (filteredProviders.length === 0) {
       notifications.show({
@@ -418,6 +419,7 @@ export default function ProvidersPage() {
         provider={selectedProvider}
         onSuccess={() => void fetchProviders()}
       />
+
     </Stack>
   );
 }

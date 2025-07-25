@@ -115,5 +115,47 @@ namespace ConduitLLM.Admin.Services
 
             return tempFactory.GetClientByProvider(providerName);
         }
+        
+        /// <inheritdoc />
+        public ILLMClient GetClientByProviderId(int providerId)
+        {
+            _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
+
+            // Get credentials from database synchronously (not ideal but matches interface)
+            var credentials = Task.Run(async () => 
+                await _credentialService.GetCredentialByIdAsync(providerId)).Result;
+
+            if (credentials == null || !credentials.IsEnabled)
+            {
+                _logger.LogWarning("No enabled credentials found for provider ID {ProviderId} in database", providerId);
+                throw new ConfigurationException($"No provider credentials found for provider ID '{providerId}'. Please check your Conduit configuration.");
+            }
+
+            // Get current settings and create a temporary ConduitSettings with the database credentials
+            var currentSettings = _settingsMonitor.CurrentValue;
+            var tempSettings = new ConduitSettings
+            {
+                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
+                {
+                    new ProviderCredentials
+                    {
+                        ProviderName = credentials.ProviderName,
+                        ApiKey = credentials.ApiKey
+                    }
+                },
+                // Copy other relevant settings from current settings
+                ModelMappings = currentSettings.ModelMappings,
+                DefaultModels = currentSettings.DefaultModels,
+                PerformanceTracking = currentSettings.PerformanceTracking
+            };
+
+            // Create a new factory with the database credentials
+            var tempFactory = new LLMClientFactory(
+                Microsoft.Extensions.Options.Options.Create(tempSettings),
+                _loggerFactory,
+                _httpClientFactory);
+
+            return tempFactory.GetClientByProvider(credentials.ProviderName);
+        }
     }
 }

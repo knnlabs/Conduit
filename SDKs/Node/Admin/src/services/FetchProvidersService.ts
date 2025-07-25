@@ -12,6 +12,12 @@ import type {
   HealthDataResponse,
   MetricsDataResponse
 } from '../models/providerResponses';
+import type {
+  ProviderKeyCredentialDto,
+  CreateProviderKeyCredentialDto,
+  UpdateProviderKeyCredentialDto,
+  ProviderKeyRotationDto
+} from '../models/provider';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
@@ -544,5 +550,158 @@ export class FetchProvidersService {
         }] : []
       };
     }
+  }
+
+  // Provider Key Credential methods
+
+  /**
+   * Get all key credentials for a provider
+   */
+  async listKeys(
+    providerId: number,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto[]> {
+    return this.client['get']<ProviderKeyCredentialDto[]>(
+      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Get a specific key credential
+   */
+  async getKeyById(
+    providerId: number,
+    keyId: number,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto> {
+    return this.client['get']<ProviderKeyCredentialDto>(
+      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Create a new key credential for a provider
+   */
+  async createKey(
+    providerId: number,
+    data: CreateProviderKeyCredentialDto,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto> {
+    return this.client['post']<ProviderKeyCredentialDto, CreateProviderKeyCredentialDto>(
+      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Update a key credential
+   */
+  async updateKey(
+    providerId: number,
+    keyId: number,
+    data: UpdateProviderKeyCredentialDto,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto> {
+    return this.client['put']<ProviderKeyCredentialDto, UpdateProviderKeyCredentialDto>(
+      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Delete a key credential
+   */
+  async deleteKey(
+    providerId: number,
+    keyId: number,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['delete']<void>(
+      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Set a key as primary
+   */
+  async setPrimaryKey(
+    providerId: number,
+    keyId: number,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['post']<void>(
+      ENDPOINTS.PROVIDER_KEYS.SET_PRIMARY(providerId, keyId),
+      undefined,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+
+  /**
+   * Rotate a key credential
+   */
+  async rotateKey(
+    providerId: number,
+    keyId: number,
+    data: ProviderKeyRotationDto,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto> {
+    return this.client['post']<ProviderKeyCredentialDto, ProviderKeyRotationDto>(
+      ENDPOINTS.PROVIDER_KEYS.ROTATE(providerId, keyId),
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Test a key credential
+   */
+  async testKey(
+    providerId: number,
+    keyId: number,
+    config?: RequestConfig
+  ): Promise<TestConnectionResult> {
+    return this.client['post']<TestConnectionResult>(
+      ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
+      undefined,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 }

@@ -12,9 +12,16 @@ public class ModelProviderMapping
     public required string ModelAlias { get; set; }
 
     /// <summary>
+    /// Gets or sets the ID of the provider configured in ProviderCredentials.
+    /// This links the mapping to the correct set of credentials and connection details.
+    /// </summary>
+    public int ProviderId { get; set; }
+    
+    /// <summary>
     /// Gets or sets the name of the provider configured in ProviderCredentials (e.g., "openai", "anthropic").
     /// This links the mapping to the correct set of credentials and connection details.
     /// </summary>
+    [Obsolete("Use ProviderId instead. Provider names are error-prone and will be deprecated.")]
     public required string ProviderName { get; set; }
 
     /// <summary>

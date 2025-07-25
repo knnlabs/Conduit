@@ -10,7 +10,15 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// </summary>
         /// <param name="providerName">The name of the provider.</param>
         /// <returns>Provider credentials if found, otherwise null.</returns>
+        [Obsolete("Use GetCredentialByIdAsync instead. Provider names are error-prone and will be deprecated.")]
         Task<ProviderCredentials?> GetCredentialByProviderNameAsync(string providerName);
+        
+        /// <summary>
+        /// Retrieves credentials for a specific provider by ID.
+        /// </summary>
+        /// <param name="providerId">The ID of the provider.</param>
+        /// <returns>Provider credentials if found, otherwise null.</returns>
+        Task<ProviderCredentials?> GetCredentialByIdAsync(int providerId);
     }
 
     /// <summary>
@@ -18,6 +26,11 @@ namespace ConduitLLM.Core.Interfaces.Configuration
     /// </summary>
     public class ProviderCredentials
     {
+        /// <summary>
+        /// The unique identifier of the provider.
+        /// </summary>
+        public int ProviderId { get; set; }
+        
         /// <summary>
         /// The name of the provider.
         /// </summary>

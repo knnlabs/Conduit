@@ -50,6 +50,7 @@ namespace ConduitLLM.Http.Adapters
                 return mappings.Select(m => new ModelProviderMapping
                 {
                     ModelAlias = m.ModelAlias,
+                    ProviderId = m.ProviderId,
                     ProviderName = m.ProviderName,
                     ProviderModelId = m.ProviderModelId,
                     DeploymentName = m.DeploymentName,
@@ -68,6 +69,7 @@ namespace ConduitLLM.Http.Adapters
                 return new ModelProviderMapping
                 {
                     ModelAlias = mapping.ModelAlias,
+                    ProviderId = mapping.ProviderId,
                     ProviderName = mapping.ProviderName,
                     ProviderModelId = mapping.ProviderModelId,
                     DeploymentName = mapping.DeploymentName,
@@ -96,12 +98,61 @@ namespace ConduitLLM.Http.Adapters
                 var credential = await _innerService.GetCredentialByProviderNameAsync(providerName);
                 if (credential == null) return null;
 
+                // Get the primary key if available, otherwise fall back to legacy ApiKey
+                string? effectiveApiKey = credential.ApiKey;
+                string? effectiveBaseUrl = credential.BaseUrl;
+                string? effectiveApiVersion = credential.ApiVersion;
+                
+                if (credential.ProviderKeyCredentials?.Any() == true)
+                {
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled);
+                    if (primaryKey != null)
+                    {
+                        effectiveApiKey = primaryKey.ApiKey ?? credential.ApiKey;
+                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
+                        effectiveApiVersion = primaryKey.ApiVersion ?? credential.ApiVersion;
+                    }
+                }
+
                 return new ProviderCredentials
                 {
+                    ProviderId = credential.Id,
                     ProviderName = credential.ProviderName,
-                    ApiKey = credential.ApiKey,
-                    BaseUrl = credential.BaseUrl,
-                    ApiVersion = credential.ApiVersion,
+                    ApiKey = effectiveApiKey,
+                    BaseUrl = effectiveBaseUrl,
+                    ApiVersion = effectiveApiVersion,
+                    IsEnabled = credential.IsEnabled
+                };
+            }
+            
+            public async Task<ProviderCredentials?> GetCredentialByIdAsync(int providerId)
+            {
+                var credential = await _innerService.GetCredentialByIdAsync(providerId);
+                if (credential == null) return null;
+
+                // Get the primary key if available, otherwise fall back to legacy ApiKey
+                string? effectiveApiKey = credential.ApiKey;
+                string? effectiveBaseUrl = credential.BaseUrl;
+                string? effectiveApiVersion = credential.ApiVersion;
+                
+                if (credential.ProviderKeyCredentials?.Any() == true)
+                {
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled);
+                    if (primaryKey != null)
+                    {
+                        effectiveApiKey = primaryKey.ApiKey ?? credential.ApiKey;
+                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
+                        effectiveApiVersion = primaryKey.ApiVersion ?? credential.ApiVersion;
+                    }
+                }
+
+                return new ProviderCredentials
+                {
+                    ProviderId = credential.Id,
+                    ProviderName = credential.ProviderName,
+                    ApiKey = effectiveApiKey,
+                    BaseUrl = effectiveBaseUrl,
+                    ApiVersion = effectiveApiVersion,
                     IsEnabled = credential.IsEnabled
                 };
             }

@@ -21,10 +21,12 @@ import {
   IconEdit,
   IconTrash,
   IconDotsVertical,
+  IconKey,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { useRouter } from 'next/navigation';
 
 // Use SDK types directly with health extensions  
 interface Provider extends ProviderCredentialDto {
@@ -43,6 +45,7 @@ interface ProvidersTableProps {
 
 export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProviders = new Set() }: ProvidersTableProps) {
   const providers = data ?? [];
+  const router = useRouter();
 
   const handleDelete = (provider: Provider) => {
     void modals.openConfirmModal({
@@ -145,6 +148,12 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
                 onClick={() => onEdit?.(provider)}
               >
                 Edit
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<IconKey style={{ width: rem(14), height: rem(14) }} />}
+                onClick={() => router.push(`/llm-providers/${provider.id}/keys`)}
+              >
+                Manage Keys
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}

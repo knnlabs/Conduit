@@ -37,11 +37,31 @@ namespace ConduitLLM.Configuration
 _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
 
                 // Get the provider credential
-                var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (credential == null)
+                ProviderCredential? credential = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
+                    credential = await _credentialRepository.GetByIdAsync(mapping.ProviderId);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider ID {ProviderId}", mapping.ProviderId);
+                        throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
+                    }
+                }
+                else if (!string.IsNullOrEmpty(mapping.ProviderName))
+                {
+                    // Fall back to provider name for backward compatibility
+                    credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                    if (credential == null)
+                    {
 _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Either ProviderId or ProviderName must be specified");
                 }
 
                 // Convert to entity and set the provider credential ID
@@ -148,11 +168,31 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 }
 
                 // Get the provider credential
-                var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (credential == null)
+                ProviderCredential? credential = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
+                    credential = await _credentialRepository.GetByIdAsync(mapping.ProviderId);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider ID {ProviderId}", mapping.ProviderId);
+                        throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
+                    }
+                }
+                else if (!string.IsNullOrEmpty(mapping.ProviderName))
+                {
+                    // Fall back to provider name for backward compatibility
+                    credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                    if (credential == null)
+                    {
 _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Either ProviderId or ProviderName must be specified");
                 }
 
                 // Update the entity
@@ -185,11 +225,31 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             try
             {
                 // Validate that the provider exists
-                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (provider == null)
+                ProviderCredential? provider = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    return (false, $"Provider does not exist: {mapping.ProviderName}", null);
+                    provider = await _credentialRepository.GetByIdAsync(mapping.ProviderId);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist with ID {ProviderId}", mapping.ProviderId);
+                        return (false, $"Provider does not exist with ID: {mapping.ProviderId}", null);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(mapping.ProviderName))
+                {
+                    // Fall back to provider name for backward compatibility
+                    provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
+                        return (false, $"Provider does not exist: {mapping.ProviderName}", null);
+                    }
+                }
+                else
+                {
+                    return (false, "Either ProviderId or ProviderName must be specified", null);
                 }
 
                 // Check if a mapping with the same alias already exists
@@ -265,6 +325,20 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking if provider exists: {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                return false;
+            }
+        }
+
+        public async Task<bool> ProviderExistsByIdAsync(int providerId)
+        {
+            try
+            {
+                var provider = await _credentialRepository.GetByIdAsync(providerId);
+                return provider != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if provider exists by ID: {ProviderId}", providerId);
                 return false;
             }
         }

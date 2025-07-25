@@ -301,5 +301,242 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
+
+        /// <summary>
+        /// Gets all key credentials for a specific provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <returns>List of key credentials for the provider</returns>
+        [HttpGet("{providerId}/keys")]
+        [ProducesResponseType(typeof(IEnumerable<ProviderKeyCredentialDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProviderKeyCredentials(int providerId)
+        {
+            try
+            {
+                var keys = await _providerCredentialService.GetProviderKeyCredentialsAsync(providerId);
+                return Ok(keys);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting key credentials for provider {ProviderId}", providerId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Gets a specific key credential
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key</param>
+        /// <returns>The key credential</returns>
+        [HttpGet("{providerId}/keys/{keyId}")]
+        [ProducesResponseType(typeof(ProviderKeyCredentialDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProviderKeyCredential(int providerId, int keyId)
+        {
+            try
+            {
+                var key = await _providerCredentialService.GetProviderKeyCredentialAsync(keyId);
+                
+                if (key == null || key.ProviderCredentialId != providerId)
+                {
+                    _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                    return NotFound(new { error = "Key credential not found" });
+                }
+
+                return Ok(key);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting key credential {KeyId} for provider {ProviderId}", keyId, providerId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Creates a new key credential for a provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="createDto">The key credential to create</param>
+        /// <returns>The created key credential</returns>
+        [HttpPost("{providerId}/keys")]
+        [ProducesResponseType(typeof(ProviderKeyCredentialDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateProviderKeyCredential(int providerId, [FromBody] CreateProviderKeyCredentialDto createDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var createdKey = await _providerCredentialService.CreateProviderKeyCredentialAsync(providerId, createDto);
+                return CreatedAtAction(
+                    nameof(GetProviderKeyCredential), 
+                    new { providerId = providerId, keyId = createdKey.Id }, 
+                    createdKey);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation when creating key credential for provider {ProviderId}", providerId);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating key credential for provider {ProviderId}", providerId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Updates a key credential
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key</param>
+        /// <param name="updateDto">The updated key credential data</param>
+        /// <returns>No content if successful</returns>
+        [HttpPut("{providerId}/keys/{keyId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateProviderKeyCredential(int providerId, int keyId, [FromBody] UpdateProviderKeyCredentialDto updateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (keyId != updateDto.Id)
+            {
+                return BadRequest(new { error = "ID in route must match ID in body" });
+            }
+
+            try
+            {
+                var success = await _providerCredentialService.UpdateProviderKeyCredentialAsync(keyId, updateDto);
+                
+                if (!success)
+                {
+                    _logger.LogWarning("Key credential not found for update {KeyId}", keyId);
+                    return NotFound(new { error = "Key credential not found" });
+                }
+
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation when updating key credential {KeyId}", keyId);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating key credential {KeyId}", keyId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Deletes a key credential
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key to delete</param>
+        /// <returns>No content if successful</returns>
+        [HttpDelete("{providerId}/keys/{keyId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteProviderKeyCredential(int providerId, int keyId)
+        {
+            try
+            {
+                var success = await _providerCredentialService.DeleteProviderKeyCredentialAsync(keyId);
+                
+                if (!success)
+                {
+                    _logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
+                    return NotFound(new { error = "Key credential not found" });
+                }
+
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation when deleting key credential {KeyId}", keyId);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting key credential {KeyId}", keyId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Sets a key as the primary key for a provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key to set as primary</param>
+        /// <returns>No content if successful</returns>
+        [HttpPost("{providerId}/keys/{keyId}/set-primary")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SetPrimaryKey(int providerId, int keyId)
+        {
+            try
+            {
+                var success = await _providerCredentialService.SetPrimaryKeyAsync(providerId, keyId);
+                
+                if (!success)
+                {
+                    _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
+                    return NotFound(new { error = "Key credential not found" });
+                }
+
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation when setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting primary key {KeyId} for provider {ProviderId}", keyId, providerId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Tests a specific key credential
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key to test</param>
+        /// <returns>The test result</returns>
+        [HttpPost("{providerId}/keys/{keyId}/test")]
+        [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TestProviderKeyCredential(int providerId, int keyId)
+        {
+            try
+            {
+                var result = await _providerCredentialService.TestProviderKeyCredentialAsync(providerId, keyId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing key credential {KeyId} for provider {ProviderId}", keyId, providerId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
     }
 }

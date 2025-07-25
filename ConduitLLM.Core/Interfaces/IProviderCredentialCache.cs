@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -14,16 +15,16 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="providerId">The provider ID to look up</param>
         /// <param name="databaseFallback">Function to fetch from database on cache miss</param>
-        /// <returns>Provider Credential entity or null if not found</returns>
-        Task<ProviderCredential?> GetProviderCredentialAsync(int providerId, Func<int, Task<ProviderCredential?>> databaseFallback);
+        /// <returns>Cached provider credential with all keys or null if not found</returns>
+        Task<CachedProviderCredential?> GetProviderCredentialAsync(int providerId, Func<int, Task<CachedProviderCredential?>> databaseFallback);
 
         /// <summary>
         /// Get Provider Credential by name from cache with database fallback
         /// </summary>
         /// <param name="providerName">The provider name to look up</param>
         /// <param name="databaseFallback">Function to fetch from database on cache miss</param>
-        /// <returns>Provider Credential entity or null if not found</returns>
-        Task<ProviderCredential?> GetProviderCredentialByNameAsync(string providerName, Func<string, Task<ProviderCredential?>> databaseFallback);
+        /// <returns>Cached provider credential with all keys or null if not found</returns>
+        Task<CachedProviderCredential?> GetProviderCredentialByNameAsync(string providerName, Func<string, Task<CachedProviderCredential?>> databaseFallback);
 
         /// <summary>
         /// Invalidate a Provider Credential in cache

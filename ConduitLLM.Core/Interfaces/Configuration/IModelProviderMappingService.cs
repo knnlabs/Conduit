@@ -29,8 +29,14 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         public string ModelAlias { get; set; } = string.Empty;
 
         /// <summary>
+        /// The ID of the provider.
+        /// </summary>
+        public int ProviderId { get; set; }
+        
+        /// <summary>
         /// The name of the provider.
         /// </summary>
+        [Obsolete("Use ProviderId instead. Provider names are error-prone and will be deprecated.")]
         public string ProviderName { get; set; } = string.Empty;
 
         /// <summary>

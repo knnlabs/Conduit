@@ -39,6 +39,7 @@ export enum ProviderType {
   AWS = 'aws',
   AWSTranscribe = 'awstranscribe',
   AWSTranscribeAlt = 'aws-transcribe',
+  Cerebras = 'cerebras',
   Custom = 'custom',
 }
 
@@ -76,6 +77,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.AWS]: 'AWS',
   [ProviderType.AWSTranscribe]: 'AWS Transcribe',
   [ProviderType.AWSTranscribeAlt]: 'AWS Transcribe',
+  [ProviderType.Cerebras]: 'Cerebras',
   [ProviderType.Custom]: 'Custom Provider',
 };
 
@@ -123,6 +125,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.AWS]: [ProviderCategory.Audio],
   [ProviderType.AWSTranscribe]: [ProviderCategory.Audio],
   [ProviderType.AWSTranscribeAlt]: [ProviderCategory.Audio],
+  [ProviderType.Cerebras]: [ProviderCategory.Chat],
   [ProviderType.Custom]: [ProviderCategory.Custom],
 };
 
@@ -374,6 +377,14 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     requiresOrganizationId: true, // Secret key
     supportsCustomEndpoint: false,
     helpText: 'Requires AWS access key and secret key for Transcribe service',
+  },
+  [ProviderType.Cerebras]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://cloud.cerebras.ai',
+    helpText: 'Get your API key from cloud.cerebras.ai - offers high-performance inference',
   },
   [ProviderType.Custom]: {
     requiresApiKey: true,

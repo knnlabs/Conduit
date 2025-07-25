@@ -41,6 +41,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ProviderCredentials
+                    .Include(pc => pc.ProviderKeyCredentials)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(pc => pc.Id == id, cancellationToken);
             }
@@ -63,6 +64,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ProviderCredentials
+                    .Include(pc => pc.ProviderKeyCredentials)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
             }
@@ -74,12 +76,31 @@ _logger.LogError(ex, "Error getting provider credential for provider {ProviderNa
         }
 
         /// <inheritdoc/>
+        public async Task<ProviderCredential?> GetByProviderTypeAsync(ProviderType providerType, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.ProviderCredentials
+                    .Include(pc => pc.ProviderKeyCredentials)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting provider credential for provider type {ProviderType}", providerType);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<List<ProviderCredential>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ProviderCredentials
+                    .Include(pc => pc.ProviderKeyCredentials)
                     .AsNoTracking()
                     .OrderBy(pc => pc.ProviderName)
                     .ToListAsync(cancellationToken);

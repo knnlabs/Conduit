@@ -174,3 +174,41 @@ export interface ProviderUsageStatistics {
     end: string;
   };
 }
+
+// Provider Key Credential interfaces
+export interface ProviderKeyCredentialDto {
+  id: number;
+  providerCredentialId: number;
+  apiKey: string;
+  organization?: string;
+  keyName?: string;
+  isPrimary: boolean;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt?: string;
+  usageCount: number;
+  errorCount: number;
+  rateLimitExceededCount: number;
+}
+
+export interface CreateProviderKeyCredentialDto {
+  apiKey: string;
+  organization?: string;
+  keyName?: string;
+  isPrimary?: boolean;
+  isEnabled?: boolean;
+}
+
+export interface UpdateProviderKeyCredentialDto {
+  apiKey?: string;
+  organization?: string;
+  keyName?: string;
+  isEnabled?: boolean;
+}
+
+export interface ProviderKeyRotationDto {
+  newApiKey: string;
+  organization?: string;
+  keyName?: string;
+}

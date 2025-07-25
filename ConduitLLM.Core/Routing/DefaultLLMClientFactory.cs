@@ -47,11 +47,21 @@ namespace ConduitLLM.Core.Routing
         /// Cache of LLM clients indexed by provider name
         /// </summary>
         private readonly ConcurrentDictionary<string, ILLMClient> _providerClientCache = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Cache of LLM clients indexed by provider ID
+        /// </summary>
+        private readonly ConcurrentDictionary<int, ILLMClient> _providerIdClientCache = new();
 
         /// <summary>
         /// Maps provider names to factory functions that create client instances
         /// </summary>
         private readonly Dictionary<string, Func<string, ILLMClient>> _providerFactories = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Maps provider IDs to factory functions that create client instances
+        /// </summary>
+        private readonly Dictionary<int, Func<string, ILLMClient>> _providerIdFactories = new();
 
         /// <summary>
         /// Creates a new instance of DefaultLLMClientFactory
@@ -97,6 +107,13 @@ namespace ConduitLLM.Core.Routing
 
             // Try to get from the provider cache first
             return _providerClientCache.GetOrAdd(providerName, CreateClientByProvider);
+        }
+        
+        /// <inheritdoc/>
+        public ILLMClient GetClientByProviderId(int providerId)
+        {
+            // Try to get from the provider ID cache first
+            return _providerIdClientCache.GetOrAdd(providerId, CreateClientByProviderId);
         }
 
         /// <summary>
@@ -150,16 +167,22 @@ _logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias.R
                     throw new ConfigurationException($"No mapping found for model alias '{modelAlias}'");
                 }
 
-                // Get the provider name - we use a default provider name for development since the actual
-                // property path might be different in the ModelProviderMapping implementation
+                // Get the provider ID and name from the mapping
+                int providerId = ModelProviderMappingAdapter.GetProviderId(mapping);
                 string providerName = ModelProviderMappingAdapter.GetProviderName(mapping);
 
-_logger.LogInformation("Using provider {Provider} for model {Model}", providerName.Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
+_logger.LogInformation("Using provider ID {ProviderId} ({Provider}) for model {Model}", providerId, providerName.Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
 
-                // Check if we have a factory for this provider
+                // Check if we have a factory for this provider ID first
+                if (_providerIdFactories.TryGetValue(providerId, out var idFactory))
+                {
+                    return idFactory(ModelProviderMappingAdapter.GetProviderModelName(mapping));
+                }
+                
+                // Fall back to provider name-based factory
                 if (!_providerFactories.TryGetValue(providerName, out var factory))
                 {
-                    _logger.LogWarning("No factory found for provider {ProviderName}", providerName);
+                    _logger.LogWarning("No factory found for provider ID {ProviderId} or name {ProviderName}", providerId, providerName);
 
                     // Return a placeholder client for demonstration purposes
                     return new PlaceholderLLMClient(ModelProviderMappingAdapter.GetProviderModelName(mapping), providerName, _logger);
@@ -206,6 +229,42 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
         }
 
         /// <summary>
+        /// Creates a new LLM client for the specified provider ID
+        /// </summary>
+        private ILLMClient CreateClientByProviderId(int providerId)
+        {
+            try
+            {
+                // Get provider credentials
+                var credentials = _credentialService.GetCredentialByIdAsync(providerId).GetAwaiter().GetResult()
+                    ?? throw new ConfigurationException($"No credentials found for provider ID '{providerId}'");
+
+                // Check if we have a factory for this provider ID
+                if (!_providerIdFactories.TryGetValue(providerId, out var factory))
+                {
+                    _logger.LogWarning("No factory found for provider ID {ProviderId}", providerId);
+                    
+                    // Fall back to provider name-based factory if available
+                    if (_providerFactories.TryGetValue(credentials.ProviderName, out var nameFactory))
+                    {
+                        return nameFactory(null);
+                    }
+
+                    // Return a placeholder client for demonstration purposes
+                    return new PlaceholderLLMClient(null, credentials.ProviderName, _logger);
+                }
+
+                // Create the client using the factory function
+                return factory(null);
+            }
+            catch (Exception ex) when (ex is not ConfigurationException)
+            {
+                _logger.LogError(ex, "Error creating client for provider ID {ProviderId}", providerId);
+                throw new ConfigurationException($"Error creating client for provider ID '{providerId}'", ex);
+            }
+        }
+
+        /// <summary>
         /// Initializes the provider factories
         /// </summary>
         private void InitializeProviderFactories()
@@ -215,6 +274,10 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
             _providerFactories["openai"] = modelId => new PlaceholderLLMClient(modelId, "openai", _logger);
             _providerFactories["anthropic"] = modelId => new PlaceholderLLMClient(modelId, "anthropic", _logger);
             _providerFactories["azureopenai"] = modelId => new PlaceholderLLMClient(modelId, "azureopenai", _logger);
+            _providerFactories["cerebras"] = modelId => new PlaceholderLLMClient(modelId, "cerebras", _logger);
+            
+            // TODO: Initialize provider ID factories based on actual provider IDs from the database
+            // This would typically be done during startup after loading provider configurations
         }
     }
 
@@ -379,6 +442,21 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
     /// </remarks>
     internal static class ModelProviderMappingAdapter
     {
+        /// <summary>
+        /// Gets the provider ID from a model mapping.
+        /// </summary>
+        /// <param name="mapping">The model provider mapping object.</param>
+        /// <returns>The ID of the provider.</returns>
+        /// <remarks>
+        /// The provider ID is a unique numeric identifier for the provider.
+        /// This is more reliable than provider names which can contain typos.
+        /// </remarks>
+        public static int GetProviderId(ModelProviderMapping mapping)
+        {
+            // Get the provider ID from the mapping
+            return mapping.ProviderId;
+        }
+        
         /// <summary>
         /// Gets the provider name from a model mapping.
         /// </summary>

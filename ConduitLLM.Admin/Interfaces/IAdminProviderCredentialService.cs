@@ -63,6 +63,59 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="providerCredential">The provider credential to test</param>
         /// <returns>A result indicating success or failure with error details</returns>
         Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(ProviderCredentialDto providerCredential);
+
+        /// <summary>
+        /// Gets all key credentials for a specific provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <returns>List of key credentials for the provider</returns>
+        Task<IEnumerable<ProviderKeyCredentialDto>> GetProviderKeyCredentialsAsync(int providerId);
+
+        /// <summary>
+        /// Gets a specific key credential
+        /// </summary>
+        /// <param name="keyId">The ID of the key credential</param>
+        /// <returns>The key credential, or null if not found</returns>
+        Task<ProviderKeyCredentialDto?> GetProviderKeyCredentialAsync(int keyId);
+
+        /// <summary>
+        /// Creates a new key credential for a provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyCredential">The key credential to create</param>
+        /// <returns>The created key credential</returns>
+        Task<ProviderKeyCredentialDto> CreateProviderKeyCredentialAsync(int providerId, CreateProviderKeyCredentialDto keyCredential);
+
+        /// <summary>
+        /// Updates a key credential
+        /// </summary>
+        /// <param name="keyId">The ID of the key credential to update</param>
+        /// <param name="keyCredential">The updated key credential data</param>
+        /// <returns>True if update was successful, false if the key credential was not found</returns>
+        Task<bool> UpdateProviderKeyCredentialAsync(int keyId, UpdateProviderKeyCredentialDto keyCredential);
+
+        /// <summary>
+        /// Deletes a key credential
+        /// </summary>
+        /// <param name="keyId">The ID of the key credential to delete</param>
+        /// <returns>True if deletion was successful, false if the key credential was not found</returns>
+        Task<bool> DeleteProviderKeyCredentialAsync(int keyId);
+
+        /// <summary>
+        /// Sets a key as the primary key for a provider
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key to set as primary</param>
+        /// <returns>True if successful, false if the key credential was not found</returns>
+        Task<bool> SetPrimaryKeyAsync(int providerId, int keyId);
+
+        /// <summary>
+        /// Tests a specific key credential
+        /// </summary>
+        /// <param name="providerId">The ID of the provider</param>
+        /// <param name="keyId">The ID of the key to test</param>
+        /// <returns>A result indicating success or failure with error details</returns>
+        Task<ProviderConnectionTestResultDto> TestProviderKeyCredentialAsync(int providerId, int keyId);
     }
 
     /// <summary>
