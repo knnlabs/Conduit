@@ -31,7 +31,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 return await _context.AudioProviderConfigs
                     .Include(c => c.ProviderCredential)
-                    .OrderBy(c => c.ProviderCredential != null ? c.ProviderCredential.ProviderName : "")
+                    .OrderBy(c => c.ProviderCredential != null ? c.ProviderCredential.ProviderType : ProviderType.OpenAI)
                     .ThenByDescending(c => c.RoutingPriority)
                     .ToListAsync();
             }
@@ -61,9 +61,25 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<List<AudioProviderConfig>> GetByProviderNameAsync(string providerName)
         {
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+            {
+                return new List<AudioProviderConfig>();
+            }
+
             return await _context.AudioProviderConfigs
                 .Include(c => c.ProviderCredential)
-                .Where(c => c.ProviderCredential.ProviderName.ToLower() == providerName.ToLower())
+                .Where(c => c.ProviderCredential.ProviderType == providerType)
+                .OrderByDescending(c => c.RoutingPriority)
+                .ToListAsync();
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<AudioProviderConfig>> GetByProviderNameAsync(ProviderType providerType)
+        {
+            return await _context.AudioProviderConfigs
+                .Include(c => c.ProviderCredential)
+                .Where(c => c.ProviderCredential.ProviderType == providerType)
                 .OrderByDescending(c => c.RoutingPriority)
                 .ToListAsync();
         }

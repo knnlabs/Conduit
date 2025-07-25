@@ -61,6 +61,14 @@ namespace ConduitLLM.Configuration.Repositories
         Task<List<Entities.ModelProviderMapping>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets all model provider mappings for a specific provider
+        /// </summary>
+        /// <param name="providerType">The provider type</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A list of model provider mappings for the specified provider</returns>
+        Task<List<Entities.ModelProviderMapping>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Creates a new model provider mapping
         /// </summary>
         /// <param name="modelProviderMapping">The model provider mapping to create</param>

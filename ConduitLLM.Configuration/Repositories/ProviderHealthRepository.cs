@@ -39,8 +39,15 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                    return null;
+                }
+
                 return await _dbContext.ProviderHealthRecords
-                    .Where(r => r.ProviderName == providerName)
+                    .Where(r => r.ProviderType == providerType)
                     .OrderByDescending(r => r.TimestampUtc)
                     .FirstOrDefaultAsync();
             }
@@ -52,12 +59,36 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc />
-        public async Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(string providerName, DateTime since, int limit = 100)
+        public async Task<ProviderHealthRecord?> GetLatestStatusAsync(ProviderType providerType)
         {
             try
             {
                 return await _dbContext.ProviderHealthRecords
-                    .Where(r => r.ProviderName == providerName && r.TimestampUtc >= since)
+                    .Where(r => r.ProviderType == providerType)
+                    .OrderByDescending(r => r.TimestampUtc)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting latest health status for provider type {ProviderType}", providerType);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(string providerName, DateTime since, int limit = 100)
+        {
+            try
+            {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                    return new List<ProviderHealthRecord>();
+                }
+
+                return await _dbContext.ProviderHealthRecords
+                    .Where(r => r.ProviderType == providerType && r.TimestampUtc >= since)
                     .OrderByDescending(r => r.TimestampUtc)
                     .Take(limit)
                     .ToListAsync();
@@ -70,6 +101,24 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(ProviderType providerType, DateTime since, int limit = 100)
+        {
+            try
+            {
+                return await _dbContext.ProviderHealthRecords
+                    .Where(r => r.ProviderType == providerType && r.TimestampUtc >= since)
+                    .OrderByDescending(r => r.TimestampUtc)
+                    .Take(limit)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting health status history for provider type {ProviderType}", providerType);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
         public async Task SaveStatusAsync(ProviderHealthRecord status)
         {
             try
@@ -77,12 +126,12 @@ namespace ConduitLLM.Configuration.Repositories
                 await _dbContext.ProviderHealthRecords.AddAsync(status);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogDebug("Saved health status for provider {ProviderName}: {IsOnline}",
-                    status.ProviderName.Replace(Environment.NewLine, ""), status.IsOnline);
+                _logger.LogDebug("Saved health status for provider {ProviderType}: {IsOnline}",
+                    status.ProviderType, status.IsOnline);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health status for provider {ProviderName}", status.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error saving health status for provider {ProviderType}", status.ProviderType);
                 throw;
             }
         }
@@ -94,7 +143,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 // This query finds the latest status record for each provider
                 var latestStatusIds = await _dbContext.ProviderHealthRecords
-                    .GroupBy(r => r.ProviderName)
+                    .GroupBy(r => r.ProviderType)
                     .Select(g => g.OrderByDescending(r => r.TimestampUtc).FirstOrDefault()!.Id)
                     .ToListAsync();
 
@@ -102,7 +151,7 @@ namespace ConduitLLM.Configuration.Repositories
                     .Where(r => latestStatusIds.Contains(r.Id))
                     .ToListAsync();
 
-                return latestStatuses.ToDictionary(r => r.ProviderName, r => r);
+                return latestStatuses.ToDictionary(r => r.ProviderType.ToString(), r => r);
             }
             catch (Exception ex)
             {
@@ -116,12 +165,34 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                    return null;
+                }
+
                 return await _dbContext.ProviderHealthConfigurations
-                    .FirstOrDefaultAsync(c => c.ProviderName == providerName);
+                    .FirstOrDefaultAsync(c => c.ProviderType == providerType);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting health configuration for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderHealthConfiguration?> GetConfigurationAsync(ProviderType providerType)
+        {
+            try
+            {
+                return await _dbContext.ProviderHealthConfigurations
+                    .FirstOrDefaultAsync(c => c.ProviderType == providerType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting health configuration for provider type {ProviderType}", providerType);
                 throw;
             }
         }
@@ -132,7 +203,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var existing = await _dbContext.ProviderHealthConfigurations
-                    .FirstOrDefaultAsync(c => c.ProviderName == config.ProviderName);
+                    .FirstOrDefaultAsync(c => c.ProviderType == config.ProviderType);
 
                 if (existing == null)
                 {
@@ -152,11 +223,11 @@ namespace ConduitLLM.Configuration.Repositories
 
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogDebug("Saved health configuration for provider {ProviderName}", config.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogDebug("Saved health configuration for provider {ProviderType}", config.ProviderType);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health configuration for provider {ProviderName}", config.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error saving health configuration for provider {ProviderType}", config.ProviderType);
                 throw;
             }
         }
@@ -185,10 +256,10 @@ namespace ConduitLLM.Configuration.Repositories
                 // Group records by provider and calculate uptime percentage
                 var providerRecords = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since)
-                    .GroupBy(r => r.ProviderName)
+                    .GroupBy(r => r.ProviderType)
                     .Select(g => new
                     {
-                        ProviderName = g.Key,
+                        ProviderType = g.Key,
                         TotalChecks = g.Count(),
                         SuccessfulChecks = g.Count(r => r.IsOnline)
                     })
@@ -200,7 +271,7 @@ namespace ConduitLLM.Configuration.Repositories
                         ? (double)record.SuccessfulChecks / record.TotalChecks * 100
                         : 0;
 
-                    uptimeResult[record.ProviderName] = Math.Round(uptimePercentage, 2);
+                    uptimeResult[record.ProviderType.ToString()] = Math.Round(uptimePercentage, 2);
                 }
 
                 return uptimeResult;
@@ -222,17 +293,17 @@ namespace ConduitLLM.Configuration.Repositories
                 // Group records by provider and calculate average response time
                 var providerResponseTimes = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since && r.IsOnline) // Only include successful checks
-                    .GroupBy(r => r.ProviderName)
+                    .GroupBy(r => r.ProviderType)
                     .Select(g => new
                     {
-                        ProviderName = g.Key,
+                        ProviderType = g.Key,
                         AverageResponseTime = g.Average(r => r.ResponseTimeMs)
                     })
                     .ToListAsync();
 
                 foreach (var record in providerResponseTimes)
                 {
-                    responseTimeResult[record.ProviderName] = Math.Round(record.AverageResponseTime, 2);
+                    responseTimeResult[record.ProviderType.ToString()] = Math.Round(record.AverageResponseTime, 2);
                 }
 
                 return responseTimeResult;
@@ -254,17 +325,17 @@ namespace ConduitLLM.Configuration.Repositories
                 // Group records by provider and count errors
                 var providerErrors = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since && !r.IsOnline) // Only include failed checks
-                    .GroupBy(r => r.ProviderName)
+                    .GroupBy(r => r.ProviderType)
                     .Select(g => new
                     {
-                        ProviderName = g.Key,
+                        ProviderType = g.Key,
                         ErrorCount = g.Count()
                     })
                     .ToListAsync();
 
                 foreach (var record in providerErrors)
                 {
-                    errorCountResult[record.ProviderName] = record.ErrorCount;
+                    errorCountResult[record.ProviderType.ToString()] = record.ErrorCount;
                 }
 
                 return errorCountResult;
@@ -291,12 +362,13 @@ namespace ConduitLLM.Configuration.Repositories
                 // Group by provider and then by error category
                 foreach (var record in errorRecords)
                 {
-                    if (!result.ContainsKey(record.ProviderName))
+                    var providerKey = record.ProviderType.ToString();
+                    if (!result.ContainsKey(providerKey))
                     {
-                        result[record.ProviderName] = new Dictionary<string, int>();
+                        result[providerKey] = new Dictionary<string, int>();
                     }
 
-                    var categoryDict = result[record.ProviderName];
+                    var categoryDict = result[providerKey];
                     var category = record.ErrorCategory ?? "Unknown"; // Default category if null
 
                     if (!categoryDict.ContainsKey(category))
@@ -361,10 +433,17 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (config == null)
                 {
+                    // Parse provider name to ProviderType
+                    if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                    {
+                        _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                        throw new ArgumentException($"Invalid provider name: {providerName}");
+                    }
+
                     // Create default configuration
                     config = new ProviderHealthConfiguration
                     {
-                        ProviderName = providerName,
+                        ProviderType = providerType,
                         MonitoringEnabled = true,
                         CheckIntervalMinutes = 5,
                         TimeoutSeconds = 10,
@@ -382,6 +461,40 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error ensuring health configuration exists for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderHealthConfiguration> EnsureConfigurationExistsAsync(ProviderType providerType)
+        {
+            try
+            {
+                var config = await GetConfigurationAsync(providerType);
+
+                if (config == null)
+                {
+                    // Create default configuration
+                    config = new ProviderHealthConfiguration
+                    {
+                        ProviderType = providerType,
+                        MonitoringEnabled = true,
+                        CheckIntervalMinutes = 5,
+                        TimeoutSeconds = 10,
+                        ConsecutiveFailuresThreshold = 3,
+                        NotificationsEnabled = true,
+                        LastCheckedUtc = null
+                    };
+
+                    await SaveConfigurationAsync(config);
+                    _logger.LogInformation("Created default health configuration for provider type {ProviderType}", providerType);
+                }
+
+                return config;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring health configuration exists for provider type {ProviderType}", providerType);
                 throw;
             }
         }
@@ -411,13 +524,44 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc />
+        public async Task UpdateLastCheckedTimeAsync(ProviderType providerType)
+        {
+            try
+            {
+                var config = await GetConfigurationAsync(providerType);
+
+                if (config != null)
+                {
+                    config.LastCheckedUtc = DateTime.UtcNow;
+                    await SaveConfigurationAsync(config);
+                }
+                else
+                {
+                    _logger.LogWarning("Attempted to update LastCheckedUtc for non-existent provider type {ProviderType}", providerType);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating LastCheckedUtc for provider type {ProviderType}", providerType);
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
         public async Task<int> GetConsecutiveFailuresAsync(string providerName, DateTime since)
         {
             try
             {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                    return 0;
+                }
+
                 // Get recent records ordered by timestamp
                 var recentRecords = await _dbContext.ProviderHealthRecords
-                    .Where(r => r.ProviderName == providerName && r.TimestampUtc >= since)
+                    .Where(r => r.ProviderType == providerType && r.TimestampUtc >= since)
                     .OrderByDescending(r => r.TimestampUtc)
                     .ToListAsync();
 
@@ -441,6 +585,41 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error counting consecutive failures for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<int> GetConsecutiveFailuresAsync(ProviderType providerType, DateTime since)
+        {
+            try
+            {
+                // Get recent records ordered by timestamp
+                var recentRecords = await _dbContext.ProviderHealthRecords
+                    .Where(r => r.ProviderType == providerType && r.TimestampUtc >= since)
+                    .OrderByDescending(r => r.TimestampUtc)
+                    .ToListAsync();
+
+                // Count consecutive failures from the most recent record
+                int consecutiveFailures = 0;
+                foreach (var record in recentRecords)
+                {
+                    if (!record.IsOnline)
+                    {
+                        consecutiveFailures++;
+                    }
+                    else
+                    {
+                        // Stop counting when we hit a success
+                        break;
+                    }
+                }
+
+                return consecutiveFailures;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error counting consecutive failures for provider type {ProviderType}", providerType);
                 throw;
             }
         }

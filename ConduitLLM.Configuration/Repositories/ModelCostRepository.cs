@@ -193,10 +193,17 @@ _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPatt
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                    return new List<ModelCost>();
+                }
+
                 // First, get provider credentials for this provider
                 var providerCredential = await dbContext.ProviderCredentials
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
+                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
 
                 if (providerCredential == null)
                 {
@@ -268,6 +275,93 @@ _logger.LogInformation("No model mappings found for provider {ProviderName}", pr
             catch (Exception ex)
             {
 _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelCost>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                // First, get provider credentials for this provider
+                var providerCredential = await dbContext.ProviderCredentials
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
+
+                if (providerCredential == null)
+                {
+                    _logger.LogWarning("No provider credential found for provider type {ProviderType}", providerType);
+                    return new List<ModelCost>();
+                }
+
+                // Get all model mappings for this provider where provider credential matches
+                var providerMappings = await dbContext.ModelProviderMappings
+                    .AsNoTracking()
+                    .Where(m => m.ProviderCredentialId == providerCredential.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (!providerMappings.Any())
+                {
+                    _logger.LogInformation("No model mappings found for provider type {ProviderType}", providerType);
+                    return new List<ModelCost>();
+                }
+
+                // Get the list of model patterns used by this provider
+                var allModelPatterns = new List<string>();
+                // Extract provider model names from mappings for pattern matching
+                var exactModelNames = providerMappings.Select(m => m.ProviderModelName).ToList();
+
+                // Get all model costs
+                var allModelCosts = await dbContext.ModelCosts
+                    .AsNoTracking()
+                    .OrderBy(m => m.ModelIdPattern)
+                    .ToListAsync(cancellationToken);
+
+                // Filter model costs that match:
+                // 1. Exact matches to provider model names
+                // 2. Wildcard patterns that match provider model names
+                var result = new List<ModelCost>();
+
+                // Add exact matches
+                result.AddRange(allModelCosts.Where(c => exactModelNames.Contains(c.ModelIdPattern)));
+
+                // Add wildcard matches
+                var wildcardPatterns = allModelCosts.Where(c => c.ModelIdPattern.Contains('*')).ToList();
+                foreach (var pattern in wildcardPatterns)
+                {
+                    string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
+
+                    // Add if any provider model starts with this pattern prefix
+                    if (exactModelNames.Any(modelName => modelName.StartsWith(patternPrefix)))
+                    {
+                        result.Add(pattern);
+                    }
+                }
+
+                // Also include model patterns that have the provider name in them
+                string providerName = providerType.ToString();
+                var providerPrefixPatterns = allModelCosts
+                    .Where(c => c.ModelIdPattern.StartsWith($"{providerName}/") ||
+                                c.ModelIdPattern.StartsWith($"{providerName}-") ||
+                                c.ModelIdPattern.StartsWith(providerName.ToLowerInvariant()))
+                    .ToList();
+
+                foreach (var pattern in providerPrefixPatterns)
+                {
+                    if (!result.Any(r => r.Id == pattern.Id))
+                    {
+                        result.Add(pattern);
+                    }
+                }
+
+                return result.OrderBy(m => m.ModelIdPattern).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting model costs for provider type {ProviderType}", providerType);
                 throw;
             }
         }
