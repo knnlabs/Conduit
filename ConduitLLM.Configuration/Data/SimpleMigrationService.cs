@@ -95,7 +95,10 @@ namespace ConduitLLM.Configuration.Data
                     throw new InvalidOperationException("Database connection is not PostgreSQL");
                 }
 
-                await connection.OpenAsync(cancellationToken);
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync(cancellationToken);
+                }
 
                 using var cmd = connection.CreateCommand();
                 // pg_try_advisory_lock returns true if lock was acquired, false if already held
