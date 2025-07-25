@@ -173,7 +173,7 @@ public static class ServiceCollectionExtensions
             // Get API key from provider credentials
             try
             {
-                var credential = credentialService.GetCredentialByProviderNameAsync("openrouter").GetAwaiter().GetResult();
+                var credential = credentialService.GetCredentialByProviderTypeAsync(ConduitLLM.Configuration.ProviderType.OpenRouter).GetAwaiter().GetResult();
                 var apiKey = credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
                             credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
                 return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
@@ -195,7 +195,7 @@ public static class ServiceCollectionExtensions
             // Get API key from provider credentials
             try
             {
-                var credential = credentialService.GetCredentialByProviderNameAsync("anthropic").GetAwaiter().GetResult();
+                var credential = credentialService.GetCredentialByProviderTypeAsync(ConduitLLM.Configuration.ProviderType.Anthropic).GetAwaiter().GetResult();
                 var apiKey = credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
                             credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
                 return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);

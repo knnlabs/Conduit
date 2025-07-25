@@ -52,7 +52,6 @@ namespace ConduitLLM.Admin.Adapters
                 {
                     ModelAlias = m.ModelAlias,
                     ProviderId = m.ProviderId,
-                    ProviderName = m.ProviderName,
                     ProviderModelId = m.ProviderModelId,
                     DeploymentName = m.DeploymentName,
                     IsEnabled = true, // Default
@@ -69,7 +68,6 @@ namespace ConduitLLM.Admin.Adapters
                 {
                     ModelAlias = mapping.ModelAlias,
                     ProviderId = mapping.ProviderId,
-                    ProviderName = mapping.ProviderName,
                     ProviderModelId = mapping.ProviderModelId,
                     DeploymentName = mapping.DeploymentName,
                     IsEnabled = true, // Default
@@ -92,7 +90,13 @@ namespace ConduitLLM.Admin.Adapters
 
             public async Task<ProviderCredentials?> GetCredentialByProviderNameAsync(string providerName)
             {
-                var credential = await _innerService.GetCredentialByProviderNameAsync(providerName);
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return null;
+                }
+                
+                var credential = await _innerService.GetCredentialByProviderTypeAsync(providerType);
                 if (credential == null) return null;
 
                 // Get the primary key or first enabled key
@@ -113,7 +117,7 @@ namespace ConduitLLM.Admin.Adapters
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
-                    ProviderName = credential.ProviderName,
+                    ProviderName = credential.ProviderType.ToString(),
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled
@@ -143,7 +147,7 @@ namespace ConduitLLM.Admin.Adapters
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
-                    ProviderName = credential.ProviderName,
+                    ProviderName = credential.ProviderType.ToString(),
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled

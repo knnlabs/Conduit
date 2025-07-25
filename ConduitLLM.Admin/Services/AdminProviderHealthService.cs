@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -52,17 +53,17 @@ namespace ConduitLLM.Admin.Services
             {
                 // Check if configuration already exists for this provider
                 // Check if this provider exists
-                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderName);
+                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType.ToString());
                 if (existingConfig != null)
                 {
-                    throw new InvalidOperationException($"Provider health configuration already exists for provider '{config.ProviderName}'");
+                    throw new InvalidOperationException($"Provider health configuration already exists for provider '{config.ProviderType}'" );
                 }
 
                 // Verify that the provider exists
-                var providerExists = await ProviderExistsAsync(config.ProviderName);
+                var providerExists = await ProviderExistsByTypeAsync(config.ProviderType);
                 if (!providerExists)
                 {
-                    throw new InvalidOperationException($"Provider '{config.ProviderName}' does not exist");
+                    throw new InvalidOperationException($"Provider '{config.ProviderType}' does not exist");
                 }
 
                 // Convert to entity and save
@@ -70,13 +71,13 @@ namespace ConduitLLM.Admin.Services
                 await _providerHealthRepository.SaveConfigurationAsync(configEntity);
 
                 // Retrieve the saved configuration
-                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderName);
+                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType.ToString());
                 if (savedConfig == null)
                 {
-                    throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderName}'");
+                    throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderType}'");
                 }
 
-_logger.LogInformation("Created health configuration for provider '{ProviderName}'", config.ProviderName.Replace(Environment.NewLine, ""));
+_logger.LogInformation("Created health configuration for provider '{ProviderType}'", config.ProviderType.ToString().Replace(Environment.NewLine, ""));
                 return savedConfig.ToDto();
             }
             catch (Exception ex)
@@ -379,8 +380,12 @@ _logger.LogError(ex, "Error retrieving health status history for provider '{Prov
 
             try
             {
-                // Verify that the provider exists
-                var providerExists = await ProviderExistsAsync(providerName);
+                // Verify that the provider exists by parsing the provider name to enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    throw new InvalidOperationException($"Invalid provider name: '{providerName}'");
+                }
+                var providerExists = await ProviderExistsByTypeAsync(providerType);
                 if (!providerExists)
                 {
                     throw new InvalidOperationException($"Provider '{providerName}' does not exist");
@@ -454,23 +459,18 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
         /// <summary>
         /// Checks if a provider exists
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerType">The type of the provider</param>
         /// <returns>True if the provider exists, false otherwise</returns>
-        private async Task<bool> ProviderExistsAsync(string providerName)
+        private async Task<bool> ProviderExistsByTypeAsync(ProviderType providerType)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                return false;
-            }
-
             try
             {
-                var credential = await _providerCredentialRepository.GetByProviderNameAsync(providerName);
+                var credential = await _providerCredentialRepository.GetByProviderTypeAsync(providerType);
                 return credential != null;
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error checking if provider '{ProviderName}' exists".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error checking if provider '{ProviderType}' exists", providerType);
                 return false;
             }
         }

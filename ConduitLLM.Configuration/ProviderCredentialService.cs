@@ -40,16 +40,16 @@ namespace ConduitLLM.Configuration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            _logger.LogInformation("Adding credential for provider: {ProviderName}", credential.ProviderName);
+            _logger.LogInformation("Adding credential for provider: {ProviderType}", credential.ProviderType);
             
             try
             {
                 await _repository.CreateAsync(credential);
-                _logger.LogInformation("Successfully added credential for provider: {ProviderName}", credential.ProviderName);
+                _logger.LogInformation("Successfully added credential for provider: {ProviderType}", credential.ProviderType);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding credential for provider: {ProviderName}", credential.ProviderName);
+                _logger.LogError(ex, "Error adding credential for provider: {ProviderType}", credential.ProviderType);
                 throw;
             }
         }
@@ -107,7 +107,7 @@ namespace ConduitLLM.Configuration
                 }
                 else
                 {
-                    _logger.LogInformation("Retrieved credential for provider: {ProviderName}", credential.ProviderName);
+                    _logger.LogInformation("Retrieved credential for provider: {ProviderType}", credential.ProviderType);
                 }
                 return credential;
             }
@@ -118,34 +118,6 @@ namespace ConduitLLM.Configuration
             }
         }
 
-        public async Task<ProviderCredential?> GetCredentialByProviderNameAsync(string providerName)
-        {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
-            _logger.LogInformation("Getting credential by provider name: {ProviderName}", providerName);
-            
-            try
-            {
-                var credential = await _repository.GetByProviderNameAsync(providerName);
-                if (credential == null)
-                {
-                    _logger.LogInformation("Credential for provider {ProviderName} not found", providerName);
-                }
-                else
-                {
-                    _logger.LogInformation("Retrieved credential for provider: {ProviderName}", providerName);
-                }
-                return credential;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting credential by provider name: {ProviderName}", providerName);
-                throw;
-            }
-        }
 
         public async Task UpdateCredentialAsync(ProviderCredential credential)
         {
@@ -154,7 +126,7 @@ namespace ConduitLLM.Configuration
                 throw new ArgumentNullException(nameof(credential));
             }
 
-            _logger.LogInformation("Updating credential for provider: {ProviderName}", credential.ProviderName);
+            _logger.LogInformation("Updating credential for provider: {ProviderType}", credential.ProviderType);
             
             try
             {
@@ -162,16 +134,16 @@ namespace ConduitLLM.Configuration
                 var success = await _repository.UpdateAsync(credential);
                 if (!success)
                 {
-                    _logger.LogWarning("Failed to update credential for provider: {ProviderName}", credential.ProviderName);
+                    _logger.LogWarning("Failed to update credential for provider: {ProviderType}", credential.ProviderType);
                 }
                 else
                 {
-                    _logger.LogInformation("Successfully updated credential for provider: {ProviderName}", credential.ProviderName);
+                    _logger.LogInformation("Successfully updated credential for provider: {ProviderType}", credential.ProviderType);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating credential for provider: {ProviderName}", credential.ProviderName);
+                _logger.LogError(ex, "Error updating credential for provider: {ProviderType}", credential.ProviderType);
                 throw;
             }
         }
@@ -450,7 +422,7 @@ namespace ConduitLLM.Configuration
                         Success = false,
                         Message = "Key credential not found",
                         ErrorDetails = $"Key with ID {keyId} was not found for provider {providerId}",
-                        ProviderName = "Unknown"
+                        ProviderType = ProviderType.OpenAI // Default to OpenAI for unknown
                     };
                 }
 
@@ -464,7 +436,7 @@ namespace ConduitLLM.Configuration
                         Success = false,
                         Message = "Provider not found",
                         ErrorDetails = $"Provider with ID {providerId} was not found",
-                        ProviderName = "Unknown"
+                        ProviderType = ProviderType.OpenAI // Default to OpenAI for unknown
                     };
                 }
 
@@ -474,7 +446,7 @@ namespace ConduitLLM.Configuration
                 {
                     Success = key.IsEnabled,
                     Message = key.IsEnabled ? "Key is enabled and ready for use" : "Key is disabled",
-                    ProviderName = provider.ProviderName,
+                    ProviderType = provider.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -487,7 +459,7 @@ namespace ConduitLLM.Configuration
                     Success = false,
                     Message = "Test failed",
                     ErrorDetails = ex.Message,
-                    ProviderName = "Unknown",
+                    ProviderType = ProviderType.OpenAI, // Default to OpenAI for unknown
                     Timestamp = DateTime.UtcNow
                 };
             }

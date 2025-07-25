@@ -95,7 +95,13 @@ namespace ConduitLLM.Http.Adapters
 
             public async Task<ProviderCredentials?> GetCredentialByProviderNameAsync(string providerName)
             {
-                var credential = await _innerService.GetCredentialByProviderNameAsync(providerName);
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return null;
+                }
+                
+                var credential = await _innerService.GetCredentialByProviderTypeAsync(providerType);
                 if (credential == null) return null;
 
                 // Get the primary key or first enabled key
@@ -116,7 +122,7 @@ namespace ConduitLLM.Http.Adapters
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
-                    ProviderName = credential.ProviderName,
+                    ProviderName = credential.ProviderType.ToString(),
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled
@@ -146,7 +152,7 @@ namespace ConduitLLM.Http.Adapters
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
-                    ProviderName = credential.ProviderName,
+                    ProviderName = credential.ProviderType.ToString(),
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled

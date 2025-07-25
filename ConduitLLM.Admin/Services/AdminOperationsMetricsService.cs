@@ -233,15 +233,15 @@ namespace ConduitLLM.Admin.Services
                 ConfiguredProviders.WithLabels("replicate", "true").Set(0);
                 ConfiguredProviders.WithLabels("replicate", "false").Set(0);
 
-                foreach (var provider in providers.GroupBy(p => p.ProviderName))
+                foreach (var provider in providers.GroupBy(p => p.ProviderType))
                 {
                     var enabledCount = provider.Count(p => p.IsEnabled);
                     var disabledCount = provider.Count(p => !p.IsEnabled);
 
                     if (enabledCount > 0)
-                        ConfiguredProviders.WithLabels(provider.Key, "true").Set(enabledCount);
+                        ConfiguredProviders.WithLabels(provider.Key.ToString().ToLower(), "true").Set(enabledCount);
                     if (disabledCount > 0)
-                        ConfiguredProviders.WithLabels(provider.Key, "false").Set(disabledCount);
+                        ConfiguredProviders.WithLabels(provider.Key.ToString().ToLower(), "false").Set(disabledCount);
                 }
             }
             catch (Exception ex)
@@ -259,8 +259,8 @@ namespace ConduitLLM.Admin.Services
 
                 // Group by provider and count
                 var mappingsByProvider = mappings
-                    .GroupBy(m => m.ProviderName ?? "unknown")
-                    .Select(g => new { Provider = g.Key, Count = g.Count() });
+                    .GroupBy(m => m.ProviderType)
+                    .Select(g => new { Provider = g.Key.ToString().ToLower(), Count = g.Count() });
 
                 foreach (var group in mappingsByProvider)
                 {

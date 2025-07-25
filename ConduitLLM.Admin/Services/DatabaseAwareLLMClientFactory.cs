@@ -79,9 +79,16 @@ namespace ConduitLLM.Admin.Services
 
             _logger.LogDebug("Getting client for provider {ProviderName} using database credentials", providerName);
 
+            // Parse provider name to ProviderType enum
+            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+            {
+                _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
+                throw new ConfigurationException($"Invalid provider name: '{providerName}'. Please use a valid provider type.");
+            }
+
             // Get credentials from database synchronously (not ideal but matches interface)
             var credentials = Task.Run(async () => 
-                await _credentialService.GetCredentialByProviderNameAsync(providerName)).Result;
+                await _credentialService.GetCredentialByProviderTypeAsync(providerType)).Result;
 
             if (credentials == null || !credentials.IsEnabled)
             {
@@ -97,7 +104,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     new ProviderCredentials
                     {
-                        ProviderName = credentials.ProviderName,
+                        ProviderName = providerType.ToString(),
                         ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
                                 credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
                         BaseUrl = credentials.BaseUrl
@@ -141,7 +148,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     new ProviderCredentials
                     {
-                        ProviderName = credentials.ProviderName,
+                        ProviderName = credentials.ProviderType.ToString(),
                         ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
                                 credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
                         BaseUrl = credentials.BaseUrl
@@ -159,7 +166,7 @@ namespace ConduitLLM.Admin.Services
                 _loggerFactory,
                 _httpClientFactory);
 
-            return tempFactory.GetClientByProvider(credentials.ProviderName);
+            return tempFactory.GetClientByProvider(credentials.ProviderType.ToString());
         }
     }
 }

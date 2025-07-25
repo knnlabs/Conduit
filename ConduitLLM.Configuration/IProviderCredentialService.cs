@@ -14,7 +14,6 @@ namespace ConduitLLM.Configuration
         Task AddCredentialAsync(ProviderCredential credential);
         Task UpdateCredentialAsync(ProviderCredential credential);
         Task DeleteCredentialAsync(int id);
-        Task<ProviderCredential?> GetCredentialByProviderNameAsync(string providerName); // Example method
         Task<ProviderCredential?> GetCredentialByProviderTypeAsync(ProviderType providerType);
         
         // Provider Key Credential methods

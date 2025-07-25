@@ -256,7 +256,7 @@ namespace ConduitLLM.Core.Services
             var allCredentials = await credentialsTask;
             var modelMappings = await mappingsTask;
             
-            var credentialLookup = allCredentials.ToDictionary(c => c.ProviderName.ToLowerInvariant(), c => c);
+            var credentialLookup = allCredentials.ToDictionary(c => c.ProviderType.ToString().ToLowerInvariant(), c => c);
             var credentialIdLookup = allCredentials.ToDictionary(c => c.Id, c => c);
 
             foreach (var providerName in knownProviders)
@@ -298,11 +298,11 @@ namespace ConduitLLM.Core.Services
             {
                 if (!allModels.ContainsKey(mapping.ModelAlias))
                 {
-                    // Use provider ID to look up the provider name if needed
-                    string providerName = mapping.ProviderName;
+                    // Use provider ID to look up the provider type
+                    string providerName = mapping.ProviderType.ToString();
                     if (mapping.ProviderId > 0 && credentialIdLookup.TryGetValue(mapping.ProviderId, out var credential))
                     {
-                        providerName = credential.ProviderName;
+                        providerName = credential.ProviderType.ToString();
                     }
                     
                     allModels[mapping.ModelAlias] = InferModelCapabilities(
@@ -749,16 +749,21 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogDebug("Invalid provider name: {ProviderName}", providerName);
+                    return 0;
+                }
+
                 // Get provider credential to find the ID
-                #pragma warning disable CS0618 // Type or member is obsolete
-                var credential = await _credentialService.GetCredentialByProviderNameAsync(providerName);
-                #pragma warning restore CS0618 // Type or member is obsolete
+                var credential = await _credentialService.GetCredentialByProviderTypeAsync(providerType);
                 if (credential != null)
                 {
                     return credential.Id;
                 }
                 
-                _logger.LogDebug("No provider credential found for provider name: {ProviderName}", providerName);
+                _logger.LogDebug("No provider credential found for provider type: {ProviderType}", providerType);
                 return 0; // Return 0 if provider not found
             }
             catch (Exception ex)
