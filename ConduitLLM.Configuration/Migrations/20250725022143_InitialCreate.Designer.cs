@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20250724214704_AddProviderKeyCredentials")]
-    partial class AddProviderKeyCredentials
+    [Migration("20250725022143_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1317,6 +1317,12 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("KeyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Organization")
+                        .HasColumnType("text");
 
                     b.Property<short>("ProviderAccountGroup")
                         .HasColumnType("smallint");
