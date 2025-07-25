@@ -1,3 +1,5 @@
+import { ProviderType } from './providerType';
+
 /**
  * Comprehensive metrics snapshot from the API
  */
@@ -208,8 +210,8 @@ export interface RabbitMQMetrics {
  * Provider health status
  */
 export interface ProviderHealthStatus {
-  /** Provider name */
-  providerName: string;
+  /** Provider type */
+  providerType: ProviderType;
   /** Whether the provider is healthy */
   isHealthy: boolean;
   /** Last check time */

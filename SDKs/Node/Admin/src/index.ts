@@ -10,6 +10,7 @@ export * from './models/common';
 // discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';
+export * from './models/providerType';
 export * from './models/providerModels';
 export * from './models/providerHealth';
 export * from './models/settings';

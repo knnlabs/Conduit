@@ -83,6 +83,7 @@ export class FetchProviderModelsService {
     const models = await this.getProviderModels(providerName, config);
     return {
       provider: providerName,
+      providerType: 1, // This is a legacy compatibility method, type won't be accurate
       modelsCount: models.length,
       success: true,
       message: `Discovered ${models.length} models for ${providerName}`,

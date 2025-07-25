@@ -1,4 +1,5 @@
 import type { ModelConfigMetadata } from './metadata';
+import { ProviderType } from './providerType';
 
 export interface ModelDto {
   id: string;
@@ -99,13 +100,13 @@ export interface ModelListResponseDto {
 
 // Request/Response for model refresh
 export interface RefreshModelsRequest {
-  providerName: string;
+  providerType: ProviderType;
   forceRefresh?: boolean;
 }
 
 export interface RefreshModelsResponse {
   provider: string;
-  providerName?: string; // For backwards compatibility
+  providerType: ProviderType;
   modelsCount: number;
   modelsUpdated?: number;
   modelsAdded?: number;

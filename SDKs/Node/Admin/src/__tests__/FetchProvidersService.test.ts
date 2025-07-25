@@ -1,5 +1,6 @@
 import { FetchProvidersService } from '../services/FetchProvidersService';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 
 describe('FetchProvidersService', () => {
@@ -63,7 +64,7 @@ describe('FetchProvidersService', () => {
     it('should get provider by ID', async () => {
       const mockProvider = {
         id: 1,
-        providerName: 'openai',
+        providerType: ProviderType.OpenAI,
         apiKey: 'test-key',
         isEnabled: true,
       };
@@ -86,7 +87,7 @@ describe('FetchProvidersService', () => {
   describe('create', () => {
     it('should create a new provider', async () => {
       const createData = {
-        providerName: 'openai',
+        providerType: ProviderType.OpenAI,
         apiKey: 'test-key',
         isEnabled: true,
       };
@@ -122,7 +123,7 @@ describe('FetchProvidersService', () => {
       };
       const mockResponse = {
         id: 1,
-        providerName: 'openai',
+        providerType: ProviderType.OpenAI,
         apiKey: 'new-key',
         isEnabled: false,
       };
@@ -187,7 +188,7 @@ describe('FetchProvidersService', () => {
   describe('testConfig', () => {
     it('should test provider configuration', async () => {
       const config = {
-        providerName: 'openai',
+        providerType: ProviderType.OpenAI,
         apiKey: 'test-key',
         baseUrl: 'https://api.openai.com',
       };
@@ -215,7 +216,7 @@ describe('FetchProvidersService', () => {
   describe('helper methods', () => {
     const mockProvider = {
       id: 1,
-      providerName: 'openai',
+      providerType: ProviderType.OpenAI,
       apiKey: 'test-key',
       apiBase: 'https://api.openai.com',
       isEnabled: true,

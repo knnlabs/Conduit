@@ -1,9 +1,10 @@
 import { FilterOptions } from './common';
 import { ProviderConfigMetadata } from './metadata';
+import { ProviderType } from './providerType';
 
 export interface ProviderCredentialDto {
   id: number;
-  providerName: string;
+  providerType: ProviderType;
   apiKey?: string;
   apiBase?: string;
   organization?: string;
@@ -13,7 +14,7 @@ export interface ProviderCredentialDto {
 }
 
 export interface CreateProviderCredentialDto {
-  providerName: string;
+  providerType: ProviderType;
   apiKey?: string;
   apiBase?: string;
   organization?: string;
@@ -28,7 +29,7 @@ export interface UpdateProviderCredentialDto {
 }
 
 export interface ProviderConnectionTestRequest {
-  providerName: string;
+  providerType: ProviderType;
   apiKey?: string;
   apiBase?: string;
   organization?: string;
@@ -38,7 +39,7 @@ export interface ProviderConnectionTestResultDto {
   success: boolean;
   message: string;
   errorDetails?: string;
-  providerName: string;
+  providerType: ProviderType;
   modelsAvailable?: string[];
   responseTimeMs?: number;
   timestamp?: string;
@@ -55,7 +56,7 @@ export interface ProviderDataDto {
 }
 
 export interface ProviderHealthConfigurationDto {
-  providerName: string;
+  providerType: ProviderType;
   isEnabled: boolean;
   checkIntervalSeconds: number;
   timeoutSeconds: number;
@@ -79,7 +80,7 @@ export interface UpdateProviderHealthConfigurationDto {
 
 export interface ProviderHealthRecordDto {
   id: number;
-  providerName: string;
+  providerType: ProviderType;
   checkTime: string;
   isHealthy: boolean;
   responseTimeMs?: number;
@@ -89,7 +90,7 @@ export interface ProviderHealthRecordDto {
 }
 
 export interface ProviderHealthStatusDto {
-  providerName: string;
+  providerType: ProviderType;
   isHealthy: boolean;
   lastCheckTime?: string;
   lastSuccessTime?: string;
@@ -110,7 +111,7 @@ export interface ProviderHealthSummaryDto {
 }
 
 export interface CreateProviderHealthConfigurationDto {
-  providerName: string;
+  providerType: ProviderType;
   monitoringEnabled?: boolean;
   checkIntervalMinutes?: number;
   timeoutSeconds?: number;
@@ -146,13 +147,13 @@ export interface ProviderStatus {
 
 export interface ProviderFilters extends FilterOptions {
   isEnabled?: boolean;
-  providerName?: string;
+  providerType?: ProviderType;
   hasApiKey?: boolean;
   isHealthy?: boolean;
 }
 
 export interface ProviderHealthFilters extends FilterOptions {
-  providerName?: string;
+  providerType?: ProviderType;
   isHealthy?: boolean;
   startDate?: string;
   endDate?: string;
@@ -161,7 +162,7 @@ export interface ProviderHealthFilters extends FilterOptions {
 }
 
 export interface ProviderUsageStatistics {
-  providerName: string;
+  providerType: ProviderType;
   totalRequests: number;
   successfulRequests: number;
   failedRequests: number;

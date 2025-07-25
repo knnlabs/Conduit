@@ -168,7 +168,7 @@ export class ProviderService extends FetchBaseApiClient {
     const params = {
       pageNumber: filters?.pageNumber ?? 1,
       pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
-      providerName: filters?.providerName,
+      providerType: filters?.providerType,
       isHealthy: filters?.isHealthy,
       startDate: filters?.startDate,
       endDate: filters?.endDate,

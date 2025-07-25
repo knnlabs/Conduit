@@ -297,4 +297,5 @@ export type {
 // Export metadata and common types
 export * from './models/metadata';
 export * from './models/common-types';
+export * from './models/providerType';
 

@@ -1,3 +1,5 @@
+import { ProviderType } from './providerType';
+
 /**
  * Model capabilities that match the ILLMClient interface.
  */
@@ -24,7 +26,7 @@ export interface ModelCapabilities {
  */
 export interface DiscoveredModel {
   id: string;
-  provider: string;
+  provider: ProviderType;
   display_name?: string;
   capabilities: ModelCapabilities;
   metadata?: Record<string, unknown>;
@@ -43,7 +45,7 @@ export interface ModelsDiscoveryResponse {
  * Response model for provider-specific models.
  */
 export interface ProviderModelsDiscoveryResponse {
-  provider: string;
+  provider: ProviderType;
   data: DiscoveredModel[];
   count: number;
 }
@@ -120,7 +122,7 @@ export interface BulkModelDiscoveryRequest {
  */
 export interface ModelDiscoveryResult {
   model: string;
-  provider?: string;
+  provider?: ProviderType;
   displayName?: string;
   capabilities: Record<string, boolean>;
   found: boolean;

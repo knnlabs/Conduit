@@ -1,4 +1,5 @@
 import { FilterOptions } from './common';
+import { ProviderType } from './providerType';
 
 export interface ModelProviderMappingDto {
   id: number;
@@ -155,7 +156,7 @@ export interface ModelMappingFilters extends FilterOptions {
 
 export interface ModelProviderInfo {
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   providerModelId: string;
   isAvailable: boolean;
   isEnabled: boolean;
@@ -194,7 +195,7 @@ export interface ModelMappingSuggestion {
   modelId: string;
   suggestedProviders: {
     providerId: string;
-    providerName: string;
+    providerType: ProviderType;
     providerModelId: string;
     confidence: number;
     reasoning: string;

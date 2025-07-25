@@ -108,7 +108,7 @@ async function manualConnectionExample() {
         console.log('Virtual key updated:', data.keyId);
       },
       onProviderHealthChanged: (data) => {
-        console.log('Provider health changed:', data.providerName, '->', data.status);
+        console.log('Provider health changed:', data.providerType, '->', data.status);
       }
     });
     
