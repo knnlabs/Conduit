@@ -27,6 +27,28 @@ import { SettingsService } from './SettingsService';
 // Get SDK version from package.json at build time
 const SDK_VERSION = process.env.npm_package_version ?? '1.0.0';
 
+// C# API response types
+interface SystemInfoApiResponse {
+  Version?: {
+    AppVersion?: string;
+    BuildDate?: string;
+  };
+  environment?: string;
+  Runtime?: {
+    Uptime?: string;
+    RuntimeVersion?: string;
+  };
+  OperatingSystem?: {
+    Description?: string;
+    Architecture?: string;
+  };
+  Database?: {
+    Provider?: string;
+    ConnectionString?: string;
+    Connected?: boolean;
+  };
+}
+
 const createBackupSchema = z.object({
   description: z.string().max(500).optional(),
   includeKeys: z.boolean().optional(),
@@ -55,13 +77,13 @@ export class SystemService extends FetchBaseApiClient {
     return this.withCache(
       cacheKey,
       async () => {
-        const response = await super.get<any>(ENDPOINTS.SYSTEM.INFO);
+        const response = await super.get<SystemInfoApiResponse>(ENDPOINTS.SYSTEM.INFO);
         // Transform the C# response to TypeScript-friendly format
         return {
-          version: response.Version?.AppVersion || 'Unknown',
-          buildDate: response.Version?.BuildDate || '',
-          environment: response.environment || 'production',
-          uptime: this.parseTimeSpan(response.Runtime?.Uptime) || 0,
+          version: response.Version?.AppVersion ?? 'Unknown',
+          buildDate: response.Version?.BuildDate ?? '',
+          environment: response.environment ?? 'production',
+          uptime: this.parseTimeSpan(response.Runtime?.Uptime) ?? 0,
           systemTime: new Date().toISOString(),
           features: {
             ipFiltering: false,
@@ -70,16 +92,16 @@ export class SystemService extends FetchBaseApiClient {
             audioSupport: false
           },
           runtime: {
-            dotnetVersion: response.Runtime?.RuntimeVersion || 'Unknown',
-            os: response.OperatingSystem?.Description || 'Unknown',
-            architecture: response.OperatingSystem?.Architecture || 'Unknown',
+            dotnetVersion: response.Runtime?.RuntimeVersion ?? 'Unknown',
+            os: response.OperatingSystem?.Description ?? 'Unknown',
+            architecture: response.OperatingSystem?.Architecture ?? 'Unknown',
             memoryUsage: 0,
             cpuUsage: undefined
           },
           database: {
-            provider: response.Database?.Provider || 'Unknown',
+            provider: response.Database?.Provider ?? 'Unknown',
             connectionString: response.Database?.ConnectionString,
-            isConnected: response.Database?.Connected || false,
+            isConnected: response.Database?.Connected ?? false,
             pendingMigrations: []
           }
         };

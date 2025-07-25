@@ -293,9 +293,6 @@ export class FetchSystemService {
    * @since Issue #427 - System Health SDK Methods
    */
   async getSystemHealth(config?: RequestConfig): Promise<SystemHealthDto> {
-    // Get system info for runtime metrics
-    const systemInfo = await this.getSystemInfo(config);
-    
     // Get service status for detailed component health
     const serviceStatus = await this.getServiceStatus(config);
     
