@@ -292,10 +292,16 @@ namespace ConduitLLM.Core.Services
                 if (credentialRepository == null) return false;
                 
                 var credentials = await credentialRepository.GetByIdAsync(providerId);
-                if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
+                if (credentials == null) return false;
+                
+                // Get the API key from ProviderKeyCredentials
+                var primaryKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                
+                if (primaryKey?.ApiKey == null) return false;
                 
                 using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {credentials.ApiKey}");
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {primaryKey.ApiKey}");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.HealthCheckTimeoutSeconds);
                 
                 // Check models endpoint
@@ -320,10 +326,16 @@ namespace ConduitLLM.Core.Services
                 if (credentialRepository == null) return false;
                 
                 var credentials = await credentialRepository.GetByIdAsync(providerId);
-                if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
+                if (credentials == null) return false;
+                
+                // Get the API key from ProviderKeyCredentials
+                var primaryKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                
+                if (primaryKey?.ApiKey == null) return false;
                 
                 using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {credentials.ApiKey}");
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {primaryKey.ApiKey}");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.HealthCheckTimeoutSeconds);
                 
                 // MiniMax doesn't have a dedicated health endpoint
@@ -349,10 +361,16 @@ namespace ConduitLLM.Core.Services
                 if (credentialRepository == null) return false;
                 
                 var credentials = await credentialRepository.GetByIdAsync(providerId);
-                if (credentials == null || string.IsNullOrEmpty(credentials.ApiKey)) return false;
+                if (credentials == null) return false;
+                
+                // Get the API key from ProviderKeyCredentials
+                var primaryKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                
+                if (primaryKey?.ApiKey == null) return false;
                 
                 using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Token {credentials.ApiKey}");
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Token {primaryKey.ApiKey}");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.HealthCheckTimeoutSeconds);
                 
                 // Check account endpoint

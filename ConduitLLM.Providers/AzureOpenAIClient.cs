@@ -39,7 +39,7 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class AzureOpenAIClient : OpenAICompatibleClient
     {
-        private readonly string _apiVersion;
+        private const string ApiVersion = "2024-02-01";
         private readonly string _deploymentName;
 
         /// <summary>
@@ -60,19 +60,18 @@ namespace ConduitLLM.Providers
             ProviderDefaultModels? defaultModels = null)
             : base(credentials ?? throw new ArgumentNullException(nameof(credentials)), 
                   deploymentName, logger, httpClientFactory, providerName: "azure",
-                  baseUrl: credentials?.ApiBase?.TrimEnd('/'), defaultModels)
+                  baseUrl: credentials?.BaseUrl?.TrimEnd('/'), defaultModels)
         {
             // Deployment name is equivalent to provider model ID in Azure
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");
 
             // Validate Azure-specific required fields
-            if (string.IsNullOrWhiteSpace(credentials!.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials!.BaseUrl))
             {
-                throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
+                throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
             }
 
-            // Use the provided API version or default to a recent version
-            _apiVersion = !string.IsNullOrWhiteSpace(credentials.ApiVersion) ? credentials.ApiVersion : "2024-02-01";
+            // API version is now a constant
 
             // For Azure OpenAI, we need to override the endpoints using the proper base URL and API version
             // The BaseUrl field is initialized in the base class constructor, we don't need to reassign it here
@@ -84,7 +83,7 @@ namespace ConduitLLM.Providers
         /// <returns>The full URL for the chat completions endpoint.</returns>
         protected override string GetChatCompletionEndpoint()
         {
-            return $"{BaseUrl}/openai/deployments/{_deploymentName}/chat/completions?api-version={_apiVersion}";
+            return $"{BaseUrl}/openai/deployments/{_deploymentName}/chat/completions?api-version={ApiVersion}";
         }
 
         /// <summary>
@@ -93,7 +92,7 @@ namespace ConduitLLM.Providers
         /// <returns>The full URL for the embeddings endpoint.</returns>
         protected override string GetEmbeddingEndpoint()
         {
-            return $"{BaseUrl}/openai/deployments/{_deploymentName}/embeddings?api-version={_apiVersion}";
+            return $"{BaseUrl}/openai/deployments/{_deploymentName}/embeddings?api-version={ApiVersion}";
         }
 
         /// <summary>
@@ -102,7 +101,7 @@ namespace ConduitLLM.Providers
         /// <returns>The full URL for the image generations endpoint.</returns>
         protected override string GetImageGenerationEndpoint()
         {
-            return $"{BaseUrl}/openai/images/generations?api-version={_apiVersion}";
+            return $"{BaseUrl}/openai/images/generations?api-version={ApiVersion}";
         }
 
         /// <summary>
@@ -117,7 +116,7 @@ namespace ConduitLLM.Providers
         protected override string GetModelsEndpoint()
         {
             // Not directly used as Azure doesn't support model listing via API key
-            return $"{BaseUrl}/openai/models?api-version={_apiVersion}";
+            return $"{BaseUrl}/openai/models?api-version={ApiVersion}";
         }
 
         /// <summary>

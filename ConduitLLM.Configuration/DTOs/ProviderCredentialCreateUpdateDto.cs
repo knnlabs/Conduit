@@ -18,12 +18,8 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Base URL for the provider API
         /// </summary>
-        public string? ApiBase { get; set; }
+        public string? BaseUrl { get; set; }
 
-        /// <summary>
-        /// API key or other authentication token
-        /// </summary>
-        public string? ApiKey { get; set; }
 
         /// <summary>
         /// Whether this provider is enabled
@@ -50,16 +46,8 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Base URL for the provider API
         /// </summary>
-        public string? ApiBase { get; set; }
+        public string? BaseUrl { get; set; }
 
-        /// <summary>
-        /// API key or other authentication token
-        /// </summary>
-        /// <remarks>
-        /// If null or empty, the existing API key will be preserved.
-        /// To clear an API key, use the special value "[REMOVE]".
-        /// </remarks>
-        public string? ApiKey { get; set; }
 
         /// <summary>
         /// Whether this provider is enabled

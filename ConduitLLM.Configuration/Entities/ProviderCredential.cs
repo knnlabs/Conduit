@@ -34,11 +34,6 @@ namespace ConduitLLM.Configuration.Entities
         // e.g. OpenAIProvider, AnthropicProvider, etc.
         public ProviderType ProviderType { get; set; } = ProviderType.OpenAI;
 
-        // Made ApiKey nullable to allow for empty/cleared keys
-        // TODO: Replace this with a ProviderKeyCredential class that will support multiple keys
-        // DEPRECATED: This will be replaced by the ProviderKeyCredentials collection
-        [Obsolete("Use ProviderKeyCredentials collection instead. This field will be removed in v2.0")]
-        public string? ApiKey { get; set; }
 
         /// <summary>
         /// Gets or sets the base URL for the provider API. Optional - uses provider default if not specified.
@@ -46,9 +41,6 @@ namespace ConduitLLM.Configuration.Entities
         // Optional: Base URL if different from default
         public string? BaseUrl { get; set; }
 
-        // Optional: Other provider-specific settings
-        [Obsolete("This field is rarely used and will be removed in v2.0. Use ProviderKeyCredential.ApiVersion for key-specific versions")]
-        public string? ApiVersion { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this provider credential is enabled and available for use.

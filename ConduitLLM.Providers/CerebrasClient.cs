@@ -44,7 +44,7 @@ namespace ConduitLLM.Providers
                 /// <summary>
                 /// Default base URL for the Cerebras Inference API
                 /// </summary>
-                public const string DefaultApiBase = "https://api.cerebras.ai/v1";
+                public const string DefaultBaseUrl = "https://api.cerebras.ai/v1";
             }
 
             public static class Headers
@@ -118,7 +118,7 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 providerName ?? "cerebras",
-                Constants.Urls.DefaultApiBase,
+                Constants.Urls.DefaultBaseUrl,
                 defaultModels)
         {
             if (string.IsNullOrWhiteSpace(credentials.ApiKey))

@@ -60,9 +60,9 @@ namespace ConduitLLM.Providers
                   "bedrock",
                   defaultModels)
         {
-            // Extract region from credentials.ApiBase or use default
-            // ApiBase in this case is treated as the AWS region
-            _region = string.IsNullOrWhiteSpace(credentials.ApiBase) ? "us-east-1" : credentials.ApiBase;
+            // Extract region from credentials.BaseUrl or use default
+            // BaseUrl in this case is treated as the AWS region
+            _region = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? "us-east-1" : credentials.BaseUrl;
         }
 
         private static ProviderCredentials EnsureBedrockCredentials(ProviderCredentials credentials)

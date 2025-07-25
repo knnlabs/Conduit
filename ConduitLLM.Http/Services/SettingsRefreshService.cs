@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Http.Services
 {
@@ -54,7 +55,7 @@ namespace ConduitLLM.Http.Services
                     _logger.LogInformation("Found {Count} enabled model mappings in database", modelMappingsEntities.Count);
 
                     // Convert database entities to configuration models
-                    var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
+                    var modelMappingsList = modelMappingsEntities.Select(m => new ConduitLLM.Configuration.ModelProviderMapping
                     {
                         ModelAlias = m.ModelAlias,
                         ProviderName = m.ProviderCredential.ProviderName,
@@ -78,7 +79,7 @@ namespace ConduitLLM.Http.Services
                     _logger.LogWarning("No enabled model mappings found in database");
                     lock (settings)
                     {
-                        settings.ModelMappings = new List<ModelProviderMapping>();
+                        settings.ModelMappings = new List<ConduitLLM.Configuration.ModelProviderMapping>();
                     }
                 }
             }
@@ -104,8 +105,9 @@ namespace ConduitLLM.Http.Services
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 var settings = _settingsMonitor.CurrentValue;
 
-                // Load enabled provider credentials
+                // Load enabled provider credentials with their keys
                 var providerCredsList = await dbContext.ProviderCredentials
+                    .Include(p => p.ProviderKeyCredentials)
                     .Where(p => p.IsEnabled)
                     .ToListAsync();
 
@@ -114,12 +116,19 @@ namespace ConduitLLM.Http.Services
                     _logger.LogInformation("Found {Count} enabled provider credentials in database", providerCredsList.Count);
 
                     // Convert database entities to configuration models
-                    var providersList = providerCredsList.Select(p => new ProviderCredentials
+                    var providersList = providerCredsList.Select(p => 
                     {
-                        ProviderName = p.ProviderName,
-                        ApiKey = p.ApiKey,
-                        ApiVersion = p.ApiVersion,
-                        ApiBase = p.BaseUrl
+                        // Get the primary key or first enabled key
+                        var primaryKey = p.ProviderKeyCredentials?
+                            .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                            p.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                        
+                        return new ProviderCredentials
+                        {
+                            ProviderName = p.ProviderName,
+                            ApiKey = primaryKey?.ApiKey ?? string.Empty,
+                            BaseUrl = p.BaseUrl
+                        };
                     }).ToList();
 
                     // Thread-safe update of settings

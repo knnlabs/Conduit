@@ -27,7 +27,7 @@ namespace ConduitLLM.Providers
     public class ReplicateClient : CustomProviderClient
     {
         // Default base URL for Replicate API
-        private const string DefaultReplicateApiBase = "https://api.replicate.com/v1/";
+        private const string DefaultReplicateBaseUrl = "https://api.replicate.com/v1/";
 
         // Default polling configuration
         private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2);
@@ -53,7 +53,7 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "Replicate",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase,
+                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultReplicateBaseUrl : credentials.BaseUrl,
                 defaultModels)
         {
         }

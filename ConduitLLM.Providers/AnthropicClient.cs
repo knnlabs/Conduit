@@ -54,7 +54,7 @@ namespace ConduitLLM.Providers
                 /// <summary>
                 /// Default base URL for the Anthropic API
                 /// </summary>
-                public const string DefaultApiBase = "https://api.anthropic.com/v1";
+                public const string DefaultBaseUrl = "https://api.anthropic.com/v1";
             }
 
             public static class Headers
@@ -189,7 +189,7 @@ namespace ConduitLLM.Providers
         /// Authorization header set by the base class and adds the custom header.
         /// </para>
         /// <para>
-        /// This method also sets the base URL for API requests based on the ApiBase property
+        /// This method also sets the base URL for API requests based on the BaseUrl property
         /// of the ProviderCredentials, or falls back to the default Anthropic API URL.
         /// </para>
         /// </remarks>
@@ -200,8 +200,8 @@ namespace ConduitLLM.Providers
             base.ConfigureHttpClient(client, apiKey);
 
             // Set the base address
-            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? Constants.Urls.DefaultApiBase : Credentials.ApiBase;
-            client.BaseAddress = new Uri(apiBase.TrimEnd('/'));
+            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl) ? Constants.Urls.DefaultBaseUrl : Credentials.BaseUrl;
+            client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
         }
 
         /// <summary>

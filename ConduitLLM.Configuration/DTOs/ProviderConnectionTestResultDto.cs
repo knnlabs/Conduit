@@ -31,5 +31,10 @@ namespace ConduitLLM.Configuration.DTOs
         /// Gets or sets the timestamp when the test was performed.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Gets or sets the response time in milliseconds for the connection test.
+        /// </summary>
+        public double? ResponseTimeMs { get; set; }
     }
 }

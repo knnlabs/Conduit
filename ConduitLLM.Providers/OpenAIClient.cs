@@ -44,13 +44,11 @@ namespace ConduitLLM.Providers
         {
             public static class Urls
             {
-                public const string DefaultOpenAIApiBase = "https://api.openai.com/v1";
+                public const string DefaultOpenAIBaseUrl = "https://api.openai.com/v1";
             }
 
-            public static class ApiVersions
-            {
-                public const string DefaultAzureApiVersion = "2024-02-01";
-            }
+            // Azure API version is now hardcoded
+            public const string AzureApiVersion = "2024-02-01";
 
             public static class Endpoints
             {
@@ -100,9 +98,9 @@ namespace ConduitLLM.Providers
             _capabilityService = capabilityService;
 
             // Specific validation for Azure credentials
-            if (_isAzure && string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (_isAzure && string.IsNullOrWhiteSpace(credentials.BaseUrl))
             {
-                throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for the 'azure' provider.");
+                throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for the 'azure' provider.");
             }
         }
 
@@ -114,13 +112,13 @@ namespace ConduitLLM.Providers
             // For Azure, we'll handle this specially in the endpoint methods
             if (providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
             {
-                return credentials.ApiBase ?? "";
+                return credentials.BaseUrl ?? "";
             }
 
             // For standard OpenAI or compatible providers
-            return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? Constants.Urls.DefaultOpenAIApiBase
-                : credentials.ApiBase.TrimEnd('/');
+            return string.IsNullOrWhiteSpace(credentials.BaseUrl)
+                ? Constants.Urls.DefaultOpenAIBaseUrl
+                : credentials.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>
@@ -150,9 +148,7 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
-                    ? Credentials.ApiVersion
-                    : Constants.ApiVersions.DefaultAzureApiVersion;
+                string apiVersion = Constants.AzureApiVersion;
 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/chat/completions?api-version={apiVersion}";
             }
@@ -167,9 +163,7 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
-                    ? Credentials.ApiVersion
-                    : Constants.ApiVersions.DefaultAzureApiVersion;
+                string apiVersion = Constants.AzureApiVersion;
 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments?api-version={apiVersion}";
             }
@@ -184,9 +178,7 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
-                    ? Credentials.ApiVersion
-                    : Constants.ApiVersions.DefaultAzureApiVersion;
+                string apiVersion = Constants.AzureApiVersion;
 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/embeddings?api-version={apiVersion}";
             }
@@ -201,9 +193,7 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
-                    ? Credentials.ApiVersion
-                    : Constants.ApiVersions.DefaultAzureApiVersion;
+                string apiVersion = Constants.AzureApiVersion;
 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/images/generations?api-version={apiVersion}";
             }
@@ -577,9 +567,7 @@ namespace ConduitLLM.Providers
         /// </summary>
         private string GetAzureAudioEndpoint(string operation)
         {
-            string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
-                ? Credentials.ApiVersion
-                : Constants.ApiVersions.DefaultAzureApiVersion;
+            string apiVersion = Constants.AzureApiVersion;
 
             return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/audio/{operation}?api-version={apiVersion}";
         }

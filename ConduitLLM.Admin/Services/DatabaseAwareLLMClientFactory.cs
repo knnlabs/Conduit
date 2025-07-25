@@ -98,7 +98,9 @@ namespace ConduitLLM.Admin.Services
                     new ProviderCredentials
                     {
                         ProviderName = credentials.ProviderName,
-                        ApiKey = credentials.ApiKey
+                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
+                        BaseUrl = credentials.BaseUrl
                     }
                 },
                 // Copy other relevant settings from current settings
@@ -140,7 +142,9 @@ namespace ConduitLLM.Admin.Services
                     new ProviderCredentials
                     {
                         ProviderName = credentials.ProviderName,
-                        ApiKey = credentials.ApiKey
+                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
+                        BaseUrl = credentials.BaseUrl
                     }
                 },
                 // Copy other relevant settings from current settings

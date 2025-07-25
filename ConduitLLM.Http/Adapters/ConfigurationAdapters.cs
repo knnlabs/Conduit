@@ -98,19 +98,18 @@ namespace ConduitLLM.Http.Adapters
                 var credential = await _innerService.GetCredentialByProviderNameAsync(providerName);
                 if (credential == null) return null;
 
-                // Get the primary key if available, otherwise fall back to legacy ApiKey
-                string? effectiveApiKey = credential.ApiKey;
+                // Get the primary key or first enabled key
+                string? effectiveApiKey = null;
                 string? effectiveBaseUrl = credential.BaseUrl;
-                string? effectiveApiVersion = credential.ApiVersion;
                 
                 if (credential.ProviderKeyCredentials?.Any() == true)
                 {
-                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled);
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
                     if (primaryKey != null)
                     {
-                        effectiveApiKey = primaryKey.ApiKey ?? credential.ApiKey;
+                        effectiveApiKey = primaryKey.ApiKey;
                         effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
-                        effectiveApiVersion = primaryKey.ApiVersion ?? credential.ApiVersion;
                     }
                 }
 
@@ -120,7 +119,6 @@ namespace ConduitLLM.Http.Adapters
                     ProviderName = credential.ProviderName,
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
-                    ApiVersion = effectiveApiVersion,
                     IsEnabled = credential.IsEnabled
                 };
             }
@@ -130,19 +128,18 @@ namespace ConduitLLM.Http.Adapters
                 var credential = await _innerService.GetCredentialByIdAsync(providerId);
                 if (credential == null) return null;
 
-                // Get the primary key if available, otherwise fall back to legacy ApiKey
-                string? effectiveApiKey = credential.ApiKey;
+                // Get the primary key or first enabled key
+                string? effectiveApiKey = null;
                 string? effectiveBaseUrl = credential.BaseUrl;
-                string? effectiveApiVersion = credential.ApiVersion;
                 
                 if (credential.ProviderKeyCredentials?.Any() == true)
                 {
-                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled);
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
                     if (primaryKey != null)
                     {
-                        effectiveApiKey = primaryKey.ApiKey ?? credential.ApiKey;
+                        effectiveApiKey = primaryKey.ApiKey;
                         effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
-                        effectiveApiVersion = primaryKey.ApiVersion ?? credential.ApiVersion;
                     }
                 }
 
@@ -152,7 +149,6 @@ namespace ConduitLLM.Http.Adapters
                     ProviderName = credential.ProviderName,
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
-                    ApiVersion = effectiveApiVersion,
                     IsEnabled = credential.IsEnabled
                 };
             }

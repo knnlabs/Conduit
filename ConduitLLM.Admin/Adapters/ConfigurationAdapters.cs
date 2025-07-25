@@ -95,13 +95,27 @@ namespace ConduitLLM.Admin.Adapters
                 var credential = await _innerService.GetCredentialByProviderNameAsync(providerName);
                 if (credential == null) return null;
 
+                // Get the primary key or first enabled key
+                string? effectiveApiKey = null;
+                string? effectiveBaseUrl = credential.BaseUrl;
+                
+                if (credential.ProviderKeyCredentials?.Any() == true)
+                {
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
+                    if (primaryKey != null)
+                    {
+                        effectiveApiKey = primaryKey.ApiKey;
+                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
+                    }
+                }
+
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
                     ProviderName = credential.ProviderName,
-                    ApiKey = credential.ApiKey,
-                    BaseUrl = credential.BaseUrl,
-                    ApiVersion = credential.ApiVersion,
+                    ApiKey = effectiveApiKey,
+                    BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled
                 };
             }
@@ -111,13 +125,27 @@ namespace ConduitLLM.Admin.Adapters
                 var credential = await _innerService.GetCredentialByIdAsync(providerId);
                 if (credential == null) return null;
 
+                // Get the primary key or first enabled key
+                string? effectiveApiKey = null;
+                string? effectiveBaseUrl = credential.BaseUrl;
+                
+                if (credential.ProviderKeyCredentials?.Any() == true)
+                {
+                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
+                    if (primaryKey != null)
+                    {
+                        effectiveApiKey = primaryKey.ApiKey;
+                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
+                    }
+                }
+
                 return new ProviderCredentials
                 {
                     ProviderId = credential.Id,
                     ProviderName = credential.ProviderName,
-                    ApiKey = credential.ApiKey,
-                    BaseUrl = credential.BaseUrl,
-                    ApiVersion = credential.ApiVersion,
+                    ApiKey = effectiveApiKey,
+                    BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled
                 };
             }

@@ -31,10 +31,9 @@ namespace ConduitLLM.Providers
     public class GeminiClient : CustomProviderClient
     {
         // Gemini-specific constants
-        private const string DefaultApiBase = "https://generativelanguage.googleapis.com/";
+        private const string DefaultBaseUrl = "https://generativelanguage.googleapis.com/";
         private const string DefaultApiVersion = "v1beta";
 
-        private readonly string _apiVersion;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GeminiClient"/> class.
@@ -58,10 +57,10 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "Gemini",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase,
+                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultBaseUrl : credentials.BaseUrl,
                 defaultModels)
         {
-            _apiVersion = apiVersion ?? DefaultApiVersion;
+            // API version is now constant, ignoring apiVersion parameter
         }
 
         /// <inheritdoc/>
@@ -150,7 +149,7 @@ namespace ConduitLLM.Providers
                     async () =>
                     {
                         using var client = CreateHttpClient(effectiveApiKey);
-                        var requestUri = $"{_apiVersion}/models/{ProviderModelId}:generateContent?key={effectiveApiKey}";
+                        var requestUri = $"{DefaultApiVersion}/models/{ProviderModelId}:generateContent?key={effectiveApiKey}";
                         Logger.LogDebug("Sending request to Gemini API: {Endpoint}", requestUri);
 
                         var response = await client.PostAsJsonAsync(requestUri, geminiRequest, cancellationToken)
@@ -284,7 +283,7 @@ namespace ConduitLLM.Providers
                         using var client = CreateHttpClient(effectiveApiKey);
 
                         // Construct endpoint URL with the effective API key
-                        string endpoint = $"{_apiVersion}/models?key={effectiveApiKey}";
+                        string endpoint = $"{DefaultApiVersion}/models?key={effectiveApiKey}";
                         Logger.LogDebug("Sending request to list Gemini models from: {Endpoint}", endpoint);
 
                         var response = await client.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
@@ -394,7 +393,7 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken)
         {
             // Add streaming parameter to the URL
-            var endpoint = $"{_apiVersion}/models/{ProviderModelId}:streamGenerateContent?key={effectiveApiKey}&alt=sse";
+            var endpoint = $"{DefaultApiVersion}/models/{ProviderModelId}:streamGenerateContent?key={effectiveApiKey}&alt=sse";
             Logger.LogDebug("Sending streaming request to Gemini API: {Endpoint}", endpoint);
 
             using var client = CreateHttpClient(effectiveApiKey);

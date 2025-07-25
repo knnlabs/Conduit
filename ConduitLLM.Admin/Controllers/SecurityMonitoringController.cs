@@ -344,7 +344,7 @@ namespace ConduitLLM.Admin.Controllers
             if (await context.RequestLogs.AnyAsync(cancellationToken))
                 score += 20; // Logging enabled
 
-            if (await context.ProviderCredentials.AllAsync(p => !string.IsNullOrEmpty(p.ApiKey), cancellationToken))
+            if (await context.ProviderCredentials.AllAsync(p => p.ProviderKeyCredentials.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)), cancellationToken))
                 score += 25; // All keys configured
 
             score += 20; // Base score for having security monitoring

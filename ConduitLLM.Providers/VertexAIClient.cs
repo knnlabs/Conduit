@@ -64,12 +64,10 @@ namespace ConduitLLM.Providers
                 null, // baseUrl
                 defaultModels)
         {
-            _apiVersion = apiVersion ?? (!string.IsNullOrWhiteSpace(credentials.ApiVersion)
-                ? credentials.ApiVersion
-                : DefaultApiVersion);
+            _apiVersion = apiVersion ?? DefaultApiVersion;
 
-            _region = !string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? credentials.ApiBase
+            _region = !string.IsNullOrWhiteSpace(credentials.BaseUrl)
+                ? credentials.BaseUrl
                 : DefaultRegion;
 
             // Extract project ID from ApiKey if possible, otherwise use default
@@ -502,10 +500,8 @@ namespace ConduitLLM.Providers
             // In a real scenario, project ID would be part of the credentials
             // For now, extract from ApiBase or use a default
 
-            if (!string.IsNullOrWhiteSpace(credentials.ApiVersion))
-            {
-                return credentials.ApiVersion;
-            }
+            // ApiVersion no longer exists in credentials, return project ID from ApiKey
+            // or a default value
 
             return "vertex-ai-project"; // Default project ID
         }

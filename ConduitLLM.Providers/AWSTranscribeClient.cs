@@ -57,8 +57,8 @@ namespace ConduitLLM.Providers
                 "aws",
                 defaultModels)
         {
-            // Extract region from credentials.ApiBase or use default
-            _region = string.IsNullOrWhiteSpace(credentials.ApiBase) ? "us-east-1" : credentials.ApiBase;
+            // Extract region from credentials.BaseUrl or use default
+            _region = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? "us-east-1" : credentials.BaseUrl;
             
             // Initialize AWS clients
             // For now, we'll use environment variables for AWS credentials

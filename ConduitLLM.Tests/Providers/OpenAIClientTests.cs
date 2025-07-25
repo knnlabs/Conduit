@@ -82,7 +82,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ApiBase = "https://myinstance.openai.azure.com",
+                BaseUrl = "https://myinstance.openai.azure.com",
                 ProviderName = "azure"
             };
             var modelId = "my-deployment";
@@ -121,7 +121,7 @@ namespace ConduitLLM.Tests.Providers
                     _httpClientFactoryMock.Object,
                     _capabilityServiceMock.Object));
 
-            Assert.Contains("ApiBase", exception.Message);
+            Assert.Contains("BaseUrl", exception.Message);
         }
 
         [Fact]
@@ -837,9 +837,8 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ApiBase = "https://myinstance.openai.azure.com",
-                ProviderName = "azure",
-                ApiVersion = "2024-02-01"
+                BaseUrl = "https://myinstance.openai.azure.com",
+                ProviderName = "azure"
             };
             var logger = CreateLogger<OpenAIClient>();
 

@@ -129,7 +129,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 Id = 1,
                 ProviderName = "openai",
                 IsEnabled = true,
-                ApiBase = "https://api.openai.com"
+                BaseUrl = "https://api.openai.com"
             };
 
             _mockService.Setup(x => x.GetProviderCredentialByIdAsync(1))
@@ -233,8 +233,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var request = new CreateProviderCredentialDto
             {
                 ProviderName = "new-provider",
-                ApiKey = "test-api-key",
-                ApiBase = "https://api.example.com",
+                BaseUrl = "https://api.example.com",
                 IsEnabled = true
             };
 
@@ -242,7 +241,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 10,
                 ProviderName = request.ProviderName,
-                ApiBase = request.ApiBase ?? string.Empty,
+                BaseUrl = request.BaseUrl ?? string.Empty,
                 IsEnabled = request.IsEnabled
             };
 
@@ -269,7 +268,6 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var request = new CreateProviderCredentialDto
             {
                 ProviderName = "existing-provider",
-                ApiKey = "test-key"
             };
 
             _mockService.Setup(x => x.CreateProviderCredentialAsync(It.IsAny<CreateProviderCredentialDto>()))
@@ -294,9 +292,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var request = new UpdateProviderCredentialDto
             {
                 Id = 1,
-                ApiBase = "https://api.updated.com",
-                IsEnabled = false,
-                ApiKey = "new-api-key"
+                BaseUrl = "https://api.updated.com",
+                IsEnabled = false
             };
 
             _mockService.Setup(x => x.UpdateProviderCredentialAsync(It.IsAny<UpdateProviderCredentialDto>()))

@@ -220,7 +220,7 @@ namespace ConduitLLM.Admin.Services
                     return await CheckGoogleHealthAsync(provider);
                 default:
                     // For unknown providers, assume healthy if credentials exist
-                    return !string.IsNullOrEmpty(provider.ApiKey);
+                    return provider.ProviderKeyCredentials?.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)) ?? false;
             }
         }
 
@@ -232,7 +232,10 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {provider.ApiKey}");
+                var apiKey = provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                            provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
+                if (string.IsNullOrEmpty(apiKey)) return false;
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
 
                 // Call OpenAI models endpoint as a health check
@@ -252,8 +255,12 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                var apiKey = provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                            provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
+                if (string.IsNullOrEmpty(apiKey)) return false;
+                
                 using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("x-api-key", provider.ApiKey);
+                httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
                 httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
 
@@ -284,7 +291,10 @@ namespace ConduitLLM.Admin.Services
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
 
                 // Call Google AI models endpoint
-                var response = await httpClient.GetAsync($"https://generativelanguage.googleapis.com/v1beta/models?key={provider.ApiKey}");
+                var apiKey = provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                            provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
+                if (string.IsNullOrEmpty(apiKey)) return false;
+                var response = await httpClient.GetAsync($"https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}");
                 return response.IsSuccessStatusCode;
             }
             catch

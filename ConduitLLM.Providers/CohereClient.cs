@@ -45,7 +45,7 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class CohereClient : CustomProviderClient
     {
-        private const string DefaultApiBase = "https://api.cohere.ai";
+        private const string DefaultBaseUrl = "https://api.cohere.ai";
         private const string ChatEndpoint = "v1/chat";
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace ConduitLLM.Providers
                   logger,
                   httpClientFactory,
                   "cohere",
-                  credentials.ApiBase ?? DefaultApiBase,
+                  credentials.BaseUrl ?? DefaultBaseUrl,
                   defaultModels)
         {
         }

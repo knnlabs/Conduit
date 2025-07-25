@@ -25,12 +25,8 @@ public class ProviderCredentials
     /// Gets or sets the base URL for the provider's API endpoint.
     /// If null, a default endpoint might be used by the specific provider client.
     /// </summary>
-    public string? ApiBase { get; set; }
+    public string? BaseUrl { get; set; }
 
-    /// <summary>
-    /// Gets or sets the API version, particularly relevant for providers like Azure OpenAI.
-    /// </summary>
-    public string? ApiVersion { get; set; }
 
     // Consider adding a dictionary for provider-specific settings if needed later:
     // public Dictionary<string, string>? AdditionalSettings { get; set; }

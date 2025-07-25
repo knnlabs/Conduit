@@ -29,7 +29,7 @@ namespace ConduitLLM.Providers
     public class FireworksClient : OpenAICompatibleClient
     {
         // Default base URL for Fireworks API
-        private const string DefaultFireworksApiBase = "https://api.fireworks.ai/inference/v1";
+        private const string DefaultFireworksBaseUrl = "https://api.fireworks.ai/inference/v1";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FireworksClient"/> class.
@@ -51,7 +51,7 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "Fireworks",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultFireworksApiBase : credentials.ApiBase,
+                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultFireworksBaseUrl : credentials.BaseUrl,
                 defaultModels)
         {
         }

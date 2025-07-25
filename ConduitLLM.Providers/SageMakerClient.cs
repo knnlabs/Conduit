@@ -66,9 +66,9 @@ namespace ConduitLLM.Providers
                 throw new ConfigurationException("AWS Access Key ID (ApiKey) is missing for AWS SageMaker provider.");
             }
 
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
             {
-                throw new ConfigurationException("AWS Region (ApiBase) is missing for AWS SageMaker provider.");
+                throw new ConfigurationException("AWS Region (BaseUrl) is missing for AWS SageMaker provider.");
             }
 
             return credentials;
@@ -86,7 +86,7 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Authorization = null;
 
             // Set the base address to the SageMaker runtime endpoint
-            string region = Credentials.ApiBase ?? "us-east-1";
+            string region = Credentials.BaseUrl ?? "us-east-1";
             client.BaseAddress = new Uri(GetSageMakerRuntimeEndpoint(region));
         }
 

@@ -266,9 +266,19 @@ namespace ConduitLLM.Core.Services
                     if (credentialLookup.TryGetValue(providerName.ToLowerInvariant(), out var credentials) 
                         && credentials.IsEnabled)
                     {
+                        // Get the API key from ProviderKeyCredentials
+                        var primaryKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                        credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                        
+                        if (primaryKey?.ApiKey == null)
+                        {
+                            _logger.LogWarning("No API key available for provider {Provider}", providerName);
+                            continue;
+                        }
+                        
                         var providerModels = await DiscoverProviderModelsAsync(
                             providerName, 
-                            credentials.ApiKey, 
+                            primaryKey.ApiKey, 
                             cancellationToken);
 
                         foreach (var model in providerModels)

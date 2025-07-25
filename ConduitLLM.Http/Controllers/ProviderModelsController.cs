@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
@@ -65,6 +66,7 @@ namespace ConduitLLM.Http.Controllers
                 // EF Core can't translate StringComparison.OrdinalIgnoreCase, use ToLower() instead
                 var providerNameLower = providerName.ToLower();
                 var provider = await dbContext.ProviderCredentials
+                    .Include(p => p.ProviderKeyCredentials)
                     .FirstOrDefaultAsync(p => p.ProviderName.ToLower() == providerNameLower);
 
                 if (provider == null)
@@ -73,7 +75,12 @@ namespace ConduitLLM.Http.Controllers
                     return NotFound(new { error = $"Provider '{providerName}' not found" });
                 }
 
-                if (string.IsNullOrEmpty(provider.ApiKey))
+                // Get the primary key or first enabled key from ProviderKeyCredentials
+                var primaryKey = provider.ProviderKeyCredentials?
+                    .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                    provider.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+
+                if (primaryKey == null || string.IsNullOrEmpty(primaryKey.ApiKey))
                 {
                     _logger.LogWarning("API key missing for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "API key is required to retrieve models" });
@@ -83,9 +90,8 @@ namespace ConduitLLM.Http.Controllers
                 var providerCredentials = new ProviderCredentials
                 {
                     ProviderName = provider.ProviderName,
-                    ApiKey = provider.ApiKey,
-                    ApiBase = provider.BaseUrl,
-                    ApiVersion = provider.ApiVersion
+                    ApiKey = primaryKey.ApiKey,
+                    BaseUrl = provider.BaseUrl
                 };
 
                 // Use the model list service to get models

@@ -31,8 +31,8 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class UltravoxClient : BaseLLMClient, ILLMClient, IRealtimeAudioClient
     {
-        private const string API_BASE_URL = "https://api.ultravox.ai/v1";
-        private const string WS_BASE_URL = "wss://api.ultravox.ai/v1";
+        private const string DEFAULT_BASE_URL = "https://api.ultravox.ai/v1";
+        private const string DEFAULT_WS_BASE_URL = "wss://api.ultravox.ai/v1";
         private readonly IRealtimeMessageTranslator _translator;
 
         /// <summary>
@@ -127,7 +127,8 @@ namespace ConduitLLM.Providers
             try
             {
                 // Create WebSocket connection
-                var wsUri = new Uri($"{WS_BASE_URL}/realtime?model={Uri.EscapeDataString(config.Model ?? ProviderModelId)}");
+                var wsBaseUrl = Credentials.BaseUrl?.Replace("https://", "wss://").Replace("http://", "ws://") ?? DEFAULT_WS_BASE_URL;
+                var wsUri = new Uri($"{wsBaseUrl}/realtime?model={Uri.EscapeDataString(config.Model ?? ProviderModelId)}");
                 var clientWebSocket = new ClientWebSocket();
                 clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {effectiveApiKey}");
                 clientWebSocket.Options.SetRequestHeader("User-Agent", "ConduitLLM/1.0");

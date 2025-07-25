@@ -29,7 +29,7 @@ namespace ConduitLLM.Providers
     public class HuggingFaceClient : BaseLLMClient
     {
         // Constants
-        private const string DefaultApiBase = "https://api-inference.huggingface.co/models/";
+        private const string DefaultBaseUrl = "https://api-inference.huggingface.co/models/";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HuggingFaceClient"/> class.
@@ -79,11 +79,11 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             // Configure base address
-            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase)
-                ? DefaultApiBase
-                : Credentials.ApiBase.TrimEnd('/');
+            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl)
+                ? DefaultBaseUrl
+                : Credentials.BaseUrl.TrimEnd('/');
 
-            client.BaseAddress = new Uri(apiBase);
+            client.BaseAddress = new Uri(baseUrl);
         }
 
         /// <inheritdoc />
@@ -632,7 +632,7 @@ namespace ConduitLLM.Providers
         private string GetHuggingFaceEndpoint(string modelId)
         {
             // If the base URL already contains the model endpoint, don't add it again
-            if (Credentials.ApiBase != null && Credentials.ApiBase.Contains("/models/"))
+            if (Credentials.BaseUrl != null && Credentials.BaseUrl.Contains("/models/"))
             {
                 return string.Empty; // Use the base address as is
             }

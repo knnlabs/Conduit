@@ -92,33 +92,6 @@ namespace ConduitLLM.Admin.Services
 
                 _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
 
-                // If an API key was provided during creation, automatically create an initial key credential
-                if (!string.IsNullOrWhiteSpace(providerCredential.ApiKey))
-                {
-                    _logger.LogInformation("Creating initial API key for provider {ProviderId}", createdCredential.Id);
-                    
-                    var initialKey = new CreateProviderKeyCredentialDto
-                    {
-                        ApiKey = providerCredential.ApiKey,
-                        KeyName = "Default Key",
-                        Organization = providerCredential.Organization,
-                        BaseUrl = providerCredential.ApiBase,
-                        IsPrimary = true,
-                        IsEnabled = true,
-                        ProviderAccountGroup = 0 // Default group
-                    };
-
-                    try 
-                    {
-                        await CreateProviderKeyCredentialAsync(createdCredential.Id, initialKey);
-                        _logger.LogInformation("Successfully created initial API key for provider {ProviderId}", createdCredential.Id);
-                    }
-                    catch (Exception keyEx)
-                    {
-                        _logger.LogError(keyEx, "Failed to create initial API key for provider {ProviderId}. Provider was created but key creation failed.", createdCredential.Id);
-                        // Don't throw - provider was created successfully, just log the key creation failure
-                    }
-                }
 
                 // Publish ProviderCredentialUpdated event (creation is treated as an update)
                 await PublishEventAsync(
@@ -127,7 +100,7 @@ namespace ConduitLLM.Admin.Services
                         ProviderId = createdCredential.Id,
                         ProviderName = createdCredential.ProviderName,
                         IsEnabled = createdCredential.IsEnabled,
-                        ChangedProperties = new[] { "ProviderName", "ApiKey", "BaseUrl", "IsEnabled" }, // All properties for creation
+                        ChangedProperties = new[] { "ProviderName", "BaseUrl", "IsEnabled" }, // All properties for creation
                         CorrelationId = Guid.NewGuid().ToString()
                     },
                     $"create provider credential {createdCredential.Id}",
@@ -264,9 +237,7 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                _logger.LogInformation("Testing provider connection for {ProviderName} with API key starting with: {ApiKeyPrefix}", 
-                    providerCredential.ProviderName, 
-                    string.IsNullOrEmpty(providerCredential.ApiKey) ? "[EMPTY]" : providerCredential.ApiKey.Substring(0, Math.Min(10, providerCredential.ApiKey.Length)));
+                _logger.LogInformation("Testing provider connection for {ProviderName}", providerCredential.ProviderName);
                 
                 var startTime = DateTime.UtcNow;
                 var result = new ProviderConnectionTestResultDto
@@ -278,9 +249,11 @@ namespace ConduitLLM.Admin.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                // For testing, merge form values with stored values
-                // Use form values when provided, fall back to stored values when form fields are empty
-                ProviderCredential actualCredential;
+                // For testing, we need to get the API key from ProviderKeyCredentials
+                string? apiKey = null;
+                string? baseUrl = providerCredential.BaseUrl;
+                string providerName = providerCredential.ProviderName;
+                
                 if (providerCredential.Id > 0)
                 {
                     var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
@@ -292,25 +265,31 @@ namespace ConduitLLM.Admin.Services
                         return result;
                     }
                     
-                    // Create test credential using form values when provided, stored values as fallback
-                    actualCredential = new ProviderCredential
+                    // Get the primary key or first enabled key from ProviderKeyCredentials
+                    var primaryKey = dbCredential.ProviderKeyCredentials?
+                        .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                        dbCredential.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                        
+                    if (primaryKey == null)
                     {
-                        ProviderName = !string.IsNullOrEmpty(providerCredential.ProviderName) ? providerCredential.ProviderName : dbCredential.ProviderName,
-                        ApiKey = !string.IsNullOrEmpty(providerCredential.ApiKey) ? providerCredential.ApiKey : dbCredential.ApiKey,
-                        BaseUrl = !string.IsNullOrEmpty(providerCredential.ApiBase) ? providerCredential.ApiBase : dbCredential.BaseUrl,
-                        IsEnabled = true
-                    };
+                        _logger.LogWarning("No enabled API keys found for provider {ProviderId}", providerCredential.Id);
+                        result.Message = "No API keys configured";
+                        result.ErrorDetails = "Provider has no enabled API keys";
+                        return result;
+                    }
+                    
+                    apiKey = primaryKey.ApiKey;
+                    baseUrl = !string.IsNullOrEmpty(providerCredential.BaseUrl) ? providerCredential.BaseUrl : 
+                              !string.IsNullOrEmpty(primaryKey.BaseUrl) ? primaryKey.BaseUrl : dbCredential.BaseUrl;
+                    providerName = !string.IsNullOrEmpty(providerCredential.ProviderName) ? providerCredential.ProviderName : dbCredential.ProviderName;
                 }
                 else
                 {
-                    // For testing unsaved providers, create a temporary credential object
-                    actualCredential = new ProviderCredential
-                    {
-                        ProviderName = providerCredential.ProviderName,
-                        ApiKey = providerCredential.ApiKey,
-                        BaseUrl = providerCredential.ApiBase,
-                        IsEnabled = true
-                    };
+                    // For testing unsaved providers, we can't test without an API key
+                    _logger.LogWarning("Cannot test unsaved provider without API key");
+                    result.Message = "Cannot test provider";
+                    result.ErrorDetails = "Provider must be saved with an API key before testing";
+                    return result;
                 }
 
                 // Create an HTTP client
@@ -320,22 +299,22 @@ namespace ConduitLLM.Admin.Services
                 client.Timeout = TimeSpan.FromSeconds(10);
 
                 // Add authorization header if API key is available
-                if (!string.IsNullOrEmpty(actualCredential.ApiKey))
+                if (!string.IsNullOrEmpty(apiKey))
                 {
                     // Use provider-specific authentication headers
-                    if (actualCredential.ProviderName?.ToLowerInvariant() == "anthropic")
+                    if (providerName?.ToLowerInvariant() == "anthropic")
                     {
-                        client.DefaultRequestHeaders.Add("x-api-key", actualCredential.ApiKey);
+                        client.DefaultRequestHeaders.Add("x-api-key", apiKey);
                         client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
                     }
                     else
                     {
-                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {actualCredential.ApiKey}");
+                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
                     }
                 }
 
                 // Special handling for providers that don't support GET requests
-                var providerNameLower = actualCredential.ProviderName?.ToLowerInvariant();
+                var providerNameLower = providerName?.ToLowerInvariant();
                 TimeSpan responseTime;
                 
                 if (providerNameLower == "minimax" || providerNameLower == "anthropic")
@@ -347,7 +326,13 @@ namespace ConduitLLM.Admin.Services
                 else
                 {
                     // Construct the API URL based on provider type
-                    var apiUrl = GetHealthCheckUrl(actualCredential);
+                    // Create a temporary credential object for GetHealthCheckUrl
+                    var tempCredential = new ProviderCredential
+                    {
+                        ProviderName = providerName,
+                        BaseUrl = baseUrl
+                    };
+                    var apiUrl = GetHealthCheckUrl(tempCredential);
                     
                     _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
 
@@ -371,16 +356,16 @@ namespace ConduitLLM.Admin.Services
                 {
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
-                    var providerName = actualCredential.ProviderName?.ToLowerInvariant();
+                    // providerNameLower is already defined above
 
-                    switch (providerName)
+                    switch (providerNameLower)
                     {
                         case "openai":
                             _logger.LogInformation("Performing additional OpenAI authentication check");
 
                             // OpenAI's /v1/models endpoint returns 200 OK even without auth
                             // We need to check if we actually get models back with proper auth
-                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, actualCredential);
+                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, apiKey, baseUrl);
 
                             if (!openAIAuthSuccessful)
                             {
@@ -396,7 +381,7 @@ namespace ConduitLLM.Admin.Services
                         case "openrouter":
                             _logger.LogInformation("Performing additional OpenRouter authentication check");
 
-                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, actualCredential);
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
 
                             if (!openRouterAuthSuccessful)
                             {
@@ -413,7 +398,7 @@ namespace ConduitLLM.Admin.Services
                         case "gemini":
                             _logger.LogInformation("Performing additional Google/Gemini authentication check");
 
-                            var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, actualCredential);
+                            var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, apiKey, baseUrl);
 
                             if (!geminiAuthSuccessful)
                             {
@@ -434,7 +419,7 @@ namespace ConduitLLM.Admin.Services
                         case "anthropic":
                             _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
                             
-                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, actualCredential);
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
                             responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
                             
                             if (!anthropicAuthSuccessful)
@@ -451,7 +436,7 @@ namespace ConduitLLM.Admin.Services
                         case "minimax":
                             _logger.LogInformation("Performing MiniMax authentication check via chat completion");
                             
-                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, actualCredential);
+                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, apiKey, baseUrl);
                             responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
                             
                             if (!miniMaxAuthSuccessful)
@@ -498,6 +483,183 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        /// <summary>
+        /// Tests a provider connection with a specific API key
+        /// </summary>
+        private async Task<ProviderConnectionTestResultDto> TestProviderConnectionWithKeyAsync(string providerName, string apiKey, string? baseUrl)
+        {
+            try
+            {
+                _logger.LogInformation("Testing provider connection for {ProviderName} with specific key", providerName);
+                
+                var startTime = DateTime.UtcNow;
+                var result = new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = string.Empty,
+                    ErrorDetails = null,
+                    ProviderName = providerName,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Create an HTTP client
+                using var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+
+                // Add authorization header if API key is available
+                if (!string.IsNullOrEmpty(apiKey))
+                {
+                    // Use provider-specific authentication headers
+                    if (providerName?.ToLowerInvariant() == "anthropic")
+                    {
+                        client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                        client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+                    }
+                    else
+                    {
+                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                    }
+                }
+
+                // Special handling for providers that don't support GET requests
+                var providerNameLower = providerName?.ToLowerInvariant();
+                TimeSpan responseTime;
+                
+                if (providerNameLower == "minimax" || providerNameLower == "anthropic")
+                {
+                    // MiniMax and Anthropic don't have a GET health check endpoint
+                    result.Success = true;
+                    responseTime = TimeSpan.Zero;
+                }
+                else
+                {
+                    // Construct the API URL based on provider type
+                    var tempCredential = new ProviderCredential
+                    {
+                        ProviderName = providerName,
+                        BaseUrl = baseUrl
+                    };
+                    var apiUrl = GetHealthCheckUrl(tempCredential);
+                    
+                    _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerName, apiUrl);
+
+                    // Make the request
+                    var responseMessage = await client.GetAsync(apiUrl);
+                    responseTime = DateTime.UtcNow - startTime;
+
+                    // Check the response
+                    result.Success = responseMessage.IsSuccessStatusCode;
+                    if (!result.Success)
+                    {
+                        result.Message = $"API returned status code: {responseMessage.StatusCode}";
+                        result.ErrorDetails = $"Response: {await responseMessage.Content.ReadAsStringAsync()}";
+                        result.ResponseTimeMs = responseTime.TotalMilliseconds;
+                        return result;
+                    }
+                }
+
+                // Additional validation for specific providers
+                if (result.Success)
+                {
+                    switch (providerNameLower)
+                    {
+                        case "openai":
+                            _logger.LogInformation("Performing additional OpenAI authentication check");
+                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!openAIAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI requires a valid API key for accessing models";
+                                return result;
+                            }
+                            break;
+
+                        case "openrouter":
+                            _logger.LogInformation("Performing additional OpenRouter authentication check");
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!openRouterAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "google":
+                        case "gemini":
+                            _logger.LogInformation("Performing additional Google/Gemini authentication check");
+                            var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!geminiAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Google Gemini requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "anthropic":
+                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
+                            responseTime = DateTime.UtcNow - startTime;
+                            if (!anthropicAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "minimax":
+                            _logger.LogInformation("Performing MiniMax authentication check via chat completion");
+                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, apiKey, baseUrl);
+                            responseTime = DateTime.UtcNow - startTime;
+                            if (!miniMaxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - MiniMax requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+                    }
+
+                    var responseTimeMs = responseTime.TotalMilliseconds;
+                    result.Message = $"Connection successful (Response time: {responseTimeMs:F0}ms)";
+                    result.ResponseTimeMs = responseTimeMs;
+                }
+
+                return result;
+            }
+            catch (HttpRequestException httpEx)
+            {
+                _logger.LogError(httpEx, "HTTP request error testing provider connection for {ProviderName}", providerName);
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = $"Network error: {httpEx.Message}",
+                    ErrorDetails = httpEx.ToString(),
+                    ProviderName = providerName,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing provider connection for {ProviderName}", providerName);
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = $"Connection test failed: {ex.Message}",
+                    ErrorDetails = ex.ToString(),
+                    ProviderName = providerName,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
+
         /// <inheritdoc />
         public async Task<bool> UpdateProviderCredentialAsync(UpdateProviderCredentialDto providerCredential)
         {
@@ -522,10 +684,7 @@ namespace ConduitLLM.Admin.Services
                 // Check what properties are actually changing
                 // Note: ProviderName cannot be changed in updates, so we don't check it
                     
-                if (providerCredential.ApiKey != null && existingCredential.ApiKey != providerCredential.ApiKey)
-                    changedProperties.Add(nameof(existingCredential.ApiKey));
-                    
-                if (providerCredential.ApiBase != null && existingCredential.BaseUrl != providerCredential.ApiBase)
+                if (providerCredential.BaseUrl != null && existingCredential.BaseUrl != providerCredential.BaseUrl)
                     changedProperties.Add(nameof(existingCredential.BaseUrl));
                     
                 if (existingCredential.IsEnabled != providerCredential.IsEnabled)
@@ -637,9 +796,10 @@ namespace ConduitLLM.Admin.Services
         /// Verifies OpenRouter authentication by making a minimal authenticated request
         /// </summary>
         /// <param name="client">The HTTP client with auth headers already set</param>
-        /// <param name="credential">The provider credential</param>
+        /// <param name="apiKey">The API key</param>
+        /// <param name="baseUrl">The base URL</param>
         /// <returns>True if authentication is valid, false otherwise</returns>
-        private async Task<bool> VerifyOpenRouterAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        private async Task<bool> VerifyOpenRouterAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
         {
             try
             {
@@ -647,10 +807,10 @@ namespace ConduitLLM.Admin.Services
                 // We'll make a lightweight request that requires auth but doesn't incur usage costs
 
                 // First, let's try the auth endpoint if available
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
-                    ? credential.BaseUrl
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl
                     : "https://openrouter.ai";
-                var authCheckUrl = $"{baseUrl.TrimEnd('/')}/api/v1/auth/key";
+                var authCheckUrl = $"{apiBaseUrl.TrimEnd('/')}/api/v1/auth/key";
 
                 try
                 {
@@ -699,7 +859,7 @@ namespace ConduitLLM.Admin.Services
                 var json = JsonSerializer.Serialize(testRequest);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var chatUrl = $"{baseUrl.TrimEnd('/')}/api/v1/chat/completions";
+                var chatUrl = $"{apiBaseUrl.TrimEnd('/')}/api/v1/chat/completions";
                 var response = await client.PostAsync(chatUrl, content);
 
                 // Check the response for authentication errors
@@ -731,20 +891,21 @@ namespace ConduitLLM.Admin.Services
         /// Verifies Google Gemini authentication by making a test request
         /// </summary>
         /// <param name="client">The HTTP client with authorization header set</param>
-        /// <param name="credential">The provider credential</param>
+        /// <param name="apiKey">The API key</param>
+        /// <param name="baseUrl">The base URL</param>
         /// <returns>True if authentication is valid, false otherwise</returns>
-        private async Task<bool> VerifyGeminiAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        private async Task<bool> VerifyGeminiAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
         {
             try
             {
                 // Google Gemini requires API key as a query parameter, not in headers
                 // We need to make a request that requires authentication
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
-                    ? credential.BaseUrl
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl
                     : "https://generativelanguage.googleapis.com";
 
                 // Try to get a specific model which requires authentication
-                var testUrl = $"{baseUrl.TrimEnd('/')}/v1beta/models/gemini-pro?key={credential.ApiKey}";
+                var testUrl = $"{apiBaseUrl.TrimEnd('/')}/v1beta/models/gemini-pro?key={apiKey}";
 
                 // Remove the Bearer token from headers since Gemini uses query param
                 client.DefaultRequestHeaders.Authorization = null;
@@ -781,27 +942,28 @@ namespace ConduitLLM.Admin.Services
         /// Verifies OpenAI authentication by making a test request
         /// </summary>
         /// <param name="client">The HTTP client with authorization header set</param>
-        /// <param name="credential">The provider credential</param>
+        /// <param name="apiKey">The API key</param>
+        /// <param name="baseUrl">The base URL</param>
         /// <returns>True if authentication is valid, false otherwise</returns>
-        private async Task<bool> VerifyOpenAIAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        private async Task<bool> VerifyOpenAIAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
         {
             try
             {
                 // OpenAI's /v1/models endpoint can return data even without proper auth
                 // We need to make a request that definitely requires authentication
                 
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
-                    ? credential.BaseUrl.TrimEnd('/')
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
                     : "https://api.openai.com";
 
                 // Remove /v1 if it's already in the base URL
-                if (baseUrl.EndsWith("/v1"))
+                if (apiBaseUrl.EndsWith("/v1"))
                 {
-                    baseUrl = baseUrl.Substring(0, baseUrl.Length - 3);
+                    apiBaseUrl = apiBaseUrl.Substring(0, apiBaseUrl.Length - 3);
                 }
 
                 // First, try to list models and check the response carefully
-                var modelsUrl = $"{baseUrl}/v1/models";
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
                 var modelsResponse = await client.GetAsync(modelsUrl);
                 
                 if (modelsResponse.StatusCode == HttpStatusCode.Unauthorized || 
@@ -878,14 +1040,15 @@ namespace ConduitLLM.Admin.Services
         /// Verifies MiniMax authentication by making a minimal chat completion request
         /// </summary>
         /// <param name="client">The HTTP client with authorization header set</param>
-        /// <param name="credential">The provider credential</param>
+        /// <param name="apiKey">The API key</param>
+        /// <param name="baseUrl">The base URL</param>
         /// <returns>True if authentication is valid, false otherwise</returns>
-        private async Task<bool> VerifyMiniMaxAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        private async Task<bool> VerifyMiniMaxAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
         {
             try
             {
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
-                    ? credential.BaseUrl
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl
                     : "https://api.minimax.io";
 
                 // MiniMax doesn't have a GET endpoint, so we need to make a minimal POST request
@@ -903,7 +1066,7 @@ namespace ConduitLLM.Admin.Services
                 var json = JsonSerializer.Serialize(testRequest);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var chatUrl = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
+                var chatUrl = $"{apiBaseUrl.TrimEnd('/')}/v1/chat/completions";
                 var response = await client.PostAsync(chatUrl, content);
 
                 _logger.LogInformation("MiniMax test request returned status {StatusCode}", (int)response.StatusCode);
@@ -943,16 +1106,17 @@ namespace ConduitLLM.Admin.Services
         /// Verifies Anthropic authentication by making a test request to the messages endpoint
         /// </summary>
         /// <param name="client">The HTTP client with auth headers already set</param>
-        /// <param name="credential">The provider credential</param>
+        /// <param name="apiKey">The API key</param>
+        /// <param name="baseUrl">The base URL</param>
         /// <returns>True if authentication is valid, false otherwise</returns>
-        private async Task<bool> VerifyAnthropicAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        private async Task<bool> VerifyAnthropicAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
         {
             try
             {
                 // Anthropic doesn't have a models endpoint, so we'll make a minimal messages request
                 // that will fail immediately if auth is invalid
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
-                    ? credential.BaseUrl
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl
                     : "https://api.anthropic.com";
 
                 var testRequest = new
@@ -970,7 +1134,7 @@ namespace ConduitLLM.Admin.Services
                 var json = JsonSerializer.Serialize(testRequest);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var messagesUrl = $"{baseUrl.TrimEnd('/')}/v1/messages";
+                var messagesUrl = $"{apiBaseUrl.TrimEnd('/')}/v1/messages";
                 var response = await client.PostAsync(messagesUrl, content);
 
                 _logger.LogInformation("Anthropic auth check returned status {StatusCode}", (int)response.StatusCode);
@@ -1058,7 +1222,6 @@ namespace ConduitLLM.Admin.Services
                     ProviderAccountGroup = k.ProviderAccountGroup,
                     ApiKey = MaskApiKey(k.ApiKey),
                     BaseUrl = k.BaseUrl,
-                    ApiVersion = k.ApiVersion,
                     Organization = k.Organization,
                     IsPrimary = k.IsPrimary,
                     IsEnabled = k.IsEnabled,
@@ -1093,7 +1256,6 @@ namespace ConduitLLM.Admin.Services
                     ProviderAccountGroup = key.ProviderAccountGroup,
                     ApiKey = MaskApiKey(key.ApiKey),
                     BaseUrl = key.BaseUrl,
-                    ApiVersion = key.ApiVersion,
                     Organization = key.Organization,
                     IsPrimary = key.IsPrimary,
                     IsEnabled = key.IsEnabled,
@@ -1124,7 +1286,6 @@ namespace ConduitLLM.Admin.Services
                     ProviderAccountGroup = keyCredential.ProviderAccountGroup,
                     ApiKey = keyCredential.ApiKey,
                     BaseUrl = keyCredential.BaseUrl,
-                    ApiVersion = keyCredential.ApiVersion,
                     Organization = keyCredential.Organization,
                     IsPrimary = keyCredential.IsPrimary,
                     IsEnabled = keyCredential.IsEnabled,
@@ -1142,7 +1303,6 @@ namespace ConduitLLM.Admin.Services
                     ProviderAccountGroup = created.ProviderAccountGroup,
                     ApiKey = MaskApiKey(created.ApiKey),
                     BaseUrl = created.BaseUrl,
-                    ApiVersion = created.ApiVersion,
                     Organization = created.Organization,
                     IsPrimary = created.IsPrimary,
                     IsEnabled = created.IsEnabled,
@@ -1181,7 +1341,6 @@ namespace ConduitLLM.Admin.Services
                     existing.ApiKey = keyCredential.ApiKey;
                     
                 existing.BaseUrl = keyCredential.BaseUrl;
-                existing.ApiVersion = keyCredential.ApiVersion;
                 existing.Organization = keyCredential.Organization;
                 existing.IsEnabled = keyCredential.IsEnabled;
                 existing.KeyName = keyCredential.KeyName;
@@ -1288,18 +1447,25 @@ namespace ConduitLLM.Admin.Services
                     };
                 }
 
-                // Create a test credential using the specific key's values
-                var testCredential = new ProviderCredentialDto
+                // Use the key's API key directly for testing
+                var apiKey = key.ApiKey;
+                var baseUrl = key.BaseUrl ?? provider.BaseUrl;
+                var providerName = provider.ProviderName;
+                
+                if (string.IsNullOrEmpty(apiKey))
                 {
-                    Id = provider.Id,
-                    ProviderName = provider.ProviderName,
-                    ApiKey = key.ApiKey ?? provider.ApiKey ?? string.Empty, // Use key's API key or fall back to provider's
-                    ApiBase = key.BaseUrl ?? provider.BaseUrl ?? string.Empty, // Use key's base URL or fall back  
-                    IsEnabled = key.IsEnabled
-                };
-
-                // Use the existing test method
-                return await TestProviderConnectionAsync(testCredential);
+                    return new ProviderConnectionTestResultDto
+                    {
+                        Success = false,
+                        Message = "Key has no API key configured",
+                        ErrorDetails = "The selected key credential does not have an API key",
+                        ProviderName = providerName,
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+                
+                // Call TestProviderConnectionWithKeyAsync with the specific key
+                return await TestProviderConnectionWithKeyAsync(providerName, apiKey, baseUrl);
             }
             catch (Exception ex)
             {

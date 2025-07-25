@@ -20,12 +20,8 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Base URL for the provider API
         /// </summary>
-        public string ApiBase { get; set; } = string.Empty;
+        public string BaseUrl { get; set; } = string.Empty;
 
-        /// <summary>
-        /// API key or other authentication token (always masked in responses)
-        /// </summary>
-        public string ApiKey { get; set; } = string.Empty;
 
         /// <summary>
         /// Whether this provider is enabled

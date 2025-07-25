@@ -60,8 +60,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "azure",
                 ApiKey = "test-key",
-                ApiBase = "https://test.openai.azure.com",
-                ApiVersion = "2023-05-15"
+                BaseUrl = "https://test.openai.azure.com"
             };
 
             _client = new AzureOpenAIClient(
@@ -81,8 +80,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "azure",
                 ApiKey = "test-azure-key",
-                ApiBase = "https://myresource.openai.azure.com",
-                ApiVersion = "2023-05-15"
+                BaseUrl = "https://myresource.openai.azure.com"
             };
 
             // Act
@@ -117,8 +115,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "azure",
                 ApiKey = "",
-                ApiBase = "https://test.openai.azure.com",
-                ApiVersion = "2023-05-15"
+                BaseUrl = "https://test.openai.azure.com"
             };
 
             // Act & Assert
@@ -700,8 +697,7 @@ data: [DONE]
             {
                 ProviderName = "azure",
                 ApiKey = "test-key",
-                ApiBase = "https://myresource.openai.azure.com",
-                ApiVersion = "2023-05-15"
+                BaseUrl = "https://myresource.openai.azure.com"
             };
             
             var client = new AzureOpenAIClient(

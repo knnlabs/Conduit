@@ -52,15 +52,15 @@ namespace ConduitLLM.Providers
         /// </summary>
         private static string ValidateAndGetBaseUrl(ProviderCredentials credentials)
         {
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
             {
                 throw new ConfigurationException(
-                    "API Base URL is required for OpenAI-compatible providers. " +
+                    "Base URL is required for OpenAI-compatible providers. " +
                     "Please specify the base URL of your OpenAI-compatible API endpoint.");
             }
 
             // Ensure the URL ends properly (without trailing slash for consistency)
-            return credentials.ApiBase.TrimEnd('/');
+            return credentials.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>

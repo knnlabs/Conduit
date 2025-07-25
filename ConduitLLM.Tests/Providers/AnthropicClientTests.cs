@@ -116,11 +116,11 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithCustomApiBase_UsesProvidedUrl()
         {
             // Arrange
-            var customApiBase = "https://custom.anthropic.api/v1";
+            var customBaseUrl = "https://custom.anthropic.api/v1";
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-key",
-                ApiBase = customApiBase,
+                BaseUrl = customBaseUrl,
                 ProviderName = "anthropic"
             };
             var modelId = "claude-3-opus-20240229";
@@ -129,7 +129,7 @@ namespace ConduitLLM.Tests.Providers
             // Setup custom HttpClient with expected base address
             var customHttpClient = new HttpClient(_httpMessageHandlerMock.Object)
             {
-                BaseAddress = new Uri(customApiBase)
+                BaseAddress = new Uri(customBaseUrl)
             };
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(customHttpClient);
 

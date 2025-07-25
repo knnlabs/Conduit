@@ -197,8 +197,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 Id = credential.Id,
                 ProviderName = credential.ProviderName,
-                ApiBase = credential.BaseUrl ?? string.Empty,
-                ApiKey = "********", // Mask API key in DTOs
+                BaseUrl = credential.BaseUrl ?? string.Empty,
                 IsEnabled = credential.IsEnabled,
                 Organization = null, // Organization not available in entity
                 CreatedAt = credential.CreatedAt,
@@ -240,9 +239,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderCredential
             {
                 ProviderName = dto.ProviderName,
-                ApiKey = dto.ApiKey,
-                BaseUrl = dto.ApiBase,
-                ApiVersion = null, // Not in the DTO
+                BaseUrl = dto.BaseUrl,
                 IsEnabled = dto.IsEnabled,
                 // Organization is not available in entity
                 CreatedAt = DateTime.UtcNow,
@@ -268,16 +265,8 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.BaseUrl = dto.ApiBase;
+            entity.BaseUrl = dto.BaseUrl;
 
-            // Handle API key special case:
-            // - If null or empty, keep existing
-            // - If equal to "[REMOVE]", set to null
-            // - Otherwise, update to new value
-            if (!string.IsNullOrEmpty(dto.ApiKey))
-            {
-                entity.ApiKey = dto.ApiKey == "[REMOVE]" ? null : dto.ApiKey;
-            }
 
             entity.IsEnabled = dto.IsEnabled;
             // Organization is not available in entity

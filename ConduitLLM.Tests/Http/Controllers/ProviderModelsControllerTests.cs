@@ -54,8 +54,16 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 Id = 1,
                 ProviderName = "openai",
-                ApiKey = "test-api-key",
-                BaseUrl = "https://api.openai.com"
+                BaseUrl = "https://api.openai.com",
+                ProviderKeyCredentials = new List<ProviderKeyCredential>
+                {
+                    new ProviderKeyCredential
+                    {
+                        ApiKey = "test-api-key",
+                        IsPrimary = true,
+                        IsEnabled = true
+                    }
+                }
             });
             await mockDbContext.SaveChangesAsync();
 
@@ -95,7 +103,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 Id = 1,
                 ProviderName = "anthropic",
-                ApiKey = "test-api-key"
+                ProviderKeyCredentials = new List<ProviderKeyCredential>
+                {
+                    new ProviderKeyCredential
+                    {
+                        ApiKey = "test-api-key",
+                        IsPrimary = true,
+                        IsEnabled = true
+                    }
+                }
             });
             await mockDbContext.SaveChangesAsync();
 
@@ -150,7 +166,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 Id = 1,
                 ProviderName = "openai",
-                ApiKey = null // Missing API key
+                ProviderKeyCredentials = new List<ProviderKeyCredential>
+                {
+                    new ProviderKeyCredential
+                    {
+                        ApiKey = null, // Missing API key
+                        IsPrimary = true,
+                        IsEnabled = true
+                    }
+                }
             });
             await mockDbContext.SaveChangesAsync();
 
@@ -178,7 +202,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 Id = 1,
                 ProviderName = "openai", // Lower case in DB
-                ApiKey = "test-api-key"
+                ProviderKeyCredentials = new List<ProviderKeyCredential>
+                {
+                    new ProviderKeyCredential
+                    {
+                        ApiKey = "test-api-key",
+                        IsPrimary = true,
+                        IsEnabled = true
+                    }
+                }
             });
             await mockDbContext.SaveChangesAsync();
 
@@ -210,7 +242,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 Id = 1,
                 ProviderName = "openai",
-                ApiKey = "test-api-key"
+                ProviderKeyCredentials = new List<ProviderKeyCredential>
+                {
+                    new ProviderKeyCredential
+                    {
+                        ApiKey = "test-api-key",
+                        IsPrimary = true,
+                        IsEnabled = true
+                    }
+                }
             });
             await mockDbContext.SaveChangesAsync();
 

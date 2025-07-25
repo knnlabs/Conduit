@@ -61,8 +61,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "vertexai",
                 ApiKey = "test-api-key",
-                ApiBase = "us-central1",
-                ApiVersion = "test-project-id"
+                BaseUrl = "us-central1"
             };
             
             _client = new VertexAIClient(
@@ -93,8 +92,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "vertexai",
                 ApiKey = serviceAccountJson,
-                ApiVersion = "my-project",
-                ApiBase = "us-central1"
+                BaseUrl = "us-central1"
             };
 
             _mockGoogleCredential.Setup(x => x.GetAccessTokenAsync(It.IsAny<CancellationToken>()))
@@ -121,8 +119,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "vertexai",
                 ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
-                ApiVersion = "my-project",
-                ApiBase = "europe-west4"
+                BaseUrl = "europe-west4"
             };
 
             // Act
@@ -146,8 +143,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ProviderName = "vertexai",
                 ApiKey = "some-key",
-                ApiVersion = "",
-                ApiBase = "us-central1"
+                BaseUrl = "us-central1"
             };
 
             // Act & Assert
@@ -737,8 +733,7 @@ namespace ConduitLLM.Tests.Providers
                 {
                     ProviderName = "vertexai",
                     ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
-                    ApiVersion = "test-project",
-                    ApiBase = region
+                    BaseUrl = region
                 };
 
                 // Act

@@ -44,7 +44,7 @@ namespace ConduitLLM.Providers
             ProviderDefaultModels? defaultModels = null)
             : base(credentials, modelId, logger, httpClientFactory, "minimax", defaultModels)
         {
-            _baseUrl = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultBaseUrl : credentials.ApiBase.TrimEnd('/');
+            _baseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultBaseUrl : credentials.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>

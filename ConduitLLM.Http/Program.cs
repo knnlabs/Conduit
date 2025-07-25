@@ -1694,18 +1694,37 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
         {
             // Load provider credentials from Config context
             await using var configDbContext = await _configDbContextFactory.CreateDbContextAsync();
-            var providerCredsList = await configDbContext.ProviderCredentials.ToListAsync();
+            var providerCredsList = await configDbContext.ProviderCredentials
+                .Include(p => p.ProviderKeyCredentials)
+                .ToListAsync();
             if (providerCredsList.Any())
             {
                 _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
 
                 // Convert database provider credentials to Core provider credentials
-                var providersList = providerCredsList.Select(p => new ProviderCredentials
+                var providersList = providerCredsList.Select(p => 
                 {
-                    ProviderName = p.ProviderName,
-                    ApiKey = p.ApiKey,
-                    ApiVersion = p.ApiVersion,
-                    ApiBase = p.BaseUrl // Map BaseUrl from DB entity to ApiBase in settings entity
+                    // Get the primary key or first enabled key
+                    string? effectiveApiKey = null;
+                    string? effectiveBaseUrl = p.BaseUrl;
+                    
+                    if (p.ProviderKeyCredentials?.Any() == true)
+                    {
+                        var primaryKey = p.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                        p.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
+                        if (primaryKey != null)
+                        {
+                            effectiveApiKey = primaryKey.ApiKey;
+                            effectiveBaseUrl = primaryKey.BaseUrl ?? p.BaseUrl;
+                        }
+                    }
+                    
+                    return new ProviderCredentials
+                    {
+                        ProviderName = p.ProviderName,
+                        ApiKey = effectiveApiKey,
+                        BaseUrl = effectiveBaseUrl // Map BaseUrl from DB entity
+                    };
                 }).ToList();
 
                 // Now integrate these with existing settings

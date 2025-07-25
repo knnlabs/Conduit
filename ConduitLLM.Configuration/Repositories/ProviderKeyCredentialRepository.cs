@@ -90,7 +90,6 @@ namespace ConduitLLM.Configuration.Repositories
             existingKey.ProviderAccountGroup = keyCredential.ProviderAccountGroup;
             existingKey.ApiKey = keyCredential.ApiKey;
             existingKey.BaseUrl = keyCredential.BaseUrl;
-            existingKey.ApiVersion = keyCredential.ApiVersion;
             existingKey.IsPrimary = keyCredential.IsPrimary;
             existingKey.IsEnabled = keyCredential.IsEnabled;
             existingKey.UpdatedAt = DateTime.UtcNow;

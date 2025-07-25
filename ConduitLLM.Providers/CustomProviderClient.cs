@@ -79,9 +79,9 @@ namespace ConduitLLM.Providers
         {
             BaseUrl = !string.IsNullOrEmpty(baseUrl)
                 ? baseUrl
-                : !string.IsNullOrEmpty(credentials.ApiBase)
-                    ? credentials.ApiBase
-                    : throw new ConfigurationException($"Base URL must be provided either directly or via ApiBase in credentials for {ProviderName}");
+                : !string.IsNullOrEmpty(credentials.BaseUrl)
+                    ? credentials.BaseUrl
+                    : throw new ConfigurationException($"Base URL must be provided either directly or via BaseUrl in credentials for {ProviderName}");
         }
 
         /// <summary>

@@ -30,7 +30,7 @@ namespace ConduitLLM.Providers
     public class OllamaClient : CustomProviderClient
     {
         // Default base URL for local Ollama instance
-        private const string DefaultOllamaApiBase = "http://localhost:11434";
+        private const string DefaultOllamaBaseUrl = "http://localhost:11434";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OllamaClient"/> class.
@@ -52,12 +52,12 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "Ollama",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultOllamaApiBase : credentials.ApiBase,
+                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultOllamaBaseUrl : credentials.BaseUrl,
                 defaultModels)
         {
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
             {
-                Logger.LogInformation("Ollama API base not provided, defaulting to {DefaultBase}", DefaultOllamaApiBase);
+                Logger.LogInformation("Ollama API base not provided, defaulting to {DefaultBase}", DefaultOllamaBaseUrl);
             }
         }
 

@@ -35,7 +35,7 @@ namespace ConduitLLM.Providers
         {
             public static class Urls
             {
-                public const string DefaultApiBase = "https://api.groq.com/openai/v1";
+                public const string DefaultBaseUrl = "https://api.groq.com/openai/v1";
             }
 
             public static class Endpoints
@@ -84,9 +84,9 @@ namespace ConduitLLM.Providers
         /// <returns>The API base URL with any trailing slashes removed.</returns>
         private static string DetermineBaseUrl(ProviderCredentials credentials)
         {
-            return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? Constants.Urls.DefaultApiBase
-                : credentials.ApiBase.TrimEnd('/');
+            return string.IsNullOrWhiteSpace(credentials.BaseUrl)
+                ? Constants.Urls.DefaultBaseUrl
+                : credentials.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>
@@ -112,8 +112,7 @@ namespace ConduitLLM.Providers
             var groqCredentials = new ProviderCredentials
             {
                 ApiKey = credentials.ApiKey,
-                ApiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? Constants.Urls.DefaultApiBase : credentials.ApiBase,
-                ApiVersion = credentials.ApiVersion,
+                BaseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? Constants.Urls.DefaultBaseUrl : credentials.BaseUrl,
                 ProviderName = "groq"
             };
 

@@ -27,8 +27,8 @@ namespace ConduitLLM.Providers
     /// </summary>
     public class GoogleCloudAudioClient : BaseLLMClient, IAudioTranscriptionClient, ITextToSpeechClient
     {
-        private const string SpeechToTextApiBase = "https://speech.googleapis.com/v1/";
-        private const string TextToSpeechApiBase = "https://texttospeech.googleapis.com/v1/";
+        private const string SpeechToTextBaseUrl = "https://speech.googleapis.com/v1/";
+        private const string TextToSpeechBaseUrl = "https://texttospeech.googleapis.com/v1/";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GoogleCloudAudioClient"/> class.
@@ -121,7 +121,8 @@ namespace ConduitLLM.Providers
                 };
 
                 using var client = CreateHttpClient(apiKey);
-                client.BaseAddress = new Uri(SpeechToTextApiBase);
+                var baseUrl = Credentials.BaseUrl ?? SpeechToTextBaseUrl;
+                client.BaseAddress = new Uri(baseUrl);
 
                 var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
                 var requestUrl = $"speech:recognize?key={effectiveApiKey}";
@@ -235,7 +236,8 @@ namespace ConduitLLM.Providers
                 };
 
                 using var client = CreateHttpClient(apiKey);
-                client.BaseAddress = new Uri(TextToSpeechApiBase);
+                var baseUrl = Credentials.BaseUrl ?? TextToSpeechBaseUrl;
+                client.BaseAddress = new Uri(baseUrl);
 
                 var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
                 var requestUrl = $"text:synthesize?key={effectiveApiKey}";
@@ -298,7 +300,8 @@ namespace ConduitLLM.Providers
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient();
-                client.BaseAddress = new Uri(TextToSpeechApiBase);
+                var baseUrl = Credentials.BaseUrl ?? TextToSpeechBaseUrl;
+                client.BaseAddress = new Uri(baseUrl);
 
                 var effectiveApiKey = Credentials.ApiKey;
                 var requestUrl = $"voices?key={effectiveApiKey}";

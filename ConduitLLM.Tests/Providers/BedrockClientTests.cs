@@ -60,7 +60,7 @@ namespace ConduitLLM.Tests.Providers
                 ProviderName = "bedrock",
                 ApiKey = "AKIAIOSFODNN7EXAMPLE",
                 ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                ApiBase = "us-east-1"
+                BaseUrl = "us-east-1"
             };
 
             _client = new BedrockClient(
@@ -81,7 +81,7 @@ namespace ConduitLLM.Tests.Providers
                 ProviderName = "bedrock",
                 ApiKey = "AKIAIOSFODNN7EXAMPLE",
                 ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                ApiBase = "us-east-1"
+                BaseUrl = "us-east-1"
             };
 
             // Act
@@ -116,7 +116,7 @@ namespace ConduitLLM.Tests.Providers
                 ProviderName = "bedrock",
                 ApiKey = "",
                 ApiSecret = "secret",
-                ApiBase = "us-east-1"
+                BaseUrl = "us-east-1"
             };
 
             // Act & Assert
@@ -714,7 +714,7 @@ namespace ConduitLLM.Tests.Providers
                     ProviderName = "bedrock",
                     ApiKey = "AKIAIOSFODNN7EXAMPLE",
                     ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-                    ApiBase = region
+                    BaseUrl = region
                 };
 
                 // Act

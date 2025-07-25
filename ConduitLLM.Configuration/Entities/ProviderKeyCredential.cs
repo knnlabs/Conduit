@@ -56,9 +56,6 @@ namespace ConduitLLM.Configuration.Entities
         // Optional: Base URL if different from default
         public string? BaseUrl { get; set; }
 
-        // Optional: Other provider-specific settings
-        [Obsolete("This field is rarely used and will be removed in v2.0")]
-        public string? ApiVersion { get; set; }
         
         /// <summary>
         /// Gets or sets the organization or project ID for this key. Overrides provider default if specified.

@@ -50,7 +50,7 @@ namespace ConduitLLM.Providers
                 /// <summary>
                 /// The base URL for OpenRouter API requests.
                 /// </summary>
-                public const string ApiBase = "https://openrouter.ai/api/v1/";
+                public const string BaseUrl = "https://openrouter.ai/api/v1/";
 
                 /// <summary>
                 /// The full API endpoint for OpenRouter requests.
@@ -214,9 +214,9 @@ namespace ConduitLLM.Providers
         private static ProviderCredentials EnsureOpenRouterCredentials(ProviderCredentials credentials)
         {
             // Ensure we have a proper base URL
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
             {
-                credentials.ApiBase = Constants.Urls.ApiBase;
+                credentials.BaseUrl = Constants.Urls.BaseUrl;
             }
 
             return credentials;

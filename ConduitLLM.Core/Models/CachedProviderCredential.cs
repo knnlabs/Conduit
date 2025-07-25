@@ -45,8 +45,8 @@ namespace ConduitLLM.Core.Models
             if (!string.IsNullOrEmpty(primaryKey))
                 return primaryKey;
 
-            // Fallback to legacy ApiKey on Provider for backward compatibility
-            return Provider.ApiKey;
+            // No key available
+            return null;
         }
 
         /// <summary>

@@ -31,7 +31,7 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class ElevenLabsClient : BaseLLMClient, ILLMClient, ITextToSpeechClient, IRealtimeAudioClient
     {
-        private const string API_BASE_URL = "https://api.elevenlabs.io/v1";
+        private const string DEFAULT_BASE_URL = "https://api.elevenlabs.io/v1";
         private const string WS_BASE_URL = "wss://api.elevenlabs.io/v1";
         private readonly IRealtimeMessageTranslator _translator;
 
@@ -97,7 +97,8 @@ namespace ConduitLLM.Providers
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM"; // Default voice ID
             var model = request.Model ?? GetDefaultTextToSpeechModel();
 
-            var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}";
+            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var requestUrl = $"{baseUrl}/text-to-speech/{voiceId}";
 
             var requestBody = new Dictionary<string, object>
             {
@@ -154,7 +155,8 @@ namespace ConduitLLM.Providers
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM";
             var model = request.Model ?? GetDefaultTextToSpeechModel();
 
-            var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}/stream";
+            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var requestUrl = $"{baseUrl}/text-to-speech/{voiceId}/stream";
 
             var requestBody = new Dictionary<string, object>
             {
@@ -217,7 +219,8 @@ namespace ConduitLLM.Providers
 
             using var httpClient = CreateHttpClient(effectiveApiKey);
 
-            var response = await httpClient.GetAsync($"{API_BASE_URL}/voices", cancellationToken);
+            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var response = await httpClient.GetAsync($"{baseUrl}/voices", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
