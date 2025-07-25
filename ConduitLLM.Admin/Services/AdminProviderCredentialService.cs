@@ -92,6 +92,34 @@ namespace ConduitLLM.Admin.Services
 
                 _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
 
+                // If an API key was provided during creation, automatically create an initial key credential
+                if (!string.IsNullOrWhiteSpace(providerCredential.ApiKey))
+                {
+                    _logger.LogInformation("Creating initial API key for provider {ProviderId}", createdCredential.Id);
+                    
+                    var initialKey = new CreateProviderKeyCredentialDto
+                    {
+                        ApiKey = providerCredential.ApiKey,
+                        KeyName = "Default Key",
+                        Organization = providerCredential.Organization,
+                        BaseUrl = providerCredential.ApiBase,
+                        IsPrimary = true,
+                        IsEnabled = true,
+                        ProviderAccountGroup = 0 // Default group
+                    };
+
+                    try 
+                    {
+                        await CreateProviderKeyCredentialAsync(createdCredential.Id, initialKey);
+                        _logger.LogInformation("Successfully created initial API key for provider {ProviderId}", createdCredential.Id);
+                    }
+                    catch (Exception keyEx)
+                    {
+                        _logger.LogError(keyEx, "Failed to create initial API key for provider {ProviderId}. Provider was created but key creation failed.", createdCredential.Id);
+                        // Don't throw - provider was created successfully, just log the key creation failure
+                    }
+                }
+
                 // Publish ProviderCredentialUpdated event (creation is treated as an update)
                 await PublishEventAsync(
                     new ProviderCredentialUpdated
