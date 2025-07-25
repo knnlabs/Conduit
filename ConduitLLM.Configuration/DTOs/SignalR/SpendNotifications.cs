@@ -39,9 +39,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public decimal? BudgetPercentage { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the model used.
@@ -198,9 +198,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public double DeviationPercentage { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider involved.
+        /// Gets or sets the provider type involved.
         /// </summary>
-        public string? Provider { get; set; }
+        public ProviderType? ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the model involved.
@@ -251,9 +251,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ProviderSpendBreakdown
     {
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the spend amount.
@@ -282,9 +282,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public string Model { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the spend amount.

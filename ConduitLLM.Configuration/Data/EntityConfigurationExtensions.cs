@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderName).IsUnique();
+                entity.HasIndex(e => e.ProviderType).IsUnique();
             });
 
             // Configure ProviderKeyCredential entity
@@ -84,7 +84,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ProviderHealthRecord>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderName, e.TimestampUtc });
+                entity.HasIndex(e => new { e.ProviderType, e.TimestampUtc });
                 entity.HasIndex(e => e.IsOnline);
                 entity.Property(e => e.StatusMessage).HasMaxLength(500);
                 entity.Property(e => e.ErrorCategory).HasMaxLength(50);
@@ -96,7 +96,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderName).IsUnique();
+                entity.HasIndex(e => e.ProviderType).IsUnique();
                 entity.Property(e => e.CustomEndpointUrl).HasMaxLength(1000);
             });
         }

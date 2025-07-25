@@ -109,7 +109,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 // Provider Services
                 var providerHealthRecords = await dbContext.ProviderHealthRecords
-                    .GroupBy(h => h.ProviderName)
+                    .GroupBy(h => h.ProviderType)
                     .Select(g => g.OrderByDescending(h => h.TimestampUtc).First())
                     .ToListAsync(cancellationToken);
 
@@ -121,8 +121,8 @@ namespace ConduitLLM.Admin.Controllers
 
                     services.Add(new
                     {
-                        Id = $"provider-{providerHealth.ProviderName.ToLower()}",
-                        Name = $"{providerHealth.ProviderName} Provider",
+                        Id = $"provider-{providerHealth.ProviderType.ToString().ToLower()}",
+                        Name = $"{providerHealth.ProviderType} Provider",
                         Status = providerHealth.IsOnline ? (recentErrors > 10 ? "degraded" : "healthy") : "unhealthy",
                         Uptime = TimeSpan.FromDays(7), // Would need actual tracking
                         LastCheck = providerHealth.TimestampUtc,
@@ -132,7 +132,7 @@ namespace ConduitLLM.Admin.Controllers
                             StatusMessage = providerHealth.StatusMessage,
                             RecentErrors = recentErrors,
                             Enabled = await dbContext.ProviderCredentials
-                                .AnyAsync(p => p.ProviderName == providerHealth.ProviderName && p.IsEnabled, cancellationToken)
+                                .AnyAsync(p => p.ProviderType == providerHealth.ProviderType && p.IsEnabled, cancellationToken)
                         }
                     });
                 }

@@ -142,9 +142,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the average latency in milliseconds.
@@ -274,9 +274,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public string? AffectedModel { get; set; }
 
         /// <summary>
-        /// Gets or sets the affected provider.
+        /// Gets or sets the affected provider type.
         /// </summary>
-        public string? AffectedProvider { get; set; }
+        public ProviderType? AffectedProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets when this error first occurred.

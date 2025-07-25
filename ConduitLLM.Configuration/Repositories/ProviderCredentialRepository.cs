@@ -66,7 +66,7 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ProviderCredentials
                     .Include(pc => pc.ProviderKeyCredentials)
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
+                    .FirstOrDefaultAsync(pc => pc.ProviderType.ToString().ToLower() == providerName.ToLower(), cancellationToken);
             }
             catch (Exception ex)
             {
@@ -102,7 +102,7 @@ _logger.LogError(ex, "Error getting provider credential for provider {ProviderNa
                 return await dbContext.ProviderCredentials
                     .Include(pc => pc.ProviderKeyCredentials)
                     .AsNoTracking()
-                    .OrderBy(pc => pc.ProviderName)
+                    .OrderBy(pc => pc.ProviderType)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -138,14 +138,14 @@ _logger.LogError(ex, "Error getting provider credential for provider {ProviderNa
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating provider credential for provider '{ProviderName}'",
-                    LogSanitizer.SanitizeObject(providerCredential.ProviderName.Replace(Environment.NewLine, "")));
+                _logger.LogError(ex, "Database error creating provider credential for provider '{ProviderType}'",
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderType));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating provider credential for provider '{ProviderName}'",
-                    LogSanitizer.SanitizeObject(providerCredential.ProviderName.Replace(Environment.NewLine, "")));
+                _logger.LogError(ex, "Error creating provider credential for provider '{ProviderType}'",
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderType));
                 throw;
             }
         }

@@ -69,10 +69,10 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 // Check if a credential with the same provider name already exists
-                var existingCredential = await _providerCredentialRepository.GetByProviderNameAsync(providerCredential.ProviderName);
+                var existingCredential = await _providerCredentialRepository.GetByProviderTypeAsync(providerCredential.ProviderType);
                 if (existingCredential != null)
                 {
-                    _logger.LogWarning("Provider credential already exists for provider {ProviderName}", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("Provider credential already exists for provider {ProviderType}", providerCredential.ProviderType.ToString().Replace(Environment.NewLine, ""));
                     throw new InvalidOperationException("A provider credential for this provider already exists");
                 }
 
@@ -90,7 +90,7 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException("Failed to retrieve newly created provider credential");
                 }
 
-                _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Created provider credential for '{ProviderType}'", providerCredential.ProviderType.ToString().Replace(Environment.NewLine, ""));
 
 
                 // Publish ProviderCredentialUpdated event (creation is treated as an update)
@@ -98,19 +98,19 @@ namespace ConduitLLM.Admin.Services
                     new ProviderCredentialUpdated
                     {
                         ProviderId = createdCredential.Id,
-                        ProviderName = createdCredential.ProviderName,
+                        ProviderName = createdCredential.ProviderType.ToString(),
                         IsEnabled = createdCredential.IsEnabled,
                         ChangedProperties = new[] { "ProviderName", "BaseUrl", "IsEnabled" }, // All properties for creation
                         CorrelationId = Guid.NewGuid().ToString()
                     },
                     $"create provider credential {createdCredential.Id}",
-                    new { ProviderName = createdCredential.ProviderName });
+                    new { ProviderName = createdCredential.ProviderType.ToString() });
 
                 return createdCredential.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating provider credential for '{ProviderType}'", providerCredential.ProviderType.ToString().Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -136,11 +136,11 @@ namespace ConduitLLM.Admin.Services
                             new ProviderCredentialDeleted
                             {
                                 ProviderId = providerToDelete.Id,
-                                ProviderName = providerToDelete.ProviderName,
+                                ProviderName = providerToDelete.ProviderType.ToString(),
                                 CorrelationId = Guid.NewGuid().ToString()
                             },
                             $"delete provider credential {providerToDelete.Id}",
-                            new { ProviderName = providerToDelete.ProviderName });
+                            new { ProviderName = providerToDelete.ProviderType.ToString() });
                     }
                     else
                     {
@@ -216,7 +216,13 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                var credential = await _providerCredentialRepository.GetByProviderNameAsync(providerName);
+                // Parse provider name to enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return null;
+                }
+                
+                var credential = await _providerCredentialRepository.GetByProviderTypeAsync(providerType);
                 return credential?.ToDto();
             }
             catch (Exception ex)
@@ -237,7 +243,7 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                _logger.LogInformation("Testing provider connection for {ProviderName}", providerCredential.ProviderName);
+                _logger.LogInformation("Testing provider connection for {ProviderType}", providerCredential.ProviderType);
                 
                 var startTime = DateTime.UtcNow;
                 var result = new ProviderConnectionTestResultDto
@@ -245,14 +251,14 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = string.Empty,
                     ErrorDetails = null,
-                    ProviderName = providerCredential.ProviderName,
+                    ProviderName = providerCredential.ProviderType.ToString(),
                     Timestamp = DateTime.UtcNow
                 };
 
                 // For testing, we need to get the API key from ProviderKeyCredentials
                 string? apiKey = null;
                 string? baseUrl = providerCredential.BaseUrl;
-                string providerName = providerCredential.ProviderName;
+                string providerName = providerCredential.ProviderType.ToString();
                 
                 if (providerCredential.Id > 0)
                 {
@@ -281,7 +287,7 @@ namespace ConduitLLM.Admin.Services
                     apiKey = primaryKey.ApiKey;
                     baseUrl = !string.IsNullOrEmpty(providerCredential.BaseUrl) ? providerCredential.BaseUrl : 
                               !string.IsNullOrEmpty(primaryKey.BaseUrl) ? primaryKey.BaseUrl : dbCredential.BaseUrl;
-                    providerName = !string.IsNullOrEmpty(providerCredential.ProviderName) ? providerCredential.ProviderName : dbCredential.ProviderName;
+                    providerName = providerCredential.ProviderType.ToString();
                 }
                 else
                 {
@@ -329,12 +335,12 @@ namespace ConduitLLM.Admin.Services
                     // Create a temporary credential object for GetHealthCheckUrl
                     var tempCredential = new ProviderCredential
                     {
-                        ProviderName = providerName,
+                        ProviderType = providerCredential.ProviderType,
                         BaseUrl = baseUrl
                     };
                     var apiUrl = GetHealthCheckUrl(tempCredential);
                     
-                    _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
+                    _logger.LogInformation("Testing provider {ProviderType} at URL: {ApiUrl}", providerCredential.ProviderType, apiUrl);
 
                     // Make the request
                     var responseMessage = await client.GetAsync(apiUrl);
@@ -452,7 +458,7 @@ namespace ConduitLLM.Admin.Services
                     }
 
                     var responseTimeMs = responseTime.TotalMilliseconds;
-                    result.Message = $"Connected successfully to {providerCredential.ProviderName} API in {responseTimeMs:F2}ms";
+                    result.Message = $"Connected successfully to {providerCredential.ProviderType} API in {responseTimeMs:F2}ms";
                 }
 
                 return result;
@@ -464,20 +470,20 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = "The connection timed out",
                     ErrorDetails = "Request exceeded the 10 second timeout",
-                    ProviderName = providerCredential.ProviderName,
+                    ProviderName = providerCredential.ProviderType.ToString(),
                     Timestamp = DateTime.UtcNow
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error testing connection to provider '{ProviderType}'", providerCredential.ProviderType.ToString().Replace(Environment.NewLine, ""));
 
                 return new ProviderConnectionTestResultDto
                 {
                     Success = false,
                     Message = $"Connection test failed: {ex.Message}",
                     ErrorDetails = ex.ToString(),
-                    ProviderName = providerCredential.ProviderName,
+                    ProviderName = providerCredential.ProviderType.ToString(),
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -534,9 +540,17 @@ namespace ConduitLLM.Admin.Services
                 else
                 {
                     // Construct the API URL based on provider type
+                    // Parse provider name to enum
+                    if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                    {
+                        result.Message = "Invalid provider name";
+                        result.ErrorDetails = $"Unknown provider: {providerName}";
+                        return result;
+                    }
+                    
                     var tempCredential = new ProviderCredential
                     {
-                        ProviderName = providerName,
+                        ProviderType = providerType,
                         BaseUrl = baseUrl
                     };
                     var apiUrl = GetHealthCheckUrl(tempCredential);
@@ -710,13 +724,13 @@ namespace ConduitLLM.Admin.Services
                             new ProviderCredentialUpdated
                             {
                                 ProviderId = existingCredential.Id,
-                                ProviderName = existingCredential.ProviderName,
+                                ProviderName = existingCredential.ProviderType.ToString(),
                                 IsEnabled = existingCredential.IsEnabled,
                                 ChangedProperties = changedProperties.ToArray(),
                                 CorrelationId = Guid.NewGuid().ToString()
                             },
                             $"update provider credential {existingCredential.Id}",
-                            new { ProviderName = existingCredential.ProviderName, ChangedProperties = string.Join(", ", changedProperties) });
+                            new { ProviderName = existingCredential.ProviderType.ToString(), ChangedProperties = string.Join(", ", changedProperties) });
                     }
                     else
                     {
@@ -750,14 +764,14 @@ namespace ConduitLLM.Admin.Services
             // If base URL is not specified, use a default based on provider name
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                baseUrl = GetDefaultBaseUrl(credential.ProviderName);
+                baseUrl = GetDefaultBaseUrl(credential.ProviderType.ToString());
             }
 
             // Trim trailing slash if present
             baseUrl = baseUrl?.TrimEnd('/');
 
             // Construct health check URL based on provider
-            return credential.ProviderName.ToLowerInvariant() switch
+            return credential.ProviderType.ToString().ToLowerInvariant() switch
             {
                 // OpenAI-compatible providers
                 "openai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
@@ -1441,8 +1455,8 @@ namespace ConduitLLM.Admin.Services
                     {
                         Success = false,
                         Message = "Key not found",
-                        ErrorDetails = $"Key with ID {keyId} was not found for provider {provider.ProviderName}",
-                        ProviderName = provider.ProviderName,
+                        ErrorDetails = $"Key with ID {keyId} was not found for provider {provider.ProviderType}",
+                        ProviderName = provider.ProviderType.ToString(),
                         Timestamp = DateTime.UtcNow
                     };
                 }
@@ -1450,7 +1464,7 @@ namespace ConduitLLM.Admin.Services
                 // Use the key's API key directly for testing
                 var apiKey = key.ApiKey;
                 var baseUrl = key.BaseUrl ?? provider.BaseUrl;
-                var providerName = provider.ProviderName;
+                var providerName = provider.ProviderType.ToString();
                 
                 if (string.IsNullOrEmpty(apiKey))
                 {

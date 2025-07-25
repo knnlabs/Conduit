@@ -276,14 +276,14 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<ProviderHealthRecord>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderName, e.TimestampUtc });
+                entity.HasIndex(e => new { e.ProviderType, e.TimestampUtc });
                 entity.HasIndex(e => e.IsOnline);
             });
 
             modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderName).IsUnique();
+                entity.HasIndex(e => e.ProviderType).IsUnique();
             });
 
             // Configure IP Filter entity

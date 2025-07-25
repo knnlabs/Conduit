@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20250725022143_InitialCreate")]
+    [Migration("20250725195556_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1166,12 +1166,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApiKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ApiVersion")
-                        .HasColumnType("text");
-
                     b.Property<string>("BaseUrl")
                         .HasColumnType("text");
 
@@ -1181,11 +1175,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<int>("ProviderType")
                         .HasColumnType("integer");
 
@@ -1194,7 +1183,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderName")
+                    b.HasIndex("ProviderType")
                         .IsUnique();
 
                     b.ToTable("ProviderCredentials");
@@ -1227,16 +1216,15 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
 
                     b.Property<int>("TimeoutSeconds")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderName")
+                    b.HasIndex("ProviderType")
                         .IsUnique();
 
                     b.ToTable("ProviderHealthConfigurations");
@@ -1265,9 +1253,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
 
                     b.Property<double>("ResponseTimeMs")
                         .HasColumnType("double precision");
@@ -1287,7 +1274,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("IsOnline");
 
-                    b.HasIndex("ProviderName", "TimestampUtc");
+                    b.HasIndex("ProviderType", "TimestampUtc");
 
                     b.ToTable("ProviderHealthRecords");
                 });
@@ -1301,9 +1288,6 @@ namespace ConduitLLM.Configuration.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ApiKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ApiVersion")
                         .HasColumnType("text");
 
                     b.Property<string>("BaseUrl")

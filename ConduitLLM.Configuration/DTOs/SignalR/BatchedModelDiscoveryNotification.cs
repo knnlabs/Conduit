@@ -79,7 +79,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class CriticalNotification
     {
         public string Type { get; set; } = string.Empty;
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         public string Message { get; set; } = string.Empty;
         public Dictionary<string, object> Details { get; set; } = new();
         public DateTime OccurredAt { get; set; }

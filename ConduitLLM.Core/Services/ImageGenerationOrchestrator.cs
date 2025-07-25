@@ -449,9 +449,9 @@ namespace ConduitLLM.Core.Services
             
             return new ModelInfo
             {
-                Provider = mapping.ProviderName,
+                Provider = mapping.ProviderType.ToString(),
                 ModelId = mapping.ProviderModelId,
-                ProviderCredentialId = 0 // We don't have this in the mapping
+                ProviderCredentialId = mapping.ProviderId
             };
         }
 

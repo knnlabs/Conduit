@@ -26,15 +26,10 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider identifier
+        /// The provider type
         /// </summary>
-        [Required(ErrorMessage = "Provider is required")]
-        public string ProviderId { get; set; } = string.Empty;
-
-        /// <summary>
-        /// The human-readable provider name (e.g., "OpenAI", "Anthropic")
-        /// </summary>
-        public string? ProviderName { get; set; }
+        [Required(ErrorMessage = "Provider type is required")]
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -18,20 +19,9 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or sets the name of the provider (e.g., "OpenAI", "Anthropic").
-        /// Note: This field is being phased out in favor of ProviderType enum.
-        /// </summary>
-        // TODO: Use an ID instead of a name. Something like ProviderId
-        // DEPRECATED: In the SDKs we'll use the ProviderType as a substitute for the name
-        [Required]
-        [MaxLength(100)]
-        public string ProviderName { get; set; } = string.Empty; // e.g., "OpenAI", "Anthropic"
-
-        /// <summary>
         /// Gets or sets the provider type enum. This is the preferred way to identify providers.
         /// </summary>
-        // TODO: Add a ProviderType enum that is based on the Provider class that is used
-        // e.g. OpenAIProvider, AnthropicProvider, etc.
+        [Required]
         public ProviderType ProviderType { get; set; } = ProviderType.OpenAI;
 
 

@@ -29,9 +29,9 @@ namespace ConduitLLM.Configuration.DTOs
         public string Id { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string? Provider { get; set; }
+        public ProviderType? ProviderType { get; set; }
 
         /// <summary>
         /// Display name for the model

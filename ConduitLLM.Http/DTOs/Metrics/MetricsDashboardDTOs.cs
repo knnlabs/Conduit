@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Http.DTOs.Metrics
 {
@@ -324,9 +325,9 @@ namespace ConduitLLM.Http.DTOs.Metrics
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider name.
+        /// Provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Requests per minute.
@@ -391,9 +392,9 @@ namespace ConduitLLM.Http.DTOs.Metrics
     public class ProviderHealthStatus
     {
         /// <summary>
-        /// Provider name.
+        /// Provider type.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Health status: healthy, degraded, or unhealthy.

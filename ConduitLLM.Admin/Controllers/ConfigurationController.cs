@@ -74,7 +74,7 @@ namespace ConduitLLM.Admin.Controllers
                         IsEnabled = m.IsEnabled,
                         Provider = new
                         {
-                            Name = m.ProviderCredential.ProviderName,
+                            Name = m.ProviderCredential.ProviderType.ToString(),
                             IsEnabled = m.ProviderCredential.IsEnabled
                         }
                     })
@@ -377,10 +377,10 @@ namespace ConduitLLM.Admin.Controllers
                 .Where(p => p.IsEnabled)
                 .Select(p => new
                 {
-                    p.ProviderName,
+                    p.ProviderType,
                     p.BaseUrl,
                     LastHealth = dbContext.ProviderHealthRecords
-                        .Where(h => h.ProviderName == p.ProviderName)
+                        .Where(h => h.ProviderType == p.ProviderType)
                         .OrderByDescending(h => h.TimestampUtc)
                         .Select(h => new { IsHealthy = h.IsOnline, ResponseTime = h.ResponseTimeMs })
                         .FirstOrDefault()
@@ -389,8 +389,8 @@ namespace ConduitLLM.Admin.Controllers
 
             return providers.Select(p => (object)new
             {
-                Name = p.ProviderName,
-                Url = p.BaseUrl ?? $"https://api.{p.ProviderName.ToLower()}.com",
+                Name = p.ProviderType.ToString(),
+                Url = p.BaseUrl ?? $"https://api.{p.ProviderType.ToString().ToLower()}.com",
                 Weight = 1,
                 HealthStatus = p.LastHealth?.IsHealthy ?? false ? "healthy" : "unhealthy",
                 ResponseTime = p.LastHealth?.ResponseTime ?? 0

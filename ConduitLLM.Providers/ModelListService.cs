@@ -57,23 +57,23 @@ namespace ConduitLLM.Providers
             }
 
             // Create a cache key based on provider name
-            string cacheKey = $"provider_models:{providerCredential.ProviderName}";
+            string cacheKey = $"provider_models:{providerCredential.ProviderType}";
 
             // Try to get from cache if not forcing a refresh
             if (!forceRefresh && _cache.TryGetValue(cacheKey, out List<string>? cachedModels) && cachedModels != null)
             {
                 _logger.LogDebug("Returning cached models for provider {ProviderName}",
-                    providerCredential.ProviderName);
+                    providerCredential.ProviderType);
                 return cachedModels;
             }
 
             try
             {
                 _logger.LogInformation("Fetching models from provider {ProviderName}",
-                    providerCredential.ProviderName);
+                    providerCredential.ProviderType);
 
                 // Create a client using the existing factory
-                var client = _clientFactory.GetClientByProvider(providerCredential.ProviderName);
+                var client = _clientFactory.GetClientByProvider(providerCredential.ProviderType.ToString());
 
                 // Get models from the provider API
                 var models = await client.ListModelsAsync(
@@ -88,7 +88,7 @@ namespace ConduitLLM.Providers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving models for provider {ProviderName}",
-                    providerCredential.ProviderName);
+                    providerCredential.ProviderType);
                 throw;
             }
         }

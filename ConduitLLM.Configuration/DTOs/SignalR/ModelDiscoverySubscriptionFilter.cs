@@ -9,9 +9,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelDiscoverySubscriptionFilter
     {
         /// <summary>
-        /// List of provider names to receive notifications for (null/empty = all providers)
+        /// List of provider types to receive notifications for (null/empty = all providers)
         /// </summary>
-        public List<string>? Providers { get; set; }
+        public List<ProviderType>? ProviderTypes { get; set; }
 
         /// <summary>
         /// List of capabilities to filter by (null/empty = all capabilities)

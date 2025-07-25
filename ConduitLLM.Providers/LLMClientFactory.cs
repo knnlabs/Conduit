@@ -64,8 +64,8 @@ public class LLMClientFactory : ILLMClientFactory
         {
             foreach (var m in _settings.ModelMappings)
             {
-                logger.LogDebug("Available mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
-                    m.ModelAlias, m.ProviderName, m.ProviderModelId);
+                logger.LogDebug("Available mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}", 
+                    m.ModelAlias, m.ProviderType, m.ProviderModelId);
             }
         }
 
@@ -81,17 +81,17 @@ public class LLMClientFactory : ILLMClientFactory
             throw new ConfigurationException($"No model mapping found for alias '{modelAlias}'. Please check your Conduit configuration.");
         }
 
-        // 2. Find the provider credentials using the ProviderName from the mapping
+        // 2. Find the provider credentials using the ProviderType from the mapping
         var credentials = _settings.ProviderCredentials?.FirstOrDefault(p =>
-            string.Equals(p.ProviderName, mapping.ProviderName, StringComparison.OrdinalIgnoreCase));
+            p.ProviderType == mapping.ProviderType);
 
         if (credentials == null)
         {
-            throw new ConfigurationException($"No provider credentials found for provider '{mapping.ProviderName}' (required by model alias '{modelAlias}'). Please check your Conduit configuration.");
+            throw new ConfigurationException($"No provider credentials found for provider '{mapping.ProviderType}' (required by model alias '{modelAlias}'). Please check your Conduit configuration.");
         }
 
-        // 3. Instantiate the appropriate client based on ProviderName
-        return CreateClientForProvider(mapping.ProviderName, credentials, mapping.ProviderModelId);
+        // 3. Instantiate the appropriate client based on ProviderType
+        return CreateClientForProvider(mapping.ProviderType.ToString(), credentials, mapping.ProviderModelId);
     }
 
     /// <inheritdoc />
@@ -104,7 +104,7 @@ public class LLMClientFactory : ILLMClientFactory
 
         // Find the provider credentials
         var credentials = _settings.ProviderCredentials?.FirstOrDefault(p =>
-            string.Equals(p.ProviderName, providerName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.ProviderType.ToString(), providerName, StringComparison.OrdinalIgnoreCase));
 
         if (credentials == null)
         {
@@ -113,7 +113,7 @@ public class LLMClientFactory : ILLMClientFactory
 
         // Use a default model ID for operations that don't require a specific model
         // This is mainly for operations like listing available models
-        return CreateClientForProvider(providerName, credentials, "default-model-id");
+        return CreateClientForProvider(credentials.ProviderType.ToString(), credentials, "default-model-id");
     }
     
     /// <inheritdoc />
@@ -127,7 +127,7 @@ public class LLMClientFactory : ILLMClientFactory
     private ILLMClient CreateClientForProvider(string providerName, ProviderCredentials credentials, string modelId)
     {
         // Get normalized provider name
-        string normalizedProviderName = providerName.ToLowerInvariant();
+        string normalizedProviderName = NormalizeProviderName(providerName, credentials.ProviderType).ToLowerInvariant();
 
         // Get default models configuration
         var defaultModels = _settings.DefaultModels;
@@ -287,6 +287,45 @@ public class LLMClientFactory : ILLMClientFactory
         }
 
         return client;
+    }
+
+    /// <summary>
+    /// Normalizes the provider name to handle both string names and ProviderType enum values.
+    /// </summary>
+    private static string NormalizeProviderName(string providerName, ProviderType providerType)
+    {
+        // If we have a valid provider name, use it
+        if (!string.IsNullOrWhiteSpace(providerName) && !providerName.Equals(providerType.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            return providerName;
+        }
+
+        // Otherwise, map the ProviderType enum to the expected provider name
+        return providerType switch
+        {
+            ProviderType.OpenAI => "openai",
+            ProviderType.AzureOpenAI => "azure",
+            ProviderType.Anthropic => "anthropic",
+            ProviderType.Gemini => "gemini",
+            ProviderType.VertexAI => "vertexai",
+            ProviderType.Cohere => "cohere",
+            ProviderType.Mistral => "mistral",
+            ProviderType.Groq => "groq",
+            ProviderType.Ollama => "ollama",
+            ProviderType.Replicate => "replicate",
+            ProviderType.Fireworks => "fireworks",
+            ProviderType.Bedrock => "bedrock",
+            ProviderType.HuggingFace => "huggingface",
+            ProviderType.SageMaker => "sagemaker",
+            ProviderType.OpenRouter => "openrouter",
+            ProviderType.OpenAICompatible => "openai-compatible",
+            ProviderType.MiniMax => "minimax",
+            ProviderType.Ultravox => "ultravox",
+            ProviderType.ElevenLabs => "elevenlabs",
+            ProviderType.GoogleCloud => "googlecloud",
+            ProviderType.Cerebras => "cerebras",
+            _ => providerType.ToString().ToLowerInvariant()
+        };
     }
     // Legacy client creation method has been removed as part of the client migration
 }

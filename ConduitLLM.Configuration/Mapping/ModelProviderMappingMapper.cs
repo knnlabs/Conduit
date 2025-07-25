@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Mapping
             {
                 ModelAlias = entity.ModelAlias,
                 ProviderId = entity.ProviderCredentialId,
-                ProviderName = entity.ProviderCredential?.ProviderName ?? string.Empty,
+                ProviderType = entity.ProviderCredential?.ProviderType ?? ProviderType.OpenAI,
                 ProviderModelId = entity.ProviderModelName,
                 DeploymentName = null, // DeploymentName is not stored in the entity currently
                 SupportsVision = entity.SupportsVision,

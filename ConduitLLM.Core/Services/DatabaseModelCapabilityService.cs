@@ -303,7 +303,7 @@ namespace ConduitLLM.Core.Services
                 var allMappings = await _repository.GetAllAsync(default);
                 var defaultMapping = allMappings.FirstOrDefault(m =>
                     m.IsDefault &&
-                    m.ProviderCredential?.ProviderName?.Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
+                    m.ProviderCredential?.ProviderType.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
                     m.DefaultCapabilityType?.Equals(capabilityType, StringComparison.OrdinalIgnoreCase) == true);
 
                 var result = defaultMapping?.ModelAlias;

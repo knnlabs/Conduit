@@ -90,11 +90,11 @@ namespace ConduitLLM.Providers
                 providerModelId,
                 logger,
                 httpClientFactory,
-                providerName ?? credentials.ProviderName ?? "openai",
-                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderName ?? "openai"),
+                providerName ?? credentials.ProviderType.ToString() ?? "openai",
+                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderType.ToString() ?? "openai"),
                 defaultModels)
         {
-            _isAzure = (providerName ?? credentials.ProviderName ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
+            _isAzure = (providerName ?? credentials.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase) || credentials.ProviderType == ProviderType.AzureOpenAI;
             _capabilityService = capabilityService;
 
             // Specific validation for Azure credentials

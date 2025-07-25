@@ -115,7 +115,7 @@ namespace ConduitLLM.Admin.Extensions
                 ModelId = mapping.ModelAlias,
                 ProviderModelId = mapping.ProviderModelName,
                 ProviderId = mapping.ProviderCredentialId.ToString(),
-                ProviderName = mapping.ProviderCredential?.ProviderName,
+                ProviderType = mapping.ProviderCredential?.ProviderType,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields
@@ -196,7 +196,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderCredentialDto
             {
                 Id = credential.Id,
-                ProviderName = credential.ProviderName,
+                ProviderType = credential.ProviderType,
                 BaseUrl = credential.BaseUrl ?? string.Empty,
                 IsEnabled = credential.IsEnabled,
                 Organization = null, // Organization not available in entity
@@ -220,7 +220,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderDataDto
             {
                 Id = credential.Id,
-                ProviderName = credential.ProviderName
+                ProviderType = credential.ProviderType
             };
         }
 
@@ -238,7 +238,7 @@ namespace ConduitLLM.Admin.Extensions
 
             return new ProviderCredential
             {
-                ProviderName = dto.ProviderName,
+                ProviderType = dto.ProviderType,
                 BaseUrl = dto.BaseUrl,
                 IsEnabled = dto.IsEnabled,
                 // Organization is not available in entity
@@ -408,7 +408,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderHealthConfigurationDto
             {
                 Id = config.Id,
-                ProviderName = config.ProviderName,
+                ProviderType = config.ProviderType,
                 MonitoringEnabled = config.MonitoringEnabled,
                 CheckIntervalMinutes = config.CheckIntervalMinutes,
                 TimeoutSeconds = config.TimeoutSeconds,
@@ -433,7 +433,7 @@ namespace ConduitLLM.Admin.Extensions
 
             return new ProviderHealthConfiguration
             {
-                ProviderName = dto.ProviderName,
+                ProviderType = dto.ProviderType,
                 MonitoringEnabled = dto.MonitoringEnabled,
                 CheckIntervalMinutes = dto.CheckIntervalMinutes,
                 TimeoutSeconds = dto.TimeoutSeconds,
@@ -487,7 +487,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderHealthRecordDto
             {
                 Id = record.Id,
-                ProviderName = record.ProviderName,
+                ProviderType = record.ProviderType,
                 Status = record.Status,
                 StatusMessage = record.StatusMessage,
                 TimestampUtc = record.TimestampUtc,

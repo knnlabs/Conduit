@@ -163,9 +163,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ProviderConfigurationNotification
     {
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the configuration action.
@@ -214,9 +214,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public string ModelAlias { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider type.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the actual model name.

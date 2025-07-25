@@ -113,7 +113,7 @@ namespace ConduitLLM.Providers
             {
                 ApiKey = credentials.ApiKey,
                 BaseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? Constants.Urls.DefaultBaseUrl : credentials.BaseUrl,
-                ProviderName = "groq"
+                ProviderType = ProviderType.Groq
             };
 
             return groqCredentials;

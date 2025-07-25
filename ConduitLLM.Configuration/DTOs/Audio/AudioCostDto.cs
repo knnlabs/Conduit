@@ -14,11 +14,10 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public int Id { get; set; }
 
         /// <summary>
-        /// Provider name (e.g., "openai", "elevenlabs").
+        /// Provider type.
         /// </summary>
         [Required]
-        [MaxLength(100)]
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).
@@ -87,11 +86,10 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class CreateAudioCostDto
     {
         /// <summary>
-        /// Provider name (e.g., "openai", "elevenlabs").
+        /// Provider type.
         /// </summary>
         [Required]
-        [MaxLength(100)]
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).

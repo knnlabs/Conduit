@@ -197,11 +197,8 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     ProviderType = table.Column<int>(type: "integer", nullable: false),
-                    ApiKey = table.Column<string>(type: "text", nullable: true),
                     BaseUrl = table.Column<string>(type: "text", nullable: true),
-                    ApiVersion = table.Column<string>(type: "text", nullable: true),
                     IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -217,7 +214,7 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderName = table.Column<string>(type: "text", nullable: false),
+                    ProviderType = table.Column<int>(type: "integer", nullable: false),
                     MonitoringEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     CheckIntervalMinutes = table.Column<int>(type: "integer", nullable: false),
                     TimeoutSeconds = table.Column<int>(type: "integer", nullable: false),
@@ -237,7 +234,7 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderName = table.Column<string>(type: "text", nullable: false),
+                    ProviderType = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     IsOnline = table.Column<bool>(type: "boolean", nullable: false),
                     StatusMessage = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
@@ -383,7 +380,6 @@ namespace ConduitLLM.Configuration.Migrations
                     ProviderAccountGroup = table.Column<short>(type: "smallint", nullable: false),
                     ApiKey = table.Column<string>(type: "text", nullable: true),
                     BaseUrl = table.Column<string>(type: "text", nullable: true),
-                    ApiVersion = table.Column<string>(type: "text", nullable: true),
                     Organization = table.Column<string>(type: "text", nullable: true),
                     KeyName = table.Column<string>(type: "text", nullable: true),
                     IsPrimary = table.Column<bool>(type: "boolean", nullable: false),
@@ -985,15 +981,15 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "VirtualKeyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ProviderCredentials_ProviderName",
+                name: "IX_ProviderCredentials_ProviderType",
                 table: "ProviderCredentials",
-                column: "ProviderName",
+                column: "ProviderType",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ProviderHealthConfigurations_ProviderName",
+                name: "IX_ProviderHealthConfigurations_ProviderType",
                 table: "ProviderHealthConfigurations",
-                column: "ProviderName",
+                column: "ProviderType",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1002,9 +998,9 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "IsOnline");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ProviderHealthRecords_ProviderName_TimestampUtc",
+                name: "IX_ProviderHealthRecords_ProviderType_TimestampUtc",
                 table: "ProviderHealthRecords",
-                columns: new[] { "ProviderName", "TimestampUtc" });
+                columns: new[] { "ProviderType", "TimestampUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProviderKeyCredential_OnePrimaryPerProvider",

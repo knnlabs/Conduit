@@ -575,7 +575,7 @@ namespace ConduitLLM.Core.Services
                 return new ModelInfo
                 {
                     ModelId = mapping.ProviderModelId,
-                    Provider = mapping.ProviderName,
+                    Provider = mapping.ProviderType.ToString(),
                     ModelAlias = mapping.ModelAlias
                 };
             }

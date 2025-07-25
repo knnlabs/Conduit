@@ -20,9 +20,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public string VirtualKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider that handled the request.
+        /// Provider type that handled the request.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Type of audio operation.
@@ -208,9 +208,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class ProviderBreakdown
     {
         /// <summary>
-        /// Provider name.
+        /// Provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Number of operations.
@@ -265,9 +265,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public string? VirtualKey { get; set; }
 
         /// <summary>
-        /// Filter by provider.
+        /// Filter by provider type.
         /// </summary>
-        public string? Provider { get; set; }
+        public ProviderType? ProviderType { get; set; }
 
         /// <summary>
         /// Filter by operation type.
@@ -349,9 +349,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class AudioProviderUsageDto
     {
         /// <summary>
-        /// Provider name.
+        /// Provider type.
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Total number of operations.

@@ -54,8 +54,8 @@ namespace ConduitLLM.Configuration.Repositories
             if (!string.IsNullOrEmpty(query.VirtualKey))
                 queryable = queryable.Where(l => l.VirtualKey == query.VirtualKey);
 
-            if (!string.IsNullOrEmpty(query.Provider))
-                queryable = queryable.Where(l => l.Provider.ToLower() == query.Provider.ToLower());
+            if (query.ProviderType.HasValue)
+                queryable = queryable.Where(l => l.Provider == query.ProviderType.Value.ToString());
 
             if (!string.IsNullOrEmpty(query.OperationType))
                 queryable = queryable.Where(l => l.OperationType.ToLower() == query.OperationType.ToLower());
@@ -259,7 +259,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             return breakdown.Select(b => new ProviderBreakdown
             {
-                Provider = b.Provider,
+                ProviderType = Enum.TryParse<ProviderType>(b.Provider, true, out var providerType) ? providerType : ProviderType.OpenAI,
                 Count = b.Count,
                 TotalCost = b.TotalCost,
                 SuccessRate = b.Count > 0 ? (b.SuccessCount / (double)b.Count) * 100 : 0

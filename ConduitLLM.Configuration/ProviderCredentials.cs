@@ -6,10 +6,10 @@ namespace ConduitLLM.Configuration;
 public class ProviderCredentials
 {
     /// <summary>
-    /// Gets or sets the unique name identifying the provider (e.g., "openai", "anthropic", "azure").
-    /// This name is used to link ModelProviderMapping to these credentials.
+    /// Gets or sets the provider type enum value.
+    /// This is used to link ModelProviderMapping to these credentials.
     /// </summary>
-    public required string ProviderName { get; set; }
+    public required ProviderType ProviderType { get; set; }
 
     /// <summary>
     /// Gets or sets the API key for the provider.

@@ -23,9 +23,9 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ErrorDetails { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider name that was tested.
+        /// Gets or sets the provider type that was tested.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Gets or sets the timestamp when the test was performed.

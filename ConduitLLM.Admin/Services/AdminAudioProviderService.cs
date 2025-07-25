@@ -101,7 +101,7 @@ namespace ConduitLLM.Admin.Services
             var created = await _repository.CreateAsync(config);
             _logger.LogInformation("Created audio provider configuration {Id} for provider {Provider}",
                 created.Id.ToString().Replace(Environment.NewLine, ""),
-                credential.ProviderName.Replace(Environment.NewLine, ""));
+                credential.ProviderType.ToString().Replace(Environment.NewLine, ""));
 
             return MapToDto(created);
         }
@@ -166,7 +166,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Create a client for the provider
                 var client = _clientFactory.GetClientByProvider(
-                    config.ProviderCredential.ProviderName);
+                    config.ProviderCredential.ProviderType.ToString());
 
                 // Test based on operation type
                 switch (operationType.ToLower())
@@ -280,7 +280,7 @@ namespace ConduitLLM.Admin.Services
             {
                 Id = config.Id,
                 ProviderCredentialId = config.ProviderCredentialId,
-                ProviderName = config.ProviderCredential?.ProviderName,
+                ProviderName = config.ProviderCredential?.ProviderType.ToString(),
                 TranscriptionEnabled = config.TranscriptionEnabled,
                 DefaultTranscriptionModel = config.DefaultTranscriptionModel,
                 TextToSpeechEnabled = config.TextToSpeechEnabled,

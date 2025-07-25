@@ -164,7 +164,7 @@ _logger.LogError(ex, "Error getting health configuration for provider '{Provider
                 var createdConfiguration = await _providerHealthService.CreateConfigurationAsync(configuration);
                 return CreatedAtAction(
                     nameof(GetConfigurationByProviderName),
-                    new { providerName = createdConfiguration.ProviderName },
+                    new { providerName = createdConfiguration.ProviderType.ToString() },
                     createdConfiguration);
             }
             catch (InvalidOperationException ex)

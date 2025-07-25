@@ -13,9 +13,9 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// The name of the LLM provider that this configuration applies to.
+        /// The provider type that this configuration applies to.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Indicates whether health monitoring is enabled for this provider.

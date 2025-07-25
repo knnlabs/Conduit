@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using MassTransit;
@@ -90,7 +91,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                var mappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
+                var mappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
                 var providerHealthRepository = scope.ServiceProvider.GetRequiredService<IProviderHealthRepository>();
                 
                 // Get all image generation capable providers
@@ -107,7 +108,7 @@ namespace ConduitLLM.Core.Services
                     
                     var providerId = providerGroup.Key;
                     var models = providerGroup.Select(m => m.ModelAlias).ToList();
-                    var providerName = providerGroup.First().ProviderName; // For logging purposes
+                    var providerName = providerGroup.First().ProviderType.ToString(); // For logging purposes
                     
                     try
                     {
@@ -205,9 +206,16 @@ namespace ConduitLLM.Core.Services
             _metricsCollector.RecordProviderHealth(providerName, healthScore, success, errorMessage);
             
             // Save to repository
+            // Parse provider name to enum
+            if (!Enum.TryParse<ConduitLLM.Configuration.ProviderType>(providerName, true, out var providerType))
+            {
+                _logger.LogWarning("Unable to parse provider type from name: {ProviderName}", providerName);
+                return;
+            }
+            
             var healthRecord = new ProviderHealthRecord
             {
-                ProviderName = providerName,
+                ProviderType = providerType,
                 TimestampUtc = DateTime.UtcNow,
                 Status = success ? ProviderHealthRecord.StatusType.Online : ProviderHealthRecord.StatusType.Offline,
                 StatusMessage = success ? "Provider is healthy" : errorMessage ?? "Unknown error",

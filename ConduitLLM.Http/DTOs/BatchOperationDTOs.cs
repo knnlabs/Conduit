@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Http.DTOs
 {
@@ -161,10 +162,10 @@ namespace ConduitLLM.Http.DTOs
         public string Model { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider used
+        /// Provider type used
         /// </summary>
         [Required]
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Additional metadata

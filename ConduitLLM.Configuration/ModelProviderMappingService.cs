@@ -49,19 +49,15 @@ _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replac
                         throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
                     }
                 }
-                else if (!string.IsNullOrEmpty(mapping.ProviderName))
-                {
-                    // Fall back to provider name for backward compatibility
-                    credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                    if (credential == null)
-                    {
-_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                    }
-                }
                 else
                 {
-                    throw new InvalidOperationException("Either ProviderId or ProviderName must be specified");
+                    // Fall back to provider type
+                    credential = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider {ProviderType}", mapping.ProviderType);
+                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                    }
                 }
 
                 // Convert to entity and set the provider credential ID
@@ -180,19 +176,15 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                         throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
                     }
                 }
-                else if (!string.IsNullOrEmpty(mapping.ProviderName))
-                {
-                    // Fall back to provider name for backward compatibility
-                    credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                    if (credential == null)
-                    {
-_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                    }
-                }
                 else
                 {
-                    throw new InvalidOperationException("Either ProviderId or ProviderName must be specified");
+                    // Fall back to provider type
+                    credential = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider {ProviderType}", mapping.ProviderType);
+                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
+                    }
                 }
 
                 // Update the entity
@@ -237,19 +229,15 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                         return (false, $"Provider does not exist with ID: {mapping.ProviderId}", null);
                     }
                 }
-                else if (!string.IsNullOrEmpty(mapping.ProviderName))
-                {
-                    // Fall back to provider name for backward compatibility
-                    provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                    if (provider == null)
-                    {
-                        _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                        return (false, $"Provider does not exist: {mapping.ProviderName}", null);
-                    }
-                }
                 else
                 {
-                    return (false, "Either ProviderId or ProviderName must be specified", null);
+                    // Fall back to provider type
+                    provider = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist {ProviderType}", mapping.ProviderType);
+                        return (false, $"Provider does not exist: {mapping.ProviderType}", null);
+                    }
                 }
 
                 // Check if a mapping with the same alias already exists
@@ -292,11 +280,11 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 }
 
                 // Validate that the provider exists
-                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                var provider = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    return (false, $"Provider does not exist: {mapping.ProviderName}");
+                    _logger.LogWarning("Provider does not exist {ProviderType}", mapping.ProviderType);
+                    return (false, $"Provider does not exist: {mapping.ProviderType}");
                 }
 
                 // Update the mapping
@@ -349,7 +337,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             {
                 _logger.LogInformation("Getting all available providers");
                 var providers = await _credentialRepository.GetAllAsync();
-                return providers.Select(p => (p.Id, p.ProviderName)).ToList();
+                return providers.Select(p => (p.Id, p.ProviderType.ToString())).ToList();
             }
             catch (Exception ex)
             {

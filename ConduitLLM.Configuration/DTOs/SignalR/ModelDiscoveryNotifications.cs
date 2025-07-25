@@ -9,9 +9,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class NewModelsDiscoveredNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// List of newly discovered models
@@ -35,9 +35,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelCapabilitiesChangedNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model ID
@@ -71,9 +71,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelPricingUpdatedNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model ID
@@ -107,9 +107,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelDeprecatedNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model ID
@@ -148,9 +148,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelRegionalAvailabilityNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model ID
@@ -179,9 +179,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     public class ModelPerformanceMetricsNotification
     {
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model ID

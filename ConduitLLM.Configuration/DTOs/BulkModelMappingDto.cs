@@ -44,10 +44,10 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider identifier
+        /// The provider type
         /// </summary>
-        [Required(ErrorMessage = "Provider ID is required")]
-        public string ProviderId { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Provider type is required")]
+        public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)

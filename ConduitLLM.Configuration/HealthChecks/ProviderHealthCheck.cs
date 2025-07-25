@@ -70,24 +70,24 @@ namespace ConduitLLM.Configuration.HealthChecks
 
                 foreach (var provider in enabledProviders)
                 {
-                    if (!healthStatusLookup.TryGetValue(provider.ProviderName, out var recentHealth))
+                    if (!healthStatusLookup.TryGetValue(provider.ProviderType.ToString(), out var recentHealth))
                     {
-                        healthData[$"{provider.ProviderName}_status"] = "Unknown";
-                        degradedProviders.Add(provider.ProviderName);
+                        healthData[$"{provider.ProviderType}_status"] = "Unknown";
+                        degradedProviders.Add(provider.ProviderType.ToString());
                         continue;
                     }
 
-                    healthData[$"{provider.ProviderName}_status"] = recentHealth.Status.ToString();
-                    healthData[$"{provider.ProviderName}_lastCheck"] = recentHealth.TimestampUtc;
-                    healthData[$"{provider.ProviderName}_responseTime"] = recentHealth.ResponseTimeMs;
+                    healthData[$"{provider.ProviderType}_status"] = recentHealth.Status.ToString();
+                    healthData[$"{provider.ProviderType}_lastCheck"] = recentHealth.TimestampUtc;
+                    healthData[$"{provider.ProviderType}_responseTime"] = recentHealth.ResponseTimeMs;
 
                     if (recentHealth.Status == ProviderHealthRecord.StatusType.Offline)
                     {
-                        unhealthyProviders.Add(provider.ProviderName);
+                        unhealthyProviders.Add(provider.ProviderType.ToString());
                     }
                     else if (recentHealth.ResponseTimeMs > 5000)
                     {
-                        degradedProviders.Add(provider.ProviderName);
+                        degradedProviders.Add(provider.ProviderType.ToString());
                     }
                 }
 
