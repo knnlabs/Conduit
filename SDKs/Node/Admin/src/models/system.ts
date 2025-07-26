@@ -26,16 +26,25 @@ export interface SystemInfoDto {
   };
 }
 
+export interface HealthCheckData {
+  // Flexible structure for additional health check data
+  // This allows for different data structures per health check type
+  [key: string]: string | number | boolean | HealthCheckData | HealthCheckData[];
+}
+
+export interface HealthCheckDetail {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  description?: string;
+  duration?: number;
+  error?: string;
+  data?: HealthCheckData;
+}
+
 export interface HealthStatusDto {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
   checks: {
-    [key: string]: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
-      description?: string;
-      duration?: number;
-      error?: string;
-    };
+    [key: string]: HealthCheckDetail;
   };
   totalDuration: number;
 }

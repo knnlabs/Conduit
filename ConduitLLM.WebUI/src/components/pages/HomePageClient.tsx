@@ -24,6 +24,8 @@ import {
   IconAlertCircle
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { StatusHoverCard } from '@/components/common/StatusHoverCard';
+import type { HealthCheckDetail } from '@/types/health';
 
 interface HealthData {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
@@ -32,6 +34,8 @@ interface HealthData {
   isNoProvidersIssue: boolean;
   coreApiMessage?: string;
   lastChecked: string;
+  adminChecks?: Record<string, HealthCheckDetail>;
+  coreChecks?: Record<string, HealthCheckDetail>;
 }
 
 interface HomePageClientProps {
@@ -220,12 +224,29 @@ export function HomePageClient({ initialHealthData }: HomePageClientProps) {
         <Stack gap="md">
           <Title order={3}>System Status</Title>
           <Group>
-            <Badge color={getStatusColor(healthData.coreApi)} variant="dot">
-              Core API: {getStatusText(healthData.coreApi)}
-            </Badge>
-            <Badge color={getStatusColor(healthData.adminApi)} variant="dot">
-              Admin API: {getStatusText(healthData.adminApi)}
-            </Badge>
+            <StatusHoverCard
+              status={healthData.coreApi}
+              title="Core API"
+              lastChecked={new Date(healthData.lastChecked)}
+              checks={healthData.coreChecks}
+              message={healthData.coreApiMessage}
+            >
+              <Badge color={getStatusColor(healthData.coreApi)} variant="dot">
+                Core API: {getStatusText(healthData.coreApi)}
+              </Badge>
+            </StatusHoverCard>
+            
+            <StatusHoverCard
+              status={healthData.adminApi}
+              title="Admin API"
+              lastChecked={new Date(healthData.lastChecked)}
+              checks={healthData.adminChecks}
+            >
+              <Badge color={getStatusColor(healthData.adminApi)} variant="dot">
+                Admin API: {getStatusText(healthData.adminApi)}
+              </Badge>
+            </StatusHoverCard>
+            
             <Badge color={getStatusColor(healthData.signalr)} variant="dot">
               Real-time Updates: {getStatusText(healthData.signalr)}
             </Badge>

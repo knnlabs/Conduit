@@ -113,5 +113,13 @@ namespace ConduitLLM.Admin.Services
 
             return tempFactory.GetClientByProviderId(providerId);
         }
+
+        /// <inheritdoc />
+        public IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // This factory doesn't have access to provider metadata
+            // Return null to indicate metadata is not available through this factory
+            return null;
+        }
     }
 }

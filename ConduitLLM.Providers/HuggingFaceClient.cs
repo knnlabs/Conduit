@@ -268,6 +268,74 @@ namespace ConduitLLM.Providers
             };
         }
 
+        /// <summary>
+        /// Verifies HuggingFace authentication by calling the whoami endpoint.
+        /// This is a free API call that validates the API token.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("API key is required");
+                }
+
+                using var client = CreateHttpClient(effectiveApiKey);
+                // Use the whoami endpoint at the API root
+                client.BaseAddress = new Uri("https://huggingface.co/");
+                
+                var request = new HttpRequestMessage(HttpMethod.Get, "api/whoami");
+                
+                var response = await client.SendAsync(request, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success($"Response time: {responseTime:F0}ms");
+                }
+                
+                // Check for specific error codes
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Invalid API token");
+                }
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Access denied. Check your API token permissions");
+                }
+                
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"HuggingFace authentication failed: {response.StatusCode}",
+                    errorContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error during authentication: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure("Authentication request timed out");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error during HuggingFace authentication verification");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
         /// <inheritdoc />
         public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,

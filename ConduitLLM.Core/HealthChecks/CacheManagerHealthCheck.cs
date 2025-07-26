@@ -19,7 +19,7 @@ namespace ConduitLLM.Core.Extensions
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
         }
 
-        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -34,7 +34,7 @@ namespace ConduitLLM.Core.Extensions
                         ["components"] = healthStatus.ComponentStatus
                     };
 
-                    return HealthCheckResult.Healthy("Cache manager is healthy", data);
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("Cache manager is healthy", data);
                 }
                 else
                 {
@@ -44,12 +44,12 @@ namespace ConduitLLM.Core.Extensions
                         ["components"] = healthStatus.ComponentStatus
                     };
 
-                    return HealthCheckResult.Unhealthy("Cache manager has issues", data: data);
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy("Cache manager has issues", data: data);
                 }
             }
             catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy("Cache manager health check failed", ex);
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy("Cache manager health check failed", ex);
             }
         }
     }

@@ -37,7 +37,7 @@ namespace ConduitLLM.Core.HealthChecks
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             var data = new Dictionary<string, object>();
             var issues = new List<string>();
@@ -249,12 +249,12 @@ namespace ConduitLLM.Core.HealthChecks
                 if (!isHealthy)
                 {
                     data["issues"] = issues;
-                    return HealthCheckResult.Unhealthy("Cache infrastructure has critical issues", data: data);
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy("Cache infrastructure has critical issues", data: data);
                 }
                 else if (isDegraded || issues.Count > 0)
                 {
                     data["issues"] = issues;
-                    return HealthCheckResult.Degraded("Cache infrastructure is degraded", data: data);
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Degraded("Cache infrastructure is degraded", data: data);
                 }
                 else
                 {
@@ -265,13 +265,13 @@ namespace ConduitLLM.Core.HealthChecks
                         overallMemoryUsage = totalMemoryLimit > 0 ? $"{(totalMemoryUsed / totalMemoryLimit):P1}" : "N/A",
                         activeRegions = regions.Count(r => r.Value.UseMemoryCache || r.Value.UseDistributedCache)
                     };
-                    return HealthCheckResult.Healthy("Cache infrastructure is healthy", data);
+                    return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("Cache infrastructure is healthy", data);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Cache health check failed");
-                return HealthCheckResult.Unhealthy("Cache health check failed", ex, data);
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy("Cache health check failed", ex, data);
             }
         }
     }

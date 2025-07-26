@@ -3,26 +3,62 @@
 
 services:
   webui:
-    # Remove user override to use default container user
+    # Use base node image for development instead of production build
+    image: node:20-alpine
+    # Run as root in dev (simplifies permissions, fine for local dev)
+    user: "0:0"
     volumes:
       # Mount source code for hot reloading
-      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated
-      - ./SDKs/Node/Admin:/app/SDKs/Node/Admin:delegated
-      - ./SDKs/Node/Core:/app/SDKs/Node/Core:delegated
-      # Prevent node_modules from being overwritten
-      - /app/ConduitLLM.WebUI/node_modules
-      - /app/SDKs/Node/Admin/node_modules
-      - /app/SDKs/Node/Core/node_modules
+      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
+      - ./SDKs:/app/SDKs
+      # Cache node_modules in named volumes for better performance
+      - webui_node_modules:/app/ConduitLLM.WebUI/node_modules
+      - webui_next:/app/ConduitLLM.WebUI/.next
+      - admin_sdk_node_modules:/app/SDKs/Node/Admin/node_modules
+      - core_sdk_node_modules:/app/SDKs/Node/Core/node_modules
+      - common_sdk_node_modules:/app/SDKs/Node/Common/node_modules
     environment:
-      # Enable Next.js development mode
+      # Next.js development settings
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
-      # Enhanced hot reload settings
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: 1000
-      # Fast refresh
       FAST_REFRESH: "true"
+      PORT: 3000
+      # Backend service URLs
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
+      CONDUIT_API_BASE_URL: http://api:8080
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+      # Clerk authentication (using the test keys from docker-compose.yml)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
+      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
     working_dir: /app/ConduitLLM.WebUI
-    # Start dev server directly, assuming dependencies are already installed
-    command: npm run dev
+    # Always install dependencies to ensure they're up to date
+    command: |
+      sh -c "
+        echo 'Installing SDK dependencies...'
+        cd /app/SDKs/Node/Common && npm install && npm run build
+        cd /app/SDKs/Node/Admin && npm install && npm run build
+        cd /app/SDKs/Node/Core && npm install && npm run build
+        echo 'Installing WebUI dependencies...'
+        cd /app/ConduitLLM.WebUI && npm install
+        echo 'Starting development server...'
+        cd /app/ConduitLLM.WebUI && npm run dev
+      "
+    ports:
+      - "3000:3000"
+    depends_on:
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  webui_node_modules:
+  webui_next:
+  admin_sdk_node_modules:
+  core_sdk_node_modules:
+  common_sdk_node_modules:

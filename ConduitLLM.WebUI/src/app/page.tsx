@@ -2,6 +2,7 @@ import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { getServerCoreClient } from '@/lib/server/coreClient';
 import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
+import type { HealthCheckDetail } from '@/types/health';
 
 // Force dynamic rendering to ensure health check runs at request time
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,8 @@ async function getHealthStatus() {
         signalr: 'unavailable' as const,
         isNoProvidersIssue: false,
         lastChecked: new Date().toISOString(),
+        adminChecks: {} as Record<string, HealthCheckDetail>,
+        coreChecks: {} as Record<string, HealthCheckDetail>,
       };
     }
 
@@ -75,6 +78,8 @@ async function getHealthStatus() {
       isNoProvidersIssue: hasNoProviders,
       coreApiMessage: providerCheck?.description,
       lastChecked: new Date().toISOString(),
+      adminChecks: health.checks ?? {},
+      coreChecks: health.checks ?? {}, // For now, using same health data
     };
   } catch (error) {
     console.error('Failed to fetch health status:', error);
@@ -84,6 +89,8 @@ async function getHealthStatus() {
       signalr: 'unavailable' as const,
       isNoProvidersIssue: false,
       lastChecked: new Date().toISOString(),
+      adminChecks: {} as Record<string, HealthCheckDetail>,
+      coreChecks: {} as Record<string, HealthCheckDetail>,
     };
   }
 }

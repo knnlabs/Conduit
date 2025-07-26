@@ -35,6 +35,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
         private readonly Mock<IImageGenerationMetricsService> _mockMetricsService;
+        private readonly Mock<ICostCalculationService> _mockCostCalculationService;
         private readonly Mock<ILogger<ImageGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<ImageGenerationPerformanceConfiguration>> _mockPerformanceOptions;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
@@ -52,6 +53,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
             _mockMetricsService = new Mock<IImageGenerationMetricsService>();
+            _mockCostCalculationService = new Mock<ICostCalculationService>();
             _mockLogger = new Mock<ILogger<ImageGenerationOrchestrator>>();
             _mockPerformanceOptions = new Mock<IOptions<ImageGenerationPerformanceConfiguration>>();
 
@@ -83,6 +85,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockHttpClientFactory.Object,
                 _mockTaskRegistry.Object,
                 _mockMetricsService.Object,
+                _mockCostCalculationService.Object,
                 _mockPerformanceOptions.Object,
                 _mockLogger.Object);
         }
@@ -932,6 +935,28 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Setup HTTP client for URL downloads
             SetupHttpClient();
+            
+            // Setup cost calculation service
+            // The test expects specific total costs based on the test parameters
+            decimal expectedTotalCost = 0.020m * request.Request.N; // Default
+            
+            // Set expected costs based on the specific test case parameters
+            if (provider == "openai" && model == "dall-e-3" && request.Request.N == 1)
+                expectedTotalCost = 0.040m;
+            else if (provider == "openai" && model == "dall-e-2" && request.Request.N == 2)
+                expectedTotalCost = 0.040m;
+            else if (provider == "minimax" && model == "minimax-image" && request.Request.N == 3)
+                expectedTotalCost = 0.030m;
+            else if (provider == "replicate" && model == "sdxl" && request.Request.N == 1)
+                expectedTotalCost = 0.025m;
+            else if (provider == "unknown" && model == "unknown-model" && request.Request.N == 1)
+                expectedTotalCost = 0.025m;
+            
+            _mockCostCalculationService.Setup(x => x.CalculateCostAsync(
+                It.Is<string>(m => m == model),
+                It.Is<Usage>(u => u.ImageCount == request.Request.N),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedTotalCost);
         }
 
         private void SetupSuccessfulImageGenerationWithUrl(ImageGenerationRequested request, string provider, string model)

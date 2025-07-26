@@ -424,6 +424,73 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Verifies ElevenLabs authentication by calling the user endpoint.
+        /// This is a free API call that validates the API key.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("API key is required");
+                }
+
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Use the user endpoint which is free and validates the API key
+                var request = new HttpRequestMessage(HttpMethod.Get, "user");
+                
+                var response = await client.SendAsync(request, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success($"Response time: {responseTime:F0}ms");
+                }
+                
+                // Check for specific error codes
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Invalid API key");
+                }
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Access denied. Check your API key permissions");
+                }
+                
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"ElevenLabs authentication failed: {response.StatusCode}",
+                    errorContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error during authentication: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure("Authentication request timed out");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error during ElevenLabs authentication verification");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
         /// Gets available models from ElevenLabs.
         /// </summary>
         public override async Task<List<ExtendedModelInfo>> GetModelsAsync(

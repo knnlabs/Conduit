@@ -338,6 +338,10 @@ namespace ConduitLLM.Providers
                 // For base implementation, just verify key exists
                 // Derived classes should override with actual API calls
                 Logger.LogInformation("Basic authentication check passed for {Provider}", ProviderName);
+                
+                // Return completed task to make this properly async
+                await Task.CompletedTask;
+                
                 return Core.Interfaces.AuthenticationResult.Success($"Authentication verified for {ProviderName}");
             }
             catch (Exception ex)

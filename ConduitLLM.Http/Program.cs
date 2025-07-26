@@ -221,6 +221,10 @@ builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutPro
 builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
 
+// Add Provider Registry - single source of truth for provider metadata
+builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
+Console.WriteLine("[ConduitLLM.Http] Provider Registry registered - centralized provider metadata management enabled");
+
 // Add performance metrics service
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
 

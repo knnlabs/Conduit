@@ -53,6 +53,7 @@ export function ConnectionIndicator() {
         status={healthStatus.coreApi}
         message={healthStatus.coreApiMessage}
         checks={healthStatus.coreApiChecks}
+        lastChecked={healthStatus.lastChecked}
       />
       
       <ConnectionItem

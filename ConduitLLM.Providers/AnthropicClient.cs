@@ -201,8 +201,10 @@ namespace ConduitLLM.Providers
             base.ConfigureHttpClient(client, apiKey);
 
             // Set the base address
-            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl) ? Constants.Urls.DefaultBaseUrl : Credentials.BaseUrl;
-            client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
+            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
+                ? Constants.Urls.DefaultBaseUrl 
+                : Credentials.BaseUrl.TrimEnd('/');
+            client.BaseAddress = new Uri(baseUrl);
         }
 
         /// <summary>
@@ -1237,7 +1239,7 @@ namespace ConduitLLM.Providers
                 var json = JsonSerializer.Serialize(testRequest);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
-                var messagesUrl = $"{GetHealthCheckUrl(baseUrl)}/messages";
+                var messagesUrl = UrlBuilder.Combine(GetHealthCheckUrl(baseUrl), "messages");
                 var response = await client.PostAsync(messagesUrl, content, cancellationToken);
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
@@ -1300,10 +1302,7 @@ namespace ConduitLLM.Providers
                 : (Credentials.BaseUrl ?? Constants.Urls.DefaultBaseUrl).TrimEnd('/');
             
             // Ensure /v1 is in the URL
-            if (!effectiveBaseUrl.EndsWith("/v1"))
-            {
-                effectiveBaseUrl = $"{effectiveBaseUrl}/v1";
-            }
+            effectiveBaseUrl = UrlBuilder.EnsureSegment(effectiveBaseUrl, "v1");
             
             // Anthropic doesn't have a models endpoint, return base URL
             return effectiveBaseUrl;

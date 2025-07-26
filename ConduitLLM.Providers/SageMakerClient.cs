@@ -112,8 +112,11 @@ namespace ConduitLLM.Providers
                     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                 });
 
-                // Add AWS signature headers
-                AddAwsAuthenticationHeaders(requestMessage, JsonSerializer.Serialize(sageMakerRequest), apiKey);
+                // Sign the request with AWS Signature V4
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key";
+                var region = Credentials.BaseUrl ?? "us-east-1";
+                AwsSignatureV4.SignRequest(requestMessage, effectiveApiKey, effectiveSecretKey, region, "sagemaker");
 
                 using var response = await client.SendAsync(requestMessage, cancellationToken);
 
@@ -315,6 +318,100 @@ namespace ConduitLLM.Providers
             throw new UnsupportedProviderException($"Image generation is not supported in the SageMaker client for endpoint {_endpointName}.");
         }
 
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies AWS SageMaker authentication by describing the endpoint.
+        /// This is a free API call that validates both AWS credentials and endpoint existence.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
+                var effectiveRegion = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl : (Credentials.BaseUrl ?? "us-east-1");
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("AWS Access Key ID is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(_endpointName))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("SageMaker endpoint name is required");
+                }
+
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Use the DescribeEndpoint API which is free and verifies the endpoint exists
+                var request = new HttpRequestMessage(HttpMethod.Get, 
+                    $"https://runtime.sagemaker.{effectiveRegion}.amazonaws.com/endpoints/{_endpointName}");
+                
+                // Add required headers
+                request.Headers.Add("User-Agent", "ConduitLLM");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                
+                // Sign the request with AWS Signature V4
+                AwsSignatureV4.SignRequest(request, effectiveApiKey, effectiveSecretKey, effectiveRegion, "sagemaker");
+                
+                var response = await client.SendAsync(request, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        $"Endpoint '{_endpointName}' verified. Response time: {responseTime:F0}ms");
+                }
+                
+                // Check for specific error codes
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        $"SageMaker endpoint '{_endpointName}' not found");
+                }
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Invalid AWS credentials or insufficient permissions to access SageMaker");
+                }
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Invalid AWS signature or credentials");
+                }
+                
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"AWS SageMaker authentication failed: {response.StatusCode}",
+                    errorContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error during authentication: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure("Authentication request timed out");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error during SageMaker authentication verification");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private SageMakerRequest MapToSageMakerRequest(ChatCompletionRequest request)
@@ -382,20 +479,6 @@ namespace ConduitLLM.Providers
             return $"https://runtime.sagemaker.{region}.amazonaws.com";
         }
 
-        private void AddAwsAuthenticationHeaders(HttpRequestMessage request, string requestBody, string? apiKey = null)
-        {
-            // In a real implementation, this would add AWS Signature V4 authentication headers
-            // For simplicity, we're not implementing the full AWS authentication here
-
-            // Placeholder for AWS signature implementation
-            // In production, use AWS SDK for .NET or implement AWS Signature V4
-
-            // For demo purpose, we'll just add placeholder headers
-            request.Headers.Add("X-Amz-Date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
-
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-            request.Headers.Add("Authorization", $"AWS4-HMAC-SHA256 Credential={effectiveApiKey}");
-        }
 
         #endregion
     }

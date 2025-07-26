@@ -315,8 +315,18 @@ public class LLMClientFactory : ILLMClientFactory
             ProviderType.ElevenLabs => "elevenlabs",
             ProviderType.GoogleCloud => "googlecloud",
             ProviderType.Cerebras => "cerebras",
+            ProviderType.AWSTranscribe => "awstranscribe",
             _ => providerType.ToString().ToLowerInvariant()
         };
     }
+
+    /// <inheritdoc />
+    public IProviderMetadata? GetProviderMetadata(ProviderType providerType)
+    {
+        // This factory doesn't have access to provider metadata
+        // Return null to indicate metadata is not available through this factory
+        return null;
+    }
+    
     // Legacy client creation method has been removed as part of the client migration
 }

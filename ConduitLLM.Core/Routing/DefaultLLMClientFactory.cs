@@ -237,6 +237,14 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
             // TODO: Initialize provider ID factories based on actual provider IDs from the database
             // This would typically be done during startup after loading provider configurations
         }
+
+        /// <inheritdoc />
+        public IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // This factory doesn't have access to provider metadata
+            // Return null to indicate metadata is not available through this factory
+            return null;
+        }
     }
 
     /// <summary>

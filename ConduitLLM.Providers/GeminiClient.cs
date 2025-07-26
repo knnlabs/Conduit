@@ -283,7 +283,8 @@ namespace ConduitLLM.Providers
                         using var client = CreateHttpClient(effectiveApiKey);
 
                         // Construct endpoint URL with the effective API key
-                        string endpoint = $"{DefaultApiVersion}/models?key={effectiveApiKey}";
+                        string endpoint = UrlBuilder.Combine(DefaultApiVersion, "models");
+                        endpoint = UrlBuilder.AppendQueryString(endpoint, ("key", effectiveApiKey));
                         Logger.LogDebug("Sending request to list Gemini models from: {Endpoint}", endpoint);
 
                         var response = await client.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
@@ -393,7 +394,8 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken)
         {
             // Add streaming parameter to the URL
-            var endpoint = $"{DefaultApiVersion}/models/{ProviderModelId}:streamGenerateContent?key={effectiveApiKey}&alt=sse";
+            var endpoint = UrlBuilder.Combine(DefaultApiVersion, "models", ProviderModelId + ":streamGenerateContent");
+            endpoint = UrlBuilder.AppendQueryString(endpoint, ("key", effectiveApiKey), ("alt", "sse"));
             Logger.LogDebug("Sending streaming request to Gemini API: {Endpoint}", endpoint);
 
             using var client = CreateHttpClient(effectiveApiKey);
@@ -923,7 +925,8 @@ namespace ConduitLLM.Providers
                 client.DefaultRequestHeaders.Authorization = null;
                 
                 // Make a request to list models endpoint
-                var modelsUrl = $"{GetHealthCheckUrl(baseUrl)}/models?key={effectiveApiKey}";
+                var modelsUrl = UrlBuilder.Combine(GetHealthCheckUrl(baseUrl), "models");
+                modelsUrl = UrlBuilder.AppendQueryString(modelsUrl, ("key", effectiveApiKey));
                 var response = await client.GetAsync(modelsUrl, cancellationToken);
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
@@ -996,10 +999,7 @@ namespace ConduitLLM.Providers
                 : (Credentials.BaseUrl ?? DefaultBaseUrl).TrimEnd('/');
             
             // Ensure the API version is in the URL
-            if (!effectiveBaseUrl.Contains($"/{DefaultApiVersion}"))
-            {
-                effectiveBaseUrl = $"{effectiveBaseUrl}/{DefaultApiVersion}";
-            }
+            effectiveBaseUrl = UrlBuilder.EnsureSegment(effectiveBaseUrl, DefaultApiVersion);
             
             return effectiveBaseUrl;
         }

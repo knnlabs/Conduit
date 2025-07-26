@@ -150,5 +150,12 @@ namespace ConduitLLM.Core.Caching
             // Fall back to the original client if caching is disabled
             return client;
         }
+
+        /// <inheritdoc />
+        public IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // Delegate to the inner factory
+            return _innerFactory.GetProviderMetadata(providerType);
+        }
     }
 }

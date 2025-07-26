@@ -208,20 +208,52 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         private async Task<bool> PerformProviderSpecificHealthCheckAsync(ProviderCredential provider)
         {
-            // For now, perform a simple connectivity check
-            // In a full implementation, this would call provider-specific health endpoints
-            
-            switch (provider.ProviderType)
+            try
             {
-                case ProviderType.OpenAI:
-                    return await CheckOpenAIHealthAsync(provider);
-                case ProviderType.Anthropic:
-                    return await CheckAnthropicHealthAsync(provider);
-                case ProviderType.Gemini:
-                    return await CheckGoogleHealthAsync(provider);
-                default:
-                    // For unknown providers, assume healthy if credentials exist
-                    return provider.ProviderKeyCredentials?.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)) ?? false;
+                using var scope = _serviceProvider.CreateScope();
+                var clientFactory = scope.ServiceProvider.GetService<ILLMClientFactory>();
+                
+                if (clientFactory != null)
+                {
+                    try
+                    {
+                        // Try to get client by provider ID
+                        var client = clientFactory.GetClientByProviderId(provider.Id);
+                        
+                        // Check if client implements IHealthCheckable
+                        if (client is IHealthCheckable healthCheckable)
+                        {
+                            var result = await healthCheckable.CheckHealthAsync();
+                            return result.IsHealthy;
+                        }
+                        
+                        // Fallback: if client exists, consider it healthy
+                        return client != null;
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // GetClientByProviderId not supported, fall back to legacy method
+                    }
+                }
+                
+                // Legacy fallback: use provider-specific checks
+                switch (provider.ProviderType)
+                {
+                    case ProviderType.OpenAI:
+                        return await CheckOpenAIHealthAsync(provider);
+                    case ProviderType.Anthropic:
+                        return await CheckAnthropicHealthAsync(provider);
+                    case ProviderType.Gemini:
+                        return await CheckGoogleHealthAsync(provider);
+                    default:
+                        // For unknown providers, assume healthy if credentials exist
+                        return provider.ProviderKeyCredentials?.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)) ?? false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error performing health check for provider {ProviderType}", provider.ProviderType);
+                return false;
             }
         }
 
@@ -309,6 +341,34 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         private string GetProviderEndpoint(ProviderType providerType)
         {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var clientFactory = scope.ServiceProvider.GetService<ILLMClientFactory>();
+                
+                if (clientFactory != null)
+                {
+                    // Try to get a sample client to extract metadata
+                    var providers = scope.ServiceProvider.GetRequiredService<IProviderCredentialRepository>();
+                    var provider = providers.GetAllAsync().GetAwaiter().GetResult()
+                        .FirstOrDefault(p => p.ProviderType == providerType);
+                    
+                    if (provider != null)
+                    {
+                        try
+                        {
+                            var client = clientFactory.GetClientByProviderId(provider.Id);
+                            // Clients don't directly implement IProviderMetadata
+                            // This would need to be refactored to use the provider metadata registry
+                            // For now, fall back to hardcoded URLs
+                        }
+                        catch { /* Fall back to hardcoded */ }
+                    }
+                }
+            }
+            catch { /* Fall back to hardcoded */ }
+            
+            // Fallback to hardcoded URLs
             return providerType switch
             {
                 ProviderType.OpenAI => "https://api.openai.com",

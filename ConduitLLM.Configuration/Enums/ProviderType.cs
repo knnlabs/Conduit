@@ -108,6 +108,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Cerebras (high-performance inference)
         /// </summary>
-        Cerebras = 21
+        Cerebras = 21,
+
+        /// <summary>
+        /// AWS Transcribe (speech-to-text)
+        /// </summary>
+        AWSTranscribe = 22
     }
 }

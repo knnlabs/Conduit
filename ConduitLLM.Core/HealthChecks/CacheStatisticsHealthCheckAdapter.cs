@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -18,7 +19,7 @@ namespace ConduitLLM.Core.HealthChecks
             _statisticsHealthCheck = statisticsHealthCheck ?? throw new ArgumentNullException(nameof(statisticsHealthCheck));
         }
 
-        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -46,22 +47,22 @@ namespace ConduitLLM.Core.HealthChecks
 
                 return result.Status switch
                 {
-                    Interfaces.HealthStatus.Healthy => HealthCheckResult.Healthy(
+                    Interfaces.HealthStatus.Healthy => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
                         description: "Cache statistics system is healthy",
                         data: data),
                     
-                    Interfaces.HealthStatus.Degraded => HealthCheckResult.Degraded(
+                    Interfaces.HealthStatus.Degraded => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Degraded(
                         description: string.Join("; ", result.Messages),
                         data: data),
                     
-                    _ => HealthCheckResult.Unhealthy(
+                    _ => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
                         description: string.Join("; ", result.Messages),
                         data: data)
                 };
             }
             catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy(
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
                     description: "Failed to check cache statistics health",
                     exception: ex);
             }

@@ -2,20 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { HealthStatusDto } from '@knn_labs/conduit-admin-client';
+import type { HealthCheckDetail } from '@/types/health';
 
 export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
   coreApi: 'healthy' | 'degraded' | 'unavailable';
   lastChecked: Date;
-  adminApiDetails?: Record<string, unknown>; // Health check details - flexible structure
-  coreApiDetails?: Record<string, unknown>; // Health check details - flexible structure
+  adminApiDetails?: HealthStatusDto;
+  coreApiDetails?: HealthStatusDto;
+  adminApiChecks?: Record<string, HealthCheckDetail>;
+  coreApiChecks?: Record<string, HealthCheckDetail>;
   coreApiMessage?: string;
-  coreApiChecks?: {
-    name: string;
-    status: string;
-    description?: string;
-    data?: Record<string, unknown>; // Health check data - flexible structure
-  }[];
 }
 
 export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: number = 30000) {
@@ -36,17 +33,36 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
       
       if (response.ok) {
         const health = await response.json() as HealthStatusDto;
-        // The SDK response contains the standard health data
         
-        // Determine status based on the health response
-        const isHealthy = health.status === 'healthy';
+        // Map status values
+        const mapStatus = (status: string): 'healthy' | 'degraded' | 'unavailable' => {
+          switch (status.toLowerCase()) {
+            case 'healthy':
+              return 'healthy';
+            case 'degraded':
+              return 'degraded';
+            case 'unhealthy':
+            case 'unavailable':
+              return 'unavailable';
+            default:
+              return 'degraded';
+          }
+        };
+        
+        // Extract provider check for Core API status
+        const providerCheck = health.checks?.providers;
+        const coreApiStatus = providerCheck ? mapStatus(providerCheck.status) : 'unavailable';
+        const coreApiMessage = providerCheck?.description;
         
         setHealthStatus({
-          adminApi: isHealthy ? 'healthy' : 'degraded',
-          coreApi: isHealthy ? 'healthy' : 'degraded',
+          adminApi: mapStatus(health.status),
+          coreApi: coreApiStatus,
           lastChecked: new Date(),
-          adminApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
-          coreApiDetails: health.checks ? Object.fromEntries(Object.entries(health.checks)) : undefined,
+          adminApiDetails: health,
+          coreApiDetails: health, // For now, using same data
+          adminApiChecks: health.checks,
+          coreApiChecks: health.checks,
+          coreApiMessage,
         });
       } else {
         setHealthStatus({

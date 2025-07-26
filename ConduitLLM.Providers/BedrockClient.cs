@@ -318,20 +318,22 @@ namespace ConduitLLM.Providers
             
             string apiUrl = $"/model/{modelId}/invoke";
             
-            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockTitanChatRequest, BedrockTitanChatResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                titanRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(titanRequest), apiKey),
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                },
-                Logger,
-                cancellationToken
-            );
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, titanRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockTitanChatResponse>(responseContent, JsonOptions);
+
+            if (bedrockResponse == null)
+            {
+                throw new LLMCommunicationException("Failed to deserialize Bedrock Titan response");
+            }
 
             // Get the first result
             var result = bedrockResponse.Results?.FirstOrDefault();
@@ -391,20 +393,22 @@ namespace ConduitLLM.Providers
             
             string apiUrl = $"/model/{modelId}/invoke";
             
-            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockCohereChatRequest, BedrockCohereChatResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                cohereRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(cohereRequest), apiKey),
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                },
-                Logger,
-                cancellationToken
-            );
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, cohereRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockCohereChatResponse>(responseContent, JsonOptions);
+
+            if (bedrockResponse == null)
+            {
+                throw new LLMCommunicationException("Failed to deserialize Bedrock Cohere response");
+            }
 
             // Map to standard format
             return new ChatCompletionResponse
@@ -468,20 +472,22 @@ namespace ConduitLLM.Providers
             
             string apiUrl = $"/model/{modelId}/invoke";
             
-            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockAI21ChatRequest, BedrockAI21ChatResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                ai21Request,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(ai21Request), apiKey),
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                },
-                Logger,
-                cancellationToken
-            );
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, ai21Request, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockAI21ChatResponse>(responseContent, JsonOptions);
+
+            if (bedrockResponse == null)
+            {
+                throw new LLMCommunicationException("Failed to deserialize Bedrock AI21 response");
+            }
 
             // Get the first completion
             var completion = bedrockResponse.Completions?.FirstOrDefault();
@@ -903,16 +909,6 @@ namespace ConduitLLM.Providers
             
             return await client.SendAsync(request, cancellationToken);
         }
-        
-        private Dictionary<string, string> CreateAWSAuthHeaders(string path, string body, string? apiKey = null)
-        {
-            // This method is now deprecated in favor of SendBedrockRequestAsync
-            // Keeping it temporarily for backward compatibility
-            return new Dictionary<string, string>
-            {
-                ["User-Agent"] = "ConduitLLM"
-            };
-        }
 
         /// <summary>
         /// Builds a simple prompt from messages for non-chat models.
@@ -1149,15 +1145,17 @@ namespace ConduitLLM.Providers
             using var client = CreateHttpClient(Credentials.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
-            var cohereResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockCohereEmbeddingRequest, BedrockCohereEmbeddingResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                cohereRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(cohereRequest, JsonOptions), Credentials.ApiKey),
-                JsonOptions,
-                Logger,
-                cancellationToken);
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, cohereRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var cohereResponse = JsonSerializer.Deserialize<BedrockCohereEmbeddingResponse>(responseContent, JsonOptions);
             
             if (cohereResponse?.Embeddings == null)
             {
@@ -1210,15 +1208,17 @@ namespace ConduitLLM.Providers
             using var client = CreateHttpClient(Credentials.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
-            var titanResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockTitanEmbeddingRequest, BedrockTitanEmbeddingResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                titanRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(titanRequest, JsonOptions), Credentials.ApiKey),
-                JsonOptions,
-                Logger,
-                cancellationToken);
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, titanRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var titanResponse = JsonSerializer.Deserialize<BedrockTitanEmbeddingResponse>(responseContent, JsonOptions);
             
             if (titanResponse?.Embedding == null)
             {
@@ -1306,15 +1306,17 @@ namespace ConduitLLM.Providers
             using var client = CreateHttpClient(Credentials.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
-            var stabilityResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockStabilityImageRequest, BedrockStabilityImageResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                stabilityRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(stabilityRequest, JsonOptions), Credentials.ApiKey),
-                JsonOptions,
-                Logger,
-                cancellationToken);
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, stabilityRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var stabilityResponse = JsonSerializer.Deserialize<BedrockStabilityImageResponse>(responseContent, JsonOptions);
             
             if (stabilityResponse?.Artifacts == null || !stabilityResponse.Artifacts.Any())
             {
@@ -1922,6 +1924,86 @@ namespace ConduitLLM.Providers
                 null => "stop",
                 _ => "stop"
             };
+        }
+
+        #endregion
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies AWS Bedrock authentication by listing foundation models.
+        /// This is a free API call that validates AWS credentials without incurring charges.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
+                var effectiveRegion = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl : _region;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("API key is required");
+                }
+
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Use the foundation-models endpoint which is free and doesn't invoke any models
+                var request = new HttpRequestMessage(HttpMethod.Get, $"https://bedrock.{effectiveRegion}.amazonaws.com/foundation-models");
+                
+                // Add required headers
+                request.Headers.Add("User-Agent", "ConduitLLM");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                
+                // Sign the request with AWS Signature V4
+                AwsSignatureV4.SignRequest(request, effectiveApiKey, effectiveSecretKey, effectiveRegion, "bedrock");
+                
+                var response = await client.SendAsync(request, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success($"Response time: {responseTime:F0}ms");
+                }
+                
+                // Check for specific error codes
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Invalid AWS credentials or insufficient permissions");
+                }
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure("Invalid AWS signature or credentials");
+                }
+                
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"AWS Bedrock authentication failed: {response.StatusCode}",
+                    errorContent);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Network error during authentication: {ex.Message}",
+                    ex.ToString());
+            }
+            catch (TaskCanceledException)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure("Authentication request timed out");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error during Bedrock authentication verification");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
         }
 
         #endregion

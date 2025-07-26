@@ -251,34 +251,30 @@ namespace ConduitLLM.Core.Services
                     }
                 }
                 
-                // Fall back to provider type-based checks for specific providers
-                switch (providerType)
+                // Use provider metadata to check if it supports image generation
+                if (clientFactory != null && !string.IsNullOrEmpty(model))
                 {
-                    case ProviderType.OpenAI:
-                        return await CheckOpenAIImageHealthAsync(scope, providerId);
+                    try
+                    {
+                        var client = clientFactory.GetClient(model);
                         
-                    case ProviderType.MiniMax:
-                        return await CheckMiniMaxImageHealthAsync(scope, providerId);
-                        
-                    case ProviderType.Replicate:
-                        return await CheckReplicateHealthAsync(scope, providerId);
-                        
-                    default:
-                        // For unknown providers, check if we can create a client
-                        if (clientFactory != null && !string.IsNullOrEmpty(model))
+                        // Check if the client supports health checks
+                        if (client is IHealthCheckable healthCheckable)
                         {
-                            try
-                            {
-                                var client = clientFactory.GetClient(model);
-                                return client != null;
-                            }
-                            catch
-                            {
-                                return false;
-                            }
+                            var healthResult = await healthCheckable.CheckHealthAsync(scope.ServiceProvider.GetRequiredService<CancellationToken>());
+                            return healthResult.IsHealthy;
                         }
+                        
+                        // Fallback to checking if client exists
+                        return client != null;
+                    }
+                    catch
+                    {
                         return false;
+                    }
                 }
+                
+                return false;
             }
             catch (Exception ex)
             {
@@ -530,13 +526,9 @@ namespace ConduitLLM.Core.Services
 
         private string GetProviderEndpoint(ProviderType providerType)
         {
-            return providerType switch
-            {
-                ProviderType.OpenAI => "https://api.openai.com",
-                ProviderType.MiniMax => "https://api.minimax.chat",
-                ProviderType.Replicate => "https://api.replicate.com",
-                _ => "Unknown"
-            };
+            // This method should be replaced with getting the URL from provider metadata
+            // For now, return unknown
+            return "Provider-specific";
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)

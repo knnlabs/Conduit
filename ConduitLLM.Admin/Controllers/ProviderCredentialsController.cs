@@ -264,7 +264,7 @@ namespace ConduitLLM.Admin.Controllers
                 // So we create a special DTO with the ID set for the service to fetch internally
                 var testCredential = new ProviderCredentialDto { Id = id };
                 
-                var result = await _providerCredentialService.TestProviderConnectionV2Async(testCredential);
+                var result = await _providerCredentialService.TestProviderConnectionAsync(testCredential);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -292,7 +292,7 @@ namespace ConduitLLM.Admin.Controllers
 
             try
             {
-                var result = await _providerCredentialService.TestProviderConnectionV2Async(testRequest);
+                var result = await _providerCredentialService.TestProviderConnectionAsync(testRequest);
                 return Ok(result);
             }
             catch (Exception ex)

@@ -18,6 +18,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
 
@@ -117,9 +118,12 @@ namespace ConduitLLM.Providers
             }
 
             // For standard OpenAI or compatible providers
-            return string.IsNullOrWhiteSpace(credentials.BaseUrl)
+            var baseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl)
                 ? Constants.Urls.DefaultOpenAIBaseUrl
-                : credentials.BaseUrl.TrimEnd('/');
+                : credentials.BaseUrl;
+            
+            // Ensure consistent formatting
+            return baseUrl.TrimEnd('/');
         }
 
         /// <summary>
@@ -149,12 +153,11 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = Constants.AzureApiVersion;
-
-                return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/chat/completions?api-version={apiVersion}";
+                var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "chat/completions");
+                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
             }
 
-            return $"{BaseUrl}{Constants.Endpoints.ChatCompletions}";
+            return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.ChatCompletions);
         }
 
         /// <summary>
@@ -164,12 +167,11 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = Constants.AzureApiVersion;
-
-                return $"{BaseUrl.TrimEnd('/')}/openai/deployments?api-version={apiVersion}";
+                var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments");
+                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
             }
 
-            return $"{BaseUrl}{Constants.Endpoints.Models}";
+            return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.Models);
         }
 
         /// <summary>
@@ -179,12 +181,11 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = Constants.AzureApiVersion;
-
-                return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/embeddings?api-version={apiVersion}";
+                var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "embeddings");
+                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
             }
 
-            return $"{BaseUrl}{Constants.Endpoints.Embeddings}";
+            return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.Embeddings);
         }
 
         /// <summary>
@@ -194,12 +195,11 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = Constants.AzureApiVersion;
-
-                return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/images/generations?api-version={apiVersion}";
+                var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "images/generations");
+                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
             }
 
-            return $"{BaseUrl}{Constants.Endpoints.ImageGenerations}";
+            return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.ImageGenerations);
         }
 
         #region Audio API Implementation
@@ -218,7 +218,7 @@ namespace ConduitLLM.Providers
 
             var endpoint = _isAzure
                 ? GetAzureAudioEndpoint("transcriptions")
-                : $"{BaseUrl}{Constants.Endpoints.AudioTranscriptions}";
+                : UrlBuilder.Combine(BaseUrl, Constants.Endpoints.AudioTranscriptions);
 
             using var content = new MultipartFormDataContent();
 
@@ -318,7 +318,7 @@ namespace ConduitLLM.Providers
 
             var endpoint = _isAzure
                 ? GetAzureAudioEndpoint("speech")
-                : $"{BaseUrl}{Constants.Endpoints.AudioSpeech}";
+                : UrlBuilder.Combine(BaseUrl, Constants.Endpoints.AudioSpeech);
 
             var openAIRequest = new OpenAIModels.TextToSpeechRequest
             {
@@ -568,9 +568,8 @@ namespace ConduitLLM.Providers
         /// </summary>
         private string GetAzureAudioEndpoint(string operation)
         {
-            string apiVersion = Constants.AzureApiVersion;
-
-            return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/audio/{operation}?api-version={apiVersion}";
+            var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "audio", operation);
+            return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
         }
 
         /// <summary>
@@ -651,9 +650,10 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             // OpenAI Realtime API uses WebSocket connection
-            var wsUrl = BaseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
+            var wsUrl = UrlBuilder.ToWebSocketUrl(BaseUrl);
             var defaultRealtimeModel = GetDefaultRealtimeModel();
-            wsUrl = $"{wsUrl}/realtime?model={config.Model ?? defaultRealtimeModel}";
+            wsUrl = UrlBuilder.Combine(wsUrl, "realtime");
+            wsUrl = UrlBuilder.AppendQueryString(wsUrl, ("model", config.Model ?? defaultRealtimeModel));
 
             var effectiveApiKey = apiKey ?? Credentials.ApiKey ?? throw new InvalidOperationException("API key is required");
             var session = new OpenAIRealtimeSession(wsUrl, effectiveApiKey, config, Logger);

@@ -25,4 +25,11 @@ public interface ILLMClientFactory
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
     ILLMClient GetClientByProviderId(int providerId);
+
+    /// <summary>
+    /// Gets provider metadata for the specified provider type without requiring credentials.
+    /// </summary>
+    /// <param name="providerType">The provider type to get metadata for.</param>
+    /// <returns>Provider metadata if the provider implements IProviderMetadata, null otherwise.</returns>
+    IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType);
 }

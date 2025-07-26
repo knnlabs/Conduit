@@ -31,6 +31,7 @@ namespace ConduitLLM.Core.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly IImageGenerationMetricsService _metricsService;
+        private readonly ICostCalculationService _costCalculationService;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
@@ -45,6 +46,7 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             ICancellableTaskRegistry taskRegistry,
             IImageGenerationMetricsService metricsService,
+            ICostCalculationService costCalculationService,
             IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
             ILogger<ImageGenerationOrchestrator> logger)
         {
@@ -58,6 +60,7 @@ namespace ConduitLLM.Core.Services
             _httpClientFactory = httpClientFactory;
             _taskRegistry = taskRegistry;
             _metricsService = metricsService;
+            _costCalculationService = costCalculationService;
             _performanceConfig = performanceOptions.Value;
             _logger = logger;
         }
@@ -200,8 +203,8 @@ namespace ConduitLLM.Core.Services
                 
                 await _metricsService.RecordMetricAsync(metric, taskCts.Token);
                 
-                // Calculate cost (simplified - would need provider-specific pricing)
-                var cost = CalculateImageGenerationCost(modelInfo.ProviderType, modelInfo.ModelId, totalImages);
+                // Calculate cost using the centralized cost calculation service
+                var cost = await CalculateImageGenerationCostAsync(modelInfo.ProviderType, modelInfo.ModelId, totalImages, taskCts.Token);
                 
                 // Update task with results
                 await _taskService.UpdateTaskStatusAsync(
@@ -456,21 +459,18 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private decimal CalculateImageGenerationCost(ProviderType providerType, string model, int imageCount)
+        private async Task<decimal> CalculateImageGenerationCostAsync(ProviderType providerType, string model, int imageCount, CancellationToken cancellationToken)
         {
-            // Simplified cost calculation - in production would use provider-specific pricing
-            return providerType switch
+            // Create usage object for cost calculation
+            var usage = new Usage
             {
-                ProviderType.OpenAI => model switch
-                {
-                    "dall-e-3" => 0.040m * imageCount, // $0.040 per image for standard
-                    "dall-e-2" => 0.020m * imageCount, // $0.020 per image
-                    _ => 0.030m * imageCount
-                },
-                ProviderType.MiniMax => 0.010m * imageCount, // Estimated
-                ProviderType.Replicate => 0.025m * imageCount, // Varies by model
-                _ => 0.020m * imageCount // Default estimate
+                ImageCount = imageCount
             };
+            
+            // Use the centralized cost calculation service
+            var cost = await _costCalculationService.CalculateCostAsync(model, usage, cancellationToken);
+            
+            return cost;
         }
 
         private bool IsRetryableError(Exception ex)

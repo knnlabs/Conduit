@@ -2,6 +2,8 @@ using ConduitLLM.Admin.Adapters;
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Extensions;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -64,6 +66,10 @@ namespace ConduitLLM.Admin.Extensions
 
             // Add Configuration adapters (moved from Core)
             services.AddConfigurationAdapters();
+
+            // Add Provider Registry - single source of truth for provider metadata
+            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
+            Console.WriteLine("[ConduitLLM.Admin] Provider Registry registered - centralized provider metadata management enabled");
 
             return services;
         }

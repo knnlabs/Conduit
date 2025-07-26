@@ -65,22 +65,6 @@ namespace ConduitLLM.Admin.Interfaces
         Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(ProviderCredentialDto providerCredential);
 
         /// <summary>
-        /// Tests a provider connection using the factory pattern and provider-specific authentication verification.
-        /// This is the new method that replaces the switch-based authentication logic.
-        /// </summary>
-        /// <param name="providerCredential">The provider credential to test</param>
-        /// <returns>A result indicating success or failure with details</returns>
-        Task<ProviderConnectionTestResultDto> TestProviderConnectionV2Async(ProviderCredentialDto providerCredential);
-
-        /// <summary>
-        /// Tests a provider connection using the factory pattern and provider-specific authentication verification.
-        /// This overload accepts a TestProviderConnectionDto for testing unsaved credentials.
-        /// </summary>
-        /// <param name="testRequest">The provider connection test request</param>
-        /// <returns>A result indicating success or failure with details</returns>
-        Task<ProviderConnectionTestResultDto> TestProviderConnectionV2Async(TestProviderConnectionDto testRequest);
-
-        /// <summary>
         /// Tests the connection to a provider using unsaved credentials
         /// </summary>
         /// <param name="testRequest">The provider connection test request</param>
