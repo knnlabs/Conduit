@@ -430,7 +430,7 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ModelName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    ProviderName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ProviderType = table.Column<int>(type: "integer", nullable: false),
                     Weight = table.Column<int>(type: "integer", nullable: false),
                     HealthCheckEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
@@ -955,9 +955,9 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "ModelName");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_ProviderName",
+                name: "IX_ModelDeployments_ProviderType",
                 table: "ModelDeployments",
-                column: "ProviderName");
+                column: "ProviderType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ModelDeployments_RouterConfigId",

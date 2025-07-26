@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models.Audio;
 
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ namespace ConduitLLM.Core.Routing
         private readonly ILLMClientFactory _clientFactory;
         private readonly IAudioCapabilityDetector _capabilityDetector;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IProviderCredentialService _providerCredentialService;
         private readonly ILogger<SimpleAudioRouter> _logger;
         private readonly Dictionary<string, AudioRoutingStatistics> _statistics = new();
 
@@ -26,11 +28,13 @@ namespace ConduitLLM.Core.Routing
             ILLMClientFactory clientFactory,
             IAudioCapabilityDetector capabilityDetector,
             IVirtualKeyService virtualKeyService,
+            IProviderCredentialService providerCredentialService,
             ILogger<SimpleAudioRouter> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _capabilityDetector = capabilityDetector ?? throw new ArgumentNullException(nameof(capabilityDetector));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -70,13 +74,30 @@ namespace ConduitLLM.Core.Routing
                     selectedProvider = transcriptionProviders.First();
                 }
 
-                // Get the client
-                var client = _clientFactory.GetClientByProvider(selectedProvider);
+                // Map provider name to ID - temporary solution
+                var providerId = GetProviderIdFromName(selectedProvider);
+                if (providerId == null)
+                {
+                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
+                    return null;
+                }
+
+                // Get credentials by ID
+                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                if (credentials == null || !credentials.IsEnabled)
+                {
+                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
+                    return null;
+                }
+
+                // Get the client by provider ID
+                var client = _clientFactory.GetClientByProviderId(providerId.Value);
 
                 // Verify it implements audio interface
                 if (client is IAudioTranscriptionClient audioClient)
                 {
-                    _logger.LogInformation("Routed transcription request to provider: {Provider}", selectedProvider);
+                    _logger.LogInformation("Routed transcription request to provider: {Provider} (ID: {ProviderId})", 
+                        selectedProvider, credentials.ProviderId);
                     return audioClient;
                 }
 
@@ -127,13 +148,30 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
                     selectedProvider = ttsProviders.First();
                 }
 
-                // Get the client
-                var client = _clientFactory.GetClientByProvider(selectedProvider);
+                // Map provider name to ID - temporary solution
+                var providerId = GetProviderIdFromName(selectedProvider);
+                if (providerId == null)
+                {
+                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
+                    return null;
+                }
+
+                // Get credentials by ID
+                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                if (credentials == null || !credentials.IsEnabled)
+                {
+                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
+                    return null;
+                }
+
+                // Get the client by provider ID
+                var client = _clientFactory.GetClientByProviderId(providerId.Value);
 
                 // Verify it implements audio interface
                 if (client is ITextToSpeechClient ttsClient)
                 {
-                    _logger.LogInformation("Routed TTS request to provider: {Provider}", selectedProvider);
+                    _logger.LogInformation("Routed TTS request to provider: {Provider} (ID: {ProviderId})", 
+                        selectedProvider, credentials.ProviderId);
                     return ttsClient;
                 }
 
@@ -179,13 +217,30 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
 
                 var selectedProvider = realtimeProviders.First();
 
-                // Get the client
-                var client = _clientFactory.GetClientByProvider(selectedProvider);
+                // Map provider name to ID - temporary solution
+                var providerId = GetProviderIdFromName(selectedProvider);
+                if (providerId == null)
+                {
+                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
+                    return null;
+                }
+
+                // Get credentials by ID
+                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                if (credentials == null || !credentials.IsEnabled)
+                {
+                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
+                    return null;
+                }
+
+                // Get the client by provider ID
+                var client = _clientFactory.GetClientByProviderId(providerId.Value);
 
                 // Verify it implements real-time interface
                 if (client is IRealtimeAudioClient realtimeClient)
                 {
-                    _logger.LogInformation("Routed real-time session to provider: {Provider}", selectedProvider);
+                    _logger.LogInformation("Routed real-time session to provider: {Provider} (ID: {ProviderId})", 
+                        selectedProvider, credentials.ProviderId);
                     return realtimeClient;
                 }
 
@@ -260,6 +315,36 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
         {
             // Hardcoded for now - in reality this would come from configuration
             return new List<string> { "openai", "azure" };
+        }
+
+        private int? GetProviderIdFromName(string providerName)
+        {
+            // Map provider names to IDs based on ProviderType enum
+            return providerName?.ToLowerInvariant() switch
+            {
+                "openai" => 1,
+                "anthropic" => 2,
+                "azure" or "azureopenai" => 3,
+                "gemini" => 4,
+                "vertexai" => 5,
+                "cohere" => 6,
+                "mistral" => 7,
+                "groq" => 8,
+                "ollama" => 9,
+                "replicate" => 10,
+                "fireworks" => 11,
+                "bedrock" => 12,
+                "huggingface" => 13,
+                "sagemaker" => 14,
+                "openrouter" => 15,
+                "openaicompatible" => 16,
+                "minimax" => 17,
+                "ultravox" => 18,
+                "elevenlabs" => 19,
+                "google" or "googlecloud" => 20,
+                "cerebras" => 21,
+                _ => null
+            };
         }
     }
 }

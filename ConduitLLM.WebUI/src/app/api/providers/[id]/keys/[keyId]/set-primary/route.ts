@@ -16,7 +16,12 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
     
-    await adminClient.providers.setPrimaryKey(providerId, keyIdNum);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.setPrimaryKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    await providers.setPrimaryKey(providerId, keyIdNum);
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleSDKError(error);

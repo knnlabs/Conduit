@@ -63,7 +63,7 @@ namespace ConduitLLM.Http.Controllers
                 }
                 
                 var availableProviders = imageProviders
-                    .Select(p => (p.ProviderName, p.ProviderModelId))
+                    .Select(p => (p.ProviderType.ToString(), p.ProviderModelId))
                     .ToList();
                 
                 // Get optimal provider based on metrics

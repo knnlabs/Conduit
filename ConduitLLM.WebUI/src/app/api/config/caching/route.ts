@@ -93,7 +93,12 @@ export async function PUT(req: NextRequest) {
     }};
 
     // Update cache configuration using the extended API
-    const result = await adminClient.configuration.updateCacheConfig({
+    const configuration = adminClient.configuration;
+    if (!configuration || typeof configuration.updateCacheConfig !== 'function') {
+      throw new Error('Configuration service not available');
+    }
+    
+    const result = await configuration.updateCacheConfig({
       defaultTtlSeconds: updates.ttl,
       maxSizeBytes: updates.maxSize ? updates.maxSize * 1024 * 1024 : undefined, // Convert MB to bytes
       strategy: updates.evictionPolicy as 'lru' | 'lfu' | 'ttl' | 'adaptive' | undefined,

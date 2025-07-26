@@ -19,6 +19,7 @@ import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
 import type { CreateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -84,8 +85,17 @@ export function CreateModelMappingModal({
 
   const handleSubmit = async (values: FormValues) => {
     // Convert the numeric provider ID to provider name for the backend
-    const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName ?? values.providerId;
+    const provider = providers?.find((p: ProviderCredentialDto) => p.id.toString() === values.providerId);
+    let providerName = values.providerId;
+    
+    if (provider) {
+      try {
+        const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+        providerName = providerTypeToName(providerType);
+      } catch (error) {
+        console.error('Failed to get provider type:', error);
+      }
+    }
 
     const createData: CreateModelProviderMappingDto = {
       modelId: values.modelId,
@@ -112,10 +122,20 @@ export function CreateModelMappingModal({
     onClose();
   };
 
-  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
-    value: p.id.toString(),
-    label: p.providerName,
-  })) || [];
+  const providerOptions = providers?.map((p) => {
+    try {
+      const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
+      return {
+        value: p.id.toString(),
+        label: getProviderDisplayName(providerType),
+      };
+    } catch {
+      return {
+        value: p.id.toString(),
+        label: 'Unknown Provider',
+      };
+    }
+  }) || [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities

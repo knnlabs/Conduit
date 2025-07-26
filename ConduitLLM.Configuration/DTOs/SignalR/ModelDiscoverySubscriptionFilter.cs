@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ConduitLLM.Configuration.DTOs.SignalR
 {
@@ -12,6 +13,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// List of provider types to receive notifications for (null/empty = all providers)
         /// </summary>
         public List<ProviderType>? ProviderTypes { get; set; }
+
 
         /// <summary>
         /// List of capabilities to filter by (null/empty = all capabilities)

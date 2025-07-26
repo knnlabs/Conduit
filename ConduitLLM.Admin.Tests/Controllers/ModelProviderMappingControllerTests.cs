@@ -80,20 +80,19 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 { 
                     Id = 1,
                     ModelId = "gpt-4",
-                    ProviderId = "openai",
-                    ProviderName = "OpenAI",
+                    ProviderType = ProviderType.OpenAI,
                     ProviderModelId = "gpt-4-turbo",
-                    SupportsStreaming = true,
-                    SupportsFunctionCalling = true
+                    SupportsVision = true,
+                    IsEnabled = true
                 },
                 new() 
                 { 
                     Id = 2,
                     ModelId = "claude-3",
-                    ProviderId = "anthropic",
-                    ProviderName = "Anthropic",
+                    ProviderType = ProviderType.Anthropic,
                     ProviderModelId = "claude-3-opus",
-                    SupportsVision = true
+                    SupportsVision = true,
+                    IsEnabled = true
                 }
             };
 
@@ -139,7 +138,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 ModelId = "gpt-4",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-turbo"
             };
 
@@ -183,7 +182,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 ModelId = "gpt-4",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-turbo"
             };
 
@@ -226,7 +225,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var mapping = new ModelProviderMappingDto
             {
                 ModelId = "new-model",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-new",
                 SupportsStreaming = true
             };
@@ -250,7 +249,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var mapping = new ModelProviderMappingDto
             {
                 ModelId = "existing-model",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
@@ -278,7 +277,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 ModelId = "gpt-4",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-turbo-updated",
                 SupportsVision = true
             };
@@ -303,7 +302,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 999,
                 ModelId = "gpt-4",
-                ProviderId = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
@@ -363,9 +362,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var providers = new List<ProviderDataDto>
             {
-                new() { Id = 1, ProviderName = "openai" },
-                new() { Id = 2, ProviderName = "anthropic" },
-                new() { Id = 3, ProviderName = "azure-openai" }
+                new() { Id = 1, ProviderType = ProviderType.OpenAI },
+                new() { Id = 2, ProviderType = ProviderType.Anthropic },
+                new() { Id = 3, ProviderType = ProviderType.AzureOpenAI }
             };
 
             _mockService.Setup(x => x.GetProvidersAsync())
@@ -397,13 +396,13 @@ namespace ConduitLLM.Admin.Tests.Controllers
                     new() 
                     { 
                         ModelId = "model1", 
-                        ProviderId = "openai", 
+                        ProviderType = ProviderType.OpenAI, 
                         ProviderModelId = "gpt-4"
                     },
                     new() 
                     { 
                         ModelId = "model2", 
-                        ProviderId = "anthropic", 
+                        ProviderType = ProviderType.Anthropic, 
                         ProviderModelId = "claude-3",
                         SupportsVision = true 
                     }
@@ -415,8 +414,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 TotalProcessed = 2,
                 Created = new List<ModelProviderMappingDto>
                 {
-                    new() { Id = 1, ModelId = "model1", ProviderId = "openai" },
-                    new() { Id = 2, ModelId = "model2", ProviderId = "anthropic" }
+                    new() { Id = 1, ModelId = "model1", ProviderType = ProviderType.OpenAI },
+                    new() { Id = 2, ModelId = "model2", ProviderType = ProviderType.Anthropic }
                 }
             };
 
@@ -442,9 +441,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Mappings = new List<CreateModelProviderMappingDto>
                 {
-                    new() { ModelId = "model1", ProviderId = "openai", ProviderModelId = "gpt-4" },
-                    new() { ModelId = "duplicate", ProviderId = "openai", ProviderModelId = "gpt-4" },
-                    new() { ModelId = "model3", ProviderId = "invalid", ProviderModelId = "model" }
+                    new() { ModelId = "model1", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4" },
+                    new() { ModelId = "duplicate", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4" },
+                    new() { ModelId = "model3", ProviderType = ProviderType.OpenAI, ProviderModelId = "model" }
                 }
             };
 
@@ -515,7 +514,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 ReplaceExisting = true,
                 Mappings = new List<CreateModelProviderMappingDto>
                 {
-                    new() { ModelId = "existing", ProviderId = "openai", ProviderModelId = "gpt-4-updated" }
+                    new() { ModelId = "existing", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4-updated" }
                 }
             };
 

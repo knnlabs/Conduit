@@ -73,7 +73,7 @@ namespace ConduitLLM.Http.Controllers
                 VirtualKeyId = u.VirtualKeyId,
                 Amount = u.Amount,
                 Model = u.Model,
-                Provider = u.Provider,
+                Provider = u.ProviderType.ToString(),
                 RequestMetadata = u.Metadata
             }).ToList();
 

@@ -1,7 +1,8 @@
 export interface ModelCost {
   id: number;
   modelIdPattern: string;
-  providerName: string;
+  providerType?: number;
+  providerName?: string; // Backward compatibility
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
@@ -35,7 +36,8 @@ export interface ModelCost {
 
 export interface CreateModelCostDto {
   modelIdPattern: string;
-  providerName: string;
+  providerType?: number;
+  providerName?: string; // Backward compatibility
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputTokenCost: number;
   outputTokenCost: number;

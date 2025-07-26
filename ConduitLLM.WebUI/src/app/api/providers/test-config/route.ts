@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { ProviderSettings } from '@knn_labs/conduit-admin-client';
+import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface RequestBody {
   providerName: string;
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     const adminClient = getServerAdminClient();
     
     const testRequest = {
-      providerName: body.providerName,
+      providerType: providerNameToType(body.providerName),
       apiKey: body.apiKey,
       baseUrl: body.apiEndpoint,
       organizationId: body.organizationId,

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Tests.TestHelpers;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -64,9 +65,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var credentials = new List<ProviderCredentialDto>
             {
-                new() { Id = 1, ProviderName = "openai", IsEnabled = true },
-                new() { Id = 2, ProviderName = "anthropic", IsEnabled = true },
-                new() { Id = 3, ProviderName = "azure", IsEnabled = false }
+                new() { Id = 1, ProviderType = ProviderType.OpenAI, IsEnabled = true },
+                new() { Id = 2, ProviderType = ProviderType.Anthropic, IsEnabled = true },
+                new() { Id = 3, ProviderType = ProviderType.AzureOpenAI, IsEnabled = false }
             };
 
             _mockService.Setup(x => x.GetAllProviderCredentialsAsync())
@@ -127,7 +128,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var credential = new ProviderCredentialDto
             {
                 Id = 1,
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 IsEnabled = true,
                 BaseUrl = "https://api.openai.com"
             };
@@ -190,7 +191,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var credential = new ProviderCredentialDto
             {
                 Id = 1,
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 IsEnabled = true
             };
 
@@ -203,7 +204,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedCredential = Assert.IsType<ProviderCredentialDto>(okResult.Value);
-            returnedCredential.ProviderName.Should().Be("openai");
+            returnedCredential.ProviderType.Should().Be(ProviderType.OpenAI);
         }
 
         [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
@@ -232,7 +233,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var request = new CreateProviderCredentialDto
             {
-                ProviderName = "new-provider",
+                ProviderType = ProviderType.OpenAI,
                 BaseUrl = "https://api.example.com",
                 IsEnabled = true
             };
@@ -240,7 +241,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createdDto = new ProviderCredentialDto
             {
                 Id = 10,
-                ProviderName = request.ProviderName,
+                ProviderType = request.ProviderType,
                 BaseUrl = request.BaseUrl ?? string.Empty,
                 IsEnabled = request.IsEnabled
             };
@@ -258,7 +259,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             
             var returnedCredential = Assert.IsType<ProviderCredentialDto>(createdResult.Value);
             returnedCredential.Id.Should().Be(10);
-            returnedCredential.ProviderName.Should().Be("new-provider");
+            returnedCredential.ProviderType.Should().Be(ProviderType.OpenAI);
         }
 
         [Fact]
@@ -267,7 +268,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var request = new CreateProviderCredentialDto
             {
-                ProviderName = "existing-provider",
+                ProviderType = ProviderType.OpenAI,
             };
 
             _mockService.Setup(x => x.CreateProviderCredentialAsync(It.IsAny<CreateProviderCredentialDto>()))
@@ -390,7 +391,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Success = true,
                 Message = "Connection successful",
-                ProviderName = "openai"
+                ProviderType = ProviderType.OpenAI
             };
 
             _mockService.Setup(x => x.TestProviderConnectionAsync(It.IsAny<ProviderCredentialDto>()))

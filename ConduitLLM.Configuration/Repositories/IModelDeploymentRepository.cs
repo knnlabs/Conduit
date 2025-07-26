@@ -29,10 +29,10 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets model deployments by provider
         /// </summary>
-        /// <param name="providerName">The provider name</param>
+        /// <param name="providerType">The provider type</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model deployments for the specified provider</returns>
-        Task<List<ModelDeploymentEntity>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
+        Task<List<ModelDeploymentEntity>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets model deployments by model name

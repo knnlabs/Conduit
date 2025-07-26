@@ -35,6 +35,8 @@ import {
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
+import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 interface BulkMappingModalProps {
   isOpen: boolean;
@@ -123,11 +125,13 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     setSelectedProviderId(providerId);
     setSelectedModels(new Set());
     
-    const provider = providers?.find(p => p.id.toString() === providerId);
+    const provider = providers?.find((p: ProviderCredentialDto) => p.id.toString() === providerId);
     if (!provider) return;
     
     try {
-      const result = await discoverModels(providerId, provider.providerName);
+      const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+      const providerName = providerTypeToName(providerType);
+      const result = await discoverModels(providerId, providerName);
       setDiscoveredModels(result.models.map(model => ({
         ...model,
         existingMapping: model.existingMapping as Record<string, unknown> | null
@@ -227,10 +231,20 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         <Select
           label="Select Provider"
           placeholder="Choose a provider to discover models"
-          data={providers?.map(p => ({
-            value: p.id.toString(),
-            label: p.providerName,
-          })) || []}
+          data={providers?.map((p: ProviderCredentialDto) => {
+            try {
+              const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
+              return {
+                value: p.id.toString(),
+                label: getProviderDisplayName(providerType),
+              };
+            } catch {
+              return {
+                value: p.id.toString(),
+                label: 'Unknown Provider',
+              };
+            }
+          }) || []}
           value={selectedProviderId}
           onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}

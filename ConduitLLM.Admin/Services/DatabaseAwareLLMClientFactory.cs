@@ -51,8 +51,8 @@ namespace ConduitLLM.Admin.Services
             {
                 foreach (var mapping in currentSettings.ModelMappings)
                 {
-                    _logger.LogDebug("Settings contain mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
-                        mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
+                    _logger.LogDebug("Settings contain mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}", 
+                        mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
                 }
             }
             else
@@ -69,61 +69,6 @@ namespace ConduitLLM.Admin.Services
             return baseFactory.GetClient(modelName);
         }
 
-        /// <inheritdoc />
-        public ILLMClient GetClientByProvider(string providerName)
-        {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or whitespace.", nameof(providerName));
-            }
-
-            _logger.LogDebug("Getting client for provider {ProviderName} using database credentials", providerName);
-
-            // Parse provider name to ProviderType enum
-            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-            {
-                _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
-                throw new ConfigurationException($"Invalid provider name: '{providerName}'. Please use a valid provider type.");
-            }
-
-            // Get credentials from database synchronously (not ideal but matches interface)
-            var credentials = Task.Run(async () => 
-                await _credentialService.GetCredentialByProviderTypeAsync(providerType)).Result;
-
-            if (credentials == null || !credentials.IsEnabled)
-            {
-                _logger.LogWarning("No enabled credentials found for provider {ProviderName} in database", providerName);
-                throw new ConfigurationException($"No provider credentials found for provider '{providerName}'. Please check your Conduit configuration.");
-            }
-
-            // Get current settings and create a temporary ConduitSettings with the database credentials
-            var currentSettings = _settingsMonitor.CurrentValue;
-            var tempSettings = new ConduitSettings
-            {
-                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
-                {
-                    new ProviderCredentials
-                    {
-                        ProviderName = providerType.ToString(),
-                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
-                        BaseUrl = credentials.BaseUrl
-                    }
-                },
-                // Copy other relevant settings from current settings
-                ModelMappings = currentSettings.ModelMappings,
-                DefaultModels = currentSettings.DefaultModels,
-                PerformanceTracking = currentSettings.PerformanceTracking
-            };
-
-            // Create a new factory with the database credentials
-            var tempFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(tempSettings),
-                _loggerFactory,
-                _httpClientFactory);
-
-            return tempFactory.GetClientByProvider(providerName);
-        }
         
         /// <inheritdoc />
         public ILLMClient GetClientByProviderId(int providerId)
@@ -148,7 +93,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     new ProviderCredentials
                     {
-                        ProviderName = credentials.ProviderType.ToString(),
+                        ProviderType = credentials.ProviderType,
                         ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
                                 credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
                         BaseUrl = credentials.BaseUrl
@@ -166,7 +111,7 @@ namespace ConduitLLM.Admin.Services
                 _loggerFactory,
                 _httpClientFactory);
 
-            return tempFactory.GetClientByProvider(credentials.ProviderType.ToString());
+            return tempFactory.GetClientByProviderId(providerId);
         }
     }
 }

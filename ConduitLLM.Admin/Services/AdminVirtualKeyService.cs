@@ -861,7 +861,7 @@ namespace ConduitLLM.Admin.Services
                 var model = new DiscoveredModelDto
                 {
                     Id = mapping.ModelAlias,
-                    Provider = mapping.ProviderCredential?.ProviderName?.ToLowerInvariant(),
+                    ProviderType = mapping.ProviderCredential?.ProviderType,
                     DisplayName = mapping.ModelAlias,
                     Capabilities = capabilities
                 };

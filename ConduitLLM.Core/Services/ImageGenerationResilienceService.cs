@@ -191,7 +191,7 @@ namespace ConduitLLM.Core.Services
                 {
                     // Get all mappings for this provider
                     var allMappings = await mappingService.GetAllMappingsAsync();
-                    var providerMappings = allMappings.Where(m => m.ProviderName == providerName).ToList();
+                    var providerMappings = allMappings.Where(m => m.ProviderType.ToString() == providerName).ToList();
                     
                     // TODO: Implement mapping updates when the service supports it
                     // foreach (var mapping in providerMappings)
@@ -239,9 +239,9 @@ namespace ConduitLLM.Core.Services
                 var allMappings = await mappingService.GetAllMappingsAsync();
                 var imageProviders = allMappings
                     .Where(m => m.SupportsImageGeneration && 
-                               m.ProviderName != failedProvider &&
+                               m.ProviderType.ToString() != failedProvider &&
                                m.IsEnabled)
-                    .GroupBy(m => m.ProviderName)
+                    .GroupBy(m => m.ProviderType)
                     .ToList();
                 
                 // Select best alternative based on health scores
@@ -250,7 +250,8 @@ namespace ConduitLLM.Core.Services
                 
                 foreach (var providerGroup in imageProviders)
                 {
-                    var providerName = providerGroup.Key;
+                    var providerType = providerGroup.Key;
+                    var providerName = providerType.ToString();
                     if (_providerStates.TryGetValue(providerName, out var state) && 
                         state.IsHealthy && 
                         state.HealthScore > bestScore)
@@ -426,7 +427,7 @@ namespace ConduitLLM.Core.Services
                 try
                 {
                     var allMappings = await mappingService.GetAllMappingsAsync();
-                    var providerMappings = allMappings.Where(m => m.ProviderName == providerName).ToList();
+                    var providerMappings = allMappings.Where(m => m.ProviderType.ToString() == providerName).ToList();
                     
                     // TODO: Implement mapping updates when the service supports it
                     // foreach (var mapping in providerMappings)

@@ -5,13 +5,6 @@ namespace ConduitLLM.Core.Interfaces.Configuration
     /// </summary>
     public interface IProviderCredentialService
     {
-        /// <summary>
-        /// Retrieves credentials for a specific provider.
-        /// </summary>
-        /// <param name="providerName">The name of the provider.</param>
-        /// <returns>Provider credentials if found, otherwise null.</returns>
-        [Obsolete("Use GetCredentialByIdAsync instead. Provider names are error-prone and will be deprecated.")]
-        Task<ProviderCredentials?> GetCredentialByProviderNameAsync(string providerName);
         
         /// <summary>
         /// Retrieves credentials for a specific provider by ID.
@@ -31,10 +24,6 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// </summary>
         public int ProviderId { get; set; }
         
-        /// <summary>
-        /// The name of the provider.
-        /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
 
         /// <summary>
         /// The API key for the provider.

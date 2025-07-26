@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
@@ -48,7 +49,7 @@ namespace ConduitLLM.Http.EventHandlers
             var message = context.Message;
             _logger.LogInformation(
                 "Processing model discovery notification for provider {Provider} with {ModelCount} models",
-                message.ProviderName, message.ModelCapabilities.Count);
+                message.ProviderType.ToString(), message.ModelCapabilities.Count);
 
             try
             {
@@ -56,21 +57,21 @@ namespace ConduitLLM.Http.EventHandlers
                 var newModels = await CheckForNewModelsAsync(message);
                 if (newModels.Any())
                 {
-                    await NotifyNewModelsDiscoveredAsync(message.ProviderName, newModels, message);
+                    await NotifyNewModelsDiscoveredAsync(message.ProviderType.ToString(), newModels, message);
                 }
 
                 // Check for capability changes
                 var capabilityChanges = await CheckForCapabilityChangesAsync(message);
                 foreach (var change in capabilityChanges)
                 {
-                    await NotifyCapabilityChangedAsync(message.ProviderName, change);
+                    await NotifyCapabilityChangedAsync(message.ProviderType.ToString(), change);
                 }
 
                 // Check for pricing updates
                 var pricingUpdates = await CheckForPricingUpdatesAsync(message);
                 foreach (var update in pricingUpdates)
                 {
-                    await NotifyPricingUpdatedAsync(message.ProviderName, update);
+                    await NotifyPricingUpdatedAsync(message.ProviderType.ToString(), update);
                 }
 
                 // Update cache with current state for next comparison
@@ -78,20 +79,20 @@ namespace ConduitLLM.Http.EventHandlers
 
                 _logger.LogInformation(
                     "Successfully processed model discovery notification for provider {Provider}",
-                    message.ProviderName);
+                    message.ProviderType.ToString());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                     "Error processing model discovery notification for provider {Provider}",
-                    message.ProviderName);
+                    message.ProviderType.ToString());
                 throw;
             }
         }
 
         private Task<List<DiscoveredModelInfo>> CheckForNewModelsAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderName}";
+            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
             var previousModels = _cache.Get<Dictionary<string, Core.Events.ModelCapabilities>>(cacheKey);
             
             if (previousModels == null)
@@ -114,7 +115,7 @@ namespace ConduitLLM.Http.EventHandlers
 
         private Task<List<ModelCapabilityChange>> CheckForCapabilityChangesAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderName}";
+            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
             var previousModels = _cache.Get<Dictionary<string, Core.Events.ModelCapabilities>>(cacheKey);
             
             if (previousModels == null)
@@ -133,6 +134,7 @@ namespace ConduitLLM.Http.EventHandlers
                         changes.Add(new ModelCapabilityChange
                         {
                             ModelId = kvp.Key,
+                            ProviderType = message.ProviderType,
                             PreviousCapabilities = previousCapabilities,
                             NewCapabilities = kvp.Value,
                             Changes = changeList
@@ -156,7 +158,7 @@ namespace ConduitLLM.Http.EventHandlers
                     var currentCost = await _modelCostService.GetCostForModelAsync(modelId);
                     if (currentCost != null)
                     {
-                        var pricingCacheKey = $"{PricingCacheKeyPrefix}{message.ProviderName}_{modelId}";
+                        var pricingCacheKey = $"{PricingCacheKeyPrefix}{message.ProviderType}_{modelId}";
                         var previousCost = _cache.Get<decimal?>(pricingCacheKey);
                         
                         if (previousCost.HasValue && previousCost.Value != currentCost.InputTokenCost)
@@ -164,6 +166,7 @@ namespace ConduitLLM.Http.EventHandlers
                             updates.Add(new ModelPricingUpdate
                             {
                                 ModelId = modelId,
+                                ProviderType = message.ProviderType,
                                 PreviousCost = previousCost.Value,
                                 NewCost = currentCost.InputTokenCost,
                                 CostDetails = currentCost
@@ -178,7 +181,7 @@ namespace ConduitLLM.Http.EventHandlers
                 {
                     _logger.LogWarning(ex, 
                         "Failed to check pricing for model {Model} from provider {Provider}",
-                        modelId, message.ProviderName);
+                        modelId, message.ProviderType.ToString());
                 }
             }
 
@@ -189,7 +192,7 @@ namespace ConduitLLM.Http.EventHandlers
         {
             var notification = new NewModelsDiscoveredNotification
             {
-                Provider = provider,
+                ProviderType = message.ProviderType,
                 NewModels = newModels,
                 TotalModelCount = message.ModelCapabilities.Count,
                 DiscoveredAt = message.DiscoveredAt
@@ -231,7 +234,7 @@ namespace ConduitLLM.Http.EventHandlers
         {
             var notification = new ModelCapabilitiesChangedNotification
             {
-                Provider = provider,
+                ProviderType = change.ProviderType,
                 ModelId = change.ModelId,
                 PreviousCapabilities = ConvertToCapabilityInfo(change.PreviousCapabilities),
                 NewCapabilities = ConvertToCapabilityInfo(change.NewCapabilities),
@@ -277,7 +280,7 @@ namespace ConduitLLM.Http.EventHandlers
             
             var notification = new ModelPricingUpdatedNotification
             {
-                Provider = provider,
+                ProviderType = update.ProviderType,
                 ModelId = update.ModelId,
                 PreviousPricing = new ModelPricingInfo
                 {
@@ -329,7 +332,7 @@ namespace ConduitLLM.Http.EventHandlers
 
         private Task UpdateCacheAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderName}";
+            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
             _cache.Set(cacheKey, message.ModelCapabilities, TimeSpan.FromDays(7));
             return Task.CompletedTask;
         }
@@ -393,6 +396,7 @@ namespace ConduitLLM.Http.EventHandlers
         private class ModelCapabilityChange
         {
             public string ModelId { get; set; } = string.Empty;
+            public ProviderType ProviderType { get; set; }
             public Core.Events.ModelCapabilities PreviousCapabilities { get; set; } = new();
             public Core.Events.ModelCapabilities NewCapabilities { get; set; } = new();
             public List<string> Changes { get; set; } = new();
@@ -401,6 +405,7 @@ namespace ConduitLLM.Http.EventHandlers
         private class ModelPricingUpdate
         {
             public string ModelId { get; set; } = string.Empty;
+            public ProviderType ProviderType { get; set; }
             public decimal PreviousCost { get; set; }
             public decimal NewCost { get; set; }
             public dynamic? CostDetails { get; set; }

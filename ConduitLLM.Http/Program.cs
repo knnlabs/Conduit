@@ -1242,7 +1242,7 @@ if (useRabbitMq)
 if (builder.Environment.EnvironmentName != "Test")
 {
     // Use the same Redis connection string we configured above for health checks
-    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, true, rabbitMqConfig);
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, false, rabbitMqConfig);
 
     // Add comprehensive RabbitMQ health check if RabbitMQ is configured
     if (useRabbitMq)
@@ -1546,7 +1546,7 @@ app.MapPost("/v1/chat/completions", async (
                 // Get provider info for metrics from settings
                 var modelMapping = settings.ModelMappings?.FirstOrDefault(m => 
                     string.Equals(m.ModelAlias, request.Model, StringComparison.OrdinalIgnoreCase));
-                var providerName = modelMapping?.ProviderName ?? "unknown";
+                var providerName = modelMapping?.ProviderType.ToString() ?? "unknown";
                 
                 logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerName);
                 metricsCollector = new StreamingMetricsCollector(
@@ -1721,7 +1721,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     
                     return new ProviderCredentials
                     {
-                        ProviderName = p.ProviderName,
+                        ProviderType = p.ProviderType,
                         ApiKey = effectiveApiKey,
                         BaseUrl = effectiveBaseUrl // Map BaseUrl from DB entity
                     };
@@ -1741,14 +1741,14 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                 // Remove any in-memory providers that exist in DB to avoid duplicates
                 settings.ProviderCredentials.RemoveAll(p =>
                     providersList.Any(dbp =>
-                        string.Equals(dbp.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
+                        dbp.ProviderType == p.ProviderType));
 
                 // Then add all the database credentials
                 settings.ProviderCredentials.AddRange(providersList);
 
                 foreach (var cred in providersList)
                 {
-                    _logger.LogInformation("Loaded credentials for provider: {ProviderName}", cred.ProviderName);
+                    _logger.LogInformation("Loaded credentials for provider: {ProviderType}", cred.ProviderType);
                 }
             }
             else
@@ -1769,7 +1769,8 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                 var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
                 {
                     ModelAlias = m.ModelAlias,
-                    ProviderName = m.ProviderCredential.ProviderName,
+                    ProviderType = m.ProviderCredential.ProviderType,
+                    ProviderId = m.ProviderCredential.Id,
                     ProviderModelId = m.ProviderModelName
                 }).ToList();
 
@@ -1789,8 +1790,8 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
 
                 foreach (var mapping in modelMappingsList)
                 {
-                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
-                        mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
+                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}",
+                        mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
                 }
             }
             else

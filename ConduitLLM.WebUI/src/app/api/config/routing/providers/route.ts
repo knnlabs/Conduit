@@ -4,8 +4,9 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
 
 interface ProviderData {
   id: number;
-  providerName: string;
-  apiBase: string;
+  providerType?: number;
+  providerName?: string;
+  apiBase?: string;
   apiKey: string;
   isEnabled: boolean;
   organization?: string;

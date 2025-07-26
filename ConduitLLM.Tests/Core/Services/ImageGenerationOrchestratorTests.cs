@@ -188,7 +188,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
-                ProviderName = "openai",
+                ProviderId = 1,
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "dall-e-3",
                 SupportsImageGeneration = true
             };
@@ -387,7 +388,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderName = "openai",
+                ProviderId = 1,
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
@@ -447,7 +449,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
-                ProviderName = "openai",
+                ProviderId = 1,
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "dall-e-3",
                 SupportsImageGeneration = true
             };
@@ -624,7 +627,7 @@ namespace ConduitLLM.Tests.Core.Services
         [InlineData("openai", "dall-e-2", 2, 0.040)]
         [InlineData("minimax", "minimax-image", 3, 0.030)]
         [InlineData("replicate", "sdxl", 1, 0.025)]
-        [InlineData("unknown", "unknown-model", 1, 0.020)]
+        [InlineData("unknown", "unknown-model", 1, 0.025)] // Unknown defaults to Replicate
         public async Task CalculateImageGenerationCost_WithDifferentProviders_ShouldReturnCorrectCost(
             string provider, string model, int imageCount, decimal expectedCost)
         {
@@ -857,7 +860,14 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
-                ProviderName = provider,
+                ProviderId = 1,
+                ProviderType = provider switch
+                {
+                    "openai" => ProviderType.OpenAI,
+                    "minimax" => ProviderType.MiniMax,
+                    "replicate" => ProviderType.Replicate,
+                    _ => ProviderType.Replicate
+                },
                 ProviderModelId = model,
                 SupportsImageGeneration = true
             };
@@ -942,7 +952,14 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
-                ProviderName = provider,
+                ProviderId = 1,
+                ProviderType = provider switch
+                {
+                    "openai" => ProviderType.OpenAI,
+                    "minimax" => ProviderType.MiniMax,
+                    "replicate" => ProviderType.Replicate,
+                    _ => ProviderType.Replicate
+                },
                 ProviderModelId = model,
                 SupportsImageGeneration = true
             };

@@ -279,7 +279,7 @@ namespace ConduitLLM.Http.Services
                     new ModelUsageStats
                     {
                         ModelName = "gpt-4-turbo",
-                        Provider = "openai",
+                        ProviderType = ProviderType.OpenAI,
                         RequestsPerMinute = (int)(GetMetricValue("conduit_model_requests_total{model=\"gpt-4-turbo\"}") / 60.0),
                         TokensPerMinute = (long)GetMetricValue("conduit_model_tokens_total{model=\"gpt-4-turbo\"}"),
                         AverageResponseTime = GetMetricValue("conduit_model_response_time_seconds{model=\"gpt-4-turbo\"}") * 1000,
@@ -345,13 +345,13 @@ namespace ConduitLLM.Http.Services
                 
                 snapshot.ProviderHealth = providers.Select(p => new ProviderHealthStatus
                 {
-                    ProviderName = p.ProviderName,
-                    Status = GetMetricValue($"conduit_provider_health{{provider=\"{p.ProviderName}\"}}") > 0 ? "healthy" : "unhealthy",
+                    ProviderType = p.ProviderType,
+                    Status = GetMetricValue($"conduit_provider_health{{provider=\"{p.ProviderType}\"}}") > 0 ? "healthy" : "unhealthy",
                     IsEnabled = p.IsEnabled,
-                    ErrorRate = GetMetricValue($"conduit_provider_errors_total{{provider=\"{p.ProviderName}\"}}") / 
-                               GetMetricValue($"conduit_model_requests_total{{provider=\"{p.ProviderName}\"}}") * 100,
-                    AverageLatency = GetMetricValue($"conduit_provider_latency_seconds{{provider=\"{p.ProviderName}\"}}") * 1000,
-                    AvailableModels = (int)GetMetricValue($"conduit_models_active_count{{provider=\"{p.ProviderName}\"}}")
+                    ErrorRate = GetMetricValue($"conduit_provider_errors_total{{provider=\"{p.ProviderType}\"}}") / 
+                               GetMetricValue($"conduit_model_requests_total{{provider=\"{p.ProviderType}\"}}") * 100,
+                    AverageLatency = GetMetricValue($"conduit_provider_latency_seconds{{provider=\"{p.ProviderType}\"}}") * 1000,
+                    AvailableModels = (int)GetMetricValue($"conduit_models_active_count{{provider=\"{p.ProviderType}\"}}")
                 }).ToList();
             }
             catch (Exception ex)
@@ -550,7 +550,7 @@ namespace ConduitLLM.Http.Services
             }
 
             return snapshot.ProviderHealth
-                .Where(p => p.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase))
+                .Where(p => p.ProviderType.ToString().Equals(providerName, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
 

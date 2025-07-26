@@ -88,7 +88,7 @@ namespace ConduitLLM.Http.Controllers
                     if (imageProviders.Any())
                     {
                         var availableProviders = imageProviders
-                            .Select(m => (m.ProviderName, m.ProviderModelId))
+                            .Select(m => (m.ProviderType.ToString(), m.ProviderModelId))
                             .ToList();
                         
                         // Select optimal provider based on current metrics
@@ -100,7 +100,7 @@ namespace ConduitLLM.Http.Controllers
                         if (optimal.HasValue)
                         {
                             var selectedMapping = imageProviders.FirstOrDefault(m => 
-                                m.ProviderName == optimal.Value.Provider && 
+                                m.ProviderType.ToString() == optimal.Value.Provider && 
                                 m.ProviderModelId == optimal.Value.Model);
                             
                             if (selectedMapping != null)
@@ -245,7 +245,7 @@ namespace ConduitLLM.Http.Controllers
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderName ?? "unknown",
+                                    ["provider"] = mapping?.ProviderType.ToString() ?? "unknown",
                                     ["originalUrl"] = imageData.Url ?? ""
                                 }
                             };
@@ -274,7 +274,7 @@ namespace ConduitLLM.Http.Controllers
                                     {
                                         ContentType = contentType,
                                         SizeBytes = storageResult.SizeBytes,
-                                        Provider = mapping?.ProviderName ?? "unknown",
+                                        Provider = mapping?.ProviderType.ToString() ?? "unknown",
                                         Model = request.Model ?? "unknown",
                                         Prompt = request.Prompt,
                                         StorageUrl = storageResult.Url,

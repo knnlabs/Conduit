@@ -314,7 +314,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             else if (enabledProviders.Count == 1)
             {
                 health.Status = "degraded";
-                health.Description = $"1 provider configured ({enabledProviders[0].ProviderName})";
+                health.Description = $"1 provider configured ({enabledProviders[0].ProviderType})";
             }
             else
             {

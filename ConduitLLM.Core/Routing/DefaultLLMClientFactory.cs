@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces.Configuration;
@@ -34,8 +35,8 @@ namespace ConduitLLM.Core.Routing
     public class DefaultLLMClientFactory : ILLMClientFactory
     {
         private readonly ConduitRegistry _registry;
-        private readonly IProviderCredentialService _credentialService;
-        private readonly IModelProviderMappingService _mappingService;
+        private readonly Core.Interfaces.Configuration.IProviderCredentialService _credentialService;
+        private readonly Core.Interfaces.Configuration.IModelProviderMappingService _mappingService;
         private readonly ILogger<DefaultLLMClientFactory> _logger;
 
         /// <summary>
@@ -43,10 +44,6 @@ namespace ConduitLLM.Core.Routing
         /// </summary>
         private readonly ConcurrentDictionary<string, ILLMClient> _clientCache = new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// Cache of LLM clients indexed by provider name
-        /// </summary>
-        private readonly ConcurrentDictionary<string, ILLMClient> _providerClientCache = new(StringComparer.OrdinalIgnoreCase);
         
         /// <summary>
         /// Cache of LLM clients indexed by provider ID
@@ -72,8 +69,8 @@ namespace ConduitLLM.Core.Routing
         /// <param name="logger">Logger instance</param>
         public DefaultLLMClientFactory(
             ConduitRegistry registry,
-            IProviderCredentialService credentialService,
-            IModelProviderMappingService mappingService,
+            Core.Interfaces.Configuration.IProviderCredentialService credentialService,
+            Core.Interfaces.Configuration.IModelProviderMappingService mappingService,
             ILogger<DefaultLLMClientFactory> logger)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -97,17 +94,6 @@ namespace ConduitLLM.Core.Routing
             return _clientCache.GetOrAdd(modelAlias, CreateClient);
         }
 
-        /// <inheritdoc/>
-        public ILLMClient GetClientByProvider(string providerName)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
-            // Try to get from the provider cache first
-            return _providerClientCache.GetOrAdd(providerName, CreateClientByProvider);
-        }
         
         /// <inheritdoc/>
         public ILLMClient GetClientByProviderId(int providerId)
@@ -198,35 +184,6 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
             }
         }
 
-        /// <summary>
-        /// Creates a new LLM client for the specified provider
-        /// </summary>
-        private ILLMClient CreateClientByProvider(string providerName)
-        {
-            try
-            {
-                // Get provider credentials
-                var credentials = _credentialService.GetCredentialByProviderNameAsync(providerName).GetAwaiter().GetResult()
-                    ?? throw new ConfigurationException($"No credentials found for provider '{providerName}'");
-
-                // Check if we have a factory for this provider
-                if (!_providerFactories.TryGetValue(providerName, out var factory))
-                {
-                    _logger.LogWarning("No factory found for provider {ProviderName}", providerName);
-
-                    // Return a placeholder client for demonstration purposes
-                    return new PlaceholderLLMClient(null, providerName, _logger);
-                }
-
-                // Create the client using the factory function
-                return factory(providerName);
-            }
-            catch (Exception ex) when (ex is not ConfigurationException)
-            {
-                _logger.LogError(ex, "Error creating client for provider {ProviderName}", providerName);
-                throw new ConfigurationException($"Error creating client for provider '{providerName}'", ex);
-            }
-        }
 
         /// <summary>
         /// Creates a new LLM client for the specified provider ID
@@ -245,17 +202,18 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
                     _logger.LogWarning("No factory found for provider ID {ProviderId}", providerId);
                     
                     // Fall back to provider name-based factory if available
-                    if (_providerFactories.TryGetValue(credentials.ProviderName, out var nameFactory))
+                    var providerName = ((ProviderType)providerId).ToString();
+                    if (_providerFactories.TryGetValue(providerName, out var nameFactory))
                     {
-                        return nameFactory(null);
+                        return nameFactory(string.Empty);
                     }
 
                     // Return a placeholder client for demonstration purposes
-                    return new PlaceholderLLMClient(null, credentials.ProviderName, _logger);
+                    return new PlaceholderLLMClient(null, providerName, _logger);
                 }
 
                 // Create the client using the factory function
-                return factory(null);
+                return factory(string.Empty);
             }
             catch (Exception ex) when (ex is not ConfigurationException)
             {
@@ -451,7 +409,7 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
         /// The provider ID is a unique numeric identifier for the provider.
         /// This is more reliable than provider names which can contain typos.
         /// </remarks>
-        public static int GetProviderId(ModelProviderMapping mapping)
+        public static int GetProviderId(Core.Interfaces.Configuration.ModelProviderMapping mapping)
         {
             // Get the provider ID from the mapping
             return mapping.ProviderId;
@@ -466,10 +424,10 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
         /// The provider name identifies which LLM service implementation should be used.
         /// This is used to look up the appropriate factory function and credentials.
         /// </remarks>
-        public static string GetProviderName(ModelProviderMapping mapping)
+        public static string GetProviderName(Core.Interfaces.Configuration.ModelProviderMapping mapping)
         {
-            // Get the provider name from the mapping
-            return mapping.ProviderName;
+            // Get the provider name from the mapping's provider type
+            return mapping.ProviderType.ToString();
         }
 
         /// <summary>
@@ -483,7 +441,7 @@ _logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Envi
         /// This method ensures we get the correct property even if the naming convention
         /// changes in the mapping object.
         /// </remarks>
-        public static string GetProviderModelName(ModelProviderMapping mapping)
+        public static string GetProviderModelName(Core.Interfaces.Configuration.ModelProviderMapping mapping)
         {
             // Use the ProviderModelId property (not ProviderModelName)
             return mapping.ProviderModelId;

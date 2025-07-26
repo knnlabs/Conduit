@@ -85,7 +85,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
     const search = searchTerm.toLowerCase();
     return (
       cost.modelIdPattern.toLowerCase().includes(search) ||
-      cost.providerName.toLowerCase().includes(search) ||
+      (cost.providerName ?? '').toLowerCase().includes(search) ||
       cost.modelType.toLowerCase().includes(search)
     );
   }) ?? [];
@@ -212,7 +212,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
               placeholder="All providers"
               value={providerFilter}
               onChange={setProviderFilter}
-              data={uniqueProviders}
+              data={uniqueProviders.filter(Boolean)}
               clearable
               w={200}
             />

@@ -259,6 +259,9 @@ public partial class Program
         // Add error queue metrics collection service
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
         
+        // Add cache infrastructure before monitoring services
+        builder.Services.AddCacheInfrastructure(builder.Configuration);
+        
         // Add cache monitoring and alerting services
         builder.Services.AddCacheMonitoring(builder.Configuration);
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();

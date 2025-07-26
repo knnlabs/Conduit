@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Services;
 
@@ -42,11 +43,11 @@ namespace ConduitLLM.Http.Hubs
             await _subscriptionManager.AddOrUpdateSubscriptionAsync(Context.ConnectionId, virtualKeyGuid, filter);
             
             // Add to appropriate groups based on filter
-            if (filter.Providers?.Any() == true)
+            if (filter.ProviderTypes?.Any() == true)
             {
-                foreach (var provider in filter.Providers)
+                foreach (var providerType in filter.ProviderTypes)
                 {
-                    await Groups.AddToGroupAsync(Context.ConnectionId, $"provider-{provider.ToLowerInvariant()}");
+                    await Groups.AddToGroupAsync(Context.ConnectionId, $"provider-{providerType.ToString().ToLowerInvariant()}");
                 }
             }
             else
@@ -58,7 +59,7 @@ namespace ConduitLLM.Http.Hubs
             Logger.LogInformation(
                 "Virtual Key {KeyId} subscribed with filters: Providers={Providers}, Capabilities={Capabilities}, MinSeverity={MinSeverity}",
                 virtualKeyId, 
-                filter.Providers?.Count ?? 0,
+                filter.ProviderTypes?.Count ?? 0,
                 filter.Capabilities?.Count ?? 0,
                 filter.MinSeverityLevel);
             
@@ -80,9 +81,15 @@ namespace ConduitLLM.Http.Hubs
             var virtualKeyId = RequireVirtualKeyId();
             
             // Use the new filter-based subscription with a single provider
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+            {
+                throw new ArgumentException($"Invalid provider name: {providerName}");
+            }
+            
             var filter = new ModelDiscoverySubscriptionFilter
             {
-                Providers = new List<string> { providerName }
+                ProviderTypes = new List<ProviderType> { providerType }
             };
             
             await SubscribeWithFilter(filter);

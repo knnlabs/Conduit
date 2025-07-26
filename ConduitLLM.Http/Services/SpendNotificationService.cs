@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Core.Interfaces;
@@ -92,7 +93,7 @@ namespace ConduitLLM.Http.Services
                     Budget = budget,
                     BudgetPercentage = budgetPercentage,
                     Model = model,
-                    Provider = provider,
+                    ProviderType = Enum.TryParse<ProviderType>(provider, true, out var providerType) ? providerType : ProviderType.OpenAI,
                     Metadata = new RequestMetadata
                     {
                         RequestId = Guid.NewGuid().ToString(),

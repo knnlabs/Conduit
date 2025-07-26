@@ -72,8 +72,11 @@ namespace ConduitLLM.Providers
                 _logger.LogInformation("Fetching models from provider {ProviderName}",
                     providerCredential.ProviderType);
 
-                // Create a client using the existing factory
-                var client = _clientFactory.GetClientByProvider(providerCredential.ProviderType.ToString());
+                // Convert ProviderType enum to provider ID
+                var providerId = (int)providerCredential.ProviderType;
+                
+                // Create a client using the provider ID
+                var client = _clientFactory.GetClientByProviderId(providerId);
 
                 // Get models from the provider API
                 var models = await client.ListModelsAsync(

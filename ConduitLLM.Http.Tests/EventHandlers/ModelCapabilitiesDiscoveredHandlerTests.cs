@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.EventHandlers;
 using ConduitLLM.Http.Tests.TestHelpers;
@@ -43,7 +44,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var @event = new ModelCapabilitiesDiscovered
             {
                 EventId = Guid.NewGuid().ToString(),
-                ProviderName = "OpenAI",
+                ProviderId = 1,
+                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["gpt-4"] = new ModelCapabilities
@@ -83,7 +85,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var @event = new ModelCapabilitiesDiscovered
             {
                 EventId = Guid.NewGuid().ToString(),
-                ProviderName = "OpenAI",
+                ProviderId = 1,
+                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>(),
                 DiscoveredAt = DateTime.UtcNow
             };
@@ -110,7 +113,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var @event = new ModelCapabilitiesDiscovered
             {
                 EventId = Guid.NewGuid().ToString(),
-                ProviderName = "Anthropic",
+                ProviderId = 2,
+                ProviderType = ProviderType.Anthropic,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["claude-3-opus"] = new ModelCapabilities
@@ -145,7 +149,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var @event = new ModelCapabilitiesDiscovered
             {
                 EventId = Guid.NewGuid().ToString(),
-                ProviderName = "TestProvider",
+                ProviderId = 3,
+                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>(),
                 DiscoveredAt = DateTime.UtcNow
             };
@@ -216,7 +221,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var @event = new ModelCapabilitiesDiscovered
             {
                 EventId = Guid.NewGuid().ToString(),
-                ProviderName = "MultiProvider",
+                ProviderId = 4,
+                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["model-1"] = new ModelCapabilities
@@ -245,7 +251,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             await _handler.Consume(context.Object);
 
             // Assert
-            var cacheKey = "provider_capabilities_multiprovider";
+            var cacheKey = "provider_capabilities_openai";
             _cacheMock.Verify(c => c.CreateEntry(cacheKey), Times.Once);
         }
     }

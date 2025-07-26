@@ -201,7 +201,7 @@ namespace ConduitLLM.Core.Services
                 await _metricsService.RecordMetricAsync(metric, taskCts.Token);
                 
                 // Calculate cost (simplified - would need provider-specific pricing)
-                var cost = CalculateImageGenerationCost(modelInfo.Provider, modelInfo.ModelId, totalImages);
+                var cost = CalculateImageGenerationCost(modelInfo.ProviderType, modelInfo.ModelId, totalImages);
                 
                 // Update task with results
                 await _taskService.UpdateTaskStatusAsync(
@@ -450,24 +450,25 @@ namespace ConduitLLM.Core.Services
             return new ModelInfo
             {
                 Provider = mapping.ProviderType.ToString(),
+                ProviderType = mapping.ProviderType,
                 ModelId = mapping.ProviderModelId,
                 ProviderCredentialId = mapping.ProviderId
             };
         }
 
-        private decimal CalculateImageGenerationCost(string provider, string model, int imageCount)
+        private decimal CalculateImageGenerationCost(ProviderType providerType, string model, int imageCount)
         {
             // Simplified cost calculation - in production would use provider-specific pricing
-            return provider.ToLowerInvariant() switch
+            return providerType switch
             {
-                "openai" => model switch
+                ProviderType.OpenAI => model switch
                 {
                     "dall-e-3" => 0.040m * imageCount, // $0.040 per image for standard
                     "dall-e-2" => 0.020m * imageCount, // $0.020 per image
                     _ => 0.030m * imageCount
                 },
-                "minimax" => 0.010m * imageCount, // Estimated
-                "replicate" => 0.025m * imageCount, // Varies by model
+                ProviderType.MiniMax => 0.010m * imageCount, // Estimated
+                ProviderType.Replicate => 0.025m * imageCount, // Varies by model
                 _ => 0.020m * imageCount // Default estimate
             };
         }
@@ -637,7 +638,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.Timeout = GetProviderTimeout(modelInfo.Provider);
+                httpClient.Timeout = GetProviderTimeout(modelInfo.ProviderType);
                 
                 // Use streaming for better memory efficiency
                 using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -805,11 +806,12 @@ namespace ConduitLLM.Core.Services
             return Math.Min(maxConcurrency, imageCount);
         }
 
-        private TimeSpan GetProviderTimeout(string provider)
+        private TimeSpan GetProviderTimeout(ProviderType providerType)
         {
             // Use configuration or fallback to defaults
+            var providerKey = providerType.ToString().ToLowerInvariant();
             var timeoutSeconds = _performanceConfig.ProviderDownloadTimeouts.TryGetValue(
-                provider.ToLowerInvariant(), 
+                providerKey, 
                 out var timeout) ? timeout : 30;
             
             return TimeSpan.FromSeconds(timeoutSeconds);
@@ -818,6 +820,7 @@ namespace ConduitLLM.Core.Services
         private class ModelInfo
         {
             public string Provider { get; set; } = string.Empty;
+            public ProviderType ProviderType { get; set; }
             public string ModelId { get; set; } = string.Empty;
             public int ProviderCredentialId { get; set; }
         }

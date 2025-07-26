@@ -179,7 +179,7 @@ namespace ConduitLLM.Http.Controllers
                     models.Add(new
                     {
                         id = mapping.ModelAlias,
-                        provider = mapping.ProviderCredential?.ProviderName?.ToLowerInvariant(),
+                        provider = mapping.ProviderCredential?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
                         capabilities = capabilities
                     });

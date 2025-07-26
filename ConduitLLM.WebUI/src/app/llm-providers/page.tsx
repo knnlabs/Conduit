@@ -37,6 +37,7 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
 interface ProviderWithHealth extends ProviderCredentialDto {
@@ -74,7 +75,7 @@ export default function ProvidersPage() {
       const providersList = Array.isArray(data) ? data : (data.items ?? data.providers ?? []);
       
       // Use SDK types directly and add health status (would need separate health fetch in real app)
-      const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
+      const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto): ProviderWithHealth => ({
         ...p,
         healthStatus: 'unknown' as const,
         models: []
@@ -150,11 +151,22 @@ export default function ProvidersPage() {
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
-    return (
-      provider.providerName.toLowerCase().includes(query) ||
-      provider.id.toString().toLowerCase().includes(query) ||
-      (provider.endpoint?.toLowerCase().includes(query) ?? false)
-    );
+    try {
+      const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+      const displayName = getProviderDisplayName(providerType);
+      
+      return (
+        displayName.toLowerCase().includes(query) ||
+        provider.id.toString().toLowerCase().includes(query) ||
+        (provider.endpoint?.toLowerCase().includes(query) ?? false)
+      );
+    } catch {
+      // If we can't get provider type, just check ID and endpoint
+      return (
+        provider.id.toString().toLowerCase().includes(query) ||
+        (provider.endpoint?.toLowerCase().includes(query) ?? false)
+      );
+    }
   });
 
   // Use pagination hook
@@ -190,16 +202,35 @@ export default function ProvidersPage() {
       return;
     }
 
-    const exportData = filteredProviders.map((provider) => ({
-      name: provider.providerName,
-      type: provider.providerName,
-      status: provider.isEnabled ? 'Enabled' : 'Disabled',
-      health: provider.healthStatus,
-      endpoint: provider.endpoint ?? '',
-      models: provider.models?.join('; ') ?? '',
-      lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-      createdAt: formatDateForExport(provider.createdAt),
-    }));
+    const exportData = filteredProviders.map((provider) => {
+      try {
+        const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+        const displayName = getProviderDisplayName(providerType);
+        
+        return {
+          name: displayName,
+          type: displayName,
+          status: provider.isEnabled ? 'Enabled' : 'Disabled',
+          health: provider.healthStatus,
+          endpoint: provider.endpoint ?? '',
+          models: provider.models?.join('; ') ?? '',
+          lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
+          createdAt: formatDateForExport(provider.createdAt),
+        };
+      } catch {
+        // Fallback if we can't get provider type
+        return {
+          name: 'Unknown Provider',
+          type: 'Unknown',
+          status: provider.isEnabled ? 'Enabled' : 'Disabled',
+          health: provider.healthStatus,
+          endpoint: provider.endpoint ?? '',
+          models: provider.models?.join('; ') ?? '',
+          lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
+          createdAt: formatDateForExport(provider.createdAt),
+        };
+      }
+    });
 
     exportToCSV(
       exportData,

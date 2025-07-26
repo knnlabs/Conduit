@@ -108,15 +108,15 @@ namespace ConduitLLM.Core.Services
                     
                     var providerId = providerGroup.Key;
                     var models = providerGroup.Select(m => m.ModelAlias).ToList();
-                    var providerName = providerGroup.First().ProviderType.ToString(); // For logging purposes
+                    var providerType = providerGroup.First().ProviderType;
                     
                     try
                     {
-                        await CheckProviderHealthAsync(providerId, providerName, models, providerHealthRepository);
+                        await CheckProviderHealthAsync(providerId, providerType, models, providerHealthRepository);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error checking health for provider ID {ProviderId} ({ProviderName})", providerId, providerName);
+                        _logger.LogError(ex, "Error checking health for provider ID {ProviderId} ({ProviderType})", providerId, providerType);
                     }
                 }
                 
@@ -131,14 +131,14 @@ namespace ConduitLLM.Core.Services
 
         private async Task CheckProviderHealthAsync(
             int providerId,
-            string providerName,
+            ProviderType providerType,
             List<string> models,
             IProviderHealthRepository healthRepository)
         {
             var healthData = _providerHealth.GetOrAdd(providerId, new ProviderHealthData
             {
                 ProviderId = providerId,
-                ProviderName = providerName,
+                ProviderType = providerType,
                 Models = models
             });
             
@@ -147,7 +147,7 @@ namespace ConduitLLM.Core.Services
             // Check if circuit breaker is open
             if (circuitBreaker.IsOpen && DateTime.UtcNow < circuitBreaker.NextRetryTime)
             {
-                _logger.LogDebug("Circuit breaker open for {Provider}, skipping health check", providerName);
+                _logger.LogDebug("Circuit breaker open for {Provider}, skipping health check", providerType);
                 return;
             }
             
@@ -158,7 +158,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // Perform provider-specific health check
-                success = await PerformProviderHealthCheckAsync(providerId, providerName, models.FirstOrDefault());
+                success = await PerformProviderHealthCheckAsync(providerId, providerType, models.FirstOrDefault());
                 stopwatch.Stop();
                 
                 if (success)
@@ -179,7 +179,7 @@ namespace ConduitLLM.Core.Services
                 stopwatch.Stop();
                 healthData.ConsecutiveFailures++;
                 errorMessage = ex.Message;
-                _logger.LogWarning(ex, "Health check failed for {Provider}", providerName);
+                _logger.LogWarning(ex, "Health check failed for {Provider}", providerType);
             }
             
             // Update health data
@@ -198,20 +198,15 @@ namespace ConduitLLM.Core.Services
                 if (circuitBreaker.FailureCount >= _options.CircuitBreakerThreshold)
                 {
                     circuitBreaker.Open(_options.CircuitBreakerTimeout);
-                    _logger.LogWarning("Circuit breaker opened for {Provider}", providerName);
+                    _logger.LogWarning("Circuit breaker opened for {Provider}", providerType);
                 }
             }
             
             // Record metrics
-            _metricsCollector.RecordProviderHealth(providerName, healthScore, success, errorMessage);
+            _metricsCollector.RecordProviderHealth(providerType.ToString(), healthScore, success, errorMessage);
             
             // Save to repository
-            // Parse provider name to enum
-            if (!Enum.TryParse<ConduitLLM.Configuration.ProviderType>(providerName, true, out var providerType))
-            {
-                _logger.LogWarning("Unable to parse provider type from name: {ProviderName}", providerName);
-                return;
-            }
+            // Provider type is already available, no need to parse
             
             var healthRecord = new ProviderHealthRecord
             {
@@ -220,7 +215,7 @@ namespace ConduitLLM.Core.Services
                 Status = success ? ProviderHealthRecord.StatusType.Online : ProviderHealthRecord.StatusType.Offline,
                 StatusMessage = success ? "Provider is healthy" : errorMessage ?? "Unknown error",
                 ResponseTimeMs = stopwatch.ElapsedMilliseconds,
-                EndpointUrl = GetProviderEndpoint(providerName)
+                EndpointUrl = GetProviderEndpoint(providerType)
             };
             
             await healthRepository.SaveStatusAsync(healthRecord);
@@ -228,13 +223,13 @@ namespace ConduitLLM.Core.Services
             // Publish health change event if status changed
             if (healthData.PreviousHealthy != success && _publishEndpoint != null)
             {
-                await PublishHealthChangeEventAsync(providerId, providerName, success, healthScore, errorMessage);
+                await PublishHealthChangeEventAsync(providerId, providerType, success, healthScore, errorMessage);
             }
             
             healthData.PreviousHealthy = success;
         }
 
-        private async Task<bool> PerformProviderHealthCheckAsync(int providerId, string providerName, string? model)
+        private async Task<bool> PerformProviderHealthCheckAsync(int providerId, ProviderType providerType, string? model)
         {
             using var scope = _serviceProvider.CreateScope();
             
@@ -256,16 +251,16 @@ namespace ConduitLLM.Core.Services
                     }
                 }
                 
-                // Fall back to provider name-based checks for specific providers
-                switch (providerName.ToLowerInvariant())
+                // Fall back to provider type-based checks for specific providers
+                switch (providerType)
                 {
-                    case "openai":
+                    case ProviderType.OpenAI:
                         return await CheckOpenAIImageHealthAsync(scope, providerId);
                         
-                    case "minimax":
+                    case ProviderType.MiniMax:
                         return await CheckMiniMaxImageHealthAsync(scope, providerId);
                         
-                    case "replicate":
+                    case ProviderType.Replicate:
                         return await CheckReplicateHealthAsync(scope, providerId);
                         
                     default:
@@ -287,7 +282,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error performing health check for {Provider}", providerName);
+                _logger.LogError(ex, "Error performing health check for {Provider}", providerType);
                 return false;
             }
         }
@@ -464,15 +459,19 @@ namespace ConduitLLM.Core.Services
             // Check for providers that might need recovery
             foreach (var (providerName, status) in metrics.ProviderStatuses)
             {
-                // Find the provider ID by name from our health data
-                var healthDataEntry = _providerHealth.Values.FirstOrDefault(h => h.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase));
-                if (healthDataEntry != null && !status.IsHealthy && _circuitBreakers.TryGetValue(healthDataEntry.ProviderId, out var circuitBreaker))
+                // Try to parse provider name to type
+                if (Enum.TryParse<ProviderType>(providerName, true, out var providerType))
                 {
-                    // Check if it's time to retry
-                    if (circuitBreaker.IsOpen && DateTime.UtcNow >= circuitBreaker.NextRetryTime)
+                    // Find the provider ID by type from our health data
+                    var healthDataEntry = _providerHealth.Values.FirstOrDefault(h => h.ProviderType == providerType);
+                    if (healthDataEntry != null && !status.IsHealthy && _circuitBreakers.TryGetValue(healthDataEntry.ProviderId, out var circuitBreaker))
                     {
-                        _logger.LogInformation("Attempting recovery for provider {Provider} (ID: {ProviderId})", providerName, healthDataEntry.ProviderId);
-                        circuitBreaker.AttemptReset();
+                        // Check if it's time to retry
+                        if (circuitBreaker.IsOpen && DateTime.UtcNow >= circuitBreaker.NextRetryTime)
+                        {
+                            _logger.LogInformation("Attempting recovery for provider {Provider} (ID: {ProviderId})", providerType, healthDataEntry.ProviderId);
+                            circuitBreaker.AttemptReset();
+                        }
                     }
                 }
             }
@@ -500,7 +499,7 @@ namespace ConduitLLM.Core.Services
 
         private async Task PublishHealthChangeEventAsync(
             int providerId,
-            string providerName,
+            ProviderType providerType,
             bool isHealthy,
             double healthScore,
             string? errorMessage)
@@ -512,7 +511,7 @@ namespace ConduitLLM.Core.Services
                 await _publishEndpoint.Publish(new ProviderHealthChanged
                 {
                     ProviderId = providerId,
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     IsHealthy = isHealthy,
                     Status = $"Health score: {healthScore:F2}, Status: {(isHealthy ? "Healthy" : "Unhealthy")}" +
                             (string.IsNullOrEmpty(errorMessage) ? "" : $", Error: {errorMessage}"),
@@ -521,21 +520,21 @@ namespace ConduitLLM.Core.Services
                 
                 _logger.LogInformation(
                     "Published health change event for {Provider}: {Status}",
-                    providerName, isHealthy ? "Healthy" : "Unhealthy");
+                    providerType, isHealthy ? "Healthy" : "Unhealthy");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to publish health change event for {Provider}", providerName);
+                _logger.LogError(ex, "Failed to publish health change event for {Provider}", providerType);
             }
         }
 
-        private string GetProviderEndpoint(string providerName)
+        private string GetProviderEndpoint(ProviderType providerType)
         {
-            return providerName.ToLowerInvariant() switch
+            return providerType switch
             {
-                "openai" => "https://api.openai.com",
-                "minimax" => "https://api.minimax.chat",
-                "replicate" => "https://api.replicate.com",
+                ProviderType.OpenAI => "https://api.openai.com",
+                ProviderType.MiniMax => "https://api.minimax.chat",
+                ProviderType.Replicate => "https://api.replicate.com",
                 _ => "Unknown"
             };
         }
@@ -556,7 +555,7 @@ namespace ConduitLLM.Core.Services
         private class ProviderHealthData
         {
             public int ProviderId { get; set; }
-            public string ProviderName { get; set; } = string.Empty;
+            public ProviderType ProviderType { get; set; }
             public List<string> Models { get; set; } = new();
             public bool IsHealthy { get; set; }
             public bool PreviousHealthy { get; set; }

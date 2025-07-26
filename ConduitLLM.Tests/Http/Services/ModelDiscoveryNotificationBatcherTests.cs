@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Services;
@@ -54,7 +55,7 @@ namespace ConduitLLM.Tests.Http.Services
             // Arrange
             var notification = new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             };
 
@@ -77,7 +78,7 @@ namespace ConduitLLM.Tests.Http.Services
             
             var notification = new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             };
 
@@ -99,7 +100,7 @@ namespace ConduitLLM.Tests.Http.Services
             
             var notification = new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             };
 
@@ -123,12 +124,12 @@ namespace ConduitLLM.Tests.Http.Services
             {
                 new NewModelsDiscoveredNotification
                 {
-                    Provider = "openai",
+                    ProviderType = ProviderType.OpenAI,
                     NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
                 },
                 new NewModelsDiscoveredNotification
                 {
-                    Provider = "anthropic",
+                    ProviderType = ProviderType.Anthropic,
                     NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "claude-3" } }
                 }
             };
@@ -159,7 +160,7 @@ namespace ConduitLLM.Tests.Http.Services
             {
                 var notification = new NewModelsDiscoveredNotification
                 {
-                    Provider = $"provider-{i}",
+                    ProviderType = (ProviderType)(i % 10 + 1),
                     NewModels = new List<DiscoveredModelInfo> { new() { ModelId = $"model-{i}" } }
                 };
                 await _batcher.QueueNotificationAsync("test-group", notification, NotificationSeverity.Low);
@@ -180,7 +181,7 @@ namespace ConduitLLM.Tests.Http.Services
             
             var notification = new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             };
             
@@ -215,20 +216,20 @@ namespace ConduitLLM.Tests.Http.Services
             // Queue different types of notifications
             await _batcher.QueueNotificationAsync("test-group", new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             }, NotificationSeverity.Low);
 
             await _batcher.QueueNotificationAsync("test-group", new ModelCapabilitiesChangedNotification
             {
-                Provider = "anthropic",
+                ProviderType = ProviderType.Anthropic,
                 ModelId = "claude-3",
                 Changes = new List<string> { "Added vision support" }
             }, NotificationSeverity.Medium);
 
             await _batcher.QueueNotificationAsync("test-group", new ModelPricingUpdatedNotification
             {
-                Provider = "google",
+                ProviderType = ProviderType.Gemini,
                 ModelId = "gemini-pro",
                 PercentageChange = 10
             }, NotificationSeverity.Low);
@@ -243,7 +244,7 @@ namespace ConduitLLM.Tests.Http.Services
             capturedBatch.Summary.CapabilityChangesCount.Should().Be(1);
             capturedBatch.Summary.PriceUpdatesCount.Should().Be(1);
             capturedBatch.Summary.AffectedProvidersCount.Should().Be(3);
-            capturedBatch.Summary.AffectedProviders.Should().Contain(new[] { "openai", "anthropic", "google" });
+            capturedBatch.Summary.AffectedProviders.Should().Contain(new[] { "OpenAI", "Anthropic", "Gemini" });
         }
 
         [Fact]
@@ -255,13 +256,13 @@ namespace ConduitLLM.Tests.Http.Services
             // Queue notifications for multiple groups
             await _batcher.QueueNotificationAsync("group1", new NewModelsDiscoveredNotification
             {
-                Provider = "openai",
+                ProviderType = ProviderType.OpenAI,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "gpt-4" } }
             }, NotificationSeverity.Low);
 
             await _batcher.QueueNotificationAsync("group2", new NewModelsDiscoveredNotification
             {
-                Provider = "anthropic",
+                ProviderType = ProviderType.Anthropic,
                 NewModels = new List<DiscoveredModelInfo> { new() { ModelId = "claude-3" } }
             }, NotificationSeverity.Low);
 

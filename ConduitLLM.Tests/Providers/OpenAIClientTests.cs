@@ -58,7 +58,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ProviderName = "openai"
+                ProviderType = ProviderType.OpenAI
             };
             var modelId = "gpt-4";
             var logger = CreateLogger<OpenAIClient>();
@@ -83,7 +83,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ApiKey = "test-api-key",
                 BaseUrl = "https://myinstance.openai.azure.com",
-                ProviderName = "azure"
+                ProviderType = ProviderType.AzureOpenAI
             };
             var modelId = "my-deployment";
             var logger = CreateLogger<OpenAIClient>();
@@ -107,7 +107,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ProviderName = "azure"
+                ProviderType = ProviderType.AzureOpenAI
             };
             var modelId = "my-deployment";
             var logger = CreateLogger<OpenAIClient>();
@@ -149,7 +149,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials 
             { 
                 ApiKey = "test-key",
-                ProviderName = "openai"
+                ProviderType = ProviderType.OpenAI
             };
             var modelId = "gpt-4";
 
@@ -169,7 +169,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials 
             { 
                 ApiKey = "test-key",
-                ProviderName = "openai"
+                ProviderType = ProviderType.OpenAI
             };
             var modelId = "gpt-4";
             var logger = CreateLogger<OpenAIClient>();
@@ -750,7 +750,7 @@ namespace ConduitLLM.Tests.Providers
 
             // Assert
             Assert.NotNull(capabilities);
-            Assert.Equal("openai", capabilities.Provider);
+            Assert.Equal("OpenAI", capabilities.Provider);
             Assert.Equal("gpt-4", capabilities.ModelId);
             
             // Chat parameters
@@ -820,7 +820,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ProviderName = "openai"
+                ProviderType = ProviderType.OpenAI
             };
             var logger = CreateLogger<OpenAIClient>();
 
@@ -838,7 +838,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ApiKey = "test-api-key",
                 BaseUrl = "https://myinstance.openai.azure.com",
-                ProviderName = "azure"
+                ProviderType = ProviderType.AzureOpenAI
             };
             var logger = CreateLogger<OpenAIClient>();
 

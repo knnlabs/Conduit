@@ -16,15 +16,6 @@ public interface ILLMClientFactory
     /// <exception cref="UnsupportedProviderException">Thrown if the provider specified in the configuration is not supported by this factory.</exception>
     ILLMClient GetClient(string modelAlias);
 
-    /// <summary>
-    /// Gets an ILLMClient instance for the specified provider name directly.
-    /// </summary>
-    /// <param name="providerName">The name of the provider (e.g., "openai", "anthropic").</param>
-    /// <returns>An instance of ILLMClient for the specified provider.</returns>
-    /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
-    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider is not supported by this factory.</exception>
-    [Obsolete("Use GetClientByProviderId instead. Provider names are error-prone and will be deprecated.")]
-    ILLMClient GetClientByProvider(string providerName);
     
     /// <summary>
     /// Gets an ILLMClient instance for the specified provider ID directly.

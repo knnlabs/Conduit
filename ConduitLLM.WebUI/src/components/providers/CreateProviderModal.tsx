@@ -176,7 +176,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   };
 
   const getProviderHelp = (providerType: string) => {
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
+    const providerTypeNum = parseInt(providerType, 10) as ProviderType;
+    const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
     if (!config?.helpText) {
       return null;
     }
@@ -220,7 +221,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[form.values.providerType as ProviderType];
+            const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
+            const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
             if (!config) return null;
 
             return (

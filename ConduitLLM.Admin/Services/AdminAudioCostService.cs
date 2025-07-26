@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -73,7 +74,7 @@ namespace ConduitLLM.Admin.Services
         {
             var cost = new AudioCost
             {
-                Provider = dto.Provider,
+                Provider = dto.ProviderType.ToString(),
                 OperationType = dto.OperationType,
                 Model = dto.Model,
                 CostUnit = dto.CostUnit,
@@ -104,7 +105,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Update properties
-            cost.Provider = dto.Provider;
+            cost.Provider = dto.ProviderType.ToString();
             cost.OperationType = dto.OperationType;
             cost.Model = dto.Model;
             cost.CostUnit = dto.CostUnit;
@@ -222,7 +223,9 @@ namespace ConduitLLM.Admin.Services
             return new AudioCostDto
             {
                 Id = cost.Id,
-                Provider = cost.Provider,
+                ProviderType = Enum.TryParse<ProviderType>(cost.Provider, true, out var providerType) 
+                    ? providerType 
+                    : ProviderType.OpenAI, // Default to OpenAI if parsing fails
                 OperationType = cost.OperationType,
                 Model = cost.Model,
                 CostUnit = cost.CostUnit,

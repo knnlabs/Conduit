@@ -90,7 +90,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
 
     this.navigationStateHub.onModelDiscovered((event: ModelDiscoveredEvent) => {
       // Apply filters
-      if (options?.filter?.providers && !options.filter.providers.includes(event.providerName)) {
+      if (options?.filter?.providers && !options.filter.providers.includes(event.providerType.toString())) {
         return;
       }
 
@@ -125,7 +125,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
 
     this.navigationStateHub.onProviderHealthChange((event: ProviderHealthChangeEvent) => {
       // Apply filters
-      if (options?.filter?.providers && !options.filter.providers.includes(event.providerName)) {
+      if (options?.filter?.providers && !options.filter.providers.includes(event.providerType.toString())) {
         return;
       }
 

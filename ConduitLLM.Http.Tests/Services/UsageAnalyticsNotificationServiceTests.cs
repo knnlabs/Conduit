@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Services;
@@ -251,7 +252,7 @@ namespace ConduitLLM.Http.Tests.Services
             var metrics = new PerformanceMetricsNotification
             {
                 ModelName = "gpt-4",
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 AverageLatencyMs = 1500,
                 P95LatencyMs = 2500,
                 P99LatencyMs = 3500,

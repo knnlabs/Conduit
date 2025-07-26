@@ -364,18 +364,13 @@ namespace ConduitLLM.Core.Services
             {
                 try
                 {
-                    // Get client for provider - try to get provider ID first
-                    ILLMClient client;
+                    // Get client for provider using provider ID
                     var providerId = await GetProviderIdAsync(providerName);
-                    if (providerId > 0)
+                    if (providerId <= 0)
                     {
-                        client = _clientFactory.GetClientByProviderId(providerId);
+                        throw new InvalidOperationException($"Unable to find provider ID for provider name: {providerName}");
                     }
-                    else
-                    {
-                        // Fall back to name-based lookup for backward compatibility
-                        client = _clientFactory.GetClientByProvider(providerName);
-                    }
+                    var client = _clientFactory.GetClientByProviderId(providerId);
 
                     // Try to list models from the provider
                     try
@@ -438,11 +433,18 @@ namespace ConduitLLM.Core.Services
                 // Get provider ID from credentials
                 var providerId = await GetProviderIdAsync(providerName);
 
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Could not parse provider name '{ProviderName}' to ProviderType", providerName);
+                    providerType = ProviderType.OpenAI; // Default fallback
+                }
+                
                 await PublishEventAsync(
                     new ModelCapabilitiesDiscovered
                     {
                         ProviderId = providerId,
-                        ProviderName = providerName,
+                        ProviderType = providerType,
                         ModelCapabilities = modelCapabilities,
                         DiscoveredAt = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid().ToString()

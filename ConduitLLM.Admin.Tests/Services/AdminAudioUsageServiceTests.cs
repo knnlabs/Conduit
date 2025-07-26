@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
@@ -70,7 +71,7 @@ namespace ConduitLLM.Admin.Tests.Services
             {
                 Page = 1,
                 PageSize = 10,
-                Provider = "openai"
+                ProviderType = ProviderType.OpenAI
             };
 
             var logs = CreateSampleAudioUsageLogs(15);
@@ -94,7 +95,7 @@ namespace ConduitLLM.Admin.Tests.Services
             result.Items.Should().HaveCount(10);
             result.TotalCount.Should().Be(15);
             result.TotalPages.Should().Be(2);
-            result.Items.First().Provider.Should().Be("openai");
+            result.Items.First().ProviderType.Should().Be(ProviderType.OpenAI);
         }
 
         [Fact]
@@ -223,7 +224,7 @@ namespace ConduitLLM.Admin.Tests.Services
             _mockRepository.Setup(x => x.GetProviderBreakdownAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), virtualKey))
                 .ReturnsAsync(new List<ProviderBreakdown> 
                 { 
-                    new() { Provider = "openai", Count = 10, TotalCost = 5.0m, SuccessRate = 100 } 
+                    new() { ProviderType = ProviderType.OpenAI, Count = 10, TotalCost = 5.0m, SuccessRate = 100 } 
                 });
 
             // Act
@@ -285,7 +286,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             result.Should().NotBeNull();
-            result.Provider.Should().Be(provider);
+            result.ProviderType.Should().Be(ProviderType.OpenAI);
             result.TotalOperations.Should().Be(4);
             result.TranscriptionCount.Should().Be(2);
             result.TextToSpeechCount.Should().Be(1);
@@ -298,7 +299,7 @@ namespace ConduitLLM.Admin.Tests.Services
         public async Task GetUsageByProviderAsync_WithNoLogs_ShouldReturnZeroMetrics()
         {
             // Arrange
-            var provider = "azure";
+            var provider = "AzureOpenAI";
             _mockRepository.Setup(x => x.GetByProviderAsync(provider, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(new List<AudioUsageLog>());
 
@@ -376,7 +377,7 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().HaveCount(3);
             result.First().SessionId.Should().Be("session-1");
-            result.First().Provider.Should().Be("ultravox"); // First session (i=0) is ultravox based on CreateSampleRealtimeSessions logic
+            result.First().ProviderType.Should().Be(ProviderType.Ultravox); // First session (i=0) is ultravox based on CreateSampleRealtimeSessions logic
             result.First().State.Should().Be(SessionState.Connected.ToString());
         }
 
@@ -396,7 +397,7 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().NotBeNull();
             result!.SessionId.Should().Be(sessionId);
-            result.Provider.Should().Be("openai");
+            result.ProviderType.Should().Be(ProviderType.OpenAI);
         }
 
         [Fact]

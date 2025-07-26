@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -102,20 +103,19 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="mapping">The entity to map</param>
         /// <returns>The mapped DTO</returns>
-        public static ModelProviderMappingDto ToDto(this ModelProviderMapping mapping)
+        public static ModelProviderMappingDto ToDto(this ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
                 throw new ArgumentNullException(nameof(mapping));
             }
 
-            return new ModelProviderMappingDto
+            return new ConduitLLM.Configuration.DTOs.ModelProviderMappingDto
             {
                 Id = mapping.Id,
                 ModelId = mapping.ModelAlias,
                 ProviderModelId = mapping.ProviderModelName,
-                ProviderId = mapping.ProviderCredentialId.ToString(),
-                ProviderType = mapping.ProviderCredential?.ProviderType,
+                ProviderType = mapping.ProviderCredential?.ProviderType ?? ProviderType.OpenAI,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields
@@ -143,20 +143,18 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="dto">The DTO to map</param>
         /// <returns>The mapped entity</returns>
-        public static ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
+        public static ConduitLLM.Configuration.Entities.ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
         {
             if (dto == null)
             {
                 throw new ArgumentNullException(nameof(dto));
             }
 
+            // Provider ID will need to be resolved from ProviderType
+            // This is typically done by the service layer
             int providerId = 0;
-            if (!string.IsNullOrEmpty(dto.ProviderId))
-            {
-                int.TryParse(dto.ProviderId, out providerId);
-            }
 
-            return new ModelProviderMapping
+            return new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 Id = dto.Id,
                 ModelAlias = dto.ModelId,

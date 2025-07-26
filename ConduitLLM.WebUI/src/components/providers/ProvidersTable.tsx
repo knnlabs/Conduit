@@ -27,6 +27,7 @@ import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import { useRouter } from 'next/navigation';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions  
 interface Provider extends ProviderCredentialDto {
@@ -52,7 +53,14 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {provider.providerName}? This action cannot be undone.
+          Are you sure you want to delete {(() => {
+            try {
+              const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+              return getProviderDisplayName(providerType);
+            } catch {
+              return 'this provider';
+            }
+          })()}? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
@@ -87,8 +95,15 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{provider.providerName}</Text>
-          <Text size="xs" c="dimmed">Type: {provider.providerName}</Text>
+          <Text fw={500}>{(() => {
+            try {
+              const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
+              return getProviderDisplayName(providerType);
+            } catch {
+              return 'Unknown Provider';
+            }
+          })()}</Text>
+          <Text size="xs" c="dimmed">ID: {provider.id}</Text>
         </Stack>
       </Table.Td>
 

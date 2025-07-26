@@ -34,18 +34,18 @@ namespace ConduitLLM.Http.EventHandlers
             var message = context.Message;
             
             _logger.LogInformation("Processing ModelCapabilitiesDiscovered event for provider {ProviderName} with {ModelCount} models", 
-                message.ProviderName, message.ModelCapabilities.Count);
+                message.ProviderType.ToString(), message.ModelCapabilities.Count);
 
             try
             {
                 // Update in-memory cache with discovered capabilities
-                var cacheKey = $"{CacheKeyPrefix}{message.ProviderName.ToLowerInvariant()}";
+                var cacheKey = $"{CacheKeyPrefix}{message.ProviderType.ToString().ToLowerInvariant()}";
                 
                 // Cache the capabilities for 24 hours
                 _cache.Set(cacheKey, message.ModelCapabilities, TimeSpan.FromHours(24));
                 
                 _logger.LogInformation("Updated capability cache for provider {ProviderName} with {ModelCount} models", 
-                    message.ProviderName, message.ModelCapabilities.Count);
+                    message.ProviderType.ToString(), message.ModelCapabilities.Count);
                 
                 // Log capability changes for monitoring
                 foreach (var (modelId, capabilities) in message.ModelCapabilities)
@@ -89,7 +89,7 @@ namespace ConduitLLM.Http.EventHandlers
                 if (message.ModelCapabilities.Count > 0)
                 {
                     _logger.LogInformation("Provider {ProviderName} discovery metrics: {ImageGenModels} image generation, {VisionModels} vision, {ChatModels} chat models",
-                        message.ProviderName,
+                        message.ProviderType.ToString(),
                         message.ModelCapabilities.Count(m => m.Value.SupportsImageGeneration),
                         message.ModelCapabilities.Count(m => m.Value.SupportsVision),
                         message.ModelCapabilities.Count(m => m.Value.AdditionalCapabilities.ContainsKey("chat") && 
@@ -99,7 +99,7 @@ namespace ConduitLLM.Http.EventHandlers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing ModelCapabilitiesDiscovered event for provider {ProviderName}", 
-                    message.ProviderName);
+                    message.ProviderType.ToString());
                 throw; // Let MassTransit handle retry
             }
 

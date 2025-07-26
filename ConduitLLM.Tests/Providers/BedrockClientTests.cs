@@ -57,7 +57,7 @@ namespace ConduitLLM.Tests.Providers
 
             var credentials = new ProviderCredentials
             {
-                ProviderName = "bedrock",
+                ProviderType = ProviderType.Bedrock,
                 ApiKey = "AKIAIOSFODNN7EXAMPLE",
                 ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                 BaseUrl = "us-east-1"
@@ -78,7 +78,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "bedrock",
+                ProviderType = ProviderType.Bedrock,
                 ApiKey = "AKIAIOSFODNN7EXAMPLE",
                 ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                 BaseUrl = "us-east-1"
@@ -113,7 +113,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "bedrock",
+                ProviderType = ProviderType.Bedrock,
                 ApiKey = "",
                 ApiSecret = "secret",
                 BaseUrl = "us-east-1"
@@ -711,7 +711,7 @@ namespace ConduitLLM.Tests.Providers
                 // Arrange
                 var credentials = new ProviderCredentials
                 {
-                    ProviderName = "bedrock",
+                    ProviderType = ProviderType.Bedrock,
                     ApiKey = "AKIAIOSFODNN7EXAMPLE",
                     ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                     BaseUrl = region

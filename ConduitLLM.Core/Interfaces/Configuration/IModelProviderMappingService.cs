@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration;
+
 namespace ConduitLLM.Core.Interfaces.Configuration
 {
     /// <summary>
@@ -34,10 +36,10 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         public int ProviderId { get; set; }
         
         /// <summary>
-        /// The name of the provider.
+        /// The provider type.
         /// </summary>
-        [Obsolete("Use ProviderId instead. Provider names are error-prone and will be deprecated.")]
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
+        
 
         /// <summary>
         /// The actual model identifier expected by the provider.

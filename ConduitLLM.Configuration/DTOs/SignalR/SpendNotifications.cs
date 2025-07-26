@@ -43,6 +43,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// </summary>
         public ProviderType ProviderType { get; set; }
 
+
         /// <summary>
         /// Gets or sets the model used.
         /// </summary>

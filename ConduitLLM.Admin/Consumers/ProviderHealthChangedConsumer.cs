@@ -39,7 +39,7 @@ namespace ConduitLLM.Admin.Consumers
             {
                 _logger.LogInformation(
                     "Processing ProviderHealthChanged event for {ProviderName} - Status: {Status}, IsHealthy: {IsHealthy}",
-                    @event.ProviderName, @event.Status, @event.IsHealthy);
+                    @event.ProviderType.ToString(), @event.Status, @event.IsHealthy);
 
                 // Parse health status from event
                 var healthStatus = @event.Status.ToLowerInvariant() switch
@@ -60,20 +60,20 @@ namespace ConduitLLM.Admin.Consumers
 
                 // Forward to SignalR clients via Admin notification service
                 await _notificationService.NotifyProviderHealthUpdate(
-                    @event.ProviderName,
+                    @event.ProviderType,
                     healthStatus,
                     responseTime,
                     @event.HealthData);
 
                 _logger.LogDebug(
                     "Successfully forwarded ProviderHealthChanged event to Admin SignalR clients for provider {ProviderName}",
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
                     "Failed to process ProviderHealthChanged event for provider {ProviderName}",
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
                 throw;
             }
         }

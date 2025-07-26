@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models.Audio;
 
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ namespace ConduitLLM.Core.Routing
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<DefaultAudioRouter> _logger;
         private readonly IModelCapabilityDetector _capabilityDetector;
+        private readonly IProviderCredentialService _providerCredentialService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DefaultAudioRouter"/> class.
@@ -27,11 +29,13 @@ namespace ConduitLLM.Core.Routing
         public DefaultAudioRouter(
             ILLMClientFactory clientFactory,
             ILogger<DefaultAudioRouter> logger,
-            IModelCapabilityDetector capabilityDetector)
+            IModelCapabilityDetector capabilityDetector,
+            IProviderCredentialService providerCredentialService)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _capabilityDetector = capabilityDetector ?? throw new ArgumentNullException(nameof(capabilityDetector));
+            _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
         }
 
         /// <summary>
@@ -75,10 +79,20 @@ _logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environm
                 {
                     try
                     {
-                        var client = _clientFactory.GetClientByProvider(provider);
+                        // Map provider name to ID
+                        var providerId = GetProviderIdFromName(provider);
+                        if (providerId == null)
+                            continue;
+
+                        var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                        if (credentials == null || !credentials.IsEnabled)
+                            continue;
+
+                        var client = _clientFactory.GetClientByProviderId(providerId.Value);
                         if (client is IAudioTranscriptionClient audioClient)
                         {
-                            _logger.LogInformation("Using {Provider} for audio transcription", provider);
+                            _logger.LogInformation("Using {Provider} (ID: {ProviderId}) for audio transcription", 
+                                provider, providerId.Value);
                             return audioClient;
                         }
                     }
@@ -142,14 +156,24 @@ _logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environm
                     {
                         try
                         {
-                            var client = _clientFactory.GetClientByProvider(provider);
+                            // Map provider name to ID
+                            var providerId = GetProviderIdFromName(provider);
+                            if (providerId == null)
+                                continue;
+
+                            var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                            if (credentials == null || !credentials.IsEnabled)
+                                continue;
+
+                            var client = _clientFactory.GetClientByProviderId(providerId.Value);
                             if (client is ITextToSpeechClient ttsClient)
                             {
                                 // Check if provider supports the requested voice
                                 var voices = await ttsClient.ListVoicesAsync(virtualKey, cancellationToken);
                                 if (voices.Any(v => v.VoiceId == request.Voice || v.Name == request.Voice))
                                 {
-_logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider.Replace(Environment.NewLine, ""), request.Voice.Replace(Environment.NewLine, ""));
+_logger.LogInformation("Using {Provider} for TTS with voice {Voice}", 
+                                        provider.Replace(Environment.NewLine, ""), request.Voice.Replace(Environment.NewLine, ""));
                                     return ttsClient;
                                 }
                             }
@@ -166,10 +190,20 @@ _logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider.R
                 {
                     try
                     {
-                        var client = _clientFactory.GetClientByProvider(provider);
+                        // Map provider name to ID
+                        var providerId = GetProviderIdFromName(provider);
+                        if (providerId == null)
+                            continue;
+
+                        var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                        if (credentials == null || !credentials.IsEnabled)
+                            continue;
+
+                        var client = _clientFactory.GetClientByProviderId(providerId.Value);
                         if (client is ITextToSpeechClient ttsClient)
                         {
-                            _logger.LogInformation("Using {Provider} for text-to-speech", provider);
+                            _logger.LogInformation("Using {Provider} (ID: {ProviderId}) for text-to-speech", 
+                                provider, providerId.Value);
                             return ttsClient;
                         }
                     }
@@ -231,7 +265,16 @@ _logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environm
                 {
                     try
                     {
-                        var client = _clientFactory.GetClientByProvider(provider);
+                        // Map provider name to ID
+                        var providerId = GetProviderIdFromName(provider);
+                        if (providerId == null)
+                            continue;
+
+                        var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
+                        if (credentials == null || !credentials.IsEnabled)
+                            continue;
+
+                        var client = _clientFactory.GetClientByProviderId(providerId.Value);
                         if (client is IRealtimeAudioClient realtimeClient)
                         {
                             // For now, just return the first available provider
@@ -395,6 +438,36 @@ _logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environm
                 "ultravox",    // Ultravox
                 "elevenlabs"   // ElevenLabs Conversational AI
             });
+        }
+
+        private int? GetProviderIdFromName(string providerName)
+        {
+            // Map provider names to IDs based on ProviderType enum
+            return providerName?.ToLowerInvariant() switch
+            {
+                "openai" => 1,
+                "anthropic" => 2,
+                "azure" or "azureopenai" => 3,
+                "gemini" => 4,
+                "vertexai" => 5,
+                "cohere" => 6,
+                "mistral" => 7,
+                "groq" => 8,
+                "ollama" => 9,
+                "replicate" => 10,
+                "fireworks" => 11,
+                "bedrock" => 12,
+                "huggingface" => 13,
+                "sagemaker" => 14,
+                "openrouter" => 15,
+                "openaicompatible" => 16,
+                "minimax" => 17,
+                "ultravox" => 18,
+                "elevenlabs" => 19,
+                "google" or "googlecloud" => 20,
+                "cerebras" => 21,
+                _ => null
+            };
         }
     }
 }

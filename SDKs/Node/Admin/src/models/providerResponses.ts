@@ -3,13 +3,15 @@
  * These interfaces define the structure of API responses for type safety
  */
 
+import { ProviderType } from './providerType';
+
 /**
  * Provider data structure from API responses
  */
 export interface ProviderData {
   providerId?: string;
   id?: string;
-  providerName?: string;
+  providerType?: ProviderType;
   name?: string;
   status?: string;
   lastChecked?: string;
@@ -34,7 +36,7 @@ export interface ProviderData {
  */
 export interface HealthDataResponse {
   providerId?: string;
-  providerName?: string;
+  providerType?: ProviderType;
   status?: string;
   lastChecked?: string;
   avgLatency?: number;
@@ -87,7 +89,7 @@ export interface HealthHistoryData {
  * Metrics data response from performance endpoints
  */
 export interface MetricsDataResponse {
-  providerName?: string;
+  providerType?: ProviderType;
   totalRequests?: number;
   failedRequests?: number;
   avgResponseTime?: number;

@@ -58,7 +58,8 @@ namespace ConduitLLM.Http.Services
                     var modelMappingsList = modelMappingsEntities.Select(m => new ConduitLLM.Configuration.ModelProviderMapping
                     {
                         ModelAlias = m.ModelAlias,
-                        ProviderName = m.ProviderCredential.ProviderName,
+                        ProviderId = m.ProviderCredentialId,
+                        ProviderType = m.ProviderCredential.ProviderType,
                         ProviderModelId = m.ProviderModelName
                     }).ToList();
 
@@ -70,8 +71,8 @@ namespace ConduitLLM.Http.Services
 
                     foreach (var mapping in modelMappingsList)
                     {
-                        _logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
-                            mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
+                        _logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}",
+                            mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
                     }
                 }
                 else
@@ -125,7 +126,7 @@ namespace ConduitLLM.Http.Services
                         
                         return new ProviderCredentials
                         {
-                            ProviderName = p.ProviderName,
+                            ProviderType = p.ProviderType,
                             ApiKey = primaryKey?.ApiKey ?? string.Empty,
                             BaseUrl = p.BaseUrl
                         };
@@ -139,7 +140,7 @@ namespace ConduitLLM.Http.Services
 
                     foreach (var cred in providersList)
                     {
-                        _logger.LogInformation("Refreshed credentials for provider: {ProviderName}", cred.ProviderName);
+                        _logger.LogInformation("Refreshed credentials for provider: {ProviderType}", cred.ProviderType);
                     }
                 }
                 else

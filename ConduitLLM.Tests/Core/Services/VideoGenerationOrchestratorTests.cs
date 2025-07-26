@@ -218,7 +218,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "test-model",
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 
@@ -380,7 +381,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "test-model",
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 
@@ -450,7 +452,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "text-model",
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 
@@ -547,7 +550,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "test-model",
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 
@@ -789,7 +793,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "test-model",
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 
@@ -924,7 +929,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = request.Model,
-                ProviderName = "test-provider",
+                ProviderId = 1,
+                ProviderType = ProviderType.Replicate,
                 ProviderModelId = "test-provider-model"
             };
 

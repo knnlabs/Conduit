@@ -7,6 +7,7 @@ import {
 } from '@knn_labs/conduit-common';
 
 import type { ConfigValue, ExtendedMetadata } from './common-types';
+import { ProviderType } from './providerType';
 
 // Re-export for backward compatibility
 export {
@@ -69,7 +70,7 @@ export interface NavigationStateUpdateEvent {
  */
 export interface ModelDiscoveredEvent {
   providerId: number;
-  providerName: string;
+  providerType: ProviderType;
   model: {
     id: string;
     name: string;
@@ -85,7 +86,7 @@ export interface ModelDiscoveredEvent {
  */
 export interface ProviderHealthChangeEvent {
   providerId: number;
-  providerName: string;
+  providerType: ProviderType;
   previousStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   currentStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   healthScore: number;
@@ -160,8 +161,8 @@ export interface INavigationStateHubServer {
 export interface IAdminNotificationHubServer {
   SubscribeToVirtualKey(virtualKeyId: number): Promise<void>;
   UnsubscribeFromVirtualKey(virtualKeyId: number): Promise<void>;
-  SubscribeToProvider(providerName: string): Promise<void>;
-  UnsubscribeFromProvider(providerName: string): Promise<void>;
+  SubscribeToProvider(providerType: ProviderType): Promise<void>;
+  UnsubscribeFromProvider(providerType: ProviderType): Promise<void>;
   RefreshProviderHealth(): Promise<void>;
   AcknowledgeNotification?(notificationId: string): Promise<void>;
 }

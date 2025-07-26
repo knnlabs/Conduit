@@ -1,10 +1,11 @@
 import { FilterOptions } from './common';
 import type { ModelConfigMetadata } from './metadata';
+import { ProviderType } from './providerType';
 
 export interface ModelCost {
   id: number;
   modelIdPattern: string;
-  providerName: string;
+  providerType: ProviderType;
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
@@ -186,7 +187,7 @@ export interface ModelCostComparison {
 
 export interface ModelCostOverview {
   modelName: string;
-  providerName: string;
+  providerType: ProviderType;
   modelType: string;
   totalRequests: number;
   totalTokens: number;

@@ -91,20 +91,20 @@ namespace ConduitLLM.Http.Consumers
             try
             {
                 await _notificationService.NotifyProviderHealthChangedAsync(
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.IsHealthy,
                     @event.Status);
                 
                 _logger.LogInformation(
                     "Pushed real-time update for provider health change: {ProviderName} (Healthy: {IsHealthy})",
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.IsHealthy);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
                     "Failed to push real-time update for provider health change: {ProviderName}", 
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }
@@ -148,7 +148,7 @@ namespace ConduitLLM.Http.Consumers
                 var videoGenCount = @event.ModelCapabilities.Values.Count(c => c.SupportsVideoGeneration);
 
                 await _notificationService.NotifyModelCapabilitiesDiscoveredAsync(
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.ModelCapabilities.Count,
                     embeddingCount,
                     visionCount,
@@ -157,7 +157,7 @@ namespace ConduitLLM.Http.Consumers
                 
                 _logger.LogInformation(
                     "Pushed real-time update for model capabilities discovered: {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)",
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.ModelCapabilities.Count,
                     embeddingCount,
                     visionCount,
@@ -168,7 +168,7 @@ namespace ConduitLLM.Http.Consumers
             {
                 _logger.LogError(ex, 
                     "Failed to push real-time update for model capabilities discovered: {ProviderName}", 
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }

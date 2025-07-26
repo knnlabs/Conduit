@@ -37,7 +37,7 @@ namespace ConduitLLM.Http.EventHandlers
             {
                 _logger.LogInformation(
                     "Processing ProviderCredentialUpdated event: {ProviderName} (ID: {ProviderId})",
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.ProviderId);
 
                 // Refresh all provider credentials to ensure consistency
@@ -45,13 +45,13 @@ namespace ConduitLLM.Http.EventHandlers
                 
                 _logger.LogInformation(
                     "Successfully refreshed provider credentials after update of {ProviderName}",
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
                     "Failed to refresh provider credentials after update of {ProviderName}", 
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }
@@ -67,7 +67,7 @@ namespace ConduitLLM.Http.EventHandlers
             {
                 _logger.LogInformation(
                     "Processing ProviderCredentialDeleted event: {ProviderName} (ID: {ProviderId})",
-                    @event.ProviderName,
+                    @event.ProviderType.ToString(),
                     @event.ProviderId);
 
                 // Refresh all provider credentials to ensure consistency
@@ -75,13 +75,13 @@ namespace ConduitLLM.Http.EventHandlers
                 
                 _logger.LogInformation(
                     "Successfully refreshed provider credentials after deletion of {ProviderName}",
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
                     "Failed to refresh provider credentials after deletion of {ProviderName}", 
-                    @event.ProviderName);
+                    @event.ProviderType.ToString());
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }

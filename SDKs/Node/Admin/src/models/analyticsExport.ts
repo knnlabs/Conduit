@@ -3,6 +3,7 @@
  */
 
 import type { ExportDestinationConfig, ExtendedMetadata } from './common-types';
+import { ProviderType } from './providerType';
 
 /**
  * Base export parameters common to all export types
@@ -240,7 +241,7 @@ export interface ExportRequestLogsParams {
     methods?: string[];
     endpoints?: string[];
     virtualKeyIds?: string[];
-    providerNames?: string[];
+    providerTypes?: ProviderType[];
     minResponseTime?: number;
     maxResponseTime?: number;
     minCost?: number;
@@ -342,7 +343,7 @@ export interface RequestLog {
   responseTime: number;
   virtualKeyId: string;
   virtualKeyName?: string;
-  providerName?: string;
+  providerType?: ProviderType;
   modelName?: string;
   ipAddress: string;
   userAgent?: string;

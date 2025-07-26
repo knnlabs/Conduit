@@ -15,7 +15,8 @@ export async function POST(
     const provider = await adminClient.providers.getById(parseInt(id, 10));
     
     // Refresh models for this provider
-    const models = await adminClient.providerModels.refreshProviderModels(provider.providerName);
+    const providerWithName = provider as { providerName?: string };
+    const models = await adminClient.providerModels.refreshProviderModels(providerWithName.providerName ?? '');
     
     return NextResponse.json(models);
   } catch (error) {

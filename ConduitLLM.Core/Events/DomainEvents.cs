@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Events
@@ -252,9 +253,9 @@ namespace ConduitLLM.Core.Events
         public int ProviderId { get; init; }
         
         /// <summary>
-        /// Provider name (OpenAI, Anthropic, etc.)
+        /// Provider type
         /// </summary>
-        public string ProviderName { get; init; } = string.Empty;
+        public ProviderType ProviderType { get; init; }
         
         /// <summary>
         /// Whether the provider is currently enabled
@@ -284,9 +285,9 @@ namespace ConduitLLM.Core.Events
         public int ProviderId { get; init; }
         
         /// <summary>
-        /// Provider name for logging
+        /// Provider type
         /// </summary>
-        public string ProviderName { get; init; } = string.Empty;
+        public ProviderType ProviderType { get; init; }
         
         /// <summary>
         /// Partition key for ordered processing per provider
@@ -418,9 +419,9 @@ namespace ConduitLLM.Core.Events
         public int ProviderId { get; init; }
         
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string ProviderName { get; init; } = string.Empty;
+        public ProviderType ProviderType { get; init; }
         
         /// <summary>
         /// Discovered models and their capabilities
@@ -543,9 +544,9 @@ namespace ConduitLLM.Core.Events
         public int ProviderId { get; init; }
         
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string ProviderName { get; init; } = string.Empty;
+        public ProviderType ProviderType { get; init; }
         
         /// <summary>
         /// Whether the provider is currently healthy

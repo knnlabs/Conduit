@@ -22,6 +22,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName, providerNameToType, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 
 export default function EditModelMappingPage() {
   const params = useParams();
@@ -63,7 +64,7 @@ export default function EditModelMappingPage() {
         // Fetch mapping details
         const mappingResponse = await fetch(`/api/model-mappings/${mappingId}`);
         if (!mappingResponse.ok) throw new Error('Failed to fetch mapping');
-        const mappingData = await mappingResponse.json() as ModelProviderMappingDto;
+        const mappingData = await mappingResponse.json() as ModelProviderMappingDto & { providerId?: string };
 
         // Fetch providers
         const providersResponse = await fetch('/api/providers');
@@ -78,7 +79,7 @@ export default function EditModelMappingPage() {
         setExistingMappings(mappingsData);
 
         // Store the initial provider ID from the mapping
-        setInitialProviderId(mappingData.providerId || '');
+        setInitialProviderId(mappingData.providerId ?? '');
         
         // Set form values
         setModelId(mappingData.modelId);
@@ -122,10 +123,21 @@ export default function EditModelMappingPage() {
         // API returned numeric ID
         provider = providers.find(p => p.id.toString() === initialProviderId);
       } else {
-        // API returned provider name
-        provider = providers.find(p => 
-          p.providerName.toLowerCase() === initialProviderId.toLowerCase()
-        );
+        // API returned provider name - need to convert to provider type
+        try {
+          const targetType = providerNameToType(initialProviderId);
+          provider = providers.find(p => {
+            try {
+              const providerType = getProviderTypeFromDto(p);
+              return providerType === targetType;
+            } catch {
+              return false;
+            }
+          });
+        } catch {
+          // If we can't convert the name, log error
+          console.error('[EditPage] Unable to convert provider name to type:', initialProviderId);
+        }
       }
       
       if (provider) {
@@ -141,7 +153,14 @@ export default function EditModelMappingPage() {
         console.error('[EditPage] Provider not found:', {
           initialProviderId,
           isNumericId,
-          availableProviders: providers.map(p => ({ id: p.id, name: p.providerName }))
+          availableProviders: providers.map(p => {
+            try {
+              const providerType = getProviderTypeFromDto(p);
+              return { id: p.id, name: getProviderDisplayName(providerType) };
+            } catch {
+              return { id: p.id, name: 'Unknown' };
+            }
+          })
         });
       }
     }
@@ -197,15 +216,18 @@ export default function EditModelMappingPage() {
         return;
       }
       
-      const providerName = provider.providerName;
+      // Get provider name for the API
+      const providerType = getProviderTypeFromDto(provider);
+      const providerName = providerTypeToName(providerType);
       
       console.warn('[EditPage] Submit - found provider:', provider);
+      console.warn('[EditPage] Submit - provider type:', providerType);
       console.warn('[EditPage] Submit - provider name:', providerName);
 
       const updateData: UpdateModelProviderMappingDto = {
         id: parseInt(mappingId, 10), // Backend requires ID in body
         modelId,
-        providerId: providerName,
+        providerId: providerName, // Backend expects provider name string
         providerModelId,
         priority,
         isEnabled,
@@ -263,10 +285,20 @@ export default function EditModelMappingPage() {
     router.push('/model-mappings');
   };
 
-  const providerOptions = providers.map(p => ({
-    value: p.id.toString(),
-    label: p.providerName,
-  }));
+  const providerOptions = providers.map(p => {
+    try {
+      const providerType = getProviderTypeFromDto(p);
+      return {
+        value: p.id.toString(),
+        label: getProviderDisplayName(providerType),
+      };
+    } catch {
+      return {
+        value: p.id.toString(),
+        label: 'Unknown Provider',
+      };
+    }
+  });
 
   if (error) {
     return (

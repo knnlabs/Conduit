@@ -19,6 +19,7 @@ import type {
   ProviderKeyRotationDto
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 
 // Type aliases for better readability
 type ProviderDto = components['schemas']['ProviderCredentialDto'];
@@ -36,7 +37,7 @@ interface ProviderListResponseDto {
 }
 
 interface ProviderConfig {
-  providerName: string;
+  providerType: ProviderType;
   apiKey: string;
   baseUrl?: string;
   organizationId?: string;
@@ -64,7 +65,7 @@ interface ExportResult {
 
 interface ProviderHealthStatus {
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   lastCheck?: string;
   responseTime?: number;
@@ -262,7 +263,7 @@ export class FetchProvidersService {
    * Helper method to format provider display name
    */
   formatProviderName(provider: ProviderDto): string {
-    return provider.providerName;
+    return provider.providerType?.toString() ?? 'Unknown';
   }
 
   /**
@@ -316,7 +317,7 @@ export class FetchProvidersService {
         return {
           providers: [{
             id: healthData.providerId ?? providerId,
-            name: healthData.providerName ?? providerId,
+            name: healthData.providerType?.toString() ?? providerId,
             status: (healthData.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
             lastChecked: healthData.lastChecked ?? new Date().toISOString(),
             responseTime: healthData.avgLatency ?? 0,
@@ -335,7 +336,7 @@ export class FetchProvidersService {
         return {
           providers: providers.map((provider: ProviderData) => ({
             id: provider.providerId ?? provider.id ?? '',
-            name: provider.providerName ?? provider.name ?? '',
+            name: provider.providerType?.toString() ?? provider.name ?? '',
             status: (provider.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
             lastChecked: provider.lastChecked ?? new Date().toISOString(),
             responseTime: provider.avgLatency ?? 0,
@@ -352,7 +353,7 @@ export class FetchProvidersService {
       return {
         providers: providersResponse.items.map(provider => ({
           id: provider.id?.toString() ?? '',
-          name: provider.providerName,
+          name: provider.providerType?.toString() ?? 'Unknown',
           status: provider.isEnabled 
             ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
             : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
@@ -397,9 +398,9 @@ export class FetchProvidersService {
 
         return {
           id: provider.id?.toString() ?? '',
-          name: provider.providerName,
+          name: provider.providerType?.toString() ?? 'Unknown',
           isEnabled: provider.isEnabled ?? false,
-          providerName: provider.providerName,
+          providerType: provider.providerType ?? ProviderType.OpenAI,
           apiKey: provider.apiKey ? '***masked***' : undefined,
           health: {
             status: healthData?.status ?? 'unknown',
@@ -415,9 +416,9 @@ export class FetchProvidersService {
       
       return providersResponse.items.map(provider => ({
         id: provider.id?.toString() ?? '',
-        name: provider.providerName,
+        name: provider.providerType?.toString() ?? 'Unknown',
         isEnabled: provider.isEnabled ?? false,
-        providerName: provider.providerName,
+        providerType: provider.providerType ?? ProviderType.OpenAI,
         apiKey: provider.apiKey ? '***masked***' : undefined,
         health: {
           status: provider.isEnabled 
@@ -470,7 +471,7 @@ export class FetchProvidersService {
       // Transform response to expected format
       return {
         providerId,
-        providerName: metricsData.providerName ?? providerId,
+        providerType: ProviderType.OpenAI, // Default for simulation
         metrics: {
           totalRequests: metricsData.totalRequests ?? 0,
           failedRequests: metricsData.failedRequests ?? 0,
@@ -494,7 +495,7 @@ export class FetchProvidersService {
       
       return {
         providerId,
-        providerName: providerId,
+        providerType: ProviderType.OpenAI, // Default for simulation
         metrics: {
           totalRequests: baseRequestCount,
           failedRequests: Math.floor(baseRequestCount * failureRate),

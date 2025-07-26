@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Configuration;
 using System;
 using System.Threading.Tasks;
 
@@ -89,9 +90,16 @@ namespace ConduitLLM.Http.Services
                     healthStatus = HealthStatus.Degraded;
                 }
                 
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {ProviderName}", providerName);
+                    return;
+                }
+                
                 var notification = new ProviderHealthNotification
                 {
-                    Provider = providerName,
+                    ProviderType = providerType,
                     Status = healthStatus.ToString(),
                     Priority = healthStatus == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium
                 };
@@ -111,9 +119,16 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {ProviderName}", providerName);
+                    return;
+                }
+                
                 var notification = new ModelCapabilitiesNotification
                 {
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     ModelCount = modelCount,
                     EmbeddingCount = embeddingCount,
                     VisionCount = visionCount,

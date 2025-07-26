@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Reviewed**: 2025-07-24
+**Last Reviewed**: 2025-07-26
 
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
@@ -139,6 +139,43 @@ The WebUI uses very strict ESLint rules that will cause build failures:
   - Test methods follow pattern: `MethodName_Condition_ExpectedResult`
   - One assertion per test is preferred
   - Use Moq for mocking dependencies
+
+## Provider Type Migration - CRITICAL
+**⚠️ IMPORTANT**: As of Phase 3f (#628), the codebase uses strongly-typed `ProviderType` enum instead of string-based provider names.
+
+### Key Changes:
+- **Use `ProviderType` enum**: Always use `ProviderType.OpenAI`, `ProviderType.Anthropic`, etc. instead of string "openai", "anthropic"
+- **Database stores integers**: Provider types are stored as integers in the database (e.g., OpenAI=1, Anthropic=2)
+- **Backward compatibility**: Read-only `ProviderName` properties exist for compatibility but are marked `[Obsolete]`
+- **Breaking change**: This is a major breaking change in the API - existing installations must drop and recreate their databases
+
+### Available Provider Types:
+```csharp
+public enum ProviderType
+{
+    OpenAI = 1,
+    Anthropic = 2,
+    AzureOpenAI = 3,
+    Gemini = 4,
+    VertexAI = 5,
+    Cohere = 6,
+    Mistral = 7,
+    Groq = 8,
+    Ollama = 9,
+    Replicate = 10,
+    Fireworks = 11,
+    Bedrock = 12,
+    HuggingFace = 13,
+    SageMaker = 14,
+    OpenRouter = 15,
+    OpenAICompatible = 16,
+    MiniMax = 17,
+    Ultravox = 18,
+    ElevenLabs = 19,
+    GoogleCloud = 20,
+    Cerebras = 21
+}
+```
 
 ## Detailed Documentation
 

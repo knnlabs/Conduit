@@ -83,37 +83,14 @@ _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
 
-            // Validate and resolve provider (accepts both numeric ID and provider name)
-            int providerId = 0;
-            ProviderCredential? provider = null;
-            
-            if (string.IsNullOrEmpty(mappingDto.ProviderId))
+            // Validate and resolve provider by type
+            var provider = await _credentialRepository.GetByProviderTypeAsync(mappingDto.ProviderType);
+            if (provider == null)
             {
-                _logger.LogWarning("Provider ID cannot be empty");
+                _logger.LogWarning("Provider not found with type: {ProviderType}", mappingDto.ProviderType);
                 return false;
             }
-            
-            // Try to parse as numeric ID first
-            if (int.TryParse(mappingDto.ProviderId, out providerId))
-            {
-                provider = await _credentialRepository.GetByIdAsync(providerId);
-                if (provider == null)
-                {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
-                    return false;
-                }
-            }
-            else
-            {
-                // Try to find by provider name
-                provider = await _credentialRepository.GetByProviderNameAsync(mappingDto.ProviderId);
-                if (provider == null)
-                {
-                    _logger.LogWarning("Provider not found with name: {ProviderName}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
-                    return false;
-                }
-                providerId = provider.Id;
-            }
+            int providerId = provider.Id;
 
             // Update the mapping with the resolved provider ID
             mapping.ProviderCredentialId = providerId;
@@ -184,37 +161,14 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                 return false;
             }
 
-            // Validate and resolve provider (accepts both numeric ID and provider name)
-            int providerId = 0;
-            ProviderCredential? provider = null;
-            
-            if (string.IsNullOrEmpty(mappingDto.ProviderId))
+            // Validate and resolve provider by type
+            var provider = await _credentialRepository.GetByProviderTypeAsync(mappingDto.ProviderType);
+            if (provider == null)
             {
-                _logger.LogWarning("Provider ID cannot be empty");
+                _logger.LogWarning("Provider not found with type: {ProviderType}", mappingDto.ProviderType);
                 return false;
             }
-            
-            // Try to parse as numeric ID first
-            if (int.TryParse(mappingDto.ProviderId, out providerId))
-            {
-                provider = await _credentialRepository.GetByIdAsync(providerId);
-                if (provider == null)
-                {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
-                    return false;
-                }
-            }
-            else
-            {
-                // Try to find by provider name
-                provider = await _credentialRepository.GetByProviderNameAsync(mappingDto.ProviderId);
-                if (provider == null)
-                {
-                    _logger.LogWarning("Provider not found with name: {ProviderName}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
-                    return false;
-                }
-                providerId = provider.Id;
-            }
+            int providerId = provider.Id;
 
             // Update properties that can be modified
             existingMapping.ModelAlias = mapping.ModelAlias;
@@ -351,56 +305,21 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
 
             try
             {
-                // Validate and resolve provider (accepts both numeric ID and provider name)
-                int providerId = 0;
-                if (string.IsNullOrEmpty(mappingDto.ProviderId))
+                // Validate and resolve provider by type
+                var providerByType = providerLookup.Values.FirstOrDefault(p => p.ProviderType == mappingDto.ProviderType);
+                if (providerByType == null)
                 {
                     response.Failed.Add(new BulkMappingError
                     {
                         Index = i,
                         Mapping = mappingDto,
-                        ErrorMessage = "Provider ID cannot be empty",
-                        ErrorType = BulkMappingErrorType.Validation
+                        ErrorMessage = $"Provider not found with type: {mappingDto.ProviderType}",
+                        ErrorType = BulkMappingErrorType.ProviderNotFound
                     });
                     continue;
                 }
                 
-                // Try to parse as numeric ID first
-                if (int.TryParse(mappingDto.ProviderId, out providerId))
-                {
-                    // Check provider existence using pre-loaded lookup
-                    if (!providerLookup.ContainsKey(providerId))
-                    {
-                        response.Failed.Add(new BulkMappingError
-                        {
-                            Index = i,
-                            Mapping = mappingDto,
-                            ErrorMessage = $"Provider not found with ID: {providerId}",
-                            ErrorType = BulkMappingErrorType.ProviderNotFound
-                        });
-                        continue;
-                    }
-                }
-                else
-                {
-                    // Try to find by provider name
-                    var providerByName = providerLookup.Values.FirstOrDefault(p => 
-                        p.ProviderName.Equals(mappingDto.ProviderId, StringComparison.OrdinalIgnoreCase));
-                    
-                    if (providerByName == null)
-                    {
-                        response.Failed.Add(new BulkMappingError
-                        {
-                            Index = i,
-                            Mapping = mappingDto,
-                            ErrorMessage = $"Provider not found with name: {mappingDto.ProviderId}",
-                            ErrorType = BulkMappingErrorType.ProviderNotFound
-                        });
-                        continue;
-                    }
-                    
-                    providerId = providerByName.Id;
-                }
+                int providerId = providerByType.Id;
 
                 // Check for duplicate model ID using pre-loaded lookup
                 var modelKeyLookup = mappingDto.ModelId.ToLowerInvariant();
@@ -414,7 +333,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                             Id = existingMapping.Id,
                             ModelId = mappingDto.ModelId,
                             ProviderModelId = mappingDto.ProviderModelId,
-                            ProviderId = providerId.ToString(), // Use the resolved numeric provider ID
+                            ProviderType = mappingDto.ProviderType,
                             Priority = mappingDto.Priority,
                             IsEnabled = mappingDto.IsEnabled,
                             Capabilities = mappingDto.Capabilities,
@@ -474,7 +393,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                 {
                     ModelId = mappingDto.ModelId,
                     ProviderModelId = mappingDto.ProviderModelId,
-                    ProviderId = providerId.ToString(), // Use the resolved numeric provider ID
+                    ProviderType = mappingDto.ProviderType,
                     Priority = mappingDto.Priority,
                     IsEnabled = mappingDto.IsEnabled,
                     Capabilities = mappingDto.Capabilities,

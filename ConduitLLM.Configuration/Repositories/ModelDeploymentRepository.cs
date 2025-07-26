@@ -75,25 +75,20 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<ModelDeploymentEntity>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default)
+        public async Task<List<ModelDeploymentEntity>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .Where(d => d.ProviderName == providerName)
+                    .Where(d => d.ProviderType == providerType)
                     .OrderBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model deployments for provider {ProviderType}", providerType);
                 throw;
             }
         }
@@ -112,7 +107,7 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
                     .Where(d => d.ModelName == modelName)
-                    .OrderBy(d => d.ProviderName)
+                    .OrderBy(d => d.ProviderType)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -130,7 +125,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .OrderBy(d => d.ProviderName)
+                    .OrderBy(d => d.ProviderType)
                     .ThenBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }

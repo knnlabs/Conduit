@@ -67,7 +67,7 @@ namespace ConduitLLM.Http.Services
                 "Added/updated subscription for connection {ConnectionId} with filters: " +
                 "Providers={Providers}, Capabilities={Capabilities}, MinSeverity={MinSeverity}",
                 connectionId,
-                filter.Providers?.Count ?? 0,
+                filter.ProviderTypes?.Count ?? 0,
                 filter.Capabilities?.Count ?? 0,
                 filter.MinSeverityLevel);
 
@@ -120,7 +120,7 @@ namespace ConduitLLM.Http.Services
                 return false;
 
             // Check provider filter
-            if (filter.Providers?.Any() == true && !filter.Providers.Contains(provider, StringComparer.OrdinalIgnoreCase))
+            if (filter.ProviderTypes?.Any() == true && !filter.ProviderTypes.Any(pt => pt.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
             // Check capability filter
@@ -152,7 +152,7 @@ namespace ConduitLLM.Http.Services
             var stats = new Dictionary<string, int>
             {
                 ["TotalSubscriptions"] = _subscriptions.Count,
-                ["ProvidersFiltered"] = _subscriptions.Values.Count(s => s.Filter.Providers?.Any() == true),
+                ["ProvidersFiltered"] = _subscriptions.Values.Count(s => s.Filter.ProviderTypes?.Any() == true),
                 ["CapabilitiesFiltered"] = _subscriptions.Values.Count(s => s.Filter.Capabilities?.Any() == true),
                 ["BatchingEnabled"] = _subscriptions.Values.Count(s => s.Filter.EnableBatching),
                 ["PriceNotificationsEnabled"] = _subscriptions.Values.Count(s => s.Filter.NotifyOnPriceChanges)

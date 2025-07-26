@@ -94,34 +94,25 @@ public class LLMClientFactory : ILLMClientFactory
         return CreateClientForProvider(mapping.ProviderType.ToString(), credentials, mapping.ProviderModelId);
     }
 
-    /// <inheritdoc />
-    public ILLMClient GetClientByProvider(string providerName)
-    {
-        if (string.IsNullOrWhiteSpace(providerName))
-        {
-            throw new ArgumentException("Provider name cannot be null or whitespace.", nameof(providerName));
-        }
-
-        // Find the provider credentials
-        var credentials = _settings.ProviderCredentials?.FirstOrDefault(p =>
-            string.Equals(p.ProviderType.ToString(), providerName, StringComparison.OrdinalIgnoreCase));
-
-        if (credentials == null)
-        {
-            throw new ConfigurationException($"No provider credentials found for provider '{providerName}'. Please check your Conduit configuration.");
-        }
-
-        // Use a default model ID for operations that don't require a specific model
-        // This is mainly for operations like listing available models
-        return CreateClientForProvider(credentials.ProviderType.ToString(), credentials, "default-model-id");
-    }
     
     /// <inheritdoc />
     public ILLMClient GetClientByProviderId(int providerId)
     {
-        // This factory works with configuration-based settings which don't have provider IDs yet
-        // For now, we'll throw a NotSupportedException until the configuration system is updated to use IDs
-        throw new NotSupportedException("Provider ID-based lookups are not yet supported in the configuration-based factory. Please use GetClientByProvider with a provider name instead.");
+        // Convert provider ID to ProviderType enum
+        var providerType = (ProviderType)providerId;
+        
+        // Find the provider credentials
+        var credentials = _settings.ProviderCredentials?.FirstOrDefault(p =>
+            p.ProviderType == providerType);
+
+        if (credentials == null)
+        {
+            throw new ConfigurationException($"No provider credentials found for provider ID '{providerId}' (type: {providerType}). Please check your Conduit configuration.");
+        }
+
+        // Use a default model ID for operations that don't require a specific model
+        // This is mainly for operations like listing available models
+        return CreateClientForProvider(providerType.ToString(), credentials, "default-model-id");
     }
 
     private ILLMClient CreateClientForProvider(string providerName, ProviderCredentials credentials, string modelId)

@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -17,10 +18,10 @@ namespace ConduitLLM.Http.Adapters
         public static IServiceCollection AddConfigurationAdapters(this IServiceCollection services)
         {
             // Register adapters that map Configuration services to Core interfaces
-            services.AddScoped<IModelProviderMappingService>(provider =>
+            services.AddScoped<Core.Interfaces.Configuration.IModelProviderMappingService>(provider =>
                 new ModelProviderMappingServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>()));
 
-            services.AddScoped<IProviderCredentialService>(provider =>
+            services.AddScoped<Core.Interfaces.Configuration.IProviderCredentialService>(provider =>
                 new ProviderCredentialServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>()));
 
             services.AddScoped<IModelCostService>(provider =>
@@ -35,7 +36,7 @@ namespace ConduitLLM.Http.Adapters
         /// <summary>
         /// Adapter that wraps Configuration's IModelProviderMappingService to implement Core's interface.
         /// </summary>
-        private class ModelProviderMappingServiceAdapter : IModelProviderMappingService
+        private class ModelProviderMappingServiceAdapter : Core.Interfaces.Configuration.IModelProviderMappingService
         {
             private readonly ConduitLLM.Configuration.IModelProviderMappingService _innerService;
 
@@ -44,14 +45,14 @@ namespace ConduitLLM.Http.Adapters
                 _innerService = innerService;
             }
 
-            public async Task<List<ModelProviderMapping>> GetAllMappingsAsync()
+            public async Task<List<Core.Interfaces.Configuration.ModelProviderMapping>> GetAllMappingsAsync()
             {
                 var mappings = await _innerService.GetAllMappingsAsync();
-                return mappings.Select(m => new ModelProviderMapping
+                return mappings.Select(m => new Core.Interfaces.Configuration.ModelProviderMapping
                 {
                     ModelAlias = m.ModelAlias,
                     ProviderId = m.ProviderId,
-                    ProviderName = m.ProviderName,
+                    ProviderType = m.ProviderType,
                     ProviderModelId = m.ProviderModelId,
                     DeploymentName = m.DeploymentName,
                     IsEnabled = true, // Default
@@ -61,16 +62,16 @@ namespace ConduitLLM.Http.Adapters
                 }).ToList();
             }
 
-            public async Task<ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
+            public async Task<Core.Interfaces.Configuration.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
             {
                 var mapping = await _innerService.GetMappingByModelAliasAsync(modelAlias);
                 if (mapping == null) return null;
 
-                return new ModelProviderMapping
+                return new Core.Interfaces.Configuration.ModelProviderMapping
                 {
                     ModelAlias = mapping.ModelAlias,
                     ProviderId = mapping.ProviderId,
-                    ProviderName = mapping.ProviderName,
+                    ProviderType = mapping.ProviderType,
                     ProviderModelId = mapping.ProviderModelId,
                     DeploymentName = mapping.DeploymentName,
                     IsEnabled = true, // Default
@@ -84,7 +85,7 @@ namespace ConduitLLM.Http.Adapters
         /// <summary>
         /// Adapter that wraps Configuration's IProviderCredentialService to implement Core's interface.
         /// </summary>
-        private class ProviderCredentialServiceAdapter : IProviderCredentialService
+        private class ProviderCredentialServiceAdapter : Core.Interfaces.Configuration.IProviderCredentialService
         {
             private readonly ConduitLLM.Configuration.IProviderCredentialService _innerService;
 
@@ -93,43 +94,8 @@ namespace ConduitLLM.Http.Adapters
                 _innerService = innerService;
             }
 
-            public async Task<ProviderCredentials?> GetCredentialByProviderNameAsync(string providerName)
-            {
-                // Parse provider name to ProviderType enum
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    return null;
-                }
-                
-                var credential = await _innerService.GetCredentialByProviderTypeAsync(providerType);
-                if (credential == null) return null;
-
-                // Get the primary key or first enabled key
-                string? effectiveApiKey = null;
-                string? effectiveBaseUrl = credential.BaseUrl;
-                
-                if (credential.ProviderKeyCredentials?.Any() == true)
-                {
-                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
-                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
-                    if (primaryKey != null)
-                    {
-                        effectiveApiKey = primaryKey.ApiKey;
-                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
-                    }
-                }
-
-                return new ProviderCredentials
-                {
-                    ProviderId = credential.Id,
-                    ProviderName = credential.ProviderType.ToString(),
-                    ApiKey = effectiveApiKey,
-                    BaseUrl = effectiveBaseUrl,
-                    IsEnabled = credential.IsEnabled
-                };
-            }
             
-            public async Task<ProviderCredentials?> GetCredentialByIdAsync(int providerId)
+            public async Task<Core.Interfaces.Configuration.ProviderCredentials?> GetCredentialByIdAsync(int providerId)
             {
                 var credential = await _innerService.GetCredentialByIdAsync(providerId);
                 if (credential == null) return null;
@@ -149,10 +115,9 @@ namespace ConduitLLM.Http.Adapters
                     }
                 }
 
-                return new ProviderCredentials
+                return new Core.Interfaces.Configuration.ProviderCredentials
                 {
                     ProviderId = credential.Id,
-                    ProviderName = credential.ProviderType.ToString(),
                     ApiKey = effectiveApiKey,
                     BaseUrl = effectiveBaseUrl,
                     IsEnabled = credential.IsEnabled

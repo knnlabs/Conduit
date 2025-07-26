@@ -164,9 +164,11 @@ namespace ConduitLLM.Admin.Services
             {
                 var stopwatch = Stopwatch.StartNew();
 
+                // Convert ProviderType enum to provider ID
+                var providerId = (int)config.ProviderCredential.ProviderType;
+                
                 // Create a client for the provider
-                var client = _clientFactory.GetClientByProvider(
-                    config.ProviderCredential.ProviderType.ToString());
+                var client = _clientFactory.GetClientByProviderId(providerId);
 
                 // Test based on operation type
                 switch (operationType.ToLower())
@@ -280,7 +282,7 @@ namespace ConduitLLM.Admin.Services
             {
                 Id = config.Id,
                 ProviderCredentialId = config.ProviderCredentialId,
-                ProviderName = config.ProviderCredential?.ProviderType.ToString(),
+                ProviderType = config.ProviderCredential?.ProviderType,
                 TranscriptionEnabled = config.TranscriptionEnabled,
                 DefaultTranscriptionModel = config.DefaultTranscriptionModel,
                 TextToSpeechEnabled = config.TextToSpeechEnabled,

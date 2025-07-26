@@ -2,16 +2,22 @@ import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { ProviderCredentialDto, CreateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 // GET /api/providers - List all providers
 export async function GET() {
 
   try {
     const adminClient = getServerAdminClient();
-    // The SDK list method expects page and pageSize parameters
-    const response = await adminClient.providers.list(1, 100); // Get up to 100 providers
+    const providersService = adminClient.providers;
+    if (!providersService || typeof providersService.list !== 'function') {
+      throw new Error('Providers service not available');
+    }
     
-    console.error('SDK providers.list() response:', response);
+    // The SDK list method expects page and pageSize parameters
+    const response = await providersService.list(1, 100); // Get up to 100 providers
+    
+    console.warn('SDK providers.list() response:', response);
     
     // The SDK returns a paginated response object with items array
     let providers: ProviderCredentialDto[];
@@ -20,9 +26,10 @@ export async function GET() {
       providers = response;
     } else if (response && typeof response === 'object' && 'items' in response) {
       // Paginated response
-      providers = response.items;
+      const paginatedResponse = response as { items: ProviderCredentialDto[] };
+      providers = paginatedResponse.items;
     } else {
-      console.error('Unexpected response from providers.list():', response);
+      console.warn('Unexpected response from providers.list():', response);
       // Try to extract providers from common response structures
       if (response && typeof response === 'object') {
         const responseObject = response as Record<string, unknown>; // Fallback parsing for unexpected response format
@@ -34,7 +41,7 @@ export async function GET() {
       return NextResponse.json([]);
     }
     
-    console.error('Returning providers:', providers);
+    console.warn('Returning providers:', providers);
     return NextResponse.json(providers);
   } catch (error) {
     console.error('Error fetching providers:', error);
@@ -48,19 +55,32 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as CreateProviderCredentialDto;
     const adminClient = getServerAdminClient();
+    const providersService = adminClient.providers;
+    if (!providersService || typeof providersService.create !== 'function') {
+      throw new Error('Providers service not available');
+    }
     
     // Ensure isEnabled has a value (default to true if not provided)
+    // Convert providerName to providerType if needed
+    let providerType: number | undefined;
+    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean };
+    
+    if (bodyWithType.providerType !== undefined) {
+      providerType = bodyWithType.providerType;
+    } else if (bodyWithType.providerName) {
+      // Backward compatibility - convert name to type
+      providerType = providerNameToType(bodyWithType.providerName);
+    }
+    
     const createData = {
-      providerName: body.providerName,
-      apiBase: body.apiBase,
-      apiKey: body.apiKey,
-      isEnabled: body.isEnabled ?? true,
-      organization: body.organization
+      ...body,
+      providerType: providerType ?? 1, // Default to OpenAI (1) if no type provided
+      isEnabled: bodyWithType.isEnabled ?? true,
     };
     
-    const provider: ProviderCredentialDto = await adminClient.providers.create(createData);
+    const provider: ProviderCredentialDto = await providersService.create(createData);
     return NextResponse.json(provider);
-  } catch (error) {
+  } catch (error: unknown) {
     return handleSDKError(error);
   }
 }

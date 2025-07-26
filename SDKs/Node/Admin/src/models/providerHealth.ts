@@ -3,6 +3,7 @@ import type {
   ProviderHealthStatusDto
 } from './provider';
 import type { HealthCheckDetails } from './common-types';
+import { ProviderType } from './providerType';
 
 // Core health types
 export interface HealthSummaryDto {
@@ -16,7 +17,7 @@ export interface HealthSummaryDto {
 
 export interface ProviderHealthSummary {
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   uptime: number; // percentage
   avgLatency: number; // milliseconds
@@ -26,7 +27,7 @@ export interface ProviderHealthSummary {
 
 export interface ProviderHealthDto {
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   details: {
     connectivity: HealthCheck;
@@ -122,7 +123,7 @@ export interface AlertParams extends FilterOptions {
 export interface HealthAlert {
   id: string;
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   severity: 'info' | 'warning' | 'critical';
   type: 'connectivity' | 'performance' | 'quota' | 'error_rate';
   message: string;
@@ -243,7 +244,7 @@ export interface ProviderWithHealthDto {
   id: string;
   name: string;
   isEnabled: boolean;
-  providerName: string;
+  providerType: ProviderType;
   apiKey?: string;
   health: {
     status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
@@ -255,7 +256,7 @@ export interface ProviderWithHealthDto {
 
 export interface ProviderHealthMetricsDto {
   providerId: string;
-  providerName: string;
+  providerType: ProviderType;
   metrics: {
     totalRequests: number;
     failedRequests: number;

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,11 +64,17 @@ namespace ConduitLLM.Http.Controllers
 
                 // Get the provider credentials from the database
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                // EF Core can't translate StringComparison.OrdinalIgnoreCase, use ToLower() instead
-                var providerNameLower = providerName.ToLower();
+                
+                // Try to parse provider name as ProviderType enum
+                if (!Enum.TryParse<ConduitLLM.Configuration.ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Invalid provider name '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                    return NotFound(new { error = $"Provider '{providerName}' not found" });
+                }
+                
                 var provider = await dbContext.ProviderCredentials
                     .Include(p => p.ProviderKeyCredentials)
-                    .FirstOrDefaultAsync(p => p.ProviderName.ToLower() == providerNameLower);
+                    .FirstOrDefaultAsync(p => p.ProviderType == providerType);
 
                 if (provider == null)
                 {
@@ -87,9 +94,9 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Convert DB entity to ProviderCredentials
-                var providerCredentials = new ProviderCredentials
+                var providerCredentials = new Configuration.ProviderCredentials
                 {
-                    ProviderName = provider.ProviderName,
+                    ProviderType = provider.ProviderType,
                     ApiKey = primaryKey.ApiKey,
                     BaseUrl = provider.BaseUrl
                 };

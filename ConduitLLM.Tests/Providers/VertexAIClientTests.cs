@@ -59,7 +59,7 @@ namespace ConduitLLM.Tests.Providers
 
             var credentials = new ProviderCredentials
             {
-                ProviderName = "vertexai",
+                ProviderType = ProviderType.VertexAI,
                 ApiKey = "test-api-key",
                 BaseUrl = "us-central1"
             };
@@ -90,7 +90,7 @@ namespace ConduitLLM.Tests.Providers
 
             var credentials = new ProviderCredentials
             {
-                ProviderName = "vertexai",
+                ProviderType = ProviderType.VertexAI,
                 ApiKey = serviceAccountJson,
                 BaseUrl = "us-central1"
             };
@@ -117,7 +117,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "vertexai",
+                ProviderType = ProviderType.VertexAI,
                 ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
                 BaseUrl = "europe-west4"
             };
@@ -141,7 +141,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "vertexai",
+                ProviderType = ProviderType.VertexAI,
                 ApiKey = "some-key",
                 BaseUrl = "us-central1"
             };
@@ -731,7 +731,7 @@ namespace ConduitLLM.Tests.Providers
                 // Arrange
                 var credentials = new ProviderCredentials
                 {
-                    ProviderName = "vertexai",
+                    ProviderType = ProviderType.VertexAI,
                     ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
                     BaseUrl = region
                 };

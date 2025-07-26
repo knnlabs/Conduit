@@ -15,8 +15,10 @@ export async function GET(
     const provider = await adminClient.providers.getById(parseInt(id, 10));
     
     // Get model capabilities
+    const providerWithName = provider as { providerName?: string };
+    const providerName = providerWithName.providerName ?? 'unknown';
     const capabilities = await adminClient.providerModels.getModelCapabilities(
-      provider.providerName,
+      providerName,
       modelId
     );
     

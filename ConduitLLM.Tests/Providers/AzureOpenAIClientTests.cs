@@ -58,7 +58,7 @@ namespace ConduitLLM.Tests.Providers
 
             var credentials = new ProviderCredentials
             {
-                ProviderName = "azure",
+                ProviderType = ProviderType.AzureOpenAI,
                 ApiKey = "test-key",
                 BaseUrl = "https://test.openai.azure.com"
             };
@@ -78,7 +78,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "azure",
+                ProviderType = ProviderType.AzureOpenAI,
                 ApiKey = "test-azure-key",
                 BaseUrl = "https://myresource.openai.azure.com"
             };
@@ -113,7 +113,7 @@ namespace ConduitLLM.Tests.Providers
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "azure",
+                ProviderType = ProviderType.AzureOpenAI,
                 ApiKey = "",
                 BaseUrl = "https://test.openai.azure.com"
             };
@@ -695,7 +695,7 @@ data: [DONE]
             // Arrange
             var credentials = new ProviderCredentials
             {
-                ProviderName = "azure",
+                ProviderType = ProviderType.AzureOpenAI,
                 ApiKey = "test-key",
                 BaseUrl = "https://myresource.openai.azure.com"
             };

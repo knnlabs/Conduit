@@ -348,6 +348,18 @@ namespace ConduitLLM.Http.DTOs.Metrics
         /// Error rate percentage.
         /// </summary>
         public double ErrorRate { get; set; }
+
+
+        /// <summary>
+        /// Backward compatibility property for Model.
+        /// Maps to ModelName.
+        /// </summary>
+        [Obsolete("Use ModelName instead. This property will be removed in a future version.")]
+        public string Model
+        {
+            get => ModelName;
+            set => ModelName = value ?? string.Empty;
+        }
     }
 
     /// <summary>
@@ -395,6 +407,7 @@ namespace ConduitLLM.Http.DTOs.Metrics
         /// Provider type.
         /// </summary>
         public ProviderType ProviderType { get; set; }
+
 
         /// <summary>
         /// Health status: healthy, degraded, or unhealthy.

@@ -250,7 +250,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<ModelDeploymentEntity>(entity =>
             {
                 entity.HasIndex(e => e.ModelName);
-                entity.HasIndex(e => e.ProviderName);
+                entity.HasIndex(e => e.ProviderType);
                 entity.HasIndex(e => e.IsEnabled);
                 entity.HasIndex(e => e.IsHealthy);
             });

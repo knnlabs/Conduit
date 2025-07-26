@@ -13,7 +13,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid provider ID or key ID' }, { status: 400 });
     }
     
-    const result = await adminClient.providers.testKey(providerId, keyId);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.testKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    const result = await providers.testKey(providerId, keyId);
     return NextResponse.json(result);
   } catch (error) {
     return handleSDKError(error);

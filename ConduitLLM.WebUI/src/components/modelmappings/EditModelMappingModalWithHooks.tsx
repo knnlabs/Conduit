@@ -16,6 +16,7 @@ import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -99,7 +100,7 @@ export function EditModelMappingModal({
     if (mapping && providers) {
       
       // The mapping.providerId is the provider name (string), we need to find the numeric ID
-      const provider = providers.find(p => p.providerName === mapping.providerId);
+      const provider = providers.find(p => (p as { providerName?: string }).providerName === mapping.providerId);
       const providerIdForForm = provider?.id.toString() ?? '';
       
       
@@ -132,7 +133,16 @@ export function EditModelMappingModal({
 
     // Convert the numeric provider ID back to provider name for the backend
     const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName ?? values.providerId;
+    let providerName = values.providerId;
+    
+    if (provider) {
+      try {
+        const providerType = getProviderTypeFromDto(provider);
+        providerName = providerTypeToName(providerType);
+      } catch (error) {
+        console.error('Failed to get provider type:', error);
+      }
+    }
 
     const updateData: UpdateModelProviderMappingDto = {
       modelId: values.modelId,
@@ -168,10 +178,20 @@ export function EditModelMappingModal({
     }
   };
 
-  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
-    value: p.id.toString(), // Form uses numeric ID, but we convert to provider name on submit
-    label: p.providerName,
-  })) || [];
+  const providerOptions = providers?.map((p: ProviderCredentialDto) => {
+    try {
+      const providerType = getProviderTypeFromDto(p);
+      return {
+        value: p.id.toString(), // Form uses numeric ID, but we convert to provider name on submit
+        label: getProviderDisplayName(providerType),
+      };
+    } catch {
+      return {
+        value: p.id.toString(),
+        label: 'Unknown Provider',
+      };
+    }
+  }) || [];
 
   return (
     <Modal

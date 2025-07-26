@@ -43,6 +43,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// </summary>
         public ProviderType ProviderType { get; set; }
 
+
         /// <summary>
         /// Gets or sets the health status.
         /// </summary>
@@ -198,6 +199,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the provider type.
         /// </summary>
         public ProviderType ProviderType { get; set; }
+
 
         /// <summary>
         /// Gets or sets the total number of models.

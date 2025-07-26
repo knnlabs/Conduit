@@ -15,8 +15,9 @@ export async function GET(
     const provider = await adminClient.providers.getById(parseInt(id, 10));
     
     // Get model details
+    const providerWithName = provider as { providerName?: string };
     const modelDetails = await adminClient.providerModels.getModelDetails(
-      provider.providerName,
+      providerWithName.providerName ?? '',
       modelId
     );
     

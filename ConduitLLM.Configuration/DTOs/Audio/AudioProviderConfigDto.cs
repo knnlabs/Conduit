@@ -87,6 +87,7 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// When the configuration was last updated.
         /// </summary>
         public DateTime UpdatedAt { get; set; }
+        
     }
 
     /// <summary>

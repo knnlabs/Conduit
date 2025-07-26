@@ -17,7 +17,12 @@ export async function POST(
     }
     
     // Use the test key endpoint from the SDK
-    const result = await adminClient.providers.testKey(providerId, keyIdNum);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.testKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    const result = await providers.testKey(providerId, keyIdNum);
     return NextResponse.json(result);
   } catch (error) {
     return handleSDKError(error);

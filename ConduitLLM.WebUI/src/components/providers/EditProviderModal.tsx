@@ -21,10 +21,10 @@ import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { 
   ProviderType, 
-  PROVIDER_DISPLAY_NAMES, 
   PROVIDER_CONFIG_REQUIREMENTS 
 } from '@/lib/constants/providers';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
 interface Provider extends ProviderCredentialDto {
@@ -143,9 +143,15 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     return null;
   }
 
-  const providerDisplayName = provider.providerName 
-    ? PROVIDER_DISPLAY_NAMES[provider.providerName as ProviderType] 
-    : provider.providerName;
+  let providerDisplayName = 'Unknown Provider';
+  try {
+    const providerType = getProviderTypeFromDto(provider);
+    providerDisplayName = getProviderDisplayName(providerType);
+  } catch {
+    // Fallback to provider name if available
+    const providerNameFallback = provider as { providerName?: string };
+    providerDisplayName = providerNameFallback.providerName ?? 'Unknown Provider';
+  }
   const getHealthIcon = (status?: string) => {
     switch (status) {
       case 'healthy':
@@ -166,7 +172,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerDisplayName || provider.providerName || 'Unknown'}</Badge>
+                <Badge>{providerDisplayName}</Badge>
               </Group>
               {provider.healthStatus && (
                 <Group justify="space-between">
@@ -198,7 +204,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
           <TextInput
             label="Provider Name"
-            value={provider.providerName}
+            value={providerDisplayName}
             disabled
             description="Provider name cannot be changed"
           />
@@ -211,7 +217,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.providerName as ProviderType];
+            const providerTypeNum = getProviderTypeFromDto(provider);
+            const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
             if (!config) return null;
 
             return (
@@ -227,7 +234,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 {config.requiresOrganizationId && (
                   <TextInput
                     label="Organization ID"
-                    placeholder={provider.providerName === ProviderType.OpenAI.toString() ? "Optional OpenAI organization ID" : "Organization ID"}
+                    placeholder={getProviderTypeFromDto(provider) === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
                     {...form.getInputProps('organizationId')}
                   />
                 )}

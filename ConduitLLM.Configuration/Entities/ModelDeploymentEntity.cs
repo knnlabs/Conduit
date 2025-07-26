@@ -23,11 +23,10 @@ namespace ConduitLLM.Configuration.Entities
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>
-        /// The name of the provider for this model (e.g., OpenAI, Anthropic)
+        /// The provider type for this model
         /// </summary>
         [Required]
-        [MaxLength(50)]
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; } = ProviderType.OpenAI;
 
         /// <summary>
         /// Weight for random selection strategy (higher values increase selection probability)

@@ -53,7 +53,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.ProviderCredentials.Add(new ProviderCredential
             {
                 Id = 1,
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 BaseUrl = "https://api.openai.com",
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
@@ -102,7 +102,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.ProviderCredentials.Add(new ProviderCredential
             {
                 Id = 1,
-                ProviderName = "anthropic",
+                ProviderType = ProviderType.Anthropic,
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
                     new ProviderKeyCredential
@@ -165,7 +165,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.ProviderCredentials.Add(new ProviderCredential
             {
                 Id = 1,
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
                     new ProviderKeyCredential
@@ -201,7 +201,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.ProviderCredentials.Add(new ProviderCredential
             {
                 Id = 1,
-                ProviderName = "openai", // Lower case in DB
+                ProviderType = ProviderType.OpenAI,
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
                     new ProviderKeyCredential
@@ -241,7 +241,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.ProviderCredentials.Add(new ProviderCredential
             {
                 Id = 1,
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
                     new ProviderKeyCredential

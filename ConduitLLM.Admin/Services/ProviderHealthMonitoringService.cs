@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MassTransit;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
@@ -103,7 +104,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Get provider health configurations
                 var healthConfigs = await providerHealthRepository.GetAllConfigurationsAsync();
-                var configDict = healthConfigs.ToDictionary(c => c.ProviderName);
+                var configDict = healthConfigs.ToDictionary(c => c.ProviderType);
 
                 // Batch health checks for efficiency
                 var healthCheckTasks = new List<Task<(ProviderCredential provider, ProviderHealthRecord? healthRecord)>>();
@@ -114,9 +115,9 @@ namespace ConduitLLM.Admin.Services
                         break;
 
                     // Check if monitoring is enabled for this provider
-                    if (!configDict.TryGetValue(provider.ProviderName, out var config) || !config.MonitoringEnabled)
+                    if (!configDict.TryGetValue(provider.ProviderType, out var config) || !config.MonitoringEnabled)
                     {
-                        _logger.LogDebug("Health monitoring not enabled for provider: {Provider}", provider.ProviderName);
+                        _logger.LogDebug("Health monitoring not enabled for provider: {Provider}", provider.ProviderType);
                         continue;
                     }
 
@@ -130,7 +131,7 @@ namespace ConduitLLM.Admin.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error checking health for provider: {Provider}", provider.ProviderName);
+                            _logger.LogError(ex, "Error checking health for provider: {Provider}", provider.ProviderType);
                             return (provider, null);
                         }
                     }, cancellationToken));
@@ -162,13 +163,13 @@ namespace ConduitLLM.Admin.Services
             IProviderHealthRepository healthRepository)
         {
             var startTime = DateTime.UtcNow;
-            var previousStatus = await healthRepository.GetLatestStatusAsync(provider.ProviderName);
+            var previousStatus = await healthRepository.GetLatestStatusAsync(provider.ProviderType);
             
             var healthRecord = new ProviderHealthRecord
             {
-                ProviderName = provider.ProviderName,
+                ProviderType = provider.ProviderType,
                 TimestampUtc = startTime,
-                EndpointUrl = GetProviderEndpoint(provider.ProviderName)
+                EndpointUrl = GetProviderEndpoint(provider.ProviderType)
             };
 
             try
@@ -182,7 +183,7 @@ namespace ConduitLLM.Admin.Services
                 healthRecord.ResponseTimeMs = responseTime;
 
                 _logger.LogInformation("Health check for {Provider}: {Status} ({ResponseTime}ms)", 
-                    provider.ProviderName, healthRecord.Status, responseTime);
+                    provider.ProviderType, healthRecord.Status, responseTime);
             }
             catch (Exception ex)
             {
@@ -192,12 +193,12 @@ namespace ConduitLLM.Admin.Services
                 healthRecord.ErrorDetails = ex.ToString();
                 healthRecord.ResponseTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-                _logger.LogWarning(ex, "Health check failed for provider: {Provider}", provider.ProviderName);
+                _logger.LogWarning(ex, "Health check failed for provider: {Provider}", provider.ProviderType);
             }
 
             // Save the health record
             await healthRepository.SaveStatusAsync(healthRecord);
-            await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderName);
+            await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderType);
 
             await SaveHealthRecordWithHysteresisAsync(provider, healthRecord, healthRepository);
         }
@@ -210,13 +211,13 @@ namespace ConduitLLM.Admin.Services
             // For now, perform a simple connectivity check
             // In a full implementation, this would call provider-specific health endpoints
             
-            switch (provider.ProviderName.ToLowerInvariant())
+            switch (provider.ProviderType)
             {
-                case "openai":
+                case ProviderType.OpenAI:
                     return await CheckOpenAIHealthAsync(provider);
-                case "anthropic":
+                case ProviderType.Anthropic:
                     return await CheckAnthropicHealthAsync(provider);
-                case "google":
+                case ProviderType.Gemini:
                     return await CheckGoogleHealthAsync(provider);
                 default:
                     // For unknown providers, assume healthy if credentials exist
@@ -306,14 +307,14 @@ namespace ConduitLLM.Admin.Services
         /// <summary>
         /// Gets the provider endpoint URL
         /// </summary>
-        private string GetProviderEndpoint(string providerName)
+        private string GetProviderEndpoint(ProviderType providerType)
         {
-            return providerName.ToLowerInvariant() switch
+            return providerType switch
             {
-                "openai" => "https://api.openai.com",
-                "anthropic" => "https://api.anthropic.com",
-                "google" => "https://generativelanguage.googleapis.com",
-                "azure" => "https://azure.openai.com",
+                ProviderType.OpenAI => "https://api.openai.com",
+                ProviderType.Anthropic => "https://api.anthropic.com",
+                ProviderType.Gemini => "https://generativelanguage.googleapis.com",
+                ProviderType.AzureOpenAI => "https://azure.openai.com",
                 _ => "Unknown"
             };
         }
@@ -341,9 +342,9 @@ namespace ConduitLLM.Admin.Services
             
             var healthRecord = new ProviderHealthRecord
             {
-                ProviderName = provider.ProviderName,
+                ProviderType = provider.ProviderType,
                 TimestampUtc = startTime,
-                EndpointUrl = GetProviderEndpoint(provider.ProviderName)
+                EndpointUrl = GetProviderEndpoint(provider.ProviderType)
             };
 
             try
@@ -357,7 +358,7 @@ namespace ConduitLLM.Admin.Services
                 healthRecord.ResponseTimeMs = responseTime;
 
                 _logger.LogInformation("Health check for {Provider}: {Status} ({ResponseTime}ms)", 
-                    provider.ProviderName, healthRecord.Status, responseTime);
+                    provider.ProviderType, healthRecord.Status, responseTime);
                     
                 return healthRecord;
             }
@@ -369,7 +370,7 @@ namespace ConduitLLM.Admin.Services
                 healthRecord.ErrorDetails = ex.ToString();
                 healthRecord.ResponseTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-                _logger.LogWarning(ex, "Health check failed for provider: {Provider}", provider.ProviderName);
+                _logger.LogWarning(ex, "Health check failed for provider: {Provider}", provider.ProviderType);
                 return healthRecord;
             }
         }
@@ -384,16 +385,16 @@ namespace ConduitLLM.Admin.Services
         {
             // Save the health record
             await healthRepository.SaveStatusAsync(healthRecord);
-            await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderName);
+            await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderType);
             
             // Apply hysteresis logic
             bool shouldPublishEvent = false;
             lock (_historyLock)
             {
-                if (!_healthHistory.TryGetValue(provider.ProviderName, out var history))
+                if (!_healthHistory.TryGetValue(provider.ProviderType.ToString(), out var history))
                 {
                     history = new HealthStatusHistory();
-                    _healthHistory[provider.ProviderName] = history;
+                    _healthHistory[provider.ProviderType.ToString()] = history;
                 }
                 
                 // Update history
@@ -423,7 +424,7 @@ namespace ConduitLLM.Admin.Services
                     await _publishEndpoint.Publish(new ProviderHealthChanged
                     {
                         ProviderId = provider.Id,
-                        ProviderName = provider.ProviderName,
+                        ProviderType = provider.ProviderType,
                         IsHealthy = healthRecord.Status == ProviderHealthRecord.StatusType.Online,
                         Status = $"{healthRecord.Status}: {healthRecord.StatusMessage}",
                         HealthData = healthData,
@@ -432,11 +433,11 @@ namespace ConduitLLM.Admin.Services
 
                     _logger.LogInformation(
                         "Published ProviderHealthChanged event for {Provider}: {CurrentStatus} (Response time: {ResponseTime}ms)",
-                        provider.ProviderName, healthRecord.Status, healthRecord.ResponseTimeMs);
+                        provider.ProviderType, healthRecord.Status, healthRecord.ResponseTimeMs);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to publish ProviderHealthChanged event for {Provider}", provider.ProviderName);
+                    _logger.LogError(ex, "Failed to publish ProviderHealthChanged event for {Provider}", provider.ProviderType);
                 }
             }
         }

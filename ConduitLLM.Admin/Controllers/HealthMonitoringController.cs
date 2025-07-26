@@ -226,13 +226,13 @@ namespace ConduitLLM.Admin.Controllers
                     .Select(h => new
                     {
                         Id = Guid.NewGuid().ToString(),
-                        Title = $"{h.ProviderName} Health Check Failed",
+                        Title = $"{h.ProviderType} Health Check Failed",
                         Type = "health_check_failure",
                         Severity = "major",
                         Status = "resolved",
                         StartTime = h.TimestampUtc,
                         EndTime = (DateTime?)h.TimestampUtc.AddMinutes(5),
-                        AffectedService = h.ProviderName,
+                        AffectedService = h.ProviderType.ToString(),
                         Impact = "Provider unavailable",
                         Details = new
                         {
@@ -302,7 +302,7 @@ namespace ConduitLLM.Admin.Controllers
                     // Get provider health for this interval
                     var providerHealth = await dbContext.ProviderHealthRecords
                         .Where(h => h.TimestampUtc >= currentTime && h.TimestampUtc < intervalEnd)
-                        .GroupBy(h => h.ProviderName)
+                        .GroupBy(h => h.ProviderType)
                         .Select(g => new
                         {
                             Provider = g.Key,

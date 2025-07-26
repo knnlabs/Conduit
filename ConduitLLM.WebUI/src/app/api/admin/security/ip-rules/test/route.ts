@@ -14,7 +14,13 @@ export async function POST(req: NextRequest) {
     }
     
     const client = getServerAdminClient();
-    const result = await client.ipFilters.checkIp(body.ipAddress);
+    const result = await client.ipFilter.testFilter(body.ipAddress) as {
+      isAllowed: boolean;
+      deniedReason?: string;
+      matchedFilter?: unknown;
+      filterType?: 'whitelist' | 'blacklist';
+      isDefaultAction?: boolean;
+    };
     
     // Transform the result to match UI expectations
     const transformedResult = {

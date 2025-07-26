@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { ProviderConnectionTestResultDto, ProviderSettings } from '@knn_labs/conduit-admin-client';
+import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface TestProviderRequest {
   providerName: string;
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
     
     // Use the SDK's testConfig method with ProviderConfig interface
     const testResult = await adminClient.providers.testConfig({
-      providerName: body.providerName,
+      providerType: providerNameToType(body.providerName),
       apiKey: body.apiKey,
       baseUrl: body.apiEndpoint,
       organizationId: body.organizationId,
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
     
     return NextResponse.json({
       success: testResult.success,
-      message: testResult.message || (testResult.success ? 'Connection successful' : 'Connection failed'),
+      message: testResult.message ?? (testResult.success ? 'Connection successful' : 'Connection failed'),
       details: testResult,
       tested: true,
       timestamp: new Date().toISOString(),

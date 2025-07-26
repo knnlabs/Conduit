@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Routing.AudioRoutingStrategies;
 
@@ -22,6 +23,7 @@ namespace ConduitLLM.Core.Routing
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IModelCapabilityService _capabilityService;
+        private readonly IProviderCredentialService _providerCredentialService;
         private readonly ILogger<AdvancedAudioRouter> _logger;
         private readonly Dictionary<string, IAudioRoutingStrategy> _strategies;
         private readonly ConcurrentDictionary<string, AudioProviderInfo> _providerInfoCache = new();
@@ -43,12 +45,14 @@ namespace ConduitLLM.Core.Routing
         public AdvancedAudioRouter(
             ILLMClientFactory clientFactory,
             IModelCapabilityService capabilityService,
+            IProviderCredentialService providerCredentialService,
             ILogger<AdvancedAudioRouter> logger,
             ILoggerFactory loggerFactory,
             IOptions<RouterOptions> options)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _capabilityService = capabilityService ?? throw new ArgumentNullException(nameof(capabilityService));
+            _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // Initialize routing strategies
@@ -145,7 +149,14 @@ namespace ConduitLLM.Core.Routing
                 return null;
             }
 
-            var client = _clientFactory.GetClientByProvider(providerName);
+            var providerId = GetProviderIdFromName(providerName);
+            if (providerId == null)
+            {
+                _logger.LogWarning("Unknown provider name: {Provider}", providerName);
+                return null;
+            }
+
+            var client = _clientFactory.GetClientByProviderId(providerId.Value);
             return client as IAudioTranscriptionClient;
         }
 
@@ -167,7 +178,14 @@ namespace ConduitLLM.Core.Routing
                 return null;
             }
 
-            var client = _clientFactory.GetClientByProvider(providerName);
+            var providerId = GetProviderIdFromName(providerName);
+            if (providerId == null)
+            {
+                _logger.LogWarning("Unknown provider name: {Provider}", providerName);
+                return null;
+            }
+
+            var client = _clientFactory.GetClientByProviderId(providerId.Value);
             return client as ITextToSpeechClient;
         }
 
@@ -186,7 +204,11 @@ namespace ConduitLLM.Core.Routing
 
             foreach (var provider in eligibleProviders)
             {
-                var client = _clientFactory.GetClientByProvider(provider.Name);
+                var providerId = GetProviderIdFromName(provider.Name);
+                if (providerId == null)
+                    continue;
+
+                var client = _clientFactory.GetClientByProviderId(providerId.Value);
                 if (client is IRealtimeAudioClient realtimeClient)
                 {
                     _logger.LogInformation("Selected {Provider} for real-time audio", provider.Name);
@@ -503,7 +525,11 @@ namespace ConduitLLM.Core.Routing
         {
             try
             {
-                var client = _clientFactory.GetClientByProvider(provider);
+                var providerId = GetProviderIdFromName(provider);
+                if (providerId == null)
+                    return false;
+
+                var client = _clientFactory.GetClientByProviderId(providerId.Value);
 
                 // Quick availability check
                 if (client is IAudioTranscriptionClient sttClient)
@@ -614,6 +640,35 @@ namespace ConduitLLM.Core.Routing
                     TextToSpeechPer1kChars = 0.02m,
                     RealtimePerMinute = 0.1m
                 }
+            };
+        }
+        private int? GetProviderIdFromName(string providerName)
+        {
+            // Map provider names to IDs based on ProviderType enum
+            return providerName?.ToLowerInvariant() switch
+            {
+                "openai" => 1,
+                "anthropic" => 2,
+                "azure" or "azureopenai" => 3,
+                "gemini" => 4,
+                "vertexai" => 5,
+                "cohere" => 6,
+                "mistral" => 7,
+                "groq" => 8,
+                "ollama" => 9,
+                "replicate" => 10,
+                "fireworks" => 11,
+                "bedrock" => 12,
+                "huggingface" => 13,
+                "sagemaker" => 14,
+                "openrouter" => 15,
+                "openaicompatible" => 16,
+                "minimax" => 17,
+                "ultravox" => 18,
+                "elevenlabs" => 19,
+                "google" or "googlecloud" => 20,
+                "cerebras" => 21,
+                _ => null
             };
         }
     }

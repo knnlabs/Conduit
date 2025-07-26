@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Configuration;
 using ConduitLLM.Http.Metrics;
 
 namespace ConduitLLM.Http.Hubs
@@ -122,9 +123,16 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         public async Task ProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime)
         {
+            // Parse provider string to ProviderType enum
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                return;
+            }
+            
             var notification = new ProviderHealthNotification
             {
-                Provider = provider,
+                ProviderType = providerType,
                 Status = status.ToString(),
                 ResponseTimeMs = responseTime?.TotalMilliseconds,
                 Priority = status == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium,
@@ -233,9 +241,16 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         public async Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
+            // Parse provider name to ProviderType enum
+            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {ProviderName}", providerName);
+                return;
+            }
+            
             var notification = new ModelCapabilitiesNotification
             {
-                ProviderName = providerName,
+                ProviderType = providerType,
                 ModelCount = modelCount,
                 EmbeddingCount = embeddingCount,
                 VisionCount = visionCount,

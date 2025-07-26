@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -98,9 +99,9 @@ namespace ConduitLLM.Admin.Services
                     new ProviderCredentialUpdated
                     {
                         ProviderId = createdCredential.Id,
-                        ProviderName = createdCredential.ProviderType.ToString(),
+                        ProviderType = createdCredential.ProviderType,
                         IsEnabled = createdCredential.IsEnabled,
-                        ChangedProperties = new[] { "ProviderName", "BaseUrl", "IsEnabled" }, // All properties for creation
+                        ChangedProperties = new[] { "ProviderType", "BaseUrl", "IsEnabled" }, // All properties for creation
                         CorrelationId = Guid.NewGuid().ToString()
                     },
                     $"create provider credential {createdCredential.Id}",
@@ -136,7 +137,7 @@ namespace ConduitLLM.Admin.Services
                             new ProviderCredentialDeleted
                             {
                                 ProviderId = providerToDelete.Id,
-                                ProviderName = providerToDelete.ProviderType.ToString(),
+                                ProviderType = providerToDelete.ProviderType,
                                 CorrelationId = Guid.NewGuid().ToString()
                             },
                             $"delete provider credential {providerToDelete.Id}",
@@ -251,7 +252,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = string.Empty,
                     ErrorDetails = null,
-                    ProviderName = providerCredential.ProviderType.ToString(),
+                    ProviderType = providerCredential.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
 
@@ -470,7 +471,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = "The connection timed out",
                     ErrorDetails = "Request exceeded the 10 second timeout",
-                    ProviderName = providerCredential.ProviderType.ToString(),
+                    ProviderType = providerCredential.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -483,7 +484,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = $"Connection test failed: {ex.Message}",
                     ErrorDetails = ex.ToString(),
-                    ProviderName = providerCredential.ProviderType.ToString(),
+                    ProviderType = providerCredential.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -494,17 +495,30 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         private async Task<ProviderConnectionTestResultDto> TestProviderConnectionWithKeyAsync(string providerName, string apiKey, string? baseUrl)
         {
+            // Parse provider name to ProviderType first
+            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+            {
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = "Invalid provider name",
+                    ErrorDetails = $"Unknown provider: {providerName}",
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            
             try
             {
                 _logger.LogInformation("Testing provider connection for {ProviderName} with specific key", providerName);
                 
                 var startTime = DateTime.UtcNow;
+                
                 var result = new ProviderConnectionTestResultDto
                 {
                     Success = false,
                     Message = string.Empty,
                     ErrorDetails = null,
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     Timestamp = DateTime.UtcNow
                 };
 
@@ -540,13 +554,7 @@ namespace ConduitLLM.Admin.Services
                 else
                 {
                     // Construct the API URL based on provider type
-                    // Parse provider name to enum
-                    if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                    {
-                        result.Message = "Invalid provider name";
-                        result.ErrorDetails = $"Unknown provider: {providerName}";
-                        return result;
-                    }
+                    // Provider type was already parsed at the beginning of the method
                     
                     var tempCredential = new ProviderCredential
                     {
@@ -656,7 +664,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = $"Network error: {httpEx.Message}",
                     ErrorDetails = httpEx.ToString(),
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -668,7 +676,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = $"Connection test failed: {ex.Message}",
                     ErrorDetails = ex.ToString(),
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -724,7 +732,7 @@ namespace ConduitLLM.Admin.Services
                             new ProviderCredentialUpdated
                             {
                                 ProviderId = existingCredential.Id,
-                                ProviderName = existingCredential.ProviderType.ToString(),
+                                ProviderType = existingCredential.ProviderType,
                                 IsEnabled = existingCredential.IsEnabled,
                                 ChangedProperties = changedProperties.ToArray(),
                                 CorrelationId = Guid.NewGuid().ToString()
@@ -1443,7 +1451,7 @@ namespace ConduitLLM.Admin.Services
                         Success = false,
                         Message = "Provider not found",
                         ErrorDetails = $"Provider with ID {providerId} was not found",
-                        ProviderName = "Unknown",
+                        ProviderType = ProviderType.OpenAI, // Default for unknown
                         Timestamp = DateTime.UtcNow
                     };
                 }
@@ -1456,7 +1464,7 @@ namespace ConduitLLM.Admin.Services
                         Success = false,
                         Message = "Key not found",
                         ErrorDetails = $"Key with ID {keyId} was not found for provider {provider.ProviderType}",
-                        ProviderName = provider.ProviderType.ToString(),
+                        ProviderType = provider.ProviderType,
                         Timestamp = DateTime.UtcNow
                     };
                 }
@@ -1473,7 +1481,7 @@ namespace ConduitLLM.Admin.Services
                         Success = false,
                         Message = "Key has no API key configured",
                         ErrorDetails = "The selected key credential does not have an API key",
-                        ProviderName = providerName,
+                        ProviderType = provider.ProviderType,
                         Timestamp = DateTime.UtcNow
                     };
                 }
@@ -1489,7 +1497,7 @@ namespace ConduitLLM.Admin.Services
                     Success = false,
                     Message = "Test failed",
                     ErrorDetails = ex.ToString(),
-                    ProviderName = "Unknown",
+                    ProviderType = ProviderType.OpenAI, // Default for unknown
                     Timestamp = DateTime.UtcNow
                 };
             }

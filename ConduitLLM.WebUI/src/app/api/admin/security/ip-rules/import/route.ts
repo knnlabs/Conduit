@@ -34,22 +34,22 @@ export async function POST(req: NextRequest) {
       const lines = text.split('\n').filter(line => line.trim());
       const headers = lines[0]?.toLowerCase().split(',').map(h => h.trim());
       
-      if (!headers || !headers.includes('ipaddress') || !headers.includes('rule')) {
+      if (!headers || !headers.includes('ipaddress') || !headers.includes('action')) {
         return NextResponse.json({ 
-          error: 'CSV must have headers including "ipAddress" and "rule"' 
+          error: 'CSV must have headers including "ipAddress" and "action"' 
         }, { status: 400 });
       }
       
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
         const ipIndex = headers.indexOf('ipaddress');
-        const ruleIndex = headers.indexOf('rule');
+        const ruleIndex = headers.indexOf('action');
         const descIndex = headers.indexOf('description');
         
         if (values[ipIndex] && values[ruleIndex]) {
           rules.push({
             ipAddress: values[ipIndex],
-            rule: values[ruleIndex] as 'allow' | 'deny',
+            action: values[ruleIndex] as 'allow' | 'block',
             description: descIndex >= 0 ? values[descIndex] : undefined,
           });
         }
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid rules found in file' }, { status: 400 });
     }
     
-    const result = await client.ipFilters.import(rules);
+    const result = await client.ipFilter.import(rules);
     
     return NextResponse.json({
       imported: result.imported,

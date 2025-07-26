@@ -16,7 +16,12 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid provider ID' }, { status: 400 });
     }
     
-    const keys = await adminClient.providers.listKeys(providerId);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.listKeys !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    const keys = await providers.listKeys(providerId);
     return NextResponse.json(keys);
   } catch (error) {
     return handleSDKError(error);
@@ -37,7 +42,12 @@ export async function POST(
     }
     
     const body = await req.json() as unknown;
-    const newKey = await adminClient.providers.createKey(providerId, body as CreateProviderKeyCredentialDto);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.createKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    const newKey = await providers.createKey(providerId, body as CreateProviderKeyCredentialDto);
     return NextResponse.json(newKey);
   } catch (error) {
     return handleSDKError(error);

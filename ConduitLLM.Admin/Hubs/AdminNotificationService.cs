@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Admin.Hubs
@@ -65,18 +66,18 @@ namespace ConduitLLM.Admin.Hubs
         /// <summary>
         /// Sends a provider health update notification to subscribed admins.
         /// </summary>
-        /// <param name="providerName">The provider name.</param>
+        /// <param name="providerType">The provider type.</param>
         /// <param name="status">The health status.</param>
         /// <param name="responseTime">The response time if available.</param>
         /// <param name="details">Additional health check details.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task NotifyProviderHealthUpdate(string providerName, HealthStatus status, TimeSpan? responseTime, object? details = null)
+        public async Task NotifyProviderHealthUpdate(ProviderType providerType, HealthStatus status, TimeSpan? responseTime, object? details = null)
         {
             try
             {
                 var notification = new ProviderHealthNotification
                 {
-                    Provider = providerName,
+                    ProviderType = providerType,
                     Status = status.ToString(),
                     ResponseTimeMs = responseTime?.TotalMilliseconds,
                     Priority = status == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium,
@@ -84,12 +85,12 @@ namespace ConduitLLM.Admin.Hubs
                 };
 
                 // Send to all admins and those subscribed to this specific provider
-                await _hubContext.Clients.Groups("admin", $"admin-provider-{providerName}")
+                await _hubContext.Clients.Groups("admin", $"admin-provider-{providerType}")
                     .SendAsync("ProviderHealthUpdate", notification);
 
                 _logger.LogInformation(
                     "[SignalR:ProviderHealthUpdate] Sent notification - Provider: {Provider}, Status: {Status}, ResponseTime: {ResponseTime}ms, Groups: [admin, admin-provider-{Provider}]",
-                    providerName, status, responseTime?.TotalMilliseconds ?? -1, providerName);
+                    providerType, status, responseTime?.TotalMilliseconds ?? -1, providerType);
             }
             catch (Exception ex)
             {
@@ -207,29 +208,29 @@ namespace ConduitLLM.Admin.Hubs
         /// <summary>
         /// Sends a model capability update notification.
         /// </summary>
-        /// <param name="providerName">The provider name.</param>
+        /// <param name="providerType">The provider type.</param>
         /// <param name="modelCount">Number of models discovered.</param>
         /// <param name="changeDescription">Description of what changed.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task NotifyModelCapabilityUpdate(string providerName, int modelCount, string changeDescription)
+        public async Task NotifyModelCapabilityUpdate(ProviderType providerType, int modelCount, string changeDescription)
         {
             try
             {
                 var notification = new ModelCapabilitiesNotification
                 {
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     ModelCount = modelCount,
                     Priority = NotificationPriority.Low,
                     Details = changeDescription
                 };
 
                 // Send to all admins and provider subscribers
-                await _hubContext.Clients.Groups("admin", $"admin-provider-{providerName}")
+                await _hubContext.Clients.Groups("admin", $"admin-provider-{providerType}")
                     .SendAsync("ModelCapabilityUpdate", notification);
 
                 _logger.LogInformation(
                     "Sent model capability update: {Provider} - {ModelCount} models ({ChangeDescription})",
-                    providerName, modelCount, changeDescription);
+                    providerType, modelCount, changeDescription);
             }
             catch (Exception ex)
             {

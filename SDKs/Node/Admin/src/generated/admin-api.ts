@@ -1506,7 +1506,8 @@ export interface components {
     // Provider Credential DTOs
     ProviderCredentialDto: {
       id: number;
-      providerName: string;
+      providerType: number; // ProviderType enum
+      providerName?: string; // Backward compatibility - deprecated
       apiBase: string;
       apiKey: string;
       isEnabled: boolean;
@@ -1522,7 +1523,8 @@ export interface components {
       updatedAt: string;
     };
     CreateProviderCredentialDto: {
-      providerName: string;
+      providerType: number; // ProviderType enum
+      providerName?: string; // Backward compatibility - deprecated
       apiBase?: string;
       apiKey?: string;
       isEnabled: boolean;
@@ -1541,13 +1543,15 @@ export interface components {
     };
     ProviderDataDto: {
       id: number;
-      providerName: string;
+      providerType: number; // ProviderType enum
+      providerName?: string; // Backward compatibility - deprecated
     };
     ProviderConnectionTestResultDto: {
       success: boolean;
       message: string;
       errorDetails?: string;
-      providerName: string;
+      providerType: number; // ProviderType enum
+      providerName?: string; // Backward compatibility - deprecated
       timestamp: string;
     };
 

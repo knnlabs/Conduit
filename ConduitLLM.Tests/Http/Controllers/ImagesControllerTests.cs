@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
@@ -107,7 +108,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var mapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
                 SupportsImageGeneration = false
             };
@@ -189,7 +190,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var mapping = new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderName = "openai",
+                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
                 SupportsImageGeneration = false
             };

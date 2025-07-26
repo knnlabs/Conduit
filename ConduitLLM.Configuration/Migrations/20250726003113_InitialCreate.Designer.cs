@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20250725195556_InitialCreate")]
+    [Migration("20250726003113_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -995,10 +995,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("RPM")
                         .HasColumnType("integer");
@@ -1026,7 +1024,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ModelName");
 
-                    b.HasIndex("ProviderName");
+                    b.HasIndex("ProviderType");
 
                     b.HasIndex("RouterConfigId");
 

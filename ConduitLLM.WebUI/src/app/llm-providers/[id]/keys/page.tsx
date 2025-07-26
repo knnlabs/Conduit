@@ -299,13 +299,13 @@ export default function ProviderKeysPage() {
         <Anchor component={Link} href="/llm-providers">
           LLM Providers
         </Anchor>
-        <Text>{provider?.providerName ?? 'Loading...'}</Text>
+        <Text>{(provider as { providerName?: string })?.providerName ?? 'Loading...'}</Text>
         <Text>API Keys</Text>
       </Breadcrumbs>
 
       <Group justify="space-between" mb="xl">
         <div>
-          <Title order={2}>API Keys for {provider?.providerName}</Title>
+          <Title order={2}>API Keys for {(provider as { providerName?: string })?.providerName}</Title>
           <Text size="sm" c="dimmed" mt={4}>
             Manage multiple API keys for load balancing and failover
           </Text>

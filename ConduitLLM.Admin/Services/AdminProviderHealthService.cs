@@ -82,7 +82,7 @@ _logger.LogInformation("Created health configuration for provider '{ProviderType
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error creating health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), config.ProviderName.Replace(Environment.NewLine, ""));
+_logger.LogError(ex, "Error creating health configuration for provider '{ProviderType}'".Replace(Environment.NewLine, ""), config.ProviderType.ToString().Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -259,7 +259,7 @@ _logger.LogError(ex, "Error retrieving health configuration for provider '{Provi
 
                 // Get configuration for all providers
                 var allConfigs = await _providerHealthRepository.GetAllConfigurationsAsync();
-                var configDict = allConfigs.ToDictionary(c => c.ProviderName, c => c);
+                var configDict = allConfigs.ToDictionary(c => c.ProviderType.ToString(), c => c);
 
                 // Combine all data into summaries
                 var summaries = new List<ProviderHealthSummaryDto>();
@@ -269,9 +269,16 @@ _logger.LogError(ex, "Error retrieving health configuration for provider '{Provi
                     var status = allStatuses[provider];
                     var config = configDict.ContainsKey(provider) ? configDict[provider] : null;
 
+                    // Parse provider name to ProviderType
+                    if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+                    {
+                        _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                        continue;
+                    }
+
                     var summary = new ProviderHealthSummaryDto
                     {
-                        ProviderName = provider,
+                        ProviderType = providerType,
                         Status = status.Status,
                         StatusMessage = status.StatusMessage,
                         UptimePercentage = uptimeDict.ContainsKey(provider) ? uptimeDict[provider] : 0,
@@ -391,11 +398,12 @@ _logger.LogError(ex, "Error retrieving health status history for provider '{Prov
                     throw new InvalidOperationException($"Provider '{providerName}' does not exist");
                 }
 
+                
                 // Create a mock health check record
                 // In a real implementation, this would trigger the health check service
                 var record = new ProviderHealthRecord
                 {
-                    ProviderName = providerName,
+                    ProviderType = providerType,
                     Status = ProviderHealthRecord.StatusType.Unknown,
                     StatusMessage = "Manual health check triggered",
                     TimestampUtc = DateTime.UtcNow,
@@ -445,7 +453,7 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
                 // Save changes
                 await _providerHealthRepository.SaveConfigurationAsync(existingConfig);
 
-                string providerName = existingConfig.ProviderName; // Get the name from the existing config
+                string providerName = existingConfig.ProviderType.ToString(); // Get the name from the existing config
                 _logger.LogInformation("Updated health configuration for provider '{ProviderName}'", providerName);
                 return true;
             }

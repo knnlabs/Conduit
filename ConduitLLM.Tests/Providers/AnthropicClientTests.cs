@@ -53,7 +53,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ProviderName = "anthropic"
+                ProviderType = ProviderType.Anthropic
             };
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
@@ -72,7 +72,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "", // Empty API key
-                ProviderName = "anthropic"
+                ProviderType = ProviderType.Anthropic
             };
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
@@ -103,7 +103,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-key",
-                ProviderName = "anthropic"
+                ProviderType = ProviderType.Anthropic
             };
             var modelId = "claude-3-opus-20240229";
 
@@ -121,7 +121,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 ApiKey = "test-key",
                 BaseUrl = customBaseUrl,
-                ProviderName = "anthropic"
+                ProviderType = ProviderType.Anthropic
             };
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
@@ -781,7 +781,7 @@ namespace ConduitLLM.Tests.Providers
             var credentials = new ProviderCredentials
             {
                 ApiKey = "test-api-key",
-                ProviderName = "anthropic"
+                ProviderType = ProviderType.Anthropic
             };
             var logger = CreateLogger<AnthropicClient>();
 

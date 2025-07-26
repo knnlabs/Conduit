@@ -81,10 +81,10 @@ namespace ConduitLLM.Admin.Controllers
                 var providerStatus = await dbContext.ProviderCredentials
                     .Select(p => new
                     {
-                        p.ProviderName,
+                        ProviderName = p.ProviderType.ToString(),
                         p.IsEnabled,
                         LastHealthCheck = dbContext.ProviderHealthRecords
-                            .Where(h => h.ProviderName == p.ProviderName)
+                            .Where(h => h.ProviderType == p.ProviderType)
                             .OrderByDescending(h => h.TimestampUtc)
                             .Select(h => new { IsHealthy = h.IsOnline, CheckedAt = h.TimestampUtc, ResponseTime = h.ResponseTimeMs })
                             .FirstOrDefault()
@@ -243,7 +243,7 @@ namespace ConduitLLM.Admin.Controllers
                 // Get health history
                 var healthHistory = await dbContext.ProviderHealthRecords
                     .Where(h => h.TimestampUtc >= oneDayAgo)
-                    .GroupBy(h => h.ProviderName)
+                    .GroupBy(h => h.ProviderType)
                     .Select(g => new
                     {
                         Provider = g.Key,

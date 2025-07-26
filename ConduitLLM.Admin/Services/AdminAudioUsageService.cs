@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Repositories;
@@ -116,9 +117,15 @@ namespace ConduitLLM.Admin.Services
                 .OrderByDescending(g => g.Count())
                 .FirstOrDefault()?.Key;
 
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                throw new ArgumentException($"Invalid provider name: {provider}");
+            }
+            
             return new AudioProviderUsageDto
             {
-                Provider = provider,
+                ProviderType = providerType,
                 TotalOperations = logs.Count,
                 TranscriptionCount = transcriptionCount,
                 TextToSpeechCount = ttsCount,
@@ -300,11 +307,17 @@ namespace ConduitLLM.Admin.Services
 
         private static AudioUsageDto MapToDto(Configuration.Entities.AudioUsageLog log)
         {
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(log.Provider, true, out var providerType))
+            {
+                providerType = ProviderType.OpenAI; // Default fallback
+            }
+            
             return new AudioUsageDto
             {
                 Id = log.Id,
                 VirtualKey = log.VirtualKey,
-                Provider = log.Provider,
+                ProviderType = providerType,
                 OperationType = log.OperationType,
                 Model = log.Model,
                 RequestId = log.RequestId,
@@ -326,11 +339,17 @@ namespace ConduitLLM.Admin.Services
 
         private static RealtimeSessionDto MapSessionToDto(RealtimeSession session)
         {
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(session.Provider, true, out var providerType))
+            {
+                providerType = ProviderType.OpenAI; // Default fallback
+            }
+            
             return new RealtimeSessionDto
             {
                 SessionId = session.Id,
                 VirtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "unknown",
-                Provider = session.Provider,
+                ProviderType = providerType,
                 State = session.State.ToString(),
                 CreatedAt = session.CreatedAt,
                 DurationSeconds = session.Statistics.Duration.TotalSeconds,

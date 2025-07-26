@@ -166,7 +166,7 @@ namespace ConduitLLM.Http.Services
                         if (credential != null)
                         {
                             // Delete name-based key too
-                            var nameKey = NameKeyPrefix + credential.ProviderName.ToLowerInvariant();
+                            var nameKey = NameKeyPrefix + credential.ProviderType.ToString().ToLowerInvariant();
                             await _database.KeyDeleteAsync(nameKey);
                         }
                     }
@@ -291,15 +291,15 @@ namespace ConduitLLM.Http.Services
         private async Task SetProviderCredentialAsync(int providerId, CachedProviderCredential credential)
         {
             var cacheKey = KeyPrefix + providerId;
-            var nameKey = NameKeyPrefix + credential.Provider.ProviderName.ToLowerInvariant();
+            var nameKey = NameKeyPrefix + credential.Provider.ProviderType.ToString().ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(credential, _jsonOptions);
             
             // Cache by both ID and name with same expiry
             await _database.StringSetAsync(cacheKey, serialized, _defaultExpiry);
             await _database.StringSetAsync(nameKey, serialized, _defaultExpiry);
             
-            _logger.LogDebug("Provider credential cached: {ProviderId} / {ProviderName} with {KeyCount} keys", 
-                providerId, credential.Provider.ProviderName, credential.Keys.Count);
+            _logger.LogDebug("Provider credential cached: {ProviderId} / {ProviderType} with {KeyCount} keys", 
+                providerId, credential.Provider.ProviderType, credential.Keys.Count);
         }
     }
 }

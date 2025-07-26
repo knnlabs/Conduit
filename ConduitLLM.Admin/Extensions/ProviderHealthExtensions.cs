@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
@@ -9,16 +10,16 @@ namespace ConduitLLM.Admin.Extensions
     public static class ProviderHealthExtensions
     {
         /// <summary>
-        /// Gets the provider name from an existing configuration
+        /// Gets the provider type from an existing configuration
         /// </summary>
         /// <param name="dto">The update DTO</param>
         /// <param name="existingConfig">The existing configuration</param>
-        /// <returns>The provider name from the existing configuration</returns>
-        public static string GetProviderName(
+        /// <returns>The provider type from the existing configuration</returns>
+        public static ProviderType GetProviderType(
             this UpdateProviderHealthConfigurationDto dto,
             ProviderHealthConfiguration existingConfig)
         {
-            return existingConfig.ProviderName;
+            return existingConfig.ProviderType;
         }
 
         /// <summary>

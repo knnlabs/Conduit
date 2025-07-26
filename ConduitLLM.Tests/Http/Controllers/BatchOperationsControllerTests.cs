@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -216,7 +217,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                         VirtualKeyId = 1,
                         Amount = 10.5m,
                         Model = "gpt-4",
-                        Provider = "openai"
+                        ProviderType = ProviderType.OpenAI
                     }
                 }
             };

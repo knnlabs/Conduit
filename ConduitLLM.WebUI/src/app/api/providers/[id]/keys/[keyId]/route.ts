@@ -18,7 +18,12 @@ export async function PATCH(
     }
     
     const body = await req.json() as unknown;
-    const updatedKey = await adminClient.providers.updateKey(providerId, keyIdNum, body as UpdateProviderKeyCredentialDto);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.updateKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    const updatedKey = await providers.updateKey(providerId, keyIdNum, body as UpdateProviderKeyCredentialDto);
     return NextResponse.json(updatedKey);
   } catch (error) {
     return handleSDKError(error);
@@ -39,7 +44,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
     
-    await adminClient.providers.deleteKey(providerId, keyIdNum);
+    const providers = adminClient.providers;
+    if (!providers || typeof providers.deleteKey !== 'function') {
+      throw new Error('Providers service not available');
+    }
+    
+    await providers.deleteKey(providerId, keyIdNum);
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleSDKError(error);

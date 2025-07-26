@@ -84,12 +84,12 @@ namespace ConduitLLM.Admin.Extensions
 
                 foreach (var config in enabledConfigs)
                 {
-                    var providerName = config.ProviderCredential.ProviderName;
+                    var providerType = config.ProviderCredential.ProviderType;
                     var providerHealth = new Dictionary<string, string>();
 
                     try
                     {
-                        var client = _clientFactory.GetClientByProvider(providerName);
+                        var client = _clientFactory.GetClientByProviderId(config.ProviderCredential.Id);
 
                         // Check each enabled capability
                         if (config.TranscriptionEnabled && client is IAudioTranscriptionClient transcriptionClient)
@@ -115,12 +115,12 @@ namespace ConduitLLM.Admin.Extensions
                             healthyProviders++;
                         }
 
-                        results[$"provider_{providerName}"] = providerHealth;
+                        results[$"provider_{providerType}"] = providerHealth;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to check health for provider {Provider}", providerName);
-                        results[$"provider_{providerName}"] = new { error = ex.Message };
+                        _logger.LogWarning(ex, "Failed to check health for provider {Provider}", providerType);
+                        results[$"provider_{providerType}"] = new { error = ex.Message };
                     }
                 }
 

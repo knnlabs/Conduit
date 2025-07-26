@@ -126,29 +126,6 @@ namespace ConduitLLM.Core.Caching
             return client;
         }
 
-        /// <inheritdoc />
-        public ILLMClient GetClientByProvider(string providerName)
-        {
-            // Get the original client from the inner factory
-            var client = _innerFactory.GetClientByProvider(providerName);
-
-            // Only wrap the client if caching is enabled
-            if (_cacheOptions.Value.IsEnabled)
-            {
-                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
-
-                // Wrap the client with the caching decorator
-                return new CachingLLMClient(
-                    client,
-                    _cacheService,
-                    _metricsService,
-                    _cacheOptions,
-                    logger);
-            }
-
-            // Fall back to the original client if caching is disabled
-            return client;
-        }
         
         /// <inheritdoc />
         public ILLMClient GetClientByProviderId(int providerId)

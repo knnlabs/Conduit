@@ -351,13 +351,13 @@ namespace ConduitLLM.Http.Services
                 {
                     // Set provider health based on enabled status
                     // In a real implementation, this would check actual provider health
-                    ProviderHealth.WithLabels(provider.ProviderName).Set(1);
+                    ProviderHealth.WithLabels(provider.ProviderType.ToString()).Set(1);
                 }
 
                 // Disabled providers
                 foreach (var provider in providers.Where(p => !p.IsEnabled))
                 {
-                    ProviderHealth.WithLabels(provider.ProviderName).Set(0);
+                    ProviderHealth.WithLabels(provider.ProviderType.ToString()).Set(0);
                 }
             }
             catch (Exception ex)
@@ -380,11 +380,11 @@ namespace ConduitLLM.Http.Services
 
                 // Count active model mappings by provider
                 var mappings = await modelMappingService.GetAllMappingsAsync();
-                // Group by provider name (Core.ModelProviderMapping has ProviderName property)
+                // Group by provider type
                 // TODO: Fix IsEnabled check once we verify the return type
                 var mappingsByProvider = mappings
                     // .Where(m => m.IsEnabled)
-                    .GroupBy(m => m.ProviderName ?? "unknown")
+                    .GroupBy(m => m.ProviderType.ToString())
                     .Select(g => new { Provider = g.Key, Count = g.Count() });
 
                 foreach (var group in mappingsByProvider)
