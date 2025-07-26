@@ -42,8 +42,7 @@ function transformIpFilter(filter: IpFilterDto): UIIpRule {
 export async function GET() {
   try {
     const client = getServerAdminClient();
-    const response = await client.ipFilter.list() as { items: IpFilterDto[] };
-    const filters = response.items;
+    const filters = await client.ipFilters.list();
     
     // Transform the filters to match the UI expectations
     const transformedFilters = filters.map(transformIpFilter);
@@ -74,7 +73,7 @@ export async function POST(req: NextRequest) {
       description: body.description,
     };
     
-    const createdFilter = await client.ipFilter.create(createRequest);
+    const createdFilter = await client.ipFilters.create(createRequest);
     
     // Transform the response to match UI expectations
     const transformedFilter = transformIpFilter(createdFilter);

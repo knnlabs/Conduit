@@ -91,7 +91,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   }) ?? [];
 
   // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(data?.items?.map(c => c.providerName) ?? []));
+  const uniqueProviders = Array.from(new Set(data?.items?.map(c => c.providerName).filter(Boolean) ?? [])) as string[];
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
@@ -212,7 +212,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
               placeholder="All providers"
               value={providerFilter}
               onChange={setProviderFilter}
-              data={uniqueProviders.filter(Boolean)}
+              data={uniqueProviders}
               clearable
               w={200}
             />

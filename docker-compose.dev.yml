@@ -3,8 +3,7 @@
 
 services:
   webui:
-    # Use host user to avoid permission issues with mounted volumes
-    user: "1000:1000"
+    # Remove user override to use default container user
     volumes:
       # Mount source code for hot reloading
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated
@@ -25,5 +24,5 @@ services:
       # Fast refresh
       FAST_REFRESH: "true"
     working_dir: /app/ConduitLLM.WebUI
-    # HACKY FIX: Build SDKs and install deps before starting
-    command: sh -c "cd /app/SDKs/Node/Admin && npm run build && cd /app/SDKs/Node/Core && npm run build && cd /app/ConduitLLM.WebUI && npm install && npm run dev"
+    # Start dev server directly, assuming dependencies are already installed
+    command: npm run dev

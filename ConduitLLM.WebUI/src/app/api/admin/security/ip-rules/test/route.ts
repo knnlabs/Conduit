@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
     
     const client = getServerAdminClient();
-    const result = await client.ipFilter.testFilter(body.ipAddress) as {
+    const result = await client.ipFilters.checkIp(body.ipAddress) as {
       isAllowed: boolean;
       deniedReason?: string;
       matchedFilter?: unknown;

@@ -892,5 +892,126 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies Gemini authentication by making a test request to list models.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for Gemini authentication");
+                }
+
+                // Create a test client
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Gemini uses API key as a query parameter, not in headers
+                // Remove any authorization header that might have been set
+                client.DefaultRequestHeaders.Authorization = null;
+                
+                // Make a request to list models endpoint
+                var modelsUrl = $"{GetHealthCheckUrl(baseUrl)}/models?key={effectiveApiKey}";
+                var response = await client.GetAsync(modelsUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("Gemini auth check returned status {StatusCode}", response.StatusCode);
+
+                // Check for authentication errors
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                    response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        "Invalid API key for Google Gemini");
+                }
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parse response to verify we got actual model data
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(content);
+                        var root = doc.RootElement;
+                        
+                        // Check if we have models array
+                        if (root.TryGetProperty("models", out var modelsElement) && 
+                            modelsElement.GetArrayLength() > 0)
+                        {
+                            Logger.LogInformation("Gemini authentication successful - found {Count} models", 
+                                modelsElement.GetArrayLength());
+                            return Core.Interfaces.AuthenticationResult.Success(
+                                "Connected successfully to Google Gemini API",
+                                responseTime);
+                        }
+                        
+                        // If no models returned, auth might still be invalid
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Authentication verification inconclusive",
+                            "No models returned - API key may be invalid or have no permissions");
+                    }
+                    catch (JsonException)
+                    {
+                        Logger.LogWarning("Failed to parse Gemini models response");
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Invalid response format",
+                            "Could not parse models response");
+                    }
+                }
+
+                // Other errors
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    await response.Content.ReadAsStringAsync(cancellationToken));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying Gemini authentication");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for Gemini.
+        /// </summary>
+        public override string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Credentials.BaseUrl ?? DefaultBaseUrl).TrimEnd('/');
+            
+            // Ensure the API version is in the URL
+            if (!effectiveBaseUrl.Contains($"/{DefaultApiVersion}"))
+            {
+                effectiveBaseUrl = $"{effectiveBaseUrl}/{DefaultApiVersion}";
+            }
+            
+            return effectiveBaseUrl;
+        }
+
+        /// <summary>
+        /// Gets the default base URL for Gemini.
+        /// </summary>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DefaultBaseUrl;
+        }
+
+        #endregion
     }
 }

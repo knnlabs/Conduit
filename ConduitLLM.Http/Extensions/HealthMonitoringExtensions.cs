@@ -102,7 +102,7 @@ namespace ConduitLLM.Http.Extensions
             healthChecksBuilder.AddCheck<SignalRHealthCheck>(
                 "signalr",
                 failureStatus: HealthStatus.Degraded,
-                tags: new[] { "signalr", "realtime", "ready" });
+                tags: new[] { "signalr", "realtime", "ready", "monitoring" });
 
             // Add API endpoint health checks from configuration
             var endpoints = configuration.GetSection("HealthMonitoring:ApiEndpoints").GetChildren();
@@ -118,7 +118,7 @@ namespace ConduitLLM.Http.Extensions
                     healthChecksBuilder.AddTypeActivatedCheck<ApiEndpointHealthCheck>(
                         $"api_endpoint_{name}",
                         failureStatus: HealthStatus.Unhealthy,
-                        tags: new[] { "api", "endpoint", "ready" },
+                        tags: new[] { "api", "endpoint", "ready", "monitoring" },
                         args: new object[] { url, name, timeout, warningThreshold });
                 }
             }

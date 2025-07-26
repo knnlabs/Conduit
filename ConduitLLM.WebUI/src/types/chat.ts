@@ -1,32 +1,14 @@
 // Chat-related type definitions
 
+// Import MessageContent type from SDK for proper typing
+import type { MessageContent } from '@knn_labs/conduit-core-client';
+
 export interface ChatMessage {
   id?: string;
   role: 'system' | 'user' | 'assistant';
-  content: string | Array<TextContent | ImageContent>;
-  metadata?: MessageMetadata;
+  content: string | MessageContent;
+  metadata?: { model?: string; finishReason?: string; tokenCount?: number; timestamp?: string; tps?: number; };
   parentId?: string; // For conversation branching
-}
-
-export interface TextContent {
-  type: 'text';
-  text?: string;
-}
-
-export interface ImageContent {
-  type: 'image_url';
-  imageUrl?: {
-    url: string;
-    detail?: 'auto' | 'low' | 'high';
-  };
-}
-
-export interface MessageMetadata {
-  model?: string;
-  finishReason?: string;
-  tokenCount?: number;
-  timestamp?: string;
-  tps?: number;
 }
 
 export interface Conversation {
@@ -34,30 +16,8 @@ export interface Conversation {
   title: string;
   model: string;
   messages: ChatMessage[];
-  metadata?: ConversationMetadata;
+  metadata?: { temperature?: number; topP?: number; maxTokens?: number; systemPrompt?: string; tags?: string[]; [key: string]: string | number | boolean | string[] | undefined; };
   createdAt: string;
   updatedAt: string;
-  tokenUsage?: TokenUsage;
-}
-
-export interface ConversationMetadata {
-  temperature?: number;
-  topP?: number;
-  maxTokens?: number;
-  systemPrompt?: string;
-  tags?: string[];
-  [key: string]: string | number | boolean | string[] | undefined;
-}
-
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-}
-
-export interface StreamingMetadata {
-  startTime: number;
-  tokenCount: number;
-  tps: number;
-  isPaused?: boolean;
+  tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number; };
 }

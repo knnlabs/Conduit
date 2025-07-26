@@ -5,7 +5,6 @@ import { IconFileCode, IconList, IconBug, IconHistory, IconCopy, IconReload, Ico
 import { useErrorMessage, useReplayMessage, useDeleteMessage } from '@/hooks/useErrorQueues';
 import { formatDateTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
-// import type { ErrorMessageDetail } from '@knn_labs/conduit-admin-client';
 
 interface MessageDetailModalProps {
   queueName: string;
@@ -20,8 +19,7 @@ export function MessageDetailModal({
   opened,
   onClose,
 }: MessageDetailModalProps) {
-  const { data, isLoading } = useErrorMessage(queueName, messageId);
-  const message = data;
+  const { data: message, isLoading } = useErrorMessage(queueName, messageId);
   const replayMutation = useReplayMessage();
   const deleteMutation = useDeleteMessage();
 

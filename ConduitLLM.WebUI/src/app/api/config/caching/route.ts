@@ -93,7 +93,7 @@ export async function PUT(req: NextRequest) {
     }};
 
     // Update cache configuration using the extended API
-    const configuration = adminClient.configuration;
+    const configuration = (adminClient as unknown as { configuration: { updateCacheConfig: (config: unknown) => Promise<unknown> } }).configuration;
     if (!configuration || typeof configuration.updateCacheConfig !== 'function') {
       throw new Error('Configuration service not available');
     }

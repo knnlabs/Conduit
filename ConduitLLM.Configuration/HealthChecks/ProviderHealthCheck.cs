@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -17,23 +18,19 @@ namespace ConduitLLM.Configuration.HealthChecks
     /// </summary>
     public class ProviderHealthCheck : IHealthCheck
     {
-        private readonly IProviderHealthRepository _providerHealthRepository;
-        private readonly IProviderCredentialRepository _providerCredentialRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ProviderHealthCheck> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderHealthCheck"/> class.
         /// </summary>
-        /// <param name="providerHealthRepository">Provider health repository.</param>
-        /// <param name="providerCredentialRepository">Provider credential repository.</param>
+        /// <param name="scopeFactory">Service scope factory for creating scoped services.</param>
         /// <param name="logger">Logger instance.</param>
         public ProviderHealthCheck(
-            IProviderHealthRepository providerHealthRepository,
-            IProviderCredentialRepository providerCredentialRepository,
+            IServiceScopeFactory scopeFactory,
             ILogger<ProviderHealthCheck> logger)
         {
-            _providerHealthRepository = providerHealthRepository;
-            _providerCredentialRepository = providerCredentialRepository;
+            _scopeFactory = scopeFactory;
             _logger = logger;
         }
 
@@ -49,8 +46,13 @@ namespace ConduitLLM.Configuration.HealthChecks
         {
             try
             {
+                // Create a scope to resolve scoped services
+                using var scope = _scopeFactory.CreateScope();
+                var providerHealthRepository = scope.ServiceProvider.GetRequiredService<IProviderHealthRepository>();
+                var providerCredentialRepository = scope.ServiceProvider.GetRequiredService<IProviderCredentialRepository>();
+
                 // Get all enabled providers
-                var providers = await _providerCredentialRepository.GetAllAsync();
+                var providers = await providerCredentialRepository.GetAllAsync();
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
 
                 if (!enabledProviders.Any())
@@ -65,7 +67,7 @@ namespace ConduitLLM.Configuration.HealthChecks
                 var degradedProviders = new List<string>();
 
                 // Use bulk query instead of N individual queries
-                var allHealthStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
+                var allHealthStatuses = await providerHealthRepository.GetAllLatestStatusesAsync();
                 var healthStatusLookup = allHealthStatuses; // Already a dictionary of provider name -> health record
 
                 foreach (var provider in enabledProviders)

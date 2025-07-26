@@ -74,7 +74,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setIsSubmitting(true);
     try {
       const payload = {
-        providerName: values.providerType, // Use the provider type as-is (e.g., "openai")
+        providerType: parseInt(values.providerType, 10), // Send numeric provider type
         apiKey: values.apiKey,
         apiEndpoint: values.apiEndpoint ?? undefined,
         organizationId: values.organizationId ?? undefined,
@@ -143,7 +143,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          providerName: form.values.providerType,
+          providerType: parseInt(form.values.providerType, 10), // Send numeric provider type
           apiKey: form.values.apiKey,
           apiEndpoint: form.values.apiEndpoint ?? undefined, // Changed from baseUrl to apiEndpoint
           organizationId: form.values.organizationId ?? undefined,

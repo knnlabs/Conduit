@@ -88,11 +88,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       console.warn('Image generation response:', result);
       set({ 
         status: 'completed', 
-        results: result.data.map(img => ({
-          url: img.url,
-          b64Json: img.b64_json,
-          revisedPrompt: img.revised_prompt
-        })),
+        results: result.data,
         error: undefined 
       });
     } catch (error) {

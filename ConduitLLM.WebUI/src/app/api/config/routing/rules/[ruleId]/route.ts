@@ -37,7 +37,7 @@ export async function PATCH(
         actions: updates.actions as RuleAction[]
       };
       
-      const updatedRule = await adminClient.configuration.updateRoutingRule(ruleId, updateDto);
+      const updatedRule = await (adminClient.configuration.updateRoutingRule as (id: string, dto: unknown) => Promise<unknown>)(ruleId, updateDto);
       
       return NextResponse.json(updatedRule);
     } catch (error) {
@@ -73,7 +73,7 @@ export async function DELETE(
     const { ruleId } = await params;
     
     try {
-      await adminClient.configuration.deleteRoutingRule(ruleId);
+      await (adminClient.configuration.deleteRoutingRule as (id: string) => Promise<unknown>)(ruleId);
       return NextResponse.json({ success: true });
     } catch (error) {
       console.warn('Failed to delete routing rule:', error);

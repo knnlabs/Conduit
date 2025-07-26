@@ -611,5 +611,88 @@ namespace ConduitLLM.Providers
                 _ => cohereFinishReason.ToLowerInvariant() // Pass through unknown values in lowercase
             };
         }
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies Cohere authentication by making a test request to the models endpoint.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for Cohere authentication");
+                }
+
+                // Create a test client
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Make a request to the models endpoint
+                var modelsUrl = $"{GetHealthCheckUrl(baseUrl)}/v1/models";
+                var response = await client.GetAsync(modelsUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("Cohere auth check returned status {StatusCode}", response.StatusCode);
+
+                // Check for authentication errors
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        "Invalid API key - Cohere requires a valid API key");
+                }
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        "Connected successfully to Cohere API",
+                        responseTime);
+                }
+
+                // Other errors
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    await response.Content.ReadAsStringAsync(cancellationToken));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying Cohere authentication");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for Cohere.
+        /// </summary>
+        public override string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Credentials.BaseUrl ?? DefaultBaseUrl).TrimEnd('/');
+            
+            return effectiveBaseUrl;
+        }
+
+        /// <summary>
+        /// Gets the default base URL for Cohere.
+        /// </summary>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DefaultBaseUrl;
+        }
+
+        #endregion
     }
 }

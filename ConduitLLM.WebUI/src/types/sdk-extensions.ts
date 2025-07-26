@@ -7,8 +7,6 @@
 import type { 
   VirtualKeyDto as BaseVirtualKeyDto, 
   UsageMetricsDto as BaseUsageMetricsDto,
-  ModelUsageDto as BaseModelUsageDto,
-  KeyUsageDto as BaseKeyUsageDto,
   DateRange
 } from '@knn_labs/conduit-admin-client';
 
@@ -22,7 +20,7 @@ export interface VirtualKeyDto extends BaseVirtualKeyDto {
   // Additional properties from API responses
   keyHash?: string;
   hash?: string;
-  budgetLimit?: number; // Legacy property name
+  budgetLimit?: number; // Additional property from API
   requestsPerMinute?: number; // Rate limiting
 }
 
@@ -37,38 +35,14 @@ export interface UsageMetricsDto extends BaseUsageMetricsDto {
 /**
  * Extended ModelUsageDto with input/output token tracking
  */
-export interface ModelUsageDto extends BaseModelUsageDto {
-  inputTokens?: number;
-  outputTokens?: number;
-  cost?: number; // Legacy property name for totalCost
-}
 
 /**
  * Extended KeyUsageDto with additional cost tracking
  */
-export interface KeyUsageDto extends BaseKeyUsageDto {
-  cost?: number; // Legacy property name for totalCost
-  requestCount?: number; // Legacy property name for totalRequests
-}
 
 /**
  * Request log entry with additional fields
  */
-export interface RequestLogEntry {
-  id: number;
-  virtualKeyId: number;
-  model: string;
-  endpoint?: string;
-  clientIP?: string;
-  statusCode: number;
-  latency: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  totalTokens?: number;
-  cost: number;
-  error?: string;
-  createdAt: string;
-}
 
 /**
  * Cost by model response with proper structure
@@ -116,24 +90,7 @@ export interface CostByKeyResponse {
 /**
  * Provider health status mapping
  */
-export const HealthStatusMap = {
-  'healthy': 'healthy',
-  'degraded': 'warning',
-  'unhealthy': 'critical',
-  'unknown': 'unknown'
-} as const;
 
 /**
  * Notification type mapping for filtering
  */
-export const NotificationTypeMap = {
-  'VirtualKeyCreated': 'virtualkey',
-  'VirtualKeyUpdated': 'virtualkey',
-  'VirtualKeyDeleted': 'virtualkey',
-  'VirtualKeyBudgetExceeded': 'virtualkey',
-  'ProviderHealthChange': 'provider',
-  'ModelDiscovered': 'provider',
-  'SecurityThreatDetected': 'security',
-  'SystemHealthChange': 'system',
-  'ConfigurationChange': 'system'
-} as const;

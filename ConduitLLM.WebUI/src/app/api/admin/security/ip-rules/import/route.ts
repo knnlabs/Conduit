@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         if (values[ipIndex] && values[ruleIndex]) {
           rules.push({
             ipAddress: values[ipIndex],
-            action: values[ruleIndex] as 'allow' | 'block',
+            rule: values[ruleIndex] as 'allow' | 'deny',
             description: descIndex >= 0 ? values[descIndex] : undefined,
           });
         }
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid rules found in file' }, { status: 400 });
     }
     
-    const result = await client.ipFilter.import(rules);
+    const result = await client.ipFilters.import(rules);
     
     return NextResponse.json({
       imported: result.imported,

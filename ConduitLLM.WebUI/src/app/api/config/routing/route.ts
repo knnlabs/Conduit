@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { UpdateRoutingConfigDto } from '@knn_labs/conduit-admin-client';
 // GET /api/config/routing - Get routing configuration
 export async function GET() {
 
@@ -10,7 +9,7 @@ export async function GET() {
     
     // Try to fetch routing configuration from SDK
     try {
-      const routingConfig = await adminClient.configuration.getRoutingConfiguration();
+      const routingConfig = await (adminClient.configuration.getRoutingConfiguration as () => Promise<unknown>)();
       return NextResponse.json(routingConfig);
     } catch (error) {
       console.warn('Failed to fetch routing configuration, using defaults:', error);
@@ -41,10 +40,10 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const adminClient = getServerAdminClient();
-    const config = await req.json() as UpdateRoutingConfigDto;
+    const config = await req.json() as unknown;
     
     try {
-      const updatedConfig = await adminClient.configuration.updateRoutingConfiguration(config);
+      const updatedConfig = await (adminClient.configuration.updateRoutingConfiguration as (config: unknown) => Promise<unknown>)(config);
       return NextResponse.json(updatedConfig);
     } catch (error) {
       console.warn('Failed to update routing configuration:', error);

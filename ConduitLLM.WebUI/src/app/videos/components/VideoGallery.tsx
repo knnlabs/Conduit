@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import VideoPlayer from './VideoPlayer';
-import type { VideoTask } from '../types';
+import type { VideoTask, VideoData } from '../types';
 
 export default function VideoGallery() {
   const { taskHistory, removeTask, clearHistory } = useVideoStore();
@@ -55,7 +55,7 @@ interface VideoCardProps {
 }
 
 function VideoCard({ task, onRemove }: VideoCardProps) {
-  const video = task.result?.data[0];
+  const video: VideoData | undefined = task.result?.data[0];
   
   if (!video) {
     return null;
@@ -97,10 +97,10 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
               />
             );
           }
-          if (video.b64Json) {
+          if (video.b64_json) {
             return (
               <VideoPlayer
-                src={`data:video/mp4;base64,${video.b64Json}`}
+                src={`data:video/mp4;base64,${video.b64_json}`}
                 poster={undefined}
                 title={task.prompt}
               />
@@ -120,8 +120,8 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
             {metadata.duration && <span>{metadata.duration}s</span>}
             {metadata.resolution && <span>{metadata.resolution}</span>}
             {metadata.fps && <span>{metadata.fps} FPS</span>}
-            {metadata.fileSizeBytes && (
-              <span>{formatFileSize(Number(metadata.fileSizeBytes))}</span>
+            {metadata.file_size_bytes && (
+              <span>{formatFileSize(Number(metadata.file_size_bytes))}</span>
             )}
           </div>
         )}

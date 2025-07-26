@@ -22,9 +22,9 @@ export default function ImageGallery() {
         const blob = await response.blob();
         imageData = URL.createObjectURL(blob);
         filename = `generated-image-${index + 1}.png`;
-      } else if (image.b64Json) {
+      } else if (image.b64_json) {
         // Convert base64 to blob
-        const byteCharacters = atob(image.b64Json);
+        const byteCharacters = atob(image.b64_json);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -59,9 +59,9 @@ export default function ImageGallery() {
     if (image.url) {
       console.warn('Image URL:', image.url);
       return image.url;
-    } else if (image.b64Json) {
+    } else if (image.b64_json) {
       console.warn('Using base64 image');
-      return `data:image/png;base64,${image.b64Json}`;
+      return `data:image/png;base64,${image.b64_json}`;
     }
     console.warn('No image data available');
     return '';
@@ -108,7 +108,7 @@ export default function ImageGallery() {
               >
                 <Image
                   src={getImageSrc(image)}
-                  alt={image.revisedPrompt ?? `Generated image ${index + 1}`}
+                  alt={image.revised_prompt ?? `Generated image ${index + 1}`}
                   fill
                   style={{ objectFit: 'cover' }}
                   loading="lazy"
@@ -155,9 +155,9 @@ export default function ImageGallery() {
               <Group justify="space-between">
                 <div style={{ flex: 1 }}>
                   <Text size="sm" fw={500}>Image {index + 1}</Text>
-                  {image.revisedPrompt && (
-                    <Text size="xs" c="dimmed" lineClamp={1} title={image.revisedPrompt}>
-                      {image.revisedPrompt}
+                  {image.revised_prompt && (
+                    <Text size="xs" c="dimmed" lineClamp={1} title={image.revised_prompt}>
+                      {image.revised_prompt}
                     </Text>
                   )}
                 </div>
@@ -180,22 +180,22 @@ export default function ImageGallery() {
         opened={!!selectedImage}
         onClose={closeModal}
         size="xl"
-        title={selectedImage?.revisedPrompt ? "Generated Image" : undefined}
+        title={selectedImage?.revised_prompt ? "Generated Image" : undefined}
         centered
       >
         {selectedImage && (
           <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
             <Image
               src={getImageSrc(selectedImage)}
-              alt={selectedImage.revisedPrompt ?? 'Generated image'}
+              alt={selectedImage.revised_prompt ?? 'Generated image'}
               fill
               style={{ objectFit: 'contain' }}
               unoptimized={true}
             />
-            {selectedImage.revisedPrompt && (
+            {selectedImage.revised_prompt && (
               <div style={{ marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
                 <Text size="sm" c="dimmed">
-                  <strong>Revised Prompt:</strong> {selectedImage.revisedPrompt}
+                  <strong>Revised Prompt:</strong> {selectedImage.revised_prompt}
                 </Text>
               </div>
             )}

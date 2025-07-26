@@ -4,10 +4,6 @@ import { useState, useEffect } from 'react';
 import type { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
 
 
-export interface ModelOption {
-  value: string;
-  label: string;
-}
 
 export function useModels() {
   const [models, setModels] = useState<DiscoveredModel[]>([]);
@@ -43,7 +39,7 @@ export function useModels() {
   }, []);
 
   // Convert models to select options format
-  const modelOptions: ModelOption[] = models.map((model) => ({
+  const modelOptions: { value: string; label: string; }[] = models.map((model) => ({
     value: model.id,
     label: model.display_name ?? model.id,
   }));

@@ -12,14 +12,11 @@ export async function POST(req: NextRequest) {
     
     const client = getServerAdminClient();
     
-    // Convert string IDs to numbers
-    const numericIds = body.ruleIds.map(id => parseInt(id, 10));
-    
     if (body.operation === 'delete') {
-      const result = await client.ipFilter.bulkDelete(numericIds);
+      const result = await client.ipFilters.bulkDelete(body.ruleIds);
       return NextResponse.json(result);
     } else if (body.operation === 'enable' || body.operation === 'disable') {
-      const updatedFilters = await client.ipFilter.bulkUpdate(body.operation, numericIds);
+      const updatedFilters = await client.ipFilters.bulkUpdate(body.operation, body.ruleIds);
       
       // Transform the response to match UI expectations
       const transformedFilters = updatedFilters.map(filter => ({

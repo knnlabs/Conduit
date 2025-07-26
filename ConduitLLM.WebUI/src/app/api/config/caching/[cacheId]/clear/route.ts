@@ -12,7 +12,7 @@ export async function POST(
     const { cacheId } = await context.params;
     
     // Clear the cache using the SDK method
-    await adminClient.configuration.clearCacheByRegion(cacheId);
+    await (adminClient.configuration.clearCacheByRegion as (cacheId: string) => Promise<unknown>)(cacheId);
     
     return NextResponse.json({ 
       success: true, 

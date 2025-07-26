@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     }
     
     const client = getServerAdminClient();
-    const blob = await client.ipFilter.export(format);
+    const blob = await client.ipFilters.export(format);
     
     // Convert blob to buffer for NextResponse
     const arrayBuffer = await blob.arrayBuffer();

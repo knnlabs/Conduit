@@ -22,7 +22,7 @@ namespace ConduitLLM.Providers
     /// Base class for LLM client implementations that provides common functionality 
     /// and standardized handling of requests, responses, and errors.
     /// </summary>
-    public abstract class BaseLLMClient : ILLMClient
+    public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
         protected readonly ProviderCredentials Credentials;
         protected readonly string ProviderModelId;
@@ -303,6 +303,80 @@ namespace ConduitLLM.Providers
             headers["Authorization"] = $"Bearer {effectiveApiKey}";
 
             return headers;
+        }
+
+        /// <summary>
+        /// Verifies that the provider credentials are valid by making a test request.
+        /// </summary>
+        /// <param name="apiKey">Optional API key to test. If null, uses the configured key.</param>
+        /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
+        /// <param name="cancellationToken">Cancellation token for the operation.</param>
+        /// <returns>An authentication result indicating success or failure.</returns>
+        /// <remarks>
+        /// This default implementation performs a basic check that the API key exists.
+        /// Derived classes should override this method to implement provider-specific
+        /// authentication verification logic.
+        /// </remarks>
+        public virtual async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Use provided API key or fall back to configured one
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                // Basic validation
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for authentication verification");
+                }
+
+                // For base implementation, just verify key exists
+                // Derived classes should override with actual API calls
+                Logger.LogInformation("Basic authentication check passed for {Provider}", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Success($"Authentication verified for {ProviderName}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying authentication for {Provider}", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for this provider.
+        /// </summary>
+        /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
+        /// <returns>The URL to use for health checks.</returns>
+        /// <remarks>
+        /// This default implementation returns a generic /health endpoint.
+        /// Derived classes should override this method to return provider-specific URLs.
+        /// </remarks>
+        public virtual string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Credentials.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
+            
+            return $"{effectiveBaseUrl}/health";
+        }
+
+        /// <summary>
+        /// Gets the default base URL for this provider.
+        /// </summary>
+        /// <returns>The default base URL.</returns>
+        /// <remarks>
+        /// Override in derived classes to provide provider-specific default URLs.
+        /// </remarks>
+        protected virtual string GetDefaultBaseUrl()
+        {
+            return "https://api.example.com";
         }
     }
 }

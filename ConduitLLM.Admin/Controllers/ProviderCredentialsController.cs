@@ -264,7 +264,7 @@ namespace ConduitLLM.Admin.Controllers
                 // So we create a special DTO with the ID set for the service to fetch internally
                 var testCredential = new ProviderCredentialDto { Id = id };
                 
-                var result = await _providerCredentialService.TestProviderConnectionAsync(testCredential);
+                var result = await _providerCredentialService.TestProviderConnectionV2Async(testCredential);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -283,7 +283,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] ProviderCredentialDto testRequest)
+        public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderConnectionDto testRequest)
         {
             if (!ModelState.IsValid)
             {
@@ -292,7 +292,7 @@ namespace ConduitLLM.Admin.Controllers
 
             try
             {
-                var result = await _providerCredentialService.TestProviderConnectionAsync(testRequest);
+                var result = await _providerCredentialService.TestProviderConnectionV2Async(testRequest);
                 return Ok(result);
             }
             catch (Exception ex)

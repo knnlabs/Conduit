@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
@@ -16,10 +17,7 @@ namespace ConduitLLM.Core.HealthChecks
     /// </summary>
     public class CacheHealthCheck : IHealthCheck
     {
-        private readonly ICacheManager _cacheManager;
-        private readonly ICacheMonitoringService _monitoringService;
-        private readonly ICacheMetricsService _metricsService;
-        private readonly ICacheRegistry _cacheRegistry;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<CacheHealthCheck> _logger;
 
         // Health check thresholds
@@ -32,16 +30,10 @@ namespace ConduitLLM.Core.HealthChecks
         private const int MinRequestsForEvaluation = 10;
 
         public CacheHealthCheck(
-            ICacheManager cacheManager,
-            ICacheMonitoringService monitoringService,
-            ICacheMetricsService metricsService,
-            ICacheRegistry cacheRegistry,
+            IServiceScopeFactory scopeFactory,
             ILogger<CacheHealthCheck> logger)
         {
-            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
-            _monitoringService = monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
-            _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
-            _cacheRegistry = cacheRegistry ?? throw new ArgumentNullException(nameof(cacheRegistry));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -54,8 +46,15 @@ namespace ConduitLLM.Core.HealthChecks
 
             try
             {
+                // Create a scope to resolve scoped services
+                using var scope = _scopeFactory.CreateScope();
+                var cacheManager = scope.ServiceProvider.GetRequiredService<ICacheManager>();
+                var monitoringService = scope.ServiceProvider.GetRequiredService<ICacheMonitoringService>();
+                var metricsService = scope.ServiceProvider.GetRequiredService<ICacheMetricsService>();
+                var cacheRegistry = scope.ServiceProvider.GetRequiredService<ICacheRegistry>();
+
                 // Check cache manager health
-                var healthStatus = await _cacheManager.GetHealthStatusAsync();
+                var healthStatus = await cacheManager.GetHealthStatusAsync();
                 data["cacheManagerHealthy"] = healthStatus.IsHealthy;
                 data["memoryCacheResponseTime"] = healthStatus.MemoryCacheResponseTime?.TotalMilliseconds ?? 0;
                 data["distributedCacheResponseTime"] = healthStatus.DistributedCacheResponseTime?.TotalMilliseconds ?? 0;
@@ -68,7 +67,7 @@ namespace ConduitLLM.Core.HealthChecks
                 }
 
                 // Check monitoring service status
-                var monitoringStatus = await _monitoringService.GetStatusAsync(cancellationToken);
+                var monitoringStatus = await monitoringService.GetStatusAsync(cancellationToken);
                 data["lastMonitoringCheck"] = monitoringStatus.LastCheck;
                 data["activeAlerts"] = monitoringStatus.ActiveAlerts;
                 data["monitoringHealthy"] = monitoringStatus.IsHealthy;
@@ -80,9 +79,9 @@ namespace ConduitLLM.Core.HealthChecks
                 }
 
                 // Check cache metrics
-                var totalRequests = _metricsService.GetTotalRequests();
-                var hitRate = _metricsService.GetHitRate();
-                var avgResponseTime = _metricsService.GetAverageRetrievalTimeMs();
+                var totalRequests = metricsService.GetTotalRequests();
+                var hitRate = metricsService.GetHitRate();
+                var avgResponseTime = metricsService.GetAverageRetrievalTimeMs();
 
                 data["totalRequests"] = totalRequests;
                 data["hitRate"] = hitRate;
@@ -117,7 +116,7 @@ namespace ConduitLLM.Core.HealthChecks
                 }
 
                 // Check cache regions
-                var regions = _cacheRegistry.GetAllRegions();
+                var regions = cacheRegistry.GetAllRegions();
                 var regionStats = new Dictionary<string, object>();
                 double totalMemoryUsed = 0;
                 double totalMemoryLimit = 0;
@@ -131,7 +130,7 @@ namespace ConduitLLM.Core.HealthChecks
                     
                     try
                     {
-                        var stats = await _cacheManager.GetRegionStatisticsAsync(region, cancellationToken);
+                        var stats = await cacheManager.GetRegionStatisticsAsync(region, cancellationToken);
                         if (stats != null)
                         {
                             totalMemoryUsed += stats.TotalSizeBytes;
@@ -218,7 +217,7 @@ namespace ConduitLLM.Core.HealthChecks
                 }
 
                 // Get recent alerts
-                var recentAlerts = _monitoringService.GetRecentAlerts(5);
+                var recentAlerts = monitoringService.GetRecentAlerts(5);
                 if (recentAlerts.Count > 0)
                 {
                     data["recentAlerts"] = recentAlerts.Select(a => new
@@ -232,7 +231,7 @@ namespace ConduitLLM.Core.HealthChecks
                 }
 
                 // Add model-specific metrics
-                var modelMetrics = _metricsService.GetModelMetrics();
+                var modelMetrics = metricsService.GetModelMetrics();
                 if (modelMetrics.Count > 0)
                 {
                     data["modelMetrics"] = modelMetrics.ToDictionary(

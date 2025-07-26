@@ -45,13 +45,10 @@ namespace ConduitLLM.Core.Caching
                 options.Registrations.Add(new HealthCheckRegistration(
                     "cache",
                     provider => new CacheHealthCheck(
-                        provider.GetRequiredService<ICacheManager>(),
-                        provider.GetRequiredService<ICacheMonitoringService>(),
-                        provider.GetRequiredService<ICacheMetricsService>(),
-                        provider.GetRequiredService<ICacheRegistry>(),
+                        provider.GetRequiredService<IServiceScopeFactory>(),
                         provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
                     Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                    new[] { "cache", "infrastructure" }));
+                    new[] { "cache", "infrastructure", "monitoring" }));
             });
 
             return services;
@@ -88,13 +85,10 @@ namespace ConduitLLM.Core.Caching
                 options.Registrations.Add(new HealthCheckRegistration(
                     "cache",
                     provider => new CacheHealthCheck(
-                        provider.GetRequiredService<ICacheManager>(),
-                        provider.GetRequiredService<ICacheMonitoringService>(),
-                        provider.GetRequiredService<ICacheMetricsService>(),
-                        provider.GetRequiredService<ICacheRegistry>(),
+                        provider.GetRequiredService<IServiceScopeFactory>(),
                         provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
                     Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                    new[] { "cache", "infrastructure" }));
+                    new[] { "cache", "infrastructure", "monitoring" }));
             });
 
             return services;

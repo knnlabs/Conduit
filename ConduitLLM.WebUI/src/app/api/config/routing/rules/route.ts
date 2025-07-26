@@ -32,10 +32,10 @@ export async function GET() {
     
     try {
       // Try to fetch routing rules from SDK
-      const response = await adminClient.configuration.getRoutingRules();
+      const response = await (adminClient.configuration.getRoutingRules as () => Promise<unknown>)();
       
       // Handle array response
-      const rules = response || [];
+      const rules = response ?? [];
       return NextResponse.json(Array.isArray(rules) ? rules : []);
     } catch (error) {
       console.warn('Failed to fetch routing rules:', error);
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         actions: ruleData.actions as RuleAction[]
       };
       
-      const newRule = await adminClient.configuration.createRoutingRule(createDto);
+      const newRule = await (adminClient.configuration.createRoutingRule as (dto: unknown) => Promise<unknown>)(createDto);
       
       return NextResponse.json(newRule);
     } catch (error) {

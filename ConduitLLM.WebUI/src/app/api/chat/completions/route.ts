@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-// Note: ChatCompletionChunk import temporarily removed due to SDK export issues
+import type { ChatCompletionRequest } from '@knn_labs/conduit-core-client';
 
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {
 
   try {
     const coreClient = await getServerCoreClient();
-    const body = await request.json() as unknown as Parameters<typeof coreClient.chat.create>[0];
+    const body = await request.json() as ChatCompletionRequest;
     
     // Check if streaming is requested
     if (body.stream === true) {
@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
       void (async () => {
         try {
           // Create the enhanced streaming request to get SSE events with types
-          const streamResponse = await coreClient.chat.createEnhancedStream(body);
+          const streamResponse = await coreClient.chat.createEnhancedStream({
+            ...body,
+            stream: true
+          });
           
           // Handle the async iterator from the SDK
           let chunkCount = 0;
@@ -98,7 +101,10 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Non-streaming request
-      const result = await coreClient.chat.create(body);
+      const result = await coreClient.chat.create({
+        ...body,
+        stream: false
+      });
       
       return NextResponse.json(result);
     }

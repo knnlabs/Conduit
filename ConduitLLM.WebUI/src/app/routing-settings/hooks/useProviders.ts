@@ -2,20 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
-export interface Provider {
-  id: string;
-  name: string;
-  displayName?: string;
-  enabled?: boolean;
-}
-
-export interface ProviderOption {
-  value: string;
-  label: string;
-}
 
 export function useProviders() {
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<{ id: string; name: string; displayName?: string; enabled?: boolean; }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +20,7 @@ export function useProviders() {
         }
         
         const providersData = await response.json() as unknown;
-        setProviders(Array.isArray(providersData) ? providersData as Provider[] : []);
+        setProviders(Array.isArray(providersData) ? providersData as { id: string; name: string; displayName?: string; enabled?: boolean; }[] : []);
       } catch (err) {
         console.error('Error fetching providers:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch providers');
@@ -45,7 +34,7 @@ export function useProviders() {
   }, []);
 
   // Convert providers to select options format
-  const providerOptions: ProviderOption[] = providers.map(provider => ({
+  const providerOptions: { value: string; label: string; }[] = providers.map(provider => ({
     value: provider.id,
     label: provider.displayName ?? provider.name ?? provider.id,
   }));

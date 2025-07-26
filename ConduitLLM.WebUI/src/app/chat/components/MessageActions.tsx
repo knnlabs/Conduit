@@ -33,9 +33,19 @@ export function MessageActions({
   showRegenerate = false,
   showBranch = false,
 }: MessageActionsProps) {
-  const messageContent = typeof message.content === 'string' 
-    ? message.content 
-    : message.content.map(c => c.type === 'text' ? c.text : '[image]').join(' ');
+  let messageContent = '';
+  
+  if (typeof message.content === 'string') {
+    messageContent = message.content;
+  } else if (Array.isArray(message.content)) {
+    const parts = message.content.map((c) => {
+      if ('type' in c && c.type === 'text' && 'text' in c) {
+        return c.text;
+      }
+      return '[image]';
+    });
+    messageContent = parts.join(' ');
+  }
 
   return (
     <Group gap={4}>

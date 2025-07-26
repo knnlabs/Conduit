@@ -15,6 +15,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
@@ -33,6 +34,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AdminProviderCredentialService> _logger;
         private readonly ConduitLLM.Configuration.IProviderCredentialService _configProviderCredentialService;
+        private readonly ILLMClientFactory _llmClientFactory;
 
         /// <summary>
         /// Initializes a new instance of the AdminProviderCredentialService
@@ -40,12 +42,14 @@ namespace ConduitLLM.Admin.Services
         /// <param name="providerCredentialRepository">The provider credential repository</param>
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
         /// <param name="configProviderCredentialService">The configuration provider credential service</param>
+        /// <param name="llmClientFactory">The LLM client factory for creating provider instances</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
             IProviderCredentialRepository providerCredentialRepository,
             IHttpClientFactory httpClientFactory,
             ConduitLLM.Configuration.IProviderCredentialService configProviderCredentialService,
+            ILLMClientFactory llmClientFactory,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminProviderCredentialService> logger)
             : base(publishEndpoint, logger)
@@ -54,6 +58,7 @@ namespace ConduitLLM.Admin.Services
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _configProviderCredentialService = configProviderCredentialService ?? throw new ArgumentNullException(nameof(configProviderCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _llmClientFactory = llmClientFactory ?? throw new ArgumentNullException(nameof(llmClientFactory));
             
             // Log event publishing configuration status
             LogEventPublishingConfiguration(nameof(AdminProviderCredentialService));
@@ -385,20 +390,34 @@ namespace ConduitLLM.Admin.Services
                             _logger.LogInformation("OpenAI authentication check passed");
                             break;
 
-                        case "openrouter":
-                            _logger.LogInformation("Performing additional OpenRouter authentication check");
-
-                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
-
-                            if (!openRouterAuthSuccessful)
+                        case "anthropic":
+                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
+                            
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
+                            responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
+                            
+                            if (!anthropicAuthSuccessful)
                             {
                                 result.Success = false;
                                 result.Message = "Authentication failed";
-                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
                                 return result;
                             }
+                            
+                            _logger.LogInformation("Anthropic authentication check passed");
+                            break;
 
-                            _logger.LogInformation("OpenRouter authentication check passed");
+                        case "azureopenai":
+                            _logger.LogInformation("Performing Azure OpenAI authentication check");
+                            var azureAuthSuccessful = await VerifyAzureOpenAIAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!azureAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Azure OpenAI requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Azure OpenAI authentication check passed");
                             break;
 
                         case "google":
@@ -418,26 +437,155 @@ namespace ConduitLLM.Admin.Services
                             _logger.LogInformation("Google/Gemini authentication check passed");
                             break;
 
+                        case "vertexai":
+                            _logger.LogInformation("Performing Vertex AI authentication check");
+                            var vertexAuthSuccessful = await VerifyVertexAIAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!vertexAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid credentials - Vertex AI requires valid service account credentials";
+                                return result;
+                            }
+                            _logger.LogInformation("Vertex AI authentication check passed");
+                            break;
+
+                        case "cohere":
+                            _logger.LogInformation("Performing Cohere authentication check");
+                            var cohereAuthSuccessful = await VerifyCohereAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!cohereAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cohere requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Cohere authentication check passed");
+                            break;
+
+                        case "mistral":
+                            _logger.LogInformation("Performing Mistral authentication check");
+                            var mistralAuthSuccessful = await VerifyMistralAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!mistralAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Mistral requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Mistral authentication check passed");
+                            break;
+
+                        case "groq":
+                            _logger.LogInformation("Performing Groq authentication check");
+                            var groqAuthSuccessful = await VerifyGroqAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!groqAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Groq requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Groq authentication check passed");
+                            break;
+
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
                             _logger.LogInformation("Skipping authentication check for Ollama (local service)");
                             break;
 
-                        case "anthropic":
-                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
-                            
-                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
-                            responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
-                            
-                            if (!anthropicAuthSuccessful)
+                        case "replicate":
+                            _logger.LogInformation("Performing Replicate authentication check");
+                            var replicateAuthSuccessful = await VerifyReplicateAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!replicateAuthSuccessful)
                             {
                                 result.Success = false;
                                 result.Message = "Authentication failed";
-                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                result.ErrorDetails = "Invalid API token - Replicate requires a valid API token";
                                 return result;
                             }
-                            
-                            _logger.LogInformation("Anthropic authentication check passed");
+                            _logger.LogInformation("Replicate authentication check passed");
+                            break;
+
+                        case "fireworks":
+                            _logger.LogInformation("Performing Fireworks authentication check");
+                            var fireworksAuthSuccessful = await VerifyFireworksAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!fireworksAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Fireworks requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Fireworks authentication check passed");
+                            break;
+
+                        case "bedrock":
+                            _logger.LogInformation("Performing AWS Bedrock authentication check");
+                            var bedrockAuthSuccessful = await VerifyBedrockAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!bedrockAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - Bedrock requires valid AWS access key and secret";
+                                return result;
+                            }
+                            _logger.LogInformation("AWS Bedrock authentication check passed");
+                            break;
+
+                        case "huggingface":
+                            _logger.LogInformation("Performing HuggingFace authentication check");
+                            var huggingFaceAuthSuccessful = await VerifyHuggingFaceAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!huggingFaceAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API token - HuggingFace requires a valid API token";
+                                return result;
+                            }
+                            _logger.LogInformation("HuggingFace authentication check passed");
+                            break;
+
+                        case "sagemaker":
+                            _logger.LogInformation("Performing SageMaker authentication check");
+                            var sageMakerAuthSuccessful = await VerifySageMakerAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!sageMakerAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - SageMaker requires valid AWS access key and secret";
+                                return result;
+                            }
+                            _logger.LogInformation("SageMaker authentication check passed");
+                            break;
+
+                        case "openrouter":
+                            _logger.LogInformation("Performing additional OpenRouter authentication check");
+
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
+
+                            if (!openRouterAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                return result;
+                            }
+
+                            _logger.LogInformation("OpenRouter authentication check passed");
+                            break;
+
+                        case "openaicompatible":
+                            _logger.LogInformation("Performing OpenAI-compatible authentication check");
+                            var openAICompatibleAuthSuccessful = await VerifyOpenAICompatibleAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!openAICompatibleAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI-compatible provider requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("OpenAI-compatible authentication check passed");
                             break;
                             
                         case "minimax":
@@ -455,6 +603,58 @@ namespace ConduitLLM.Admin.Services
                             }
                             
                             _logger.LogInformation("MiniMax authentication check passed");
+                            break;
+
+                        case "ultravox":
+                            _logger.LogInformation("Performing Ultravox authentication check");
+                            var ultravoxAuthSuccessful = await VerifyUltravoxAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!ultravoxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Ultravox requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Ultravox authentication check passed");
+                            break;
+
+                        case "elevenlabs":
+                            _logger.LogInformation("Performing ElevenLabs authentication check");
+                            var elevenLabsAuthSuccessful = await VerifyElevenLabsAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!elevenLabsAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - ElevenLabs requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("ElevenLabs authentication check passed");
+                            break;
+
+                        case "googlecloud":
+                            _logger.LogInformation("Performing Google Cloud authentication check");
+                            var googleCloudAuthSuccessful = await VerifyGoogleCloudAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!googleCloudAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid credentials - Google Cloud requires valid service account credentials";
+                                return result;
+                            }
+                            _logger.LogInformation("Google Cloud authentication check passed");
+                            break;
+
+                        case "cerebras":
+                            _logger.LogInformation("Performing Cerebras authentication check");
+                            var cerebrasAuthSuccessful = await VerifyCerebrasAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!cerebrasAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cerebras requires a valid API key";
+                                return result;
+                            }
+                            _logger.LogInformation("Cerebras authentication check passed");
                             break;
                     }
 
@@ -485,6 +685,257 @@ namespace ConduitLLM.Admin.Services
                     Message = $"Connection test failed: {ex.Message}",
                     ErrorDetails = ex.ToString(),
                     ProviderType = providerCredential.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
+
+        /// <summary>
+        /// Tests a provider connection using the factory pattern and provider-specific authentication verification.
+        /// This is the new method that replaces the switch-based authentication logic.
+        /// </summary>
+        /// <param name="providerCredential">The provider credential to test</param>
+        /// <returns>A result indicating success or failure with details</returns>
+        public async Task<ProviderConnectionTestResultDto> TestProviderConnectionV2Async(ProviderCredentialDto providerCredential)
+        {
+            if (providerCredential == null)
+            {
+                throw new ArgumentNullException(nameof(providerCredential));
+            }
+
+            try
+            {
+                _logger.LogInformation("Testing provider connection for {ProviderType} using factory pattern", providerCredential.ProviderType);
+                
+                var startTime = DateTime.UtcNow;
+                var result = new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = string.Empty,
+                    ErrorDetails = null,
+                    ProviderType = providerCredential.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Get API key and base URL
+                string? apiKey = null;
+                string? baseUrl = providerCredential.BaseUrl;
+                
+                if (providerCredential.Id > 0)
+                {
+                    var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
+                    if (dbCredential == null)
+                    {
+                        _logger.LogWarning("Provider credential not found {ProviderId}", providerCredential.Id);
+                        result.Message = "Provider credential not found";
+                        result.ErrorDetails = "Provider not found in database";
+                        return result;
+                    }
+                    
+                    // Get the primary key or first enabled key from ProviderKeyCredentials
+                    var primaryKey = dbCredential.ProviderKeyCredentials?
+                        .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                        dbCredential.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled);
+                        
+                    if (primaryKey == null)
+                    {
+                        _logger.LogWarning("No enabled API keys found for provider {ProviderId}", providerCredential.Id);
+                        result.Message = "No API keys configured";
+                        result.ErrorDetails = "Provider has no enabled API keys";
+                        return result;
+                    }
+                    
+                    apiKey = primaryKey.ApiKey;
+                    baseUrl = !string.IsNullOrEmpty(providerCredential.BaseUrl) ? providerCredential.BaseUrl : 
+                              !string.IsNullOrEmpty(primaryKey.BaseUrl) ? primaryKey.BaseUrl : dbCredential.BaseUrl;
+                }
+                else
+                {
+                    // For testing unsaved providers, we can't test without an API key
+                    _logger.LogWarning("Cannot test unsaved provider without API key");
+                    result.Message = "Cannot test provider";
+                    result.ErrorDetails = "Provider must be saved with an API key before testing";
+                    return result;
+                }
+
+                // Create a temporary ProviderCredentials object for the factory
+                var tempCredentials = new ProviderCredentials
+                {
+                    ApiKey = apiKey,
+                    BaseUrl = baseUrl,
+                    ProviderType = providerCredential.ProviderType
+                };
+
+                // Get the provider client from the factory
+                var client = _llmClientFactory.GetClientByProviderId((int)providerCredential.ProviderType);
+                
+                // Check if the client implements IAuthenticationVerifiable
+                if (client is IAuthenticationVerifiable authVerifiable)
+                {
+                    // Use the provider's own authentication verification
+                    var authResult = await authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl);
+                    
+                    result.Success = authResult.IsSuccess;
+                    result.Message = authResult.Message;
+                    result.ErrorDetails = authResult.ErrorDetails;
+                    
+                    if (authResult.ResponseTimeMs.HasValue)
+                    {
+                        result.Message = $"{authResult.Message} (Response time: {authResult.ResponseTimeMs.Value:F2}ms)";
+                    }
+                }
+                else
+                {
+                    // Fallback to basic health check for providers that don't implement IAuthenticationVerifiable
+                    _logger.LogWarning("Provider {ProviderType} does not implement IAuthenticationVerifiable, using basic health check", providerCredential.ProviderType);
+                    
+                    using var httpClient = _httpClientFactory.CreateClient();
+                    httpClient.Timeout = TimeSpan.FromSeconds(10);
+                    
+                    // Add basic authentication
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                    }
+                    
+                    // Create a temporary ProviderCredential for GetHealthCheckUrl
+                    var tempProviderCredential = new ProviderCredential
+                    {
+                        ProviderType = providerCredential.ProviderType,
+                        BaseUrl = baseUrl
+                    };
+                    var healthCheckUrl = GetHealthCheckUrl(tempProviderCredential);
+                    var response = await httpClient.GetAsync(healthCheckUrl);
+                    
+                    result.Success = response.IsSuccessStatusCode;
+                    result.Message = result.Success 
+                        ? $"Connected successfully to {providerCredential.ProviderType}" 
+                        : $"Connection failed: {response.StatusCode}";
+                        
+                    if (!result.Success)
+                    {
+                        result.ErrorDetails = await response.Content.ReadAsStringAsync();
+                    }
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection to provider '{ProviderType}'", providerCredential.ProviderType);
+
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = $"Connection test failed: {ex.Message}",
+                    ErrorDetails = ex.ToString(),
+                    ProviderType = providerCredential.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
+
+        /// <summary>
+        /// Tests a provider connection using the factory pattern and provider-specific authentication verification.
+        /// This overload accepts a TestProviderConnectionDto for testing unsaved credentials.
+        /// </summary>
+        public async Task<ProviderConnectionTestResultDto> TestProviderConnectionV2Async(TestProviderConnectionDto testRequest)
+        {
+            if (testRequest == null)
+            {
+                throw new ArgumentNullException(nameof(testRequest));
+            }
+
+            try
+            {
+                _logger.LogInformation("Testing provider connection for {ProviderType} using factory pattern", testRequest.ProviderType);
+                
+                var startTime = DateTime.UtcNow;
+                var result = new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = string.Empty,
+                    ErrorDetails = null,
+                    ProviderType = testRequest.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Get API key and base URL
+                var apiKey = testRequest.ApiKey;
+                var baseUrl = testRequest.BaseUrl;
+                
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    _logger.LogWarning("No API key provided for testing {ProviderType}", testRequest.ProviderType);
+                    result.Message = "API key is required";
+                    result.ErrorDetails = "Cannot test provider without an API key";
+                    return result;
+                }
+
+                // Get the provider client from the factory
+                var client = _llmClientFactory.GetClientByProviderId((int)testRequest.ProviderType);
+                
+                // Check if the client implements IAuthenticationVerifiable
+                if (client is IAuthenticationVerifiable authVerifiable)
+                {
+                    // Use the provider's own authentication verification
+                    var authResult = await authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl);
+                    
+                    result.Success = authResult.IsSuccess;
+                    result.Message = authResult.Message;
+                    result.ErrorDetails = authResult.ErrorDetails;
+                    
+                    if (authResult.ResponseTimeMs.HasValue)
+                    {
+                        result.Message = $"{authResult.Message} (Response time: {authResult.ResponseTimeMs.Value:F2}ms)";
+                    }
+                }
+                else
+                {
+                    // Fallback to basic health check for providers that don't implement IAuthenticationVerifiable
+                    _logger.LogWarning("Provider {ProviderType} does not implement IAuthenticationVerifiable, using basic health check", testRequest.ProviderType);
+                    
+                    using var httpClient = _httpClientFactory.CreateClient();
+                    httpClient.Timeout = TimeSpan.FromSeconds(10);
+                    
+                    // Add basic authentication
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                    }
+                    
+                    // Create a temporary ProviderCredential for the GetHealthCheckUrl method
+                    var tempProviderCredential = new ProviderCredential
+                    {
+                        ProviderType = testRequest.ProviderType,
+                        BaseUrl = baseUrl
+                    };
+                    var healthCheckUrl = GetHealthCheckUrl(tempProviderCredential);
+                    var response = await httpClient.GetAsync(healthCheckUrl);
+                    
+                    result.Success = response.IsSuccessStatusCode;
+                    result.Message = result.Success 
+                        ? $"Connected successfully to {testRequest.ProviderType}" 
+                        : $"Connection failed: {response.StatusCode}";
+                        
+                    if (!result.Success)
+                    {
+                        result.ErrorDetails = await response.Content.ReadAsStringAsync();
+                    }
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection to provider '{ProviderType}'", testRequest.ProviderType);
+
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = $"Connection test failed: {ex.Message}",
+                    ErrorDetails = ex.ToString(),
+                    ProviderType = testRequest.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
             }
@@ -597,14 +1048,27 @@ namespace ConduitLLM.Admin.Services
                             }
                             break;
 
-                        case "openrouter":
-                            _logger.LogInformation("Performing additional OpenRouter authentication check");
-                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
-                            if (!openRouterAuthSuccessful)
+                        case "anthropic":
+                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
+                            responseTime = DateTime.UtcNow - startTime;
+                            if (!anthropicAuthSuccessful)
                             {
                                 result.Success = false;
                                 result.Message = "Authentication failed";
-                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "azureopenai":
+                            _logger.LogInformation("Performing Azure OpenAI authentication check");
+                            var azureAuthSuccessful = await VerifyAzureOpenAIAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!azureAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Azure OpenAI requires a valid API key";
                                 return result;
                             }
                             break;
@@ -622,15 +1086,139 @@ namespace ConduitLLM.Admin.Services
                             }
                             break;
 
-                        case "anthropic":
-                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
-                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, apiKey, baseUrl);
-                            responseTime = DateTime.UtcNow - startTime;
-                            if (!anthropicAuthSuccessful)
+                        case "vertexai":
+                            _logger.LogInformation("Performing Vertex AI authentication check");
+                            var vertexAuthSuccessful = await VerifyVertexAIAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!vertexAuthSuccessful)
                             {
                                 result.Success = false;
                                 result.Message = "Authentication failed";
-                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                result.ErrorDetails = "Invalid credentials - Vertex AI requires valid service account credentials";
+                                return result;
+                            }
+                            break;
+
+                        case "cohere":
+                            _logger.LogInformation("Performing Cohere authentication check");
+                            var cohereAuthSuccessful = await VerifyCohereAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!cohereAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cohere requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "mistral":
+                            _logger.LogInformation("Performing Mistral authentication check");
+                            var mistralAuthSuccessful = await VerifyMistralAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!mistralAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Mistral requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "groq":
+                            _logger.LogInformation("Performing Groq authentication check");
+                            var groqAuthSuccessful = await VerifyGroqAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!groqAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Groq requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "ollama":
+                            // Ollama is a local service and doesn't require authentication
+                            _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+
+                        case "replicate":
+                            _logger.LogInformation("Performing Replicate authentication check");
+                            var replicateAuthSuccessful = await VerifyReplicateAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!replicateAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API token - Replicate requires a valid API token";
+                                return result;
+                            }
+                            break;
+
+                        case "fireworks":
+                            _logger.LogInformation("Performing Fireworks authentication check");
+                            var fireworksAuthSuccessful = await VerifyFireworksAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!fireworksAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Fireworks requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "bedrock":
+                            _logger.LogInformation("Performing AWS Bedrock authentication check");
+                            var bedrockAuthSuccessful = await VerifyBedrockAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!bedrockAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - Bedrock requires valid AWS access key and secret";
+                                return result;
+                            }
+                            break;
+
+                        case "huggingface":
+                            _logger.LogInformation("Performing HuggingFace authentication check");
+                            var huggingFaceAuthSuccessful = await VerifyHuggingFaceAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!huggingFaceAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API token - HuggingFace requires a valid API token";
+                                return result;
+                            }
+                            break;
+
+                        case "sagemaker":
+                            _logger.LogInformation("Performing SageMaker authentication check");
+                            var sageMakerAuthSuccessful = await VerifySageMakerAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!sageMakerAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - SageMaker requires valid AWS access key and secret";
+                                return result;
+                            }
+                            break;
+
+                        case "openrouter":
+                            _logger.LogInformation("Performing additional OpenRouter authentication check");
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!openRouterAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "openaicompatible":
+                            _logger.LogInformation("Performing OpenAI-compatible authentication check");
+                            var openAICompatibleAuthSuccessful = await VerifyOpenAICompatibleAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!openAICompatibleAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI-compatible provider requires a valid API key";
                                 return result;
                             }
                             break;
@@ -644,6 +1232,54 @@ namespace ConduitLLM.Admin.Services
                                 result.Success = false;
                                 result.Message = "Authentication failed";
                                 result.ErrorDetails = "Invalid API key - MiniMax requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "ultravox":
+                            _logger.LogInformation("Performing Ultravox authentication check");
+                            var ultravoxAuthSuccessful = await VerifyUltravoxAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!ultravoxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Ultravox requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "elevenlabs":
+                            _logger.LogInformation("Performing ElevenLabs authentication check");
+                            var elevenLabsAuthSuccessful = await VerifyElevenLabsAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!elevenLabsAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - ElevenLabs requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "googlecloud":
+                            _logger.LogInformation("Performing Google Cloud authentication check");
+                            var googleCloudAuthSuccessful = await VerifyGoogleCloudAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!googleCloudAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid credentials - Google Cloud requires valid service account credentials";
+                                return result;
+                            }
+                            break;
+
+                        case "cerebras":
+                            _logger.LogInformation("Performing Cerebras authentication check");
+                            var cerebrasAuthSuccessful = await VerifyCerebrasAuthenticationAsync(client, apiKey, baseUrl);
+                            if (!cerebrasAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cerebras requires a valid API key";
                                 return result;
                             }
                             break;
@@ -1221,13 +1857,476 @@ namespace ConduitLLM.Admin.Services
                 "huggingface" => "https://api-inference.huggingface.co",
                 "bedrock" => "https://bedrock-runtime.us-east-1.amazonaws.com",
                 "sagemaker" => "https://runtime.sagemaker.us-east-1.amazonaws.com",
-                "azure" => "https://your-resource-name.openai.azure.com",
+                "azure" or "azureopenai" => "https://your-resource-name.openai.azure.com",
                 "openai-compatible" or "openaicompatible" => "http://localhost:8000",
                 "ultravox" => "https://api.ultravox.ai",
                 "elevenlabs" or "eleven-labs" => "https://api.elevenlabs.io",
                 "minimax" => "https://api.minimax.io",
+                "googlecloud" => "https://texttospeech.googleapis.com",
+                "cerebras" => "https://api.cerebras.ai",
                 _ => "https://api.example.com" // Generic fallback
             };
+        }
+
+        /// <summary>
+        /// Verifies Azure OpenAI authentication
+        /// </summary>
+        private async Task<bool> VerifyAzureOpenAIAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://your-resource-name.openai.azure.com";
+
+                // Azure OpenAI requires api-key header instead of Authorization
+                client.DefaultRequestHeaders.Remove("Authorization");
+                client.DefaultRequestHeaders.Add("api-key", apiKey);
+
+                var modelsUrl = $"{apiBaseUrl}/openai/models?api-version=2023-05-15";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized || 
+                    response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    _logger.LogWarning("Azure OpenAI authentication failed: {Status}", response.StatusCode);
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Azure OpenAI authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Vertex AI authentication
+        /// </summary>
+        private async Task<bool> VerifyVertexAIAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                // Vertex AI uses service account JSON credentials
+                // For now, we just validate the credential format
+                if (string.IsNullOrWhiteSpace(apiKey))
+                    return false;
+
+                // Check if it looks like a service account JSON
+                if (apiKey.Contains("private_key") && apiKey.Contains("client_email"))
+                {
+                    _logger.LogInformation("Vertex AI credentials appear to be valid service account JSON");
+                    return true;
+                }
+
+                _logger.LogWarning("Vertex AI credentials do not appear to be valid service account JSON");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Vertex AI authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Cohere authentication
+        /// </summary>
+        private async Task<bool> VerifyCohereAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.cohere.ai";
+
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Cohere authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Cohere authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Mistral authentication
+        /// </summary>
+        private async Task<bool> VerifyMistralAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.mistral.ai";
+
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Mistral authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Mistral authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Groq authentication
+        /// </summary>
+        private async Task<bool> VerifyGroqAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.groq.com/openai";
+
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Groq authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Groq authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Replicate authentication
+        /// </summary>
+        private async Task<bool> VerifyReplicateAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.replicate.com";
+
+                // Replicate uses a different auth header format
+                client.DefaultRequestHeaders.Remove("Authorization");
+                client.DefaultRequestHeaders.Add("Authorization", $"Token {apiKey}");
+
+                var accountUrl = $"{apiBaseUrl}/v1/account";
+                var response = await client.GetAsync(accountUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Replicate authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Replicate authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Fireworks authentication
+        /// </summary>
+        private async Task<bool> VerifyFireworksAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.fireworks.ai";
+
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Fireworks authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Fireworks authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies AWS Bedrock authentication
+        /// </summary>
+        private async Task<bool> VerifyBedrockAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                // Bedrock uses AWS signature authentication
+                // API key should be in format: "accessKey:secretKey"
+                if (string.IsNullOrWhiteSpace(apiKey) || !apiKey.Contains(":"))
+                {
+                    _logger.LogWarning("Bedrock credentials not in expected format (accessKey:secretKey)");
+                    return false;
+                }
+
+                // For now, just validate the format
+                var parts = apiKey.Split(':');
+                if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[0]) && !string.IsNullOrWhiteSpace(parts[1]))
+                {
+                    _logger.LogInformation("Bedrock credentials appear to be in valid format");
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Bedrock authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies HuggingFace authentication
+        /// </summary>
+        private async Task<bool> VerifyHuggingFaceAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api-inference.huggingface.co";
+
+                // Test with a simple model endpoint
+                var testUrl = $"{apiBaseUrl}/models/gpt2";
+                var response = await client.GetAsync(testUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("HuggingFace authentication failed");
+                    return false;
+                }
+
+                // HuggingFace returns 503 for models that need to be loaded, but auth is valid
+                return response.StatusCode != HttpStatusCode.Unauthorized && 
+                       response.StatusCode != HttpStatusCode.Forbidden;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying HuggingFace authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies SageMaker authentication
+        /// </summary>
+        private async Task<bool> VerifySageMakerAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                // SageMaker uses AWS signature authentication like Bedrock
+                if (string.IsNullOrWhiteSpace(apiKey) || !apiKey.Contains(":"))
+                {
+                    _logger.LogWarning("SageMaker credentials not in expected format (accessKey:secretKey)");
+                    return false;
+                }
+
+                var parts = apiKey.Split(':');
+                if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[0]) && !string.IsNullOrWhiteSpace(parts[1]))
+                {
+                    _logger.LogInformation("SageMaker credentials appear to be in valid format");
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying SageMaker authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies OpenAI-compatible provider authentication
+        /// </summary>
+        private async Task<bool> VerifyOpenAICompatibleAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    _logger.LogWarning("OpenAI-compatible provider requires a base URL");
+                    return false;
+                }
+
+                var apiBaseUrl = baseUrl.TrimEnd('/');
+                var modelsUrl = apiBaseUrl.EndsWith("/v1") 
+                    ? $"{apiBaseUrl}/models" 
+                    : $"{apiBaseUrl}/v1/models";
+
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("OpenAI-compatible provider authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying OpenAI-compatible provider authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Ultravox authentication
+        /// </summary>
+        private async Task<bool> VerifyUltravoxAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                // Ultravox is a realtime API, basic validation only
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    _logger.LogWarning("Ultravox requires an API key");
+                    return false;
+                }
+
+                // Check if the API key looks valid (basic format check)
+                if (apiKey.Length > 10)
+                {
+                    _logger.LogInformation("Ultravox API key appears to be valid format");
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Ultravox authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies ElevenLabs authentication
+        /// </summary>
+        private async Task<bool> VerifyElevenLabsAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.elevenlabs.io";
+
+                // ElevenLabs uses xi-api-key header
+                client.DefaultRequestHeaders.Remove("Authorization");
+                client.DefaultRequestHeaders.Add("xi-api-key", apiKey);
+
+                var userUrl = $"{apiBaseUrl}/v1/user";
+                var response = await client.GetAsync(userUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("ElevenLabs authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying ElevenLabs authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Google Cloud authentication
+        /// </summary>
+        private async Task<bool> VerifyGoogleCloudAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                // Google Cloud uses service account JSON like Vertex AI
+                if (string.IsNullOrWhiteSpace(apiKey))
+                    return false;
+
+                // Check if it looks like a service account JSON
+                if (apiKey.Contains("private_key") && apiKey.Contains("client_email"))
+                {
+                    _logger.LogInformation("Google Cloud credentials appear to be valid service account JSON");
+                    return true;
+                }
+
+                _logger.LogWarning("Google Cloud credentials do not appear to be valid service account JSON");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Google Cloud authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Cerebras authentication
+        /// </summary>
+        private async Task<bool> VerifyCerebrasAuthenticationAsync(HttpClient client, string? apiKey, string? baseUrl)
+        {
+            try
+            {
+                var apiBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
+                    ? baseUrl.TrimEnd('/')
+                    : "https://api.cerebras.ai";
+
+                var modelsUrl = $"{apiBaseUrl}/v1/models";
+                var response = await client.GetAsync(modelsUrl);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _logger.LogWarning("Cerebras authentication failed");
+                    return false;
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Cerebras authentication");
+                return false;
+            }
         }
 
         /// <inheritdoc />
@@ -1472,7 +2571,6 @@ namespace ConduitLLM.Admin.Services
                 // Use the key's API key directly for testing
                 var apiKey = key.ApiKey;
                 var baseUrl = key.BaseUrl ?? provider.BaseUrl;
-                var providerName = provider.ProviderType.ToString();
                 
                 if (string.IsNullOrEmpty(apiKey))
                 {
@@ -1486,8 +2584,16 @@ namespace ConduitLLM.Admin.Services
                     };
                 }
                 
-                // Call TestProviderConnectionWithKeyAsync with the specific key
-                return await TestProviderConnectionWithKeyAsync(providerName, apiKey, baseUrl);
+                // Create a test request DTO to use with V2 method
+                var testRequest = new TestProviderConnectionDto
+                {
+                    ProviderType = provider.ProviderType,
+                    ApiKey = apiKey,
+                    BaseUrl = baseUrl
+                };
+                
+                // Use the new V2 method which leverages provider-specific authentication
+                return await TestProviderConnectionV2Async(testRequest);
             }
             catch (Exception ex)
             {
@@ -1498,6 +2604,377 @@ namespace ConduitLLM.Admin.Services
                     Message = "Test failed",
                     ErrorDetails = ex.ToString(),
                     ProviderType = ProviderType.OpenAI, // Default for unknown
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(TestProviderConnectionDto testRequest)
+        {
+            if (testRequest == null)
+            {
+                throw new ArgumentNullException(nameof(testRequest));
+            }
+
+            try
+            {
+                _logger.LogInformation("Testing provider connection for {ProviderType} with test request", testRequest.ProviderType);
+                
+                var startTime = DateTime.UtcNow;
+                var result = new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = string.Empty,
+                    ErrorDetails = null,
+                    ProviderType = testRequest.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Validate that we have an API key
+                if (string.IsNullOrWhiteSpace(testRequest.ApiKey))
+                {
+                    result.Message = "API key is required";
+                    result.ErrorDetails = "No API key provided for testing";
+                    return result;
+                }
+
+                // Create an HTTP client
+                using var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+
+                // Add authorization header based on provider type
+                var providerTypeLower = testRequest.ProviderType.ToString().ToLowerInvariant();
+                if (providerTypeLower == "anthropic")
+                {
+                    client.DefaultRequestHeaders.Add("x-api-key", testRequest.ApiKey);
+                    client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+                }
+                else
+                {
+                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {testRequest.ApiKey}");
+                }
+
+                // Special handling for providers that don't support GET requests
+                TimeSpan responseTime;
+                
+                if (providerTypeLower == "minimax" || providerTypeLower == "anthropic")
+                {
+                    // These providers don't have a GET health check endpoint
+                    result.Success = true;
+                    responseTime = TimeSpan.Zero;
+                }
+                else
+                {
+                    // Construct the API URL based on provider type
+                    var tempCredential = new ProviderCredential
+                    {
+                        ProviderType = testRequest.ProviderType,
+                        BaseUrl = testRequest.BaseUrl
+                    };
+                    var apiUrl = GetHealthCheckUrl(tempCredential);
+                    
+                    _logger.LogInformation("Testing provider {ProviderType} at URL: {ApiUrl}", testRequest.ProviderType, apiUrl);
+
+                    // Make the request
+                    var responseMessage = await client.GetAsync(apiUrl);
+                    responseTime = DateTime.UtcNow - startTime;
+
+                    // Check the response
+                    result.Success = responseMessage.IsSuccessStatusCode;
+                    if (!result.Success)
+                    {
+                        var errorContent = await responseMessage.Content.ReadAsStringAsync();
+                        result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
+                        result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
+                            ? errorContent
+                            : "Response content too large to display";
+                        result.ResponseTimeMs = responseTime.TotalMilliseconds;
+                        return result;
+                    }
+                }
+
+                // Additional validation for specific providers
+                if (result.Success)
+                {
+                    switch (providerTypeLower)
+                    {
+                        case "openai":
+                            _logger.LogInformation("Performing additional OpenAI authentication check");
+                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!openAIAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI requires a valid API key for accessing models";
+                                return result;
+                            }
+                            break;
+
+                        case "anthropic":
+                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            responseTime = DateTime.UtcNow - startTime;
+                            if (!anthropicAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "azureopenai":
+                            _logger.LogInformation("Performing Azure OpenAI authentication check");
+                            var azureAuthSuccessful = await VerifyAzureOpenAIAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!azureAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Azure OpenAI requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "gemini":
+                            _logger.LogInformation("Performing Google Gemini authentication check");
+                            var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!geminiAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Google Gemini requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "vertexai":
+                            _logger.LogInformation("Performing Vertex AI authentication check");
+                            var vertexAuthSuccessful = await VerifyVertexAIAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!vertexAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid credentials - Vertex AI requires valid service account credentials";
+                                return result;
+                            }
+                            break;
+
+                        case "cohere":
+                            _logger.LogInformation("Performing Cohere authentication check");
+                            var cohereAuthSuccessful = await VerifyCohereAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!cohereAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cohere requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "mistral":
+                            _logger.LogInformation("Performing Mistral authentication check");
+                            var mistralAuthSuccessful = await VerifyMistralAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!mistralAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Mistral requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "groq":
+                            _logger.LogInformation("Performing Groq authentication check");
+                            var groqAuthSuccessful = await VerifyGroqAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!groqAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Groq requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "ollama":
+                            // Ollama is a local service and doesn't require authentication
+                            _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+
+                        case "replicate":
+                            _logger.LogInformation("Performing Replicate authentication check");
+                            var replicateAuthSuccessful = await VerifyReplicateAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!replicateAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API token - Replicate requires a valid API token";
+                                return result;
+                            }
+                            break;
+
+                        case "fireworks":
+                            _logger.LogInformation("Performing Fireworks authentication check");
+                            var fireworksAuthSuccessful = await VerifyFireworksAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!fireworksAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Fireworks requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "bedrock":
+                            _logger.LogInformation("Performing AWS Bedrock authentication check");
+                            var bedrockAuthSuccessful = await VerifyBedrockAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!bedrockAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - Bedrock requires valid AWS access key and secret";
+                                return result;
+                            }
+                            break;
+
+                        case "huggingface":
+                            _logger.LogInformation("Performing HuggingFace authentication check");
+                            var huggingFaceAuthSuccessful = await VerifyHuggingFaceAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!huggingFaceAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API token - HuggingFace requires a valid API token";
+                                return result;
+                            }
+                            break;
+
+                        case "sagemaker":
+                            _logger.LogInformation("Performing SageMaker authentication check");
+                            var sageMakerAuthSuccessful = await VerifySageMakerAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!sageMakerAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid AWS credentials - SageMaker requires valid AWS access key and secret";
+                                return result;
+                            }
+                            break;
+
+                        case "openrouter":
+                            _logger.LogInformation("Performing OpenRouter authentication check");
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!openRouterAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "openaicompatible":
+                            _logger.LogInformation("Performing OpenAI-compatible authentication check");
+                            var openAICompatibleAuthSuccessful = await VerifyOpenAICompatibleAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!openAICompatibleAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI-compatible provider requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "minimax":
+                            _logger.LogInformation("Performing MiniMax authentication check via chat completion");
+                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            responseTime = DateTime.UtcNow - startTime;
+                            if (!miniMaxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - MiniMax requires a valid API key for making requests";
+                                return result;
+                            }
+                            break;
+
+                        case "ultravox":
+                            _logger.LogInformation("Performing Ultravox authentication check");
+                            var ultravoxAuthSuccessful = await VerifyUltravoxAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!ultravoxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Ultravox requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "elevenlabs":
+                            _logger.LogInformation("Performing ElevenLabs authentication check");
+                            var elevenLabsAuthSuccessful = await VerifyElevenLabsAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!elevenLabsAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - ElevenLabs requires a valid API key";
+                                return result;
+                            }
+                            break;
+
+                        case "googlecloud":
+                            _logger.LogInformation("Performing Google Cloud authentication check");
+                            var googleCloudAuthSuccessful = await VerifyGoogleCloudAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!googleCloudAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid credentials - Google Cloud requires valid service account credentials";
+                                return result;
+                            }
+                            break;
+
+                        case "cerebras":
+                            _logger.LogInformation("Performing Cerebras authentication check");
+                            var cerebrasAuthSuccessful = await VerifyCerebrasAuthenticationAsync(client, testRequest.ApiKey, testRequest.BaseUrl);
+                            if (!cerebrasAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Cerebras requires a valid API key";
+                                return result;
+                            }
+                            break;
+                    }
+
+                    var responseTimeMs = responseTime.TotalMilliseconds;
+                    result.Message = $"Connected successfully to {testRequest.ProviderType} API in {responseTimeMs:F2}ms";
+                    result.ResponseTimeMs = responseTimeMs;
+                }
+
+                return result;
+            }
+            catch (TaskCanceledException)
+            {
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = "The connection timed out",
+                    ErrorDetails = "Request exceeded the 10 second timeout",
+                    ProviderType = testRequest.ProviderType,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection to provider '{ProviderType}'", testRequest.ProviderType.ToString().Replace(Environment.NewLine, ""));
+
+                return new ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = $"Connection test failed: {ex.Message}",
+                    ErrorDetails = ex.ToString(),
+                    ProviderType = testRequest.ProviderType,
                     Timestamp = DateTime.UtcNow
                 };
             }

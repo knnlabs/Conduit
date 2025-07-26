@@ -6,7 +6,7 @@
 // Import ProviderType from the SDK instead of duplicating it
 import { ProviderType } from '@knn_labs/conduit-admin-client';
 
-// Re-export for backward compatibility
+// Re-export the SDK's ProviderType enum
 export { ProviderType };
 
 // Map ProviderType enum values to display strings
@@ -158,7 +158,7 @@ export const getProviderTypeFromDto = (dto: { providerType?: number; providerNam
     return dto.providerType as ProviderType;
   }
   
-  // Fall back to providerName for backward compatibility
+  // Fall back to providerName if needed
   if (dto.providerName) {
     return providerNameToType(dto.providerName);
   }

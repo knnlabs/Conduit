@@ -114,10 +114,11 @@ public static class ServiceCollectionExtensions
             var providerCredentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
             var configProviderCredentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var llmClientFactory = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.ILLMClientFactory>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminProviderCredentialService>>();
             
-            return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, configProviderCredentialService, publishEndpoint, logger);
+            return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, configProviderCredentialService, llmClientFactory, publishEndpoint, logger);
         });
 
         // Register Error Queue monitoring services

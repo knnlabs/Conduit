@@ -24,12 +24,6 @@ export type SystemStatusType =
   | 'warning'
   | 'error';
 
-export type ConnectionStatusType = 
-  | 'connected' 
-  | 'connecting' 
-  | 'disconnected' 
-  | 'reconnecting' 
-  | 'error';
 
 export interface StatusConfig {
   type: SystemStatusType;

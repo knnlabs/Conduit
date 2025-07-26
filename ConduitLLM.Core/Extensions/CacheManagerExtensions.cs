@@ -54,7 +54,10 @@ namespace ConduitLLM.Core.Extensions
 
             // Register health checks
             services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
+                    "cache_manager",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "infrastructure", "monitoring" });
 
             return services;
         }
@@ -81,7 +84,10 @@ namespace ConduitLLM.Core.Extensions
 
             // Register health checks
             services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
+                    "cache_manager",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "infrastructure", "monitoring" });
 
             return services;
         }
@@ -176,9 +182,19 @@ namespace ConduitLLM.Core.Extensions
 
             // Register health checks
             services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager")
-                .AddRedis(redisConnectionString, name: "redis_cache")
-                .AddCheck<CacheStatisticsHealthCheckAdapter>("cache_statistics");
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
+                    "cache_manager",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "infrastructure", "monitoring" })
+                .AddRedis(
+                    redisConnectionString, 
+                    name: "redis_cache",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "redis", "monitoring" })
+                .AddCheck<CacheStatisticsHealthCheckAdapter>(
+                    "cache_statistics",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "statistics", "monitoring" });
 
             return services;
         }
@@ -354,7 +370,10 @@ namespace ConduitLLM.Core.Extensions
 
             // Register health checks
             services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>("cache_manager");
+                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
+                    "cache_manager",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "cache", "infrastructure", "monitoring" });
 
             return services;
         }

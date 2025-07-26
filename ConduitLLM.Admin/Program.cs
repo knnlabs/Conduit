@@ -263,8 +263,9 @@ public partial class Program
         builder.Services.AddCacheInfrastructure(builder.Configuration);
         
         // Add cache monitoring and alerting services
-        builder.Services.AddCacheMonitoring(builder.Configuration);
-        builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();
+        // Temporarily disabled due to health check issues
+        // builder.Services.AddCacheMonitoring(builder.Configuration);
+        // builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();
 
         var app = builder.Build();
 

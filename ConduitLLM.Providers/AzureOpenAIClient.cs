@@ -215,5 +215,124 @@ namespace ConduitLLM.Providers
                 }
             });
         }
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies Azure OpenAI authentication by making a test request to the chat completions endpoint.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for Azure OpenAI authentication");
+                }
+
+                // Create a test client
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Azure requires the base URL to be set
+                var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                    ? baseUrl.TrimEnd('/') 
+                    : Credentials.BaseUrl?.TrimEnd('/');
+                    
+                if (string.IsNullOrWhiteSpace(effectiveBaseUrl))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Base URL is required",
+                        "Azure OpenAI requires a resource endpoint URL");
+                }
+                
+                // Make a minimal chat completion request to verify auth
+                var testEndpoint = $"{effectiveBaseUrl}/openai/deployments/{_deploymentName}/chat/completions?api-version={ApiVersion}";
+                var testRequest = new
+                {
+                    messages = new[]
+                    {
+                        new { role = "user", content = "Test" }
+                    },
+                    max_tokens = 1,
+                    temperature = 0
+                };
+
+                var json = System.Text.Json.JsonSerializer.Serialize(testRequest);
+                var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                
+                var response = await client.PostAsync(testEndpoint, content, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("Azure OpenAI auth check returned status {StatusCode}", response.StatusCode);
+
+                // Check for authentication errors
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        "Invalid API key for Azure OpenAI resource");
+                }
+                
+                // Check for not found (deployment doesn't exist)
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    if (responseContent.Contains("DeploymentNotFound"))
+                    {
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Deployment not found",
+                            $"The deployment '{_deploymentName}' was not found in the Azure OpenAI resource");
+                    }
+                }
+                
+                // Success - either 200 OK or rate limit (which means auth succeeded)
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        "Connected successfully to Azure OpenAI",
+                        responseTime);
+                }
+
+                // Other errors
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    await response.Content.ReadAsStringAsync(cancellationToken));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying Azure OpenAI authentication");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for Azure OpenAI.
+        /// </summary>
+        public override string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : Credentials.BaseUrl?.TrimEnd('/');
+                
+            if (string.IsNullOrWhiteSpace(effectiveBaseUrl))
+            {
+                throw new InvalidOperationException("Azure OpenAI requires a base URL (resource endpoint)");
+            }
+            
+            // Return the base deployments endpoint with API version
+            return $"{effectiveBaseUrl}/openai/deployments/{_deploymentName}/chat/completions?api-version={ApiVersion}";
+        }
+
+        #endregion
     }
 }

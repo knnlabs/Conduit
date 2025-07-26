@@ -1,25 +1,19 @@
-export interface ImageGenerationSettings {
-  model: string;
-  size: string;
-  quality?: 'standard' | 'hd';
-  style?: 'vivid' | 'natural';
-  n: number;
+import type { ImageGenerationRequest, ImageData } from '@knn_labs/conduit-core-client';
+
+// Extend SDK interface with UI-specific properties
+export interface ImageGenerationSettings extends Pick<ImageGenerationRequest, 'model' | 'size' | 'quality' | 'style' | 'n'> {
   responseFormat: 'url' | 'b64_json';
 }
 
-export interface GeneratedImage {
-  url?: string;
-  b64Json?: string;
-  revisedPrompt?: string;
-  id?: string;
-}
-
-export interface ImageGenerationResponse {
-  created: number;
-  data: GeneratedImage[];
-}
-
+// UI-specific status type (no SDK equivalent)
 export type ImageGenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
+
+// Extend SDK ImageData with UI-specific properties
+export interface GeneratedImage extends ImageData {
+  id?: string; // UI-specific property for tracking
+}
+
+
 
 export interface ImageGenerationState {
   prompt: string;

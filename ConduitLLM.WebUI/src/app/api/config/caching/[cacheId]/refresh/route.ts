@@ -13,7 +13,7 @@ export async function POST(
     
     // For now, clear the cache as a refresh mechanism
     // In the future, this would call a specific refresh endpoint
-    await adminClient.configuration.clearCacheByRegion(cacheId);
+    await (adminClient.configuration.clearCacheByRegion as (cacheId: string) => Promise<unknown>)(cacheId);
     
     return NextResponse.json({ 
       success: true, 

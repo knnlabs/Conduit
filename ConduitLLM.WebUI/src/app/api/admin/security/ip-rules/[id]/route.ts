@@ -58,7 +58,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
     
-    const filter = await client.ipFilter.getById(id);
+    const filter = await client.ipFilters.getById(id);
     const transformedFilter = transformIpFilter(filter);
     
     return NextResponse.json(transformedFilter);
@@ -109,10 +109,10 @@ export async function PATCH(
       updateRequest.isEnabled = body.isEnabled;
     }
     
-    await client.ipFilter.update(id, updateRequest);
+    await client.ipFilters.update(id, updateRequest);
     
     // Get the updated filter to return
-    const updatedFilter = await client.ipFilter.getById(id);
+    const updatedFilter = await client.ipFilters.getById(id);
     const transformedFilter = transformIpFilter(updatedFilter);
     
     return NextResponse.json(transformedFilter);
@@ -135,7 +135,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
     
-    await client.ipFilter.deleteById(id);
+    await client.ipFilters.deleteById(id);
     
     return NextResponse.json({ success: true });
   } catch (error) {

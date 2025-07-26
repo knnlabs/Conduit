@@ -29,28 +29,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-interface LegacyCreateModelCostDto {
-  modelId: string;
-  inputTokenCost?: number;
-  outputTokenCost?: number;
-  embeddingTokenCost?: number;
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string;
-  batchProcessingMultiplier?: number;
-  supportsBatchProcessing?: boolean;
-  imageQualityMultipliers?: string;
-  description?: string;
-  priority?: number;
-}
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as CreateModelCostDto | LegacyCreateModelCostDto;
+    const body = await req.json() as CreateModelCostDto;
 
     // Type guard to ensure body is a valid object
     if (!body || typeof body !== 'object') {
@@ -60,35 +42,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requestData = body as (CreateModelCostDto | LegacyCreateModelCostDto) & { modelIdPattern?: string; modelId?: string };
-
     const adminClient = getServerAdminClient();
-    
-    // Handle both new format (modelIdPattern) and legacy format (modelId)
-    const createData: CreateModelCostDto = requestData.modelIdPattern 
-      ? requestData as CreateModelCostDto  // New format
-      : {     // Transform legacy format
-          modelIdPattern: requestData.modelId ?? '',
-          providerName: 'Unknown', // Default for legacy format
-          modelType: 'chat' as const, // Default for legacy format
-          inputTokenCost: requestData.inputTokenCost ?? 0,
-          outputTokenCost: requestData.outputTokenCost ?? 0,
-          embeddingTokenCost: requestData.embeddingTokenCost,
-          imageCostPerImage: requestData.imageCostPerImage,
-          audioCostPerMinute: requestData.audioCostPerMinute,
-          audioCostPerKCharacters: requestData.audioCostPerKCharacters,
-          audioInputCostPerMinute: requestData.audioInputCostPerMinute,
-          audioOutputCostPerMinute: requestData.audioOutputCostPerMinute,
-          videoCostPerSecond: requestData.videoCostPerSecond,
-          videoResolutionMultipliers: requestData.videoResolutionMultipliers,
-          batchProcessingMultiplier: requestData.batchProcessingMultiplier,
-          supportsBatchProcessing: requestData.supportsBatchProcessing ?? false,
-          imageQualityMultipliers: requestData.imageQualityMultipliers,
-          description: requestData.description,
-          priority: requestData.priority ?? 0,
-        };
 
-    const result = await adminClient.modelCosts.create(createData);
+    const result = await adminClient.modelCosts.create(body);
     
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

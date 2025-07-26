@@ -28,6 +28,19 @@ export interface VideoTask {
   }>;
 }
 
+// Import SDK video interfaces for use in this file
+import type {
+  VideoData as SDKVideoData,
+  VideoUsage as SDKVideoUsage,
+  VideoMetadata as SDKVideoMetadata
+} from '@knn_labs/conduit-core-client';
+
+// Re-export SDK video interfaces
+export type VideoData = SDKVideoData;
+export type VideoUsage = SDKVideoUsage;
+export type VideoMetadata = SDKVideoMetadata;
+
+
 export interface VideoGenerationResult {
   created: number;
   data: VideoData[];
@@ -35,32 +48,8 @@ export interface VideoGenerationResult {
   usage?: VideoUsage;
 }
 
-export interface VideoData {
-  url?: string;
-  b64Json?: string;
-  revisedPrompt?: string;
-  metadata?: VideoMetadata;
-}
 
-export interface VideoUsage {
-  promptTokens: number;
-  totalTokens: number;
-  durationSeconds?: number;
-  processingTimeSeconds?: number;
-}
 
-export interface VideoMetadata {
-  duration?: number;
-  resolution?: string;
-  fps?: number;
-  fileSizeBytes?: number;
-  format?: string;
-  codec?: string;
-  audioCodec?: string;
-  bitrate?: number;
-  mimeType?: string;
-  seed?: number;
-}
 
 export interface VideoModel {
   id: string;

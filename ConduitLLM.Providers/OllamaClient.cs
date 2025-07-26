@@ -743,5 +743,96 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies Ollama is running by making a test request to the tags endpoint.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                
+                // Ollama doesn't require authentication, just check if service is running
+                // Create a test client
+                using var client = CreateHttpClient(apiKey ?? string.Empty);
+                
+                // Make a request to the tags endpoint (list models)
+                var tagsUrl = $"{GetHealthCheckUrl(baseUrl)}/api/tags";
+                var response = await client.GetAsync(tagsUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                Logger.LogInformation("Ollama connection check returned status {StatusCode}", response.StatusCode);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return Core.Interfaces.AuthenticationResult.Success(
+                        "Connected successfully to Ollama",
+                        responseTime);
+                }
+                
+                // Check if it's a connection error (service not running)
+                if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                    response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+                    response.StatusCode == 0) // Connection refused
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Ollama service not available",
+                        "Unable to connect to Ollama. Make sure Ollama is running on the specified host.");
+                }
+
+                // Other errors
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    await response.Content.ReadAsStringAsync(cancellationToken));
+            }
+            catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
+            {
+                // Connection refused - Ollama not running
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    "Ollama service not running",
+                    "Unable to connect to Ollama. Please ensure Ollama is installed and running.");
+            }
+            catch (TaskCanceledException)
+            {
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    "Connection timeout",
+                    "Timed out trying to connect to Ollama service.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying Ollama connection");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Connection verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for Ollama.
+        /// </summary>
+        public override string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Credentials.BaseUrl ?? DefaultOllamaBaseUrl).TrimEnd('/');
+            
+            return effectiveBaseUrl;
+        }
+
+        /// <summary>
+        /// Gets the default base URL for Ollama.
+        /// </summary>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DefaultOllamaBaseUrl;
+        }
+
+        #endregion
     }
 }

@@ -19,14 +19,6 @@ export interface UsageData {
   ['total_tokens']?: number;
 }
 
-/**
- * Final performance metrics for a message
- */
-export interface MessageMetrics {
-  tokensUsed: number;
-  tokensPerSecond: number;
-  latency: number;
-}
 
 /**
  * SSE event types from Core API

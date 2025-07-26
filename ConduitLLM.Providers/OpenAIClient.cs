@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
@@ -1058,6 +1059,145 @@ namespace ConduitLLM.Providers
 
             // Fallback to hardcoded default for backward compatibility
             return "gpt-4o-realtime-preview";
+        }
+
+        #endregion
+
+        #region Authentication Verification
+
+        /// <summary>
+        /// Verifies OpenAI authentication by checking if we can retrieve models with proper auth.
+        /// </summary>
+        public override async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for OpenAI authentication");
+                }
+
+                // Create a test client
+                using var client = CreateHttpClient(effectiveApiKey);
+                
+                // Try to list models - OpenAI returns 200 even without auth, 
+                // so we need to check the response content
+                var modelsUrl = GetHealthCheckUrl(baseUrl);
+                var response = await client.GetAsync(modelsUrl, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                    response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    Logger.LogWarning("OpenAI authentication failed: {Status} - {Content}",
+                        response.StatusCode, content);
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "Authentication failed",
+                        "Invalid API key - OpenAI requires a valid API key for accessing models");
+                }
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    
+                    // Check for error response in the content
+                    if (content.Contains("\"error\"") && 
+                        (content.Contains("invalid_api_key") || 
+                         content.Contains("Incorrect API key") ||
+                         content.Contains("Invalid authentication")))
+                    {
+                        Logger.LogWarning("OpenAI returned error in response body indicating invalid API key");
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Authentication failed",
+                            "Invalid API key - OpenAI returned authentication error");
+                    }
+                    
+                    // Parse the response to check if we have actual model data
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(content);
+                        var root = doc.RootElement;
+                        
+                        // Check if we have a data array with actual models
+                        if (root.TryGetProperty("data", out var dataElement) && 
+                            dataElement.GetArrayLength() > 0)
+                        {
+                            // Verify that at least one model has an ID
+                            foreach (var model in dataElement.EnumerateArray())
+                            {
+                                if (model.TryGetProperty("id", out var idElement) && 
+                                    !string.IsNullOrWhiteSpace(idElement.GetString()))
+                                {
+                                    Logger.LogInformation("OpenAI authentication successful - found valid model data");
+                                    return Core.Interfaces.AuthenticationResult.Success(
+                                        $"Connected successfully to OpenAI API",
+                                        responseTime);
+                                }
+                            }
+                        }
+                        
+                        Logger.LogWarning("OpenAI models response has no valid model data");
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Authentication verification inconclusive",
+                            "No model data returned - API key may be invalid");
+                    }
+                    catch (JsonException)
+                    {
+                        Logger.LogWarning("OpenAI models response is not valid JSON");
+                        return Core.Interfaces.AuthenticationResult.Failure(
+                            "Invalid response format",
+                            "Could not parse models response");
+                    }
+                }
+
+                // For any other status codes, the authentication is invalid
+                Logger.LogWarning("OpenAI returned unexpected status: {Status}", response.StatusCode);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Unexpected response: {response.StatusCode}",
+                    await response.Content.ReadAsStringAsync(cancellationToken));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying OpenAI authentication");
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for OpenAI.
+        /// </summary>
+        public override string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Credentials.BaseUrl ?? Constants.Urls.DefaultOpenAIBaseUrl).TrimEnd('/');
+            
+            // Ensure /v1 is in the URL
+            if (!effectiveBaseUrl.EndsWith("/v1"))
+            {
+                effectiveBaseUrl = $"{effectiveBaseUrl}/v1";
+            }
+            
+            return $"{effectiveBaseUrl}/models";
+        }
+
+        /// <summary>
+        /// Gets the default base URL for OpenAI.
+        /// </summary>
+        protected override string GetDefaultBaseUrl()
+        {
+            return Constants.Urls.DefaultOpenAIBaseUrl;
         }
 
         #endregion

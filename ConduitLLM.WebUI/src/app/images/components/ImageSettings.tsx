@@ -16,7 +16,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
   };
 
   const handleSizeChange = (value: string | null) => {
-    if (value) updateSettings({ size: value });
+    if (value) updateSettings({ size: value as '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792' });
   };
 
   const handleQualityChange = (value: string | null) => {
