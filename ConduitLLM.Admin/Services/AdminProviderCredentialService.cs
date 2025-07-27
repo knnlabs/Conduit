@@ -297,6 +297,10 @@ namespace ConduitLLM.Admin.Services
                     apiKey = primaryKey.ApiKey;
                     baseUrl = !string.IsNullOrEmpty(providerCredential.BaseUrl) ? providerCredential.BaseUrl : 
                               !string.IsNullOrEmpty(primaryKey.BaseUrl) ? primaryKey.BaseUrl : dbCredential.BaseUrl;
+                    
+                    // Update the provider type from the database record
+                    providerCredential.ProviderType = dbCredential.ProviderType;
+                    result.ProviderType = dbCredential.ProviderType;
                 }
                 else
                 {

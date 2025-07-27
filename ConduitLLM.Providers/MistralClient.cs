@@ -392,6 +392,12 @@ namespace ConduitLLM.Providers
             return effectiveBaseUrl;
         }
 
+        /// <inheritdoc/>
+        protected override string GetDefaultBaseUrl()
+        {
+            return Constants.Urls.DefaultBaseUrl;
+        }
+
         #endregion
     }
 }

@@ -917,6 +917,12 @@ namespace ConduitLLM.Providers
             });
         }
 
+        /// <inheritdoc/>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DefaultBaseUrl;
+        }
+
         #endregion
     }
 }

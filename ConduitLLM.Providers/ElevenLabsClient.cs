@@ -630,6 +630,12 @@ namespace ConduitLLM.Providers
             return "eleven_conversational_v1";
         }
 
+        /// <inheritdoc/>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DEFAULT_BASE_URL;
+        }
+
         #endregion
     }
 

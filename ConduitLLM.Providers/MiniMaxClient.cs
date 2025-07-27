@@ -813,6 +813,12 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc/>
+        protected override string GetDefaultBaseUrl()
+        {
+            return DefaultBaseUrl;
+        }
+
+        /// <inheritdoc/>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             // MiniMax uses a different authentication header
