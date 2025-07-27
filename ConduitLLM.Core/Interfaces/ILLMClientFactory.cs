@@ -32,4 +32,14 @@ public interface ILLMClientFactory
     /// <param name="providerType">The provider type to get metadata for.</param>
     /// <returns>Provider metadata if the provider implements IProviderMetadata, null otherwise.</returns>
     IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType);
+
+    /// <summary>
+    /// Gets an ILLMClient instance for the specified provider type directly.
+    /// This method looks up the provider by its enum type rather than database ID.
+    /// </summary>
+    /// <param name="providerType">The provider type enum value.</param>
+    /// <returns>An instance of ILLMClient for the specified provider type.</returns>
+    /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
+    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
+    ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType);
 }

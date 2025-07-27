@@ -119,8 +119,14 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             CancellationToken cancellationToken)
         {
+            // Create a minimal transcription request for routing
+            var routingRequest = new AudioTranscriptionRequest
+            {
+                Language = request.Language
+            };
             var transcriptionClient = await _audioRouter.GetTranscriptionClientAsync(
-                request.Language,
+                routingRequest,
+                request.VirtualKey ?? string.Empty,
                 cancellationToken);
 
             if (transcriptionClient == null)
@@ -263,8 +269,15 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                // Create a minimal TTS request for routing
+                var ttsRoutingRequest = new TextToSpeechRequest
+                {
+                    Voice = request.VoiceId,
+                    Input = "test" // Dummy text for routing only
+                };
                 var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(
-                    request.VoiceId,
+                    ttsRoutingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (ttsClient == null)

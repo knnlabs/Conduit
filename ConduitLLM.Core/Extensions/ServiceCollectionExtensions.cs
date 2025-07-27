@@ -52,9 +52,8 @@ namespace ConduitLLM.Core.Extensions
             // Register audio capability detector
             services.AddScoped<IAudioCapabilityDetector, AudioCapabilityDetector>();
 
-            // Register audio routers
-            services.AddScoped<IAudioRouter, AdvancedAudioRouter>();
-            services.AddScoped<IAdvancedAudioRouter, AdvancedAudioRouter>();
+            // Register audio router
+            services.AddScoped<IAudioRouter, AudioRouter>();
 
             // Register capability detector if not already registered
             services.TryAddScoped<IModelCapabilityDetector, ModelCapabilityDetector>();
@@ -65,8 +64,6 @@ namespace ConduitLLM.Core.Extensions
             // Register audio processing service for format conversion, compression, etc.
             services.AddScoped<IAudioProcessingService, AudioProcessingService>();
 
-            // Register simple audio router for hybrid audio service
-            services.AddScoped<ISimpleAudioRouter, BasicAudioRouter>();
 
             // Register security services
             services.AddScoped<IAudioContentFilter, AudioContentFilter>();

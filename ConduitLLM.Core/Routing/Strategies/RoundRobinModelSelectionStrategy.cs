@@ -18,6 +18,10 @@ namespace ConduitLLM.Core.Routing.Strategies
     /// Round-robin selection is useful for load balancing and for avoiding overloading any
     /// single model deployment, especially in high-traffic scenarios.
     /// </para>
+    /// <para>
+    /// Note: This strategy also serves the "leastused" and "random" routing strategies in the factory,
+    /// as they all effectively distribute load across models.
+    /// </para>
     /// </remarks>
     public class RoundRobinModelSelectionStrategy : IModelSelectionStrategy
     {

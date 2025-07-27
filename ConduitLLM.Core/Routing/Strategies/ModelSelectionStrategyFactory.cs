@@ -62,8 +62,8 @@ namespace ConduitLLM.Core.Routing.Strategies
                 "leastcost" => new LeastCostModelSelectionStrategy(),
                 "leastlatency" => new LeastLatencyModelSelectionStrategy(),
                 "priority" => new HighestPriorityModelSelectionStrategy(),
-                "random" => new RandomModelSelectionStrategy(),
-                "leastused" => new LeastUsedModelSelectionStrategy(),
+                "random" => new RoundRobinModelSelectionStrategy(), // Random removed, maps to round-robin for load distribution
+                "leastused" => new RoundRobinModelSelectionStrategy(), // Maps to round-robin (identical implementation)
                 // Default to simple strategy for unrecognized strategy names
                 _ => new SimpleModelSelectionStrategy()
             };

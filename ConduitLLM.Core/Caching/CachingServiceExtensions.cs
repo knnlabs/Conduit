@@ -77,6 +77,16 @@ namespace ConduitLLM.Core.Caching
     /// <summary>
     /// Factory that wraps LLM clients with the caching decorator
     /// </summary>
+    /// <remarks>
+    /// This is a decorator factory that adds caching functionality to any ILLMClientFactory implementation.
+    /// It intercepts client creation and wraps the returned clients with CachingLLMClient decorators.
+    /// 
+    /// This factory is automatically registered when caching is enabled through AddConduitCaching().
+    /// It wraps the existing factory registration, preserving the underlying factory's behavior
+    /// while adding caching capabilities to all created clients.
+    /// 
+    /// The caching behavior can be configured through CacheOptions in the application settings.
+    /// </remarks>
     public class CachingLLMClientFactory : ILLMClientFactory
     {
         private readonly ILLMClientFactory _innerFactory;
@@ -156,6 +166,30 @@ namespace ConduitLLM.Core.Caching
         {
             // Delegate to the inner factory
             return _innerFactory.GetProviderMetadata(providerType);
+        }
+
+        /// <inheritdoc />
+        public ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // Get the original client from the inner factory
+            var client = _innerFactory.GetClientByProviderType(providerType);
+
+            // Only wrap the client if caching is enabled
+            if (_cacheOptions.Value.IsEnabled)
+            {
+                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
+
+                // Wrap the client with the caching decorator
+                return new CachingLLMClient(
+                    client,
+                    _cacheService,
+                    _metricsService,
+                    _cacheOptions,
+                    logger);
+            }
+
+            // Fall back to the original client if caching is disabled
+            return client;
         }
     }
 }

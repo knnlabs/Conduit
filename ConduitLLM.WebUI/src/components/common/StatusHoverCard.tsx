@@ -91,7 +91,7 @@ export function StatusHoverCard({
   
   // Calculate overall stats
   const checkEntries = Object.entries(checks);
-  const healthyCount = checkEntries.filter(([_, check]) => 
+  const healthyCount = checkEntries.filter(([, check]) => 
     check.status?.toLowerCase() === 'healthy'
   ).length;
   const totalChecks = checkEntries.length;
@@ -143,7 +143,11 @@ export function StatusHoverCard({
                 </Group>
                 <Progress 
                   value={healthPercentage} 
-                  color={healthPercentage === 100 ? 'green' : healthPercentage >= 50 ? 'yellow' : 'red'}
+                  color={(() => {
+                    if (healthPercentage === 100) return 'green';
+                    if (healthPercentage >= 50) return 'yellow';
+                    return 'red';
+                  })()}
                   size="sm"
                   radius="xl"
                 />

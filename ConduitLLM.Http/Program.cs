@@ -11,7 +11,7 @@ using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces; // Added for IVirtualKeyCache
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Routing; // Added for DefaultLLMClientFactory
+using ConduitLLM.Core.Routing;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Authentication; // Added for VirtualKeyAuthenticationHandler
@@ -916,7 +916,7 @@ builder.Services.AddSingleton<ConduitLLM.Providers.Translators.UltravoxRealtimeT
 builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtimeTranslator>();
 
 // Register Audio routing
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.AudioRouter>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
 
 // Register Image Generation Retry Configuration

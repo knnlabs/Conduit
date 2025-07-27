@@ -20,6 +20,7 @@ using ConduitLLM.Core.Services;
 
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Providers;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
@@ -35,6 +36,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ILogger<AdminProviderCredentialService> _logger;
         private readonly ConduitLLM.Configuration.IProviderCredentialService _configProviderCredentialService;
         private readonly ILLMClientFactory _llmClientFactory;
+        private readonly ILoggerFactory _loggerFactory;
 
         /// <summary>
         /// Initializes a new instance of the AdminProviderCredentialService
@@ -43,6 +45,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
         /// <param name="configProviderCredentialService">The configuration provider credential service</param>
         /// <param name="llmClientFactory">The LLM client factory for creating provider instances</param>
+        /// <param name="loggerFactory">The logger factory for creating loggers</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
@@ -50,6 +53,7 @@ namespace ConduitLLM.Admin.Services
             IHttpClientFactory httpClientFactory,
             ConduitLLM.Configuration.IProviderCredentialService configProviderCredentialService,
             ILLMClientFactory llmClientFactory,
+            ILoggerFactory loggerFactory,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminProviderCredentialService> logger)
             : base(publishEndpoint, logger)
@@ -59,6 +63,7 @@ namespace ConduitLLM.Admin.Services
             _configProviderCredentialService = configProviderCredentialService ?? throw new ArgumentNullException(nameof(configProviderCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _llmClientFactory = llmClientFactory ?? throw new ArgumentNullException(nameof(llmClientFactory));
+            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             
             // Log event publishing configuration status
             LogEventPublishingConfiguration(nameof(AdminProviderCredentialService));
@@ -319,14 +324,28 @@ namespace ConduitLLM.Admin.Services
                     ProviderType = providerCredential.ProviderType
                 };
 
-                // Get the provider client from the factory
-                var client = _llmClientFactory.GetClientByProviderId((int)providerCredential.ProviderType);
+                // Create a client directly with the test credentials
+                // We need to provide the credentials in the settings for GetClientByProviderType to work
+                var testSettings = new ConduitSettings
+                {
+                    ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { tempCredentials }
+                };
+                
+                var baseFactory = new LLMClientFactory(
+                    Microsoft.Extensions.Options.Options.Create(testSettings),
+                    _loggerFactory,
+                    _httpClientFactory);
+                
+                var client = baseFactory.GetClientByProviderType(providerCredential.ProviderType);
                 
                 // Check if the client implements IAuthenticationVerifiable
                 if (client is IAuthenticationVerifiable authVerifiable)
                 {
                     // Use the provider's own authentication verification
-                    var authResult = await authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl);
+                    // Pass null for baseUrl if it's empty to allow providers to use their defaults
+                    var authResult = await authVerifiable.VerifyAuthenticationAsync(
+                        apiKey, 
+                        string.IsNullOrWhiteSpace(baseUrl) ? null : baseUrl);
                     
                     result.Success = authResult.IsSuccess;
                     result.Message = authResult.Message;
@@ -400,14 +419,36 @@ namespace ConduitLLM.Admin.Services
                     return result;
                 }
 
-                // Get the provider client from the factory
-                var client = _llmClientFactory.GetClientByProviderId((int)testRequest.ProviderType);
+                // Create temporary credentials for testing
+                var tempCredentials = new ProviderCredentials
+                {
+                    ApiKey = apiKey,
+                    BaseUrl = baseUrl,
+                    ProviderType = testRequest.ProviderType
+                };
+                
+                // Create a client directly with the test credentials
+                // We need to provide the credentials in the settings for GetClientByProviderType to work
+                var testSettings = new ConduitSettings
+                {
+                    ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { tempCredentials }
+                };
+                
+                var baseFactory = new LLMClientFactory(
+                    Microsoft.Extensions.Options.Options.Create(testSettings),
+                    _loggerFactory,
+                    _httpClientFactory);
+                
+                var client = baseFactory.GetClientByProviderType(testRequest.ProviderType);
                 
                 // Check if the client implements IAuthenticationVerifiable
                 if (client is IAuthenticationVerifiable authVerifiable)
                 {
                     // Use the provider's own authentication verification
-                    var authResult = await authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl);
+                    // Pass null for baseUrl if it's empty to allow providers to use their defaults
+                    var authResult = await authVerifiable.VerifyAuthenticationAsync(
+                        apiKey, 
+                        string.IsNullOrWhiteSpace(baseUrl) ? null : baseUrl);
                     
                     result.Success = authResult.IsSuccess;
                     result.Message = authResult.Message;
@@ -763,6 +804,9 @@ namespace ConduitLLM.Admin.Services
                 // Use the key's API key directly for testing
                 var apiKey = key.ApiKey;
                 var baseUrl = key.BaseUrl ?? provider.BaseUrl;
+                
+                _logger.LogInformation("Testing key {KeyId} for provider {ProviderId} ({ProviderType}). BaseUrl from key: '{KeyBaseUrl}', from provider: '{ProviderBaseUrl}', final: '{BaseUrl}'", 
+                    keyId, providerId, provider.ProviderType, key.BaseUrl, provider.BaseUrl, baseUrl);
                 
                 if (string.IsNullOrEmpty(apiKey))
                 {

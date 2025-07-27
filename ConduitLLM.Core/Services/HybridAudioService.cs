@@ -26,7 +26,7 @@ namespace ConduitLLM.Core.Services
     public partial class HybridAudioService : IHybridAudioService
     {
         private readonly ILLMRouter _llmRouter;
-        private readonly ISimpleAudioRouter _audioRouter;
+        private readonly IAudioRouter _audioRouter;
         private readonly ILogger<HybridAudioService> _logger;
         private readonly ICostCalculationService _costService;
         private readonly IContextManager _contextManager;
@@ -52,7 +52,7 @@ namespace ConduitLLM.Core.Services
         /// <param name="audioProcessingService">The audio processing service.</param>
         public HybridAudioService(
             ILLMRouter llmRouter,
-            ISimpleAudioRouter audioRouter,
+            IAudioRouter audioRouter,
             ILogger<HybridAudioService> logger,
             ICostCalculationService costService,
             IContextManager contextManager,
@@ -109,8 +109,14 @@ namespace ConduitLLM.Core.Services
 
                 // Step 1: Speech-to-Text
                 var sttStart = stopwatch.ElapsedMilliseconds;
+                // Create a minimal transcription request for routing
+                var routingRequest = new AudioTranscriptionRequest
+                {
+                    Language = request.Language
+                };
                 var transcriptionClient = await _audioRouter.GetTranscriptionClientAsync(
-                    request.Language,
+                    routingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (transcriptionClient == null)
@@ -193,8 +199,15 @@ namespace ConduitLLM.Core.Services
 
                 // Step 3: Text-to-Speech
                 var ttsStart = stopwatch.ElapsedMilliseconds;
+                // Create a minimal TTS request for routing
+                var ttsRoutingRequest = new TextToSpeechRequest
+                {
+                    Voice = request.VoiceId,
+                    Input = responseText
+                };
                 var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(
-                    request.VoiceId,
+                    ttsRoutingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (ttsClient == null)
@@ -306,11 +319,10 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
         {
             try
             {
-                // Check STT availability
-                var sttClient = await _audioRouter.GetTranscriptionClientAsync(null, cancellationToken);
-                if (sttClient == null || !await sttClient.SupportsTranscriptionAsync(cancellationToken: cancellationToken))
-                    return false;
-
+                // For hybrid audio service, we can't check specific provider availability without a virtual key
+                // The actual availability will be determined when ProcessConversationAsync is called with a valid key
+                // For now, just check if the LLM router is available
+                
                 // Check LLM availability
                 var testRequest = new ChatCompletionRequest
                 {
@@ -328,11 +340,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                     return false;
                 }
 
-                // Check TTS availability
-                var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(null, cancellationToken);
-                if (ttsClient == null || !await ttsClient.SupportsTextToSpeechAsync(cancellationToken: cancellationToken))
-                    return false;
-
+                // TTS availability will be checked when actually processing with a valid virtual key
                 return true;
             }
             catch (Exception ex)

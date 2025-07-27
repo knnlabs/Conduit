@@ -125,7 +125,8 @@ namespace ConduitLLM.Http.Controllers
                     OutputFormat = outputFormat,
                     Temperature = temperature,
                     MaxTokens = maxTokens,
-                    EnableStreaming = false
+                    EnableStreaming = false,
+                    VirtualKey = apiKey
                 };
 
                 // Process audio

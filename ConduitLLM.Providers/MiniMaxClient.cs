@@ -22,7 +22,7 @@ namespace ConduitLLM.Providers
     /// <summary>
     /// Client for interacting with MiniMax AI APIs.
     /// </summary>
-    public class MiniMaxClient : BaseLLMClient
+    public class MiniMaxClient : BaseLLMClient, IAuthenticationVerifiable
     {
         private const string DefaultBaseUrl = "https://api.minimax.io";
         private readonly string _baseUrl;
@@ -54,6 +54,16 @@ namespace ConduitLLM.Providers
         public void SetVideoProgressCallback(Func<string, string, int, Task>? progressCallback)
         {
             _progressCallback = progressCallback;
+        }
+
+        /// <inheritdoc/>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            // MiniMax uses Bearer token authentication
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         }
 
         /// <inheritdoc/>
@@ -818,16 +828,6 @@ namespace ConduitLLM.Providers
             return DefaultBaseUrl;
         }
 
-        /// <inheritdoc/>
-        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
-        {
-            // MiniMax uses a different authentication header
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        }
-
         /// <summary>
         /// Creates a configured HttpClient specifically for video generation requests.
         /// This client has no timeout policy to support long-running video generation.
@@ -1551,5 +1551,133 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
+
+        #region IAuthenticationVerifiable Implementation
+
+        /// <summary>
+        /// Verifies MiniMax authentication by making a minimal API call.
+        /// </summary>
+        public override async Task<AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null, 
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl.TrimEnd('/') : _baseUrl;
+                
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for MiniMax authentication");
+                }
+
+                // Create a test HTTP client
+                using var httpClient = CreateHttpClient(effectiveApiKey);
+                
+                // Make a minimal chat completion request with max_tokens=1 to minimize cost
+                var testUrl = $"{effectiveBaseUrl}/v1/chat/completions";
+                var testRequest = new
+                {
+                    model = "abab6.5-chat",  // Use the actual MiniMax model name
+                    messages = new[]
+                    {
+                        new { role = "user", content = "Hi" }
+                    },
+                    max_tokens = 1,
+                    stream = false
+                };
+                
+                var json = JsonSerializer.Serialize(testRequest);
+                using var testContent = new StringContent(json, Encoding.UTF8, "application/json");
+                using var response = await httpClient.PostAsync(testUrl, testContent, cancellationToken);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    
+                    // MiniMax returns base_resp with status_code for errors
+                    // Parse the response to check for MiniMax-specific error structure
+                    try
+                    {
+                        Logger.LogInformation("MiniMax auth test response: {Response}", content);
+                        
+                        using var doc = JsonDocument.Parse(content);
+                        if (doc.RootElement.TryGetProperty("base_resp", out var baseResp))
+                        {
+                            if (baseResp.TryGetProperty("status_code", out var statusCode) && 
+                                statusCode.GetInt32() != 0)
+                            {
+                                var statusMsg = baseResp.TryGetProperty("status_msg", out var msg) 
+                                    ? msg.GetString() : "Unknown error";
+                                Logger.LogWarning("MiniMax authentication failed with code {Code}: {Message}", 
+                                    statusCode.GetInt32(), statusMsg);
+                                return AuthenticationResult.Failure(
+                                    "Authentication failed",
+                                    statusMsg ?? "Invalid API key");
+                            }
+                        }
+                        
+                        // If we have choices, it's a successful response
+                        if (doc.RootElement.TryGetProperty("choices", out _))
+                        {
+                            return AuthenticationResult.Success(
+                                "Authentication successful",
+                                responseTime);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Failed to parse MiniMax response: {Response}", content);
+                        // If we can't parse the response, treat it as an error
+                    }
+                    
+                    return AuthenticationResult.Failure(
+                        "Invalid response",
+                        "Unexpected response format from MiniMax API");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                         response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return AuthenticationResult.Failure(
+                        "Invalid API key",
+                        "The provided API key was rejected by MiniMax");
+                }
+                else
+                {
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    return AuthenticationResult.Failure(
+                        $"Authentication failed with status {response.StatusCode}",
+                        content);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "Network error during MiniMax authentication verification");
+                return AuthenticationResult.Failure(
+                    "Network error",
+                    $"Could not connect to MiniMax API: {ex.Message}");
+            }
+            catch (TaskCanceledException)
+            {
+                return AuthenticationResult.Failure(
+                    "Request timeout",
+                    "The authentication request timed out");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error during MiniMax authentication verification");
+                return AuthenticationResult.Failure(
+                    "Authentication verification failed",
+                    ex.Message);
+            }
+        }
+
+        #endregion
+
     }
 }

@@ -37,6 +37,7 @@ import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import type { ProviderCredentialDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
 import { formatters } from '@/lib/utils/formatters';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import Link from 'next/link';
 
 export default function ProviderKeysPage() {
@@ -299,13 +300,13 @@ export default function ProviderKeysPage() {
         <Anchor component={Link} href="/llm-providers">
           LLM Providers
         </Anchor>
-        <Text>{(provider as { providerName?: string })?.providerName ?? 'Loading...'}</Text>
+        <Text>{provider ? getProviderDisplayName(provider.providerType) : 'Loading...'}</Text>
         <Text>API Keys</Text>
       </Breadcrumbs>
 
       <Group justify="space-between" mb="xl">
         <div>
-          <Title order={2}>API Keys for {(provider as { providerName?: string })?.providerName}</Title>
+          <Title order={2}>API Keys for {provider ? getProviderDisplayName(provider.providerType) : ''} {provider?.id ? `(ID: ${provider.id})` : ''}</Title>
           <Text size="sm" c="dimmed" mt={4}>
             Manage multiple API keys for load balancing and failover
           </Text>

@@ -15,6 +15,17 @@ namespace ConduitLLM.Providers;
 /// <summary>
 /// Factory responsible for creating ILLMClient instances based on configuration.
 /// </summary>
+/// <remarks>
+/// This factory creates LLM client instances using credentials from the application configuration (ConduitSettings).
+/// It supports all configured providers and applies decorators like performance tracking when enabled.
+/// 
+/// Use this factory when:
+/// - Credentials are stored in appsettings.json or environment variables
+/// - Running in environments where credentials are static (e.g., development, testing)
+/// - You need direct control over the configuration
+/// 
+/// For database-driven credential scenarios, use DatabaseAwareLLMClientFactory instead.
+/// </remarks>
 public class LLMClientFactory : ILLMClientFactory
 {
     private readonly ConduitSettings _settings;
@@ -326,6 +337,25 @@ public class LLMClientFactory : ILLMClientFactory
         // This factory doesn't have access to provider metadata
         // Return null to indicate metadata is not available through this factory
         return null;
+    }
+
+    /// <inheritdoc />
+    public ILLMClient GetClientByProviderType(ProviderType providerType)
+    {
+        // Get credentials for this provider type
+        var credentials = _settings.ProviderCredentials?.FirstOrDefault(c => c.ProviderType == providerType);
+        
+        if (credentials == null)
+        {
+            throw new ConfigurationException($"No provider credentials found for provider type '{providerType}'. Please check your Conduit configuration.");
+        }
+
+        // Create the client using the existing factory method
+        return CreateClientForProvider(
+            providerType.ToString().ToLower(),
+            credentials,
+            "default-model" // Default model ID for testing
+        );
     }
     
     // Legacy client creation method has been removed as part of the client migration

@@ -13,23 +13,23 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Core.Routing
 {
     /// <summary>
-    /// Simplified implementation of the audio router that works with existing interfaces.
+    /// Default implementation of the audio router for routing audio requests to appropriate providers.
     /// </summary>
-    public class SimpleAudioRouter : IAudioRouter
+    public class AudioRouter : IAudioRouter
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IAudioCapabilityDetector _capabilityDetector;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IProviderCredentialService _providerCredentialService;
-        private readonly ILogger<SimpleAudioRouter> _logger;
+        private readonly ILogger<AudioRouter> _logger;
         private readonly Dictionary<string, AudioRoutingStatistics> _statistics = new();
 
-        public SimpleAudioRouter(
+        public AudioRouter(
             ILLMClientFactory clientFactory,
             IAudioCapabilityDetector capabilityDetector,
             IVirtualKeyService virtualKeyService,
             IProviderCredentialService providerCredentialService,
-            ILogger<SimpleAudioRouter> logger)
+            ILogger<AudioRouter> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _capabilityDetector = capabilityDetector ?? throw new ArgumentNullException(nameof(capabilityDetector));

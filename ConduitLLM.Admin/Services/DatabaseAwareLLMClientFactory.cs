@@ -13,6 +13,17 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Database-aware implementation of ILLMClientFactory that uses provider credentials from the database.
     /// </summary>
+    /// <remarks>
+    /// This factory creates LLM client instances using credentials dynamically loaded from the database.
+    /// It delegates the actual client creation to LLMClientFactory after constructing temporary settings.
+    /// 
+    /// Use this factory when:
+    /// - Credentials are managed through the admin interface and stored in the database
+    /// - Running in production environments where credentials can be updated at runtime
+    /// - You need to support multi-tenant scenarios with different credentials per tenant
+    /// 
+    /// For static configuration scenarios, use LLMClientFactory directly.
+    /// </remarks>
     public class DatabaseAwareLLMClientFactory : ILLMClientFactory
     {
         private readonly IProviderCredentialService _credentialService;
@@ -102,7 +113,8 @@ namespace ConduitLLM.Admin.Services
                 // Copy other relevant settings from current settings
                 ModelMappings = currentSettings.ModelMappings,
                 DefaultModels = currentSettings.DefaultModels,
-                PerformanceTracking = currentSettings.PerformanceTracking
+                // Disable performance tracking for connection testing
+                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
             };
 
             // Create a new factory with the database credentials
@@ -120,6 +132,52 @@ namespace ConduitLLM.Admin.Services
             // This factory doesn't have access to provider metadata
             // Return null to indicate metadata is not available through this factory
             return null;
+        }
+
+        /// <inheritdoc />
+        public ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);
+
+            // Get credentials from database by provider type
+            var credentials = Task.Run(async () => 
+                await _credentialService.GetCredentialByProviderTypeAsync(providerType)).Result;
+
+            if (credentials == null || !credentials.IsEnabled)
+            {
+                _logger.LogWarning("No enabled credentials found for provider type {ProviderType} in database", providerType);
+                throw new ConfigurationException($"No provider credentials found for provider type '{providerType}'. Please check your Conduit configuration.");
+            }
+
+            // Get current settings and create a temporary ConduitSettings with the database credentials
+            var currentSettings = _settingsMonitor.CurrentValue;
+            var tempSettings = new ConduitSettings
+            {
+                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
+                {
+                    new ProviderCredentials
+                    {
+                        ProviderType = credentials.ProviderType,
+                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
+                        BaseUrl = credentials.BaseUrl
+                    }
+                },
+                // Copy other relevant settings from current settings
+                ModelMappings = currentSettings.ModelMappings,
+                DefaultModels = currentSettings.DefaultModels,
+                // Disable performance tracking for connection testing
+                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
+            };
+
+            // Create a new factory with the database credentials
+            var tempFactory = new LLMClientFactory(
+                Microsoft.Extensions.Options.Options.Create(tempSettings),
+                _loggerFactory,
+                _httpClientFactory);
+
+            // Use the GetClientByProviderType method of the temp factory
+            return tempFactory.GetClientByProviderType(providerType);
         }
     }
 }
