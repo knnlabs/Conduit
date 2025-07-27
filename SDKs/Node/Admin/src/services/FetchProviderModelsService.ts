@@ -1,6 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import type {
   ModelDto,
   ModelDetailsDto,
@@ -19,12 +20,12 @@ export class FetchProviderModelsService {
    * Get models for a specific provider
    */
   async getProviderModels(
-    providerName: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<ModelDto[]> {
     // The Admin API returns DiscoveredModel[], we need to map to ModelDto[]
     const discoveredModels = await this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerName),
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -62,12 +63,12 @@ export class FetchProviderModelsService {
    * @deprecated This endpoint doesn't exist in Admin API. Use getProviderModels instead.
    */
   async getCachedProviderModels(
-    providerName: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<ModelDto[]> {
     // Fallback to regular getProviderModels since cached endpoint doesn't exist
     console.warn('getCachedProviderModels: This endpoint does not exist in Admin API. Using getProviderModels instead.');
-    return this.getProviderModels(providerName, config);
+    return this.getProviderModels(providerType, config);
   }
 
   /**
@@ -75,18 +76,18 @@ export class FetchProviderModelsService {
    * @deprecated This endpoint doesn't exist in Admin API. Model discovery happens in real-time.
    */
   async refreshProviderModels(
-    providerName: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<RefreshModelsResponse> {
     // Admin API discovers models in real-time, no refresh needed
     console.warn('refreshProviderModels: This endpoint does not exist in Admin API. Model discovery happens in real-time.');
-    const models = await this.getProviderModels(providerName, config);
+    const models = await this.getProviderModels(providerType, config);
     return {
-      provider: providerName,
-      providerType: 1, // This is a legacy compatibility method, type won't be accurate
+      provider: ProviderType[providerType], // Convert enum value to string name
+      providerType: providerType,
       modelsCount: models.length,
       success: true,
-      message: `Discovered ${models.length} models for ${providerName}`,
+      message: `Discovered ${models.length} models for ${ProviderType[providerType]}`,
     };
   }
 
@@ -94,13 +95,13 @@ export class FetchProviderModelsService {
    * Get detailed model information
    */
   async getModelDetails(
-    providerName: string,
+    providerType: ProviderType,
     modelId: string,
     config?: RequestConfig
   ): Promise<ModelDetailsDto> {
     // Use the discover endpoint to get model details
     const discoveredModel = await this.client['get']<DiscoveredModel>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerName, modelId),
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerType, modelId),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -138,12 +139,12 @@ export class FetchProviderModelsService {
    * Get model capabilities
    */
   async getModelCapabilities(
-    providerName: string,
+    providerType: ProviderType,
     modelId: string,
     config?: RequestConfig
   ): Promise<ModelCapabilities> {
     // Get model details which includes capabilities
-    const modelDetails = await this.getModelDetails(providerName, modelId, config);
+    const modelDetails = await this.getModelDetails(providerType, modelId, config);
     return modelDetails.capabilities;
   }
 

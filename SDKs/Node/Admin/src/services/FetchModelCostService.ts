@@ -1,6 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import {
   ModelCost,
   CreateModelCostDto,
@@ -114,14 +115,14 @@ export class FetchModelCostService {
   }
 
   /**
-   * Get model costs by provider name
+   * Get model costs by provider type
    */
   async getByProvider(
-    providerName: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<ModelCost[]> {
     return this.client['get']<ModelCost[]>(
-      ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerName),
+      ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,

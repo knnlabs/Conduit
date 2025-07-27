@@ -55,7 +55,7 @@ namespace ConduitLLM.Configuration.Repositories
                 queryable = queryable.Where(l => l.VirtualKey == query.VirtualKey);
 
             if (query.ProviderType.HasValue)
-                queryable = queryable.Where(l => l.Provider == query.ProviderType.Value.ToString());
+                queryable = queryable.Where(l => l.Provider == query.ProviderType.Value);
 
             if (!string.IsNullOrEmpty(query.OperationType))
                 queryable = queryable.Where(l => l.OperationType.ToLower() == query.OperationType.ToLower());
@@ -96,7 +96,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
+        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, ProviderType? providerType = null)
         {
             // Ensure dates are in UTC for PostgreSQL
             var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
@@ -108,8 +108,10 @@ namespace ConduitLLM.Configuration.Repositories
             if (!string.IsNullOrEmpty(virtualKey))
                 query = query.Where(l => l.VirtualKey == virtualKey);
 
-            if (!string.IsNullOrEmpty(provider))
-                query = query.Where(l => l.Provider.ToLower() == provider.ToLower());
+            if (providerType.HasValue)
+            {
+                query = query.Where(l => l.Provider == providerType.Value);
+            }
 
             var logs = await query.ToListAsync();
 
@@ -136,7 +138,7 @@ namespace ConduitLLM.Configuration.Repositories
             // Get virtual key breakdown (if not filtering by a specific key)
             if (string.IsNullOrEmpty(virtualKey))
             {
-                summary.VirtualKeyBreakdown = await GetVirtualKeyBreakdownAsync(utcStartDate, utcEndDate, provider);
+                summary.VirtualKeyBreakdown = await GetVirtualKeyBreakdownAsync(utcStartDate, utcEndDate, providerType);
             }
 
             return summary;
@@ -163,9 +165,9 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioUsageLog>> GetByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<List<AudioUsageLog>> GetByProviderAsync(ProviderType providerType, DateTime? startDate = null, DateTime? endDate = null)
         {
-            var query = _context.AudioUsageLogs.Where(l => l.Provider.ToLower() == provider.ToLower());
+            var query = _context.AudioUsageLogs.Where(l => l.Provider == providerType);
 
             if (startDate.HasValue)
             {
@@ -248,28 +250,21 @@ namespace ConduitLLM.Configuration.Repositories
 
             var breakdown = await query
                 .GroupBy(l => l.Provider)
-                .Select(g => new
+                .Select(g => new ProviderBreakdown
                 {
-                    Provider = g.Key,
+                    ProviderType = g.Key,
                     Count = g.Count(),
                     TotalCost = g.Sum(l => l.Cost),
-                    SuccessCount = g.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300))
+                    SuccessRate = g.Count() > 0 ? (g.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)g.Count()) * 100 : 0
                 })
+                .OrderByDescending(b => b.TotalCost)
                 .ToListAsync();
 
-            return breakdown.Select(b => new ProviderBreakdown
-            {
-                ProviderType = Enum.TryParse<ProviderType>(b.Provider, true, out var providerType) ? providerType : ProviderType.OpenAI,
-                Count = b.Count,
-                TotalCost = b.TotalCost,
-                SuccessRate = b.Count > 0 ? (b.SuccessCount / (double)b.Count) * 100 : 0
-            })
-            .OrderByDescending(b => b.TotalCost)
-            .ToList();
+            return breakdown;
         }
 
         /// <inheritdoc/>
-        public async Task<List<VirtualKeyBreakdown>> GetVirtualKeyBreakdownAsync(DateTime startDate, DateTime endDate, string? provider = null)
+        public async Task<List<VirtualKeyBreakdown>> GetVirtualKeyBreakdownAsync(DateTime startDate, DateTime endDate, ProviderType? providerType = null)
         {
             // Ensure dates are in UTC for PostgreSQL
             var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
@@ -278,8 +273,10 @@ namespace ConduitLLM.Configuration.Repositories
             var query = _context.AudioUsageLogs
                 .Where(l => l.Timestamp >= utcStartDate && l.Timestamp <= utcEndDate);
 
-            if (!string.IsNullOrEmpty(provider))
-                query = query.Where(l => l.Provider.ToLower() == provider.ToLower());
+            if (providerType.HasValue)
+            {
+                query = query.Where(l => l.Provider == providerType.Value);
+            }
 
             var breakdown = await query
                 .GroupBy(l => l.VirtualKey)

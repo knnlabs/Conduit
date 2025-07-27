@@ -91,57 +91,6 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets a provider credential by provider name
-        /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <returns>The provider credential</returns>
-        [HttpGet("name/{providerName}")]
-        [ProducesResponseType(typeof(ProviderCredentialDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetProviderCredentialByName(string providerName)
-        {
-            try
-            {
-                var credential = await _providerCredentialService.GetProviderCredentialByNameAsync(providerName);
-
-                if (credential == null)
-                {
-                    _logger.LogWarning("Provider credential not found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
-                    return NotFound(new { error = "Provider credential not found" });
-                }
-
-                return Ok(credential);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
-        }
-
-        /// <summary>
-        /// Gets all provider names
-        /// </summary>
-        /// <returns>List of provider names</returns>
-        [HttpGet("names")]
-        [ProducesResponseType(typeof(IEnumerable<ProviderDataDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllProviderNames()
-        {
-            try
-            {
-                var providerNames = await _providerCredentialService.GetAllProviderNamesAsync();
-                return Ok(providerNames);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all provider names");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-            }
-        }
-
-        /// <summary>
         /// Creates a new provider credential
         /// </summary>
         /// <param name="credential">The provider credential to create</param>

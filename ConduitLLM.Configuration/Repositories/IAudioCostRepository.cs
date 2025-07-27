@@ -24,12 +24,12 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets audio costs by provider.
         /// </summary>
-        Task<List<AudioCost>> GetByProviderAsync(string provider);
+        Task<List<AudioCost>> GetByProviderAsync(ProviderType providerType);
 
         /// <summary>
         /// Gets the current cost for a specific provider, operation, and model.
         /// </summary>
-        Task<AudioCost?> GetCurrentCostAsync(string provider, string operationType, string? model = null);
+        Task<AudioCost?> GetCurrentCostAsync(ProviderType providerType, string operationType, string? model = null);
 
         /// <summary>
         /// Gets costs effective at a specific date.
@@ -54,11 +54,11 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Deactivates all costs for a provider and operation type.
         /// </summary>
-        Task DeactivatePreviousCostsAsync(string provider, string operationType, string? model = null);
+        Task DeactivatePreviousCostsAsync(ProviderType providerType, string operationType, string? model = null);
 
         /// <summary>
         /// Gets cost history for a provider and operation.
         /// </summary>
-        Task<List<AudioCost>> GetCostHistoryAsync(string provider, string operationType, string? model = null);
+        Task<List<AudioCost>> GetCostHistoryAsync(ProviderType providerType, string operationType, string? model = null);
     }
 }

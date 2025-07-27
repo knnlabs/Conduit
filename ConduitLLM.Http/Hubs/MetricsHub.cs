@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -159,14 +160,14 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Requests a detailed provider health check.
         /// </summary>
-        /// <param name="providerName">Optional provider name to check. If null, checks all providers.</param>
+        /// <param name="providerType">Optional provider type to check. If null, checks all providers.</param>
         /// <returns>Provider health details.</returns>
-        public async Task<List<ProviderHealthStatus>> CheckProviderHealth(string? providerName = null)
+        public async Task<List<ProviderHealthStatus>> CheckProviderHealth(ProviderType? providerType = null)
         {
             _logger.LogInformation("Client {ConnectionId} requesting provider health check for: {Provider}", 
-                Context.ConnectionId, providerName ?? "all");
+                Context.ConnectionId, providerType?.ToString() ?? "all");
             
-            return await _metricsService.CheckProviderHealthAsync(providerName);
+            return await _metricsService.CheckProviderHealthAsync(providerType);
         }
 
         /// <summary>
@@ -254,7 +255,7 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Checks provider health status.
         /// </summary>
-        Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(string? providerName);
+        Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType);
 
         /// <summary>
         /// Gets top virtual keys by metric.

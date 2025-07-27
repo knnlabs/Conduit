@@ -53,29 +53,6 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<ProviderCredential?> GetByProviderNameAsync(string providerName, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.ProviderCredentials
-                    .Include(pc => pc.ProviderKeyCredentials)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderType.ToString().ToLower() == providerName.ToLower(), cancellationToken);
-            }
-            catch (Exception ex)
-            {
-_logger.LogError(ex, "Error getting provider credential for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
         public async Task<ProviderCredential?> GetByProviderTypeAsync(ProviderType providerType, CancellationToken cancellationToken = default)
         {
             try

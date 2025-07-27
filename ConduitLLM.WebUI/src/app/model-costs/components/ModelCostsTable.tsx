@@ -35,6 +35,7 @@ import { ModelCost } from '../types/modelCost';
 import { EditModelCostModal } from './EditModelCostModal';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
+import { getProviderDisplayName, getProviderTypeFromDto, ProviderType } from '@/lib/utils/providerTypeUtils';
 
 interface ModelCostsTableProps {
   onRefresh?: () => void;
@@ -50,7 +51,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [providerFilter, setProviderFilter] = useState<string | null>(null);
+  const [providerFilter, setProviderFilter] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>('true');
   
   // Modal state
@@ -91,7 +92,22 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   }) ?? [];
 
   // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(data?.items?.map(c => c.providerName).filter(Boolean) ?? [])) as string[];
+  const uniqueProviders = Array.from(new Set(
+    data?.items?.map(c => {
+      try {
+        const providerType = getProviderTypeFromDto(c);
+        return providerType.toString();
+      } catch {
+        return null;
+      }
+    }).filter(Boolean) ?? []
+  )) as string[];
+  
+  // Create provider options with display names
+  const providerOptions = uniqueProviders.map(providerTypeStr => ({
+    value: parseInt(providerTypeStr).toString(), // Keep as string for Select component
+    label: getProviderDisplayName(parseInt(providerTypeStr) as ProviderType)
+  }));
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
@@ -210,9 +226,9 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
             />
             <Select
               placeholder="All providers"
-              value={providerFilter}
-              onChange={setProviderFilter}
-              data={uniqueProviders}
+              value={providerFilter?.toString() ?? null}
+              onChange={(value) => setProviderFilter(value ? parseInt(value) : null)}
+              data={providerOptions}
               clearable
               w={200}
             />
@@ -271,7 +287,14 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                       </Table.Td>
                       <Table.Td>
                         <Badge variant="light" size="sm">
-                          {cost.providerName}
+                          {(() => {
+                            try {
+                              const providerType = getProviderTypeFromDto(cost);
+                              return getProviderDisplayName(providerType);
+                            } catch {
+                              return cost.providerName ?? 'Unknown';
+                            }
+                          })()}
                         </Badge>
                       </Table.Td>
                       <Table.Td>

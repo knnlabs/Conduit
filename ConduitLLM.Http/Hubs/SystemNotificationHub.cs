@@ -241,10 +241,10 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         public async Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
-            // Parse provider name to ProviderType enum
+            // Parse provider string to ProviderType enum
             if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
             {
-                _logger.LogWarning("Unknown provider type: {ProviderName}", providerName);
+                _logger.LogWarning("Unknown provider type for model capabilities: {Provider}", providerName);
                 return;
             }
             

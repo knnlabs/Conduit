@@ -42,4 +42,17 @@ public interface ILLMClientFactory
     /// <exception cref="ConfigurationException">Thrown if the configuration for the provider is invalid or missing.</exception>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
     ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType);
+
+    /// <summary>
+    /// Creates a lightweight ILLMClient instance for testing provider credentials.
+    /// This method bypasses the normal configuration lookup and creates a client directly with the provided credentials.
+    /// </summary>
+    /// <param name="credentials">The provider credentials to test, including API key and provider type.</param>
+    /// <returns>An instance of ILLMClient configured with the test credentials.</returns>
+    /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
+    /// <remarks>
+    /// This method is specifically designed for credential validation and should not be used for normal operations.
+    /// The created client is configured with minimal settings suitable for authentication testing only.
+    /// </remarks>
+    ILLMClient CreateTestClient(ConduitLLM.Configuration.ProviderCredentials credentials);
 }

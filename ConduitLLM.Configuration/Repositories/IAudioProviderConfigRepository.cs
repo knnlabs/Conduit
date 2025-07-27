@@ -26,14 +26,9 @@ namespace ConduitLLM.Configuration.Repositories
         Task<AudioProviderConfig?> GetByProviderCredentialIdAsync(int providerCredentialId);
 
         /// <summary>
-        /// Gets audio provider configurations by provider name.
-        /// </summary>
-        Task<List<AudioProviderConfig>> GetByProviderNameAsync(string providerName);
-
-        /// <summary>
         /// Gets audio provider configurations by provider type.
         /// </summary>
-        Task<List<AudioProviderConfig>> GetByProviderNameAsync(ProviderType providerType);
+        Task<List<AudioProviderConfig>> GetByProviderTypeAsync(ProviderType providerType);
 
         /// <summary>
         /// Gets enabled audio provider configurations for a specific operation type.

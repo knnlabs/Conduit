@@ -316,7 +316,7 @@ namespace ConduitLLM.Admin.Services
                     return result;
                 }
 
-                // Create a temporary ProviderCredentials object for the factory
+                // Create test credentials
                 var tempCredentials = new ProviderCredentials
                 {
                     ApiKey = apiKey,
@@ -324,19 +324,8 @@ namespace ConduitLLM.Admin.Services
                     ProviderType = providerCredential.ProviderType
                 };
 
-                // Create a client directly with the test credentials
-                // We need to provide the credentials in the settings for GetClientByProviderType to work
-                var testSettings = new ConduitSettings
-                {
-                    ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { tempCredentials }
-                };
-                
-                var baseFactory = new LLMClientFactory(
-                    Microsoft.Extensions.Options.Options.Create(testSettings),
-                    _loggerFactory,
-                    _httpClientFactory);
-                
-                var client = baseFactory.GetClientByProviderType(providerCredential.ProviderType);
+                // Use the factory's new CreateTestClient method
+                var client = _llmClientFactory.CreateTestClient(tempCredentials);
                 
                 // Check if the client implements IAuthenticationVerifiable
                 if (client is IAuthenticationVerifiable authVerifiable)
@@ -427,19 +416,8 @@ namespace ConduitLLM.Admin.Services
                     ProviderType = testRequest.ProviderType
                 };
                 
-                // Create a client directly with the test credentials
-                // We need to provide the credentials in the settings for GetClientByProviderType to work
-                var testSettings = new ConduitSettings
-                {
-                    ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { tempCredentials }
-                };
-                
-                var baseFactory = new LLMClientFactory(
-                    Microsoft.Extensions.Options.Options.Create(testSettings),
-                    _loggerFactory,
-                    _httpClientFactory);
-                
-                var client = baseFactory.GetClientByProviderType(testRequest.ProviderType);
+                // Use the factory's new CreateTestClient method
+                var client = _llmClientFactory.CreateTestClient(tempCredentials);
                 
                 // Check if the client implements IAuthenticationVerifiable
                 if (client is IAuthenticationVerifiable authVerifiable)
@@ -820,16 +798,49 @@ namespace ConduitLLM.Admin.Services
                     };
                 }
                 
-                // Create a test request DTO to use with V2 method
-                var testRequest = new TestProviderConnectionDto
+                // Create test credentials for the specific key
+                var testCredentials = new ProviderCredentials
                 {
-                    ProviderType = provider.ProviderType,
                     ApiKey = apiKey,
-                    BaseUrl = baseUrl
+                    BaseUrl = baseUrl,
+                    ProviderType = provider.ProviderType
                 };
                 
-                // Use the new method which leverages provider-specific authentication
-                return await TestProviderConnectionAsync(testRequest);
+                // Use the factory's new CreateTestClient method
+                var startTime = DateTime.UtcNow;
+                var client = _llmClientFactory.CreateTestClient(testCredentials);
+                
+                // Verify authentication
+                if (client is IAuthenticationVerifiable authVerifiable)
+                {
+                    var authResult = await authVerifiable.VerifyAuthenticationAsync(
+                        apiKey, 
+                        string.IsNullOrWhiteSpace(baseUrl) ? null : baseUrl);
+                    
+                    return new ProviderConnectionTestResultDto
+                    {
+                        Success = authResult.IsSuccess,
+                        Message = authResult.ResponseTimeMs.HasValue 
+                            ? $"{authResult.Message} (Response time: {authResult.ResponseTimeMs.Value:F2}ms)"
+                            : authResult.Message,
+                        ErrorDetails = authResult.ErrorDetails,
+                        ProviderType = provider.ProviderType,
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+                else
+                {
+                    // This should not happen if all providers implement IAuthenticationVerifiable
+                    _logger.LogWarning("Provider {ProviderType} does not implement IAuthenticationVerifiable", provider.ProviderType);
+                    return new ProviderConnectionTestResultDto
+                    {
+                        Success = false,
+                        Message = "Provider does not support authentication verification",
+                        ErrorDetails = $"The {provider.ProviderType} provider has not implemented authentication verification",
+                        ProviderType = provider.ProviderType,
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
             }
             catch (Exception ex)
             {

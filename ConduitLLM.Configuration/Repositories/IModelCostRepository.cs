@@ -44,14 +44,6 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets all model costs for a specific provider
         /// </summary>
-        /// <param name="providerName">The provider name</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of model costs for the specified provider</returns>
-        Task<List<ModelCost>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Gets all model costs for a specific provider
-        /// </summary>
         /// <param name="providerType">The provider type</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model costs for the specified provider</returns>

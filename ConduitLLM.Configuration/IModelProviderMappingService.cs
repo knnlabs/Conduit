@@ -28,14 +28,6 @@ namespace ConduitLLM.Configuration
         Task<(bool success, string? errorMessage)> ValidateAndUpdateMappingAsync(int id, ModelProviderMapping mapping);
 
         /// <summary>
-        /// Validates that a provider exists
-        /// </summary>
-        /// <param name="providerName">The provider name to validate</param>
-        /// <returns>True if the provider exists, false otherwise</returns>
-        [Obsolete("Use ProviderExistsByIdAsync instead. Provider names are error-prone and will be deprecated.")]
-        Task<bool> ProviderExistsAsync(string providerName);
-        
-        /// <summary>
         /// Validates that a provider exists by ID
         /// </summary>
         /// <param name="providerId">The provider ID to validate</param>

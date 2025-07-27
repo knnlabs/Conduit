@@ -595,5 +595,55 @@ namespace ConduitLLM.Http.Services
 
             return 0;
         }
+
+        /// <summary>
+        /// Checks provider health status.
+        /// </summary>
+        public async Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var providerHealthRepository = scope.ServiceProvider.GetRequiredService<IProviderHealthRepository>();
+            
+            var healthStatuses = new List<ProviderHealthStatus>();
+            
+            if (providerType.HasValue)
+            {
+                // Get health for specific provider
+                var health = await providerHealthRepository.GetLatestStatusAsync(providerType.Value);
+                if (health != null)
+                {
+                    healthStatuses.Add(new ProviderHealthStatus
+                    {
+                        ProviderType = providerType.Value,
+                        Status = health.IsOnline ? "healthy" : "unhealthy",
+                        AverageLatency = health.ResponseTimeMs,
+                        LastSuccessfulRequest = health.IsOnline ? health.TimestampUtc : null,
+                        ErrorRate = 0, // Calculate from recent health records if needed
+                        IsEnabled = true,
+                        AvailableModels = 0
+                    });
+                }
+            }
+            else
+            {
+                // Get health for all providers
+                var allStatuses = await providerHealthRepository.GetAllLatestStatusesAsync();
+                foreach (var status in allStatuses)
+                {
+                    healthStatuses.Add(new ProviderHealthStatus
+                    {
+                        ProviderType = status.Key,
+                        Status = status.Value.IsOnline ? "healthy" : "unhealthy",
+                        AverageLatency = status.Value.ResponseTimeMs,
+                        LastSuccessfulRequest = status.Value.IsOnline ? status.Value.TimestampUtc : null,
+                        ErrorRate = 0, // Calculate from recent health records if needed
+                        IsEnabled = true,
+                        AvailableModels = 0
+                    });
+                }
+            }
+            
+            return healthStatuses;
+        }
     }
 }

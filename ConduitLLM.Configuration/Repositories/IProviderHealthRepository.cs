@@ -14,25 +14,9 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets the latest health status for a provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <returns>The latest health record, or null if none exists</returns>
-        Task<ProviderHealthRecord?> GetLatestStatusAsync(string providerName);
-
-        /// <summary>
-        /// Gets the latest health status for a provider
-        /// </summary>
         /// <param name="providerType">The provider type</param>
         /// <returns>The latest health record, or null if none exists</returns>
         Task<ProviderHealthRecord?> GetLatestStatusAsync(ProviderType providerType);
-
-        /// <summary>
-        /// Gets status history for a provider within a specified time range
-        /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <param name="since">The start time (UTC) for the history</param>
-        /// <param name="limit">Maximum number of records to return</param>
-        /// <returns>A list of health records, ordered by timestamp descending</returns>
-        Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(string providerName, DateTime since, int limit = 100);
 
         /// <summary>
         /// Gets status history for a provider within a specified time range
@@ -53,15 +37,8 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets the latest health status for all providers
         /// </summary>
-        /// <returns>A dictionary mapping provider names to their latest health records</returns>
-        Task<Dictionary<string, ProviderHealthRecord>> GetAllLatestStatusesAsync();
-
-        /// <summary>
-        /// Gets health configuration for a provider
-        /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <returns>The provider health configuration, or null if none exists</returns>
-        Task<ProviderHealthConfiguration?> GetConfigurationAsync(string providerName);
+        /// <returns>A dictionary mapping provider types to their latest health records</returns>
+        Task<Dictionary<ProviderType, ProviderHealthRecord>> GetAllLatestStatusesAsync();
 
         /// <summary>
         /// Gets health configuration for a provider
@@ -87,29 +64,29 @@ namespace ConduitLLM.Configuration.Repositories
         /// Gets provider uptime percentages since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for calculating uptime</param>
-        /// <returns>A dictionary mapping provider names to their uptime percentages (0-100)</returns>
-        Task<Dictionary<string, double>> GetProviderUptimeAsync(DateTime since);
+        /// <returns>A dictionary mapping provider types to their uptime percentages (0-100)</returns>
+        Task<Dictionary<ProviderType, double>> GetProviderUptimeAsync(DateTime since);
 
         /// <summary>
         /// Gets average response times for providers since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for calculating average response times</param>
-        /// <returns>A dictionary mapping provider names to their average response times in milliseconds</returns>
-        Task<Dictionary<string, double>> GetAverageResponseTimesAsync(DateTime since);
+        /// <returns>A dictionary mapping provider types to their average response times in milliseconds</returns>
+        Task<Dictionary<ProviderType, double>> GetAverageResponseTimesAsync(DateTime since);
 
         /// <summary>
         /// Gets error counts by provider since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for counting errors</param>
-        /// <returns>A dictionary mapping provider names to their error counts</returns>
-        Task<Dictionary<string, int>> GetErrorCountByProviderAsync(DateTime since);
+        /// <returns>A dictionary mapping provider types to their error counts</returns>
+        Task<Dictionary<ProviderType, int>> GetErrorCountByProviderAsync(DateTime since);
 
         /// <summary>
         /// Gets error category distribution by provider since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for categorizing errors</param>
-        /// <returns>A nested dictionary mapping provider names to dictionaries of error categories and their counts</returns>
-        Task<Dictionary<string, Dictionary<string, int>>> GetErrorCategoriesByProviderAsync(DateTime since);
+        /// <returns>A nested dictionary mapping provider types to dictionaries of error categories and their counts</returns>
+        Task<Dictionary<ProviderType, Dictionary<string, int>>> GetErrorCategoriesByProviderAsync(DateTime since);
 
         /// <summary>
         /// Purges health records older than the specified time
@@ -121,13 +98,6 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Creates a default configuration for a provider if one doesn't exist
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <returns>The new or existing configuration</returns>
-        Task<ProviderHealthConfiguration> EnsureConfigurationExistsAsync(string providerName);
-
-        /// <summary>
-        /// Creates a default configuration for a provider if one doesn't exist
-        /// </summary>
         /// <param name="providerType">The provider type</param>
         /// <returns>The new or existing configuration</returns>
         Task<ProviderHealthConfiguration> EnsureConfigurationExistsAsync(ProviderType providerType);
@@ -135,24 +105,9 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Updates the LastCheckedUtc timestamp for a provider configuration
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <returns>An async task</returns>
-        Task UpdateLastCheckedTimeAsync(string providerName);
-
-        /// <summary>
-        /// Updates the LastCheckedUtc timestamp for a provider configuration
-        /// </summary>
         /// <param name="providerType">The provider type</param>
         /// <returns>An async task</returns>
         Task UpdateLastCheckedTimeAsync(ProviderType providerType);
-
-        /// <summary>
-        /// Gets the count of consecutive failures for a provider
-        /// </summary>
-        /// <param name="providerName">The name of the provider</param>
-        /// <param name="since">The start time (UTC) for counting failures</param>
-        /// <returns>The count of consecutive failures</returns>
-        Task<int> GetConsecutiveFailuresAsync(string providerName, DateTime since);
 
         /// <summary>
         /// Gets the count of consecutive failures for a provider

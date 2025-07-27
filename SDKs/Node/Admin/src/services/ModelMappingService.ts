@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
+import { ProviderType } from '../models/providerType';
 import {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
@@ -246,31 +247,24 @@ export class ModelMappingService extends FetchBaseApiClient {
   }
 
   // Discovery Operations
-  async discoverProviderModels(providerName: string): Promise<DiscoveredModel[]> {
-    if (!providerName?.trim()) {
-      throw new ValidationError('Provider name is required');
-    }
-
-    const cacheKey = this.getCacheKey('discover-provider', providerName);
+  async discoverProviderModels(providerType: ProviderType): Promise<DiscoveredModel[]> {
+    const cacheKey = this.getCacheKey('discover-provider', providerType.toString());
     return this.withCache(
       cacheKey,
-      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerName)),
+      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType)),
       CACHE_TTL.SHORT
     );
   }
 
-  async discoverModelCapabilities(providerName: string, modelId: string): Promise<DiscoveredModel> {
-    if (!providerName?.trim()) {
-      throw new ValidationError('Provider name is required');
-    }
+  async discoverModelCapabilities(providerType: ProviderType, modelId: string): Promise<DiscoveredModel> {
     if (!modelId?.trim()) {
       throw new ValidationError('Model ID is required');
     }
 
-    const cacheKey = this.getCacheKey('discover-model', providerName, modelId);
+    const cacheKey = this.getCacheKey('discover-model', providerType.toString(), modelId);
     return this.withCache(
       cacheKey,
-      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerName, modelId)),
+      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerType, modelId)),
       CACHE_TTL.MEDIUM
     );
   }

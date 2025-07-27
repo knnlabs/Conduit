@@ -148,6 +148,7 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 - **Database stores integers**: Provider types are stored as integers in the database (e.g., OpenAI=1, Anthropic=2)
 - **Backward compatibility**: Read-only `ProviderName` properties exist for compatibility but are marked `[Obsolete]`
 - **Breaking change**: This is a major breaking change in the API - existing installations must drop and recreate their databases
+- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum instead of string providers
 
 ### Available Provider Types:
 ```csharp

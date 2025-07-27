@@ -19,8 +19,8 @@ export function useModelCostsApi() {
       pageSize: pageSize.toString(),
     });
 
-    if (filters?.provider) {
-      params.append('provider', filters.provider);
+    if (filters?.provider !== undefined) {
+      params.append('provider', filters.provider.toString());
     }
     if (filters?.isActive !== undefined) {
       params.append('isActive', filters.isActive.toString());
@@ -213,9 +213,9 @@ export function useModelCostsApi() {
     }
   };
 
-  const getModelCostsByProvider = async (provider: string): Promise<ModelCost[]> => {
+  const getModelCostsByProvider = async (providerType: number): Promise<ModelCost[]> => {
     try {
-      const response = await fetch(`/api/model-costs/provider/${encodeURIComponent(provider)}`);
+      const response = await fetch(`/api/model-costs/provider/${providerType}`);
       if (!response.ok) {
         throw new Error('Failed to fetch model costs by provider');
       }

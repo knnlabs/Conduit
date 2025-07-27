@@ -74,6 +74,6 @@ export interface ModelCostListResponse {
 }
 
 export interface ModelCostFilters {
-  provider?: string;
+  provider?: number; // ProviderType enum value
   isActive?: boolean;
 }

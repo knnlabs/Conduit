@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.Interfaces
@@ -18,11 +19,11 @@ namespace ConduitLLM.Admin.Interfaces
         Task<IEnumerable<ProviderHealthConfigurationDto>> GetAllConfigurationsAsync();
 
         /// <summary>
-        /// Gets a provider health configuration by provider name
+        /// Gets a provider health configuration by provider type
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerType">The provider type</param>
         /// <returns>The provider health configuration, or null if not found</returns>
-        Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderNameAsync(string providerName);
+        Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderTypeAsync(ProviderType providerType);
 
         /// <summary>
         /// Creates a new provider health configuration
@@ -41,24 +42,24 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets the latest health status for all providers
         /// </summary>
-        /// <returns>Dictionary mapping provider names to their latest health status</returns>
-        Task<Dictionary<string, ProviderHealthRecordDto>> GetAllLatestStatusesAsync();
+        /// <returns>Dictionary mapping provider types to their latest health status</returns>
+        Task<Dictionary<ProviderType, ProviderHealthRecordDto>> GetAllLatestStatusesAsync();
 
         /// <summary>
         /// Gets the latest health status for a specific provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerType">The provider type</param>
         /// <returns>The latest health status, or null if not found</returns>
-        Task<ProviderHealthRecordDto?> GetLatestStatusAsync(string providerName);
+        Task<ProviderHealthRecordDto?> GetLatestStatusAsync(ProviderType providerType);
 
         /// <summary>
         /// Gets health status history for a provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerType">The provider type</param>
         /// <param name="hours">Number of hours to look back</param>
         /// <param name="limit">Maximum number of records to return</param>
         /// <returns>List of health status records</returns>
-        Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(string providerName, int hours = 24, int limit = 100);
+        Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(ProviderType providerType, int hours = 24, int limit = 100);
 
         /// <summary>
         /// Gets all provider health records
@@ -83,9 +84,9 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Triggers an immediate health check for a provider
         /// </summary>
-        /// <param name="providerName">The name of the provider to check</param>
+        /// <param name="providerType">The provider type to check</param>
         /// <returns>The health check result</returns>
-        Task<ProviderHealthRecordDto> TriggerHealthCheckAsync(string providerName);
+        Task<ProviderHealthRecordDto> TriggerHealthCheckAsync(ProviderType providerType);
 
         /// <summary>
         /// Purges health records older than the specified time

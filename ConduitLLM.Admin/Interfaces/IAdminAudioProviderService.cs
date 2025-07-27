@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.Audio;
 
 namespace ConduitLLM.Admin.Interfaces
@@ -21,9 +22,9 @@ namespace ConduitLLM.Admin.Interfaces
         Task<AudioProviderConfigDto?> GetByIdAsync(int id);
 
         /// <summary>
-        /// Gets audio provider configurations by provider name.
+        /// Gets audio provider configurations by provider type.
         /// </summary>
-        Task<List<AudioProviderConfigDto>> GetByProviderAsync(string providerName);
+        Task<List<AudioProviderConfigDto>> GetByProviderAsync(ProviderType providerType);
 
         /// <summary>
         /// Gets enabled audio provider configurations for a specific operation.

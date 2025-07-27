@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ApiClientConfig } from '../client/types';
+import { ProviderType } from '../models/providerType';
 import type {
   ProviderHealthConfigurationDto,
   CreateProviderHealthConfigurationDto,
@@ -24,16 +25,16 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Gets the health configuration for a specific provider
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @returns Promise<ProviderHealthConfigurationDto> The provider health configuration
    */
-  async getProviderHealthConfiguration(providerName: string): Promise<ProviderHealthConfigurationDto> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+  async getProviderHealthConfiguration(providerType: ProviderType): Promise<ProviderHealthConfigurationDto> {
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
     return this.get<ProviderHealthConfigurationDto>(
-      `/api/ProviderHealth/configuration/${encodeURIComponent(providerName)}`
+      `/api/ProviderHealth/configuration/${providerType}`
     );
   }
 
@@ -59,23 +60,23 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Updates an existing provider health configuration
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @param request - The update request
    * @returns Promise<ProviderHealthConfigurationDto> The updated configuration
    */
   async updateProviderHealthConfiguration(
-    providerName: string,
+    providerType: ProviderType,
     request: UpdateProviderHealthConfigurationDto
   ): Promise<ProviderHealthConfigurationDto> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
     if (!request) {
       throw new Error('Request cannot be null');
     }
 
     return this.put<ProviderHealthConfigurationDto>(
-      `/api/ProviderHealth/configuration/${encodeURIComponent(providerName)}`,
+      `/api/ProviderHealth/configuration/${providerType}`,
       request
     );
   }
@@ -83,16 +84,16 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Gets health records for a specific provider
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @param filters - Optional filters for the query
    * @returns Promise<PagedResponse<ProviderHealthRecordDto>> A paginated list of health records
    */
   async getProviderHealthRecords(
-    providerName: string,
+    providerType: ProviderType,
     filters?: ProviderHealthFilters
   ): Promise<PagedResponse<ProviderHealthRecordDto>> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
     const params = filters ? new URLSearchParams(
@@ -101,7 +102,7 @@ export class ProviderHealthService extends FetchBaseApiClient {
         .reduce((acc, [key, value]) => ({ ...acc, [key]: String(value) }), {} as Record<string, string>)
     ).toString() : '';
 
-    const url = `/api/ProviderHealth/records/${encodeURIComponent(providerName)}${params ? `?${params}` : ''}`;
+    const url = `/api/ProviderHealth/records/${providerType}${params ? `?${params}` : ''}`;
 
     return this.get<PagedResponse<ProviderHealthRecordDto>>(url);
   }
@@ -138,16 +139,16 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Gets the health status for a specific provider
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @returns Promise<ProviderHealthStatusDto> The provider health status
    */
-  async getProviderHealthStatus(providerName: string): Promise<ProviderHealthStatusDto> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+  async getProviderHealthStatus(providerType: ProviderType): Promise<ProviderHealthStatusDto> {
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
     return this.get<ProviderHealthStatusDto>(
-      `/api/ProviderHealth/status/${encodeURIComponent(providerName)}`
+      `/api/ProviderHealth/status/${providerType}`
     );
   }
 
@@ -165,57 +166,57 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Gets simple status information for a provider
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @returns Promise<ProviderStatus> Simple provider status
    */
-  async getProviderStatus(providerName: string): Promise<ProviderStatus> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+  async getProviderStatus(providerType: ProviderType): Promise<ProviderStatus> {
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
     return this.get<ProviderStatus>(
-      `/api/ProviderHealth/simple-status/${encodeURIComponent(providerName)}`
+      `/api/ProviderHealth/simple-status/${providerType}`
     );
   }
 
   /**
    * Triggers a manual health check for a specific provider
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @returns Promise<ProviderHealthRecordDto> The health check result
    */
-  async triggerHealthCheck(providerName: string): Promise<ProviderHealthRecordDto> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+  async triggerHealthCheck(providerType: ProviderType): Promise<ProviderHealthRecordDto> {
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
     return this.post<ProviderHealthRecordDto>(
-      `/api/ProviderHealth/check/${encodeURIComponent(providerName)}`
+      `/api/ProviderHealth/check/${providerType}`
     );
   }
 
   /**
    * Deletes a provider health configuration
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    */
-  async deleteProviderHealthConfiguration(providerName: string): Promise<void> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+  async deleteProviderHealthConfiguration(providerType: ProviderType): Promise<void> {
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
 
-    await this.delete(`/api/ProviderHealth/configuration/${encodeURIComponent(providerName)}`);
+    await this.delete(`/api/ProviderHealth/configuration/${providerType}`);
   }
 
   /**
    * Checks if a provider is currently healthy
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @returns Promise<boolean> True if the provider is healthy, false otherwise
    */
-  async isProviderHealthy(providerName: string): Promise<boolean> {
+  async isProviderHealthy(providerType: ProviderType): Promise<boolean> {
     try {
-      const status = await this.getProviderHealthStatus(providerName);
+      const status = await this.getProviderHealthStatus(providerType);
       return status.isHealthy;
     } catch {
       return false;
@@ -261,18 +262,18 @@ export class ProviderHealthService extends FetchBaseApiClient {
   /**
    * Gets health trend for a provider over time
    * 
-   * @param providerName - The name of the provider
+   * @param providerType - The type of the provider
    * @param startDate - Start date for the trend analysis
    * @param endDate - End date for the trend analysis
    * @returns Promise<ProviderHealthRecordDto[]> Health records for trend analysis
    */
   async getProviderHealthTrend(
-    providerName: string,
+    providerType: ProviderType,
     startDate: Date,
     endDate: Date
   ): Promise<ProviderHealthRecordDto[]> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
+    if (providerType === null || providerType === undefined) {
+      throw new Error('Provider type cannot be null or undefined');
     }
     if (startDate > endDate) {
       throw new Error('Start date cannot be greater than end date');
@@ -284,33 +285,33 @@ export class ProviderHealthService extends FetchBaseApiClient {
       pageSize: 1000 // Get a large number of records for trend analysis
     };
 
-    const response = await this.getProviderHealthRecords(providerName, filters);
+    const response = await this.getProviderHealthRecords(providerType, filters);
     return response.data || [];
   }
 
   /**
    * Gets health statistics summary for multiple providers
    * 
-   * @param providerNames - List of provider names to get statistics for
-   * @returns Promise<Record<string, ProviderHealthStatusDto>> Statistics by provider name
+   * @param providerTypes - List of provider types to get statistics for
+   * @returns Promise<Record<number, ProviderHealthStatusDto>> Statistics by provider type
    */
   async getMultipleProviderStatistics(
-    providerNames: string[]
-  ): Promise<Record<string, ProviderHealthStatusDto>> {
-    if (!providerNames || providerNames.length === 0) {
+    providerTypes: ProviderType[]
+  ): Promise<Record<number, ProviderHealthStatusDto>> {
+    if (!providerTypes || providerTypes.length === 0) {
       return {};
     }
 
-    const results: Record<string, ProviderHealthStatusDto> = {};
+    const results: Record<number, ProviderHealthStatusDto> = {};
     
     // Get all statuses in parallel
-    const promises = providerNames.map(async (providerName) => {
+    const promises = providerTypes.map(async (providerType) => {
       try {
-        const status = await this.getProviderHealthStatus(providerName);
-        results[providerName] = status;
+        const status = await this.getProviderHealthStatus(providerType);
+        results[providerType] = status;
       } catch (error) {
         // Skip providers that fail to load
-        console.warn(`Failed to get health status for provider ${providerName}:`, error);
+        console.warn(`Failed to get health status for provider ${providerType}:`, error);
       }
     });
 

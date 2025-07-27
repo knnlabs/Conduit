@@ -68,11 +68,11 @@ namespace ConduitLLM.Configuration.HealthChecks
 
                 // Use bulk query instead of N individual queries
                 var allHealthStatuses = await providerHealthRepository.GetAllLatestStatusesAsync();
-                var healthStatusLookup = allHealthStatuses; // Already a dictionary of provider name -> health record
+                var healthStatusLookup = allHealthStatuses; // Already a dictionary of provider type -> health record
 
                 foreach (var provider in enabledProviders)
                 {
-                    if (!healthStatusLookup.TryGetValue(provider.ProviderType.ToString(), out var recentHealth))
+                    if (!healthStatusLookup.TryGetValue(provider.ProviderType, out var recentHealth))
                     {
                         healthData[$"{provider.ProviderType}_status"] = "Unknown";
                         degradedProviders.Add(provider.ProviderType.ToString());

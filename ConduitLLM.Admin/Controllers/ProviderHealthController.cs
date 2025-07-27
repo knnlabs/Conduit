@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 
 using Microsoft.AspNetCore.Authorization;
@@ -117,17 +118,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets health configuration for a specific provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerType">The provider type</param>
         /// <returns>The provider health configuration</returns>
-        [HttpGet("configurations/{providerName}")]
+        [HttpGet("configurations/{providerType}")]
         [ProducesResponseType(typeof(ProviderHealthConfigurationDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetConfigurationByProviderName(string providerName)
+        public async Task<IActionResult> GetConfigurationByProviderType(ProviderType providerType)
         {
             try
             {
-                var configuration = await _providerHealthService.GetConfigurationByProviderNameAsync(providerName);
+                var configuration = await _providerHealthService.GetConfigurationByProviderTypeAsync(providerType);
 
                 if (configuration == null)
                 {
@@ -138,7 +139,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error getting health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting health configuration for provider type '{ProviderType}'", providerType);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -163,8 +164,8 @@ _logger.LogError(ex, "Error getting health configuration for provider '{Provider
             {
                 var createdConfiguration = await _providerHealthService.CreateConfigurationAsync(configuration);
                 return CreatedAtAction(
-                    nameof(GetConfigurationByProviderName),
-                    new { providerName = createdConfiguration.ProviderType.ToString() },
+                    nameof(GetConfigurationByProviderType),
+                    new { providerType = createdConfiguration.ProviderType },
                     createdConfiguration);
             }
             catch (InvalidOperationException ex)
@@ -248,7 +249,13 @@ _logger.LogError(ex, "Error getting health configuration for provider '{Provider
         {
             try
             {
-                var status = await _providerHealthService.GetLatestStatusAsync(providerName);
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return BadRequest($"Invalid provider name: {providerName}");
+                }
+                
+                var status = await _providerHealthService.GetLatestStatusAsync(providerType);
 
                 if (status == null)
                 {
@@ -292,7 +299,13 @@ _logger.LogError(ex, "Error getting latest health status for provider '{Provider
 
             try
             {
-                var history = await _providerHealthService.GetStatusHistoryAsync(providerName, hours, limit);
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return BadRequest($"Invalid provider name: {providerName}");
+                }
+                
+                var history = await _providerHealthService.GetStatusHistoryAsync(providerType, hours, limit);
                 return Ok(history);
             }
             catch (Exception ex)
@@ -371,7 +384,13 @@ _logger.LogError(ex, "Error getting health status history for provider '{Provide
         {
             try
             {
-                var result = await _providerHealthService.TriggerHealthCheckAsync(providerName);
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return BadRequest($"Invalid provider name: {providerName}");
+                }
+                
+                var result = await _providerHealthService.TriggerHealthCheckAsync(providerType);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)
@@ -434,7 +453,13 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
                 }
                 else
                 {
-                    var history = await _providerHealthService.GetStatusHistoryAsync(providerName, 24 * 30, 1000); // 30 days, 1000 records max
+                    // Parse provider name to ProviderType
+                    if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                    {
+                        return BadRequest($"Invalid provider name: {providerName}");
+                    }
+                    
+                    var history = await _providerHealthService.GetStatusHistoryAsync(providerType, 24 * 30, 1000); // 30 days, 1000 records max
                     records = history;
                 }
 
@@ -462,7 +487,7 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
 
                 // Convert to a dictionary of provider name to status model
                 var result = statuses.ToDictionary(
-                    kvp => kvp.Key,
+                    kvp => kvp.Key.ToString(),
                     kvp => new Models.ProviderStatus
                     {
                         Status = kvp.Value.IsOnline ? Models.ProviderStatus.StatusType.Online : Models.ProviderStatus.StatusType.Offline,
@@ -495,7 +520,13 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
         {
             try
             {
-                var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerName);
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    return BadRequest($"Invalid provider name: {providerName}");
+                }
+                
+                var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerType);
 
                 if (statusRecord == null)
                 {

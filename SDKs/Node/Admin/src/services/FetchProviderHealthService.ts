@@ -1,6 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import type {
   HealthSummaryDto,
   ProviderHealthDto,
@@ -58,9 +59,9 @@ export class FetchProviderHealthService {
   /**
    * Get detailed health status for a specific provider
    */
-  async getProviderHealth(providerId: string, config?: RequestConfig): Promise<ProviderHealthDto> {
+  async getProviderHealth(providerType: ProviderType, config?: RequestConfig): Promise<ProviderHealthDto> {
     return this.client['get']<ProviderHealthDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerId),
+      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -72,9 +73,9 @@ export class FetchProviderHealthService {
   /**
    * Get legacy provider health status
    */
-  async getLegacyProviderStatus(providerId: string, config?: RequestConfig): Promise<ProviderHealthStatusDto> {
+  async getLegacyProviderStatus(providerType: ProviderType, config?: RequestConfig): Promise<ProviderHealthStatusDto> {
     return this.client['get']<ProviderHealthStatusDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerId),
+      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -87,7 +88,7 @@ export class FetchProviderHealthService {
    * Get health history for a provider
    */
   async getHealthHistory(
-    providerId: string, 
+    providerType: ProviderType, 
     params?: HistoryParams, 
     config?: RequestConfig
   ): Promise<HealthHistory> {
@@ -104,8 +105,8 @@ export class FetchProviderHealthService {
 
     const queryString = queryParams.toString();
     const url = queryString 
-      ? `${ENDPOINTS.HEALTH.HISTORY_BY_PROVIDER(providerId)}?${queryString}`
-      : ENDPOINTS.HEALTH.HISTORY_BY_PROVIDER(providerId);
+      ? `${ENDPOINTS.HEALTH.HISTORY_BY_PROVIDER(providerType)}?${queryString}`
+      : ENDPOINTS.HEALTH.HISTORY_BY_PROVIDER(providerType);
 
     return this.client['get']<HealthHistory>(
       url,
@@ -187,11 +188,11 @@ export class FetchProviderHealthService {
    * Test provider connectivity
    */
   async testProviderConnection(
-    providerId: string, 
+    providerType: ProviderType, 
     config?: RequestConfig
   ): Promise<ConnectionTestResult> {
     return this.client['post']<ConnectionTestResult>(
-      ENDPOINTS.HEALTH.CHECK(providerId),
+      ENDPOINTS.HEALTH.CHECK(providerType),
       {},
       {
         signal: config?.signal,
@@ -205,7 +206,7 @@ export class FetchProviderHealthService {
    * Get provider performance metrics
    */
   async getProviderPerformance(
-    providerId: string, 
+    providerType: ProviderType, 
     params?: PerformanceParams, 
     config?: RequestConfig
   ): Promise<PerformanceMetrics> {
@@ -219,8 +220,8 @@ export class FetchProviderHealthService {
 
     const queryString = queryParams.toString();
     const url = queryString 
-      ? `${ENDPOINTS.HEALTH.PERFORMANCE(providerId)}?${queryString}`
-      : ENDPOINTS.HEALTH.PERFORMANCE(providerId);
+      ? `${ENDPOINTS.HEALTH.PERFORMANCE(providerType)}?${queryString}`
+      : ENDPOINTS.HEALTH.PERFORMANCE(providerType);
 
     return this.client['get']<PerformanceMetrics>(
       url,
@@ -250,11 +251,11 @@ export class FetchProviderHealthService {
    * Get health configuration for a specific provider
    */
   async getProviderHealthConfiguration(
-    providerId: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<HealthConfigurationData> {
     return this.client['get']<HealthConfigurationData>(
-      ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
+      ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -285,12 +286,12 @@ export class FetchProviderHealthService {
    * Update health configuration for a provider
    */
   async updateHealthConfiguration(
-    providerId: string,
+    providerType: ProviderType,
     data: Partial<HealthConfigurationData>,
     config?: RequestConfig
   ): Promise<void> {
     return this.client['put']<void, Partial<HealthConfigurationData>>(
-      ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerId),
+      ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerType),
       data,
       {
         signal: config?.signal,
@@ -350,14 +351,14 @@ export class FetchProviderHealthService {
    * @since Issue #430 - Provider Health SDK Methods
    */
   async getProviderHealthHistory(
-    providerId: string,
+    providerType: ProviderType,
     options: ProviderHealthHistoryOptions,
     config?: RequestConfig
   ): Promise<ProviderHealthHistoryResponse> {
     try {
       // Use existing getHealthHistory method and transform response
       const historyData = await this.getHealthHistory(
-        providerId,
+        providerType,
         {
           startDate: options.startDate,
           endDate: options.endDate,

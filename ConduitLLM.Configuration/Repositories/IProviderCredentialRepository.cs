@@ -19,14 +19,6 @@ namespace ConduitLLM.Configuration.Repositories
         Task<ProviderCredential?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets a provider credential by provider name
-        /// </summary>
-        /// <param name="providerName">The provider name</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The provider credential entity or null if not found</returns>
-        Task<ProviderCredential?> GetByProviderNameAsync(string providerName, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets a provider credential by provider type
         /// </summary>
         /// <param name="providerType">The provider type</param>

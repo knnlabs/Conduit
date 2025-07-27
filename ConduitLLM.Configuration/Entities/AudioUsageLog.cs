@@ -24,8 +24,7 @@ namespace ConduitLLM.Configuration.Entities
         /// Provider that handled the request.
         /// </summary>
         [Required]
-        [MaxLength(100)]
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType Provider { get; set; }
 
         /// <summary>
         /// Type of audio operation.

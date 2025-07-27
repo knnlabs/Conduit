@@ -179,5 +179,41 @@ namespace ConduitLLM.Admin.Services
             // Use the GetClientByProviderType method of the temp factory
             return tempFactory.GetClientByProviderType(providerType);
         }
+
+        /// <inheritdoc />
+        public ILLMClient CreateTestClient(ProviderCredentials credentials)
+        {
+            if (credentials == null)
+            {
+                throw new ArgumentNullException(nameof(credentials));
+            }
+
+            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+            {
+                throw new ArgumentException("API key is required for testing credentials", nameof(credentials));
+            }
+
+            _logger.LogDebug("Creating test client for provider type: {ProviderType}", credentials.ProviderType);
+
+            // Get current settings for defaults
+            var currentSettings = _settingsMonitor.CurrentValue;
+            
+            // Create temporary settings with just the test credentials
+            var tempSettings = new ConduitSettings
+            {
+                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { credentials },
+                DefaultModels = currentSettings.DefaultModels,
+                // Disable performance tracking for testing
+                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
+            };
+
+            // Create a temporary factory and delegate to it
+            var tempFactory = new LLMClientFactory(
+                Microsoft.Extensions.Options.Options.Create(tempSettings),
+                _loggerFactory,
+                _httpClientFactory);
+
+            return tempFactory.CreateTestClient(credentials);
+        }
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Admin.Interfaces;
 
@@ -142,13 +143,21 @@ namespace ConduitLLM.Admin.Hubs
         {
             try
             {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
+                    await Clients.Caller.SendAsync("SubscriptionError", $"Unknown provider: {providerName}");
+                    return;
+                }
+                
                 var groupName = $"admin-provider-{providerName}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
                 _logger.LogInformation("Admin subscribed to provider {ProviderName} notifications", providerName);
                 
                 // Send current provider health status
-                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerName);
+                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerType);
                 if (healthStatus != null)
                 {
                     await Clients.Caller.SendAsync("ProviderHealthStatus", healthStatus);

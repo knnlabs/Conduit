@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
+import { ProviderType } from '../models/providerType';
 import {
   GlobalSettingDto,
   CreateGlobalSettingDto,
@@ -102,11 +103,11 @@ export class SettingsService extends FetchBaseApiClient {
     );
   }
 
-  async getAudioConfiguration(provider: string): Promise<AudioConfigurationDto> {
-    const cacheKey = this.getCacheKey('audio-config', provider);
+  async getAudioConfiguration(providerType: ProviderType): Promise<AudioConfigurationDto> {
+    const cacheKey = this.getCacheKey('audio-config', providerType.toString());
     return this.withCache(
       cacheKey,
-      () => super.get<AudioConfigurationDto>(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(provider)),
+      () => super.get<AudioConfigurationDto>(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType)),
       CACHE_TTL.MEDIUM
     );
   }
@@ -130,15 +131,15 @@ export class SettingsService extends FetchBaseApiClient {
   }
 
   async updateAudioConfiguration(
-    provider: string,
+    providerType: ProviderType,
     request: UpdateAudioConfigurationDto
   ): Promise<void> {
-    await this.put(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(provider), request);
+    await this.put(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType), request);
     await this.invalidateCache();
   }
 
-  async deleteAudioConfiguration(provider: string): Promise<void> {
-    await this.delete(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(provider));
+  async deleteAudioConfiguration(providerType: ProviderType): Promise<void> {
+    await this.delete(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType));
     await this.invalidateCache();
   }
 

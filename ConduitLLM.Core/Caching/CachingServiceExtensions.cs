@@ -191,5 +191,13 @@ namespace ConduitLLM.Core.Caching
             // Fall back to the original client if caching is disabled
             return client;
         }
+
+        /// <inheritdoc />
+        public ILLMClient CreateTestClient(ConduitLLM.Configuration.ProviderCredentials credentials)
+        {
+            // For test clients, we don't wrap with caching
+            // Test clients are used for authentication verification and should always hit the actual provider
+            return _innerFactory.CreateTestClient(credentials);
+        }
     }
 }

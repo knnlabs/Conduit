@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -54,9 +55,9 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioProviderConfigDto>> GetByProviderAsync(string providerName)
+        public async Task<List<AudioProviderConfigDto>> GetByProviderAsync(ProviderType providerType)
         {
-            var configs = await _repository.GetByProviderNameAsync(providerName);
+            var configs = await _repository.GetByProviderTypeAsync(providerType);
             return configs.Select(MapToDto).ToList();
         }
 

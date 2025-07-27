@@ -298,24 +298,6 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             }
         }
 
-        public async Task<bool> ProviderExistsAsync(string providerName)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                return false;
-            }
-
-            try
-            {
-                var provider = await _credentialRepository.GetByProviderNameAsync(providerName);
-                return provider != null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking if provider exists: {ProviderName}", providerName.Replace(Environment.NewLine, ""));
-                return false;
-            }
-        }
 
         public async Task<bool> ProviderExistsByIdAsync(int providerId)
         {

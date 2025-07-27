@@ -51,21 +51,42 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<List<AudioCostDto>> GetByProviderAsync(string provider)
         {
-            var costs = await _repository.GetByProviderAsync(provider);
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                return new List<AudioCostDto>();
+            }
+            
+            var costs = await _repository.GetByProviderAsync(providerType);
             return costs.Select(MapToDto).ToList();
         }
 
         /// <inheritdoc/>
         public async Task<AudioCostDto?> GetCurrentCostAsync(string provider, string operationType, string? model = null)
         {
-            var cost = await _repository.GetCurrentCostAsync(provider, operationType, model);
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                return null;
+            }
+            
+            var cost = await _repository.GetCurrentCostAsync(providerType, operationType, model);
             return cost != null ? MapToDto(cost) : null;
         }
 
         /// <inheritdoc/>
         public async Task<List<AudioCostDto>> GetCostHistoryAsync(string provider, string operationType, string? model = null)
         {
-            var costs = await _repository.GetCostHistoryAsync(provider, operationType, model);
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                return new List<AudioCostDto>();
+            }
+            
+            var costs = await _repository.GetCostHistoryAsync(providerType, operationType, model);
             return costs.Select(MapToDto).ToList();
         }
 
@@ -74,7 +95,7 @@ namespace ConduitLLM.Admin.Services
         {
             var cost = new AudioCost
             {
-                Provider = dto.ProviderType.ToString(),
+                Provider = dto.ProviderType,
                 OperationType = dto.OperationType,
                 Model = dto.Model,
                 CostUnit = dto.CostUnit,
@@ -89,7 +110,7 @@ namespace ConduitLLM.Admin.Services
             var created = await _repository.CreateAsync(cost);
             _logger.LogInformation("Created audio cost configuration {Id} for {Provider} {Operation}",
                 created.Id,
-                created.Provider.Replace(Environment.NewLine, ""),
+                created.Provider.ToString().Replace(Environment.NewLine, ""),
                 created.OperationType.Replace(Environment.NewLine, ""));
 
             return MapToDto(created);
@@ -105,7 +126,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Update properties
-            cost.Provider = dto.ProviderType.ToString();
+            cost.Provider = dto.ProviderType;
             cost.OperationType = dto.OperationType;
             cost.Model = dto.Model;
             cost.CostUnit = dto.CostUnit;
@@ -206,7 +227,24 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<string> ExportCostsAsync(string format, string? provider = null)
         {
-            var costs = provider != null ? await _repository.GetByProviderAsync(provider) : await _repository.GetAllAsync();
+            List<AudioCost> costs;
+            if (provider != null)
+            {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                    costs = new List<AudioCost>();
+                }
+                else
+                {
+                    costs = await _repository.GetByProviderAsync(providerType);
+                }
+            }
+            else
+            {
+                costs = await _repository.GetAllAsync();
+            }
 
             format = format?.ToLowerInvariant() ?? "json";
 
@@ -223,9 +261,7 @@ namespace ConduitLLM.Admin.Services
             return new AudioCostDto
             {
                 Id = cost.Id,
-                ProviderType = Enum.TryParse<ProviderType>(cost.Provider, true, out var providerType) 
-                    ? providerType 
-                    : ProviderType.OpenAI, // Default to OpenAI if parsing fails
+                ProviderType = cost.Provider,
                 OperationType = cost.OperationType,
                 Model = cost.Model,
                 CostUnit = cost.CostUnit,
@@ -247,19 +283,30 @@ namespace ConduitLLM.Admin.Services
                 var importData = JsonSerializer.Deserialize<List<AudioCostImportDto>>(jsonData);
                 if (importData == null) return new List<AudioCost>();
 
-                return importData.Select(d => new AudioCost
+                var costs = new List<AudioCost>();
+                foreach (var d in importData)
                 {
-                    Provider = d.Provider,
-                    OperationType = d.OperationType,
-                    Model = d.Model ?? "default",
-                    CostUnit = d.CostUnit,
-                    CostPerUnit = d.CostPerUnit,
-                    MinimumCharge = d.MinimumCharge,
-                    IsActive = d.IsActive ?? true,
-                    EffectiveFrom = d.EffectiveFrom ?? DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }).ToList();
+                    if (!Enum.TryParse<ProviderType>(d.Provider, true, out var providerType))
+                    {
+                        _logger.LogWarning("Unknown provider type in import: {Provider}", d.Provider);
+                        continue;
+                    }
+                    
+                    costs.Add(new AudioCost
+                    {
+                        Provider = providerType,
+                        OperationType = d.OperationType,
+                        Model = d.Model ?? "default",
+                        CostUnit = d.CostUnit,
+                        CostPerUnit = d.CostPerUnit,
+                        MinimumCharge = d.MinimumCharge,
+                        IsActive = d.IsActive ?? true,
+                        EffectiveFrom = d.EffectiveFrom ?? DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+                return costs;
             }
             catch (Exception ex)
             {
@@ -292,9 +339,16 @@ namespace ConduitLLM.Admin.Services
 
                 try
                 {
+                    var providerString = parts[0].Trim();
+                    if (!Enum.TryParse<ProviderType>(providerString, true, out var providerType))
+                    {
+                        _logger.LogWarning("Unknown provider type in CSV: {Provider}", providerString);
+                        continue;
+                    }
+                    
                     costs.Add(new AudioCost
                     {
-                        Provider = parts[0].Trim(),
+                        Provider = providerType,
                         OperationType = parts[1].Trim(),
                         Model = parts.Length > 2 ? parts[2].Trim() : "default",
                         CostUnit = parts[3].Trim(),
@@ -322,7 +376,7 @@ namespace ConduitLLM.Admin.Services
         {
             var exportData = costs.Select(c => new AudioCostImportDto
             {
-                Provider = c.Provider,
+                Provider = c.Provider.ToString(),
                 OperationType = c.OperationType,
                 Model = c.Model,
                 CostUnit = c.CostUnit,

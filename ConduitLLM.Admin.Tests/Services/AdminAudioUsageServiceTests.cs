@@ -158,7 +158,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 TotalOutputTokens = 4000
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, It.IsAny<string?>(), It.IsAny<string?>()))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, It.IsAny<string?>(), It.IsAny<ProviderType?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -184,7 +184,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 FailedOperations = 0
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, It.IsAny<string?>()))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, It.IsAny<ProviderType?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -278,7 +278,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 CreateAudioUsageLog("transcription", "whisper-1", 500) // Failed request
             };
 
-            _mockRepository.Setup(x => x.GetByProviderAsync(provider, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
+            _mockRepository.Setup(x => x.GetByProviderAsync(ProviderType.OpenAI, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(logs);
 
             // Act
@@ -300,7 +300,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             var provider = "AzureOpenAI";
-            _mockRepository.Setup(x => x.GetByProviderAsync(provider, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
+            _mockRepository.Setup(x => x.GetByProviderAsync(ProviderType.AzureOpenAI, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(new List<AudioUsageLog>());
 
             // Act
@@ -485,7 +485,7 @@ namespace ConduitLLM.Admin.Tests.Services
             result.Should().Contain("Timestamp");
             result.Should().Contain("VirtualKey");
             result.Should().Contain("Provider");
-            result.Should().Contain("openai");
+            result.Should().Contain("OpenAI"); // ProviderType enum outputs PascalCase names
         }
 
         [Fact]
@@ -513,7 +513,7 @@ namespace ConduitLLM.Admin.Tests.Services
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("\"virtualKey\"");
             result.Should().Contain("\"provider\"");
-            result.Should().Contain("openai");
+            result.Should().Contain("\"provider\": 1"); // ProviderType.OpenAI = 1 in JSON (with space)
             
             // Should be valid JSON
             var json = System.Text.Json.JsonDocument.Parse(result);
@@ -580,7 +580,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 {
                     Id = i + 1,
                     VirtualKey = $"key-{i % 3}",
-                    Provider = i % 2 == 0 ? "openai" : "azure",
+                    Provider = i % 2 == 0 ? ProviderType.OpenAI : ProviderType.AzureOpenAI,
                     OperationType = i % 3 == 0 ? "transcription" : i % 3 == 1 ? "tts" : "realtime",
                     Model = i % 2 == 0 ? "whisper-1" : "tts-1",
                     RequestId = Guid.NewGuid().ToString(),
@@ -599,7 +599,7 @@ namespace ConduitLLM.Admin.Tests.Services
             {
                 Id = 1,
                 VirtualKey = "test-key",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 OperationType = operationType,
                 Model = model,
                 RequestId = Guid.NewGuid().ToString(),

@@ -293,13 +293,13 @@ export class FetchProvidersService {
    * @since Issue #430 - Provider Health SDK Methods
    */
   async getHealth(
-    providerId?: string,
+    providerType?: ProviderType,
     config?: RequestConfig
   ): Promise<ProviderHealthStatusResponse> {
     try {
       // Try to get from provider health endpoint
-      const endpoint = providerId 
-        ? ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerId)
+      const endpoint = providerType 
+        ? ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType)
         : ENDPOINTS.HEALTH.STATUS;
         
       const healthData = await this.client['get']<HealthDataResponse>(
@@ -312,12 +312,12 @@ export class FetchProvidersService {
       );
 
       // Transform the response to match expected format
-      if (providerId) {
+      if (providerType) {
         // Single provider response
         return {
           providers: [{
-            id: healthData.providerId ?? providerId,
-            name: healthData.providerType?.toString() ?? providerId,
+            id: healthData.providerId ?? providerType.toString(),
+            name: healthData.providerType?.toString() ?? providerType.toString(),
             status: (healthData.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
             lastChecked: healthData.lastChecked ?? new Date().toISOString(),
             responseTime: healthData.avgLatency ?? 0,
@@ -446,7 +446,7 @@ export class FetchProvidersService {
    * @since Issue #430 - Provider Health SDK Methods
    */
   async getHealthMetrics(
-    providerId: string,
+    providerType: ProviderType,
     timeRange?: string,
     config?: RequestConfig
   ): Promise<ProviderHealthMetricsDto> {
@@ -457,7 +457,7 @@ export class FetchProvidersService {
 
     try {
       // Try to get detailed metrics from performance endpoint
-      const endpoint = `${ENDPOINTS.HEALTH.PERFORMANCE(providerId)}${searchParams.toString() ? `?${searchParams}` : ''}`;
+      const endpoint = `${ENDPOINTS.HEALTH.PERFORMANCE(providerType)}${searchParams.toString() ? `?${searchParams}` : ''}`;
       
       const metricsData = await this.client['get']<MetricsDataResponse>(
         endpoint,
@@ -470,8 +470,8 @@ export class FetchProvidersService {
 
       // Transform response to expected format
       return {
-        providerId,
-        providerType: ProviderType.OpenAI, // Default for simulation
+        providerId: providerType.toString(),
+        providerType: providerType,
         metrics: {
           totalRequests: metricsData.totalRequests ?? 0,
           failedRequests: metricsData.failedRequests ?? 0,
@@ -494,8 +494,8 @@ export class FetchProvidersService {
       const failureRate = Math.random() * 0.1; // 0-10% failure rate
       
       return {
-        providerId,
-        providerType: ProviderType.OpenAI, // Default for simulation
+        providerId: providerType.toString(),
+        providerType: providerType,
         metrics: {
           totalRequests: baseRequestCount,
           failedRequests: Math.floor(baseRequestCount * failureRate),

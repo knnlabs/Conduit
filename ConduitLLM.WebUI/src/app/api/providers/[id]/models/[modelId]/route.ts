@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import { getProviderTypeFromDto } from '@/lib/utils/providerTypeUtils';
+
 // GET /api/providers/[id]/models/[modelId] - Get details for a specific model
 export async function GET(
   req: NextRequest,
@@ -14,10 +16,12 @@ export async function GET(
     // Get provider details first
     const provider = await adminClient.providers.getById(parseInt(id, 10));
     
+    // Get the provider type
+    const providerType = getProviderTypeFromDto(provider);
+    
     // Get model details
-    const providerWithName = provider as { providerName?: string };
     const modelDetails = await adminClient.providerModels.getModelDetails(
-      providerWithName.providerName ?? '',
+      providerType,
       modelId
     );
     

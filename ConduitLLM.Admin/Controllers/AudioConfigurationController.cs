@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 
@@ -75,15 +76,15 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets audio provider configurations by provider name.
+        /// Gets audio provider configurations by provider type.
         /// </summary>
-        /// <param name="providerName">The provider name</param>
+        /// <param name="providerType">The provider type</param>
         /// <response code="200">Returns the list of configurations for the provider</response>
-        [HttpGet("providers/by-name/{providerName}")]
+        [HttpGet("providers/by-type/{providerType}")]
         [ProducesResponseType(typeof(List<AudioProviderConfigDto>), 200)]
-        public async Task<IActionResult> GetProvidersByName(string providerName)
+        public async Task<IActionResult> GetProvidersByType(ProviderType providerType)
         {
-            var providers = await _providerService.GetByProviderAsync(providerName);
+            var providers = await _providerService.GetByProviderAsync(providerType);
             return Ok(providers);
         }
 

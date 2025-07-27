@@ -357,6 +357,34 @@ public class LLMClientFactory : ILLMClientFactory
             "default-model" // Default model ID for testing
         );
     }
+
+    /// <inheritdoc />
+    public ILLMClient CreateTestClient(ProviderCredentials credentials)
+    {
+        if (credentials == null)
+        {
+            throw new ArgumentNullException(nameof(credentials));
+        }
+
+        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+        {
+            throw new ArgumentException("API key is required for testing credentials", nameof(credentials));
+        }
+
+        var logger = _loggerFactory.CreateLogger<LLMClientFactory>();
+        logger.LogDebug("Creating test client for provider type: {ProviderType}", credentials.ProviderType);
+
+        // Use a minimal model ID for testing - providers should accept this for auth verification
+        const string testModelId = "test-model";
+
+        // Create the client using the existing factory method
+        // This ensures consistent client creation logic
+        return CreateClientForProvider(
+            credentials.ProviderType.ToString(),
+            credentials,
+            testModelId
+        );
+    }
     
     // Legacy client creation method has been removed as part of the client migration
 }

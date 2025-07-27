@@ -73,19 +73,12 @@ namespace ConduitLLM.Http.Hubs
         }
 
         /// <summary>
-        /// Subscribe to model discovery notifications for a specific provider (legacy method)
+        /// Subscribe to model discovery notifications for a specific provider
         /// </summary>
-        /// <param name="providerName">The provider to monitor</param>
-        public async Task SubscribeToProvider(string providerName)
+        /// <param name="providerType">The provider to monitor</param>
+        public async Task SubscribeToProvider(ProviderType providerType)
         {
             var virtualKeyId = RequireVirtualKeyId();
-            
-            // Use the new filter-based subscription with a single provider
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-            {
-                throw new ArgumentException($"Invalid provider name: {providerName}");
-            }
             
             var filter = new ModelDiscoverySubscriptionFilter
             {
@@ -98,17 +91,17 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Unsubscribe from model discovery notifications for a specific provider
         /// </summary>
-        /// <param name="providerName">The provider to stop monitoring</param>
-        public async Task UnsubscribeFromProvider(string providerName)
+        /// <param name="providerType">The provider to stop monitoring</param>
+        public async Task UnsubscribeFromProvider(ProviderType providerType)
         {
             var virtualKeyId = RequireVirtualKeyId();
             
             // Remove from provider-specific group
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"provider-{providerName.ToLowerInvariant()}");
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"provider-{providerType.ToString().ToLowerInvariant()}");
             
             Logger.LogInformation(
                 "Virtual Key {KeyId} unsubscribed from model discovery notifications for provider {Provider}",
-                virtualKeyId, providerName);
+                virtualKeyId, providerType);
         }
 
         /// <summary>
@@ -136,8 +129,8 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Request immediate model discovery for a provider
         /// </summary>
-        /// <param name="providerName">The provider to refresh</param>
-        public async Task RefreshProviderModels(string providerName)
+        /// <param name="providerType">The provider to refresh</param>
+        public async Task RefreshProviderModels(ProviderType providerType)
         {
             var virtualKeyId = RequireVirtualKeyId();
             
@@ -145,11 +138,11 @@ namespace ConduitLLM.Http.Hubs
             // For now, just log the request
             Logger.LogInformation(
                 "Virtual Key {KeyId} requested model refresh for provider {Provider}",
-                virtualKeyId, providerName);
+                virtualKeyId, providerType);
             
             await Clients.Caller.SendAsync("RefreshRequested", new
             {
-                provider = providerName,
+                provider = providerType.ToString(),
                 requestedAt = DateTime.UtcNow,
                 message = "Model refresh has been initiated"
             });

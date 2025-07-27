@@ -69,7 +69,21 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
         {
-            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, provider);
+            ProviderType? providerType = null;
+            if (provider != null)
+            {
+                // Parse provider name to ProviderType
+                if (Enum.TryParse<ProviderType>(provider, true, out var parsed))
+                {
+                    providerType = parsed;
+                }
+                else
+                {
+                    _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                }
+            }
+            
+            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, providerType);
         }
 
         /// <inheritdoc/>
@@ -88,22 +102,39 @@ namespace ConduitLLM.Admin.Services
             {
                 VirtualKey = virtualKey,
                 KeyName = key?.KeyName ?? string.Empty,
-                TotalOperations = logs.Count,
+                TotalOperations = logs.Count(),
                 TotalCost = logs.Sum(l => l.Cost),
                 TotalDurationSeconds = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value),
                 LastUsed = logs.OrderByDescending(l => l.Timestamp).FirstOrDefault()?.Timestamp,
-                SuccessRate = logs.Count > 0 ? (logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)logs.Count) * 100 : 100
+                SuccessRate = logs.Count() > 0 ? (logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)logs.Count()) * 100 : 100
             };
         }
 
         /// <inheritdoc/>
         public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
         {
-            var logs = await _repository.GetByProviderAsync(provider, startDate, endDate);
+            // Parse provider name to ProviderType
+            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
+            {
+                _logger.LogWarning("Unknown provider type: {Provider}", provider);
+                return new AudioProviderUsageDto
+                {
+                    ProviderType = ProviderType.OpenAI, // Default to a valid provider type
+                    TotalOperations = 0,
+                    TranscriptionCount = 0,
+                    TextToSpeechCount = 0,
+                    TotalCost = 0,
+                    AverageResponseTime = 0,
+                    SuccessRate = 0,
+                    RealtimeSessionCount = 0
+                };
+            }
+            
+            var logs = await _repository.GetByProviderAsync(providerType, startDate, endDate);
 
             var successCount = logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300));
             var totalDuration = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value);
-            var avgResponseTime = logs.Count > 0 ? (totalDuration / logs.Count) * 1000 : 0; // Convert to ms
+            var avgResponseTime = logs.Count() > 0 ? (totalDuration / logs.Count()) * 1000 : 0; // Convert to ms
 
             // Count operations by type
             var transcriptionCount = logs.Count(l => l.OperationType?.ToLower() == "transcription");
@@ -117,12 +148,6 @@ namespace ConduitLLM.Admin.Services
                 .OrderByDescending(g => g.Count())
                 .FirstOrDefault()?.Key;
 
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
-            {
-                throw new ArgumentException($"Invalid provider name: {provider}");
-            }
-            
             return new AudioProviderUsageDto
             {
                 ProviderType = providerType,
@@ -307,17 +332,11 @@ namespace ConduitLLM.Admin.Services
 
         private static AudioUsageDto MapToDto(Configuration.Entities.AudioUsageLog log)
         {
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(log.Provider, true, out var providerType))
-            {
-                providerType = ProviderType.OpenAI; // Default fallback
-            }
-            
             return new AudioUsageDto
             {
                 Id = log.Id,
                 VirtualKey = log.VirtualKey,
-                ProviderType = providerType,
+                ProviderType = log.Provider,
                 OperationType = log.OperationType,
                 Model = log.Model,
                 RequestId = log.RequestId,

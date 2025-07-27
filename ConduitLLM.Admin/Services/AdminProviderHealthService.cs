@@ -53,7 +53,7 @@ namespace ConduitLLM.Admin.Services
             {
                 // Check if configuration already exists for this provider
                 // Check if this provider exists
-                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType.ToString());
+                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType);
                 if (existingConfig != null)
                 {
                     throw new InvalidOperationException($"Provider health configuration already exists for provider '{config.ProviderType}'" );
@@ -71,7 +71,7 @@ namespace ConduitLLM.Admin.Services
                 await _providerHealthRepository.SaveConfigurationAsync(configEntity);
 
                 // Retrieve the saved configuration
-                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType.ToString());
+                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType);
                 if (savedConfig == null)
                 {
                     throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderType}'");
@@ -103,7 +103,7 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<Dictionary<string, ProviderHealthRecordDto>> GetAllLatestStatusesAsync()
+        public async Task<Dictionary<ProviderType, ProviderHealthRecordDto>> GetAllLatestStatusesAsync()
         {
             try
             {
@@ -143,21 +143,16 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderNameAsync(string providerName)
+        public async Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderTypeAsync(ProviderType providerType)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
-                var config = await _providerHealthRepository.GetConfigurationAsync(providerName);
+                var config = await _providerHealthRepository.GetConfigurationAsync(providerType);
                 return config?.ToDto();
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error retrieving health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error retrieving health configuration for provider type '{ProviderType}'", providerType);
                 throw;
             }
         }
@@ -267,14 +262,8 @@ _logger.LogError(ex, "Error retrieving health configuration for provider '{Provi
                 foreach (var provider in allStatuses.Keys)
                 {
                     var status = allStatuses[provider];
-                    var config = configDict.ContainsKey(provider) ? configDict[provider] : null;
-
-                    // Parse provider name to ProviderType
-                    if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
-                    {
-                        _logger.LogWarning("Unknown provider type: {Provider}", provider);
-                        continue;
-                    }
+                    var config = configDict.ContainsKey(provider.ToString()) ? configDict[provider.ToString()] : null;
+                    var providerType = provider; // provider is already a ProviderType
 
                     var summary = new ProviderHealthSummaryDto
                     {
@@ -304,33 +293,23 @@ _logger.LogError(ex, "Error retrieving health configuration for provider '{Provi
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthRecordDto?> GetLatestStatusAsync(string providerName)
+        public async Task<ProviderHealthRecordDto?> GetLatestStatusAsync(ProviderType providerType)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
-                var status = await _providerHealthRepository.GetLatestStatusAsync(providerName);
+                var status = await _providerHealthRepository.GetLatestStatusAsync(providerType);
                 return status?.ToDto();
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error retrieving latest health status for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error retrieving latest health status for provider type '{ProviderType}'", providerType);
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(string providerName, int hours = 24, int limit = 100)
+        public async Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(ProviderType providerType, int hours = 24, int limit = 100)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             if (hours <= 0)
             {
                 throw new ArgumentException("Hours must be greater than zero", nameof(hours));
@@ -344,12 +323,12 @@ _logger.LogError(ex, "Error retrieving latest health status for provider '{Provi
             try
             {
                 var sinceTime = DateTime.UtcNow.AddHours(-hours);
-                var history = await _providerHealthRepository.GetStatusHistoryAsync(providerName, sinceTime, limit);
+                var history = await _providerHealthRepository.GetStatusHistoryAsync(providerType, sinceTime, limit);
                 return history.Select(h => h.ToDto()).ToList();
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error retrieving health status history for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error retrieving health status history for provider type '{ProviderType}'", providerType);
                 throw;
             }
         }
@@ -378,24 +357,14 @@ _logger.LogError(ex, "Error retrieving health status history for provider '{Prov
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthRecordDto> TriggerHealthCheckAsync(string providerName)
+        public async Task<ProviderHealthRecordDto> TriggerHealthCheckAsync(ProviderType providerType)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
-                // Verify that the provider exists by parsing the provider name to enum
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    throw new InvalidOperationException($"Invalid provider name: '{providerName}'");
-                }
                 var providerExists = await ProviderExistsByTypeAsync(providerType);
                 if (!providerExists)
                 {
-                    throw new InvalidOperationException($"Provider '{providerName}' does not exist");
+                    throw new InvalidOperationException($"Provider '{providerType}' does not exist");
                 }
 
                 
@@ -417,14 +386,14 @@ _logger.LogError(ex, "Error retrieving health status history for provider '{Prov
                 await _providerHealthRepository.SaveStatusAsync(record);
 
                 // Update last checked time
-                await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerName);
+                await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerType);
 
-_logger.LogInformation("Triggered health check for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Triggered health check for provider type '{ProviderType}'", providerType);
                 return record.ToDto();
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error triggering health check for provider type '{ProviderType}'", providerType);
                 throw;
             }
         }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 // POST /api/model-mappings/bulk-discover - Discover models from a specific provider with capabilities
 export async function POST(req: NextRequest) {
@@ -19,8 +20,11 @@ export async function POST(req: NextRequest) {
     
     console.warn('[Bulk Discover] Starting discovery for provider:', body.providerName);
     
+    // Convert provider name to ProviderType
+    const providerType = providerNameToType(body.providerName);
+    
     // Discover all models from the provider
-    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(body.providerName);
+    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(providerType);
     
     // Get existing mappings to check for conflicts
     const existingMappingsResponse = await adminClient.modelMappings.list();

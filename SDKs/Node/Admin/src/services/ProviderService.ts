@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
+import { ProviderType } from '../models/providerType';
 import {
   ProviderCredentialDto,
   CreateProviderCredentialDto,
@@ -126,20 +127,20 @@ export class ProviderService extends FetchBaseApiClient {
     );
   }
 
-  async getHealthConfiguration(providerName: string): Promise<ProviderHealthConfigurationDto> {
-    const cacheKey = this.getCacheKey('provider-health-config', providerName);
+  async getHealthConfiguration(providerType: ProviderType): Promise<ProviderHealthConfigurationDto> {
+    const cacheKey = this.getCacheKey('provider-health-config', providerType.toString());
     return this.withCache(
       cacheKey,
       () =>
         this.get<ProviderHealthConfigurationDto>(
-          ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerName)
+          ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerType)
         ),
       CACHE_TTL.SHORT
     );
   }
 
   async updateHealthConfiguration(
-    providerName: string,
+    providerType: ProviderType,
     request: UpdateProviderHealthConfigurationDto
   ): Promise<void> {
     try {
@@ -148,7 +149,7 @@ export class ProviderService extends FetchBaseApiClient {
       throw new ValidationError('Invalid health configuration request', { validationError: error });
     }
 
-    await this.put(ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerName), request);
+    await this.put(ENDPOINTS.HEALTH.CONFIG_BY_PROVIDER(providerType), request);
     await this.invalidateCachePattern('provider-health');
   }
 
@@ -156,9 +157,9 @@ export class ProviderService extends FetchBaseApiClient {
     return super.get<ProviderHealthSummaryDto>(ENDPOINTS.HEALTH.STATUS);
   }
 
-  async getProviderHealthStatus(providerName: string): Promise<ProviderHealthStatusDto> {
+  async getProviderHealthStatus(providerType: ProviderType): Promise<ProviderHealthStatusDto> {
     return super.get<ProviderHealthStatusDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerName)
+      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType)
     );
   }
 
@@ -184,9 +185,9 @@ export class ProviderService extends FetchBaseApiClient {
     );
   }
 
-  async checkHealth(providerName: string): Promise<ProviderConnectionTestResultDto> {
+  async checkHealth(providerType: ProviderType): Promise<ProviderConnectionTestResultDto> {
     return this.post<ProviderConnectionTestResultDto>(
-      ENDPOINTS.HEALTH.CHECK(providerName)
+      ENDPOINTS.HEALTH.CHECK(providerType)
     );
   }
 

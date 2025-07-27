@@ -292,7 +292,7 @@ describe('FetchModelMappingsService', () => {
       };
       mockClient.post.mockResolvedValue(mockResponse);
 
-      const result = await service.bulkCreate(mappings);
+      const result = await service.bulkCreate({ mappings });
 
       expect(mockClient.post).toHaveBeenCalledWith(
         ENDPOINTS.MODEL_MAPPINGS.BULK,

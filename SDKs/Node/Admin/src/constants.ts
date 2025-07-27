@@ -1,5 +1,6 @@
 // Import shared HTTP constants from Common package
 import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS as COMMON_HTTP_STATUS } from '@knn_labs/conduit-common';
+import { ProviderType } from './models/providerType';
 
 // Re-export for backward compatibility
 export { HTTP_HEADERS, CONTENT_TYPES };
@@ -93,8 +94,8 @@ export const ENDPOINTS = {
     BY_MODEL: (modelId: string) => `/api/ModelProviderMapping/by-model/${modelId}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
-    DISCOVER_PROVIDER: (providerName: string) => `/api/ModelProviderMapping/discover/provider/${providerName}`,
-    DISCOVER_MODEL: (providerName: string, modelId: string) => `/api/ModelProviderMapping/discover/model/${providerName}/${modelId}`,
+    DISCOVER_PROVIDER: (providerType: ProviderType) => `/api/ModelProviderMapping/discover/provider/${providerType}`,
+    DISCOVER_MODEL: (providerType: ProviderType, modelId: string) => `/api/ModelProviderMapping/discover/model/${providerType}/${modelId}`,
     DISCOVER_ALL: '/api/ModelProviderMapping/discover/all',
     TEST_CAPABILITY: (modelAlias: string, capability: string) => `/api/ModelProviderMapping/discover/capability/${modelAlias}/${capability}`,
     IMPORT: '/api/ModelProviderMapping/import',
@@ -125,7 +126,7 @@ export const ENDPOINTS = {
     BASE: '/api/ModelCosts',
     BY_ID: (id: number) => `/api/ModelCosts/${id}`,
     BY_MODEL: (modelId: string) => `/api/ModelCosts/model/${modelId}`,
-    BY_PROVIDER: (providerName: string) => `/api/ModelCosts/provider/${providerName}`,
+    BY_PROVIDER: (providerType: ProviderType) => `/api/ModelCosts/provider/${providerType}`,
     BATCH: '/api/ModelCosts/batch',
     IMPORT: '/api/ModelCosts/import',
     BULK_UPDATE: '/api/ModelCosts/bulk-update',
@@ -159,15 +160,15 @@ export const ENDPOINTS = {
   // Provider Health
   HEALTH: {
     CONFIGURATIONS: '/api/ProviderHealth/configurations',
-    CONFIG_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/configurations/${provider}`,
+    CONFIG_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/configurations/${providerType}`,
     STATUS: '/api/ProviderHealth/status',
-    STATUS_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/status/${provider}`,
+    STATUS_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/status/${providerType}`,
     HISTORY: '/api/ProviderHealth/history',
-    HISTORY_BY_PROVIDER: (provider: string) => `/api/ProviderHealth/history/${provider}`,
-    CHECK: (provider: string) => `/api/ProviderHealth/check/${provider}`,
+    HISTORY_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/history/${providerType}`,
+    CHECK: (providerType: ProviderType) => `/api/ProviderHealth/check/${providerType}`,
     SUMMARY: '/api/health/providers',
     ALERTS: '/api/health/alerts',
-    PERFORMANCE: (provider: string) => `/api/health/providers/${provider}/performance`,
+    PERFORMANCE: (providerType: ProviderType) => `/api/health/providers/${providerType}/performance`,
   },
 
   // System
@@ -199,7 +200,7 @@ export const ENDPOINTS = {
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
     BATCH_UPDATE: '/api/GlobalSettings/batch',
     AUDIO: '/api/AudioConfiguration',
-    AUDIO_BY_PROVIDER: (provider: string) => `/api/AudioConfiguration/${provider}`,
+    AUDIO_BY_PROVIDER: (providerType: ProviderType) => `/api/AudioConfiguration/${providerType}`,
     ROUTER: '/api/Router',
   },
 

@@ -101,52 +101,6 @@ namespace ConduitLLM.Configuration.Repositories
 
         /// <inheritdoc/>
         public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetByProviderAsync(
-            string providerName,
-            CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // First find the provider credential by parsing the provider name to ProviderType
-                // Try to parse the provider name as an enum
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Invalid provider name: {ProviderName}", providerName);
-                    return new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
-                }
-
-                var credential = await dbContext.ProviderCredentials
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
-
-                if (credential == null)
-                {
-                    return new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
-                }
-
-                // Then find mappings with this credential ID
-                return await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
-                    .AsNoTracking()
-                    .Where(m => m.ProviderCredentialId == credential.Id)
-                    .OrderBy(m => m.ModelAlias)
-                    .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model provider mappings for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetByProviderAsync(
             ProviderType providerType,
             CancellationToken cancellationToken = default)
         {

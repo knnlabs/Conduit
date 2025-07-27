@@ -182,49 +182,6 @@ namespace ConduitLLM.Admin.Tests.Controllers
 
         #endregion
 
-        #region GetProviderCredentialByName Tests
-
-        [Fact]
-        public async Task GetProviderCredentialByName_WithExistingName_ShouldReturnOkWithCredential()
-        {
-            // Arrange
-            var credential = new ProviderCredentialDto
-            {
-                Id = 1,
-                ProviderType = ProviderType.OpenAI,
-                IsEnabled = true
-            };
-
-            _mockService.Setup(x => x.GetProviderCredentialByNameAsync("openai"))
-                .ReturnsAsync(credential);
-
-            // Act
-            var result = await _controller.GetProviderCredentialByName("openai");
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCredential = Assert.IsType<ProviderCredentialDto>(okResult.Value);
-            returnedCredential.ProviderType.Should().Be(ProviderType.OpenAI);
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task GetProviderCredentialByName_WithNonExistingName_ShouldReturnNotFound()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetProviderCredentialByNameAsync("non-existing"))
-                .ReturnsAsync((ProviderCredentialDto?)null);
-
-            // Act
-            var result = await _controller.GetProviderCredentialByName("non-existing");
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Provider credential not found");
-        }
-
-        #endregion
-
         #region CreateProviderCredential Tests
 
         [Fact]

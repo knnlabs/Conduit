@@ -59,23 +59,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioProviderConfig>> GetByProviderNameAsync(string providerName)
-        {
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-            {
-                return new List<AudioProviderConfig>();
-            }
-
-            return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .Where(c => c.ProviderCredential.ProviderType == providerType)
-                .OrderByDescending(c => c.RoutingPriority)
-                .ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<AudioProviderConfig>> GetByProviderNameAsync(ProviderType providerType)
+        public async Task<List<AudioProviderConfig>> GetByProviderTypeAsync(ProviderType providerType)
         {
             return await _context.AudioProviderConfigs
                 .Include(c => c.ProviderCredential)

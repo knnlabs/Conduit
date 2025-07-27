@@ -1,5 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
+import { ProviderType } from '../models/providerType';
 import {
   ModelCost,
   ModelCostDto,
@@ -116,11 +117,11 @@ export class ModelCostService extends FetchBaseApiClient {
     );
   }
 
-  async getByProvider(providerName: string): Promise<ModelCost[]> {
-    const cacheKey = this.getCacheKey('model-cost-by-provider', providerName);
+  async getByProvider(providerType: ProviderType): Promise<ModelCost[]> {
+    const cacheKey = this.getCacheKey('model-cost-by-provider', providerType.toString());
     return this.withCache(
       cacheKey,
-      () => super.get<ModelCost[]>(ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerName)),
+      () => super.get<ModelCost[]>(ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerType)),
       CACHE_TTL.LONG
     );
   }

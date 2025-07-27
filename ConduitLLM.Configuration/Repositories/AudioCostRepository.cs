@@ -42,21 +42,21 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioCost>> GetByProviderAsync(string provider)
+        public async Task<List<AudioCost>> GetByProviderAsync(ProviderType providerType)
         {
             return await _context.AudioCosts
-                .Where(c => c.Provider.ToLower() == provider.ToLower())
+                .Where(c => c.Provider == providerType)
                 .OrderBy(c => c.OperationType)
                 .ThenBy(c => c.Model)
                 .ToListAsync();
         }
 
         /// <inheritdoc/>
-        public async Task<AudioCost?> GetCurrentCostAsync(string provider, string operationType, string? model = null)
+        public async Task<AudioCost?> GetCurrentCostAsync(ProviderType providerType, string operationType, string? model = null)
         {
             var now = DateTime.UtcNow;
             var query = _context.AudioCosts
-                .Where(c => c.Provider.ToLower() == provider.ToLower() &&
+                .Where(c => c.Provider == providerType &&
                            c.OperationType.ToLower() == operationType.ToLower() &&
                            c.IsActive &&
                            c.EffectiveFrom <= now &&
@@ -130,10 +130,10 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task DeactivatePreviousCostsAsync(string provider, string operationType, string? model = null)
+        public async Task DeactivatePreviousCostsAsync(ProviderType providerType, string operationType, string? model = null)
         {
             var costs = await _context.AudioCosts
-                .Where(c => c.Provider.ToLower() == provider.ToLower() &&
+                .Where(c => c.Provider == providerType &&
                            c.OperationType.ToLower() == operationType.ToLower() &&
                            c.Model == model &&
                            c.IsActive &&
@@ -154,10 +154,10 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioCost>> GetCostHistoryAsync(string provider, string operationType, string? model = null)
+        public async Task<List<AudioCost>> GetCostHistoryAsync(ProviderType providerType, string operationType, string? model = null)
         {
             var query = _context.AudioCosts
-                .Where(c => c.Provider.ToLower() == provider.ToLower() &&
+                .Where(c => c.Provider == providerType &&
                            c.OperationType.ToLower() == operationType.ToLower());
 
             if (!string.IsNullOrEmpty(model))

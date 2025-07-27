@@ -2,6 +2,7 @@ import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchProviderModelsService } from '../services/FetchProviderModelsService';
 
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import type { 
   ModelDto
 } from '../models/providerModels';
@@ -59,10 +60,10 @@ describe('FetchProviderModelsService', () => {
       }];
       mockClient.get.mockResolvedValue(mockDiscoveredModels);
 
-      const result = await service.getProviderModels('openai');
+      const result = await service.getProviderModels(ProviderType.OpenAI);
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER('openai'),
+        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(ProviderType.OpenAI),
         {
           signal: undefined,
           timeout: undefined,
@@ -93,11 +94,11 @@ describe('FetchProviderModelsService', () => {
       }];
       mockClient.get.mockResolvedValue(mockDiscoveredModels);
 
-      const result = await service.getCachedProviderModels('openai');
+      const result = await service.getCachedProviderModels(ProviderType.OpenAI);
 
       // getCachedProviderModels falls back to getProviderModels
       expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER('openai'),
+        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(ProviderType.OpenAI),
         {
           signal: undefined,
           timeout: undefined,
@@ -127,10 +128,10 @@ describe('FetchProviderModelsService', () => {
       }];
       mockClient.get.mockResolvedValue(mockModels);
 
-      const result = await service.refreshProviderModels('openai');
+      const result = await service.refreshProviderModels(ProviderType.OpenAI);
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER('openai'),
+        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(ProviderType.OpenAI),
         {
           signal: undefined,
           timeout: undefined,
@@ -169,10 +170,10 @@ describe('FetchProviderModelsService', () => {
       };
       mockClient.get.mockResolvedValue(mockDiscoveredModel);
 
-      const result = await service.getModelDetails('openai', 'gpt-4');
+      const result = await service.getModelDetails(ProviderType.OpenAI, 'gpt-4');
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL('openai', 'gpt-4'),
+        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(ProviderType.OpenAI, 'gpt-4'),
         {
           signal: undefined,
           timeout: undefined,
@@ -205,11 +206,11 @@ describe('FetchProviderModelsService', () => {
       };
       mockClient.get.mockResolvedValue(mockDiscoveredModel);
 
-      const result = await service.getModelCapabilities('openai', 'gpt-4');
+      const result = await service.getModelCapabilities(ProviderType.OpenAI, 'gpt-4');
 
       // getModelCapabilities uses getModelDetails internally
       expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL('openai', 'gpt-4'),
+        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(ProviderType.OpenAI, 'gpt-4'),
         {
           signal: undefined,
           timeout: undefined,

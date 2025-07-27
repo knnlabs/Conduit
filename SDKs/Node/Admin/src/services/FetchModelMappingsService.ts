@@ -2,6 +2,7 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
+import { ProviderType } from '../models/providerType';
 import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
@@ -124,11 +125,11 @@ export class FetchModelMappingsService {
    * Discover models from a specific provider
    */
   async discoverProviderModels(
-    providerName: string,
+    providerType: ProviderType,
     config?: RequestConfig
   ): Promise<DiscoveredModel[]> {
     return this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerName),
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,

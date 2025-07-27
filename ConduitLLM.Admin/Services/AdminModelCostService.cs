@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -254,7 +255,14 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerName);
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
+                    return Enumerable.Empty<ModelCostDto>();
+                }
+                
+                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerType);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -458,16 +466,31 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<string> ExportModelCostsAsync(string format, string? providerName = null)
         {
-            var modelCosts = providerName != null 
-                ? await _modelCostRepository.GetByProviderAsync(providerName)
-                : await _modelCostRepository.GetAllAsync();
+            IEnumerable<ModelCost> modelCosts;
+            if (providerName != null)
+            {
+                // Parse provider name to ProviderType
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
+                    modelCosts = Enumerable.Empty<ModelCost>();
+                }
+                else
+                {
+                    modelCosts = await _modelCostRepository.GetByProviderAsync(providerType);
+                }
+            }
+            else
+            {
+                modelCosts = await _modelCostRepository.GetAllAsync();
+            }
 
             format = format?.ToLowerInvariant() ?? "json";
 
             return format switch
             {
-                "json" => GenerateJsonExport(modelCosts),
-                "csv" => GenerateCsvExport(modelCosts),
+                "json" => GenerateJsonExport(modelCosts.ToList()),
+                "csv" => GenerateCsvExport(modelCosts.ToList()),
                 _ => throw new ArgumentException($"Unsupported export format: {format}")
             };
         }
