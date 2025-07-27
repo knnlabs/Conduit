@@ -178,23 +178,13 @@ Audio usage is tracked comprehensively:
 
 ### Cost Calculation
 
-```csharp
-public interface IAudioCostCalculationService
-{
-    Task<decimal> CalculateTranscriptionCostAsync(
-        string provider, string model, double durationSeconds);
-    Task<decimal> CalculateTextToSpeechCostAsync(
-        string provider, string model, int characterCount);
-    Task<decimal> CalculateRealtimeCostAsync(
-        string provider, string model, RealtimeUsageData usage);
-}
-```
-
-The `AudioCostCalculationService` implementation:
+Audio cost calculation is handled through the standard cost calculation service:
 - Uses provider-specific pricing models
 - Integrates with database for dynamic pricing
 - Supports tiered pricing and volume discounts
 - Automatically updates virtual key spending
+
+Note: The dedicated `AudioCostCalculationService` has been deprecated and removed. Audio costs are now calculated through the unified cost calculation infrastructure.
 
 ## Configuration
 

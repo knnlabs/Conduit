@@ -70,14 +70,12 @@ namespace ConduitLLM.Core.Extensions
             services.AddScoped<IAudioPiiDetector, AudioPiiDetector>();
             services.AddScoped<IAudioAuditLogger, AudioAuditLogger>();
             services.AddScoped<IAudioEncryptionService, AudioEncryptionService>();
-            services.AddScoped<SecureAudioService>();
 
             // Register performance optimization services
             services.AddMemoryCache(); // For AudioStreamCache
             services.AddSingleton<IAudioConnectionPool, AudioConnectionPool>();
             services.AddScoped<IAudioStreamCache, AudioStreamCache>();
             services.AddScoped<IAudioCdnService, AudioCdnService>();
-            services.AddScoped<PerformanceOptimizedAudioService>();
 
             // Register monitoring and observability services
             services.AddSingleton<IAudioMetricsCollector, AudioMetricsCollector>();

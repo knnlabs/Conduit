@@ -80,19 +80,9 @@ public interface IRealtimeSessionStore
 - Automatic virtual key spend updates
 
 ### Cost Calculation Service
-```csharp
-public class AudioCostCalculationService : IAudioCostCalculationService
-{
-    // Provider-specific pricing models
-    ["openai"] = new ProviderPricingModel
-    {
-        TranscriptionRates = new Dictionary<string, decimal>
-        {
-            ["whisper-1"] = 0.006m // $0.006 per minute
-        }
-    }
-}
-```
+**Note: AudioCostCalculationService has been deprecated and removed.**
+
+Audio cost calculation is now handled through the unified cost calculation infrastructure with provider-specific pricing models stored in the database.
 
 ### Export/Import Functionality
 - CSV export for audio usage data

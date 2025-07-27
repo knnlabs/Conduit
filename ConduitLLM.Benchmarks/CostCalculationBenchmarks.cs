@@ -14,13 +14,9 @@ namespace ConduitLLM.Benchmarks
     public class CostCalculationBenchmarks
     {
         private CostCalculationService _costCalculationService = null!;
-        private AudioCostCalculationService _audioCostCalculationService = null!;
         private Mock<IModelCostService> _modelCostServiceMock = null!;
-        private Mock<IServiceProvider> _serviceProviderMock = null!;
         
         private const string ModelId = "openai/gpt-4";
-        private const string AudioProvider = "openai";
-        private const string AudioModel = "whisper-1";
         
         private readonly Usage _simpleUsage = new()
         {
@@ -65,11 +61,6 @@ namespace ConduitLLM.Benchmarks
             
             var loggerMock = new Mock<ILogger<CostCalculationService>>();
             _costCalculationService = new CostCalculationService(_modelCostServiceMock.Object, loggerMock.Object);
-            
-            // Setup audio service
-            _serviceProviderMock = new Mock<IServiceProvider>();
-            var audioLoggerMock = new Mock<ILogger<AudioCostCalculationService>>();
-            _audioCostCalculationService = new AudioCostCalculationService(_serviceProviderMock.Object, audioLoggerMock.Object);
         }
 
         [Benchmark(Baseline = true)]
@@ -94,27 +85,6 @@ namespace ConduitLLM.Benchmarks
                 TotalTokens = 5000
             };
             return await _costCalculationService.CalculateCostAsync(ModelId, embeddingUsage);
-        }
-        
-        [Benchmark]
-        public async Task<object> AudioCostCalculation_Transcription()
-        {
-            return await _audioCostCalculationService.CalculateTranscriptionCostAsync(
-                AudioProvider, AudioModel, 300); // 5 minutes
-        }
-        
-        [Benchmark]
-        public async Task<object> AudioCostCalculation_TextToSpeech()
-        {
-            return await _audioCostCalculationService.CalculateTextToSpeechCostAsync(
-                AudioProvider, "tts-1", 10000); // 10k characters
-        }
-        
-        [Benchmark]
-        public async Task<object> AudioCostCalculation_Realtime()
-        {
-            return await _audioCostCalculationService.CalculateRealtimeCostAsync(
-                AudioProvider, "gpt-4o-realtime-preview", 180, 120, 5000, 3000);
         }
         
         // Batch processing benchmark

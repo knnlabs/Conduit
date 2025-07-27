@@ -25,39 +25,11 @@ namespace ConduitLLM.Http.Extensions
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            // Add core audio services - most implementations don't exist
-            // services.AddScoped<IAudioRouter, DefaultAudioRouter>();
-            // services.AddScoped<IAudioProcessingService, AudioProcessingService>();
-            // services.AddScoped<IHybridAudioService, HybridAudioService>();
-            
-            // Add performance services - implementations don't exist
-            // services.AddSingleton<IAudioConnectionPool, AudioConnectionPool>();
-            // services.AddScoped<IAudioStreamCache, AudioStreamCache>();
-            // services.AddScoped<IAudioCdnService, AudioCdnService>();
-            // services.AddScoped<PerformanceOptimizedAudioService>();
-            
-            // Add monitoring services - implementations don't exist
-            // services.AddSingleton<IAudioMetricsCollector, AudioMetricsCollector>();
-            // services.AddSingleton<IAudioAlertingService, AudioAlertingService>();
-            // services.AddSingleton<IAudioTracingService, AudioTracingService>();
-            // services.AddScoped<MonitoringAudioService>();
-            
-            // Add quality tracking - implementation doesn't exist
-            // services.AddSingleton<IAudioQualityTracker, AudioQualityTracker>();
-            
-            // Add correlation services - implementations don't exist
-            // services.AddScoped<ICorrelationContextService, CorrelationContextService>();
-            // services.AddTransient<CorrelationPropagationHandler>();
-            
-            // Configure HTTP clients with correlation propagation
+            // Configure HTTP clients for audio services
             services.AddHttpClient<IAudioTranscriptionClient>();
-                // .AddHttpMessageHandler<CorrelationPropagationHandler>();
-            
             services.AddHttpClient<ITextToSpeechClient>();
-                // .AddHttpMessageHandler<CorrelationPropagationHandler>();
             
-            // Add Prometheus metrics exporter - interface doesn't exist
-            // services.AddSingleton<IPrometheusAudioMetricsExporter, PrometheusAudioMetricsExporter>();
+            // Add Prometheus metrics exporter as hosted service
             services.AddHostedService<PrometheusAudioMetricsExporter>();
             
             // Add graceful shutdown

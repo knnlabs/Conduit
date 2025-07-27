@@ -121,7 +121,7 @@ public class Usage
 ### Phase 3: Advanced Scenarios
 1. **How do we handle composite costs?**
    - Example: Realtime = audio cost + token cost
-   - Current: Hardcoded in AudioCostCalculationService
+   - Current: Handled through unified cost calculation
    - Future: Configurable?
 
 2. **Should we support cost preview?**
