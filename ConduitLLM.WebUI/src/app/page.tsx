@@ -1,8 +1,7 @@
 import { HomePageClient } from '@/components/pages/HomePageClient';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { getServerCoreClient } from '@/lib/server/coreClient';
-import { mapHealthStatus, isNoProvidersIssue, HealthComponents } from '@/lib/constants/health';
-import type { HealthCheckDetail } from '@/types/health';
+import { processHealthStatus, createErrorHealthStatus } from '@/lib/utils/health-status';
 
 // Force dynamic rendering to ensure health check runs at request time
 export const dynamic = 'force-dynamic';
@@ -20,27 +19,15 @@ async function getHealthStatus() {
     // During build time, we don't have access to the admin client
     // Return default values to allow static generation
     if (!process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY) {
+      const errorStatus = createErrorHealthStatus('No backend auth key configured');
       return {
-        adminApi: 'unavailable' as const,
-        coreApi: 'unavailable' as const,
-        signalr: 'unavailable' as const,
-        isNoProvidersIssue: false,
-        lastChecked: new Date().toISOString(),
-        adminChecks: {} as Record<string, HealthCheckDetail>,
-        coreChecks: {} as Record<string, HealthCheckDetail>,
+        ...errorStatus,
+        lastChecked: errorStatus.lastChecked.toISOString(),
       };
     }
 
     const adminClient = getServerAdminClient();
     const health = await adminClient.system.getHealth();
-    
-    // Extract provider status from health checks
-    const providerCheck = health.checks?.[HealthComponents.PROVIDERS];
-    const hasNoProviders = isNoProvidersIssue(providerCheck?.description);
-    
-    // Use the provider check status as the Core API status
-    // Since providers ARE the core functionality
-    const coreApiStatus = providerCheck ? mapHealthStatus(providerCheck.status) : 'unavailable';
     
     // Try to get SignalR status from Core API using SDK
     let signalrStatus: 'healthy' | 'degraded' | 'unavailable' = 'unavailable';
@@ -71,26 +58,19 @@ async function getHealthStatus() {
       // Keep signalrStatus as 'unavailable'
     }
     
+    // Use the shared health processing function
+    const processed = processHealthStatus(health, signalrStatus);
+    
     return {
-      adminApi: mapHealthStatus(health.status),
-      coreApi: coreApiStatus,
-      signalr: signalrStatus,
-      isNoProvidersIssue: hasNoProviders,
-      coreApiMessage: providerCheck?.description,
-      lastChecked: new Date().toISOString(),
-      adminChecks: health.checks ?? {},
-      coreChecks: health.checks ?? {}, // For now, using same health data
+      ...processed,
+      lastChecked: processed.lastChecked.toISOString(),
     };
   } catch (error) {
     console.error('Failed to fetch health status:', error);
+    const errorStatus = createErrorHealthStatus('Failed to fetch health status');
     return {
-      adminApi: 'unavailable' as const,
-      coreApi: 'unavailable' as const,
-      signalr: 'unavailable' as const,
-      isNoProvidersIssue: false,
-      lastChecked: new Date().toISOString(),
-      adminChecks: {} as Record<string, HealthCheckDetail>,
-      coreChecks: {} as Record<string, HealthCheckDetail>,
+      ...errorStatus,
+      lastChecked: errorStatus.lastChecked.toISOString(),
     };
   }
 }

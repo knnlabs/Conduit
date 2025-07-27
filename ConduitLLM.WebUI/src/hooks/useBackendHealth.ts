@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { HealthStatusDto } from '@knn_labs/conduit-admin-client';
-import type { HealthCheckDetail } from '@/types/health';
+import { processHealthStatus, createErrorHealthStatus } from '@/lib/utils/health-status';
 
 export interface BackendHealthStatus {
   adminApi: 'healthy' | 'degraded' | 'unavailable';
@@ -10,8 +10,8 @@ export interface BackendHealthStatus {
   lastChecked: Date;
   adminApiDetails?: HealthStatusDto;
   coreApiDetails?: HealthStatusDto;
-  adminApiChecks?: Record<string, HealthCheckDetail>;
-  coreApiChecks?: Record<string, HealthCheckDetail>;
+  adminApiChecks?: Record<string, import('@/types/health').HealthCheckDetail>;
+  coreApiChecks?: Record<string, import('@/types/health').HealthCheckDetail>;
   coreApiMessage?: string;
 }
 
@@ -34,51 +34,40 @@ export function useBackendHealth(autoRefresh: boolean = true, refreshInterval: n
       if (response.ok) {
         const health = await response.json() as HealthStatusDto;
         
-        // Map status values
-        const mapStatus = (status: string): 'healthy' | 'degraded' | 'unavailable' => {
-          switch (status.toLowerCase()) {
-            case 'healthy':
-              return 'healthy';
-            case 'degraded':
-              return 'degraded';
-            case 'unhealthy':
-            case 'unavailable':
-              return 'unavailable';
-            default:
-              return 'degraded';
-          }
-        };
-        
-        // Extract provider check for Core API status
-        const providerCheck = health.checks?.providers;
-        const coreApiStatus = providerCheck ? mapStatus(providerCheck.status) : 'unavailable';
-        const coreApiMessage = providerCheck?.description;
+        // Use the shared health processing function
+        const processed = processHealthStatus(health);
         
         setHealthStatus({
-          adminApi: mapStatus(health.status),
-          coreApi: coreApiStatus,
-          lastChecked: new Date(),
-          adminApiDetails: health,
-          coreApiDetails: health, // For now, using same data
-          adminApiChecks: health.checks,
-          coreApiChecks: health.checks,
-          coreApiMessage,
+          adminApi: processed.adminApi,
+          coreApi: processed.coreApi,
+          lastChecked: processed.lastChecked,
+          adminApiDetails: processed.adminApiDetails,
+          coreApiDetails: processed.coreApiDetails,
+          adminApiChecks: processed.adminApiChecks,
+          coreApiChecks: processed.coreApiChecks,
+          coreApiMessage: processed.coreApiMessage,
         });
       } else {
+        // Non-OK response means the API is reachable but returning an error
+        const errorStatus = createErrorHealthStatus(`Health check returned ${response.status} status`);
         setHealthStatus({
-          adminApi: 'degraded',
-          coreApi: 'degraded',
-          lastChecked: new Date(),
+          adminApi: errorStatus.adminApi,
+          coreApi: errorStatus.coreApi,
+          lastChecked: errorStatus.lastChecked,
+          coreApiMessage: errorStatus.coreApiMessage,
         });
-        setError('Health check returned non-OK status');
+        setError(`Health check returned ${response.status} status`);
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Health check failed';
+      const errorStatus = createErrorHealthStatus(errorMessage);
       setHealthStatus({
-        adminApi: 'unavailable',
-        coreApi: 'unavailable',
-        lastChecked: new Date(),
+        adminApi: errorStatus.adminApi,
+        coreApi: errorStatus.coreApi,
+        lastChecked: errorStatus.lastChecked,
+        coreApiMessage: errorStatus.coreApiMessage,
       });
-      setError(err instanceof Error ? err.message : 'Health check failed');
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

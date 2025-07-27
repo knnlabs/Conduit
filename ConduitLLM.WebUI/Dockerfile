@@ -1,7 +1,7 @@
 # Optimized multi-stage Dockerfile for ConduitLLM.WebUI
 # Features: Multi-stage build, Alpine base, non-root user, health checks
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # IMPORTANT: This is a monorepo where packages depend on each other via file: references
@@ -33,7 +33,7 @@ RUN mkdir -p public
 RUN npm install --no-audit --no-fund && npm run build
 
 # Production stage - smaller final image
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Create non-root user for security
