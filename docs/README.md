@@ -81,10 +81,6 @@ Welcome to the Conduit documentation! This guide will help you navigate through 
 - **[Security Guidelines](./Security-Guidelines.md)** - Best practices
 - **[Admin API Security](./EPIC-Admin-API-Security-Features.md)** - Authentication & authorization
 
-## 🗄️ Archive
-
-- **[Archived Documentation](./archive/)** - Deprecated and historical documents
-- **[Migration Guides](./archive/webui-migration/)** - Past migration documentation
 
 ## 🔍 Finding Information
 
