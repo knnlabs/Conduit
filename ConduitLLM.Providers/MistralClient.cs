@@ -381,7 +381,9 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? Constants.Urls.DefaultBaseUrl).TrimEnd('/');
+                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
+                    ? Credentials.BaseUrl.TrimEnd('/') 
+                    : Constants.Urls.DefaultBaseUrl.TrimEnd('/'));
             
             // Ensure /v1 is in the URL if not already present
             if (!effectiveBaseUrl.EndsWith("/v1"))

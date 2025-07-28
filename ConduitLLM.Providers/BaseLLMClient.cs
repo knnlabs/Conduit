@@ -136,6 +136,39 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Creates an HttpClient specifically for authentication verification.
+        /// This client should NOT have BaseAddress set when using absolute URLs.
+        /// </summary>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        /// <returns>A configured HttpClient for authentication verification.</returns>
+        protected virtual HttpClient CreateAuthenticationVerificationClient(string apiKey)
+        {
+            HttpClient client;
+            if (HttpClientFactory != null)
+            {
+                client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
+            }
+            else
+            {
+                client = new HttpClient();
+            }
+
+            // Configure basic headers
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // Configure authentication
+            ConfigureAuthentication(client, apiKey);
+            
+            // Use a shorter timeout for health checks
+            client.Timeout = TimeSpan.FromSeconds(30);
+            
+            // Do NOT set BaseAddress - we'll be using absolute URLs
+            return client;
+        }
+
+        /// <summary>
         /// Creates a chat completion using the LLM provider.
         /// </summary>
         /// <param name="request">The chat completion request.</param>

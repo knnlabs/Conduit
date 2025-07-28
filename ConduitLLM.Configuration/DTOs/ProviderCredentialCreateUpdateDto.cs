@@ -29,6 +29,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional organization ID for providers that support it
         /// </summary>
         public string? Organization { get; set; }
+
+        /// <summary>
+        /// Optional API key to create as the initial key for this provider
+        /// </summary>
+        public string? ApiKey { get; set; }
     }
 
     /// <summary>

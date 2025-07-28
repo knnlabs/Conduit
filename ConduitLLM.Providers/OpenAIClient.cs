@@ -1085,9 +1085,10 @@ namespace ConduitLLM.Providers
                         "No API key provided for OpenAI authentication");
                 }
 
-                // Create a test client
-                using var client = CreateHttpClient(effectiveApiKey);
+                // Create a test client specifically for authentication verification
+                using var client = CreateAuthenticationVerificationClient(effectiveApiKey);
                 
+                // GetHealthCheckUrl returns an absolute URL, so we should NOT set BaseAddress
                 // Try to list models - OpenAI returns 200 even without auth, 
                 // so we need to check the response content
                 var modelsUrl = GetHealthCheckUrl(baseUrl);
@@ -1179,9 +1180,12 @@ namespace ConduitLLM.Providers
         /// </summary>
         public override string GetHealthCheckUrl(string? baseUrl = null)
         {
+            // First, determine the effective base URL, handling empty strings properly
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? Constants.Urls.DefaultOpenAIBaseUrl).TrimEnd('/');
+                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
+                    ? Credentials.BaseUrl.TrimEnd('/') 
+                    : Constants.Urls.DefaultOpenAIBaseUrl.TrimEnd('/'));
             
             // Ensure /v1 is in the URL
             if (!effectiveBaseUrl.EndsWith("/v1"))

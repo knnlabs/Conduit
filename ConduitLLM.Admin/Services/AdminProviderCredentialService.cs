@@ -32,6 +32,7 @@ namespace ConduitLLM.Admin.Services
     public class AdminProviderCredentialService : EventPublishingServiceBase, IAdminProviderCredentialService
     {
         private readonly IProviderCredentialRepository _providerCredentialRepository;
+        private readonly IProviderKeyCredentialRepository _providerKeyCredentialRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<AdminProviderCredentialService> _logger;
         private readonly ConduitLLM.Configuration.IProviderCredentialService _configProviderCredentialService;
@@ -42,6 +43,7 @@ namespace ConduitLLM.Admin.Services
         /// Initializes a new instance of the AdminProviderCredentialService
         /// </summary>
         /// <param name="providerCredentialRepository">The provider credential repository</param>
+        /// <param name="providerKeyCredentialRepository">The provider key credential repository</param>
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
         /// <param name="configProviderCredentialService">The configuration provider credential service</param>
         /// <param name="llmClientFactory">The LLM client factory for creating provider instances</param>
@@ -50,6 +52,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
             IProviderCredentialRepository providerCredentialRepository,
+            IProviderKeyCredentialRepository providerKeyCredentialRepository,
             IHttpClientFactory httpClientFactory,
             ConduitLLM.Configuration.IProviderCredentialService configProviderCredentialService,
             ILLMClientFactory llmClientFactory,
@@ -59,6 +62,7 @@ namespace ConduitLLM.Admin.Services
             : base(publishEndpoint, logger)
         {
             _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
+            _providerKeyCredentialRepository = providerKeyCredentialRepository ?? throw new ArgumentNullException(nameof(providerKeyCredentialRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _configProviderCredentialService = configProviderCredentialService ?? throw new ArgumentNullException(nameof(configProviderCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -92,6 +96,27 @@ namespace ConduitLLM.Admin.Services
 
                 // Save to database
                 var id = await _providerCredentialRepository.CreateAsync(credentialEntity);
+
+                // If an API key is provided, create it as the initial key
+                if (!string.IsNullOrWhiteSpace(providerCredential.ApiKey))
+                {
+                    var initialKey = new ProviderKeyCredential
+                    {
+                        ProviderCredentialId = id,
+                        ApiKey = providerCredential.ApiKey,
+                        BaseUrl = providerCredential.BaseUrl,
+                        Organization = providerCredential.Organization,
+                        KeyName = "Primary Key",
+                        IsPrimary = true,
+                        IsEnabled = true,
+                        ProviderAccountGroup = 0,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _providerKeyCredentialRepository.CreateAsync(initialKey);
+                    _logger.LogInformation("Created initial API key for provider {ProviderType}", providerCredential.ProviderType);
+                }
 
                 // Get the created credential
                 var createdCredential = await _providerCredentialRepository.GetByIdAsync(id);

@@ -238,8 +238,8 @@ namespace ConduitLLM.Providers
                         "No API key provided for Azure OpenAI authentication");
                 }
 
-                // Create a test client
-                using var client = CreateHttpClient(effectiveApiKey);
+                // Create a test client specifically for authentication verification
+                using var client = CreateAuthenticationVerificationClient(effectiveApiKey);
                 
                 // Azure requires the base URL to be set
                 var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 

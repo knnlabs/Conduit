@@ -112,6 +112,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminProviderCredentialService>(serviceProvider =>
         {
             var providerCredentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var providerKeyCredentialRepository = serviceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
             var configProviderCredentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
             var llmClientFactory = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.ILLMClientFactory>();
@@ -119,7 +120,7 @@ public static class ServiceCollectionExtensions
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminProviderCredentialService>>();
             
-            return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, configProviderCredentialService, llmClientFactory, loggerFactory, publishEndpoint, logger);
+            return new AdminProviderCredentialService(providerCredentialRepository, providerKeyCredentialRepository, httpClientFactory, configProviderCredentialService, llmClientFactory, loggerFactory, publishEndpoint, logger);
         });
 
         // Register Error Queue monitoring services

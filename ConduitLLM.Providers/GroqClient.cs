@@ -360,7 +360,9 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? Constants.Urls.DefaultBaseUrl).TrimEnd('/');
+                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
+                    ? Credentials.BaseUrl.TrimEnd('/') 
+                    : Constants.Urls.DefaultBaseUrl.TrimEnd('/'));
             
             return effectiveBaseUrl;
         }
