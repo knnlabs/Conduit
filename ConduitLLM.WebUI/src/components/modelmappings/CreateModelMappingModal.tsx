@@ -18,8 +18,8 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
-import type { CreateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -84,22 +84,9 @@ export function CreateModelMappingModal({
   });
 
   const handleSubmit = async (values: FormValues) => {
-    // Convert the numeric provider ID to provider name for the backend
-    const provider = providers?.find((p: ProviderCredentialDto) => p.id.toString() === values.providerId);
-    let providerName = values.providerId;
-    
-    if (provider) {
-      try {
-        const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
-        providerName = providerTypeToName(providerType);
-      } catch (error) {
-        console.error('Failed to get provider type:', error);
-      }
-    }
-
     const createData: CreateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: providerName, // Backend expects provider name, not numeric ID
+      providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,

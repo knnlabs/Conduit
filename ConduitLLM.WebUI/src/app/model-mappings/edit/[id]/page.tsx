@@ -22,7 +22,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName, providerNameToType, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import { getProviderTypeFromDto, getProviderDisplayName, providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 export default function EditModelMappingPage() {
   const params = useParams();
@@ -216,18 +216,12 @@ export default function EditModelMappingPage() {
         return;
       }
       
-      // Get provider name for the API
-      const providerType = getProviderTypeFromDto(provider);
-      const providerName = providerTypeToName(providerType);
-      
-      console.warn('[EditPage] Submit - found provider:', provider);
-      console.warn('[EditPage] Submit - provider type:', providerType);
-      console.warn('[EditPage] Submit - provider name:', providerName);
+      // No longer need to convert provider ID to name
 
       const updateData: UpdateModelProviderMappingDto = {
         id: parseInt(mappingId, 10), // Backend requires ID in body
         modelId,
-        providerId: providerName, // Backend expects provider name string
+        providerId: parseInt(providerId, 10), // Convert string to number
         providerModelId,
         priority,
         isEnabled,

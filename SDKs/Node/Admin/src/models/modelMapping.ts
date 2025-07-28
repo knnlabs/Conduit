@@ -5,6 +5,7 @@ export interface ModelProviderMappingDto {
   id: number;
   modelId: string;
   providerId: string;
+  providerType: ProviderType; // Added to match backend DTO
   providerModelId: string;
   isEnabled: boolean;
   priority: number;
@@ -57,7 +58,7 @@ export interface ModelProviderMappingDto {
 
 export interface CreateModelProviderMappingDto {
   modelId: string;
-  providerId: string;
+  providerId: number; // Changed from string to number to match backend
   providerModelId: string;
   isEnabled?: boolean;
   priority?: number;
@@ -101,7 +102,7 @@ export interface UpdateModelProviderMappingDto {
    */
   modelId?: string;
   
-  providerId?: string;
+  providerId?: number; // Changed from string to number to match backend
   providerModelId?: string;
   isEnabled?: boolean;
   priority?: number;

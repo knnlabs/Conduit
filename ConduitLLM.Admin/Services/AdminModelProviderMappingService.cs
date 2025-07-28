@@ -305,21 +305,20 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
 
             try
             {
-                // Validate and resolve provider by type
-                var providerByType = providerLookup.Values.FirstOrDefault(p => p.ProviderType == mappingDto.ProviderType);
-                if (providerByType == null)
+                // Validate and resolve provider by ID
+                if (!providerLookup.TryGetValue(mappingDto.ProviderId, out var provider))
                 {
                     response.Failed.Add(new BulkMappingError
                     {
                         Index = i,
                         Mapping = mappingDto,
-                        ErrorMessage = $"Provider not found with type: {mappingDto.ProviderType}",
+                        ErrorMessage = $"Provider not found with ID: {mappingDto.ProviderId}",
                         ErrorType = BulkMappingErrorType.ProviderNotFound
                     });
                     continue;
                 }
                 
-                int providerId = providerByType.Id;
+                int providerId = mappingDto.ProviderId;
 
                 // Check for duplicate model ID using pre-loaded lookup
                 var modelKeyLookup = mappingDto.ModelId.ToLowerInvariant();
@@ -333,7 +332,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                             Id = existingMapping.Id,
                             ModelId = mappingDto.ModelId,
                             ProviderModelId = mappingDto.ProviderModelId,
-                            ProviderType = mappingDto.ProviderType,
+                            ProviderType = provider.ProviderType,
                             Priority = mappingDto.Priority,
                             IsEnabled = mappingDto.IsEnabled,
                             Capabilities = mappingDto.Capabilities,
@@ -393,7 +392,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                 {
                     ModelId = mappingDto.ModelId,
                     ProviderModelId = mappingDto.ProviderModelId,
-                    ProviderType = mappingDto.ProviderType,
+                    ProviderType = provider.ProviderType,
                     Priority = mappingDto.Priority,
                     IsEnabled = mappingDto.IsEnabled,
                     Capabilities = mappingDto.Capabilities,

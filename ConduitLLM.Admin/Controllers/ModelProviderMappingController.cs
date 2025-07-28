@@ -7,6 +7,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -314,22 +315,29 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// <summary>
     /// Discovers available models for a specific provider
     /// </summary>
-    /// <param name="providerName">The name of the provider to discover models for</param>
+    /// <param name="providerType">The type of the provider to discover models for</param>
     /// <returns>A list of discovered models with their capabilities</returns>
-    [HttpGet("discover/provider/{providerName}")]
+    [HttpGet("discover/provider/{providerType}")]
     [ProducesResponseType(typeof(IEnumerable<DiscoveredModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverProviderModels(string providerName)
+    public async Task<IActionResult> DiscoverProviderModels(int providerType)
     {
-        if (string.IsNullOrWhiteSpace(providerName))
+        // Validate and convert the provider type
+        if (!Enum.IsDefined(typeof(ProviderType), providerType))
         {
-            return BadRequest("Provider name cannot be empty");
+            return BadRequest($"Invalid provider type: {providerType}");
         }
-
+        
+        var providerTypeEnum = (ProviderType)providerType;
+        
         try
         {
-            _logger.LogInformation("Discovering models for provider: {Provider}", providerName);
+            
+            // Convert ProviderType enum to provider name string
+            string providerName = providerTypeEnum.ToString().ToLowerInvariant();
+            
+            _logger.LogInformation("Discovering models for provider: {Provider} (Type: {ProviderType})", providerName, providerTypeEnum);
             var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
             
             // Convert dictionary values to list
@@ -337,7 +345,7 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering models for provider {Provider}", providerName);
+            _logger.LogError(ex, "Error discovering models for provider {Provider}", providerTypeEnum);
             return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering models: {ex.Message}");
         }
     }
@@ -345,29 +353,36 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// <summary>
     /// Discovers capabilities for a specific model
     /// </summary>
-    /// <param name="providerName">The name of the provider</param>
+    /// <param name="providerType">The type of the provider</param>
     /// <param name="modelId">The model ID to check capabilities for</param>
     /// <returns>Model information with detailed capabilities</returns>
-    [HttpGet("discover/model/{providerName}/{modelId}")]
+    [HttpGet("discover/model/{providerType}/{modelId}")]
     [ProducesResponseType(typeof(DiscoveredModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverModelCapabilities(string providerName, string modelId)
+    public async Task<IActionResult> DiscoverModelCapabilities(int providerType, string modelId)
     {
-        if (string.IsNullOrWhiteSpace(providerName))
-        {
-            return BadRequest("Provider name cannot be empty");
-        }
-
         if (string.IsNullOrWhiteSpace(modelId))
         {
             return BadRequest("Model ID cannot be empty");
         }
 
+        // Validate and convert the provider type
+        if (!Enum.IsDefined(typeof(ProviderType), providerType))
+        {
+            return BadRequest($"Invalid provider type: {providerType}");
+        }
+        
+        var providerTypeEnum = (ProviderType)providerType;
+        
         try
         {
-            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerName);
+            
+            // Convert ProviderType enum to provider name string
+            string providerName = providerTypeEnum.ToString().ToLowerInvariant();
+            
+            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider {Provider} (Type: {ProviderType})", modelId, providerName, providerTypeEnum);
             
             // Discover all models for the provider
             var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
@@ -388,14 +403,14 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
             
             if (model == null)
             {
-                return NotFound(new { error = $"Model {modelId} not found for provider {providerName}" });
+                return NotFound(new { error = $"Model {modelId} not found for provider {providerTypeEnum}" });
             }
             
             return Ok(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerName);
+            _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerTypeEnum);
             return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering model capabilities: {ex.Message}");
         }
     }

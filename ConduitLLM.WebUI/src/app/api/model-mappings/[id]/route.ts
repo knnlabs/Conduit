@@ -28,74 +28,33 @@ export async function PUT(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json() as Partial<UpdateModelProviderMappingDto>;
+    const body = await req.json() as UpdateModelProviderMappingDto;
     
-    
-    // First get the existing mapping to preserve the modelId
+    // First get the existing mapping to preserve required fields
     const existingMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     
-    // Transform frontend data to match SDK UpdateModelProviderMappingDto
     // The backend expects the ID in the body to match the route ID
     const transformedBody: UpdateModelProviderMappingDto = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
       modelId: body.modelId ?? existingMapping.modelId, // Backend requires modelId even for updates
+      providerId: body.providerId, // Already a number from frontend
+      providerModelId: body.providerModelId,
+      priority: body.priority,
+      isEnabled: body.isEnabled,
+      supportsVision: body.supportsVision,
+      supportsImageGeneration: body.supportsImageGeneration,
+      supportsAudioTranscription: body.supportsAudioTranscription,
+      supportsTextToSpeech: body.supportsTextToSpeech,
+      supportsRealtimeAudio: body.supportsRealtimeAudio,
+      supportsFunctionCalling: body.supportsFunctionCalling,
+      supportsStreaming: body.supportsStreaming,
+      supportsVideoGeneration: body.supportsVideoGeneration,
+      supportsEmbeddings: body.supportsEmbeddings,
+      maxContextLength: body.maxContextLength,
+      maxOutputTokens: body.maxOutputTokens,
+      isDefault: body.isDefault,
+      metadata: body.metadata,
     };
-    
-    if (body.providerId !== undefined) {
-      transformedBody.providerId = body.providerId; // Frontend now sends provider name directly
-    }
-    if (body.providerModelId !== undefined) {
-      transformedBody.providerModelId = body.providerModelId;
-    }
-    if (body.priority !== undefined) {
-      transformedBody.priority = body.priority;
-    }
-    if (body.isEnabled !== undefined) {
-      transformedBody.isEnabled = body.isEnabled;
-    }
-    if (body.supportsVision !== undefined) {
-      transformedBody.supportsVision = body.supportsVision;
-    }
-    if (body.supportsImageGeneration !== undefined) {
-      transformedBody.supportsImageGeneration = body.supportsImageGeneration;
-    }
-    if (body.supportsAudioTranscription !== undefined) {
-      transformedBody.supportsAudioTranscription = body.supportsAudioTranscription;
-    }
-    if (body.supportsTextToSpeech !== undefined) {
-      transformedBody.supportsTextToSpeech = body.supportsTextToSpeech;
-    }
-    if (body.supportsRealtimeAudio !== undefined) {
-      transformedBody.supportsRealtimeAudio = body.supportsRealtimeAudio;
-    }
-    if (body.supportsFunctionCalling !== undefined) {
-      transformedBody.supportsFunctionCalling = body.supportsFunctionCalling;
-    }
-    if (body.supportsStreaming !== undefined) {
-      transformedBody.supportsStreaming = body.supportsStreaming;
-    }
-    if (body.supportsVideoGeneration !== undefined) {
-      transformedBody.supportsVideoGeneration = body.supportsVideoGeneration;
-    }
-    if (body.supportsEmbeddings !== undefined) {
-      transformedBody.supportsEmbeddings = body.supportsEmbeddings;
-    }
-    if (body.maxContextLength !== undefined && body.maxContextLength !== null) {
-      transformedBody.maxContextLength = body.maxContextLength;
-    }
-    if (body.maxOutputTokens !== undefined && body.maxOutputTokens !== null) {
-      transformedBody.maxOutputTokens = body.maxOutputTokens;
-    }
-    if (body.isDefault !== undefined) {
-      transformedBody.isDefault = body.isDefault;
-    }
-    
-    // Don't build capabilities string - let backend handle individual boolean fields
-    // The capabilities field is legacy and the backend should derive it from the boolean flags
-    
-    if (body.metadata !== undefined) {
-      transformedBody.metadata = body.metadata;
-    }
     
     
     // Update returns void (204 No Content), so we need to fetch the updated mapping

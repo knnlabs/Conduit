@@ -60,7 +60,7 @@ export function ModelSelector() {
       onChange={handleModelChange}
       data={models?.map(model => ({
         value: model.id,
-        label: model.id
+        label: model.displayName || `${model.id} (${model.providerName ?? model.providerId})`
       })) ?? []}
       renderOption={renderSelectOption}
       searchable

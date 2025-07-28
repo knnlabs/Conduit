@@ -16,7 +16,7 @@ import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -130,23 +130,9 @@ export function EditModelMappingModal({
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
 
-
-    // Convert the numeric provider ID back to provider name for the backend
-    const provider = providers?.find(p => p.id.toString() === values.providerId);
-    let providerName = values.providerId;
-    
-    if (provider) {
-      try {
-        const providerType = getProviderTypeFromDto(provider);
-        providerName = providerTypeToName(providerType);
-      } catch (error) {
-        console.error('Failed to get provider type:', error);
-      }
-    }
-
     const updateData: UpdateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: providerName, // Backend expects provider name, not numeric ID
+      providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,
@@ -163,7 +149,6 @@ export function EditModelMappingModal({
       maxOutputTokens: values.maxOutputTokens,
       isDefault: values.isDefault,
     };
-
 
     try {
       await updateMapping.mutateAsync({

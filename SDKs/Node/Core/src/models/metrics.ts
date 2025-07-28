@@ -1,4 +1,4 @@
-import { ProviderType } from './providerType';
+import type { ProviderType } from './providerType';
 
 /**
  * Comprehensive metrics snapshot from the API

@@ -1,4 +1,4 @@
-import { ProviderType } from './providerType';
+import type { ProviderType } from './providerType';
 
 /**
  * Model capabilities that match the ILLMClient interface.

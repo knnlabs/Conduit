@@ -396,13 +396,13 @@ namespace ConduitLLM.Admin.Tests.Controllers
                     new() 
                     { 
                         ModelId = "model1", 
-                        ProviderType = ProviderType.OpenAI, 
+                        ProviderId = 1, 
                         ProviderModelId = "gpt-4"
                     },
                     new() 
                     { 
                         ModelId = "model2", 
-                        ProviderType = ProviderType.Anthropic, 
+                        ProviderId = 2, 
                         ProviderModelId = "claude-3",
                         SupportsVision = true 
                     }
@@ -441,9 +441,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Mappings = new List<CreateModelProviderMappingDto>
                 {
-                    new() { ModelId = "model1", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4" },
-                    new() { ModelId = "duplicate", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4" },
-                    new() { ModelId = "model3", ProviderType = ProviderType.OpenAI, ProviderModelId = "model" }
+                    new() { ModelId = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
+                    new() { ModelId = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4" },
+                    new() { ModelId = "model3", ProviderId = 1, ProviderModelId = "model" }
                 }
             };
 
@@ -514,7 +514,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 ReplaceExisting = true,
                 Mappings = new List<CreateModelProviderMappingDto>
                 {
-                    new() { ModelId = "existing", ProviderType = ProviderType.OpenAI, ProviderModelId = "gpt-4-updated" }
+                    new() { ModelId = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated" }
                 }
             };
 

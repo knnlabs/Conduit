@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { BulkMappingRequest, CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+
 interface BulkCreateRequest {
   models: Array<{
     modelId: string;
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as BulkCreateRequest;
     
     console.warn('[Bulk Create] Request received with', body.models?.length || 0, 'models');
+    console.warn('[Bulk Create] First model data:', JSON.stringify(body.models?.[0], null, 2));
     
     if (!body.models || body.models.length === 0) {
       return NextResponse.json(
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     // Use the SDK's bulkCreate method for better performance and proper error handling
     const mappings = body.models.map(model => ({
       modelId: model.modelId,
-      providerId: model.providerId,
+      providerId: parseInt(model.providerId, 10), // Convert to number as SDK now expects number
       providerModelId: model.modelId,
       isEnabled: body.enableByDefault ?? true,
       priority: body.defaultPriority ?? 50,
@@ -71,9 +72,9 @@ export async function POST(req: NextRequest) {
       }),
     }));
     
-    // Use the SDK's bulkCreate method with proper typing
-    const bulkRequest: BulkMappingRequest = {
-      mappings: mappings as CreateModelProviderMappingDto[],
+    // Use the SDK's bulkCreate method
+    const bulkRequest = {
+      mappings: mappings,
       replaceExisting: false
     };
     

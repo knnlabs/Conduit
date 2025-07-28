@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 const createMappingSchema = z.object({
   modelId: z.string().min(1),
-  providerId: z.string().min(1),
+  providerId: z.number().int().positive(), // Changed from string to number to match backend
   providerModelId: z.string().min(1),
   isEnabled: z.boolean().optional(),
   priority: z.number().min(0).max(1000).optional(),
@@ -49,7 +49,7 @@ const createMappingSchema = z.object({
 const updateMappingSchema = z.object({
   id: z.number().optional(),
   modelId: z.string().min(1).optional(),
-  providerId: z.string().min(1).optional(),
+  providerId: z.number().int().positive().optional(), // Changed from string to number to match backend
   providerModelId: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),
   priority: z.number().min(0).max(1000).optional(),

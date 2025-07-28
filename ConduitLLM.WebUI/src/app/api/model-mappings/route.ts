@@ -10,6 +10,9 @@ export async function GET() {
     // SDK now returns an array directly (backend doesn't support pagination yet)
     const response = await adminClient.modelMappings.list();
     
+    // Log the response to debug provider type issue
+    console.warn('[Model Mappings API] Response sample:', JSON.stringify(response[0], null, 2));
+    
     return NextResponse.json(response);
   } catch (error) {
     return handleSDKError(error);
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       modelId: string;
       providerModelId: string;
-      providerId: string;
+      providerId: number;
       priority?: number;
       isEnabled?: boolean;
       supportsVision?: boolean;
@@ -45,11 +48,11 @@ export async function POST(req: NextRequest) {
     // Log the incoming data for debugging
     console.warn('[Model Mappings] Creating with data:', JSON.stringify(body, null, 2));
     
-    // Transform frontend data to match SDK DTO expectations
+    // Pass data directly to SDK - providerId is already a number from the frontend
     const transformedBody = {
       modelId: body.modelId,
       providerModelId: body.providerModelId,
-      providerId: body.providerId, // Frontend now sends provider name directly
+      providerId: body.providerId, // Already a number from frontend
       priority: body.priority ?? 100,
       isEnabled: body.isEnabled ?? true, // Default to enabled
       supportsVision: body.supportsVision ?? false,
