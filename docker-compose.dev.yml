@@ -1,12 +1,21 @@
 # Development docker-compose with volume mounts for hot reloading
-# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Usage: ./scripts/start-dev.sh
+# Features: User ID mapping, Swagger UI enabled, permission-free development
 
 services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+  admin:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
   webui:
     # Use base node image for development instead of production build
     image: node:20-alpine
-    # Run as root in dev (simplifies permissions, fine for local dev)
-    user: "0:0"
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}"
     volumes:
       # Mount source code for hot reloading
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
