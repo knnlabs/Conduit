@@ -297,5 +297,6 @@ export type {
 // Export metadata and common types
 export * from './models/metadata';
 export * from './models/common-types';
-export * from './models/providerType';
+// ProviderType is now exported from @knn_labs/conduit-common
+export { ProviderType, isProviderType, getProviderDisplayName } from '@knn_labs/conduit-common';
 

@@ -19,7 +19,7 @@ import type {
   ProviderKeyRotationDto
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 // Type aliases for better readability
 type ProviderDto = components['schemas']['ProviderCredentialDto'];

@@ -10,6 +10,9 @@ export {
   BaseClientOptions
 } from './types';
 
+// Base API client
+export { BaseApiClient, BaseClientConfig, BaseRequestOptions } from './BaseApiClient';
+
 // SignalR configuration
 export { SignalRConfig } from './signalr-config';
 

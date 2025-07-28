@@ -30,57 +30,140 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
+  API_PREFIX: () => API_PREFIX,
+  API_VERSION: () => API_VERSION,
   AuthError: () => AuthError,
   AuthenticationError: () => AuthenticationError,
   AuthorizationError: () => AuthorizationError,
+  BUDGET_DURATION: () => BUDGET_DURATION,
+  BaseApiClient: () => BaseApiClient,
   BaseSignalRConnection: () => BaseSignalRConnection,
+  CACHE_TTL: () => CACHE_TTL,
+  CHAT_ROLES: () => CHAT_ROLES,
+  CLIENT_INFO: () => CLIENT_INFO,
   CONTENT_TYPES: () => CONTENT_TYPES,
   ConduitError: () => ConduitError,
   ConflictError: () => ConflictError,
+  DATE_FORMATS: () => DATE_FORMATS,
   DefaultTransports: () => DefaultTransports,
   ERROR_CODES: () => ERROR_CODES,
+  FILTER_MODE: () => FILTER_MODE,
+  FILTER_TYPE: () => FILTER_TYPE,
+  FilterOperator: () => FilterOperator,
+  HEALTH_STATUS: () => HEALTH_STATUS,
   HTTP_HEADERS: () => HTTP_HEADERS,
   HTTP_STATUS: () => HTTP_STATUS,
   HttpError: () => HttpError,
   HttpMethod: () => HttpMethod,
   HttpTransportType: () => HttpTransportType,
   HubConnectionState: () => HubConnectionState,
+  IMAGE_RESPONSE_FORMATS: () => IMAGE_RESPONSE_FORMATS,
   ModelCapability: () => ModelCapability,
   NetworkError: () => NetworkError,
   NotFoundError: () => NotFoundError,
   NotImplementedError: () => NotImplementedError,
+  PAGINATION: () => PAGINATION,
+  PATTERNS: () => PATTERNS,
+  POLLING_CONFIG: () => POLLING_CONFIG,
+  ProviderType: () => ProviderType,
   RETRY_CONFIG: () => RETRY_CONFIG,
   RateLimitError: () => RateLimitError,
   ResponseParser: () => ResponseParser,
+  STREAM_CONSTANTS: () => STREAM_CONSTANTS,
   ServerError: () => ServerError,
   SignalRLogLevel: () => SignalRLogLevel,
   StreamError: () => StreamError,
+  TASK_STATUS: () => TASK_STATUS,
   TIMEOUTS: () => TIMEOUTS,
   TimeoutError: () => TimeoutError,
+  VIDEO_RESPONSE_FORMATS: () => VIDEO_RESPONSE_FORMATS,
   ValidationError: () => ValidationError,
+  addTime: () => addTime,
+  assertArrayLength: () => assertArrayLength,
+  assertDefined: () => assertDefined,
+  assertHasProperties: () => assertHasProperties,
+  assertInRange: () => assertInRange,
+  assertNotEmpty: () => assertNotEmpty,
+  assertOneOf: () => assertOneOf,
+  capitalize: () => capitalize,
+  chunk: () => chunk,
   createErrorFromResponse: () => createErrorFromResponse,
+  createValidator: () => createValidator,
+  debounce: () => debounce,
+  deepClone: () => deepClone,
+  deepMerge: () => deepMerge,
+  delay: () => delay,
   deserializeError: () => deserializeError,
+  formatApiDate: () => formatApiDate,
+  formatBytes: () => formatBytes,
+  formatCurrency: () => formatCurrency,
+  formatDuration: () => formatDuration,
+  formatDurationHMS: () => formatDurationHMS,
+  formatFilePath: () => formatFilePath,
+  formatList: () => formatList,
+  formatNumber: () => formatNumber,
+  formatPercentage: () => formatPercentage,
+  fromUnixTimestamp: () => fromUnixTimestamp,
   getCapabilityCategory: () => getCapabilityCategory,
   getCapabilityDisplayName: () => getCapabilityDisplayName,
+  getCurrentTimestamp: () => getCurrentTimestamp,
+  getEndOf: () => getEndOf,
   getErrorMessage: () => getErrorMessage,
   getErrorStatusCode: () => getErrorStatusCode,
+  getProviderDisplayName: () => getProviderDisplayName,
+  getStartOf: () => getStartOf,
+  getTimeDifference: () => getTimeDifference,
+  groupBy: () => groupBy,
   handleApiError: () => handleApiError,
+  hasModelFeatureSupport: () => hasModelFeatureSupport,
   isAuthError: () => isAuthError,
   isAuthorizationError: () => isAuthorizationError,
+  isBaseModel: () => isBaseModel,
   isConduitError: () => isConduitError,
   isConflictError: () => isConflictError,
+  isDateInRange: () => isDateInRange,
+  isEnumValue: () => isEnumValue,
   isErrorLike: () => isErrorLike,
   isHttpError: () => isHttpError,
   isHttpMethod: () => isHttpMethod,
   isHttpNetworkError: () => isHttpNetworkError,
   isNetworkError: () => isNetworkError,
+  isNonEmptyString: () => isNonEmptyString,
   isNotFoundError: () => isNotFoundError,
+  isObject: () => isObject,
+  isPositiveNumber: () => isPositiveNumber,
+  isProviderType: () => isProviderType,
   isRateLimitError: () => isRateLimitError,
   isSerializedConduitError: () => isSerializedConduitError,
   isStreamError: () => isStreamError,
   isTimeoutError: () => isTimeoutError,
+  isValidApiKey: () => isValidApiKey,
+  isValidBase64: () => isValidBase64,
+  isValidEmail: () => isValidEmail,
+  isValidIsoDate: () => isValidIsoDate,
+  isValidJson: () => isValidJson,
+  isValidUrl: () => isValidUrl,
+  isValidUuid: () => isValidUuid,
   isValidationError: () => isValidationError,
-  serializeError: () => serializeError
+  maskSensitive: () => maskSensitive,
+  memoize: () => memoize,
+  omit: () => omit,
+  padZero: () => padZero,
+  parseIsoDate: () => parseIsoDate,
+  pick: () => pick,
+  pluralize: () => pluralize,
+  retry: () => retry,
+  sanitizeString: () => sanitizeString,
+  serializeError: () => serializeError,
+  throttle: () => throttle,
+  toCamelCase: () => toCamelCase,
+  toIsoString: () => toIsoString,
+  toKebabCase: () => toKebabCase,
+  toSnakeCase: () => toSnakeCase,
+  toTitleCase: () => toTitleCase,
+  toUnixTimestamp: () => toUnixTimestamp,
+  truncateString: () => truncateString,
+  withTimeout: () => withTimeout
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -144,6 +227,182 @@ function getCapabilityCategory(capability) {
       return "text";
   }
 }
+
+// src/types/providerType.ts
+var ProviderType = /* @__PURE__ */ ((ProviderType2) => {
+  ProviderType2[ProviderType2["OpenAI"] = 1] = "OpenAI";
+  ProviderType2[ProviderType2["Anthropic"] = 2] = "Anthropic";
+  ProviderType2[ProviderType2["AzureOpenAI"] = 3] = "AzureOpenAI";
+  ProviderType2[ProviderType2["Gemini"] = 4] = "Gemini";
+  ProviderType2[ProviderType2["VertexAI"] = 5] = "VertexAI";
+  ProviderType2[ProviderType2["Cohere"] = 6] = "Cohere";
+  ProviderType2[ProviderType2["Mistral"] = 7] = "Mistral";
+  ProviderType2[ProviderType2["Groq"] = 8] = "Groq";
+  ProviderType2[ProviderType2["Ollama"] = 9] = "Ollama";
+  ProviderType2[ProviderType2["Replicate"] = 10] = "Replicate";
+  ProviderType2[ProviderType2["Fireworks"] = 11] = "Fireworks";
+  ProviderType2[ProviderType2["Bedrock"] = 12] = "Bedrock";
+  ProviderType2[ProviderType2["HuggingFace"] = 13] = "HuggingFace";
+  ProviderType2[ProviderType2["SageMaker"] = 14] = "SageMaker";
+  ProviderType2[ProviderType2["OpenRouter"] = 15] = "OpenRouter";
+  ProviderType2[ProviderType2["OpenAICompatible"] = 16] = "OpenAICompatible";
+  ProviderType2[ProviderType2["MiniMax"] = 17] = "MiniMax";
+  ProviderType2[ProviderType2["Ultravox"] = 18] = "Ultravox";
+  ProviderType2[ProviderType2["ElevenLabs"] = 19] = "ElevenLabs";
+  ProviderType2[ProviderType2["GoogleCloud"] = 20] = "GoogleCloud";
+  ProviderType2[ProviderType2["Cerebras"] = 21] = "Cerebras";
+  return ProviderType2;
+})(ProviderType || {});
+function isProviderType(value) {
+  return typeof value === "number" && value >= 1 /* OpenAI */ && value <= 21 /* Cerebras */;
+}
+function getProviderDisplayName(provider) {
+  const names = {
+    [1 /* OpenAI */]: "OpenAI",
+    [2 /* Anthropic */]: "Anthropic",
+    [3 /* AzureOpenAI */]: "Azure OpenAI",
+    [4 /* Gemini */]: "Google Gemini",
+    [5 /* VertexAI */]: "Google Vertex AI",
+    [6 /* Cohere */]: "Cohere",
+    [7 /* Mistral */]: "Mistral AI",
+    [8 /* Groq */]: "Groq",
+    [9 /* Ollama */]: "Ollama",
+    [10 /* Replicate */]: "Replicate",
+    [11 /* Fireworks */]: "Fireworks AI",
+    [12 /* Bedrock */]: "AWS Bedrock",
+    [13 /* HuggingFace */]: "Hugging Face",
+    [14 /* SageMaker */]: "AWS SageMaker",
+    [15 /* OpenRouter */]: "OpenRouter",
+    [16 /* OpenAICompatible */]: "OpenAI Compatible",
+    [17 /* MiniMax */]: "MiniMax",
+    [18 /* Ultravox */]: "Ultravox",
+    [19 /* ElevenLabs */]: "ElevenLabs",
+    [20 /* GoogleCloud */]: "Google Cloud",
+    [21 /* Cerebras */]: "Cerebras"
+  };
+  return names[provider] || "Unknown Provider";
+}
+
+// src/types/models.ts
+function hasModelFeatureSupport(obj) {
+  return typeof obj === "object" && obj !== null && "capabilities" in obj && typeof obj.capabilities === "object";
+}
+function isBaseModel(obj) {
+  return typeof obj === "object" && obj !== null && "id" in obj && "name" in obj && "providerId" in obj && "providerType" in obj;
+}
+
+// src/types/api.ts
+var FilterOperator = /* @__PURE__ */ ((FilterOperator2) => {
+  FilterOperator2["EQUALS"] = "eq";
+  FilterOperator2["NOT_EQUALS"] = "ne";
+  FilterOperator2["GREATER_THAN"] = "gt";
+  FilterOperator2["GREATER_THAN_OR_EQUAL"] = "gte";
+  FilterOperator2["LESS_THAN"] = "lt";
+  FilterOperator2["LESS_THAN_OR_EQUAL"] = "lte";
+  FilterOperator2["IN"] = "in";
+  FilterOperator2["NOT_IN"] = "nin";
+  FilterOperator2["CONTAINS"] = "contains";
+  FilterOperator2["STARTS_WITH"] = "startsWith";
+  FilterOperator2["ENDS_WITH"] = "endsWith";
+  return FilterOperator2;
+})(FilterOperator || {});
+
+// src/constants.ts
+var API_VERSION = "v1";
+var API_PREFIX = "/api";
+var PAGINATION = {
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_PAGE_SIZE: 100,
+  DEFAULT_PAGE: 1
+};
+var CACHE_TTL = {
+  SHORT: 60,
+  // 1 minute
+  MEDIUM: 300,
+  // 5 minutes
+  LONG: 3600,
+  // 1 hour
+  VERY_LONG: 86400
+  // 24 hours
+};
+var TASK_STATUS = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+  TIMEOUT: "timeout"
+};
+var POLLING_CONFIG = {
+  DEFAULT_INTERVAL: 1e3,
+  // 1 second
+  MAX_INTERVAL: 3e4,
+  // 30 seconds
+  DEFAULT_TIMEOUT: 3e5,
+  // 5 minutes
+  BACKOFF_FACTOR: 1.5
+};
+var BUDGET_DURATION = {
+  TOTAL: "Total",
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly"
+};
+var FILTER_TYPE = {
+  ALLOW: "whitelist",
+  DENY: "blacklist"
+};
+var FILTER_MODE = {
+  PERMISSIVE: "permissive",
+  RESTRICTIVE: "restrictive"
+};
+var CHAT_ROLES = {
+  SYSTEM: "system",
+  USER: "user",
+  ASSISTANT: "assistant",
+  FUNCTION: "function",
+  TOOL: "tool"
+};
+var IMAGE_RESPONSE_FORMATS = {
+  URL: "url",
+  B64_JSON: "b64_json"
+};
+var VIDEO_RESPONSE_FORMATS = {
+  URL: "url",
+  B64_JSON: "b64_json"
+};
+var DATE_FORMATS = {
+  API_DATETIME: "YYYY-MM-DDTHH:mm:ss[Z]",
+  API_DATE: "YYYY-MM-DD",
+  DISPLAY_DATETIME: "MMM D, YYYY [at] h:mm A",
+  DISPLAY_DATE: "MMM D, YYYY"
+};
+var STREAM_CONSTANTS = {
+  DEFAULT_BUFFER_SIZE: 64 * 1024,
+  // 64KB
+  DEFAULT_TIMEOUT: 6e4,
+  // 60 seconds
+  CHUNK_DELIMITER: "\n\n",
+  DATA_PREFIX: "data: ",
+  EVENT_PREFIX: "event: ",
+  DONE_MESSAGE: "[DONE]"
+};
+var CLIENT_INFO = {
+  CORE_NAME: "@conduit/core",
+  ADMIN_NAME: "@conduit/admin",
+  VERSION: "0.2.0"
+};
+var HEALTH_STATUS = {
+  HEALTHY: "healthy",
+  DEGRADED: "degraded",
+  UNHEALTHY: "unhealthy"
+};
+var PATTERNS = {
+  API_KEY: /^sk-[a-zA-Z0-9]{32,}$/,
+  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  URL: /^https?:\/\/.+$/,
+  ISO_DATE: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/
+};
 
 // src/errors/index.ts
 var ConduitError = class _ConduitError extends Error {
@@ -415,6 +674,474 @@ function createErrorFromResponse(response, statusCode) {
     response.error.code || "API_ERROR",
     context
   );
+}
+
+// src/utils/validation.ts
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+function isValidUrl(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function isValidApiKey(apiKey) {
+  const apiKeyRegex = /^sk-[a-zA-Z0-9]{32,}$/;
+  return apiKeyRegex.test(apiKey);
+}
+function isValidIsoDate(date) {
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+  if (!isoDateRegex.test(date)) {
+    return false;
+  }
+  const parsed = new Date(date);
+  return !isNaN(parsed.getTime());
+}
+function isValidUuid(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+function assertDefined(value, name) {
+  if (value === null || value === void 0) {
+    throw new ValidationError(`${name} is required`);
+  }
+  return value;
+}
+function assertNotEmpty(value, name) {
+  const defined = assertDefined(value, name);
+  if (defined.trim().length === 0) {
+    throw new ValidationError(`${name} cannot be empty`);
+  }
+  return defined;
+}
+function assertInRange(value, min, max, name) {
+  if (value < min || value > max) {
+    throw new ValidationError(`${name} must be between ${min} and ${max}`);
+  }
+  return value;
+}
+function assertOneOf(value, allowed, name) {
+  if (!allowed.includes(value)) {
+    throw new ValidationError(`${name} must be one of: ${allowed.join(", ")}`);
+  }
+  return value;
+}
+function assertArrayLength(array, min, max, name) {
+  if (array.length < min || array.length > max) {
+    throw new ValidationError(`${name} must have between ${min} and ${max} items`);
+  }
+  return array;
+}
+function assertHasProperties(obj, required, name) {
+  const missing = required.filter((prop) => !(prop in obj));
+  if (missing.length > 0) {
+    throw new ValidationError(`${name} is missing required properties: ${missing.join(", ")}`);
+  }
+  return obj;
+}
+function sanitizeString(str, maxLength) {
+  let sanitized = str.replace(/[\x00-\x1F\x7F]/g, "").trim();
+  if (maxLength && sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
+  }
+  return sanitized;
+}
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function isPositiveNumber(value) {
+  return typeof value === "number" && value > 0 && isFinite(value);
+}
+function isEnumValue(value, enumObject) {
+  return Object.values(enumObject).includes(value);
+}
+function isValidJson(str) {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function isValidBase64(str) {
+  const base64Regex = /^[A-Za-z0-9+/]*(={0,2})$/;
+  if (!base64Regex.test(str)) {
+    return false;
+  }
+  return str.length % 4 === 0;
+}
+function createValidator(validators) {
+  return (value) => {
+    for (const validator of validators) {
+      const result = validator(value);
+      if (typeof result === "string") {
+        throw new ValidationError(result);
+      }
+      if (!result) {
+        throw new ValidationError("Validation failed");
+      }
+    }
+  };
+}
+
+// src/utils/datetime.ts
+function toIsoString(date) {
+  const dateObj = date instanceof Date ? date : new Date(date);
+  return dateObj.toISOString();
+}
+function parseIsoDate(dateStr) {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date string: ${dateStr}`);
+  }
+  return date;
+}
+function getCurrentTimestamp() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function getTimeDifference(start, end = /* @__PURE__ */ new Date()) {
+  const startTime = start instanceof Date ? start.getTime() : new Date(start).getTime();
+  const endTime = end instanceof Date ? end.getTime() : new Date(end).getTime();
+  return endTime - startTime;
+}
+function formatDuration(ms) {
+  if (ms < 1e3) {
+    return `${ms}ms`;
+  }
+  const seconds = Math.floor(ms / 1e3);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) {
+    return `${days}d ${hours % 24}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+  return `${seconds}s`;
+}
+function addTime(date, amount, unit) {
+  const dateObj = date instanceof Date ? new Date(date) : new Date(date);
+  switch (unit) {
+    case "seconds":
+      dateObj.setSeconds(dateObj.getSeconds() + amount);
+      break;
+    case "minutes":
+      dateObj.setMinutes(dateObj.getMinutes() + amount);
+      break;
+    case "hours":
+      dateObj.setHours(dateObj.getHours() + amount);
+      break;
+    case "days":
+      dateObj.setDate(dateObj.getDate() + amount);
+      break;
+  }
+  return dateObj;
+}
+function isDateInRange(date, start, end) {
+  const dateTime = date instanceof Date ? date.getTime() : new Date(date).getTime();
+  const startTime = start instanceof Date ? start.getTime() : new Date(start).getTime();
+  const endTime = end instanceof Date ? end.getTime() : new Date(end).getTime();
+  return dateTime >= startTime && dateTime <= endTime;
+}
+function getStartOf(date, period) {
+  const dateObj = date instanceof Date ? new Date(date) : new Date(date);
+  switch (period) {
+    case "day":
+      dateObj.setHours(0, 0, 0, 0);
+      break;
+    case "week":
+      const day = dateObj.getDay();
+      const diff = dateObj.getDate() - day;
+      dateObj.setDate(diff);
+      dateObj.setHours(0, 0, 0, 0);
+      break;
+    case "month":
+      dateObj.setDate(1);
+      dateObj.setHours(0, 0, 0, 0);
+      break;
+    case "year":
+      dateObj.setMonth(0, 1);
+      dateObj.setHours(0, 0, 0, 0);
+      break;
+  }
+  return dateObj;
+}
+function getEndOf(date, period) {
+  const dateObj = date instanceof Date ? new Date(date) : new Date(date);
+  switch (period) {
+    case "day":
+      dateObj.setHours(23, 59, 59, 999);
+      break;
+    case "week":
+      const day = dateObj.getDay();
+      const diff = dateObj.getDate() - day + 6;
+      dateObj.setDate(diff);
+      dateObj.setHours(23, 59, 59, 999);
+      break;
+    case "month":
+      dateObj.setMonth(dateObj.getMonth() + 1, 0);
+      dateObj.setHours(23, 59, 59, 999);
+      break;
+    case "year":
+      dateObj.setMonth(11, 31);
+      dateObj.setHours(23, 59, 59, 999);
+      break;
+  }
+  return dateObj;
+}
+function formatApiDate(date) {
+  const dateObj = date instanceof Date ? date : new Date(date);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function fromUnixTimestamp(timestamp) {
+  const isSeconds = timestamp < 1e10;
+  return new Date(isSeconds ? timestamp * 1e3 : timestamp);
+}
+function toUnixTimestamp(date) {
+  const dateObj = date instanceof Date ? date : new Date(date);
+  return Math.floor(dateObj.getTime() / 1e3);
+}
+
+// src/utils/formatting.ts
+function formatCurrency(amount, currency = "USD", locale = "en-US") {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency
+  }).format(amount);
+}
+function formatNumber(value, decimals = 0, locale = "en-US") {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value);
+}
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+function formatPercentage(value, decimals = 2) {
+  return `${(value * 100).toFixed(decimals)}%`;
+}
+function truncateString(str, maxLength, suffix = "...") {
+  if (str.length <= maxLength) return str;
+  return str.slice(0, maxLength - suffix.length) + suffix;
+}
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+function toTitleCase(str) {
+  return str.replace(/\w\S*/g, (txt) => {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+}
+function toKebabCase(str) {
+  return str.replace(/([a-z])([A-Z])/g, "$1-$2").replace(/[\s_]+/g, "-").toLowerCase();
+}
+function toSnakeCase(str) {
+  return str.replace(/([a-z])([A-Z])/g, "$1_$2").replace(/[\s-]+/g, "_").toLowerCase();
+}
+function toCamelCase(str) {
+  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+    return index === 0 ? word.toLowerCase() : word.toUpperCase();
+  }).replace(/[\s-_]+/g, "");
+}
+function padZero(value, length) {
+  return String(value).padStart(length, "0");
+}
+function formatDurationHMS(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds % 3600 / 60);
+  const secs = Math.floor(seconds % 60);
+  const parts = [];
+  if (hours > 0) parts.push(padZero(hours, 2));
+  parts.push(padZero(minutes, 2));
+  parts.push(padZero(secs, 2));
+  return parts.join(":");
+}
+function pluralize(count, singular, plural) {
+  if (count === 1) return singular;
+  return plural || `${singular}s`;
+}
+function formatList(items, conjunction = "and") {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} ${conjunction} ${items[1]}`;
+  const lastItem = items[items.length - 1];
+  const otherItems = items.slice(0, -1);
+  return `${otherItems.join(", ")}, ${conjunction} ${lastItem}`;
+}
+function maskSensitive(value, showFirst = 4, showLast = 4, maskChar = "*") {
+  if (value.length <= showFirst + showLast) {
+    return value;
+  }
+  const first = value.slice(0, showFirst);
+  const last = value.slice(-showLast);
+  const maskLength = Math.max(value.length - showFirst - showLast, 4);
+  const mask = maskChar.repeat(maskLength);
+  return `${first}${mask}${last}`;
+}
+function formatFilePath(path, maxLength = 50) {
+  if (path.length <= maxLength) return path;
+  const parts = path.split("/");
+  if (parts.length <= 2) return truncateString(path, maxLength);
+  const fileName = parts[parts.length - 1];
+  const firstDir = parts[0] || parts[1];
+  if (fileName.length + firstDir.length + 6 > maxLength) {
+    return truncateString(path, maxLength);
+  }
+  return `${firstDir}/.../${fileName}`;
+}
+
+// src/utils/index.ts
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function retry(fn, options = {}) {
+  const {
+    maxRetries = 3,
+    initialDelay = 1e3,
+    maxDelay = 3e4,
+    backoffFactor = 2,
+    shouldRetry = () => true
+  } = options;
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries || !shouldRetry(lastError, attempt)) {
+        throw lastError;
+      }
+      const delayMs = Math.min(initialDelay * Math.pow(backoffFactor, attempt), maxDelay);
+      await delay(delayMs);
+    }
+  }
+  throw lastError;
+}
+function debounce(fn, wait) {
+  let timeout;
+  return (...args) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), wait);
+  };
+}
+function throttle(fn, limit) {
+  let inThrottle = false;
+  return (...args) => {
+    if (!inThrottle) {
+      fn(...args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+function deepClone(obj) {
+  if (obj === null || typeof obj !== "object") return obj;
+  if (obj instanceof Date) return new Date(obj.getTime());
+  if (obj instanceof Array) return obj.map((item) => deepClone(item));
+  if (obj instanceof Set) return new Set([...obj].map((item) => deepClone(item)));
+  if (obj instanceof Map) {
+    return new Map([...obj].map(([k, v]) => [deepClone(k), deepClone(v)]));
+  }
+  const clonedObj = Object.create(Object.getPrototypeOf(obj));
+  for (const key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      clonedObj[key] = deepClone(obj[key]);
+    }
+  }
+  return clonedObj;
+}
+function deepMerge(target, ...sources) {
+  if (!sources.length) return target;
+  const source = sources.shift();
+  if (!source) return target;
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      const sourceValue = source[key];
+      const targetValue = target[key];
+      if (isObject(sourceValue) && isObject(targetValue)) {
+        target[key] = deepMerge(targetValue, sourceValue);
+      } else {
+        target[key] = sourceValue;
+      }
+    }
+  }
+  return deepMerge(target, ...sources);
+}
+function isObject(value) {
+  return value !== null && typeof value === "object" && value.constructor === Object;
+}
+function groupBy(array, keyFn) {
+  return array.reduce((result, item) => {
+    const key = keyFn(item);
+    if (!result[key]) {
+      result[key] = [];
+    }
+    result[key].push(item);
+    return result;
+  }, {});
+}
+function chunk(array, size) {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+function pick(obj, keys) {
+  const result = {};
+  for (const key of keys) {
+    if (key in obj) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
+function omit(obj, keys) {
+  const result = { ...obj };
+  for (const key of keys) {
+    delete result[key];
+  }
+  return result;
+}
+function withTimeout(promise, timeoutMs, timeoutError) {
+  return Promise.race([
+    promise,
+    new Promise(
+      (_, reject) => setTimeout(
+        () => reject(timeoutError || new Error(`Timeout after ${timeoutMs}ms`)),
+        timeoutMs
+      )
+    )
+  ]);
+}
+function memoize(fn, keyFn) {
+  const cache = /* @__PURE__ */ new Map();
+  return (...args) => {
+    const key = keyFn ? keyFn(...args) : JSON.stringify(args);
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  };
 }
 
 // src/http/types.ts
@@ -797,58 +1524,503 @@ var HttpError = class extends Error {
     this.code = code;
   }
 };
+
+// src/client/BaseApiClient.ts
+var BaseApiClient = class {
+  constructor(config) {
+    this.config = {
+      baseURL: config.baseURL.replace(/\/$/, ""),
+      // Remove trailing slash
+      timeout: config.timeout ?? 3e4,
+      retries: config.retries ?? 3,
+      headers: config.headers ?? {},
+      debug: config.debug ?? false,
+      retryDelay: config.retryDelay ?? [1e3, 2e3, 4e3, 8e3, 16e3],
+      validateStatus: config.validateStatus ?? ((status) => status >= 200 && status < 300),
+      logger: config.logger,
+      cache: config.cache,
+      onError: config.onError,
+      onRequest: config.onRequest,
+      onResponse: config.onResponse
+    };
+    this.logger = config.logger;
+    this.cache = config.cache;
+    this.retryConfig = this.normalizeRetryConfig(config.retries);
+  }
+  /**
+   * Get base URL for services that need direct access
+   */
+  getBaseURL() {
+    return this.config.baseURL;
+  }
+  /**
+   * Get timeout for services that need direct access
+   */
+  getTimeout() {
+    return this.config.timeout;
+  }
+  /**
+   * Type-safe request method with proper request/response typing
+   */
+  async request(url, options = {}) {
+    const fullUrl = this.buildUrl(url);
+    const controller = new AbortController();
+    const timeoutId = options.timeout ?? this.config.timeout ? setTimeout(() => controller.abort(), options.timeout ?? this.config.timeout) : void 0;
+    try {
+      const requestConfig = {
+        method: options.method ?? "GET" /* GET */,
+        url: fullUrl,
+        headers: this.buildHeaders(options.headers),
+        data: options.body
+      };
+      if (this.config.onRequest) {
+        await this.config.onRequest(requestConfig);
+      }
+      if (this.config.debug) {
+        this.log("debug", `[Conduit] ${requestConfig.method} ${requestConfig.url}`);
+      }
+      const response = await this.executeWithRetry(
+        fullUrl,
+        {
+          method: requestConfig.method,
+          headers: requestConfig.headers,
+          body: options.body ? JSON.stringify(options.body) : void 0,
+          signal: options.signal ?? controller.signal
+        },
+        options
+      );
+      return response;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+  /**
+   * Type-safe GET request with support for query parameters
+   */
+  async get(url, paramsOrOptions, options) {
+    if (options) {
+      const urlWithParams = this.buildUrlWithParams(url, paramsOrOptions);
+      return this.request(urlWithParams, { ...options, method: "GET" /* GET */ });
+    }
+    const isOptions = paramsOrOptions && ("headers" in paramsOrOptions || "signal" in paramsOrOptions || "timeout" in paramsOrOptions || "responseType" in paramsOrOptions);
+    if (isOptions) {
+      return this.request(url, {
+        ...paramsOrOptions,
+        method: "GET" /* GET */
+      });
+    } else if (paramsOrOptions) {
+      const urlWithParams = this.buildUrlWithParams(url, paramsOrOptions);
+      return this.request(urlWithParams, { method: "GET" /* GET */ });
+    } else {
+      return this.request(url, { method: "GET" /* GET */ });
+    }
+  }
+  /**
+   * Type-safe POST request
+   */
+  async post(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "POST" /* POST */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PUT request
+   */
+  async put(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PUT" /* PUT */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe PATCH request
+   */
+  async patch(url, data, options) {
+    return this.request(url, {
+      ...options,
+      method: "PATCH" /* PATCH */,
+      body: data
+    });
+  }
+  /**
+   * Type-safe DELETE request
+   */
+  async delete(url, options) {
+    return this.request(url, { ...options, method: "DELETE" /* DELETE */ });
+  }
+  /**
+   * Build full URL from path
+   */
+  buildUrl(path) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${this.config.baseURL}${cleanPath}`;
+  }
+  /**
+   * Build headers with authentication and defaults
+   */
+  buildHeaders(additionalHeaders) {
+    return {
+      "Content-Type": "application/json",
+      "User-Agent": "@knn_labs/conduit-sdk",
+      ...this.config.headers,
+      ...this.getAuthHeaders(),
+      // SDK-specific auth headers
+      ...additionalHeaders
+    };
+  }
+  /**
+   * Execute request with retry logic
+   */
+  async executeWithRetry(url, init, options, attempt = 1) {
+    try {
+      const response = await fetch(url, init);
+      if (this.config.onResponse) {
+        const headers = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        const responseInfo = {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+          data: void 0,
+          // Will be populated after parsing
+          config: {
+            method: init.method ?? "GET",
+            url,
+            headers: init.headers ?? {},
+            data: void 0
+          }
+        };
+        await this.config.onResponse(responseInfo);
+      }
+      if (this.config.debug) {
+        this.log("debug", `[Conduit] Response: ${response.status} ${response.statusText}`);
+      }
+      if (!this.config.validateStatus(response.status)) {
+        const error = await this.handleErrorResponse(response);
+        throw error;
+      }
+      return await this.parseResponse(response, options.responseType);
+    } catch (error) {
+      if (attempt <= this.retryConfig.maxRetries && this.shouldRetry(error)) {
+        const delay2 = this.calculateDelay(attempt);
+        if (this.config.debug) {
+          this.log("debug", `[Conduit] Retrying request (attempt ${attempt + 1}) after ${delay2}ms`);
+        }
+        await this.sleep(delay2);
+        return this.executeWithRetry(url, init, options, attempt + 1);
+      }
+      const handledError = this.handleError(error);
+      if (this.config.onError) {
+        this.config.onError(handledError);
+      }
+      throw handledError;
+    }
+  }
+  /**
+   * Parse response based on content type
+   */
+  async parseResponse(response, responseType) {
+    const contentLength = response.headers.get("content-length");
+    if (contentLength === "0" || response.status === 204) {
+      return void 0;
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (responseType === "blob" || contentType.includes("image/") || contentType.includes("application/octet-stream")) {
+      return await response.blob();
+    } else if (responseType === "arraybuffer") {
+      return await response.arrayBuffer();
+    } else if (responseType === "text" || contentType.includes("text/")) {
+      return await response.text();
+    } else {
+      return await response.json();
+    }
+  }
+  /**
+   * Determine if error should trigger retry
+   */
+  shouldRetry(error) {
+    if (this.retryConfig.retryCondition) {
+      return this.retryConfig.retryCondition(error);
+    }
+    if (error instanceof Error) {
+      if (error.name === "AbortError" || error.message.includes("network") || error.message.includes("fetch")) {
+        return true;
+      }
+    }
+    return false;
+  }
+  /**
+   * Calculate retry delay
+   */
+  calculateDelay(attempt) {
+    if (this.config.retryDelay && this.config.retryDelay.length > 0) {
+      const index = Math.min(attempt - 1, this.config.retryDelay.length - 1);
+      return this.config.retryDelay[index];
+    }
+    const initialDelay = this.retryConfig.initialDelay ?? 1e3;
+    const maxDelay = this.retryConfig.maxDelay ?? 3e4;
+    const factor = this.retryConfig.factor ?? 2;
+    const delay2 = Math.min(
+      initialDelay * Math.pow(factor, attempt - 1),
+      maxDelay
+    );
+    return delay2 + Math.random() * 1e3;
+  }
+  /**
+   * Sleep for specified milliseconds
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  /**
+   * Handle and transform errors
+   */
+  handleError(error) {
+    if (error instanceof Error) {
+      return error;
+    }
+    return new Error(String(error));
+  }
+  /**
+   * Normalize retry configuration
+   */
+  normalizeRetryConfig(retries) {
+    if (typeof retries === "number") {
+      return {
+        maxRetries: retries,
+        initialDelay: 1e3,
+        maxDelay: 3e4,
+        factor: 2
+      };
+    }
+    return retries ?? { maxRetries: 3, initialDelay: 1e3, maxDelay: 3e4, factor: 2 };
+  }
+  /**
+   * Log message using logger if available
+   */
+  log(level, message, ...args) {
+    if (this.logger?.[level]) {
+      this.logger[level](message, ...args);
+    } else if (this.config.debug && level === "debug") {
+      console.warn(message, ...args);
+    }
+  }
+  /**
+   * Build URL with query parameters
+   */
+  buildUrlWithParams(url, params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== void 0 && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, String(v)));
+        } else {
+          searchParams.append(key, String(value));
+        }
+      }
+    });
+    const queryString = searchParams.toString();
+    return queryString ? `${url}?${queryString}` : url;
+  }
+  /**
+   * Get cache key for a request
+   */
+  getCacheKey(resource, id, params) {
+    const parts = [resource];
+    if (id !== void 0) {
+      parts.push(JSON.stringify(id));
+    }
+    if (params) {
+      parts.push(JSON.stringify(params));
+    }
+    return parts.join(":");
+  }
+  /**
+   * Get from cache
+   */
+  async getFromCache(key) {
+    if (!this.cache) return null;
+    try {
+      const cached = await this.cache.get(key);
+      if (cached) {
+        this.log("debug", `Cache hit for key: ${key}`);
+        return cached;
+      }
+    } catch (error) {
+      this.log("error", "Cache get error:", error);
+    }
+    return null;
+  }
+  /**
+   * Set cache value
+   */
+  async setCache(key, value, ttl) {
+    if (!this.cache) return;
+    try {
+      await this.cache.set(key, value, ttl);
+      this.log("debug", `Cache set for key: ${key}`);
+    } catch (error) {
+      this.log("error", "Cache set error:", error);
+    }
+  }
+  /**
+   * Execute function with caching
+   */
+  async withCache(cacheKey, fn, ttl) {
+    const cached = await this.getFromCache(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+    const result = await fn();
+    await this.setCache(cacheKey, result, ttl);
+    return result;
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  API_PREFIX,
+  API_VERSION,
   AuthError,
   AuthenticationError,
   AuthorizationError,
+  BUDGET_DURATION,
+  BaseApiClient,
   BaseSignalRConnection,
+  CACHE_TTL,
+  CHAT_ROLES,
+  CLIENT_INFO,
   CONTENT_TYPES,
   ConduitError,
   ConflictError,
+  DATE_FORMATS,
   DefaultTransports,
   ERROR_CODES,
+  FILTER_MODE,
+  FILTER_TYPE,
+  FilterOperator,
+  HEALTH_STATUS,
   HTTP_HEADERS,
   HTTP_STATUS,
   HttpError,
   HttpMethod,
   HttpTransportType,
   HubConnectionState,
+  IMAGE_RESPONSE_FORMATS,
   ModelCapability,
   NetworkError,
   NotFoundError,
   NotImplementedError,
+  PAGINATION,
+  PATTERNS,
+  POLLING_CONFIG,
+  ProviderType,
   RETRY_CONFIG,
   RateLimitError,
   ResponseParser,
+  STREAM_CONSTANTS,
   ServerError,
   SignalRLogLevel,
   StreamError,
+  TASK_STATUS,
   TIMEOUTS,
   TimeoutError,
+  VIDEO_RESPONSE_FORMATS,
   ValidationError,
+  addTime,
+  assertArrayLength,
+  assertDefined,
+  assertHasProperties,
+  assertInRange,
+  assertNotEmpty,
+  assertOneOf,
+  capitalize,
+  chunk,
   createErrorFromResponse,
+  createValidator,
+  debounce,
+  deepClone,
+  deepMerge,
+  delay,
   deserializeError,
+  formatApiDate,
+  formatBytes,
+  formatCurrency,
+  formatDuration,
+  formatDurationHMS,
+  formatFilePath,
+  formatList,
+  formatNumber,
+  formatPercentage,
+  fromUnixTimestamp,
   getCapabilityCategory,
   getCapabilityDisplayName,
+  getCurrentTimestamp,
+  getEndOf,
   getErrorMessage,
   getErrorStatusCode,
+  getProviderDisplayName,
+  getStartOf,
+  getTimeDifference,
+  groupBy,
   handleApiError,
+  hasModelFeatureSupport,
   isAuthError,
   isAuthorizationError,
+  isBaseModel,
   isConduitError,
   isConflictError,
+  isDateInRange,
+  isEnumValue,
   isErrorLike,
   isHttpError,
   isHttpMethod,
   isHttpNetworkError,
   isNetworkError,
+  isNonEmptyString,
   isNotFoundError,
+  isObject,
+  isPositiveNumber,
+  isProviderType,
   isRateLimitError,
   isSerializedConduitError,
   isStreamError,
   isTimeoutError,
+  isValidApiKey,
+  isValidBase64,
+  isValidEmail,
+  isValidIsoDate,
+  isValidJson,
+  isValidUrl,
+  isValidUuid,
   isValidationError,
-  serializeError
+  maskSensitive,
+  memoize,
+  omit,
+  padZero,
+  parseIsoDate,
+  pick,
+  pluralize,
+  retry,
+  sanitizeString,
+  serializeError,
+  throttle,
+  toCamelCase,
+  toIsoString,
+  toKebabCase,
+  toSnakeCase,
+  toTitleCase,
+  toUnixTimestamp,
+  truncateString,
+  withTimeout
 });
 //# sourceMappingURL=index.js.map

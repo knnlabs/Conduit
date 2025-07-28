@@ -332,13 +332,11 @@ export class SystemService extends FetchBaseApiClient {
   async getWebUIVirtualKey(): Promise<string> {
     // Use the same config as the current service instance
     const baseConfig: ApiClientConfig = {
-      baseUrl: this.baseUrl.replace('/api', ''),
-      masterKey: this.masterKey,
+      baseUrl: this.getBaseUrl().replace('/api', ''),
+      masterKey: this.getMasterKey(),
       logger: this.logger,
       cache: this.cache,
-      retries: this.retryConfig,
-      timeout: this.timeout,
-      defaultHeaders: this.defaultHeaders,
+      timeout: this.getTimeout(),
     };
     
     const settingsService = new SettingsService(baseConfig);

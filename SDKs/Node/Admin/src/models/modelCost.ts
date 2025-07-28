@@ -1,6 +1,6 @@
 import { FilterOptions } from './common';
 import type { ModelConfigMetadata } from './metadata';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 export interface ModelCost {
   id: number;

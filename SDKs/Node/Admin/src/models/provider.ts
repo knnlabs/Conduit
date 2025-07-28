@@ -1,6 +1,6 @@
 import { FilterOptions } from './common';
 import { ProviderConfigMetadata } from './metadata';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 export interface ProviderCredentialDto {
   id: number;

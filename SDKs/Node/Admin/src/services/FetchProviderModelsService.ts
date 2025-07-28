@@ -1,7 +1,7 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import type {
   ModelDto,
   ModelDetailsDto,

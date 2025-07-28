@@ -1,5 +1,5 @@
 import { FilterOptions } from './common';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 export interface ModelProviderMappingDto {
   id: number;

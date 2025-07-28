@@ -1,6 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import {
   ProviderCredentialDto,
   CreateProviderCredentialDto,

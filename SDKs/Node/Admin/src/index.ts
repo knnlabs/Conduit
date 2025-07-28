@@ -10,7 +10,8 @@ export * from './models/common';
 // discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';
-export * from './models/providerType';
+// ProviderType is now exported from @knn_labs/conduit-common
+export { ProviderType, isProviderType, getProviderDisplayName } from '@knn_labs/conduit-common';
 export * from './models/providerModels';
 export * from './models/providerHealth';
 export * from './models/settings';

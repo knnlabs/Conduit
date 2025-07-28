@@ -1,4 +1,4 @@
-import type { ProviderType } from './providerType';
+import type { ProviderType } from '@knn_labs/conduit-common';
 
 /**
  * Model capabilities that match the ILLMClient interface.

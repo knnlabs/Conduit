@@ -1,6 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
@@ -261,7 +261,7 @@ export class ModelMappingService extends FetchBaseApiClient {
       throw new ValidationError('Model ID is required');
     }
 
-    const cacheKey = this.getCacheKey('discover-model', providerType.toString(), modelId);
+    const cacheKey = this.getCacheKey('discover-model', `${providerType.toString()}:${modelId}`);
     return this.withCache(
       cacheKey,
       () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerType, modelId)),
@@ -277,7 +277,7 @@ export class ModelMappingService extends FetchBaseApiClient {
       throw new ValidationError('Capability is required');
     }
 
-    const cacheKey = this.getCacheKey('test-capability', modelAlias, capability);
+    const cacheKey = this.getCacheKey('test-capability', `${modelAlias}:${capability}`);
     return this.withCache(
       cacheKey,
       () => super.get<CapabilityTestResult>(ENDPOINTS.MODEL_MAPPINGS.TEST_CAPABILITY(modelAlias, capability)),

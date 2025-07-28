@@ -14,21 +14,14 @@ import { API_ENDPOINTS } from '../constants';
 import { ControllableChatStream, type ControllableStream, type StreamControlOptions } from '../models/streaming-controls';
 import { BaseStreamingService } from './BaseStreamingService';
 
-interface FetchBasedClientWithConfig {
-  config: Required<Omit<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>> & 
-    Pick<ClientConfig, 'onError' | 'onRequest' | 'onResponse'>;
-}
-
 export class ChatService extends BaseStreamingService {
   private readonly clientAdapter: IFetchBasedClientAdapter;
-  private readonly config: ClientConfig;
+  private readonly client: FetchBasedClient;
 
   constructor(client: FetchBasedClient) {
     super();
     this.clientAdapter = createClientAdapter(client);
-    // Access config through type assertion - this is a known architectural limitation
-    // The config is protected in FetchBasedClient, but we need it for streaming
-    this.config = (client as unknown as FetchBasedClientWithConfig).config;
+    this.client = client;
   }
 
   /**
@@ -103,7 +96,7 @@ export class ChatService extends BaseStreamingService {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<Response> {
-    const url = `${this.config.baseURL}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
+    const url = `${this.client.getBaseURL()}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
     const controller = new AbortController();
     
     // Merge signals if provided
@@ -112,18 +105,17 @@ export class ChatService extends BaseStreamingService {
     }
     
     // Set up timeout
-    const timeoutId = options?.timeout ?? this.config.timeout
-      ? setTimeout(() => controller.abort(), options?.timeout ?? this.config.timeout)
+    const timeoutId = options?.timeout ?? this.client.getTimeout()
+      ? setTimeout(() => controller.abort(), options?.timeout ?? this.client.getTimeout())
       : undefined;
 
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Authorization': `Bearer ${this.client.getApiKey()}`,
           'Content-Type': 'application/json',
           'User-Agent': '@conduit/core/1.0.0',
-          ...this.config.headers,
           ...options?.headers,
           ...(options?.correlationId && { 'X-Correlation-Id': options.correlationId }),
         },

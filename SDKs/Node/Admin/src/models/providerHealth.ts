@@ -3,7 +3,7 @@ import type {
   ProviderHealthStatusDto
 } from './provider';
 import type { HealthCheckDetails } from './common-types';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 // Core health types
 export interface HealthSummaryDto {

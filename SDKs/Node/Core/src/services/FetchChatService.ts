@@ -84,19 +84,19 @@ export class FetchChatService extends FetchBasedClient {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<Response> {
-    const url = `${this.config.baseURL}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
+    const url = `${this.getBaseURL()}${API_ENDPOINTS.V1.CHAT.COMPLETIONS}`;
     const controller = new AbortController();
     
     // Set up timeout
-    const timeoutId = options?.timeout ?? this.config.timeout
-      ? setTimeout(() => controller.abort(), options?.timeout ?? this.config.timeout)
+    const timeoutId = options?.timeout ?? this.getTimeout()
+      ? setTimeout(() => controller.abort(), options?.timeout ?? this.getTimeout())
       : undefined;
 
     try {
       const response = await fetch(url, {
         method: HttpMethod.POST,
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Authorization': `Bearer ${this.getApiKey()}`,
           'Content-Type': 'application/json',
           'User-Agent': '@conduit/core/1.0.0',
           ...options?.headers,

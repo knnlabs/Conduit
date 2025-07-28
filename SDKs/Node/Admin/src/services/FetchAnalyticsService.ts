@@ -110,7 +110,7 @@ export class FetchAnalyticsService {
         signal: config?.signal,
         timeout: config?.timeout,
         headers: config?.headers,
-        responseType: 'raw',
+        responseType: 'blob',
       }
     );
 

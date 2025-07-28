@@ -3,7 +3,7 @@
  */
 
 import type { ExportDestinationConfig, ExtendedMetadata } from './common-types';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 /**
  * Base export parameters common to all export types

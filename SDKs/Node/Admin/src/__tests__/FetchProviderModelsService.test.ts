@@ -2,7 +2,7 @@ import { createMockClient, type MockClient } from './helpers/mockClient.helper';
 import { FetchProviderModelsService } from '../services/FetchProviderModelsService';
 
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import type { 
   ModelDto
 } from '../models/providerModels';

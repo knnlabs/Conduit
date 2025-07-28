@@ -2,7 +2,7 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,

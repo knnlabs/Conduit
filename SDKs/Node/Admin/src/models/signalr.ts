@@ -7,7 +7,7 @@ import {
 } from '@knn_labs/conduit-common';
 
 import type { ConfigValue, ExtendedMetadata } from './common-types';
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 // Re-export for backward compatibility
 export {

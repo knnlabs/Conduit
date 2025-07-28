@@ -1,6 +1,6 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ApiClientConfig } from '../client/types';
-import { ProviderType } from '../models/providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 import type {
   ProviderHealthConfigurationDto,
   CreateProviderHealthConfigurationDto,

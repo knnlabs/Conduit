@@ -149,6 +149,931 @@ declare function getCapabilityDisplayName(capability: ModelCapability): string;
 declare function getCapabilityCategory(capability: ModelCapability): 'text' | 'vision' | 'audio' | 'video';
 
 /**
+ * Strongly-typed enumeration of supported LLM providers.
+ * These numeric values must match the C# ProviderType enum exactly.
+ * @see https://github.com/knnlabs/Conduit/blob/main/ConduitLLM.Core/Enums/ProviderType.cs
+ */
+declare enum ProviderType {
+    /** OpenAI provider (GPT models) */
+    OpenAI = 1,
+    /** Anthropic provider (Claude models) */
+    Anthropic = 2,
+    /** Azure OpenAI Service */
+    AzureOpenAI = 3,
+    /** Google Gemini */
+    Gemini = 4,
+    /** Google Vertex AI */
+    VertexAI = 5,
+    /** Cohere */
+    Cohere = 6,
+    /** Mistral AI */
+    Mistral = 7,
+    /** Groq */
+    Groq = 8,
+    /** Ollama (local models) */
+    Ollama = 9,
+    /** Replicate */
+    Replicate = 10,
+    /** Fireworks AI */
+    Fireworks = 11,
+    /** AWS Bedrock */
+    Bedrock = 12,
+    /** Hugging Face */
+    HuggingFace = 13,
+    /** AWS SageMaker */
+    SageMaker = 14,
+    /** OpenRouter */
+    OpenRouter = 15,
+    /** OpenAI-compatible generic provider */
+    OpenAICompatible = 16,
+    /** MiniMax */
+    MiniMax = 17,
+    /** Ultravox */
+    Ultravox = 18,
+    /** ElevenLabs (audio) */
+    ElevenLabs = 19,
+    /** Google Cloud (audio) */
+    GoogleCloud = 20,
+    /** Cerebras (high-performance inference) */
+    Cerebras = 21
+}
+/**
+ * Type guard to check if a value is a valid ProviderType
+ */
+declare function isProviderType(value: unknown): value is ProviderType;
+/**
+ * Get the display name for a provider type
+ */
+declare function getProviderDisplayName(provider: ProviderType): string;
+
+/**
+ * Base model interface used by both Core and Admin SDKs
+ */
+interface BaseModel {
+    /** Unique identifier for the model */
+    id: string;
+    /** Human-readable name of the model */
+    name: string;
+    /** Provider that owns this model */
+    providerId: string;
+    /** Type of provider */
+    providerType: ProviderType;
+}
+/**
+ * Model feature support interface
+ */
+interface ModelFeatureSupport {
+    /** Whether the model supports vision/image inputs */
+    supportsVision: boolean;
+    /** Whether the model supports image generation */
+    supportsImageGeneration: boolean;
+    /** Whether the model supports audio transcription */
+    supportsAudioTranscription: boolean;
+    /** Whether the model supports text-to-speech */
+    supportsTextToSpeech: boolean;
+    /** Whether the model supports realtime audio */
+    supportsRealtimeAudio: boolean;
+    /** Whether the model supports function calling */
+    supportsFunctionCalling: boolean;
+    /** Maximum tokens the model supports */
+    maxTokens?: number;
+    /** Context window size */
+    contextWindow?: number;
+}
+/**
+ * Extended model information with capabilities
+ */
+interface ModelWithCapabilities extends BaseModel {
+    /** Model capabilities */
+    capabilities: ModelFeatureSupport;
+    /** Whether the model is enabled */
+    isEnabled: boolean;
+    /** Creation timestamp */
+    createdAt: string;
+    /** Last update timestamp */
+    updatedAt?: string;
+}
+/**
+ * Model usage statistics
+ */
+interface ModelUsageStats {
+    /** Model ID */
+    modelId: string;
+    /** Total requests made */
+    totalRequests: number;
+    /** Total tokens consumed */
+    totalTokens: number;
+    /** Total cost */
+    totalCost: number;
+    /** Average response time in ms */
+    averageResponseTime: number;
+    /** Success rate (0-1) */
+    successRate: number;
+    /** Time period for these stats */
+    period: {
+        start: string;
+        end: string;
+    };
+}
+/**
+ * Model pricing information
+ */
+interface ModelPricing {
+    /** Model ID */
+    modelId: string;
+    /** Provider type */
+    providerType: ProviderType;
+    /** Input token cost (per 1K tokens) */
+    inputCostPer1K: number;
+    /** Output token cost (per 1K tokens) */
+    outputCostPer1K: number;
+    /** Currency (USD, EUR, etc.) */
+    currency: string;
+    /** Effective date for this pricing */
+    effectiveDate: string;
+}
+/**
+ * Model health/availability status
+ */
+interface ModelHealthStatus {
+    /** Model ID */
+    modelId: string;
+    /** Whether the model is currently available */
+    isAvailable: boolean;
+    /** Last successful check timestamp */
+    lastChecked: string;
+    /** Average response time in last check */
+    responseTime?: number;
+    /** Error message if not available */
+    errorMessage?: string;
+    /** Number of consecutive failures */
+    consecutiveFailures: number;
+}
+/**
+ * Type guard to check if object has model capabilities
+ */
+declare function hasModelFeatureSupport(obj: unknown): obj is {
+    capabilities: ModelFeatureSupport;
+};
+/**
+ * Type guard to check if object is a BaseModel
+ */
+declare function isBaseModel(obj: unknown): obj is BaseModel;
+/**
+ * Discovered model from provider
+ */
+interface DiscoveredModel {
+    /** Model ID */
+    id: string;
+    /** Provider type */
+    provider: ProviderType;
+    /** Display name */
+    display_name?: string;
+    /** Model description */
+    description?: string;
+    /** Model capabilities */
+    capabilities?: Record<string, boolean | number | string[]>;
+    /** Additional metadata */
+    metadata?: Record<string, unknown>;
+}
+/**
+ * Model mapping between Conduit and provider models
+ */
+interface ModelMapping {
+    /** Unique identifier */
+    id: number;
+    /** Conduit model ID */
+    modelId: string;
+    /** Provider ID */
+    providerId: string;
+    /** Provider type */
+    providerType: ProviderType;
+    /** Provider's model ID */
+    providerModelId: string;
+    /** Whether mapping is enabled */
+    isEnabled: boolean;
+    /** Priority for routing */
+    priority: number;
+    /** Feature support */
+    features: ModelFeatureSupport;
+    /** Creation timestamp */
+    createdAt: string;
+    /** Update timestamp */
+    updatedAt?: string;
+    /** Additional metadata */
+    metadata?: Record<string, unknown>;
+}
+/**
+ * Model cost information
+ */
+interface ModelCostInfo {
+    /** Model pattern (exact match or prefix with *) */
+    modelIdPattern: string;
+    /** Cost per million input tokens */
+    inputCostPerMillionTokens: number;
+    /** Cost per million output tokens */
+    outputCostPerMillionTokens: number;
+    /** Cost per embedding token (if applicable) */
+    embeddingTokenCost?: number;
+    /** Cost per generated image */
+    imageCostPerImage?: number;
+    /** Cost per minute of audio */
+    audioCostPerMinute?: number;
+    /** Cost per thousand characters of audio */
+    audioCostPerKCharacters?: number;
+    /** Cost per minute of audio input */
+    audioInputCostPerMinute?: number;
+    /** Cost per minute of audio output */
+    audioOutputCostPerMinute?: number;
+    /** Cost per second of video */
+    videoCostPerSecond?: number;
+    /** Resolution multipliers for video */
+    videoResolutionMultipliers?: Record<string, number>;
+    /** Description */
+    description?: string;
+    /** Priority for pattern matching */
+    priority?: number;
+}
+
+/**
+ * Common API request and response types shared between Core and Admin SDKs
+ */
+/**
+ * Paginated request parameters
+ */
+interface PaginatedRequest {
+    /** Page number (1-based) */
+    page?: number;
+    /** Number of items per page */
+    pageSize?: number;
+    /** Field to sort by */
+    sortBy?: string;
+    /** Sort direction */
+    sortOrder?: 'asc' | 'desc';
+}
+/**
+ * Extended paginated response wrapper with navigation helpers
+ */
+interface ExtendedPaginatedResponse<T> {
+    /** Array of items for current page */
+    items: T[];
+    /** Total number of items */
+    totalCount: number;
+    /** Current page number (1-based) */
+    page: number;
+    /** Number of items per page */
+    pageSize: number;
+    /** Total number of pages */
+    totalPages: number;
+    /** Whether there's a next page */
+    hasNextPage?: boolean;
+    /** Whether there's a previous page */
+    hasPreviousPage?: boolean;
+}
+/**
+ * Standard API error response
+ */
+interface ApiError {
+    /** Error code for programmatic handling */
+    code: string;
+    /** Human-readable error message */
+    message: string;
+    /** Additional error details */
+    details?: Record<string, unknown>;
+    /** Field-specific errors for validation */
+    fieldErrors?: Record<string, string[]>;
+    /** Request ID for debugging */
+    requestId?: string;
+    /** Timestamp when error occurred */
+    timestamp?: string;
+}
+/**
+ * Standard API success response wrapper
+ */
+interface ApiSuccessResponse<T> {
+    /** Response data */
+    data: T;
+    /** Success status */
+    success: boolean;
+    /** Optional message */
+    message?: string;
+    /** Response metadata */
+    meta?: ResponseMetadata;
+}
+/**
+ * Response metadata
+ */
+interface ResponseMetadata {
+    /** Request ID for tracing */
+    requestId: string;
+    /** Response timestamp */
+    timestamp: string;
+    /** API version */
+    version: string;
+    /** Response time in ms */
+    responseTime?: number;
+}
+/**
+ * Batch operation request
+ */
+interface BatchRequest<T> {
+    /** Array of items to process */
+    items: T[];
+    /** Whether to continue on error */
+    continueOnError?: boolean;
+    /** Maximum items to process in parallel */
+    parallelism?: number;
+}
+/**
+ * Batch operation response
+ */
+interface BatchResponse<T> {
+    /** Successfully processed items */
+    succeeded: BatchResult<T>[];
+    /** Failed items */
+    failed: BatchError[];
+    /** Summary statistics */
+    summary: {
+        total: number;
+        succeeded: number;
+        failed: number;
+        duration: number;
+    };
+}
+/**
+ * Individual batch result
+ */
+interface BatchResult<T> {
+    /** Index in original request */
+    index: number;
+    /** Processed result */
+    result: T;
+}
+/**
+ * Individual batch error
+ */
+interface BatchError {
+    /** Index in original request */
+    index: number;
+    /** Error details */
+    error: ApiError;
+}
+/**
+ * Date range filter
+ */
+interface DateRangeFilter {
+    /** Start date (inclusive) */
+    startDate?: string;
+    /** End date (inclusive) */
+    endDate?: string;
+}
+/**
+ * Numeric range filter
+ */
+interface NumericRangeFilter {
+    /** Minimum value (inclusive) */
+    min?: number;
+    /** Maximum value (inclusive) */
+    max?: number;
+}
+/**
+ * Alternative paginated result interface used in some endpoints
+ */
+interface PagedResult<T> {
+    /** Array of items in the current page */
+    items: T[];
+    /** Total number of items across all pages */
+    totalCount: number;
+    /** Current page number */
+    page: number;
+    /** Number of items per page */
+    pageSize: number;
+    /** Total number of pages */
+    totalPages: number;
+}
+/**
+ * Sort configuration
+ */
+interface SortConfig {
+    /** Field to sort by */
+    field: string;
+    /** Sort direction */
+    direction: 'asc' | 'desc';
+}
+/**
+ * Filter operators
+ */
+declare enum FilterOperator {
+    EQUALS = "eq",
+    NOT_EQUALS = "ne",
+    GREATER_THAN = "gt",
+    GREATER_THAN_OR_EQUAL = "gte",
+    LESS_THAN = "lt",
+    LESS_THAN_OR_EQUAL = "lte",
+    IN = "in",
+    NOT_IN = "nin",
+    CONTAINS = "contains",
+    STARTS_WITH = "startsWith",
+    ENDS_WITH = "endsWith"
+}
+/**
+ * Generic filter
+ */
+interface Filter {
+    /** Field to filter on */
+    field: string;
+    /** Filter operator */
+    operator: FilterOperator;
+    /** Filter value */
+    value: unknown;
+}
+/**
+ * Health check response
+ */
+interface HealthCheckResponse {
+    /** Overall health status */
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    /** Service version */
+    version: string;
+    /** Uptime in seconds */
+    uptime: number;
+    /** Individual component health */
+    components: Record<string, ComponentHealth>;
+}
+/**
+ * Base interface for create DTOs
+ */
+interface CreateDto<T> {
+    /** The data to create */
+    data: Partial<T>;
+}
+/**
+ * Base interface for update DTOs
+ */
+interface UpdateDto<T> {
+    /** The fields to update */
+    data: Partial<T>;
+    /** Optional version for optimistic concurrency */
+    version?: string;
+}
+/**
+ * Base interface for delete operations
+ */
+interface DeleteDto {
+    /** Optional reason for deletion */
+    reason?: string;
+    /** Whether to force delete (bypass soft delete) */
+    force?: boolean;
+}
+/**
+ * Bulk operation request
+ */
+interface BulkOperationRequest<T> {
+    /** Items to process */
+    items: T[];
+    /** Whether to continue on error */
+    continueOnError?: boolean;
+    /** Maximum parallel operations */
+    parallelism?: number;
+}
+/**
+ * Bulk operation response
+ */
+interface BulkOperationResponse<T> {
+    /** Successfully processed items */
+    succeeded: T[];
+    /** Failed items with errors */
+    failed: Array<{
+        item: T;
+        error: ApiError;
+    }>;
+    /** Summary statistics */
+    summary: {
+        total: number;
+        succeeded: number;
+        failed: number;
+    };
+}
+/**
+ * Component health status
+ */
+interface ComponentHealth {
+    /** Component status */
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    /** Optional message */
+    message?: string;
+    /** Last check timestamp */
+    lastCheck: string;
+    /** Response time in ms */
+    responseTime?: number;
+}
+
+/**
+ * Common constants shared across all Conduit SDKs
+ */
+/**
+ * API version constants
+ */
+declare const API_VERSION = "v1";
+declare const API_PREFIX = "/api";
+/**
+ * Default pagination settings
+ */
+declare const PAGINATION: {
+    readonly DEFAULT_PAGE_SIZE: 20;
+    readonly MAX_PAGE_SIZE: 100;
+    readonly DEFAULT_PAGE: 1;
+};
+/**
+ * Cache TTL values in seconds
+ */
+declare const CACHE_TTL: {
+    readonly SHORT: 60;
+    readonly MEDIUM: 300;
+    readonly LONG: 3600;
+    readonly VERY_LONG: 86400;
+};
+/**
+ * Task status constants
+ */
+declare const TASK_STATUS: {
+    readonly PENDING: "pending";
+    readonly PROCESSING: "processing";
+    readonly COMPLETED: "completed";
+    readonly FAILED: "failed";
+    readonly CANCELLED: "cancelled";
+    readonly TIMEOUT: "timeout";
+};
+type TaskStatus = typeof TASK_STATUS[keyof typeof TASK_STATUS];
+/**
+ * Task polling configuration
+ */
+declare const POLLING_CONFIG: {
+    readonly DEFAULT_INTERVAL: 1000;
+    readonly MAX_INTERVAL: 30000;
+    readonly DEFAULT_TIMEOUT: 300000;
+    readonly BACKOFF_FACTOR: 1.5;
+};
+/**
+ * Budget duration types
+ */
+declare const BUDGET_DURATION: {
+    readonly TOTAL: "Total";
+    readonly DAILY: "Daily";
+    readonly WEEKLY: "Weekly";
+    readonly MONTHLY: "Monthly";
+};
+type BudgetDuration = typeof BUDGET_DURATION[keyof typeof BUDGET_DURATION];
+/**
+ * Filter types for IP filtering
+ */
+declare const FILTER_TYPE: {
+    readonly ALLOW: "whitelist";
+    readonly DENY: "blacklist";
+};
+type FilterType = typeof FILTER_TYPE[keyof typeof FILTER_TYPE];
+/**
+ * Filter modes
+ */
+declare const FILTER_MODE: {
+    readonly PERMISSIVE: "permissive";
+    readonly RESTRICTIVE: "restrictive";
+};
+type FilterMode = typeof FILTER_MODE[keyof typeof FILTER_MODE];
+/**
+ * Chat message roles
+ */
+declare const CHAT_ROLES: {
+    readonly SYSTEM: "system";
+    readonly USER: "user";
+    readonly ASSISTANT: "assistant";
+    readonly FUNCTION: "function";
+    readonly TOOL: "tool";
+};
+type ChatRole = typeof CHAT_ROLES[keyof typeof CHAT_ROLES];
+/**
+ * Image response formats
+ */
+declare const IMAGE_RESPONSE_FORMATS: {
+    readonly URL: "url";
+    readonly B64_JSON: "b64_json";
+};
+type ImageResponseFormat = typeof IMAGE_RESPONSE_FORMATS[keyof typeof IMAGE_RESPONSE_FORMATS];
+/**
+ * Video response formats
+ */
+declare const VIDEO_RESPONSE_FORMATS: {
+    readonly URL: "url";
+    readonly B64_JSON: "b64_json";
+};
+type VideoResponseFormat = typeof VIDEO_RESPONSE_FORMATS[keyof typeof VIDEO_RESPONSE_FORMATS];
+/**
+ * Common date formats
+ */
+declare const DATE_FORMATS: {
+    readonly API_DATETIME: "YYYY-MM-DDTHH:mm:ss[Z]";
+    readonly API_DATE: "YYYY-MM-DD";
+    readonly DISPLAY_DATETIME: "MMM D, YYYY [at] h:mm A";
+    readonly DISPLAY_DATE: "MMM D, YYYY";
+};
+/**
+ * Streaming constants
+ */
+declare const STREAM_CONSTANTS: {
+    readonly DEFAULT_BUFFER_SIZE: number;
+    readonly DEFAULT_TIMEOUT: 60000;
+    readonly CHUNK_DELIMITER: "\n\n";
+    readonly DATA_PREFIX: "data: ";
+    readonly EVENT_PREFIX: "event: ";
+    readonly DONE_MESSAGE: "[DONE]";
+};
+/**
+ * Client identification
+ */
+declare const CLIENT_INFO: {
+    readonly CORE_NAME: "@conduit/core";
+    readonly ADMIN_NAME: "@conduit/admin";
+    readonly VERSION: "0.2.0";
+};
+/**
+ * Health status values
+ */
+declare const HEALTH_STATUS: {
+    readonly HEALTHY: "healthy";
+    readonly DEGRADED: "degraded";
+    readonly UNHEALTHY: "unhealthy";
+};
+type HealthStatus = typeof HEALTH_STATUS[keyof typeof HEALTH_STATUS];
+/**
+ * Common regex patterns
+ */
+declare const PATTERNS: {
+    readonly API_KEY: RegExp;
+    readonly EMAIL: RegExp;
+    readonly URL: RegExp;
+    readonly ISO_DATE: RegExp;
+};
+
+/**
+ * Common validation utilities shared across Conduit SDKs
+ */
+/**
+ * Validates email format
+ */
+declare function isValidEmail(email: string): boolean;
+/**
+ * Validates URL format
+ */
+declare function isValidUrl(url: string): boolean;
+/**
+ * Validates API key format
+ */
+declare function isValidApiKey(apiKey: string): boolean;
+/**
+ * Validates ISO date string
+ */
+declare function isValidIsoDate(date: string): boolean;
+/**
+ * Validates UUID format
+ */
+declare function isValidUuid(uuid: string): boolean;
+/**
+ * Validates that a value is not null or undefined
+ */
+declare function assertDefined<T>(value: T | null | undefined, name: string): T;
+/**
+ * Validates that a string is not empty
+ */
+declare function assertNotEmpty(value: string | null | undefined, name: string): string;
+/**
+ * Validates that a number is within a range
+ */
+declare function assertInRange(value: number, min: number, max: number, name: string): number;
+/**
+ * Validates that a value is one of allowed values
+ */
+declare function assertOneOf<T>(value: T, allowed: readonly T[], name: string): T;
+/**
+ * Validates array length
+ */
+declare function assertArrayLength<T>(array: T[], min: number, max: number, name: string): T[];
+/**
+ * Validates that an object has required properties
+ */
+declare function assertHasProperties<T extends Record<string, unknown>>(obj: T, required: (keyof T)[], name: string): T;
+/**
+ * Sanitizes a string by removing potentially dangerous characters
+ */
+declare function sanitizeString(str: string, maxLength?: number): string;
+/**
+ * Type guard to check if value is a non-empty string
+ */
+declare function isNonEmptyString(value: unknown): value is string;
+/**
+ * Type guard to check if value is a positive number
+ */
+declare function isPositiveNumber(value: unknown): value is number;
+/**
+ * Type guard to check if value is a valid enum value
+ */
+declare function isEnumValue<T extends Record<string, string | number>>(value: unknown, enumObject: T): value is T[keyof T];
+/**
+ * Validates JSON string
+ */
+declare function isValidJson(str: string): boolean;
+/**
+ * Validates base64 string
+ */
+declare function isValidBase64(str: string): boolean;
+/**
+ * Creates a validation function that checks multiple conditions
+ */
+declare function createValidator<T>(validators: Array<(value: T) => boolean | string>): (value: T) => void;
+
+/**
+ * Date and time utility functions shared across Conduit SDKs
+ */
+/**
+ * Formats a date to ISO string with UTC timezone
+ */
+declare function toIsoString(date: Date | string | number): string;
+/**
+ * Parses an ISO date string to Date object
+ */
+declare function parseIsoDate(dateStr: string): Date;
+/**
+ * Gets current timestamp in ISO format
+ */
+declare function getCurrentTimestamp(): string;
+/**
+ * Calculates time difference in milliseconds
+ */
+declare function getTimeDifference(start: Date | string, end?: Date | string): number;
+/**
+ * Formats duration in milliseconds to human-readable string
+ */
+declare function formatDuration(ms: number): string;
+/**
+ * Adds time to a date
+ */
+declare function addTime(date: Date | string, amount: number, unit: 'seconds' | 'minutes' | 'hours' | 'days'): Date;
+/**
+ * Checks if a date is within a range
+ */
+declare function isDateInRange(date: Date | string, start: Date | string, end: Date | string): boolean;
+/**
+ * Gets the start of a time period
+ */
+declare function getStartOf(date: Date | string, period: 'day' | 'week' | 'month' | 'year'): Date;
+/**
+ * Gets the end of a time period
+ */
+declare function getEndOf(date: Date | string, period: 'day' | 'week' | 'month' | 'year'): Date;
+/**
+ * Formats a date for API requests (YYYY-MM-DD)
+ */
+declare function formatApiDate(date: Date | string): string;
+/**
+ * Parses a Unix timestamp to Date
+ */
+declare function fromUnixTimestamp(timestamp: number): Date;
+/**
+ * Converts Date to Unix timestamp (seconds)
+ */
+declare function toUnixTimestamp(date: Date | string): number;
+
+/**
+ * Formatting utilities shared across Conduit SDKs
+ */
+/**
+ * Formats a number as currency
+ */
+declare function formatCurrency(amount: number, currency?: string, locale?: string): string;
+/**
+ * Formats a number with commas
+ */
+declare function formatNumber(value: number, decimals?: number, locale?: string): string;
+/**
+ * Formats bytes to human-readable size
+ */
+declare function formatBytes(bytes: number, decimals?: number): string;
+/**
+ * Formats a percentage
+ */
+declare function formatPercentage(value: number, decimals?: number): string;
+/**
+ * Truncates a string with ellipsis
+ */
+declare function truncateString(str: string, maxLength: number, suffix?: string): string;
+/**
+ * Capitalizes first letter of a string
+ */
+declare function capitalize(str: string): string;
+/**
+ * Converts string to title case
+ */
+declare function toTitleCase(str: string): string;
+/**
+ * Converts string to kebab-case
+ */
+declare function toKebabCase(str: string): string;
+/**
+ * Converts string to snake_case
+ */
+declare function toSnakeCase(str: string): string;
+/**
+ * Converts string to camelCase
+ */
+declare function toCamelCase(str: string): string;
+/**
+ * Pads a string or number with zeros
+ */
+declare function padZero(value: string | number, length: number): string;
+/**
+ * Formats a duration in seconds to HH:MM:SS
+ */
+declare function formatDurationHMS(seconds: number): string;
+/**
+ * Pluralizes a word based on count
+ */
+declare function pluralize(count: number, singular: string, plural?: string): string;
+/**
+ * Formats a list of items with proper grammar
+ */
+declare function formatList(items: string[], conjunction?: string): string;
+/**
+ * Masks sensitive data
+ */
+declare function maskSensitive(value: string, showFirst?: number, showLast?: number, maskChar?: string): string;
+/**
+ * Formats a file path to be more readable
+ */
+declare function formatFilePath(path: string, maxLength?: number): string;
+
+/**
+ * Common utilities for Conduit SDKs
+ */
+
+/**
+ * Delays execution for specified milliseconds
+ */
+declare function delay(ms: number): Promise<void>;
+/**
+ * Retries a function with exponential backoff
+ */
+declare function retry<T>(fn: () => Promise<T>, options?: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    backoffFactor?: number;
+    shouldRetry?: (error: Error, attempt: number) => boolean;
+}): Promise<T>;
+/**
+ * Creates a debounced version of a function
+ */
+declare function debounce<T extends (...args: any[]) => any>(fn: T, wait: number): (...args: Parameters<T>) => void;
+/**
+ * Creates a throttled version of a function
+ */
+declare function throttle<T extends (...args: any[]) => any>(fn: T, limit: number): (...args: Parameters<T>) => void;
+/**
+ * Deep clones an object
+ */
+declare function deepClone<T>(obj: T): T;
+/**
+ * Deep merges objects
+ */
+declare function deepMerge<T = any>(target: any, ...sources: any[]): T;
+/**
+ * Checks if a value is a plain object
+ */
+declare function isObject(value: unknown): value is Record<string, unknown>;
+/**
+ * Groups an array by a key function
+ */
+declare function groupBy<T, K extends string | number | symbol>(array: T[], keyFn: (item: T) => K): Record<K, T[]>;
+/**
+ * Chunks an array into smaller arrays
+ */
+declare function chunk<T>(array: T[], size: number): T[][];
+/**
+ * Picks specified properties from an object
+ */
+declare function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>;
+/**
+ * Omits specified properties from an object
+ */
+declare function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>;
+/**
+ * Creates a promise that resolves after a timeout
+ */
+declare function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutError?: Error): Promise<T>;
+/**
+ * Memoizes a function
+ */
+declare function memoize<T extends (...args: any[]) => any>(fn: T, keyFn?: (...args: Parameters<T>) => string): T;
+
+/**
  * Common error types for Conduit SDK clients
  *
  * This module provides a unified error hierarchy for both Admin and Core SDKs,
@@ -781,6 +1706,131 @@ interface BaseClientOptions extends ClientLifecycleCallbacks {
     debug?: boolean;
 }
 
+interface BaseClientConfig extends BaseClientOptions {
+    baseURL: string;
+}
+interface BaseRequestOptions {
+    headers?: Record<string, string>;
+    signal?: AbortSignal;
+    timeout?: number;
+    responseType?: 'json' | 'text' | 'blob' | 'arraybuffer';
+}
+/**
+ * Abstract base API client for Conduit SDKs
+ * Provides common HTTP functionality with authentication handled by subclasses
+ */
+declare abstract class BaseApiClient {
+    protected readonly config: Required<Omit<BaseClientConfig, 'logger' | 'cache' | 'onError' | 'onRequest' | 'onResponse'>> & Pick<BaseClientConfig, 'logger' | 'cache' | 'onError' | 'onRequest' | 'onResponse'>;
+    protected readonly retryConfig: RetryConfig;
+    protected readonly logger?: Logger;
+    protected readonly cache?: CacheProvider;
+    constructor(config: BaseClientConfig);
+    /**
+     * Abstract method for SDK-specific authentication headers
+     * Must be implemented by Core and Admin SDK clients
+     */
+    protected abstract getAuthHeaders(): Record<string, string>;
+    /**
+     * Get base URL for services that need direct access
+     */
+    getBaseURL(): string;
+    /**
+     * Get timeout for services that need direct access
+     */
+    getTimeout(): number;
+    /**
+     * Type-safe request method with proper request/response typing
+     */
+    protected request<TResponse = unknown, TRequest = unknown>(url: string, options?: BaseRequestOptions & {
+        method?: HttpMethod;
+        body?: TRequest;
+    }): Promise<TResponse>;
+    /**
+     * Type-safe GET request with support for query parameters
+     */
+    protected get<TResponse = unknown>(url: string, paramsOrOptions?: Record<string, unknown> | BaseRequestOptions, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe POST request
+     */
+    protected post<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe PUT request
+     */
+    protected put<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe PATCH request
+     */
+    protected patch<TResponse = unknown, TRequest = unknown>(url: string, data?: TRequest, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Type-safe DELETE request
+     */
+    protected delete<TResponse = unknown>(url: string, options?: BaseRequestOptions): Promise<TResponse>;
+    /**
+     * Build full URL from path
+     */
+    private buildUrl;
+    /**
+     * Build headers with authentication and defaults
+     */
+    private buildHeaders;
+    /**
+     * Execute request with retry logic
+     */
+    private executeWithRetry;
+    /**
+     * Parse response based on content type
+     */
+    private parseResponse;
+    /**
+     * Handle error responses
+     */
+    protected abstract handleErrorResponse(response: Response): Promise<Error>;
+    /**
+     * Determine if error should trigger retry
+     */
+    protected shouldRetry(error: unknown): boolean;
+    /**
+     * Calculate retry delay
+     */
+    private calculateDelay;
+    /**
+     * Sleep for specified milliseconds
+     */
+    private sleep;
+    /**
+     * Handle and transform errors
+     */
+    protected handleError(error: unknown): Error;
+    /**
+     * Normalize retry configuration
+     */
+    private normalizeRetryConfig;
+    /**
+     * Log message using logger if available
+     */
+    protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void;
+    /**
+     * Build URL with query parameters
+     */
+    protected buildUrlWithParams(url: string, params: Record<string, unknown>): string;
+    /**
+     * Get cache key for a request
+     */
+    protected getCacheKey(resource: string, id?: unknown, params?: Record<string, unknown>): string;
+    /**
+     * Get from cache
+     */
+    protected getFromCache<T>(key: string): Promise<T | null>;
+    /**
+     * Set cache value
+     */
+    protected setCache(key: string, value: unknown, ttl?: number): Promise<void>;
+    /**
+     * Execute function with caching
+     */
+    protected withCache<T>(cacheKey: string, fn: () => Promise<T>, ttl?: number): Promise<T>;
+}
+
 /**
  * SignalR client configuration
  */
@@ -821,4 +1871,4 @@ interface SignalRConfig {
     connectionTimeout?: number;
 }
 
-export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isStreamError, isTimeoutError, isValidationError, serializeError };
+export { API_PREFIX, API_VERSION, type ApiError, type ApiResponse, type ApiSuccessResponse, AuthError, AuthenticationError, AuthorizationError, BUDGET_DURATION, BaseApiClient, type BaseClientConfig, type BaseClientOptions, type BaseModel, type BaseRequestOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchError, type BatchOperationParams, type BatchRequest, type BatchResponse, type BatchResult, type BudgetDuration, type BulkOperationRequest, type BulkOperationResponse, CACHE_TTL, CHAT_ROLES, CLIENT_INFO, CONTENT_TYPES, type CacheProvider, type ChatRole, type ClientLifecycleCallbacks, type ComponentHealth, ConduitError, ConflictError, type ContentType, type CreateDto, DATE_FORMATS, type DateRange, type DateRangeFilter, DefaultTransports, type DeleteDto, type DiscoveredModel, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedPaginatedResponse, type ExtendedRequestInit, FILTER_MODE, FILTER_TYPE, type Filter, type FilterMode, FilterOperator, type FilterOptions, type FilterType, HEALTH_STATUS, HTTP_HEADERS, HTTP_STATUS, type HealthCheckResponse, type HealthStatus, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, IMAGE_RESPONSE_FORMATS, type ImageResponseFormat, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, type ModelCostInfo, type ModelFeatureSupport, type ModelHealthStatus, type ModelMapping, type ModelPricing, type ModelUsageStats, type ModelWithCapabilities, NetworkError, NotFoundError, NotImplementedError, type NumericRangeFilter, PAGINATION, PATTERNS, POLLING_CONFIG, type PagedResponse, type PagedResult, type PaginatedRequest, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, ProviderType, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, type ResponseMetadata, ResponseParser, type RetryConfig, type RetryConfigValue, STREAM_CONSTANTS, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, type SignalRValue, type SortConfig, type SortDirection, type SortOptions, StreamError, TASK_STATUS, TIMEOUTS, type TaskStatus, type TimeRangeParams, TimeoutError, type TimeoutValue, type UpdateDto, type Usage, VIDEO_RESPONSE_FORMATS, ValidationError, type VideoResponseFormat, addTime, assertArrayLength, assertDefined, assertHasProperties, assertInRange, assertNotEmpty, assertOneOf, capitalize, chunk, createErrorFromResponse, createValidator, debounce, deepClone, deepMerge, delay, deserializeError, formatApiDate, formatBytes, formatCurrency, formatDuration, formatDurationHMS, formatFilePath, formatList, formatNumber, formatPercentage, fromUnixTimestamp, getCapabilityCategory, getCapabilityDisplayName, getCurrentTimestamp, getEndOf, getErrorMessage, getErrorStatusCode, getProviderDisplayName, getStartOf, getTimeDifference, groupBy, handleApiError, hasModelFeatureSupport, isAuthError, isAuthorizationError, isBaseModel, isConduitError, isConflictError, isDateInRange, isEnumValue, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isNetworkError, isNonEmptyString, isNotFoundError, isObject, isPositiveNumber, isProviderType, isRateLimitError, isSerializedConduitError, isStreamError, isTimeoutError, isValidApiKey, isValidBase64, isValidEmail, isValidIsoDate, isValidJson, isValidUrl, isValidUuid, isValidationError, maskSensitive, memoize, omit, padZero, parseIsoDate, pick, pluralize, retry, sanitizeString, serializeError, throttle, toCamelCase, toIsoString, toKebabCase, toSnakeCase, toTitleCase, toUnixTimestamp, truncateString, withTimeout };

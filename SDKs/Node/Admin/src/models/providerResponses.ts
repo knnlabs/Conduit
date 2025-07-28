@@ -3,7 +3,7 @@
  * These interfaces define the structure of API responses for type safety
  */
 
-import { ProviderType } from './providerType';
+import { ProviderType } from '@knn_labs/conduit-common';
 
 /**
  * Provider data structure from API responses
