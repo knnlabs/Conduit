@@ -333,13 +333,15 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when creating key credential for provider {ProviderId}", providerId);
+                _logger.LogWarning("Controller caught InvalidOperationException of type {ExceptionType} for provider {ProviderId}: {Message}", 
+                    ex.GetType().FullName, providerId, ex.Message);
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating key credential for provider {ProviderId}", providerId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+                _logger.LogError(ex, "Controller caught general Exception of type {ExceptionType} for provider {ProviderId}: {Message}", 
+                    ex.GetType().FullName, providerId, ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An unexpected error occurred." });
             }
         }
 

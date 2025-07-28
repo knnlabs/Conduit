@@ -3,8 +3,11 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Exceptions;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ConduitLLM.Configuration
 {
@@ -235,10 +238,24 @@ namespace ConduitLLM.Configuration
                 }
 
                 keyCredential.ProviderCredentialId = providerId;
-                var created = await _keyRepository.CreateAsync(keyCredential);
                 
-                _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}", 
-                    created.Id, providerId);
+                // Check if this API key already exists for this provider
+                var allProviderKeys = await _keyRepository.GetByProviderIdAsync(providerId);
+                if (allProviderKeys.Any(k => k.ApiKey == keyCredential.ApiKey))
+                {
+                    var provider = await _repository.GetByIdAsync(providerId);
+                    var providerType = provider?.ProviderType ?? ProviderType.OpenAI;
+                    _logger.LogWarning("Duplicate API key attempted for provider {ProviderId} ({ProviderType})", 
+                        providerId, providerType);
+                    throw new DuplicateProviderKeyException(providerType, providerId);
+                }
+                
+                try
+                {
+                    var created = await _keyRepository.CreateAsync(keyCredential);
+                    
+                    _logger.LogInformation("Successfully added key credential {KeyId} for provider {ProviderId}", 
+                        created.Id, providerId);
                 
                 // Publish domain event
                 await _publishEndpoint.Publish(new ProviderKeyCredentialCreated
@@ -250,8 +267,31 @@ namespace ConduitLLM.Configuration
                     Timestamp = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid()
                 });
-                
-                return created;
+                    
+                    return created;
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    if (IsUniqueConstraintViolation(dbEx))
+                    {
+                        // Get provider type for better error message
+                        var provider = await _repository.GetByIdAsync(providerId);
+                        var providerType = provider?.ProviderType ?? ProviderType.OpenAI; // fallback
+                        
+                        _logger.LogWarning("Duplicate API key attempted for provider {ProviderId} ({ProviderType}) - caught from database constraint", 
+                            providerId, providerType);
+                        
+                        throw new DuplicateProviderKeyException(providerType, providerId);
+                    }
+                    
+                    // Re-throw if not a unique constraint violation
+                    throw;
+                }
+            }
+            catch (DuplicateProviderKeyException)
+            {
+                // Re-throw DuplicateProviderKeyException as-is
+                throw;
             }
             catch (Exception ex)
             {
@@ -463,6 +503,54 @@ namespace ConduitLLM.Configuration
                     Timestamp = DateTime.UtcNow
                 };
             }
+        }
+
+        /// <summary>
+        /// Checks if a DbUpdateException is due to a unique constraint violation on the API key
+        /// </summary>
+        private bool IsUniqueConstraintViolation(DbUpdateException dbEx)
+        {
+            // Check immediate inner exception
+            if (dbEx.InnerException is PostgresException pgEx)
+            {
+                // PostgreSQL unique constraint violation error code is 23505
+                if (pgEx.SqlState == "23505" && 
+                    pgEx.ConstraintName == "IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
+                {
+                    return true;
+                }
+                
+                // Also check if it's any unique constraint violation on our table
+                if (pgEx.SqlState == "23505" && pgEx.ConstraintName?.Contains("ProviderKeyCredential") == true)
+                {
+                    _logger.LogWarning("Unique constraint violation on unexpected constraint: {ConstraintName}", pgEx.ConstraintName);
+                    return true; // Still treat as duplicate key
+                }
+            }
+            
+            // Sometimes the PostgresException is nested deeper
+            var innerEx = dbEx.InnerException;
+            while (innerEx != null)
+            {
+                if (innerEx is PostgresException postgresEx)
+                {
+                    if (postgresEx.SqlState == "23505" && 
+                        postgresEx.ConstraintName == "IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
+                    {
+                        return true;
+                    }
+                    
+                    // Also check if it's any unique constraint violation on our table
+                    if (postgresEx.SqlState == "23505" && postgresEx.ConstraintName?.Contains("ProviderKeyCredential") == true)
+                    {
+                        _logger.LogWarning("Unique constraint violation on unexpected constraint: {ConstraintName}", postgresEx.ConstraintName);
+                        return true; // Still treat as duplicate key
+                    }
+                }
+                innerEx = innerEx.InnerException;
+            }
+            
+            return false;
         }
     }
 }

@@ -18,23 +18,31 @@ namespace ConduitLLM.IntegrationTests.Providers
     [Trait("Component", "ProviderValidation")]
     public class ProviderValidationIntegrationTests : IntegrationTestBase
     {
-        private readonly ILLMClientFactory _clientFactory;
-        private readonly ILogger<ProviderValidationIntegrationTests> _logger;
+        private ILLMClientFactory _clientFactory;
+        private ILogger<ProviderValidationIntegrationTests> _logger;
 
         public ProviderValidationIntegrationTests(ITestOutputHelper output) : base(output)
         {
-            _clientFactory = ServiceProvider.GetRequiredService<ILLMClientFactory>();
-            _logger = ServiceProvider.GetRequiredService<ILogger<ProviderValidationIntegrationTests>>();
         }
 
-        [SkippableFact]
+        protected override Task OnInitializeAsync()
+        {
+            _clientFactory = GetService<ILLMClientFactory>();
+            _logger = GetService<ILogger<ProviderValidationIntegrationTests>>();
+            return Task.CompletedTask;
+        }
+
+        [IntegrationFact]
         public async Task ValidateOpenAIProvider_WithTestClient_HandlesUrlsCorrectly()
         {
             // This test verifies that the OpenAI provider validation works correctly
             // when using the test client creation flow
             
-            Skip.IfNot(IntegrationTestConditions.IsOpenAIConfigured(), 
-                "OpenAI credentials not configured for integration tests");
+            if (!IntegrationTestConditions.IsOpenAIConfigured())
+            {
+                _logger.LogInformation("Skipping test - OpenAI credentials not configured");
+                return;
+            }
 
             // Arrange
             var credentials = new ProviderCredentials
@@ -48,8 +56,18 @@ namespace ConduitLLM.IntegrationTests.Providers
             _logger.LogInformation("Creating test client for OpenAI validation");
             var testClient = _clientFactory.CreateTestClient(credentials);
             
+            // Check if the client implements IAuthenticationVerifiable
+            if (testClient is not IAuthenticationVerifiable authVerifiable)
+            {
+                _logger.LogWarning("OpenAI client does not implement IAuthenticationVerifiable");
+                Assert.Fail("OpenAI client should implement IAuthenticationVerifiable");
+                return;
+            }
+            
             _logger.LogInformation("Verifying authentication");
-            var result = await testClient.VerifyAuthenticationAsync();
+            var result = await authVerifiable.VerifyAuthenticationAsync(
+                IntegrationTestConditions.GetOpenAIApiKey(), 
+                null);
 
             // Assert
             Assert.NotNull(result);
@@ -66,11 +84,14 @@ namespace ConduitLLM.IntegrationTests.Providers
             }
         }
 
-        [SkippableFact]
+        [IntegrationFact]
         public async Task ValidateOpenAIProvider_WithCustomBaseUrl_HandlesUrlsCorrectly()
         {
-            Skip.IfNot(IntegrationTestConditions.IsOpenAIConfigured(), 
-                "OpenAI credentials not configured for integration tests");
+            if (!IntegrationTestConditions.IsOpenAIConfigured())
+            {
+                _logger.LogInformation("Skipping test - OpenAI credentials not configured");
+                return;
+            }
 
             // Arrange
             var customBaseUrl = "https://api.openai.com/v1"; // Explicit base URL
@@ -83,7 +104,18 @@ namespace ConduitLLM.IntegrationTests.Providers
 
             // Act
             var testClient = _clientFactory.CreateTestClient(credentials);
-            var result = await testClient.VerifyAuthenticationAsync(baseUrl: customBaseUrl);
+            
+            // Check if the client implements IAuthenticationVerifiable
+            if (testClient is not IAuthenticationVerifiable authVerifiable)
+            {
+                _logger.LogWarning("OpenAI client does not implement IAuthenticationVerifiable");
+                Assert.Fail("OpenAI client should implement IAuthenticationVerifiable");
+                return;
+            }
+            
+            var result = await authVerifiable.VerifyAuthenticationAsync(
+                IntegrationTestConditions.GetOpenAIApiKey(), 
+                customBaseUrl);
 
             // Assert
             Assert.NotNull(result);
@@ -112,7 +144,18 @@ namespace ConduitLLM.IntegrationTests.Providers
 
             // Act
             var testClient = _clientFactory.CreateTestClient(credentials);
-            var result = await testClient.VerifyAuthenticationAsync();
+            
+            // Check if the client implements IAuthenticationVerifiable
+            if (testClient is not IAuthenticationVerifiable authVerifiable)
+            {
+                _logger.LogWarning("OpenAI client does not implement IAuthenticationVerifiable");
+                Assert.Fail("OpenAI client should implement IAuthenticationVerifiable");
+                return;
+            }
+            
+            var result = await authVerifiable.VerifyAuthenticationAsync(
+                "sk-invalid-test-key-12345", 
+                null);
 
             // Assert
             Assert.NotNull(result);

@@ -59,6 +59,25 @@ public static class IntegrationTestConditions
             return false;
         }
     }
+
+    /// <summary>
+    /// Checks if OpenAI credentials are configured for integration tests.
+    /// </summary>
+    public static bool IsOpenAIConfigured()
+    {
+        var apiKey = GetOpenAIApiKey();
+        return !string.IsNullOrWhiteSpace(apiKey);
+    }
+
+    /// <summary>
+    /// Gets the OpenAI API key from environment variables.
+    /// </summary>
+    public static string GetOpenAIApiKey()
+    {
+        return Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? 
+               Environment.GetEnvironmentVariable("CONDUIT_OPENAI_API_KEY") ?? 
+               string.Empty;
+    }
 }
 
 /// <summary>

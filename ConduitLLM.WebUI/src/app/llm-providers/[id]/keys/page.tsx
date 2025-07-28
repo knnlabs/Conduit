@@ -115,7 +115,8 @@ export default function ProviderKeysPage() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to add key');
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error ?? 'Failed to add key');
       }
       
       notifications.show({
@@ -138,9 +139,10 @@ export default function ProviderKeysPage() {
       void fetchKeys();
     } catch (error) {
       console.error('Error adding key:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add provider key';
       notifications.show({
         title: 'Error',
-        message: 'Failed to add provider key',
+        message: errorMessage,
         color: 'red',
       });
     } finally {
@@ -316,13 +318,14 @@ export default function ProviderKeysPage() {
           <Button
             leftSection={<IconArrowLeft size={16} />}
             variant="default"
-            onClick={() => router.push('/llm-providers')}
+            onClick={() => void router.push('/llm-providers')}
           >
             Back to Providers
           </Button>
           <Button
             leftSection={<IconPlus size={16} />}
-            onClick={() => setShowAddForm(true)}
+            onClick={() => setShowAddForm(!showAddForm)}
+            disabled={showAddForm}
           >
             Add New Key
           </Button>

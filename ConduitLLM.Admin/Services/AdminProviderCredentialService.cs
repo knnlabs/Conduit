@@ -12,6 +12,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Events;
@@ -667,6 +668,16 @@ namespace ConduitLLM.Admin.Services
                     CreatedAt = created.CreatedAt,
                     UpdatedAt = created.UpdatedAt
                 };
+            }
+            catch (InvalidOperationException ioEx)
+            {
+                // For DuplicateProviderKeyException, provide a clearer message
+                if (ioEx is DuplicateProviderKeyException)
+                {
+                    throw new InvalidOperationException("An API key with this value already exists for this provider. Each API key must be unique per provider.", ioEx);
+                }
+                // Re-throw other InvalidOperationExceptions as-is
+                throw;
             }
             catch (Exception ex)
             {

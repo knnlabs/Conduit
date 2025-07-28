@@ -51,6 +51,12 @@ namespace ConduitLLM.Configuration.Data
                     .HasFilter("\"IsPrimary\" = true")
                     .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider");
                 
+                // Unique constraint: Prevent duplicate API keys for the same provider
+                entity.HasIndex(e => new { e.ProviderCredentialId, e.ApiKey })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
+                    .HasFilter("\"ApiKey\" IS NOT NULL");
+                
                 // Configure check constraints in table configuration
                 entity.ToTable(t => {
                     // Check constraint: Primary keys must be enabled
