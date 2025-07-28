@@ -135,6 +135,12 @@ namespace ConduitLLM.Configuration.Repositories
                     key.UpdatedAt = DateTime.UtcNow;
                 }
 
+                // Save changes to unset primary keys first to avoid constraint violation
+                if (existingPrimaryKeys.Any())
+                {
+                    await _context.SaveChangesAsync();
+                }
+
                 // Set the new primary key
                 var newPrimaryKey = await _context.ProviderKeyCredentials
                     .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderCredentialId == providerCredentialId);
