@@ -18,8 +18,7 @@ namespace ConduitLLM.Http.Services
     public class HealthMonitoringBackgroundService : BackgroundService
     {
         private readonly HealthCheckService _healthCheckService;
-        private readonly IAlertManagementService _alertManagementService;
-        private readonly IHealthMonitoringService _healthMonitoringService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<HealthMonitoringBackgroundService> _logger;
         private readonly HealthMonitoringOptions _options;
         private readonly Dictionary<string, Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> _previousHealthStatus;
@@ -27,14 +26,12 @@ namespace ConduitLLM.Http.Services
 
         public HealthMonitoringBackgroundService(
             HealthCheckService healthCheckService,
-            IAlertManagementService alertManagementService,
-            IHealthMonitoringService healthMonitoringService,
+            IServiceProvider serviceProvider,
             ILogger<HealthMonitoringBackgroundService> logger,
             IOptions<HealthMonitoringOptions> options)
         {
             _healthCheckService = healthCheckService;
-            _alertManagementService = alertManagementService;
-            _healthMonitoringService = healthMonitoringService;
+            _serviceProvider = serviceProvider;
             _logger = logger;
             _options = options.Value;
             _previousHealthStatus = new Dictionary<string, Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus>();
@@ -76,9 +73,11 @@ namespace ConduitLLM.Http.Services
             }
 
             // Check resource metrics
-            var snapshot = await _healthMonitoringService.GetSystemHealthSnapshotAsync();
-            await CheckResourceMetricsAsync(snapshot.Resources);
-            await CheckPerformanceMetricsAsync(snapshot.Performance);
+            using var scope = _serviceProvider.CreateScope();
+            var healthMonitoringService = scope.ServiceProvider.GetRequiredService<IHealthMonitoringService>();
+            var snapshot = await healthMonitoringService.GetSystemHealthSnapshotAsync();
+            await CheckResourceMetricsAsync(snapshot.Resources, scope.ServiceProvider);
+            await CheckPerformanceMetricsAsync(snapshot.Performance, scope.ServiceProvider);
         }
 
         private async Task CheckOverallHealthAsync(HealthReport healthReport)
@@ -90,7 +89,9 @@ namespace ConduitLLM.Http.Services
                     .Select(e => e.Key)
                     .ToList();
 
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                using var scope = _serviceProvider.CreateScope();
+                var alertManagementService = scope.ServiceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.ServiceDown,
@@ -149,7 +150,9 @@ namespace ConduitLLM.Http.Services
                         if (previousStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy || 
                             previousStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded)
                         {
-                            await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                            using var scope = _serviceProvider.CreateScope();
+                            var alertManagementService = scope.ServiceProvider.GetRequiredService<IAlertManagementService>();
+                            await alertManagementService.TriggerAlertAsync(new HealthAlert
                             {
                                 Severity = AlertSeverity.Info,
                                 Type = AlertType.ServiceDegraded,
@@ -167,7 +170,9 @@ namespace ConduitLLM.Http.Services
                         return;
                 }
 
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                using var alertScope = _serviceProvider.CreateScope();
+                var alertService = alertScope.ServiceProvider.GetRequiredService<IAlertManagementService>();
+                await alertService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = severity,
                     Type = alertType,
@@ -188,12 +193,13 @@ namespace ConduitLLM.Http.Services
             _previousHealthStatus[componentName] = currentStatus;
         }
 
-        private async Task CheckResourceMetricsAsync(ResourceMetrics resources)
+        private async Task CheckResourceMetricsAsync(ResourceMetrics resources, IServiceProvider serviceProvider)
         {
             // Check CPU usage
             if (resources.CpuUsagePercent > _options.CpuCriticalThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.ResourceExhaustion,
@@ -215,7 +221,8 @@ namespace ConduitLLM.Http.Services
             }
             else if (resources.CpuUsagePercent > _options.CpuWarningThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Warning,
                     Type = AlertType.ResourceExhaustion,
@@ -233,7 +240,8 @@ namespace ConduitLLM.Http.Services
             // Check memory usage
             if (resources.MemoryUsagePercent > _options.MemoryCriticalThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.ResourceExhaustion,
@@ -256,7 +264,8 @@ namespace ConduitLLM.Http.Services
             }
             else if (resources.MemoryUsagePercent > _options.MemoryWarningThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Warning,
                     Type = AlertType.ResourceExhaustion,
@@ -273,16 +282,17 @@ namespace ConduitLLM.Http.Services
             }
 
             // Check connection pools
-            await CheckConnectionPoolHealthAsync("Database", resources.ConnectionPools.Database);
-            await CheckConnectionPoolHealthAsync("Redis", resources.ConnectionPools.Redis);
-            await CheckConnectionPoolHealthAsync("HTTP", resources.ConnectionPools.HttpClients);
+            await CheckConnectionPoolHealthAsync("Database", resources.ConnectionPools.Database, serviceProvider);
+            await CheckConnectionPoolHealthAsync("Redis", resources.ConnectionPools.Redis, serviceProvider);
+            await CheckConnectionPoolHealthAsync("HTTP", resources.ConnectionPools.HttpClients, serviceProvider);
         }
 
-        private async Task CheckConnectionPoolHealthAsync(string poolName, PoolStats poolStats)
+        private async Task CheckConnectionPoolHealthAsync(string poolName, PoolStats poolStats, IServiceProvider serviceProvider)
         {
             if (poolStats.UtilizationPercent > _options.ConnectionPoolCriticalThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.ResourceExhaustion,
@@ -307,12 +317,13 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async Task CheckPerformanceMetricsAsync(PerformanceMetrics performance)
+        private async Task CheckPerformanceMetricsAsync(PerformanceMetrics performance, IServiceProvider serviceProvider)
         {
             // Check error rate
             if (performance.ErrorRatePercent > _options.ErrorRateCriticalThreshold)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.PerformanceDegradation,
@@ -337,7 +348,8 @@ namespace ConduitLLM.Http.Services
             // Check response times
             if (performance.P99ResponseTimeMs > _options.ResponseTimeCriticalThresholdMs)
             {
-                await _alertManagementService.TriggerAlertAsync(new HealthAlert
+                var alertManagementService = serviceProvider.GetRequiredService<IAlertManagementService>();
+                await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Critical,
                     Type = AlertType.PerformanceDegradation,

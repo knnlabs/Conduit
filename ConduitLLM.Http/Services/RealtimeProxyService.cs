@@ -22,7 +22,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class RealtimeProxyService : IRealtimeProxyService
     {
-        private readonly IRealtimeMessageTranslator _translator;
+        private readonly IRealtimeMessageTranslatorFactory _translatorFactory;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IRealtimeConnectionManager _connectionManager;
         private readonly IRealtimeUsageTracker _usageTracker;
@@ -33,13 +33,13 @@ namespace ConduitLLM.Http.Services
         private readonly object _metricsLock = new();
 
         public RealtimeProxyService(
-            IRealtimeMessageTranslator translator,
+            IRealtimeMessageTranslatorFactory translatorFactory,
             IVirtualKeyService virtualKeyService,
             IRealtimeConnectionManager connectionManager,
             IRealtimeUsageTracker usageTracker,
             ILogger<RealtimeProxyService> logger)
         {
-            _translator = translator ?? throw new ArgumentNullException(nameof(translator));
+            _translatorFactory = translatorFactory ?? throw new ArgumentNullException(nameof(translatorFactory));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
             _usageTracker = usageTracker ?? throw new ArgumentNullException(nameof(usageTracker));

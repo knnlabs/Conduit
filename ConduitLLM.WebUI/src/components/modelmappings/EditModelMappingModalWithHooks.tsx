@@ -99,9 +99,8 @@ export function EditModelMappingModal({
   useEffect(() => {
     if (mapping && providers) {
       
-      // The mapping.providerId is the provider name (string), we need to find the numeric ID
-      const provider = providers.find(p => (p as { providerName?: string }).providerName === mapping.providerId);
-      const providerIdForForm = provider?.id.toString() ?? '';
+      // The mapping.providerId is now a numeric ID
+      const providerIdForForm = mapping.providerId?.toString() ?? '';
       
       
       const formData = {
@@ -167,7 +166,7 @@ export function EditModelMappingModal({
     try {
       const providerType = getProviderTypeFromDto(p);
       return {
-        value: p.id.toString(), // Form uses numeric ID, but we convert to provider name on submit
+        value: p.id.toString(), // Form uses string representation of numeric ID
         label: getProviderDisplayName(providerType),
       };
     } catch {

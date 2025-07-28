@@ -26,9 +26,14 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider type
+        /// The ID of the provider credential
         /// </summary>
-        [Required(ErrorMessage = "Provider type is required")]
+        [Required(ErrorMessage = "Provider ID is required")]
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// The provider type (populated from the provider credential)
+        /// </summary>
         public ProviderType ProviderType { get; set; }
 
         /// <summary>

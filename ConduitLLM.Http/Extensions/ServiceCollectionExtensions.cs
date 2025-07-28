@@ -38,8 +38,8 @@ namespace ConduitLLM.Http.Extensions
                 return new SecurityService(options, config, logger, memoryCache, ipFilterService, serviceProvider);
             });
             
-            // Register IP filter service
-            services.AddScoped<IIpFilterService, IpFilterService>();
+            // Register IP filter service as singleton since it's used by singleton SecurityService
+            services.AddSingleton<IIpFilterService, IpFilterService>();
             
             return services;
         }

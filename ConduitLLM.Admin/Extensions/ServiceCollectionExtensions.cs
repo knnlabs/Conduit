@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
         services.ConfigureAdminSecurityOptions(configuration);
 
         // Register security service
-        services.AddSingleton<ISecurityService, SecurityService>();
+        services.AddScoped<ISecurityService, SecurityService>();
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
@@ -171,14 +171,17 @@ public static class ServiceCollectionExtensions
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
             
-            // Get API key from provider credentials
+            // Get API key from the first enabled OpenRouter provider
             try
             {
-                var credential = credentialService.GetCredentialByProviderTypeAsync(ConduitLLM.Configuration.ProviderType.OpenRouter).GetAwaiter().GetResult();
-                var apiKey = credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                            credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
+                var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
+                var openRouterCredential = allCredentials
+                    .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter && c.IsEnabled);
+                    
+                var apiKey = openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                            openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
                 return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
             }
             catch
@@ -193,14 +196,17 @@ public static class ServiceCollectionExtensions
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
             
-            // Get API key from provider credentials
+            // Get API key from the first enabled Anthropic provider
             try
             {
-                var credential = credentialService.GetCredentialByProviderTypeAsync(ConduitLLM.Configuration.ProviderType.Anthropic).GetAwaiter().GetResult();
-                var apiKey = credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                            credential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
+                var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
+                var anthropicCredential = allCredentials
+                    .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.Anthropic && c.IsEnabled);
+                    
+                var apiKey = anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
+                            anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
                 return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
             }
             catch

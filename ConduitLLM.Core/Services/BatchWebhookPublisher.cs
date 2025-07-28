@@ -43,7 +43,7 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class BatchWebhookPublisher : BackgroundService
     {
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<BatchWebhookPublisherOptions> _options;
         private readonly ILogger<BatchWebhookPublisher> _logger;
         
@@ -55,11 +55,11 @@ namespace ConduitLLM.Core.Services
         private long _totalBatches = 0;
 
         public BatchWebhookPublisher(
-            IPublishEndpoint publishEndpoint,
+            IServiceProvider serviceProvider,
             IOptions<BatchWebhookPublisherOptions> options,
             ILogger<BatchWebhookPublisher> logger)
         {
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
@@ -190,7 +190,9 @@ namespace ConduitLLM.Core.Services
                     try
                     {
                         // Use PublishBatch for efficiency
-                        await _publishEndpoint.PublishBatch(webhooks);
+                        using var scope = _serviceProvider.CreateScope();
+                        var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
+                        await publishEndpoint.PublishBatch(webhooks);
                         
                         Interlocked.Add(ref _totalPublished, webhooks.Count);
                         Interlocked.Increment(ref _totalBatches);

@@ -1174,8 +1174,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderType")
-                        .IsUnique();
+                    b.HasIndex("ProviderType");
 
                     b.ToTable("ProviderCredentials");
                 });

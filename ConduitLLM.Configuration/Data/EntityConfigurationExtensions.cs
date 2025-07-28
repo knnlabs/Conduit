@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderType).IsUnique();
+                entity.HasIndex(e => e.ProviderType); // Removed .IsUnique() to allow multiple providers of same type
             });
 
             // Configure ProviderKeyCredential entity

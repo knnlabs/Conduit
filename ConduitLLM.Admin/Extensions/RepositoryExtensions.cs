@@ -115,6 +115,7 @@ namespace ConduitLLM.Admin.Extensions
                 Id = mapping.Id,
                 ModelId = mapping.ModelAlias,
                 ProviderModelId = mapping.ProviderModelName,
+                ProviderId = mapping.ProviderCredentialId,
                 ProviderType = mapping.ProviderCredential?.ProviderType ?? ProviderType.OpenAI,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
@@ -150,16 +151,12 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            // Provider ID will need to be resolved from ProviderType
-            // This is typically done by the service layer
-            int providerId = 0;
-
             return new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 Id = dto.Id,
                 ModelAlias = dto.ModelId,
                 ProviderModelName = dto.ProviderModelId,
-                ProviderCredentialId = providerId,
+                ProviderCredentialId = dto.ProviderId,
                 IsEnabled = dto.IsEnabled,
                 MaxContextTokens = dto.MaxContextLength,
                 SupportsVision = dto.SupportsVision,

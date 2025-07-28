@@ -27,7 +27,6 @@ namespace ConduitLLM.Admin.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ProviderHealthMonitoringService> _logger;
         private readonly ProviderHealthOptions _options;
-        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly IHttpClientFactory _httpClientFactory;
         private Timer? _timer;
         
@@ -42,14 +41,12 @@ namespace ConduitLLM.Admin.Services
             IServiceProvider serviceProvider,
             ILogger<ProviderHealthMonitoringService> logger,
             IOptions<ProviderHealthOptions> options,
-            IHttpClientFactory httpClientFactory,
-            IPublishEndpoint? publishEndpoint = null)
+            IHttpClientFactory httpClientFactory)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? new ProviderHealthOptions();
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-            _publishEndpoint = publishEndpoint;
         }
 
         /// <summary>
@@ -470,18 +467,22 @@ namespace ConduitLLM.Admin.Services
             }
             
             // Publish event if status changed with hysteresis
-            if (shouldPublishEvent && _publishEndpoint != null)
+            if (shouldPublishEvent)
             {
                 try
                 {
-                    var healthData = new Dictionary<string, object>
+                    using var scope = _serviceProvider.CreateScope();
+                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    if (publishEndpoint != null)
                     {
-                        ["responseTimeMs"] = healthRecord.ResponseTimeMs,
-                        ["errorCategory"] = healthRecord.ErrorCategory ?? string.Empty,
-                        ["timestamp"] = healthRecord.TimestampUtc
-                    };
-                    
-                    await _publishEndpoint.Publish(new ProviderHealthChanged
+                        var healthData = new Dictionary<string, object>
+                        {
+                            ["responseTimeMs"] = healthRecord.ResponseTimeMs,
+                            ["errorCategory"] = healthRecord.ErrorCategory ?? string.Empty,
+                            ["timestamp"] = healthRecord.TimestampUtc
+                        };
+                        
+                        await publishEndpoint.Publish(new ProviderHealthChanged
                     {
                         ProviderId = provider.Id,
                         ProviderType = provider.ProviderType,
@@ -491,9 +492,10 @@ namespace ConduitLLM.Admin.Services
                         CorrelationId = Guid.NewGuid().ToString()
                     });
 
-                    _logger.LogInformation(
-                        "Published ProviderHealthChanged event for {Provider}: {CurrentStatus} (Response time: {ResponseTime}ms)",
-                        provider.ProviderType, healthRecord.Status, healthRecord.ResponseTimeMs);
+                        _logger.LogInformation(
+                            "Published ProviderHealthChanged event for {Provider}: {CurrentStatus} (Response time: {ResponseTime}ms)",
+                            provider.ProviderType, healthRecord.Status, healthRecord.ResponseTimeMs);
+                    }
                 }
                 catch (Exception ex)
                 {

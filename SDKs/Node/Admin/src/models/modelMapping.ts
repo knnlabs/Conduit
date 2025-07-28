@@ -4,7 +4,7 @@ import { ProviderType } from './providerType';
 export interface ModelProviderMappingDto {
   id: number;
   modelId: string;
-  providerId: string;
+  providerId: number;
   providerType: ProviderType; // Added to match backend DTO
   providerModelId: string;
   isEnabled: boolean;
@@ -138,7 +138,7 @@ export interface UpdateModelProviderMappingDto {
 
 export interface ModelMappingFilters extends FilterOptions {
   modelId?: string;
-  providerId?: string;
+  providerId?: number;
   isEnabled?: boolean;
   minPriority?: number;
   maxPriority?: number;
@@ -156,7 +156,7 @@ export interface ModelMappingFilters extends FilterOptions {
 }
 
 export interface ModelProviderInfo {
-  providerId: string;
+  providerId: number;
   providerType: ProviderType;
   providerModelId: string;
   isAvailable: boolean;
@@ -195,7 +195,7 @@ export interface BulkMappingResponse {
 export interface ModelMappingSuggestion {
   modelId: string;
   suggestedProviders: {
-    providerId: string;
+    providerId: number;
     providerType: ProviderType;
     providerModelId: string;
     confidence: number;

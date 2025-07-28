@@ -83,17 +83,16 @@ _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
 
-            // Validate and resolve provider by type
-            var provider = await _credentialRepository.GetByProviderTypeAsync(mappingDto.ProviderType);
+            // Validate provider exists by ID
+            var provider = await _credentialRepository.GetByIdAsync(mappingDto.ProviderId);
             if (provider == null)
             {
-                _logger.LogWarning("Provider not found with type: {ProviderType}", mappingDto.ProviderType);
+                _logger.LogWarning("Provider not found with ID: {ProviderId}", mappingDto.ProviderId);
                 return false;
             }
-            int providerId = provider.Id;
 
-            // Update the mapping with the resolved provider ID
-            mapping.ProviderCredentialId = providerId;
+            // Update the mapping with the provider ID from DTO
+            mapping.ProviderCredentialId = mappingDto.ProviderId;
 
             // Check if a mapping with the same model ID already exists
             var existingMapping = await _mappingRepository.GetByModelAliasAsync(mapping.ModelAlias);
@@ -161,19 +160,18 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                 return false;
             }
 
-            // Validate and resolve provider by type
-            var provider = await _credentialRepository.GetByProviderTypeAsync(mappingDto.ProviderType);
+            // Validate provider exists by ID
+            var provider = await _credentialRepository.GetByIdAsync(mappingDto.ProviderId);
             if (provider == null)
             {
-                _logger.LogWarning("Provider not found with type: {ProviderType}", mappingDto.ProviderType);
+                _logger.LogWarning("Provider not found with ID: {ProviderId}", mappingDto.ProviderId);
                 return false;
             }
-            int providerId = provider.Id;
 
             // Update properties that can be modified
             existingMapping.ModelAlias = mapping.ModelAlias;
             existingMapping.ProviderModelName = mapping.ProviderModelName;
-            existingMapping.ProviderCredentialId = providerId; // Use the resolved provider ID
+            existingMapping.ProviderCredentialId = mappingDto.ProviderId; // Use the provider ID from DTO
             existingMapping.IsEnabled = mapping.IsEnabled;
             existingMapping.MaxContextTokens = mapping.MaxContextTokens;
             
