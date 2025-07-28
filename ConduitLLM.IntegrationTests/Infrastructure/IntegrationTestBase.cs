@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net.Http.Headers;
 using DotNet.Testcontainers.Builders;
 using Microsoft.AspNetCore.Hosting;
@@ -197,9 +198,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     /// </summary>
     protected async Task ResetDatabaseAsync()
     {
-        if (_respawner != null)
+        if (_respawner != null && !string.IsNullOrEmpty(_postgresConnectionString))
         {
-            await _respawner.ResetAsync(_postgresConnectionString);
+            using var connection = new Npgsql.NpgsqlConnection(_postgresConnectionString);
+            await connection.OpenAsync();
+            await _respawner.ResetAsync(connection);
             Output.WriteLine("Database reset completed");
         }
     }
@@ -228,7 +231,10 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         if (!UseRealInfrastructure || string.IsNullOrEmpty(_postgresConnectionString))
             return;
 
-        _respawner = await Respawner.CreateAsync(_postgresConnectionString, new RespawnerOptions
+        // Respawner needs a NpgsqlConnection for PostgreSQL
+        using var connection = new Npgsql.NpgsqlConnection(_postgresConnectionString);
+        await connection.OpenAsync();
+        _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             TablesToIgnore = new Respawn.Graph.Table[] { new("public", "__EFMigrationsHistory") },
             DbAdapter = DbAdapter.Postgres
@@ -265,7 +271,16 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             builder.UseEnvironment("Testing");
 
             // Set DATABASE_URL for ConnectionStringManager
-            var databaseUrl = _postgresConnectionString ?? "postgresql://conduit_test:conduit_test@localhost:5432/conduit_test";
+            string databaseUrl;
+            if (!string.IsNullOrEmpty(_postgresConnectionString))
+            {
+                // Convert .NET connection string to PostgreSQL URL format
+                databaseUrl = ConvertToPostgresUrl(_postgresConnectionString);
+            }
+            else
+            {
+                databaseUrl = "postgresql://conduit_test:conduit_test@localhost:5432/conduit_test";
+            }
             Environment.SetEnvironmentVariable("DATABASE_URL", databaseUrl);
 
             // Configure connection strings
@@ -297,6 +312,28 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             _configureWebHost?.Invoke(builder);
 
             base.ConfigureWebHost(builder);
+        }
+
+        /// <summary>
+        /// Converts a .NET-style PostgreSQL connection string to PostgreSQL URL format.
+        /// </summary>
+        private static string ConvertToPostgresUrl(string connectionString)
+        {
+            var parts = connectionString.Split(';')
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .ToDictionary(
+                    p => p.Split('=')[0].ToLowerInvariant(), 
+                    p => p.Split('=')[1]
+                );
+
+            var host = parts.GetValueOrDefault("host", "localhost");
+            var port = parts.GetValueOrDefault("port", "5432");
+            var database = parts.GetValueOrDefault("database", "postgres");
+            var username = parts.GetValueOrDefault("username", "postgres");
+            var password = parts.GetValueOrDefault("password", "");
+
+            return $"postgresql://{username}:{password}@{host}:{port}/{database}";
         }
     }
 

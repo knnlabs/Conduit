@@ -272,7 +272,7 @@ namespace ConduitLLM.Core.Services
                 // Create a minimal TTS request for routing
                 var ttsRoutingRequest = new TextToSpeechRequest
                 {
-                    Voice = request.VoiceId,
+                    Voice = request.VoiceId ?? "alloy",
                     Input = "test" // Dummy text for routing only
                 };
                 var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(

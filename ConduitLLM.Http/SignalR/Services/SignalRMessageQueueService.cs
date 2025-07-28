@@ -172,7 +172,14 @@ namespace ConduitLLM.Http.SignalR.Services
             _processingTimer?.Change(Timeout.Infinite, 0);
 
             // Wait for any in-flight processing to complete
-            _processingLock.Wait(TimeSpan.FromSeconds(5));
+            try
+            {
+                _processingLock?.Wait(TimeSpan.FromSeconds(5));
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed, ignore
+            }
 
             return Task.CompletedTask;
         }
