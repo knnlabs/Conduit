@@ -91,7 +91,8 @@ export class FetchProvidersService {
       pageSize: pageSize.toString(),
     });
 
-    return this.client['get']<ProviderListResponseDto>(
+    // The backend returns an array directly, not a paginated response
+    const response = await this.client['get']<ProviderDto[]>(
       `${ENDPOINTS.PROVIDERS.BASE}?${params.toString()}`,
       {
         signal: config?.signal,
@@ -99,6 +100,15 @@ export class FetchProvidersService {
         headers: config?.headers,
       }
     );
+
+    // Convert array response to expected paginated format
+    return {
+      items: response,
+      totalCount: response.length,
+      page: page,
+      pageSize: pageSize,
+      totalPages: Math.ceil(response.length / pageSize)
+    };
   }
 
   /**
@@ -704,5 +714,33 @@ export class FetchProvidersService {
         headers: config?.headers,
       }
     );
+  }
+
+  /**
+   * Get available provider types that haven't been added yet.
+   * This method returns only the provider types that are not currently configured,
+   * allowing UI to show only providers that can be added.
+   * 
+   * @param config - Optional request configuration for timeout, signal, headers
+   * @returns Promise<ProviderType[]> - Array of available provider types that can be added
+   * @throws {Error} When provider data cannot be retrieved
+   */
+  async getAvailableProviderTypes(config?: RequestConfig): Promise<ProviderType[]> {
+    // Get all currently configured providers
+    const configuredProviders = await this.list(1, 100, config);
+    
+    // Create a Set of configured provider types for efficient lookup
+    const configuredTypes = new Set(
+      configuredProviders.items
+        .map(p => p.providerType)
+        .filter((type): type is ProviderType => type !== null && type !== undefined)
+    );
+
+    // Get all provider types from the enum
+    const allProviderTypes = Object.values(ProviderType)
+      .filter((value): value is ProviderType => typeof value === 'number');
+
+    // Return only the provider types that haven't been configured yet
+    return allProviderTypes.filter(type => !configuredTypes.has(type));
   }
 }

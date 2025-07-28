@@ -15,11 +15,10 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS, 
-  getLLMProviderSelectOptions 
+  PROVIDER_CONFIG_REQUIREMENTS
 } from '@/lib/constants/providers';
 
 interface CreateProviderModalProps {
@@ -36,13 +35,17 @@ interface CreateProviderForm {
   isEnabled: boolean;
 }
 
-// Provider options are now generated from constants
-const PROVIDER_TYPES = getLLMProviderSelectOptions();
+interface ProviderOption {
+  value: string;
+  label: string;
+}
 
 export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
 
   const form = useForm<CreateProviderForm>({
     initialValues: {
@@ -63,6 +66,45 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       },
     },
   });
+
+  // Fetch available providers when modal opens
+  useEffect(() => {
+    const loadProviders = async () => {
+      setIsLoadingProviders(true);
+      try {
+        const response = await fetch('/api/providers/available?llmOnly=true');
+        if (!response.ok) {
+          throw new Error('Failed to fetch available providers');
+        }
+        const providers = await response.json() as ProviderOption[];
+        setAvailableProviders(providers);
+        
+        // If no providers are available, show a notification
+        if (providers.length === 0) {
+          notifications.show({
+            title: 'No Providers Available',
+            message: 'All provider types have already been configured.',
+            color: 'orange',
+          });
+          onClose();
+        }
+      } catch (error) {
+        console.error('Error fetching available providers:', error);
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to load available providers',
+          color: 'red',
+        });
+      } finally {
+        setIsLoadingProviders(false);
+      }
+    };
+    
+    if (opened) {
+      void loadProviders();
+    }
+  }, [opened, onClose]);
+
 
   const handleClose = () => {
     form.reset();
@@ -207,9 +249,10 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         <Stack gap="md">
           <Select
             label="Provider Type"
-            placeholder="Select a provider"
-            data={PROVIDER_TYPES}
+            placeholder={isLoadingProviders ? "Loading available providers..." : "Select a provider"}
+            data={availableProviders}
             required
+            disabled={isLoadingProviders || availableProviders.length === 0}
             {...form.getInputProps('providerType')}
           />
 
