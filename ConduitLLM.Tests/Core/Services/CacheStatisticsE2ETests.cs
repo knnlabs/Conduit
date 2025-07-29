@@ -110,22 +110,35 @@ namespace ConduitLLM.Tests.Core.Services
             var stringData = new Dictionary<string, string>();
             var sortedSetData = new Dictionary<string, List<(string member, double score)>>();
 
-            // Hash operations
+            // Hash operations - setup a common handler for all overloads
+            Func<RedisKey, RedisValue, long, long> hashIncrementHandler = (key, field, increment) =>
+            {
+                var keyStr = key.ToString();
+                var fieldStr = field.ToString();
+                
+                if (!hashData.ContainsKey(keyStr))
+                    hashData[keyStr] = new Dictionary<string, long>();
+                
+                if (!hashData[keyStr].ContainsKey(fieldStr))
+                    hashData[keyStr][fieldStr] = 0;
+                
+                hashData[keyStr][fieldStr] += increment;
+                return hashData[keyStr][fieldStr];
+            };
+
+            // Setup overload with explicit increment value
             _mockDatabase.Setup(db => db.HashIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
-                .ReturnsAsync((RedisKey key, RedisValue field, long value, CommandFlags flags) =>
-                {
-                    var keyStr = key.ToString();
-                    var fieldStr = field.ToString();
-                    
-                    if (!hashData.ContainsKey(keyStr))
-                        hashData[keyStr] = new Dictionary<string, long>();
-                    
-                    if (!hashData[keyStr].ContainsKey(fieldStr))
-                        hashData[keyStr][fieldStr] = 0;
-                    
-                    hashData[keyStr][fieldStr] += value;
-                    return hashData[keyStr][fieldStr];
-                });
+                .ReturnsAsync((RedisKey key, RedisValue field, long value, CommandFlags flags) => 
+                    hashIncrementHandler(key, field, value));
+
+            // Setup overload with default increment value of 1 and default CommandFlags
+            _mockDatabase.Setup(db => db.HashIncrementAsync(
+                It.IsAny<RedisKey>(), 
+                It.IsAny<RedisValue>(), 
+                1L, 
+                CommandFlags.None))
+                .ReturnsAsync((RedisKey key, RedisValue field, long value, CommandFlags flags) => 
+                    hashIncrementHandler(key, field, value));
 
             _mockDatabase.Setup(db => db.HashGetAllAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisKey key, CommandFlags flags) =>

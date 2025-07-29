@@ -139,17 +139,5 @@ export type {
 export type { components, operations, paths } from './generated/admin-api';
 
 // Re-export specific schema types for convenience
-export type {
-  VirtualKeyDto,
-  CreateVirtualKeyRequestDto,
-  UpdateVirtualKeyRequestDto,
-  VirtualKeyValidationResult,
-  GlobalSettingDto,
-  CreateGlobalSettingDto,
-  UpdateGlobalSettingDto,
-  ModelProviderMappingDto,
-  CreateModelProviderMappingDto,
-  ProviderCredentialDto,
-  CreateProviderCredentialDto,
-  UpdateProviderCredentialDto,
-} from './generated/admin-api';
+// NOTE: These types are available via components['schemas']['TypeName']
+// They are not directly exported from the generated file

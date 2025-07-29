@@ -1,7 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { IpFilterDto, UpdateIpFilterDto } from '@knn_labs/conduit-admin-client';
+
+// Define types locally since SDK export might have issues
+interface IpFilterDto {
+  id: number;
+  name: string;
+  ipAddressOrCidr: string;
+  filterType: 'whitelist' | 'blacklist';
+  isEnabled: boolean;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMatchedAt?: string;
+  matchCount?: number;
+}
+
+interface UpdateIpFilterDto {
+  id: number;
+  name?: string;
+  ipAddressOrCidr?: string;
+  filterType?: 'whitelist' | 'blacklist';
+  isEnabled?: boolean;
+  description?: string;
+}
 
 interface RouteParams {
   params: Promise<{

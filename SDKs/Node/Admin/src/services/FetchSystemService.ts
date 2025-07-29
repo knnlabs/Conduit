@@ -50,10 +50,10 @@ import type {
 } from '../models/system';
 
 // Type aliases for better readability  
-type GlobalSettingDto = components['schemas']['GlobalSettingDto'];
-type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequestDto'];
-type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
-type CreateGlobalSettingDto = components['schemas']['CreateGlobalSettingDto'];
+type GlobalSettingDto = components['schemas']['ConduitLLM.Configuration.DTOs.GlobalSettingDto'];
+type CreateVirtualKeyRequestDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
+type CreateVirtualKeyResponseDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto'];
+type CreateGlobalSettingDto = components['schemas']['ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto'];
 
 // Performance types (not in generated schemas yet)
 interface MetricsParams {
@@ -217,6 +217,10 @@ export class FetchSystemService {
       }
     );
     
+    if (!response.virtualKey) {
+      throw new Error('Failed to create virtual key: No key returned');
+    }
+
     // Store the unhashed key in GlobalSettings
     await this.client['post']<GlobalSettingDto, CreateGlobalSettingDto>(
       ENDPOINTS.SETTINGS.GLOBAL,

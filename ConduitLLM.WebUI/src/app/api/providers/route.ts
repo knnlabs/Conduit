@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderCredentialDto, CreateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { ProviderType, type ProviderCredentialDto, type CreateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 // GET /api/providers - List all providers
@@ -74,11 +74,11 @@ export async function POST(request: Request) {
     
     const createData = {
       ...body,
-      providerType: providerType ?? 1, // Default to OpenAI (1) if no type provided
+      providerType: (providerType ?? ProviderType.OpenAI) as ProviderType, // Default to OpenAI if no type provided
       isEnabled: bodyWithType.isEnabled ?? true,
     };
     
-    const provider: ProviderCredentialDto = await providersService.create(createData);
+    const provider = await providersService.create(createData);
     return NextResponse.json(provider);
   } catch (error: unknown) {
     return handleSDKError(error);

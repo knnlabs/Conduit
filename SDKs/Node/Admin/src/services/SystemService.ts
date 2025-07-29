@@ -368,6 +368,10 @@ export class SystemService extends FetchBaseApiClient {
       metadata: JSON.stringify(metadata)
     });
     
+    if (!response.virtualKey) {
+      throw new Error('Failed to create virtual key: No key returned');
+    }
+
     // Store the unhashed key in GlobalSettings
     await settingsService.createGlobalSetting({
       key: 'WebUI_VirtualKey',

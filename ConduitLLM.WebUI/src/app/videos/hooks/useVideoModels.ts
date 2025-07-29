@@ -1,53 +1,76 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoModel } from '../types';
+import { ProviderType } from '@knn_labs/conduit-admin-client';
 
-interface ApiModelResponse {
-  data: ApiModel[];
+// Helper function to convert ProviderType enum to string
+function getProviderName(providerType: ProviderType): string {
+  const providerNames: Record<ProviderType, string> = {
+    [ProviderType.OpenAI]: 'OpenAI',
+    [ProviderType.Anthropic]: 'Anthropic',
+    [ProviderType.AzureOpenAI]: 'Azure OpenAI',
+    [ProviderType.Gemini]: 'Gemini',
+    [ProviderType.VertexAI]: 'Vertex AI',
+    [ProviderType.Cohere]: 'Cohere',
+    [ProviderType.Mistral]: 'Mistral',
+    [ProviderType.Groq]: 'Groq',
+    [ProviderType.Ollama]: 'Ollama',
+    [ProviderType.Replicate]: 'Replicate',
+    [ProviderType.Fireworks]: 'Fireworks',
+    [ProviderType.Bedrock]: 'Bedrock',
+    [ProviderType.HuggingFace]: 'HuggingFace',
+    [ProviderType.SageMaker]: 'SageMaker',
+    [ProviderType.OpenRouter]: 'OpenRouter',
+    [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
+    [ProviderType.MiniMax]: 'MiniMax',
+    [ProviderType.Ultravox]: 'Ultravox',
+    [ProviderType.ElevenLabs]: 'ElevenLabs',
+    [ProviderType.GoogleCloud]: 'Google Cloud',
+    [ProviderType.Cerebras]: 'Cerebras',
+    [ProviderType.Unknown]: 'Unknown',
+  };
+  return providerNames[providerType] || `Provider ${providerType}`;
 }
 
-interface ApiModel {
-  id: string;
-  provider: string;
-  display_name?: string;
-  capabilities?: {
-    video_generation?: {
-      supported: boolean;
-      max_duration_seconds?: number;
-      supported_resolutions?: string[];
-      supported_fps?: number[];
-      supports_custom_styles?: boolean;
-    };
-  };
+interface ModelMapping {
+  modelId: string;
+  providerId: string;
+  providerType?: ProviderType;
+  maxContextLength?: number;
+  supportsVideoGeneration?: boolean;
+  isEnabled?: boolean;
 }
 
 async function fetchVideoModels(): Promise<VideoModel[]> {
-  const response = await fetch('/api/discovery/models?capability=video_generation');
+  const response = await fetch('/api/model-mappings');
   if (!response.ok) {
-    throw new Error(`Failed to fetch video models: ${response.statusText}`);
+    throw new Error(`Failed to fetch model mappings: ${response.statusText}`);
   }
   
-  const data = await response.json() as ApiModelResponse;
+  const mappings = await response.json() as ModelMapping[];
   
-  // Filter and transform models that support video generation
-  return data.data
-    .filter((model: ApiModel) => model.capabilities?.video_generation?.supported === true)
-    .map((model: ApiModel) => {
-      const videoCapability = model.capabilities?.video_generation;
-      return {
-        id: model.id,
-        provider: model.provider,
-        displayName: model.display_name ?? model.id,
-        capabilities: {
-          videoGeneration: true,
-          maxDuration: videoCapability?.max_duration_seconds,
-          supportedResolutions: videoCapability?.supported_resolutions,
-          supportedFps: videoCapability?.supported_fps,
-          supportsCustomStyles: videoCapability?.supports_custom_styles,
-          supportsSeed: false, // Not provided by API yet
-          maxVideos: 1, // Default value
-        },
-      };
-    });
+  // Filter to only include video generation capable models that are enabled
+  const videoModels = mappings.filter((mapping: ModelMapping) => 
+    mapping.supportsVideoGeneration === true && mapping.isEnabled !== false
+  );
+  
+  return videoModels.map((mapping: ModelMapping) => {
+    const providerName = mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown';
+    return {
+      id: mapping.modelId,
+      provider: providerName,
+      displayName: `${mapping.modelId} (${providerName})`,
+      capabilities: {
+        videoGeneration: true,
+        // Default values since model mappings don't store detailed video capabilities yet
+        maxDuration: 10, // seconds
+        supportedResolutions: ['1280x720', '720x480'],
+        supportedFps: [24, 30],
+        supportsCustomStyles: true,
+        supportsSeed: true,
+        maxVideos: 1,
+      },
+    };
+  });
 }
 
 export function useVideoModels() {

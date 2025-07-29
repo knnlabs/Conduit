@@ -1,20 +1,6 @@
 import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-
-interface ProviderData {
-  id: number;
-  providerType?: number;
-  providerName?: string;
-  apiBase?: string;
-  apiKey: string;
-  isEnabled: boolean;
-  organization?: string;
-  modelEndpoint?: string;
-  additionalConfig?: string;
-  endpoint?: string;
-  apiEndpoint?: string;
-}
 // GET /api/config/routing/health - Get load balancer health
 export async function GET() {
 
@@ -35,13 +21,13 @@ export async function GET() {
         
         // Create health response from provider data
         const health = {
-          status: providers.some((p: ProviderData) => p.isEnabled) ? 'healthy' : 'unhealthy',
+          status: providers.some((p) => p.isEnabled === true) ? 'healthy' : 'unhealthy',
           lastCheck: new Date().toISOString(),
           nodes: providers
-            .filter((p: ProviderData) => p.isEnabled)
-            .map((provider: ProviderData) => ({
-              id: provider.id.toString(),
-              endpoint: provider.endpoint ?? provider.apiEndpoint ?? provider.apiBase ?? 'unknown',
+            .filter((p) => p.isEnabled === true && p.id !== undefined)
+            .map((provider) => ({
+              id: (provider.id ?? 0).toString(),
+              endpoint: provider.baseUrl ?? 'unknown',
               status: provider.isEnabled ? 'healthy' : 'disabled',
               weight: 100,
               totalRequests: 0,

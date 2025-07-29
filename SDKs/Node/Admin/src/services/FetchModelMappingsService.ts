@@ -16,7 +16,7 @@ import type {
 } from '../models/modelMapping';
 
 // Type aliases for better readability - using generated types where available
-type BulkModelMappingRequest = components['schemas']['BulkModelMappingRequest'];
+type BulkModelMappingRequest = components['schemas']['ConduitLLM.Configuration.DTOs.BulkModelMappingRequest'];
 
 /**
  * Type-safe Model Mappings service using native fetch

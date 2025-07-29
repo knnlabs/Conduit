@@ -31,6 +31,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.GoogleCloud]: 'Google Cloud',
   [ProviderType.Cerebras]: 'Cerebras',
+  [ProviderType.Unknown]: 'Unknown Provider',
 };
 
 // Provider categories for grouping in UI
@@ -66,6 +67,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.ElevenLabs]: [ProviderCategory.Audio],
   [ProviderType.GoogleCloud]: [ProviderCategory.Audio],
   [ProviderType.Cerebras]: [ProviderCategory.Chat],
+  [ProviderType.Unknown]: [ProviderCategory.Chat],
 };
 
 // Provider-specific configuration requirements
@@ -237,6 +239,13 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     supportsCustomEndpoint: true,
     helpUrl: 'https://cloud.cerebras.ai',
     helpText: 'Get your API key from cloud.cerebras.ai - offers high-performance inference',
+  },
+  [ProviderType.Unknown]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpText: 'Unknown provider - configure as needed',
   },
 };
 

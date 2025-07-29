@@ -4,11 +4,11 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
-type VirtualKeyDto = components['schemas']['VirtualKeyDto'];
-type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequestDto'];
-type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
-type UpdateVirtualKeyRequestDto = components['schemas']['UpdateVirtualKeyRequestDto'];
-type VirtualKeyValidationResponseDto = components['schemas']['VirtualKeyValidationResult'];
+type VirtualKeyDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto'];
+type CreateVirtualKeyRequestDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
+type CreateVirtualKeyResponseDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto'];
+type UpdateVirtualKeyRequestDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto'];
+type VirtualKeyValidationResponseDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult'];
 
 // Define inline types for responses that aren't in the generated schemas
 interface VirtualKeyListResponseDto {

@@ -26,6 +26,7 @@ function getProviderName(providerType: ProviderType): string {
     [ProviderType.ElevenLabs]: 'ElevenLabs',
     [ProviderType.GoogleCloud]: 'Google Cloud',
     [ProviderType.Cerebras]: 'Cerebras',
+    [ProviderType.Unknown]: 'Unknown',
   };
   return providerNames[providerType] || `Provider ${providerType}`;
 }

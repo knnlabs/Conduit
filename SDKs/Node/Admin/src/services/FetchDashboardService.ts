@@ -1,11 +1,42 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import type { operations } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 
-// Type aliases for better readability
-type MetricsResponse = operations['Dashboard_Metrics']['responses']['200']['content']['application/json'];
-type TimeSeriesData = operations['Dashboard_GetTimeSeriesData']['responses']['200']['content']['application/json'];
-type ProviderMetrics = operations['Dashboard_GetProviderMetrics']['responses']['200']['content']['application/json'];
+// Define response types inline since they're not in generated operations
+interface MetricsResponse {
+  requestsPerMinute?: number;
+  activeConnections?: number;
+  averageLatency?: number;
+  errorRate?: number;
+  timestamp?: string;
+  totalRequests?: number;
+  totalCost?: number;
+  activeVirtualKeys?: number;
+  avgResponseTime?: number;
+}
+
+interface TimeSeriesDataPoint {
+  date?: string;
+  requests?: number;
+  cost?: number;
+}
+
+interface TimeSeriesData {
+  data?: TimeSeriesDataPoint[];
+  timestamps?: string[];
+  values?: number[];
+  metric?: string;
+}
+
+interface ProviderMetric {
+  provider?: string;
+  totalCost?: number;
+  requests?: number;
+  averageLatency?: number;
+  errorRate?: number;
+  successRate?: number;
+}
+
+type ProviderMetrics = ProviderMetric[];
 
 /**
  * Type-safe Dashboard service using native fetch
@@ -80,7 +111,7 @@ export class FetchDashboardService {
     }
 
     const totalRequests = timeSeriesData.data.reduce(
-      (sum, point) => sum + (point.requests ?? 0),
+      (sum: number, point: TimeSeriesDataPoint) => sum + (point.requests ?? 0),
       0
     );
 
@@ -96,7 +127,7 @@ export class FetchDashboardService {
     }
 
     return timeSeriesData.data.reduce(
-      (sum, point) => sum + (point.cost ?? 0),
+      (sum: number, point: TimeSeriesDataPoint) => sum + (point.cost ?? 0),
       0
     );
   }
@@ -133,18 +164,18 @@ export class FetchDashboardService {
     }
 
     const totalCost = providerMetrics.reduce(
-      (sum, metric) => sum + (metric.totalCost ?? 0),
+      (sum: number, metric: ProviderMetric) => sum + (metric.totalCost ?? 0),
       0
     );
 
     if (totalCost === 0) {
-      return providerMetrics.map(metric => ({
+      return providerMetrics.map((metric: ProviderMetric) => ({
         provider: metric.provider ?? 'Unknown',
         percentage: 0,
       }));
     }
 
-    return providerMetrics.map(metric => ({
+    return providerMetrics.map((metric: ProviderMetric) => ({
       provider: metric.provider ?? 'Unknown',
       percentage: ((metric.totalCost ?? 0) / totalCost) * 100,
     }));

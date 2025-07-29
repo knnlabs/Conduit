@@ -32,6 +32,7 @@ export const PROVIDER_TYPE_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.GoogleCloud]: 'Google Cloud',
   [ProviderType.Cerebras]: 'Cerebras',
+  [ProviderType.Unknown]: 'Unknown',
 };
 
 // Convert ProviderType to display name
@@ -140,6 +141,7 @@ const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'elevenlabs',
   [ProviderType.GoogleCloud]: 'googlecloud',
   [ProviderType.Cerebras]: 'cerebras',
+  [ProviderType.Unknown]: 'unknown',
 };
 
 // Get provider name string from ProviderType

@@ -64,5 +64,8 @@ export enum ProviderType {
   GoogleCloud = 20,
   
   /** Cerebras (high-performance inference) */
-  Cerebras = 21
+  Cerebras = 21,
+  
+  /** Unknown/Future provider type */
+  Unknown = 22
 }

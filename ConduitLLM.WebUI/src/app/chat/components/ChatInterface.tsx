@@ -30,13 +30,13 @@ import { StreamingPerformanceMetrics, UsageData, SSEEventType, MetricsEventData 
 import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
+import { useModels } from '../hooks/useModels';
 
 export function ChatInterface() {
-  const [models, setModels] = useState<Array<{ value: string; label: string; supportsVision?: boolean }>>([]);
+  const { data: modelData, isLoading: modelsLoading } = useModels();
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [modelsLoading, setModelsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
@@ -49,40 +49,19 @@ export function ChatInterface() {
     activeSessionId 
   } = useChatStore();
 
-  // Fetch models on mount
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const response = await fetch('/api/model-mappings');
-        if (!response.ok) {
-          throw new Error('Failed to fetch models');
-        }
-        interface ModelMapping {
-          modelId: string;
-          providerId: string;
-          providerName?: string;
-          supportsVision?: boolean;
-        }
-        const data = await response.json() as ModelMapping[];
-        const modelOptions = data.map((m) => ({
-          value: m.modelId,
-          label: `${m.modelId} (${m.providerName ?? m.providerId})`,
-          supportsVision: m.supportsVision ?? false
-        }));
-        setModels(modelOptions);
-        if (modelOptions.length > 0) {
-          setSelectedModel(modelOptions[0].value);
-        }
-      } catch (err) {
-        setError('Failed to load models');
-        console.error(err);
-      } finally {
-        setModelsLoading(false);
-      }
-    };
+  // Convert model data to the format expected by the Select component
+  const models = modelData?.map(m => ({
+    value: m.id,
+    label: m.displayName || `${m.id} (${m.providerName})`,
+    supportsVision: m.supportsVision
+  })) ?? [];
 
-    void fetchModels();
-  }, []);
+  // Set initial model when data loads
+  useEffect(() => {
+    if (models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0].value);
+    }
+  }, [models, selectedModel]);
 
   // Ensure we have an active session
   useEffect(() => {

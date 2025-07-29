@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderConnectionTestResultDto, ProviderSettings } from '@knn_labs/conduit-admin-client';
+import type { ProviderSettings } from '@knn_labs/conduit-admin-client';
 import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface TestProviderRequest {
@@ -12,26 +12,13 @@ interface TestProviderRequest {
   additionalConfig?: ProviderSettings;
 }
 
-interface TestProviderResponse {
-  success: boolean;
-  message: string;
-  details: ProviderConnectionTestResultDto;
-  tested: boolean;
-  timestamp: string;
-}
-
-interface TestProviderErrorResponse {
-  error: string;
-  details: string;
-}
-
 /**
  * POST /api/providers/test
  * 
  * Tests a provider configuration before creating it.
  * This allows validating API keys and endpoints without saving.
  */
-export async function POST(request: NextRequest): Promise<NextResponse<TestProviderResponse | TestProviderErrorResponse>> {
+export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json() as TestProviderRequest;
@@ -59,7 +46,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
     });
     
     return NextResponse.json({
-      success: testResult.success,
+      success: testResult.success ?? false,
       message: testResult.message ?? (testResult.success ? 'Connection successful' : 'Connection failed'),
       details: testResult,
       tested: true,
@@ -67,6 +54,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<TestProvi
     });
     
   } catch (error) {
-    return handleSDKError(error) as NextResponse<TestProviderErrorResponse>;
+    return handleSDKError(error);
   }
 }

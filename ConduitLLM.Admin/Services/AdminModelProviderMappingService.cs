@@ -182,6 +182,10 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
             existingMapping.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
             existingMapping.SupportsImageGeneration = mapping.SupportsImageGeneration;
             existingMapping.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
+            existingMapping.SupportsEmbeddings = mapping.SupportsEmbeddings;
+            existingMapping.SupportsChat = mapping.SupportsChat;
+            existingMapping.SupportsFunctionCalling = mapping.SupportsFunctionCalling;
+            existingMapping.SupportsStreaming = mapping.SupportsStreaming;
             existingMapping.TokenizerType = mapping.TokenizerType;
             existingMapping.SupportedVoices = mapping.SupportedVoices;
             existingMapping.SupportedLanguages = mapping.SupportedLanguages;
@@ -342,6 +346,10 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                             SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                             SupportsImageGeneration = mappingDto.SupportsImageGeneration,
                             SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
+                            SupportsEmbeddings = mappingDto.SupportsEmbeddings,
+                            SupportsChat = mappingDto.SupportsChat,
+                            SupportsFunctionCalling = mappingDto.SupportsFunctionCalling,
+                            SupportsStreaming = mappingDto.SupportsStreaming,
                             TokenizerType = mappingDto.TokenizerType,
                             SupportedVoices = mappingDto.SupportedVoices,
                             SupportedLanguages = mappingDto.SupportedLanguages,
@@ -403,6 +411,10 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                     SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                     SupportsImageGeneration = mappingDto.SupportsImageGeneration,
                     SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
+                    SupportsEmbeddings = mappingDto.SupportsEmbeddings,
+                    SupportsChat = mappingDto.SupportsChat,
+                    SupportsFunctionCalling = mappingDto.SupportsFunctionCalling,
+                    SupportsStreaming = mappingDto.SupportsStreaming,
                     TokenizerType = mappingDto.TokenizerType,
                     SupportedVoices = mappingDto.SupportedVoices,
                     SupportedLanguages = mappingDto.SupportedLanguages,

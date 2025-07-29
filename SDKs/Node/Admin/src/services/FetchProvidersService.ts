@@ -22,10 +22,10 @@ import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
 
 // Type aliases for better readability
-type ProviderDto = components['schemas']['ProviderCredentialDto'];
-type CreateProviderDto = components['schemas']['CreateProviderCredentialDto'];
-type UpdateProviderDto = components['schemas']['UpdateProviderCredentialDto'];
-type TestConnectionResult = components['schemas']['ProviderConnectionTestResultDto'];
+type ProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.ProviderCredentialDto'];
+type CreateProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto'];
+type UpdateProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto'];
+type TestConnectionResult = components['schemas']['ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto'];
 
 // Define inline types for responses that aren't in the generated schemas
 interface ProviderListResponseDto {
@@ -264,9 +264,12 @@ export class FetchProvidersService {
 
   /**
    * Helper method to check if provider has API key configured
+   * Note: API key is not returned by the API for security reasons
    */
   hasApiKey(provider: ProviderDto): boolean {
-    return provider.apiKey !== null && provider.apiKey !== undefined && provider.apiKey !== '';
+    // Since the API doesn't return apiKey for security reasons,
+    // we assume a provider has a key if it exists and is enabled
+    return provider.isEnabled === true;
   }
 
   /**
@@ -403,7 +406,7 @@ export class FetchProvidersService {
       // Merge provider data with health data
       return providersResponse.items.map(provider => {
         const healthData = healthResponse.providers.find(
-          h => h.id === provider.id?.toString() || h.name === provider.providerName
+          h => h.id === provider.id?.toString()
         );
 
         return {
@@ -411,7 +414,7 @@ export class FetchProvidersService {
           name: provider.providerType?.toString() ?? 'Unknown',
           isEnabled: provider.isEnabled ?? false,
           providerType: provider.providerType ?? ProviderType.OpenAI,
-          apiKey: provider.apiKey ? '***masked***' : undefined,
+          apiKey: provider.isEnabled ? '***masked***' : undefined,
           health: {
             status: healthData?.status ?? 'unknown',
             responseTime: healthData?.responseTime ?? 0,
@@ -429,7 +432,7 @@ export class FetchProvidersService {
         name: provider.providerType?.toString() ?? 'Unknown',
         isEnabled: provider.isEnabled ?? false,
         providerType: provider.providerType ?? ProviderType.OpenAI,
-        apiKey: provider.apiKey ? '***masked***' : undefined,
+        apiKey: provider.isEnabled ? '***masked***' : undefined,
         health: {
           status: provider.isEnabled 
             ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')

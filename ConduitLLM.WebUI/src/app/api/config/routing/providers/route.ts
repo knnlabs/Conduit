@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-
-interface ProviderData {
-  id: number;
-  providerType?: number;
-  providerName?: string;
-  apiBase?: string;
-  apiKey: string;
-  isEnabled: boolean;
-  organization?: string;
-  modelEndpoint?: string;
-  additionalConfig?: string;
-  name?: string;
-}
 // GET /api/config/routing/providers - Get provider priorities
 export async function GET() {
 
@@ -27,13 +14,13 @@ export async function GET() {
       
       // Map providers to priority format
       const priorities = providers
-        .filter((p: ProviderData) => p.isEnabled)
-        .map((provider: ProviderData, index: number) => ({
-          providerId: provider.id.toString(),
-          providerName: provider.providerName ?? provider.name,
+        .filter((p) => p.isEnabled === true)
+        .map((provider, index) => ({
+          providerId: (provider.id ?? 0).toString(),
+          providerName: provider.providerType?.toString() ?? 'Unknown',
           priority: index + 1,
           weight: 100 - (index * 20), // Descending weights
-          isEnabled: provider.isEnabled
+          isEnabled: provider.isEnabled ?? false
         }));
       
       return NextResponse.json(priorities);

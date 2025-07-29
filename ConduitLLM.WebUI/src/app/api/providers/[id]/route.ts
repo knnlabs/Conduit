@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/providers/[id] - Get a single provider
 export async function GET(
@@ -12,7 +11,7 @@ export async function GET(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const provider: ProviderCredentialDto = await adminClient.providers.getById(parseInt(id, 10));
+    const provider = await adminClient.providers.getById(parseInt(id, 10));
     return NextResponse.json(provider);
   } catch (error) {
     return handleSDKError(error);
@@ -36,8 +35,7 @@ export async function PUT(
     // Build update data ensuring type safety - SDK expects the generated type format
     const updateData = {
       id: parseInt(id, 10),
-      apiBase: (body.apiBase as string | undefined) ?? currentProvider.apiBase,
-      apiKey: (body.apiKey as string | undefined) ?? currentProvider.apiKey,
+      baseUrl: (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl,
       isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
       organization: (body.organization as string | undefined) ?? currentProvider.organization
     };

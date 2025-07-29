@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { providerNameToType, providerTypeToName } from '@/lib/utils/providerTypeUtils';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { ProviderType } from '@knn_labs/conduit-admin-client';
+
+interface ProviderResponse {
+  id?: number;
+  providerType?: ProviderType;
+  isEnabled?: boolean;
+  baseUrl?: string | null;
+  organization?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // POST /api/model-mappings/discover - Bulk discover model mappings
 export async function POST(req: NextRequest) {
@@ -16,19 +26,24 @@ export async function POST(req: NextRequest) {
     
     // Get all providers to map provider names to IDs
     const providersResponse = await adminClient.providers.list(1, 100);
-    const providers: ProviderCredentialDto[] = Array.isArray(providersResponse) 
+    const providers = (Array.isArray(providersResponse) 
       ? providersResponse 
-      : (providersResponse.items ?? []);
+      : (providersResponse.items ?? [])) as ProviderResponse[];
     const providerNameToId = new Map<string, number>();
     
     // Build a map of provider names to IDs
     for (const provider of providers) {
-      // Convert provider type enum to string name
-      const providerName = providerTypeToName(provider.providerType);
-      providerNameToId.set(providerName.toLowerCase(), provider.id);
+      const providerId = provider.id;
+      const providerType = provider.providerType;
       
-      // Also map the numeric value as a string for fallback
-      providerNameToId.set(String(provider.providerType), provider.id);
+      if (providerId && providerType) {
+        // Convert provider type enum to string name
+        const providerName = providerTypeToName(providerType);
+        providerNameToId.set(providerName.toLowerCase(), providerId);
+        
+        // Also map the numeric value as a string for fallback
+        providerNameToId.set(String(providerType), providerId);
+      }
     }
     
     // Also map discovered provider names to IDs
@@ -39,9 +54,10 @@ export async function POST(req: NextRequest) {
           // Try to match by provider type
           try {
             const providerType = providerNameToType(model.provider);
-            const matchingProvider = providers.find(p => p.providerType === providerType);
-            if (matchingProvider) {
-              providerNameToId.set(normalizedProviderName, matchingProvider.id);
+            const matchingProvider = providers.find((p): p is ProviderResponse => p.providerType === providerType);
+            const matchingProviderId = matchingProvider?.id;
+            if (matchingProviderId) {
+              providerNameToId.set(normalizedProviderName, matchingProviderId);
             }
           } catch {
             // If provider type conversion fails, just skip

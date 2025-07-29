@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers;
@@ -27,6 +29,7 @@ namespace ConduitLLM.Providers
     public class DatabaseAwareLLMClientFactory : ILLMClientFactory
     {
         private readonly IProviderCredentialService _credentialService;
+        private readonly IModelProviderMappingService _mappingService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
@@ -37,12 +40,14 @@ namespace ConduitLLM.Providers
         /// </summary>
         public DatabaseAwareLLMClientFactory(
             IProviderCredentialService credentialService,
+            IModelProviderMappingService mappingService,
             IOptionsMonitor<ConduitSettings> settingsMonitor,
             ILoggerFactory loggerFactory,
             IHttpClientFactory httpClientFactory,
             ILogger<DatabaseAwareLLMClientFactory> logger)
         {
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
+            _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -52,28 +57,68 @@ namespace ConduitLLM.Providers
         /// <inheritdoc />
         public ILLMClient GetClient(string modelName)
         {
-            // Get current settings from the monitor to ensure we have the latest
-            var currentSettings = _settingsMonitor.CurrentValue;
-            
             _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClient called for model: {ModelName}", modelName);
-            _logger.LogDebug("Current settings - ModelMappings count: {Count}", currentSettings.ModelMappings?.Count ?? 0);
             
-            if (currentSettings.ModelMappings != null && currentSettings.ModelMappings.Any())
+            // Get model mapping from database
+            var mapping = Task.Run(async () => 
+                await _mappingService.GetMappingByModelAliasAsync(modelName)).Result;
+            
+            if (mapping == null)
             {
-                foreach (var mapping in currentSettings.ModelMappings)
+                _logger.LogWarning("No model mapping found in database for alias: {ModelAlias}", modelName);
+                throw new ConfigurationException($"No model mapping found for alias '{modelName}'. Please check your Conduit configuration.");
+            }
+            
+            _logger.LogDebug("Found mapping in database: {ModelAlias} -> {ProviderType}/{ProviderModelId}", 
+                mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
+            
+            // Get all mappings from database to build settings
+            var allMappings = Task.Run(async () => 
+                await _mappingService.GetAllMappingsAsync()).Result;
+            
+            // Get all credentials from database
+            var allCredentials = Task.Run(async () => 
+                await _credentialService.GetAllCredentialsAsync()).Result;
+            
+            // Build ConduitSettings with database data
+            var currentSettings = _settingsMonitor.CurrentValue;
+            var providerCredentialsList = new List<ProviderCredentials>();
+            
+            // For each provider credential, get the primary key
+            foreach (var cred in allCredentials)
+            {
+                // Get key credentials for this provider
+                var keyCredentials = Task.Run(async () => 
+                    await _credentialService.GetKeyCredentialsByProviderIdAsync(cred.Id)).Result;
+                
+                // Find the primary key or use the first one
+                var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary) ?? keyCredentials.FirstOrDefault();
+                
+                if (primaryKey != null)
                 {
-                    _logger.LogDebug("Settings contain mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}", 
-                        mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
+                    providerCredentialsList.Add(new ProviderCredentials
+                    {
+                        ProviderType = cred.ProviderType,
+                        BaseUrl = cred.BaseUrl,
+                        ApiKey = primaryKey.ApiKey,
+                        ApiSecret = null // Not used in current implementation
+                    });
                 }
             }
-            else
-            {
-                _logger.LogWarning("No model mappings found in settings!");
-            }
             
-            // For model-based lookup, use the base factory with current settings
+            var databaseSettings = new ConduitSettings
+            {
+                ModelMappings = allMappings.ToList(),
+                ProviderCredentials = providerCredentialsList,
+                DefaultTimeoutSeconds = currentSettings.DefaultTimeoutSeconds,
+                DefaultRetries = currentSettings.DefaultRetries,
+                DefaultModels = currentSettings.DefaultModels,
+                PerformanceTracking = currentSettings.PerformanceTracking
+            };
+            
+            // Use the base factory with database-loaded settings
             var baseFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(currentSettings),
+                Microsoft.Extensions.Options.Options.Create(databaseSettings),
                 _loggerFactory,
                 _httpClientFactory);
             
