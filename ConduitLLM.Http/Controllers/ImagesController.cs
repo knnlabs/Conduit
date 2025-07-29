@@ -170,16 +170,25 @@ namespace ConduitLLM.Http.Controllers
                     string contentType = "image/png";
                     string extension = "png";
                     
+                    _logger.LogInformation("Processing image {Index}: URL={Url}, HasB64={HasB64}", 
+                        i, imageData.Url ?? "null", !string.IsNullOrEmpty(imageData.B64Json));
+                    
                     try
                     {
                         if (!string.IsNullOrEmpty(imageData.B64Json))
                         {
-                            // Use streaming to decode base64 without loading entire content into memory
-                            var base64Stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(imageData.B64Json));
-                            imageStream = new System.Security.Cryptography.CryptoStream(
-                                base64Stream, 
-                                new System.Security.Cryptography.FromBase64Transform(), 
-                                System.Security.Cryptography.CryptoStreamMode.Read);
+                            // Decode base64 to binary
+                            try
+                            {
+                                var imageBytes = Convert.FromBase64String(imageData.B64Json);
+                                imageStream = new MemoryStream(imageBytes);
+                                _logger.LogInformation("Decoded base64 image, size: {Size} bytes", imageBytes.Length);
+                            }
+                            catch (FormatException ex)
+                            {
+                                _logger.LogError(ex, "Failed to decode base64 image data");
+                                continue;
+                            }
                         }
                         else if (!string.IsNullOrEmpty(imageData.Url) && 
                                 (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
@@ -231,6 +240,15 @@ namespace ConduitLLM.Http.Controllers
                                 _logger.LogWarning(ex, "HTTP error downloading image from {Url}", imageData.Url);
                                 continue;
                             }
+                        }
+                        else if (!string.IsNullOrEmpty(imageData.Url))
+                        {
+                            // Log non-HTTP URLs that we're not downloading
+                            _logger.LogWarning("Image URL is not an HTTP/HTTPS URL, will not download: {Url}", imageData.Url);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Image data has neither URL nor base64 content");
                         }
                         
                         if (imageStream != null)
