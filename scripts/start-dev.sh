@@ -155,7 +155,7 @@ check_volume_permissions() {
         for volume in $problematic_volumes; do
             if echo "$volume" | grep -q "node_modules\|webui\|next"; then
                 log_info "Testing write access to volume: $volume"
-                if ! docker run --rm -v "$volume:/test" -u "$current_uid:$current_gid" alpine:latest sh -c "touch /test/.write_test 2>/dev/null && rm /test/.write_test 2>/dev/null" 2>/dev/null; then
+                if ! docker run --rm -v "$volume:/test" -u "$current_uid:$current_gid" alpine:latest sh -c "touch /test/.write_test 2>/dev/null && rm /test/.write_test 2>/dev/null" >/dev/null 2>&1; then
                     log_error "Cannot write to volume '$volume' with user $current_uid:$current_gid"
                     volume_test_failed=true
                 fi
