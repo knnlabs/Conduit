@@ -330,6 +330,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                             Id = existingMapping.Id,
                             ModelId = mappingDto.ModelId,
                             ProviderModelId = mappingDto.ProviderModelId,
+                            ProviderId = providerId,
                             ProviderType = provider.ProviderType,
                             Priority = mappingDto.Priority,
                             IsEnabled = mappingDto.IsEnabled,
@@ -390,6 +391,7 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
                 {
                     ModelId = mappingDto.ModelId,
                     ProviderModelId = mappingDto.ProviderModelId,
+                    ProviderId = providerId,
                     ProviderType = provider.ProviderType,
                     Priority = mappingDto.Priority,
                     IsEnabled = mappingDto.IsEnabled,
