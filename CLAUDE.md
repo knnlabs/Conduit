@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Reviewed**: 2025-07-26
+**Last Reviewed**: 2025-07-29 (Enhanced development workflow)
 
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
@@ -27,13 +27,197 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - NOT for end-users or client applications
    - Configured on the WebUI service to talk to other backend services
 
-## Build Commands
+## Development Workflow - CRITICAL
+**⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/start-dev.sh` for development**
+
+### Starting Development Environment
+```bash
+# RECOMMENDED: Start development environment (hot reloading, user permission mapping)
+./scripts/start-dev.sh
+
+# Clean and restart if you encounter permission issues
+./scripts/start-dev.sh --clean
+
+# Force rebuild containers
+./scripts/start-dev.sh --build
+```
+
+**Why use start-dev.sh?**
+- ✅ Automatic permission conflict detection
+- ✅ Proper user ID mapping (no permission denied errors)
+- ✅ Hot reloading for WebUI development
+- ✅ Volume ownership validation
+- ✅ Comprehensive environment health checks
+
+### Alternative Build Commands
 - Build solution: `dotnet build`
 - Run tests: `dotnet test`
 - Run specific test: `dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"`
-- Start API server: `dotnet run --project ConduitLLM.Http`
-- Start web UI: `dotnet run --project ConduitLLM.WebUI`
-- Start both services: `docker compose up -d`
+- Start API server only: `dotnet run --project ConduitLLM.Http`
+- Start web UI only: `dotnet run --project ConduitLLM.WebUI`
+
+### ⚠️ Production Testing Only
+```bash
+# Only use for production-like testing, NOT for development
+docker compose up -d
+```
+
+**Note**: Using `docker compose up -d` will create permission conflicts with development. If you accidentally use it, run `docker compose down --volumes --remove-orphans` before using `./scripts/start-dev.sh`.
+
+## Migration Guide: From `docker compose` to `start-dev.sh`
+
+### 🚨 IMPORTANT: Read This If You've Been Using `docker compose up -d`
+
+If you've been using `docker compose up -d` for development, you **MUST** migrate to `./scripts/start-dev.sh` to avoid permission issues and get proper hot reloading.
+
+#### Step 1: Clean Your Current Setup
+```bash
+# Stop all containers and remove problematic volumes
+docker compose down --volumes --remove-orphans
+
+# Verify containers are stopped
+docker ps -a --filter "name=conduit"
+```
+
+#### Step 2: Switch to Development Script
+```bash
+# Start development environment with the new script
+./scripts/start-dev.sh
+
+# If you encounter any issues:
+./scripts/start-dev.sh --clean
+```
+
+#### Step 3: Verify Everything Works
+```bash
+# Check that all services are running
+docker ps
+
+# Test WebUI at http://localhost:3000
+# Test API Swagger at http://localhost:5000/swagger
+# Test Admin API at http://localhost:5002/swagger
+```
+
+### Key Differences: Old vs New Workflow
+
+| Old Workflow | New Workflow | Benefit |
+|-------------|-------------|---------|
+| `docker compose up -d` | `./scripts/start-dev.sh` | Permission conflict detection |
+| Manual permission fixes | Automatic user ID mapping | No more EACCES errors |
+| Production-like containers | Development containers | Hot reloading works |
+| Manual cleanup when broken | `--clean` flag available | Easy recovery |
+| No validation | Comprehensive health checks | Catch issues early |
+
+### What Changed and Why
+
+**Volume Ownership**: The new script ensures Docker volumes are owned by your user (1000:1000) instead of root, preventing permission denied errors when npm tries to install dependencies.
+
+**Container Strategy**: 
+- **Old**: Used production Dockerfile with built WebUI 
+- **New**: Uses `node:20-alpine` with source code mounted for hot reloading
+
+**User Mapping**: The development containers now run as your host user, so files created in containers have correct ownership on the host.
+
+## Development Troubleshooting
+
+### Common Issues and Solutions
+
+#### Permission Denied Errors
+```bash
+# Symptom: npm EACCES errors, cannot write to node_modules
+# Solution: Clean and restart development environment
+./scripts/start-dev.sh --clean
+```
+
+#### Container Conflicts
+```bash
+# Symptom: "Found production containers that conflict with development setup"
+# Solution: Stop production containers first
+docker compose down --volumes --remove-orphans
+./scripts/start-dev.sh
+```
+
+#### Volume Permission Issues
+```bash
+# Symptom: "Volume permission mismatch detected"
+# Solution: Use the clean flag to remove problematic volumes
+./scripts/start-dev.sh --clean
+```
+
+#### WebUI Not Starting
+```bash
+# Check container logs
+docker logs conduit-webui-1
+
+# Common causes:
+# 1. Permission issues (use --clean)
+# 2. Port conflicts (check if port 3000 is in use)
+# 3. Dependency installation failed (check logs for npm errors)
+```
+
+#### File Watching Not Working
+```bash
+# Symptom: Changes not triggering hot reload
+# Check if container can see file changes:
+docker exec conduit-webui-1 ls -la /app/ConduitLLM.WebUI/
+
+# Solution: Restart development environment
+./scripts/start-dev.sh --clean
+```
+
+### Development Services
+After successful startup, these services are available:
+- 🌐 **WebUI**: http://localhost:3000 (Next.js with hot reloading)
+- 📚 **Core API Swagger**: http://localhost:5000/swagger
+- 🔧 **Admin API Swagger**: http://localhost:5002/swagger
+- 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
+
+### Advanced Development Commands
+```bash
+# Show WebUI logs in real-time
+./scripts/dev-workflow.sh logs
+
+# Open shell in WebUI container
+./scripts/dev-workflow.sh shell
+
+# Build WebUI manually
+./scripts/dev-workflow.sh build-webui
+
+# Fix ESLint errors
+./scripts/dev-workflow.sh lint-fix-webui
+```
+
+### Technical Implementation Notes
+
+#### Volume Ownership Solution
+The development script solves Docker volume permission issues using this approach:
+
+1. **Container starts as root** - Allows initial setup and ownership changes
+2. **Install su-exec** - Lightweight tool for secure user switching (`apk add su-exec`)
+3. **Fix volume ownership** - Set volumes to host user ID: `chown -R ${DOCKER_USER_ID}:${DOCKER_GROUP_ID}`
+4. **Switch to host user** - All development operations run as mapped user: `su-exec ${DOCKER_USER_ID}:${DOCKER_GROUP_ID}`
+
+#### Why su-exec vs alternatives?
+- **su-exec**: Lightweight, Alpine-friendly, designed for containers
+- **gosu**: Heavier alternative, more dependencies
+- **USER directive**: Cannot fix existing volume ownership
+
+#### Volume Mapping Strategy
+```yaml
+# docker-compose.dev.yml uses named volumes to cache dependencies
+volumes:
+  - webui_node_modules:/app/ConduitLLM.WebUI/node_modules
+  - admin_sdk_node_modules:/app/SDKs/Node/Admin/node_modules
+  # This avoids slow dependency installation on every container restart
+```
+
+#### User ID Environment Variables
+```bash
+# start-dev.sh automatically detects and exports:
+export DOCKER_USER_ID=$(id -u)    # Usually 1000
+export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
+# These are used in docker-compose.dev.yml for user mapping
+```
 
 ## Database Migrations - CRITICAL
 **⚠️ ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE MAKING DATABASE CHANGES**
