@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Combined script to fix ESLint errors in SDK clients
+# Combined script to fix ESLint errors and build SDK clients
 # Usage: 
-#   ./scripts/fix-sdk-errors.sh           # Fix both SDKs
-#   ./scripts/fix-sdk-errors.sh admin     # Fix Admin SDK only
-#   ./scripts/fix-sdk-errors.sh core      # Fix Core SDK only
+#   ./scripts/fix-sdk-errors.sh           # Fix and build both SDKs
+#   ./scripts/fix-sdk-errors.sh admin     # Fix and build Admin SDK only
+#   ./scripts/fix-sdk-errors.sh core      # Fix and build Core SDK only
 
 set -e
 
@@ -19,6 +19,8 @@ TOTAL_INITIAL_ERRORS=0
 TOTAL_FIXED_ERRORS=0
 TOTAL_REMAINING_ERRORS=0
 FAILED_SDKS=()
+BUILD_FAILED_SDKS=()
+TOTAL_BUILD_ERRORS=0
 
 # Print SDK section header
 print_sdk_header() {
@@ -51,10 +53,16 @@ print_summary() {
         echo "📊 Total initial errors: $TOTAL_INITIAL_ERRORS"
         echo "✅ Total fixed errors: $TOTAL_FIXED_ERRORS"
         echo "❌ Total remaining errors: $TOTAL_REMAINING_ERRORS"
+        echo "🔨 Total build errors: $TOTAL_BUILD_ERRORS"
         
         if [ ${#FAILED_SDKS[@]} -gt 0 ]; then
             echo ""
-            echo "⚠️  Failed SDKs: ${FAILED_SDKS[*]}"
+            echo "⚠️  Failed SDKs (lint): ${FAILED_SDKS[*]}"
+        fi
+        
+        if [ ${#BUILD_FAILED_SDKS[@]} -gt 0 ]; then
+            echo ""
+            echo "🚫 Failed SDKs (build): ${BUILD_FAILED_SDKS[*]}"
         fi
     fi
 }
@@ -124,7 +132,7 @@ fix_sdk_errors() {
     
     echo ""
     echo "✅ Fixed $fixed_errors errors"
-    echo "❌ Remaining errors: $remaining_errors"
+    echo "❌ Remaining lint errors: $remaining_errors"
     
     if [ "$remaining_errors" -gt 0 ]; then
         echo ""
@@ -139,8 +147,39 @@ fix_sdk_errors() {
         echo "These require manual intervention to add proper types."
     fi
     
+    # Step 5: Run build to catch API breakages
+    echo ""
+    echo "🔨 Step 5: Building SDK to check for API compatibility..."
+    local build_errors=0
+    
+    if npm run build 2>&1 | tee /tmp/sdk_build_output_$$; then
+        echo "✅ Build completed successfully"
+    else
+        build_errors=1
+        TOTAL_BUILD_ERRORS=$((TOTAL_BUILD_ERRORS + 1))
+        BUILD_FAILED_SDKS+=("$display_name")
+        
+        echo ""
+        echo "🚫 Build failed! Showing errors:"
+        grep -E "(error|Error|ERROR)" /tmp/sdk_build_output_$$ | head -20 || cat /tmp/sdk_build_output_$$ | tail -30
+        
+        echo ""
+        echo "Common build issues:"
+        echo "1. API changes in backend not reflected in SDK"
+        echo "2. Type mismatches between API and client"
+        echo "3. Missing or renamed API endpoints"
+        echo "4. Changed request/response models"
+    fi
+    
+    rm -f /tmp/sdk_build_output_$$
+    
     # Return to original directory
     cd - > /dev/null || return 1
+    
+    # Return error if either lint or build failed
+    if [ "$remaining_errors" -gt 0 ] || [ "$build_errors" -gt 0 ]; then
+        return 1
+    fi
     
     return 0
 }
@@ -177,11 +216,19 @@ main() {
             cat << EOF
 Usage: $0 [admin|core|all]
 
+This script fixes ESLint errors and builds SDK clients to catch API breakages early.
+
 Options:
-  admin    Fix Admin Client SDK only
-  core     Fix Core Client SDK only
-  all      Fix both SDKs (default)
+  admin    Fix and build Admin Client SDK only
+  core     Fix and build Core Client SDK only
+  all      Fix and build both SDKs (default)
   --help   Show this help message
+
+The script will:
+1. Fix unused catch variables
+2. Run ESLint auto-fix
+3. Convert console.log to console.warn
+4. Build the SDK to catch API compatibility issues
 EOF
             exit 0
             ;;
@@ -219,13 +266,19 @@ EOF
     print_summary "$sdk_count"
     
     # Exit with appropriate code
-    if [ $failed_count -gt 0 ]; then
+    if [ $failed_count -gt 0 ] || [ $TOTAL_BUILD_ERRORS -gt 0 ]; then
         echo ""
-        echo "❌ Script completed with $failed_count failed SDK(s)"
+        if [ $failed_count -gt 0 ] && [ $TOTAL_BUILD_ERRORS -gt 0 ]; then
+            echo "❌ Script completed with $failed_count lint failures and $TOTAL_BUILD_ERRORS build failures"
+        elif [ $failed_count -gt 0 ]; then
+            echo "❌ Script completed with $failed_count lint failures"
+        else
+            echo "❌ Script completed with $TOTAL_BUILD_ERRORS build failures"
+        fi
         exit 1
     else
         echo ""
-        echo "✅ All SDKs processed successfully"
+        echo "✅ All SDKs linted and built successfully"
         exit 0
     fi
 }

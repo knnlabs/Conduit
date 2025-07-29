@@ -144,32 +144,34 @@ export class TasksService {
     }
   }
 
-  /**
-   * Requests cleanup of old completed tasks (admin operation)
-   */
-  async cleanupOldTasks(
-    olderThanHours: number = 24,
-    options?: RequestOptions
-  ): Promise<number> {
-    try {
-      const request = { older_than_hours: olderThanHours };
+  // TODO: cleanupOldTasks was moved to Admin API
+  // This method should be removed from Core SDK and implemented in Admin SDK
+  // /**
+  //  * Requests cleanup of old completed tasks (admin operation)
+  //  */
+  // async cleanupOldTasks(
+  //   olderThanHours: number = 24,
+  //   options?: RequestOptions
+  // ): Promise<number> {
+  //   try {
+  //     const request = { older_than_hours: olderThanHours };
 
-      const response = await this.clientAdapter.post<CleanupTasksResponse>(
-        API_ENDPOINTS.V1.TASKS.CLEANUP,
-        request,
-        options
-      );
+  //     const response = await this.clientAdapter.post<CleanupTasksResponse>(
+  //       API_ENDPOINTS.V1.TASKS.CLEANUP,
+  //       request,
+  //       options
+  //     );
 
-      return response.tasks_removed;
-    } catch (error) {
-      if (error instanceof ConduitError) {
-        throw error;
-      }
-      throw new ConduitError(
-        `Failed to cleanup old tasks: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
+  //     return response.tasks_removed;
+  //   } catch (error) {
+  //     if (error instanceof ConduitError) {
+  //       throw error;
+  //     }
+  //     throw new ConduitError(
+  //       `Failed to cleanup old tasks: ${error instanceof Error ? error.message : String(error)}`
+  //     );
+  //   }
+  // }
 
   /**
    * Helper method to sleep for a specified duration
