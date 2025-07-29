@@ -9,7 +9,8 @@ echo "🔧 Fixing Admin Client ESLint errors..."
 cd SDKs/Node/Admin
 
 # Count initial errors
-INITIAL_ERRORS=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1 || echo "0")
+INITIAL_ERRORS=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1)
+INITIAL_ERRORS=${INITIAL_ERRORS:-0}
 echo "📊 Initial error count: $INITIAL_ERRORS"
 
 # Step 1: Fix unused catch variables
@@ -20,10 +21,13 @@ find src -name "*.ts" -type f -exec grep -l "catch (e)" {} \; | while read file;
 done
 
 find src -name "*.ts" -type f -exec grep -l "catch (error)" {} \; | while read file; do
-    # Only replace if error is not used in the catch block
-    if ! grep -A5 "catch (error)" "$file" | grep -q "error[^)]"; then
+    # Check if error variable is used in the catch block by looking for error references
+    # Use a simple approach: check if 'error' appears after 'catch (error)' and before the next catch/function
+    if ! grep -A 20 "catch (error)" "$file" | grep -E "\berror\b" | grep -v "catch (error)" > /dev/null; then
         echo "  Fixing unused error in: $file"
         sed -i 's/} catch (error) {/} catch {/g' "$file"
+    else
+        echo "  Skipping $file - error variable is used"
     fi
 done
 
@@ -41,7 +45,8 @@ done
 # Step 4: Show remaining errors
 echo ""
 echo "📊 Checking remaining errors..."
-REMAINING_ERRORS=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1 || echo "0")
+REMAINING_ERRORS=$(npm run lint 2>&1 | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1)
+REMAINING_ERRORS=${REMAINING_ERRORS:-0}
 
 echo ""
 echo "✅ Fixed $(($INITIAL_ERRORS - $REMAINING_ERRORS)) errors"

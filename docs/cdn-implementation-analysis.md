@@ -67,7 +67,7 @@ The current implementation stores files with content-based hashes, which is good
 
 ### Local Testing with MinIO
 1. Start MinIO: `docker-compose -f docker-compose.minio.yml up -d`
-2. Configure bucket: `./setup-minio-bucket.sh`
+2. Configure bucket: `# Example: ./setup-minio-bucket.sh` (script needs to be created)
 3. Set environment: `CONDUITLLM__STORAGE__S3__PUBLICBASEURL=http://localhost:9000/conduit-media`
 
 ### Production Testing with Cloudflare R2

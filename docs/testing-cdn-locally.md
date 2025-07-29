@@ -13,7 +13,8 @@ MinIO provides S3-compatible storage that perfectly simulates CDN behavior local
 
 2. **Configure bucket:**
    ```bash
-   ./setup-minio-bucket.sh
+   # Example: ./setup-minio-bucket.sh
+   # Note: This script needs to be created or use MinIO console at http://localhost:9001
    ```
 
 3. **Update your `.env` file:**

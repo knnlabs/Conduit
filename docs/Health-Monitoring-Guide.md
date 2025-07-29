@@ -204,10 +204,12 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # Run all tests
-./Scripts/test-health-monitoring.sh
+# Example: ./Scripts/test-health-monitoring.sh
+# Note: This test script would need to be created
 
 # Run 60-second demo with multiple scenarios
-./Scripts/test-health-monitoring.sh demo
+# Example: ./Scripts/test-health-monitoring.sh
+# Note: This test script would need to be created demo
 ```
 
 ## Alert Rules

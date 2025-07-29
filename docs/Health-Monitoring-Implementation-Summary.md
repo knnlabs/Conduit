@@ -83,12 +83,14 @@ The system is configured through appsettings.json:
 
 1. **Run Test Scenarios**:
    ```bash
-   ./Scripts/test-health-monitoring.sh
+   # Example: ./Scripts/test-health-monitoring.sh
+   # Note: This test script would need to be created
    ```
 
 2. **Start Demo Mode**:
    ```bash
-   ./Scripts/test-health-monitoring.sh demo
+   # Example: ./Scripts/test-health-monitoring.sh
+   # Note: This test script would need to be created demo
    ```
 
 3. **Access Dashboards**:
