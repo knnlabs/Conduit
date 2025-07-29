@@ -50,6 +50,7 @@ export async function PUT(
       supportsStreaming: body.supportsStreaming,
       supportsVideoGeneration: body.supportsVideoGeneration,
       supportsEmbeddings: body.supportsEmbeddings,
+      supportsChat: body.supportsChat,
       maxContextLength: body.maxContextLength,
       maxOutputTokens: body.maxOutputTokens,
       isDefault: body.isDefault,

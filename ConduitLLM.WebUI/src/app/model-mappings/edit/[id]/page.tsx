@@ -22,7 +22,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName, providerNameToType } from '@/lib/utils/providerTypeUtils';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 export default function EditModelMappingPage() {
   const params = useParams();
@@ -50,11 +50,11 @@ export default function EditModelMappingPage() {
   const [supportsStreaming, setSupportsStreaming] = useState(false);
   const [supportsVideoGeneration, setSupportsVideoGeneration] = useState(false);
   const [supportsEmbeddings, setSupportsEmbeddings] = useState(false);
+  const [supportsChat, setSupportsChat] = useState(false);
   const [maxContextLength, setMaxContextLength] = useState<number | undefined>(undefined);
   const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(undefined);
   const [isDefault, setIsDefault] = useState(false);
   const [modelIdError, setModelIdError] = useState('');
-  const [initialProviderId, setInitialProviderId] = useState<string>('');
 
   // Fetch data on mount
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function EditModelMappingPage() {
         // Fetch mapping details
         const mappingResponse = await fetch(`/api/model-mappings/${mappingId}`);
         if (!mappingResponse.ok) throw new Error('Failed to fetch mapping');
-        const mappingData = await mappingResponse.json() as ModelProviderMappingDto & { providerId?: string };
+        const mappingData = await mappingResponse.json() as ModelProviderMappingDto;
 
         // Fetch providers
         const providersResponse = await fetch('/api/providers');
@@ -78,13 +78,15 @@ export default function EditModelMappingPage() {
         const mappingsData = await mappingsResponse.json() as ModelProviderMappingDto[];
         setExistingMappings(mappingsData);
 
-        // Store the initial provider ID from the mapping
-        setInitialProviderId(mappingData.providerId ?? '');
-        
         // Set form values
         setModelId(mappingData.modelId);
         setProviderModelId(mappingData.providerModelId);
         setPriority(mappingData.priority ?? 100);
+        
+        // Set provider ID directly if it exists
+        if (mappingData.providerId) {
+          setProviderId(mappingData.providerId.toString());
+        }
         setIsEnabled(mappingData.isEnabled);
         setSupportsVision(mappingData.supportsVision ?? false);
         setSupportsImageGeneration(mappingData.supportsImageGeneration ?? false);
@@ -95,6 +97,7 @@ export default function EditModelMappingPage() {
         setSupportsStreaming(mappingData.supportsStreaming ?? false);
         setSupportsVideoGeneration(mappingData.supportsVideoGeneration ?? false);
         setSupportsEmbeddings(mappingData.supportsEmbeddings ?? false);
+        setSupportsChat(mappingData.supportsChat ?? false);
         setMaxContextLength(mappingData.maxContextLength);
         setMaxOutputTokens(mappingData.maxOutputTokens);
         setIsDefault(mappingData.isDefault ?? false);
@@ -112,59 +115,6 @@ export default function EditModelMappingPage() {
     }
   }, [mappingId]);
 
-  // Set provider ID when providers are loaded
-  useEffect(() => {
-    if (providers.length > 0 && initialProviderId) {
-      // Check if initialProviderId is numeric (ID) or string (name)
-      const isNumericId = /^\d+$/.test(initialProviderId);
-      
-      let provider;
-      if (isNumericId) {
-        // API returned numeric ID
-        provider = providers.find(p => p.id.toString() === initialProviderId);
-      } else {
-        // API returned provider name - need to convert to provider type
-        try {
-          const targetType = providerNameToType(initialProviderId);
-          provider = providers.find(p => {
-            try {
-              const providerType = getProviderTypeFromDto(p);
-              return providerType === targetType;
-            } catch {
-              return false;
-            }
-          });
-        } catch {
-          // If we can't convert the name, log error
-          console.error('[EditPage] Unable to convert provider name to type:', initialProviderId);
-        }
-      }
-      
-      if (provider) {
-        const providerIdForForm = provider.id.toString();
-        console.warn('[EditPage] Setting provider:', {
-          initialProviderId,
-          isNumericId,
-          provider,
-          providerIdForForm
-        });
-        setProviderId(providerIdForForm);
-      } else {
-        console.error('[EditPage] Provider not found:', {
-          initialProviderId,
-          isNumericId,
-          availableProviders: providers.map(p => {
-            try {
-              const providerType = getProviderTypeFromDto(p);
-              return { id: p.id, name: getProviderDisplayName(providerType) };
-            } catch {
-              return { id: p.id, name: 'Unknown' };
-            }
-          })
-        });
-      }
-    }
-  }, [providers, initialProviderId]);
 
   const validateModelId = (value: string): boolean => {
     if (!value?.trim()) {
@@ -202,9 +152,6 @@ export default function EditModelMappingPage() {
     setIsSaving(true);
 
     try {
-      console.warn('[EditPage] Submit - providerId state:', providerId);
-      console.warn('[EditPage] Submit - providers array:', providers);
-      
       const provider = providers.find(p => p.id.toString() === providerId);
       if (!provider) {
         notifications.show({
@@ -234,12 +181,11 @@ export default function EditModelMappingPage() {
         supportsStreaming,
         supportsVideoGeneration,
         supportsEmbeddings,
+        supportsChat,
         maxContextLength: maxContextLength ?? undefined,
         maxOutputTokens: maxOutputTokens ?? undefined,
         isDefault,
       };
-
-      console.warn('[EditPage] Sending update data:', updateData);
 
       const response = await fetch(`/api/model-mappings/${mappingId}`, {
         method: 'PUT',
@@ -387,27 +333,40 @@ export default function EditModelMappingPage() {
 
             <Group grow>
               <Switch
+                label="Chat"
+                checked={supportsChat}
+                onChange={(e) => setSupportsChat(e.currentTarget.checked)}
+              />
+              <Switch
                 label="Vision"
                 checked={supportsVision}
                 onChange={(e) => setSupportsVision(e.currentTarget.checked)}
-              />
-              <Switch
-                label="Streaming"
-                checked={supportsStreaming}
-                onChange={(e) => setSupportsStreaming(e.currentTarget.checked)}
               />
             </Group>
 
             <Group grow>
               <Switch
+                label="Streaming"
+                checked={supportsStreaming}
+                onChange={(e) => setSupportsStreaming(e.currentTarget.checked)}
+              />
+              <Switch
                 label="Function Calling"
                 checked={supportsFunctionCalling}
                 onChange={(e) => setSupportsFunctionCalling(e.currentTarget.checked)}
               />
+            </Group>
+
+            <Group grow>
               <Switch
                 label="Image Generation"
                 checked={supportsImageGeneration}
                 onChange={(e) => setSupportsImageGeneration(e.currentTarget.checked)}
+              />
+              <Switch
+                label="Embeddings"
+                checked={supportsEmbeddings}
+                onChange={(e) => setSupportsEmbeddings(e.currentTarget.checked)}
               />
             </Group>
 
@@ -436,12 +395,6 @@ export default function EditModelMappingPage() {
                 onChange={(e) => setSupportsVideoGeneration(e.currentTarget.checked)}
               />
             </Group>
-
-            <Switch
-              label="Embeddings"
-              checked={supportsEmbeddings}
-              onChange={(e) => setSupportsEmbeddings(e.currentTarget.checked)}
-            />
 
             <Divider label="Context Limits" labelPosition="center" />
 
