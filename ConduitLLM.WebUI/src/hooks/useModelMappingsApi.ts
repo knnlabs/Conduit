@@ -258,6 +258,7 @@ interface BulkDiscoverResult {
       supportsStreaming: boolean;
       supportsVideoGeneration: boolean;
       supportsEmbeddings: boolean;
+      supportsChat: boolean;
       maxContextLength?: number | null;
       maxOutputTokens?: number | null;
     };
@@ -323,6 +324,7 @@ interface BulkCreateRequest {
       supportsStreaming: boolean;
       supportsVideoGeneration: boolean;
       supportsEmbeddings: boolean;
+      supportsChat: boolean;
       maxContextLength?: number | null;
       maxOutputTokens?: number | null;
     };

@@ -73,6 +73,11 @@ public class ModelProviderMapping
     public bool SupportsVideoGeneration { get; set; }
 
     /// <summary>
+    /// Indicates whether this model supports chat completions.
+    /// </summary>
+    public bool SupportsChat { get; set; }
+
+    /// <summary>
     /// Indicates whether this model supports function calling.
     /// </summary>
     public bool SupportsFunctionCalling { get; set; }

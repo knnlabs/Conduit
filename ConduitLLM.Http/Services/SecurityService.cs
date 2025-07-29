@@ -109,7 +109,7 @@ namespace ConduitLLM.Http.Services
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
-        private readonly IIpFilterService _ipFilterService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
 
         // Cache keys - same as WebUI/Admin for shared tracking
@@ -129,7 +129,6 @@ namespace ConduitLLM.Http.Services
             IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
-            IIpFilterService ipFilterService,
             IServiceProvider serviceProvider)
         {
             _options = options.Value;
@@ -137,7 +136,7 @@ namespace ConduitLLM.Http.Services
             _logger = logger;
             _memoryCache = memoryCache;
             _distributedCache = serviceProvider.GetService<IDistributedCache>();
-            _ipFilterService = ipFilterService;
+            _serviceProvider = serviceProvider;
             _securityEventMonitoring = serviceProvider.GetService<ISecurityEventMonitoringService>();
         }
 
@@ -610,16 +609,20 @@ namespace ConduitLLM.Http.Services
             }
 
             // Also check database-based IP filters
-            var isAllowedByDb = await _ipFilterService.IsIpAllowedAsync(ipAddress);
-            if (!isAllowedByDb)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                _logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);
-                return new SecurityCheckResult
+                var ipFilterService = scope.ServiceProvider.GetRequiredService<IIpFilterService>();
+                var isAllowedByDb = await ipFilterService.IsIpAllowedAsync(ipAddress);
+                if (!isAllowedByDb)
                 {
-                    IsAllowed = false,
-                    Reason = "IP address not allowed",
-                    StatusCode = 403
-                };
+                    _logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);
+                    return new SecurityCheckResult
+                    {
+                        IsAllowed = false,
+                        Reason = "IP address not allowed",
+                        StatusCode = 403
+                    };
+                }
             }
 
             return new SecurityCheckResult { IsAllowed = true };

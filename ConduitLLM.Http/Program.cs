@@ -22,7 +22,7 @@ using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualKeyCache, CachedApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
-using ConduitLLM.Admin.Services; // Added for DatabaseAwareLLMClientFactory
+// DatabaseAwareLLMClientFactory now in Providers namespace
 using ConduitLLM.Configuration.DTOs.SignalR; // Added for NotificationBatchingOptions
 
 using MassTransit; // Added for event bus infrastructure
@@ -222,7 +222,7 @@ builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutPro
 
 // Add dependencies needed for the Conduit service
 // Use DatabaseAwareLLMClientFactory to get provider credentials from database
-builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
+builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
 
 // Add Provider Registry - single source of truth for provider metadata

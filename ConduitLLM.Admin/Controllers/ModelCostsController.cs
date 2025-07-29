@@ -370,7 +370,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportCsv([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportCsv(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
@@ -417,7 +417,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportJson([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportJson(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {

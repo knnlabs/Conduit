@@ -107,6 +107,11 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports chat completions.
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
+
+        /// <summary>
         /// Indicates whether this model supports function calling.
         /// </summary>
         public bool SupportsFunctionCalling { get; set; } = false;

@@ -100,6 +100,26 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsVideoGeneration { get; set; } = false;
 
         /// <summary>
+        /// Whether this model supports embedding generation capabilities
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports chat completions
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports function calling
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports streaming responses
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model
         /// </summary>
         public string? TokenizerType { get; set; }

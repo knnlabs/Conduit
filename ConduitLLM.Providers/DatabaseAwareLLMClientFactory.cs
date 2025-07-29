@@ -8,7 +8,7 @@ using ConduitLLM.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace ConduitLLM.Admin.Services
+namespace ConduitLLM.Providers
 {
     /// <summary>
     /// Database-aware implementation of ILLMClientFactory that uses provider credentials from the database.

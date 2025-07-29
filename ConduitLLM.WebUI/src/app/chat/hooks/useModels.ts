@@ -46,15 +46,19 @@ export function useModels() {
         providerType?: ProviderType;
         maxContextLength?: number;
         supportsVision?: boolean;
+        supportsChat?: boolean;
       }
       
       const mappings = await response.json() as ModelMapping[];
       
-      const models: ModelWithCapabilities[] = mappings.map((mapping: ModelMapping) => {
-        console.log('[useModels] Mapping:', mapping);
-        console.log('[useModels] providerType:', mapping.providerType, 'type:', typeof mapping.providerType);
+      // Filter to only include chat-capable models
+      const chatModels = mappings.filter((mapping: ModelMapping) => mapping.supportsChat === true);
+      
+      const models: ModelWithCapabilities[] = chatModels.map((mapping: ModelMapping) => {
+        console.warn('[useModels] Chat model mapping:', mapping);
+        console.warn('[useModels] providerType:', mapping.providerType, 'type:', typeof mapping.providerType);
         const providerName = mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown';
-        console.log('[useModels] Provider name result:', providerName);
+        console.warn('[useModels] Provider name result:', providerName);
         return {
           id: mapping.modelId,
           providerId: mapping.providerType?.toString() ?? 'unknown',

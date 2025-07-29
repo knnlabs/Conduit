@@ -69,16 +69,17 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
 
   const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
     const capabilities = [];
-    if (mapping.supportsVision) capabilities.push({ label: 'Vision', color: 'blue' });
-    if (mapping.supportsImageGeneration) capabilities.push({ label: 'Images', color: 'pink' });
-    if (mapping.supportsAudioTranscription) capabilities.push({ label: 'Audio', color: 'teal' });
-    if (mapping.supportsTextToSpeech) capabilities.push({ label: 'TTS', color: 'violet' });
-    if (mapping.supportsRealtimeAudio) capabilities.push({ label: 'Realtime', color: 'orange' });
+    if (mapping.supportsChat) capabilities.push({ label: '💬 Chat', color: 'blue' });
+    if (mapping.supportsVision) capabilities.push({ label: '👁️ Vision', color: 'cyan' });
+    if (mapping.supportsImageGeneration) capabilities.push({ label: '🎨 Images', color: 'pink' });
+    if (mapping.supportsAudioTranscription) capabilities.push({ label: '🎤 Audio', color: 'teal' });
+    if (mapping.supportsTextToSpeech) capabilities.push({ label: '🔊 TTS', color: 'violet' });
+    if (mapping.supportsRealtimeAudio) capabilities.push({ label: '📡 Realtime', color: 'orange' });
     
-    if (mapping.supportsVideoGeneration) capabilities.push({ label: 'Video', color: 'grape' });
-    if (mapping.supportsEmbeddings) capabilities.push({ label: 'Embeddings', color: 'indigo' });
-    if (mapping.supportsFunctionCalling) capabilities.push({ label: 'Functions', color: 'green' });
-    if (mapping.supportsStreaming) capabilities.push({ label: 'Streaming', color: 'cyan' });
+    if (mapping.supportsVideoGeneration) capabilities.push({ label: '🎬 Video', color: 'grape' });
+    if (mapping.supportsEmbeddings) capabilities.push({ label: '🔢 Embeddings', color: 'indigo' });
+    if (mapping.supportsFunctionCalling) capabilities.push({ label: '🔧 Functions', color: 'green' });
+    if (mapping.supportsStreaming) capabilities.push({ label: '⚡ Streaming', color: 'gray' });
     
     // Check capabilities string for additional features (if it exists in response)
     if ('capabilities' in mapping && mapping.capabilities) {
@@ -94,7 +95,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       }
     }
     
-    return capabilities.slice(0, 3).map((cap) => (
+    return capabilities.slice(0, 5).map((cap) => (
       <Badge key={`${cap.label}-${cap.color}`} size="xs" variant="dot" color={cap.color}>
         {cap.label}
       </Badge>

@@ -65,6 +65,9 @@ public partial class Program
                 }
             });
 
+            // Use fully qualified type names to avoid schema ID conflicts
+            c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+
             // Add XML comments
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);

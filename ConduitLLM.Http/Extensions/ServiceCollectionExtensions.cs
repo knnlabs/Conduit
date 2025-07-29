@@ -33,13 +33,12 @@ namespace ConduitLLM.Http.Extensions
                 var config = serviceProvider.GetRequiredService<IConfiguration>();
                 var logger = serviceProvider.GetRequiredService<ILogger<SecurityService>>();
                 var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
-                var ipFilterService = serviceProvider.GetRequiredService<IIpFilterService>();
                 
-                return new SecurityService(options, config, logger, memoryCache, ipFilterService, serviceProvider);
+                return new SecurityService(options, config, logger, memoryCache, serviceProvider);
             });
             
-            // Register IP filter service as singleton since it's used by singleton SecurityService
-            services.AddSingleton<IIpFilterService, IpFilterService>();
+            // Register IP filter service as scoped since it depends on scoped repository
+            services.AddScoped<IIpFilterService, IpFilterService>();
             
             return services;
         }

@@ -149,7 +149,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register database-aware LLM client factory (must be registered before discovery service)
-        services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
+        services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 
         // Register enhanced model discovery providers
         // Configure HttpClients for each discovery provider

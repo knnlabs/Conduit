@@ -41,6 +41,7 @@ interface FormValues {
   supportsStreaming: boolean;
   supportsVideoGeneration: boolean;
   supportsEmbeddings: boolean;
+  supportsChat: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
@@ -73,6 +74,7 @@ export function EditModelMappingModal({
       supportsStreaming: false,
       supportsVideoGeneration: false,
       supportsEmbeddings: false,
+      supportsChat: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
       isDefault: false,
@@ -118,6 +120,7 @@ export function EditModelMappingModal({
         supportsStreaming: mapping.supportsStreaming ?? false,
         supportsVideoGeneration: mapping.supportsVideoGeneration ?? false,
         supportsEmbeddings: mapping.supportsEmbeddings ?? false,
+        supportsChat: (mapping.supportsChat as boolean | undefined) ?? false,
         maxContextLength: mapping.maxContextLength,
         maxOutputTokens: mapping.maxOutputTokens,
         isDefault: mapping.isDefault ?? false,
@@ -144,6 +147,7 @@ export function EditModelMappingModal({
       supportsStreaming: values.supportsStreaming,
       supportsVideoGeneration: values.supportsVideoGeneration,
       supportsEmbeddings: values.supportsEmbeddings,
+      supportsChat: values.supportsChat,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
       isDefault: values.isDefault,
@@ -227,12 +231,23 @@ export function EditModelMappingModal({
 
           <Group grow>
             <Switch
-              label="Vision"
-              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+              label="Chat"
+              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
             />
             <Switch
               label="Streaming"
               {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Vision"
+              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Embeddings"
+              {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
             />
           </Group>
 
@@ -269,10 +284,6 @@ export function EditModelMappingModal({
             />
           </Group>
 
-          <Switch
-            label="Embeddings"
-            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
-          />
 
           <Divider label="Context Limits" labelPosition="center" />
 

@@ -37,6 +37,7 @@ namespace ConduitLLM.Configuration.Mapping
                 SupportsImageGeneration = entity.SupportsImageGeneration,
                 SupportsVideoGeneration = entity.SupportsVideoGeneration,
                 SupportsEmbeddings = entity.SupportsEmbeddings,
+                SupportsChat = entity.SupportsChat,
                 SupportsFunctionCalling = entity.SupportsFunctionCalling,
                 SupportsStreaming = entity.SupportsStreaming,
                 TokenizerType = entity.TokenizerType,
@@ -74,6 +75,7 @@ namespace ConduitLLM.Configuration.Mapping
             entity.SupportsImageGeneration = dto.SupportsImageGeneration;
             entity.SupportsVideoGeneration = dto.SupportsVideoGeneration;
             entity.SupportsEmbeddings = dto.SupportsEmbeddings;
+            entity.SupportsChat = dto.SupportsChat;
             entity.SupportsFunctionCalling = dto.SupportsFunctionCalling;
             entity.SupportsStreaming = dto.SupportsStreaming;
             entity.TokenizerType = dto.TokenizerType;

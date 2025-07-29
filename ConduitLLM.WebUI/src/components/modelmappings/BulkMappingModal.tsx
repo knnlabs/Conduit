@@ -32,6 +32,7 @@ import {
   IconPlayerPlay,
   IconVideo,
   IconVectorBezier,
+  IconMessageCircle,
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
@@ -60,6 +61,7 @@ interface DiscoveredModel {
     supportsStreaming: boolean;
     supportsVideoGeneration: boolean;
     supportsEmbeddings: boolean;
+    supportsChat: boolean;
     maxContextLength?: number | null;
     maxOutputTokens?: number | null;
   };
@@ -78,6 +80,7 @@ const CapabilityIcon = ({ capability, supported }: { capability: string; support
     supportsStreaming: <IconPlayerPlay {...iconProps} />,
     supportsVideoGeneration: <IconVideo {...iconProps} />,
     supportsEmbeddings: <IconVectorBezier {...iconProps} />,
+    supportsChat: <IconMessageCircle {...iconProps} />,
   };
   
   const labels: Record<string, string> = {
@@ -90,6 +93,7 @@ const CapabilityIcon = ({ capability, supported }: { capability: string; support
     supportsStreaming: 'Streaming',
     supportsVideoGeneration: 'Video Generation',
     supportsEmbeddings: 'Embeddings',
+    supportsChat: 'Chat',
   };
   
   return (

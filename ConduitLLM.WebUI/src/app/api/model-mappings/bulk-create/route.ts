@@ -17,6 +17,7 @@ interface BulkCreateRequest {
       supportsStreaming: boolean;
       supportsVideoGeneration: boolean;
       supportsEmbeddings: boolean;
+      supportsChat: boolean;
       maxContextLength?: number | null;
       maxOutputTokens?: number | null;
     };
@@ -60,16 +61,17 @@ export async function POST(req: NextRequest) {
       supportsStreaming: model.capabilities.supportsStreaming,
       supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
       supportsEmbeddings: model.capabilities.supportsEmbeddings || false,
+      supportsChat: model.capabilities.supportsChat || false,
       maxContextLength: model.capabilities.maxContextLength ?? undefined,
       maxOutputTokens: model.capabilities.maxOutputTokens ?? undefined,
       // isDefault is required by the SDK
       isDefault: false,
-      // Use 'notes' instead of 'metadata' as per the generated types
-      notes: JSON.stringify({
-        displayName: model.displayName,
-        bulkImported: true,
-        importedAt: new Date().toISOString()
-      }),
+      // Notes field is not part of CreateModelProviderMappingDto
+      // metadata: JSON.stringify({
+      //   displayName: model.displayName,
+      //   bulkImported: true,
+      //   importedAt: new Date().toISOString()
+      // }),
     }));
     
     // Use the SDK's bulkCreate method

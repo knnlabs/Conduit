@@ -60,6 +60,7 @@ if (Array.isArray(existingMappingsResponse)) {
         supportsStreaming: model.capabilities?.chatStream ?? false,
         supportsVideoGeneration: model.capabilities?.videoGeneration ?? false,
         supportsEmbeddings: model.capabilities?.embeddings ?? false,
+        supportsChat: model.capabilities?.chat ?? false, // Map Chat capability to supportsChat
         maxContextLength: model.capabilities?.maxTokens ?? null,
         maxOutputTokens: model.capabilities?.maxOutputTokens ?? null,
       }

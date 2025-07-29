@@ -42,6 +42,7 @@ interface FormValues {
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;
   supportsEmbeddings: boolean;
+  supportsChat: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
@@ -71,6 +72,7 @@ export function CreateModelMappingModal({
       supportsFunctionCalling: false,
       supportsStreaming: true, // Most models support streaming
       supportsEmbeddings: false,
+      supportsChat: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
       isDefault: false,
@@ -98,6 +100,7 @@ export function CreateModelMappingModal({
       supportsFunctionCalling: values.supportsFunctionCalling,
       supportsStreaming: values.supportsStreaming,
       supportsEmbeddings: values.supportsEmbeddings,
+      supportsChat: values.supportsChat,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
       isDefault: values.isDefault,
@@ -210,12 +213,23 @@ export function CreateModelMappingModal({
 
           <Group grow>
             <Switch
-              label="Vision"
-              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+              label="Chat"
+              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
             />
             <Switch
               label="Streaming"
               {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Vision"
+              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Embeddings"
+              {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
             />
           </Group>
 
@@ -244,11 +258,6 @@ export function CreateModelMappingModal({
           <Switch
             label="Realtime Audio"
             {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
-          />
-
-          <Switch
-            label="Embeddings"
-            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
           />
 
           <Divider label="Context Limits (Optional)" labelPosition="center" />

@@ -32,6 +32,8 @@ export interface ModelProviderMappingDto {
   supportsVideoGeneration: boolean;
   /** Whether this model supports embeddings generation */
   supportsEmbeddings: boolean;
+  /** Whether this model supports chat completions */
+  supportsChat: boolean;
   
   // Extended Metadata Fields
   /** Optional model capabilities (e.g., vision, function-calling) */
@@ -74,6 +76,7 @@ export interface CreateModelProviderMappingDto {
   supportsStreaming?: boolean;
   supportsVideoGeneration?: boolean;
   supportsEmbeddings?: boolean;
+  supportsChat?: boolean;
   
   // Extended Metadata Fields
   capabilities?: string;
@@ -118,6 +121,7 @@ export interface UpdateModelProviderMappingDto {
   supportsStreaming?: boolean;
   supportsVideoGeneration?: boolean;
   supportsEmbeddings?: boolean;
+  supportsChat?: boolean;
   
   // Extended Metadata Fields
   /**
