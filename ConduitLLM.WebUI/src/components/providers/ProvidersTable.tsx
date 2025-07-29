@@ -65,7 +65,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => onDelete?.(provider.id.toString()),
+      onConfirm: () => provider.id && onDelete?.(provider.id.toString()),
     });
   };
 
@@ -172,10 +172,10 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => onTest?.(provider.id.toString())}
-                disabled={testingProviders.has(provider.id.toString())}
+                onClick={() => provider.id && onTest?.(provider.id.toString())}
+                disabled={provider.id ? testingProviders.has(provider.id.toString()) : true}
               >
-                {testingProviders.has(provider.id.toString()) ? 'Testing...' : 'Test Connection'}
+                {provider.id && testingProviders.has(provider.id.toString()) ? 'Testing...' : 'Test Connection'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item

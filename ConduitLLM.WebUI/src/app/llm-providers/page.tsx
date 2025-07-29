@@ -157,13 +157,13 @@ export default function ProvidersPage() {
       
       return (
         displayName.toLowerCase().includes(query) ||
-        provider.id.toString().toLowerCase().includes(query) ||
+        (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
         (provider.endpoint?.toLowerCase().includes(query) ?? false)
       );
     } catch {
       // If we can't get provider type, just check ID and endpoint
       return (
-        provider.id.toString().toLowerCase().includes(query) ||
+        (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
         (provider.endpoint?.toLowerCase().includes(query) ?? false)
       );
     }

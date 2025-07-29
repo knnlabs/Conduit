@@ -129,7 +129,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     setSelectedProviderId(providerId);
     setSelectedModels(new Set());
     
-    const provider = providers?.find((p: ProviderCredentialDto) => p.id.toString() === providerId);
+    const provider = providers?.find((p: ProviderCredentialDto) => p.id?.toString() === providerId);
     if (!provider) return;
     
     try {
@@ -239,16 +239,16 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
             try {
               const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
               return {
-                value: p.id.toString(),
+                value: p.id?.toString() ?? '',
                 label: getProviderDisplayName(providerType),
               };
             } catch {
               return {
-                value: p.id.toString(),
+                value: p.id?.toString() ?? '',
                 label: 'Unknown Provider',
               };
             }
-          }) || []}
+          }).filter(opt => opt.value !== '') || []}
           value={selectedProviderId}
           onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}

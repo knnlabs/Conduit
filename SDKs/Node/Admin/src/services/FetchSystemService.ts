@@ -459,18 +459,18 @@ export class FetchSystemService {
       const health = await this.getHealth(config);
       
       // Map health checks to service status
-      const dbStatus = health.checks.database?.status || 'healthy';
+      const dbStatus = health.checks.database?.status ?? 'healthy';
       const apiStatus = health.status; // Overall status as proxy for API health
       
       return {
         coreApi: {
           status: apiStatus,
-          latency: health.totalDuration || 0,
+          latency: health.totalDuration ?? 0,
           endpoint: '/api',
         },
         adminApi: {
           status: apiStatus,
-          latency: health.totalDuration || 0,
+          latency: health.totalDuration ?? 0,
           endpoint: '/api',
         },
         database: {

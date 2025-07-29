@@ -152,7 +152,7 @@ export default function EditModelMappingPage() {
     setIsSaving(true);
 
     try {
-      const provider = providers.find(p => p.id.toString() === providerId);
+      const provider = providers.find(p => p.id?.toString() === providerId);
       if (!provider) {
         notifications.show({
           title: 'Error',
@@ -229,16 +229,16 @@ export default function EditModelMappingPage() {
     try {
       const providerType = getProviderTypeFromDto(p);
       return {
-        value: p.id.toString(),
+        value: p.id?.toString() ?? '',
         label: getProviderDisplayName(providerType),
       };
     } catch {
       return {
-        value: p.id.toString(),
+        value: p.id?.toString() ?? '',
         label: 'Unknown Provider',
       };
     }
-  });
+  }).filter(opt => opt.value !== '');
 
   if (error) {
     return (

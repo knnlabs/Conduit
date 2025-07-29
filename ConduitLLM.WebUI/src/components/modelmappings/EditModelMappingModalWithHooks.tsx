@@ -170,16 +170,16 @@ export function EditModelMappingModal({
     try {
       const providerType = getProviderTypeFromDto(p);
       return {
-        value: p.id.toString(), // Form uses string representation of numeric ID
+        value: p.id?.toString() ?? '', // Form uses string representation of numeric ID
         label: getProviderDisplayName(providerType),
       };
     } catch {
       return {
-        value: p.id.toString(),
+        value: p.id?.toString() ?? '',
         label: 'Unknown Provider',
       };
     }
-  }) || [];
+  }).filter(opt => opt.value !== '') || [];
 
   return (
     <Modal

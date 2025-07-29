@@ -82,9 +82,9 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
       form.setValues({
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.apiBase ?? '',
+        apiEndpoint: provider.baseUrl ?? '',
         organizationId: provider.organization ?? '',
-        isEnabled: provider.isEnabled,
+        isEnabled: provider.isEnabled ?? false,
       });
     }
   }, [provider, form]);

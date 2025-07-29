@@ -286,7 +286,7 @@ export class ProviderHealthService extends FetchBaseApiClient {
     };
 
     const response = await this.getProviderHealthRecords(providerType, filters);
-    return response.data || [];
+    return response.data ?? [];
   }
 
   /**
@@ -309,9 +309,9 @@ export class ProviderHealthService extends FetchBaseApiClient {
       try {
         const status = await this.getProviderHealthStatus(providerType);
         results[providerType] = status;
-      } catch (error) {
+      } catch {
         // Skip providers that fail to load
-        console.warn(`Failed to get health status for provider ${providerType}:`, error);
+        console.warn(`Failed to get health status for provider ${providerType}`);
       }
     });
 

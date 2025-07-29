@@ -3,36 +3,36 @@ import { ProviderConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
 
 export interface ProviderCredentialDto {
-  id: number;
-  providerType: ProviderType;
+  id?: number;
+  providerType?: ProviderType;
   apiKey?: string;
-  apiBase?: string;
-  organization?: string;
-  isEnabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  baseUrl?: string | null;
+  organization?: string | null;
+  isEnabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateProviderCredentialDto {
   providerType: ProviderType;
   apiKey?: string;
-  apiBase?: string;
-  organization?: string;
+  baseUrl?: string | null;
+  organization?: string | null;
   isEnabled?: boolean;
 }
 
 export interface UpdateProviderCredentialDto {
   apiKey?: string;
-  apiBase?: string;
-  organization?: string;
+  baseUrl?: string | null;
+  organization?: string | null;
   isEnabled?: boolean;
 }
 
 export interface ProviderConnectionTestRequest {
   providerType: ProviderType;
   apiKey?: string;
-  apiBase?: string;
-  organization?: string;
+  baseUrl?: string | null;
+  organization?: string | null;
 }
 
 export interface ProviderConnectionTestResultDto {

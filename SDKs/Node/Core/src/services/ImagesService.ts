@@ -61,7 +61,7 @@ export class ImagesService extends FetchBasedClient {
    *   prompt: 'A serene lake at sunset',
    *   n: 1
    * });
-   * console.log(result.data[0].url);
+   * console.warn(result.data[0].url);
    * 
    * // High quality with specific size
    * const hdResult = await images.generate({

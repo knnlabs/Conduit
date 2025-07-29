@@ -149,7 +149,7 @@ export interface EnhancedStreamEvent {
  * ```typescript
  * if (isChatCompletionChunk(event.data)) {
  *   // TypeScript now knows event.data is ChatCompletionChunk
- *   console.log(event.data.choices[0].delta.content);
+ *   console.warn(event.data.choices[0].delta.content);
  * }
  * ```
  */
@@ -173,7 +173,7 @@ export function isChatCompletionChunk(data: unknown): data is ChatCompletionChun
  * ```typescript
  * if (isStreamingMetrics(event.data)) {
  *   // TypeScript now knows event.data is StreamingMetrics
- *   console.log(`Speed: ${event.data.current_tokens_per_second} tokens/sec`);
+ *   console.warn(`Speed: ${event.data.current_tokens_per_second} tokens/sec`);
  * }
  * ```
  */
@@ -196,8 +196,8 @@ export function isStreamingMetrics(data: unknown): data is StreamingMetrics {
  * ```typescript
  * if (isFinalMetrics(event.data)) {
  *   // TypeScript now knows event.data is FinalMetrics
- *   console.log(`Total tokens: ${event.data.total_tokens}`);
- *   console.log(`Average speed: ${event.data.tokens_per_second} tokens/sec`);
+ *   console.warn(`Total tokens: ${event.data.total_tokens}`);
+ *   console.warn(`Average speed: ${event.data.tokens_per_second} tokens/sec`);
  * }
  * ```
  */

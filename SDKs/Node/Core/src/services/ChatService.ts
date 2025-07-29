@@ -54,7 +54,7 @@ export class ChatService extends BaseStreamingService {
    *   stream: true
    * });
    * for await (const chunk of stream) {
-   *   console.log(chunk.choices[0]?.delta?.content);
+   *   console.warn(chunk.choices[0]?.delta?.content);
    * }
    */
   async create(
@@ -170,7 +170,7 @@ export class ChatService extends BaseStreamingService {
    * 
    * // Use the stream
    * for await (const chunk of stream) {
-   *   console.log(chunk.choices[0]?.delta?.content);
+   *   console.warn(chunk.choices[0]?.delta?.content);
    *   
    *   // Pause after 5 chunks
    *   if (chunkCount++ > 5) {
@@ -212,10 +212,10 @@ export class ChatService extends BaseStreamingService {
    * for await (const event of stream) {
    *   switch (event.type) {
    *     case 'content':
-   *       console.log('Content:', event.data);
+   *       console.warn('Content:', event.data);
    *       break;
    *     case 'metrics':
-   *       console.log('Metrics:', event.data);
+   *       console.warn('Metrics:', event.data);
    *       break;
    *   }
    * }

@@ -62,7 +62,7 @@ export class AudioService extends FetchBasedClient {
    *   file: AudioUtils.fromBuffer(audioBuffer, 'audio.mp3'),
    *   model: 'whisper-1'
    * });
-   * console.log(result.text);
+   * console.warn(result.text);
    * 
    * // With language and timestamps
    * const detailed = await audio.transcribe({

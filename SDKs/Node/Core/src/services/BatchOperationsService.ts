@@ -43,8 +43,8 @@ export class BatchOperationsService {
    *   spendUpdates
    * });
    * 
-   * console.log(`Started batch operation: ${startResponse.operationId}`);
-   * console.log(`Track progress with task ID: ${startResponse.taskId}`);
+   * console.warn(`Started batch operation: ${startResponse.operationId}`);
+   * console.warn(`Track progress with task ID: ${startResponse.taskId}`);
    * ```
    */
   async batchSpendUpdate(request: BatchSpendUpdateRequest): Promise<BatchOperationStartResponse> {
@@ -81,7 +81,7 @@ export class BatchOperationsService {
    *   virtualKeyUpdates
    * });
    * 
-   * console.log(`Started virtual key batch operation: ${startResponse.operationId}`);
+   * console.warn(`Started virtual key batch operation: ${startResponse.operationId}`);
    * ```
    */
   async batchVirtualKeyUpdate(request: BatchVirtualKeyUpdateRequest): Promise<BatchOperationStartResponse> {
@@ -122,7 +122,7 @@ export class BatchOperationsService {
    *   webhookSends
    * });
    * 
-   * console.log(`Started webhook batch operation: ${startResponse.operationId}`);
+   * console.warn(`Started webhook batch operation: ${startResponse.operationId}`);
    * ```
    */
   async batchWebhookSend(request: BatchWebhookSendRequest): Promise<BatchOperationStartResponse> {
@@ -152,14 +152,14 @@ export class BatchOperationsService {
    * ```typescript
    * const status = await coreClient.batchOperations.getOperationStatus('batch-123');
    * 
-   * console.log(`Operation status: ${status.status}`);
-   * console.log(`Progress: ${status.metadata.processedItems}/${status.metadata.totalItems}`);
-   * console.log(`Success rate: ${((status.metadata.processedItems - status.metadata.failedItems) / status.metadata.processedItems * 100).toFixed(2)}%`);
+   * console.warn(`Operation status: ${status.status}`);
+   * console.warn(`Progress: ${status.metadata.processedItems}/${status.metadata.totalItems}`);
+   * console.warn(`Success rate: ${((status.metadata.processedItems - status.metadata.failedItems) / status.metadata.processedItems * 100).toFixed(2)}%`);
    * 
    * if (status.status === BatchOperationStatusEnum.Completed) {
-   *   console.log('Batch operation completed!');
+   *   console.warn('Batch operation completed!');
    * } else if (status.status === BatchOperationStatusEnum.Failed) {
-   *   console.log('Batch operation failed:', status.errors);
+   *   console.warn('Batch operation failed:', status.errors);
    * }
    * ```
    */
@@ -179,7 +179,7 @@ export class BatchOperationsService {
    * @example
    * ```typescript
    * const canceledStatus = await coreClient.batchOperations.cancelOperation('batch-123');
-   * console.log(`Operation canceled. Final status: ${canceledStatus.status}`);
+   * console.warn(`Operation canceled. Final status: ${canceledStatus.status}`);
    * ```
    */
   async cancelOperation(operationId: string): Promise<BatchOperationStatusResponse> {
@@ -206,8 +206,8 @@ export class BatchOperationsService {
    * });
    * 
    * if (finalStatus.status === BatchOperationStatusEnum.Completed) {
-   *   console.log('Operation completed successfully!');
-   *   console.log(`Processed ${finalStatus.metadata.processedItems} items`);
+   *   console.warn('Operation completed successfully!');
+   *   console.warn(`Processed ${finalStatus.metadata.processedItems} items`);
    * }
    * ```
    */
@@ -256,7 +256,7 @@ export class BatchOperationsService {
    * 
    * const validation = BatchOperationsService.validateSpendUpdateRequest(spendUpdates);
    * if (!validation.isValid) {
-   *   console.log('Validation errors:', validation.errors);
+   *   console.warn('Validation errors:', validation.errors);
    * }
    * ```
    */

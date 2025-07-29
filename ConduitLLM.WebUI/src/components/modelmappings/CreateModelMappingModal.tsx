@@ -116,16 +116,16 @@ export function CreateModelMappingModal({
     try {
       const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
       return {
-        value: p.id.toString(),
+        value: p.id?.toString() ?? '',
         label: getProviderDisplayName(providerType),
       };
     } catch {
       return {
-        value: p.id.toString(),
+        value: p.id?.toString() ?? '',
         label: 'Unknown Provider',
       };
     }
-  }) || [];
+  }).filter(opt => opt.value !== '') || [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities

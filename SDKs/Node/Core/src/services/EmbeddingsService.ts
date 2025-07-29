@@ -36,8 +36,8 @@ export class EmbeddingsService {
    *   model: "text-embedding-3-small"
    * });
    * 
-   * console.log(`Generated ${response.data.length} embeddings`);
-   * console.log(`Used ${response.usage.total_tokens} tokens`);
+   * console.warn(`Generated ${response.data.length} embeddings`);
+   * console.warn(`Used ${response.usage.total_tokens} tokens`);
    * ```
    */
   async createEmbedding(
@@ -79,7 +79,7 @@ export class EmbeddingsService {
    *   "text-embedding-3-small"
    * );
    * 
-   * console.log(`Embedding dimension: ${embedding.length}`);
+   * console.warn(`Embedding dimension: ${embedding.length}`);
    * ```
    */
   async createSingleEmbedding(
@@ -125,7 +125,7 @@ export class EmbeddingsService {
    * );
    * 
    * embeddings.forEach((embedding, i) => {
-   *   console.log(`Text ${i}: ${embedding.length} dimensions`);
+   *   console.warn(`Text ${i}: ${embedding.length} dimensions`);
    * });
    * ```
    */
@@ -184,7 +184,7 @@ export class EmbeddingsService {
    * );
    * 
    * results.forEach(result => {
-   *   console.log(`"${result.text}" - Similarity: ${result.similarity.toFixed(3)}`);
+   *   console.warn(`"${result.text}" - Similarity: ${result.similarity.toFixed(3)}`);
    * });
    * ```
    */
@@ -246,7 +246,7 @@ export class EmbeddingsService {
    *   "It's a beautiful day outside"
    * );
    * 
-   * console.log(`Similarity: ${(similarity * 100).toFixed(1)}%`);
+   * console.warn(`Similarity: ${(similarity * 100).toFixed(1)}%`);
    * ```
    */
   async calculateSimilarity(
@@ -292,7 +292,7 @@ export class EmbeddingsService {
    * );
    * 
    * groups.forEach((group, i) => {
-   *   console.log(`Group ${i + 1}: ${group.join(", ")}`);
+   *   console.warn(`Group ${i + 1}: ${group.join(", ")}`);
    * });
    * ```
    */

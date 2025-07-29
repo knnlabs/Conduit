@@ -19,10 +19,10 @@
  * for await (const event of stream) {
  *   switch (event.type) {
  *     case 'content':
- *       console.log('Content:', event.data);
+ *       console.warn('Content:', event.data);
  *       break;
  *     case 'metrics':
- *       console.log('Metrics:', event.data);
+ *       console.warn('Metrics:', event.data);
  *       break;
  *   }
  * }
