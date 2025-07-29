@@ -1,6 +1,16 @@
 #!/bin/bash
 
 # Script to fix the Admin Client ESLint errors systematically
+# 
+# ⚠️  DEPRECATED: This script has been replaced by ./scripts/fix-sdk-errors.sh
+# Please use: ./scripts/fix-sdk-errors.sh admin
+#
+
+echo "⚠️  DEPRECATED: This script has been replaced by ./scripts/fix-sdk-errors.sh"
+echo "Please use: ./scripts/fix-sdk-errors.sh admin"
+echo ""
+echo "Continuing with legacy behavior for now..."
+echo ""
 
 set -e
 
