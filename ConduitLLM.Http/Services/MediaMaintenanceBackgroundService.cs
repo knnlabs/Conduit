@@ -15,7 +15,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class MediaMaintenanceBackgroundService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<MediaMaintenanceBackgroundService> _logger;
         private readonly MediaManagementOptions _options;
         private readonly Timer _dailyTimer;
@@ -25,15 +25,15 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Initializes a new instance of the MediaMaintenanceBackgroundService class.
         /// </summary>
-        /// <param name="serviceProvider">The service provider for creating scoped services.</param>
+        /// <param name="serviceScopeFactory">The service scope factory for creating scoped services.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="options">Media management configuration options.</param>
         public MediaMaintenanceBackgroundService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<MediaMaintenanceBackgroundService> logger,
             IOptions<MediaManagementOptions> options)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? new MediaManagementOptions();
 
@@ -79,13 +79,18 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Handles daily maintenance tasks.
         /// </summary>
-        private async void OnDailyTimer(object? state)
+        private void OnDailyTimer(object? state)
+        {
+            _ = ExecuteDailyMaintenanceAsync();
+        }
+
+        private async Task ExecuteDailyMaintenanceAsync()
         {
             try
             {
                 _logger.LogInformation("Running daily media maintenance tasks");
 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var mediaLifecycleService = scope.ServiceProvider.GetRequiredService<IMediaLifecycleService>();
 
                 // Cleanup expired media
@@ -104,13 +109,18 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Handles weekly maintenance tasks.
         /// </summary>
-        private async void OnWeeklyTimer(object? state)
+        private void OnWeeklyTimer(object? state)
+        {
+            _ = ExecuteWeeklyMaintenanceAsync();
+        }
+
+        private async Task ExecuteWeeklyMaintenanceAsync()
         {
             try
             {
                 _logger.LogInformation("Running weekly media maintenance tasks");
 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var mediaLifecycleService = scope.ServiceProvider.GetRequiredService<IMediaLifecycleService>();
 
                 // Cleanup orphaned media
@@ -135,13 +145,18 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Handles monthly maintenance tasks.
         /// </summary>
-        private async void OnMonthlyTimer(object? state)
+        private void OnMonthlyTimer(object? state)
+        {
+            _ = ExecuteMonthlyMaintenanceAsync();
+        }
+
+        private async Task ExecuteMonthlyMaintenanceAsync()
         {
             try
             {
                 _logger.LogInformation("Running monthly media maintenance tasks");
 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var mediaLifecycleService = scope.ServiceProvider.GetRequiredService<IMediaLifecycleService>();
 
                 // Prune old media based on retention policy

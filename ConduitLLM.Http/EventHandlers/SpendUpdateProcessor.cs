@@ -9,26 +9,26 @@ namespace ConduitLLM.Http.EventHandlers
     /// <summary>
     /// Processes spend update requests in ordered fashion per virtual key
     /// Eliminates race conditions and dual update paths
-    /// Uses service locator pattern to handle cross-service dependencies gracefully
+    /// Uses proper dependency injection with IServiceScopeFactory
     /// </summary>
     public class SpendUpdateProcessor : IConsumer<SpendUpdateRequested>
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly ILogger<SpendUpdateProcessor> _logger;
 
         /// <summary>
         /// Initializes a new instance of the SpendUpdateProcessor
         /// </summary>
-        /// <param name="serviceProvider">Service provider for resolving optional dependencies</param>
+        /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
         /// <param name="publishEndpoint">MassTransit publish endpoint for publishing events</param>
         /// <param name="logger">Logger instance</param>
         public SpendUpdateProcessor(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             IPublishEndpoint publishEndpoint,
             ILogger<SpendUpdateProcessor> logger)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -49,8 +49,9 @@ namespace ConduitLLM.Http.EventHandlers
                 return;
             }
 
-            // Get virtual key repository from service provider
-            var virtualKeyRepository = _serviceProvider.GetService<IVirtualKeyRepository>();
+            // Create a scope to get the repository
+            using var scope = _serviceScopeFactory.CreateScope();
+            var virtualKeyRepository = scope.ServiceProvider.GetService<IVirtualKeyRepository>();
             
             if (virtualKeyRepository == null)
             {

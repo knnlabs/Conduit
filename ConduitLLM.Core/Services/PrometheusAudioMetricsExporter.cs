@@ -112,7 +112,12 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async void ExportMetrics(object? state)
+        private void ExportMetrics(object? state)
+        {
+            _ = ExportMetricsAsync();
+        }
+
+        private async Task ExportMetricsAsync()
         {
             try
             {

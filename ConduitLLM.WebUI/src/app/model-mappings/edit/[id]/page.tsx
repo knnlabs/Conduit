@@ -64,7 +64,7 @@ export default function EditModelMappingPage() {
         // Fetch mapping details
         const mappingResponse = await fetch(`/api/model-mappings/${mappingId}`);
         if (!mappingResponse.ok) throw new Error('Failed to fetch mapping');
-        const mappingData = await mappingResponse.json() as ModelProviderMappingDto;
+        const mappingData = await mappingResponse.json() as ModelProviderMappingDto & { supportsChat?: boolean };
 
         // Fetch providers
         const providersResponse = await fetch('/api/providers');
@@ -165,7 +165,7 @@ export default function EditModelMappingPage() {
       
       // No longer need to convert provider ID to name
 
-      const updateData: UpdateModelProviderMappingDto = {
+      const updateData: UpdateModelProviderMappingDto & { supportsChat?: boolean } = {
         id: parseInt(mappingId, 10), // Backend requires ID in body
         modelId,
         providerId: parseInt(providerId, 10), // Convert string to number

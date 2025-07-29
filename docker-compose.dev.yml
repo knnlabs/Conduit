@@ -6,6 +6,11 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Health monitoring configuration - API endpoint checks
+      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
+      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
+      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
+      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
 
   admin:
     environment:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,7 +19,7 @@ namespace ConduitLLM.Http.Services
     public class HealthMonitoringBackgroundService : BackgroundService
     {
         private readonly HealthCheckService _healthCheckService;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<HealthMonitoringBackgroundService> _logger;
         private readonly HealthMonitoringOptions _options;
         private readonly Dictionary<string, Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus> _previousHealthStatus;
@@ -26,12 +27,12 @@ namespace ConduitLLM.Http.Services
 
         public HealthMonitoringBackgroundService(
             HealthCheckService healthCheckService,
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<HealthMonitoringBackgroundService> logger,
             IOptions<HealthMonitoringOptions> options)
         {
             _healthCheckService = healthCheckService;
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _options = options.Value;
             _previousHealthStatus = new Dictionary<string, Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus>();
@@ -73,7 +74,7 @@ namespace ConduitLLM.Http.Services
             }
 
             // Check resource metrics
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var healthMonitoringService = scope.ServiceProvider.GetRequiredService<IHealthMonitoringService>();
             var snapshot = await healthMonitoringService.GetSystemHealthSnapshotAsync();
             await CheckResourceMetricsAsync(snapshot.Resources, scope.ServiceProvider);
@@ -89,7 +90,7 @@ namespace ConduitLLM.Http.Services
                     .Select(e => e.Key)
                     .ToList();
 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var alertManagementService = scope.ServiceProvider.GetRequiredService<IAlertManagementService>();
                 await alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
@@ -150,7 +151,7 @@ namespace ConduitLLM.Http.Services
                         if (previousStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy || 
                             previousStatus == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded)
                         {
-                            using var scope = _serviceProvider.CreateScope();
+                            using var scope = _serviceScopeFactory.CreateScope();
                             var alertManagementService = scope.ServiceProvider.GetRequiredService<IAlertManagementService>();
                             await alertManagementService.TriggerAlertAsync(new HealthAlert
                             {
@@ -170,7 +171,7 @@ namespace ConduitLLM.Http.Services
                         return;
                 }
 
-                using var alertScope = _serviceProvider.CreateScope();
+                using var alertScope = _serviceScopeFactory.CreateScope();
                 var alertService = alertScope.ServiceProvider.GetRequiredService<IAlertManagementService>();
                 await alertService.TriggerAlertAsync(new HealthAlert
                 {

@@ -35,7 +35,7 @@ export async function PUT(
     // Build update data ensuring type safety - SDK expects the generated type format
     const updateData = {
       id: parseInt(id, 10),
-      baseUrl: (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl,
+      baseUrl: ((body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.apiBase) as string,
       isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
       organization: (body.organization as string | undefined) ?? currentProvider.organization
     };

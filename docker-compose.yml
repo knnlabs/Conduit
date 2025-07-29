@@ -83,6 +83,11 @@ services:
       CONDUITLLM__RABBITMQ__VHOST: /
       CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
       CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
+      # Health monitoring configuration - API endpoint checks
+      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
+      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
+      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
+      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
     ports:
       - "5000:8080"
     restart: on-failure

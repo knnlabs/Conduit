@@ -21,7 +21,7 @@ namespace ConduitLLM.Http.Services
     public class SpendNotificationService : ISpendNotificationService, IHostedService
     {
         private readonly IHubContext<SpendNotificationHub> _hubContext;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<SpendNotificationService> _logger;
         
         // Track spending patterns per virtual key
@@ -36,11 +36,11 @@ namespace ConduitLLM.Http.Services
 
         public SpendNotificationService(
             IHubContext<SpendNotificationHub> hubContext,
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<SpendNotificationService> logger)
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -102,16 +102,19 @@ namespace ConduitLLM.Http.Services
                 };
 
                 // Get hub instance and send notification
-                var hub = _serviceProvider.GetService<SpendNotificationHub>();
-                if (hub != null)
+                using (var scope = _serviceScopeFactory.CreateScope())
                 {
-                    await hub.SendSpendUpdate(virtualKeyId, notification);
-                }
-                else
-                {
-                    // Fallback to hub context
-                    var groupName = $"vkey-{virtualKeyId}";
-                    await _hubContext.Clients.Group(groupName).SendAsync("SpendUpdate", notification);
+                    var hub = scope.ServiceProvider.GetService<SpendNotificationHub>();
+                    if (hub != null)
+                    {
+                        await hub.SendSpendUpdate(virtualKeyId, notification);
+                    }
+                    else
+                    {
+                        // Fallback to hub context
+                        var groupName = $"vkey-{virtualKeyId}";
+                        await _hubContext.Clients.Group(groupName).SendAsync("SpendUpdate", notification);
+                    }
                 }
 
                 // Check for unusual spending
@@ -282,7 +285,13 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async void AnalyzeSpendingPatterns(object? state)
+        private void AnalyzeSpendingPatterns(object? state)
+        {
+            // Fire and forget with proper error handling
+            _ = AnalyzeSpendingPatternsAsync();
+        }
+
+        private async Task AnalyzeSpendingPatternsAsync()
         {
             try
             {

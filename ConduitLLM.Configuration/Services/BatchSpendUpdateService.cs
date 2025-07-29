@@ -18,7 +18,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class BatchSpendUpdateService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
         private readonly ConcurrentDictionary<int, decimal> _pendingSpendUpdates = new();
         private readonly Timer _flushTimer;
@@ -33,13 +33,13 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Initializes a new instance of the BatchSpendUpdateService
         /// </summary>
-        /// <param name="serviceProvider">Service provider for creating scoped services</param>
+        /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
         /// <param name="logger">Logger instance</param>
         public BatchSpendUpdateService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<BatchSpendUpdateService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             
             // Create timer for periodic flushing (in addition to background service)
@@ -93,7 +93,7 @@ namespace ConduitLLM.Configuration.Services
 
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
 
                 // Batch update all Virtual Keys with pending spend
@@ -163,16 +163,20 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Timer callback for periodic flushing
         /// </summary>
-        private async void FlushPendingUpdatesCallback(object? state)
+        private void FlushPendingUpdatesCallback(object? state)
         {
-            try
+            // Fire and forget with proper error handling
+            _ = Task.Run(async () =>
             {
-                await FlushPendingUpdatesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in periodic flush timer");
-            }
+                try
+                {
+                    await FlushPendingUpdatesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in periodic flush timer");
+                }
+            });
         }
 
         /// <summary>

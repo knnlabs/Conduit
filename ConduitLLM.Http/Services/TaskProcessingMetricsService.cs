@@ -18,7 +18,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class TaskProcessingMetricsService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<TaskProcessingMetricsService> _logger;
         private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(30);
 
@@ -113,10 +113,10 @@ namespace ConduitLLM.Http.Services
                 });
 
         public TaskProcessingMetricsService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<TaskProcessingMetricsService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
@@ -143,7 +143,7 @@ namespace ConduitLLM.Http.Services
 
         private async Task CollectMetricsAsync()
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
 
             // Collect async task metrics
             await CollectAsyncTaskMetrics(scope);

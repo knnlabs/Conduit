@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Container, 
   Paper, 
@@ -50,11 +50,13 @@ export function ChatInterface() {
   } = useChatStore();
 
   // Convert model data to the format expected by the Select component
-  const models = modelData?.map(m => ({
-    value: m.id,
-    label: m.displayName || `${m.id} (${m.providerName})`,
-    supportsVision: m.supportsVision
-  })) ?? [];
+  const models = useMemo(() => 
+    modelData?.map(m => ({
+      value: m.id,
+      label: m.displayName || `${m.id} (${m.providerName})`,
+      supportsVision: m.supportsVision
+    })) ?? []
+  , [modelData]);
 
   // Set initial model when data loads
   useEffect(() => {

@@ -25,7 +25,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
-        private readonly IAdminIpFilterService _ipFilterService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         // Cache keys - same as WebUI for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
@@ -44,14 +44,14 @@ namespace ConduitLLM.Admin.Services
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
             IDistributedCache? distributedCache,
-            IAdminIpFilterService ipFilterService)
+            IServiceScopeFactory serviceScopeFactory)
         {
             _options = options.Value;
             _configuration = configuration;
             _logger = logger;
             _memoryCache = memoryCache;
             _distributedCache = distributedCache;
-            _ipFilterService = ipFilterService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <inheritdoc/>
@@ -394,7 +394,9 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Also check database-based IP filters
-            var isAllowedByDb = await _ipFilterService.IsIpAllowedAsync(ipAddress);
+            using var scope = _serviceScopeFactory.CreateScope();
+            var ipFilterService = scope.ServiceProvider.GetRequiredService<IAdminIpFilterService>();
+            var isAllowedByDb = await ipFilterService.IsIpAllowedAsync(ipAddress);
             if (!isAllowedByDb)
             {
                 _logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);

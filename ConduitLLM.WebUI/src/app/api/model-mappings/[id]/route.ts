@@ -28,13 +28,13 @@ export async function PUT(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json() as UpdateModelProviderMappingDto;
+    const body = await req.json() as UpdateModelProviderMappingDto & { supportsChat?: boolean };
     
     // First get the existing mapping to preserve required fields
     const existingMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     
     // The backend expects the ID in the body to match the route ID
-    const transformedBody: UpdateModelProviderMappingDto = {
+    const transformedBody: UpdateModelProviderMappingDto & { supportsChat?: boolean } = {
       id: parseInt(id, 10), // Backend requires ID in body to match route ID
       modelId: body.modelId ?? existingMapping.modelId, // Backend requires modelId even for updates
       providerId: body.providerId, // Already a number from frontend

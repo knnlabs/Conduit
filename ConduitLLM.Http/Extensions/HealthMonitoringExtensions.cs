@@ -105,6 +105,7 @@ namespace ConduitLLM.Http.Extensions
                 tags: new[] { "signalr", "realtime", "ready", "monitoring" });
 
             // Add API endpoint health checks from configuration
+            // Configuration format: HealthMonitoring__ApiEndpoints__0__Name, HealthMonitoring__ApiEndpoints__0__Url, etc.
             var endpoints = configuration.GetSection("HealthMonitoring:ApiEndpoints").GetChildren();
             foreach (var endpoint in endpoints)
             {

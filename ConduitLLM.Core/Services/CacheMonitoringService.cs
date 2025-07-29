@@ -119,7 +119,7 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class CacheMonitoringService : BackgroundService, ICacheMonitoringService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<CacheMonitoringService> _logger;
         private readonly List<CacheMonitoringAlertEventArgs> _alertHistory = new();
         private readonly SemaphoreSlim _alertHistoryLock = new(1, 1);
@@ -136,11 +136,11 @@ namespace ConduitLLM.Core.Services
         public event EventHandler<CacheMonitoringAlertEventArgs>? CacheAlertTriggered;
 
         public CacheMonitoringService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<CacheMonitoringService> logger,
             IOptions<MonitoringAlertThresholds>? thresholdOptions = null)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             if (thresholdOptions?.Value != null)
@@ -177,7 +177,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task CheckNowAsync(CancellationToken cancellationToken = default)
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var cacheManager = scope.ServiceProvider.GetService<ICacheManager>();
             var cacheMetrics = scope.ServiceProvider.GetService<ICacheMetricsService>();
             var cacheRegistry = scope.ServiceProvider.GetService<ICacheRegistry>();

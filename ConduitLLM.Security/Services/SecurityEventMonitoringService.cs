@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Security.Services
         private readonly IMemoryCache _cache;
         private readonly ILogger<SecurityEventMonitoringService> _logger;
         private readonly SecurityMonitoringOptions _options;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         // Event storage
         private readonly ConcurrentQueue<SecurityEvent> _recentEvents;
@@ -36,11 +38,13 @@ namespace ConduitLLM.Security.Services
         public SecurityEventMonitoringService(
             IMemoryCache cache,
             ILogger<SecurityEventMonitoringService> logger,
-            IOptions<SecurityMonitoringOptions> options)
+            IOptions<SecurityMonitoringOptions> options,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _cache = cache;
             _logger = logger;
             _options = options.Value;
+            _serviceScopeFactory = serviceScopeFactory;
 
             _recentEvents = new ConcurrentQueue<SecurityEvent>();
             _ipProfiles = new ConcurrentDictionary<string, IpActivityProfile>();
@@ -454,7 +458,12 @@ namespace ConduitLLM.Security.Services
             };
         }
 
-        private async void PerformSecurityAnalysis(object? state)
+        private void PerformSecurityAnalysis(object? state)
+        {
+            _ = PerformSecurityAnalysisAsync();
+        }
+
+        private async Task PerformSecurityAnalysisAsync()
         {
             if (!await _analysisSemaphore.WaitAsync(0))
             {

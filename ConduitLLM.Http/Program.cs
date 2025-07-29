@@ -47,21 +47,11 @@ using OpenTelemetry.Resources; // Added for ResourceBuilder extensions
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    // Don't load appsettings.json
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
 });
+
+// Use environment variables ONLY for configuration
 builder.Configuration.Sources.Clear();
-
-// Add appsettings files for development
-if (builder.Environment.IsDevelopment())
-{
-    builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
-    builder.Configuration.AddJsonFile("appsettings.HealthMonitoring.json", optional: true, reloadOnChange: true);
-    builder.Configuration.AddJsonFile("appsettings.SecurityMonitoring.json", optional: true, reloadOnChange: true);
-    builder.Configuration.AddJsonFile("appsettings.PerformanceMonitoring.json", optional: true, reloadOnChange: true);
-}
-
 builder.Configuration.AddEnvironmentVariables();
 
 // Database initialization strategy
@@ -1284,7 +1274,8 @@ builder.Services.AddHostedService<ModelDiscoveryNotificationBatcher>(sp =>
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
 {
     var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Configuration.Services.BatchSpendUpdateService>>();
-    var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceProvider, logger);
+    var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+    var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, logger);
     
     // Wire up cache invalidation event if Redis cache is available
     var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();

@@ -13,19 +13,19 @@ namespace ConduitLLM.Http.EventHandlers
         IConsumer<ProviderCredentialUpdated>,
         IConsumer<ProviderCredentialDeleted>
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<ProviderCredentialEventHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ProviderCredentialEventHandler
         /// </summary>
-        /// <param name="serviceProvider">Service provider for resolving optional dependencies</param>
+        /// <param name="serviceScopeFactory">Service scope factory for resolving optional dependencies</param>
         /// <param name="logger">Logger instance</param>
         public ProviderCredentialEventHandler(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<ProviderCredentialEventHandler> logger)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -44,8 +44,11 @@ namespace ConduitLLM.Http.EventHandlers
                     "Provider credential updated: {ProviderName} (ID: {ProviderId}), enabled: {IsEnabled}, changed properties: {ChangedProperties}",
                     @event.ProviderType.ToString(), @event.ProviderId, @event.IsEnabled, string.Join(", ", @event.ChangedProperties));
 
+                // Create a scope to get services
+                using var scope = _serviceScopeFactory.CreateScope();
+                
                 // Try to get provider credential cache from service provider
-                var providerCredentialCache = _serviceProvider.GetService<IProviderCredentialCache>();
+                var providerCredentialCache = scope.ServiceProvider.GetService<IProviderCredentialCache>();
                 
                 // Invalidate provider credential cache if available
                 if (providerCredentialCache != null)
@@ -55,7 +58,7 @@ namespace ConduitLLM.Http.EventHandlers
                 }
 
                 // Try to get provider discovery service from service provider
-                var providerDiscoveryService = _serviceProvider.GetService<IProviderDiscoveryService>();
+                var providerDiscoveryService = scope.ServiceProvider.GetService<IProviderDiscoveryService>();
                 
                 // If provider discovery service is available, refresh capabilities
                 if (providerDiscoveryService != null && @event.IsEnabled)
@@ -112,8 +115,11 @@ namespace ConduitLLM.Http.EventHandlers
                     "Provider credential deleted: {ProviderName} (ID: {ProviderId})",
                     @event.ProviderType.ToString(), @event.ProviderId);
 
+                // Create a scope to get services
+                using var scope = _serviceScopeFactory.CreateScope();
+                
                 // Try to get provider credential cache from service provider
-                var providerCredentialCache = _serviceProvider.GetService<IProviderCredentialCache>();
+                var providerCredentialCache = scope.ServiceProvider.GetService<IProviderCredentialCache>();
                 
                 // Clean up provider-related caches if available
                 if (providerCredentialCache != null)

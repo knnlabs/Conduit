@@ -18,6 +18,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
     [Trait("Component", "EventHandlers")]
     public class SpendUpdateProcessorTests : TestBase
     {
+        private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
+        private readonly Mock<IServiceScope> _serviceScopeMock;
         private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<IPublishEndpoint> _publishEndpointMock;
         private readonly Mock<IVirtualKeyRepository> _virtualKeyRepositoryMock;
@@ -25,14 +27,24 @@ namespace ConduitLLM.Http.Tests.EventHandlers
 
         public SpendUpdateProcessorTests(ITestOutputHelper output) : base(output)
         {
+            _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
+            _serviceScopeMock = new Mock<IServiceScope>();
             _serviceProviderMock = new Mock<IServiceProvider>();
             _publishEndpointMock = new Mock<IPublishEndpoint>();
             _virtualKeyRepositoryMock = new Mock<IVirtualKeyRepository>();
             
+            // Setup scope factory to return scope
+            _serviceScopeFactoryMock.Setup(x => x.CreateScope())
+                .Returns(_serviceScopeMock.Object);
+            
+            // Setup scope to return service provider
+            _serviceScopeMock.Setup(x => x.ServiceProvider)
+                .Returns(_serviceProviderMock.Object);
+            
             var logger = CreateLogger<SpendUpdateProcessor>();
             
             _processor = new SpendUpdateProcessor(
-                _serviceProviderMock.Object,
+                _serviceScopeFactoryMock.Object,
                 _publishEndpointMock.Object,
                 logger.Object);
         }
@@ -289,7 +301,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
 
             // Assert
             act.Should().Throw<ArgumentNullException>()
-                .WithParameterName("serviceProvider");
+                .WithParameterName("serviceScopeFactory");
         }
 
         [Fact]
@@ -300,7 +312,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             
             // Act
             var act = () => new SpendUpdateProcessor(
-                _serviceProviderMock.Object,
+                _serviceScopeFactoryMock.Object,
                 null,
                 logger.Object);
 
@@ -314,7 +326,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
         {
             // Act
             var act = () => new SpendUpdateProcessor(
-                _serviceProviderMock.Object,
+                _serviceScopeFactoryMock.Object,
                 _publishEndpointMock.Object,
                 null);
 

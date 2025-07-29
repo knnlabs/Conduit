@@ -19,7 +19,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class BusinessMetricsService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BusinessMetricsService> _logger;
         private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
@@ -152,10 +152,10 @@ namespace ConduitLLM.Http.Services
         private readonly Dictionary<string, decimal> _lastCostValue = new();
 
         public BusinessMetricsService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<BusinessMetricsService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
@@ -182,7 +182,7 @@ namespace ConduitLLM.Http.Services
 
         private async Task CollectMetricsAsync()
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
 
             var tasks = new[]
             {
