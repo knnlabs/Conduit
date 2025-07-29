@@ -14,8 +14,7 @@ services:
   webui:
     # Use base node image for development instead of production build
     image: node:20-alpine
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}"
+    # Start as root to fix volume ownership, then switch to user
     volumes:
       # Mount source code for hot reloading
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
@@ -45,17 +44,27 @@ services:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
     working_dir: /app/ConduitLLM.WebUI
-    # Always install dependencies to ensure they're up to date
+    # Install su-exec and setup development environment
     command: |
       sh -c "
-        echo 'Installing SDK dependencies...'
-        cd /app/SDKs/Node/Common && npm install && npm run build
-        cd /app/SDKs/Node/Admin && npm install && npm run build
-        cd /app/SDKs/Node/Core && npm install && npm run build
+        echo 'Installing su-exec for user switching...'
+        apk add --no-cache su-exec
+        
+        echo 'Setting up development environment...'
+        # Ensure mounted volumes have correct ownership
+        mkdir -p /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
+        mkdir -p /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs/Node/*/node_modules
+        
+        echo 'Installing SDK dependencies as user ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}...'
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Common && npm install && npm run build'
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Admin && npm install && npm run build'
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Core && npm install && npm run build'
         echo 'Installing WebUI dependencies...'
-        cd /app/ConduitLLM.WebUI && npm install
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm install'
         echo 'Starting development server...'
-        cd /app/ConduitLLM.WebUI && npm run dev
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm run dev'
       "
     ports:
       - "3000:3000"
