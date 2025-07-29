@@ -4,597 +4,3814 @@
  */
 
 export interface paths {
-    "/chat/completions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create chat completion
-         * @description Creates a model response for the given chat conversation. Compatible with OpenAI's chat completions API.
-         */
-        post: operations["createChatCompletion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/v1/audio/transcriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get?: never;
+    put?: never;
+    /** Transcribes audio into text. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "multipart/form-data": {
+            /**
+             * Format: binary
+             * @description The audio file to transcribe.
+             */
+            file: string;
+            /**
+             * @description The model to use for transcription (e.g., "whisper-1").
+             * @default whisper-1
+             */
+            model?: string;
+            /** @description The language of the input audio (ISO-639-1). */
+            language?: string;
+            /** @description Optional text to guide the model's style. */
+            prompt?: string;
+            /** @description The format of the transcript output. */
+            response_format?: string;
+            /**
+             * Format: double
+             * @description Sampling temperature between 0 and 1.
+             */
+            temperature?: number;
+            /** @description The timestamp granularities to populate. */
+            timestamp_granularities?: string[];
+          };
         };
-        /**
-         * List available models
-         * @description Lists the currently available models, and provides basic information about each one.
-         */
-        get: operations["listModels"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/embeddings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["AudioTranscriptionResponse"];
+            "application/json": components["schemas"]["AudioTranscriptionResponse"];
+            "text/json": components["schemas"]["AudioTranscriptionResponse"];
+          };
         };
-        get?: never;
-        put?: never;
-        /**
-         * Create embeddings
-         * @description Creates an embedding vector representing the input text. Note: This endpoint is not fully implemented yet.
-         */
-        post: operations["createEmbedding"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/images/generations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
         };
-        get?: never;
-        put?: never;
-        /**
-         * Create image
-         * @description Creates an image given a prompt.
-         */
-        post: operations["createImage"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/completions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
         };
-        get?: never;
-        put?: never;
-        /**
-         * Create completion (Legacy)
-         * @deprecated
-         * @description Legacy completions endpoint. Use /chat/completions instead.
-         */
-        post: operations["createCompletion"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        /** @description Too Many Requests */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/speech": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Generates audio from input text. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The text-to-speech request. */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TextToSpeechRequestDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/opus": components["schemas"]["ProblemDetails"];
+            "audio/aac": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/pcm": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/opus": components["schemas"]["ProblemDetails"];
+            "audio/aac": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/pcm": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Too Many Requests */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/opus": components["schemas"]["ProblemDetails"];
+            "audio/aac": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/pcm": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/translations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Translates audio into English text. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "multipart/form-data": {
+            /**
+             * Format: binary
+             * @description The audio file to translate.
+             */
+            file: string;
+            /**
+             * @description The model to use for translation.
+             * @default whisper-1
+             */
+            model?: string;
+            /** @description Optional text to guide the model's style. */
+            prompt?: string;
+            /** @description The format of the translation output. */
+            response_format?: string;
+            /**
+             * Format: double
+             * @description Sampling temperature between 0 and 1.
+             */
+            temperature?: number;
+          };
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["AudioTranscriptionResponse"];
+            "application/json": components["schemas"]["AudioTranscriptionResponse"];
+            "text/json": components["schemas"]["AudioTranscriptionResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/spend-updates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start a batch spend update operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Batch spend update request */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["BatchSpendUpdateRequest"];
+          "text/json": components["schemas"]["BatchSpendUpdateRequest"];
+          "application/*+json": components["schemas"]["BatchSpendUpdateRequest"];
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BatchOperationStartResponse"];
+            "application/json": components["schemas"]["BatchOperationStartResponse"];
+            "text/json": components["schemas"]["BatchOperationStartResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/virtual-key-updates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start a batch virtual key update operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Batch virtual key update request */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+          "text/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+          "application/*+json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BatchOperationStartResponse"];
+            "application/json": components["schemas"]["BatchOperationStartResponse"];
+            "text/json": components["schemas"]["BatchOperationStartResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/webhook-sends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start a batch webhook send operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Batch webhook send request */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["BatchWebhookSendRequest"];
+          "text/json": components["schemas"]["BatchWebhookSendRequest"];
+          "application/*+json": components["schemas"]["BatchWebhookSendRequest"];
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BatchOperationStartResponse"];
+            "application/json": components["schemas"]["BatchOperationStartResponse"];
+            "text/json": components["schemas"]["BatchOperationStartResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/operations/{operationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the status of a batch operation */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Operation ID */
+          operationId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BatchOperationStatusResponse"];
+            "application/json": components["schemas"]["BatchOperationStatusResponse"];
+            "text/json": components["schemas"]["BatchOperationStatusResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/batch/operations/{operationId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancel an active batch operation */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Operation ID to cancel */
+          operationId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Conflict */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/completions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/embeddings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["EmbeddingRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/chat/completions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["ChatCompletionRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all discovered models and their capabilities, filtered by virtual key permissions. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Optional capability filter (e.g., "video_generation", "vision") */
+          capability?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all available capabilities in the system. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/{fileId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Downloads a file by its identifier with support for range requests. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Whether to display inline (true) or force download (false). */
+          inline?: boolean;
+        };
+        header?: never;
+        path: {
+          /** @description The file identifier (storage key or URL). */
+          fileId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Checks if a file exists. */
+    head: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The file identifier. */
+          fileId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/metadata/{fileId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets metadata information about a file. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The file identifier. */
+          fileId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/downloads/generate-url": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Generates a temporary download URL for a file. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The URL generation request. */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["GenerateUrlRequest"];
+          "text/json": components["schemas"]["GenerateUrlRequest"];
+          "application/*+json": components["schemas"]["GenerateUrlRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/test/health-monitoring/scenarios": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available test scenarios */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/test/health-monitoring/start/{scenario}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start a test scenario */
+    post: {
+      parameters: {
+        query?: {
+          durationSeconds?: number;
+        };
+        header?: never;
+        path: {
+          scenario: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/test/health-monitoring/stop/{scenario}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop a running test scenario */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          scenario: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/test/health-monitoring/active": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get currently running scenarios */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/test/health-monitoring/alert": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Trigger a custom alert */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["CustomAlertRequest"];
+          "text/json": components["schemas"]["CustomAlertRequest"];
+          "application/*+json": components["schemas"]["CustomAlertRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/hybrid/process": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Processes audio input through the hybrid STT-LLM-TTS pipeline. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "multipart/form-data": {
+            /**
+             * Format: binary
+             * @description The audio file to process.
+             */
+            file?: string;
+            /** @description Optional session ID for maintaining conversation context. */
+            sessionId?: string;
+            /** @description Optional language code for transcription. */
+            language?: string;
+            /** @description Optional system prompt for the LLM. */
+            systemPrompt?: string;
+            /** @description Optional voice ID for TTS synthesis. */
+            voiceId?: string;
+            /**
+             * @description Desired output audio format (default: mp3).
+             * @default mp3
+             */
+            outputFormat?: string;
+            /**
+             * Format: double
+             * @description Temperature for LLM response generation (0.0-2.0).
+             * @default 0.7
+             */
+            temperature?: number;
+            /**
+             * Format: int32
+             * @description Maximum tokens for the LLM response.
+             * @default 150
+             */
+            maxTokens?: number;
+          };
+        };
+      };
+      responses: {
+        /** @description Returns the synthesized audio data. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": string;
+            "audio/wav": string;
+            "audio/flac": string;
+          };
+        };
+        /** @description If the request is invalid. */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If authentication fails. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If the user lacks audio permissions. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "audio/mpeg": components["schemas"]["ProblemDetails"];
+            "audio/wav": components["schemas"]["ProblemDetails"];
+            "audio/flac": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If an internal error occurs. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/hybrid/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Creates a new conversation session for maintaining context. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The session configuration. */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["HybridSessionConfig"];
+          "text/json": components["schemas"]["HybridSessionConfig"];
+          "application/*+json": components["schemas"]["HybridSessionConfig"];
+        };
+      };
+      responses: {
+        /** @description Returns the session ID. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["CreateSessionResponse"];
+          };
+        };
+        /** @description If the configuration is invalid. */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If authentication fails. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If the user lacks audio permissions. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/hybrid/sessions/{sessionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Closes an active conversation session. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The session ID to close. */
+          sessionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Session closed successfully. */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description If the session ID is invalid. */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description If authentication fails. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/audio/hybrid/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Checks if the hybrid audio service is available. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Returns the availability status. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ServiceStatus"];
+          };
+        };
+        /** @description If authentication fails. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/images/optimal-provider": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the optimal provider for image generation based on current performance metrics. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Number of images to generate (default 1). */
+          imageCount?: number;
+          /** @description Maximum acceptable wait time in seconds (optional). */
+          maxWaitTime?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OptimalProviderResponse"];
+            "application/json": components["schemas"]["OptimalProviderResponse"];
+            "text/json": components["schemas"]["OptimalProviderResponse"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/images/provider-stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets performance statistics for all image generation providers. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Time window in minutes for statistics (default 60). */
+          windowMinutes?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ImageGenerationProviderStats"][];
+            "application/json": components["schemas"]["ImageGenerationProviderStats"][];
+            "text/json": components["schemas"]["ImageGenerationProviderStats"][];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/images/provider-stats/{provider}/{model}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets performance statistics for a specific provider. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Time window in minutes for statistics (default 60). */
+          windowMinutes?: number;
+        };
+        header?: never;
+        path: {
+          /** @description Provider name. */
+          provider: string;
+          /** @description Model name. */
+          model: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ImageGenerationProviderStats"];
+            "application/json": components["schemas"]["ImageGenerationProviderStats"];
+            "text/json": components["schemas"]["ImageGenerationProviderStats"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Creates one or more images given a prompt. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The image generation request. */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ImageGenerationRequest"];
+          "text/json": components["schemas"]["ImageGenerationRequest"];
+          "application/*+json": components["schemas"]["ImageGenerationRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/async": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Creates an async image generation task. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The image generation request. */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ImageGenerationRequest"];
+          "text/json": components["schemas"]["ImageGenerationRequest"];
+          "application/*+json": components["schemas"]["ImageGenerationRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/{taskId}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the status of an async image generation task. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The task ID. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/images/generations/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Cancels an async image generation task. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The task ID to cancel. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/media/{storageKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Retrieves a media file by its storage key. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The unique storage key. */
+          storageKey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /** Checks if a media file exists. */
+    head: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The unique storage key. */
+          storageKey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/media/info/{storageKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets metadata information about a media file. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The unique storage key. */
+          storageKey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/metrics/database/pool": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets database connection pool metrics. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/metrics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all application metrics including database, cache, and performance metrics. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-models/{providerName}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets available models for a specified provider */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Whether to bypass cache and force refresh */
+          forceRefresh?: boolean;
+        };
+        header?: never;
+        path: {
+          /** @description Name of the provider */
+          providerName: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": string[];
+            "application/json": string[];
+            "text/json": string[];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/realtime/connect": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Establishes a WebSocket connection for real-time audio streaming. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description The model to use for the real-time session (e.g., "gpt-4o-realtime-preview") */
+          model?: string;
+          /** @description Optional provider override (defaults to routing based on model) */
+          provider?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description WebSocket connection established */
+        101: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Invalid request or WebSocket not supported */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Authentication failed */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Virtual key does not have access to real-time features */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description No available providers for the requested model */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/realtime/connections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the status of active real-time connections for the authenticated user. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConnectionStatusResponse"];
+            "application/json": components["schemas"]["ConnectionStatusResponse"];
+            "text/json": components["schemas"]["ConnectionStatusResponse"];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/realtime/connections/{connectionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Terminates a specific real-time connection. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the connection to terminate */
+          connectionId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/signalr/batching/statistics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets current batching statistics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["BatchingStatistics"];
+            "application/json": components["schemas"]["BatchingStatistics"];
+            "text/json": components["schemas"]["BatchingStatistics"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/signalr/batching/pause": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pauses message batching (messages sent immediately) */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/signalr/batching/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Resumes message batching */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/signalr/batching/flush": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Forces immediate sending of all pending batches */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/signalr/batching/efficiency": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets batching efficiency metrics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/connections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets SignalR connection statistics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConnectionStatistics"];
+            "application/json": components["schemas"]["ConnectionStatistics"];
+            "text/json": components["schemas"]["ConnectionStatistics"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/queue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets SignalR message queue statistics */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["QueueStatistics"];
+            "application/json": components["schemas"]["QueueStatistics"];
+            "text/json": components["schemas"]["QueueStatistics"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/connections/details": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets detailed connection information (requires admin auth) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/connections/hub/{hubName}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets connections for a specific hub */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          hubName: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/connections/key/{virtualKeyId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets connections for a specific virtual key */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          virtualKeyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/connections/group/{groupName}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets connections in a specific group */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          groupName: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/queue/deadletter": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets dead letter queue messages */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr/queue/deadletter/{messageId}/requeue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Requeues a dead letter message */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          messageId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/signalr": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets overall SignalR health status */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the status of a specific task. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the task to retrieve. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancels a running task. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the task to cancel. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/{taskId}/poll": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Polls a task until it completes or times out. */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Maximum time to wait in seconds (default: 300, max: 600). */
+          timeout?: number;
+          /** @description Polling interval in seconds (default: 2, min: 1). */
+          interval?: number;
+        };
+        header?: never;
+        path: {
+          /** @description The ID of the task to poll. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tasks/cleanup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cleans up old completed tasks. */
+    post: {
+      parameters: {
+        query?: {
+          /** @description Remove tasks older than this many hours (default: 24, min: 1). */
+          olderThanHours?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/videos/generations/async": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Starts an asynchronous video generation task. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The video generation request. */
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["VideoGenerationRequest"];
+          "text/json": components["schemas"]["VideoGenerationRequest"];
+          "application/*+json": components["schemas"]["VideoGenerationRequest"];
+        };
+      };
+      responses: {
+        /** @description Video generation task started. */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["VideoGenerationTaskResponse"];
+            "application/json": components["schemas"]["VideoGenerationTaskResponse"];
+            "text/json": components["schemas"]["VideoGenerationTaskResponse"];
+          };
+        };
+        /** @description Invalid request parameters. */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Authentication failed. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Virtual key does not have permission. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Rate limit exceeded. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/videos/generations/tasks/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets the status of a video generation task. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The task ID returned from the async generation endpoint. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Task status retrieved successfully. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
+            "application/json": components["schemas"]["VideoGenerationTaskStatus"];
+            "text/json": components["schemas"]["VideoGenerationTaskStatus"];
+          };
+        };
+        /** @description Authentication failed. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Task not found. */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/videos/generations/tasks/{taskId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Manually retries a failed video generation task. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The task ID to retry. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Task queued for retry. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
+            "application/json": components["schemas"]["VideoGenerationTaskStatus"];
+            "text/json": components["schemas"]["VideoGenerationTaskStatus"];
+          };
+        };
+        /** @description Task cannot be retried (not failed or exceeded max retries). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Authentication failed. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Task not found. */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/videos/generations/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Cancels a video generation task. */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The task ID to cancel. */
+          taskId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Task cancelled successfully. */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Authentication failed. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Task not found. */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Task cannot be cancelled (already completed or failed). */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error. */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        ChatCompletionRequest: {
-            /**
-             * @description ID of the model to use
-             * @example gpt-4
-             */
-            model: string;
-            /** @description List of messages comprising the conversation so far */
-            messages: components["schemas"]["Message"][];
-            /**
-             * Format: double
-             * @description Sampling temperature between 0 and 2
-             * @default 1
-             */
-            temperature: number;
-            /**
-             * @description Maximum number of tokens to generate
-             * @example 1024
-             */
-            max_tokens?: number;
-            /**
-             * Format: double
-             * @description Nucleus sampling parameter
-             * @default 1
-             */
-            top_p: number;
-            /**
-             * @description Number of chat completion choices to generate
-             * @default 1
-             */
-            n: number;
-            /**
-             * @description Whether to stream back partial progress
-             * @default false
-             */
-            stream: boolean;
-            /** @description Sequences where the API will stop generating further tokens */
-            stop?: string | string[];
-            /**
-             * Format: double
-             * @description Penalize new tokens based on whether they appear in the text so far
-             * @default 0
-             */
-            presence_penalty: number;
-            /**
-             * Format: double
-             * @description Penalize new tokens based on their existing frequency in the text
-             * @default 0
-             */
-            frequency_penalty: number;
-            /** @description Modify the likelihood of specified tokens appearing in the completion */
-            logit_bias?: {
-                [key: string]: number;
-            };
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-            /** @description List of tools the model may call */
-            tools?: components["schemas"]["Tool"][];
-            /** @description Controls which tool is called by the model */
-            tool_choice?: ("none" | "auto") | components["schemas"]["ToolChoice"];
-            response_format?: components["schemas"]["ResponseFormat"];
-            /** @description Random seed for deterministic outputs */
-            seed?: number;
-        };
-        Message: {
-            /**
-             * @description Role of the message author
-             * @enum {string}
-             */
-            role: "system" | "user" | "assistant" | "function" | "tool";
-            /** @description Content of the message */
-            content: string | components["schemas"]["ContentPart"][];
-            /** @description Name of the function (when role is function) */
-            name?: string;
-            /** @description Function call made by the assistant */
-            function_call?: components["schemas"]["FunctionCall"];
-            /** @description Tool calls made by the assistant */
-            tool_calls?: components["schemas"]["ToolCall"][];
-        };
-        ContentPart: {
-            /** @enum {string} */
-            type: "text";
-            text: string;
-        } | {
-            /** @enum {string} */
-            type: "image_url";
-            image_url: {
-                /** Format: uri */
-                url: string;
-                /**
-                 * @default auto
-                 * @enum {string}
-                 */
-                detail: "auto" | "low" | "high";
-            };
-        };
-        Tool: {
-            /** @enum {string} */
-            type: "function";
-            function: components["schemas"]["FunctionDefinition"];
-        };
-        FunctionDefinition: {
-            /** @description Name of the function */
-            name: string;
-            /** @description Description of what the function does */
-            description?: string;
-            /** @description Parameters the function accepts (JSON Schema) */
-            parameters?: Record<string, never>;
-        };
-        ToolChoice: {
-            /** @enum {string} */
-            type: "function";
-            function: {
-                name: string;
-            };
-        };
-        ResponseFormat: {
-            /** @enum {string} */
-            type: "text" | "json_object";
-            /** @description JSON Schema for structured outputs */
-            schema?: Record<string, never>;
-        };
-        ChatCompletionResponse: {
-            /** @description Unique identifier for the chat completion */
-            id: string;
-            /** @enum {string} */
-            object: "chat.completion";
-            /**
-             * Format: int64
-             * @description Unix timestamp of when the completion was created
-             */
-            created: number;
-            /** @description Model used for the completion */
-            model: string;
-            /** @description System fingerprint for the model configuration */
-            system_fingerprint?: string;
-            choices: components["schemas"]["Choice"][];
-            usage?: components["schemas"]["Usage"];
-        };
-        Choice: {
-            /** @description Index of the choice in the list */
-            index: number;
-            message: components["schemas"]["Message"];
-            /**
-             * @description Reason the model stopped generating tokens
-             * @enum {string}
-             */
-            finish_reason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call";
-            /** @description Log probabilities for the output tokens */
-            logprobs?: Record<string, never> | null;
-        };
-        ChatCompletionChunk: {
-            id: string;
-            /** @enum {string} */
-            object: "chat.completion.chunk";
-            /** Format: int64 */
-            created: number;
-            model: string;
-            system_fingerprint?: string;
-            choices: components["schemas"]["StreamingChoice"][];
-        };
-        StreamingChoice: {
-            index: number;
-            delta: components["schemas"]["DeltaContent"];
-            /** @enum {string|null} */
-            finish_reason?: "stop" | "length" | "tool_calls" | "content_filter" | "function_call" | null;
-        };
-        DeltaContent: {
-            /** @enum {string} */
-            role?: "system" | "user" | "assistant" | "function" | "tool";
-            content?: string | null;
-            function_call?: components["schemas"]["FunctionCall"];
-            tool_calls?: components["schemas"]["ToolCall"][];
-        };
-        FunctionCall: {
-            name: string;
-            /** @description JSON-encoded arguments */
-            arguments: string;
-        };
-        ToolCall: {
-            id: string;
-            /** @enum {string} */
-            type: "function";
-            function: components["schemas"]["FunctionCall"];
-        };
-        Usage: {
-            /** @description Number of tokens in the prompt */
-            prompt_tokens: number;
-            /** @description Number of tokens in the generated completion */
-            completion_tokens: number;
-            /** @description Total number of tokens used */
-            total_tokens: number;
-        };
-        Model: {
-            /** @description Model identifier */
-            id: string;
-            /** @enum {string} */
-            object: "model";
-            /**
-             * Format: int64
-             * @description Unix timestamp of model creation
-             */
-            created?: number;
-            /** @description Organization that owns the model */
-            owned_by?: string;
-        };
-        EmbeddingRequest: {
-            /** @description ID of the model to use */
-            model: string;
-            /** @description Input text to embed */
-            input: string | string[];
-            /**
-             * @description Format to return embeddings in
-             * @default float
-             * @enum {string}
-             */
-            encoding_format: "float" | "base64";
-            /** @description Number of dimensions for the output embeddings */
-            dimensions?: number;
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-        };
-        EmbeddingResponse: {
-            /** @enum {string} */
-            object: "list";
-            data: {
-                /** @enum {string} */
-                object: "embedding";
-                embedding: number[];
-                index: number;
-            }[];
-            model: string;
-            usage: {
-                prompt_tokens: number;
-                total_tokens: number;
-            };
-        };
-        ImageGenerationRequest: {
-            /** @description ID of the model to use */
-            model: string;
-            /** @description Text description of the desired image(s) */
-            prompt: string;
-            /**
-             * @description Number of images to generate
-             * @default 1
-             */
-            n: number;
-            /**
-             * @description Quality of the image
-             * @default standard
-             * @enum {string}
-             */
-            quality: "standard" | "hd";
-            /**
-             * @description Format in which generated images are returned
-             * @default url
-             * @enum {string}
-             */
-            response_format: "url" | "b64_json";
-            /**
-             * @description Size of the generated images
-             * @default 1024x1024
-             * @enum {string}
-             */
-            size: "256x256" | "512x512" | "1024x1024" | "1792x1024" | "1024x1792";
-            /**
-             * @description Style of the generated images
-             * @default vivid
-             * @enum {string}
-             */
-            style: "vivid" | "natural";
-            /** @description Unique identifier representing your end-user */
-            user?: string;
-        };
-        ImageGenerationResponse: {
-            /**
-             * Format: int64
-             * @description Unix timestamp of when the images were created
-             */
-            created: number;
-            data: {
-                /**
-                 * Format: uri
-                 * @description URL of the generated image
-                 */
-                url?: string;
-                /** @description Base64-encoded JSON of the generated image */
-                b64_json?: string;
-                /** @description The prompt that was used to generate the image */
-                revised_prompt?: string;
-            }[];
-        };
-        Error: {
-            error: string | {
-                /** @description Human-readable error message */
-                message: string;
-                /** @description Error type */
-                type: string;
-                /** @description Error code */
-                code?: string;
-                /** @description Parameter related to the error */
-                param?: string | null;
-            };
-        };
+  schemas: {
+    /**
+     * Format: int32
+     * @description Alert severity levels
+     * @enum {integer}
+     */
+    AlertSeverity: 0 | 1 | 2 | 3;
+    AudioTranscriptionResponse: {
+      text?: string | null;
+      language?: string | null;
+      /** Format: double */
+      duration?: number | null;
+      segments?: components["schemas"]["TranscriptionSegment"][] | null;
+      words?: components["schemas"]["TranscriptionWord"][] | null;
+      alternatives?: components["schemas"]["TranscriptionAlternative"][] | null;
+      /** Format: double */
+      confidence?: number | null;
+      metadata?: {
+        [key: string]: unknown;
+      } | null;
+      model?: string | null;
+      usage?: components["schemas"]["AudioUsage"];
     };
-    responses: {
-        /** @description Bad request */
-        BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Authentication required */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Rate limit exceeded */
-        RateLimitExceeded: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Internal server error */
-        InternalServerError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
+    AudioUsage: {
+      /** Format: double */
+      audioSeconds?: number;
+      /** Format: int32 */
+      characterCount?: number | null;
+      additionalMetrics?: {
+        [key: string]: unknown;
+      } | null;
     };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /** @description Response when starting a batch operation */
+    BatchOperationStartResponse: {
+      /** @description Unique identifier for tracking the operation */
+      operationId?: string | null;
+      /** @description Type of batch operation */
+      operationType?: string | null;
+      /**
+       * Format: int32
+       * @description Total number of items in the batch
+       */
+      totalItems?: number;
+      /** @description URL to check operation status */
+      statusUrl?: string | null;
+      /** @description SignalR task ID to subscribe to for real-time updates */
+      taskId?: string | null;
+      /** @description SignalR event names to listen for */
+      signalREvents?: string[] | null;
+      /** @description Informational message */
+      message?: string | null;
+    };
+    /** @description Current status of a batch operation */
+    BatchOperationStatusResponse: {
+      /** @description Operation identifier */
+      operationId?: string | null;
+      /** @description Type of operation */
+      operationType?: string | null;
+      /** @description Current status */
+      status?: string | null;
+      /**
+       * Format: int32
+       * @description Total items in batch
+       */
+      totalItems?: number;
+      /**
+       * Format: int32
+       * @description Items processed so far
+       */
+      processedCount?: number;
+      /**
+       * Format: int32
+       * @description Successful items
+       */
+      successCount?: number;
+      /**
+       * Format: int32
+       * @description Failed items
+       */
+      failedCount?: number;
+      /**
+       * Format: int32
+       * @description Progress percentage (0-100)
+       */
+      progressPercentage?: number;
+      /**
+       * Format: date-span
+       * @description Time elapsed
+       */
+      elapsedTime?: string;
+      /**
+       * Format: date-span
+       * @description Estimated time remaining
+       */
+      estimatedTimeRemaining?: string;
+      /**
+       * Format: double
+       * @description Processing rate
+       */
+      itemsPerSecond?: number;
+      /** @description Current item being processed */
+      currentItem?: string | null;
+      /** @description Whether operation can be cancelled */
+      canCancel?: boolean;
+    };
+    /** @description Request to update spend for multiple virtual keys */
+    BatchSpendUpdateRequest: {
+      /** @description List of spend updates to process */
+      updates: components["schemas"]["SpendUpdateDto"][];
+    };
+    /** @description Request to update multiple virtual keys */
+    BatchVirtualKeyUpdateRequest: {
+      /** @description List of virtual key updates */
+      updates: components["schemas"]["VirtualKeyUpdateDto"][];
+    };
+    /** @description Request to send webhooks in batch */
+    BatchWebhookSendRequest: {
+      /** @description List of webhooks to send */
+      webhooks: components["schemas"]["WebhookSendDto"][];
+    };
+    /** @description Statistics about message batching */
+    BatchingStatistics: {
+      /** Format: int64 */
+      totalMessagesBatched?: number;
+      /** Format: int64 */
+      totalBatchesSent?: number;
+      /** Format: double */
+      averageMessagesPerBatch?: number;
+      /** Format: int64 */
+      currentPendingMessages?: number;
+      /** Format: date-time */
+      lastBatchSentAt?: string;
+      /** Format: date-span */
+      averageBatchLatency?: string;
+      /** Format: int64 */
+      networkCallsSaved?: number;
+      isBatchingEnabled?: boolean;
+      messagesByMethod?: {
+        [key: string]: number;
+      } | null;
+      /** Format: double */
+      batchEfficiencyPercentage?: number;
+    };
+    ChatCompletionRequest: {
+      model: string | null;
+      messages: components["schemas"]["Message"][] | null;
+      /** Format: double */
+      temperature?: number | null;
+      /** Format: int32 */
+      max_tokens?: number | null;
+      /** Format: double */
+      top_p?: number | null;
+      /** Format: int32 */
+      top_k?: number | null;
+      /** Format: int32 */
+      n?: number | null;
+      stream?: boolean | null;
+      stop?: string[] | null;
+      user?: string | null;
+      tools?: components["schemas"]["Tool"][] | null;
+      tool_choice?: components["schemas"]["ToolChoice"];
+      response_format?: components["schemas"]["ResponseFormat"];
+      /** Format: int32 */
+      seed?: number | null;
+      /** Format: double */
+      presence_penalty?: number | null;
+      /** Format: double */
+      frequency_penalty?: number | null;
+      logit_bias?: {
+        [key: string]: number;
+      } | null;
+      system_fingerprint?: string | null;
+    };
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
+    CircuitState: 0 | 1 | 2 | 3;
+    ConnectionInfo: {
+      connectionId?: string | null;
+      model?: string | null;
+      provider?: string | null;
+      /** Format: date-time */
+      connectedAt?: string;
+      state?: string | null;
+      usage?: components["schemas"]["ConnectionUsageStats"];
+      virtualKey?: string | null;
+      providerConnectionId?: string | null;
+      /** Format: date-time */
+      startTime?: string;
+      /** Format: date-time */
+      lastActivity?: string;
+      /** Format: int64 */
+      audioBytesProcessed?: number;
+      /** Format: int64 */
+      tokensUsed?: number;
+      /** Format: double */
+      estimatedCost?: number;
+    };
+    /** @description Statistics about SignalR connections */
+    ConnectionStatistics: {
+      /** Format: int32 */
+      totalActiveConnections?: number;
+      connectionsByHub?: {
+        [key: string]: number;
+      } | null;
+      connectionsByTransport?: {
+        [key: string]: number;
+      } | null;
+      /** Format: int32 */
+      totalGroups?: number;
+      /** Format: int32 */
+      staleConnections?: number;
+      /** Format: double */
+      averageConnectionDurationMinutes?: number;
+      /** Format: double */
+      averageIdleTimeMinutes?: number;
+      /** Format: date-time */
+      oldestConnectionTime?: string;
+      /** Format: date-time */
+      newestConnectionTime?: string;
+      /** Format: int64 */
+      totalMessagesSent?: number;
+      /** Format: int64 */
+      totalMessagesAcknowledged?: number;
+      /** Format: double */
+      acknowledgmentRate?: number;
+    };
+    /** @description Response model for connection status queries. */
+    ConnectionStatusResponse: {
+      /**
+       * Format: int32
+       * @description The virtual key ID.
+       */
+      virtualKeyId?: number;
+      /** @description List of active connections. */
+      activeConnections?: components["schemas"]["ConnectionInfo"][] | null;
+    };
+    ConnectionUsageStats: {
+      /** Format: double */
+      audioDurationSeconds?: number;
+      /** Format: int32 */
+      messagesSent?: number;
+      /** Format: int32 */
+      messagesReceived?: number;
+      /** Format: double */
+      estimatedCost?: number;
+    };
+    /** @description Response for session creation. */
+    CreateSessionResponse: {
+      /** @description Gets or sets the created session ID. */
+      sessionId?: string | null;
+    };
+    CustomAlertRequest: {
+      severity?: components["schemas"]["AlertSeverity"];
+      title?: string | null;
+      message?: string | null;
+      component?: string | null;
+      suggestedActions?: string[] | null;
+    };
+    EmbeddingRequest: {
+      input: unknown;
+      model: string | null;
+      encoding_format: string | null;
+      /** Format: int32 */
+      dimensions?: number | null;
+      user?: string | null;
+    };
+    FunctionCall: {
+      name: string | null;
+      arguments: string | null;
+    };
+    FunctionDefinition: {
+      name: string | null;
+      description?: string | null;
+      parameters?: {
+        [key: string]: components["schemas"]["JsonNode"];
+      } | null;
+    };
+    /** @description Request to generate a temporary download URL. */
+    GenerateUrlRequest: {
+      /** @description The file identifier. */
+      fileId: string | null;
+      /**
+       * Format: int32
+       * @description How many minutes the URL should be valid (1-10080).
+       */
+      expirationMinutes?: number | null;
+    };
+    HybridLatencyMetrics: {
+      /** Format: double */
+      averageSttLatencyMs?: number;
+      /** Format: double */
+      averageLlmLatencyMs?: number;
+      /** Format: double */
+      averageTtsLatencyMs?: number;
+      /** Format: double */
+      averageTotalLatencyMs?: number;
+      /** Format: double */
+      p95LatencyMs?: number;
+      /** Format: double */
+      p99LatencyMs?: number;
+      /** Format: int32 */
+      sampleCount?: number;
+      /** Format: date-time */
+      calculatedAt?: string;
+    };
+    HybridSessionConfig: {
+      sttProvider?: string | null;
+      llmModel?: string | null;
+      ttsProvider?: string | null;
+      systemPrompt?: string | null;
+      defaultVoice?: string | null;
+      /** Format: int32 */
+      maxHistoryTurns?: number;
+      /** Format: date-span */
+      sessionTimeout?: string;
+      enableLatencyOptimization?: boolean;
+      metadata?: {
+        [key: string]: string;
+      } | null;
+    };
+    ImageGenerationProviderStats: {
+      provider?: string | null;
+      model?: string | null;
+      /** Format: double */
+      avg_generation_time_ms?: number;
+      /** Format: double */
+      p95_generation_time_ms?: number;
+      /** Format: double */
+      success_rate?: number;
+      /** Format: int32 */
+      request_count?: number;
+      /** Format: int32 */
+      current_queue_depth?: number;
+      /** Format: double */
+      estimated_wait_time_seconds?: number;
+      /** Format: double */
+      health_score?: number;
+      is_healthy?: boolean;
+      /** Format: date-time */
+      last_updated?: string;
+      /** Format: int32 */
+      window_minutes?: number;
+    };
+    ImageGenerationRequest: {
+      prompt: string | null;
+      model: string | null;
+      /** Format: int32 */
+      n?: number;
+      quality?: string | null;
+      response_format?: string | null;
+      size?: string | null;
+      style?: string | null;
+      user?: string | null;
+      image?: string | null;
+      mask?: string | null;
+      operation?: string | null;
+    };
+    JsonNode: {
+      options?: components["schemas"]["JsonNodeOptions"];
+      parent?: components["schemas"]["JsonNode"];
+      root?: components["schemas"]["JsonNode"];
+    };
+    JsonNodeOptions: {
+      propertyNameCaseInsensitive?: boolean;
+    };
+    Message: {
+      role: string | null;
+      content?: unknown;
+      name?: string | null;
+      tool_calls?: components["schemas"]["ToolCall"][] | null;
+      tool_call_id?: string | null;
+    };
+    /** @description Response for optimal provider selection. */
+    OptimalProviderResponse: {
+      /** @description Selected provider name. */
+      provider?: string | null;
+      /** @description Selected model name. */
+      model?: string | null;
+      /**
+       * Format: double
+       * @description Estimated wait time in seconds.
+       */
+      estimatedWaitTimeSeconds?: number;
+      /**
+       * Format: double
+       * @description Average generation time in milliseconds.
+       */
+      averageGenerationTimeMs?: number;
+      /**
+       * Format: double
+       * @description Success rate (0.0 to 1.0).
+       */
+      successRate?: number;
+      /**
+       * Format: double
+       * @description Provider health score (0.0 to 1.0).
+       */
+      healthScore?: number;
+      /**
+       * Format: int32
+       * @description Current queue depth.
+       */
+      currentQueueDepth?: number;
+    };
+    ProblemDetails: {
+      type?: string | null;
+      title?: string | null;
+      /** Format: int32 */
+      status?: number | null;
+      detail?: string | null;
+      instance?: string | null;
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
+    ProviderType:
+      | 1
+      | 2
+      | 3
+      | 4
+      | 5
+      | 6
+      | 7
+      | 8
+      | 9
+      | 10
+      | 11
+      | 12
+      | 13
+      | 14
+      | 15
+      | 16
+      | 17
+      | 18
+      | 19
+      | 20
+      | 21
+      | 22;
+    /** @description Statistics about the message queue */
+    QueueStatistics: {
+      /** Format: int32 */
+      pendingMessages?: number;
+      /** Format: int32 */
+      deadLetterMessages?: number;
+      /** Format: int32 */
+      processedMessages?: number;
+      /** Format: int32 */
+      failedMessages?: number;
+      /** Format: date-time */
+      lastProcessedAt?: string;
+      circuitBreakerState?: components["schemas"]["CircuitState"];
+      /** Format: int32 */
+      consecutiveFailures?: number;
+    };
+    ResponseFormat: {
+      type?: string | null;
+    };
+    /** @description Service status response. */
+    ServiceStatus: {
+      /** @description Gets or sets whether the service is available. */
+      available?: boolean;
+      latencyMetrics?: components["schemas"]["HybridLatencyMetrics"];
+    };
+    /** @description Individual spend update item */
+    SpendUpdateDto: {
+      /**
+       * Format: int32
+       * @description Virtual key to update
+       */
+      virtualKeyId: number;
+      /**
+       * Format: double
+       * @description Amount to add to spend
+       */
+      amount: number;
+      /** @description Model used */
+      model: string;
+      providerType: components["schemas"]["ProviderType"];
+      /** @description Additional metadata */
+      metadata?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    /** @description DTO for text-to-speech requests. */
+    TextToSpeechRequestDto: {
+      model: string;
+      input: string;
+      voice: string;
+      response_format?: string | null;
+      /** Format: double */
+      speed?: number | null;
+    };
+    Tool: {
+      type?: string | null;
+      function: components["schemas"]["FunctionDefinition"];
+    };
+    ToolCall: {
+      id: string | null;
+      type?: string | null;
+      function: components["schemas"]["FunctionCall"];
+    };
+    ToolChoice: Record<string, never>;
+    TranscriptionAlternative: {
+      text?: string | null;
+      /** Format: double */
+      confidence?: number;
+      segments?: components["schemas"]["TranscriptionSegment"][] | null;
+    };
+    TranscriptionSegment: {
+      /** Format: int32 */
+      id?: number;
+      /** Format: double */
+      start?: number;
+      /** Format: double */
+      end?: number;
+      text?: string | null;
+      /** Format: double */
+      confidence?: number | null;
+      speaker?: string | null;
+    };
+    TranscriptionWord: {
+      word?: string | null;
+      /** Format: double */
+      start?: number;
+      /** Format: double */
+      end?: number;
+      /** Format: double */
+      confidence?: number | null;
+      speaker?: string | null;
+    };
+    VideoData: {
+      url?: string | null;
+      b64_json?: string | null;
+      metadata?: components["schemas"]["VideoMetadata"];
+      revised_prompt?: string | null;
+    };
+    VideoGenerationRequest: {
+      prompt: string | null;
+      model: string | null;
+      /** Format: int32 */
+      duration?: number | null;
+      size?: string | null;
+      /** Format: int32 */
+      fps?: number | null;
+      style?: string | null;
+      response_format?: string | null;
+      user?: string | null;
+      /** Format: int32 */
+      seed?: number | null;
+      /** Format: int32 */
+      n?: number;
+      webhook_url?: string | null;
+      webhook_headers?: {
+        [key: string]: string;
+      } | null;
+    };
+    VideoGenerationResponse: {
+      /** Format: int64 */
+      created?: number;
+      data?: components["schemas"]["VideoData"][] | null;
+      model?: string | null;
+      usage?: components["schemas"]["VideoGenerationUsage"];
+    };
+    /** @description Response for async video generation task creation. */
+    VideoGenerationTaskResponse: {
+      /** @description Unique identifier for the video generation task. */
+      taskId?: string | null;
+      /** @description Current status of the task (pending, processing, completed, failed). */
+      status?: string | null;
+      /**
+       * Format: date-time
+       * @description When the task was created.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Estimated time when the video will be ready.
+       */
+      estimatedCompletionTime?: string | null;
+      /** @description URL to check the status of this task. */
+      checkStatusUrl?: string | null;
+    };
+    /** @description Status information for a video generation task. */
+    VideoGenerationTaskStatus: {
+      /** @description Unique identifier for the task. */
+      taskId?: string | null;
+      /** @description Current status (pending, running, completed, failed, cancelled). */
+      status?: string | null;
+      /**
+       * Format: int32
+       * @description Progress percentage (0-100).
+       */
+      progress?: number | null;
+      /**
+       * Format: date-time
+       * @description When the task was created.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description When the task was last updated.
+       */
+      updatedAt?: string;
+      /**
+       * Format: date-time
+       * @description When the task completed (if applicable).
+       */
+      completedAt?: string | null;
+      /** @description Error message if the task failed. */
+      error?: string | null;
+      /** @description Result data (internal use). */
+      result?: string | null;
+      videoResponse?: components["schemas"]["VideoGenerationResponse"];
+    };
+    VideoGenerationUsage: {
+      /** Format: int32 */
+      videos_generated?: number;
+      /** Format: double */
+      total_duration_seconds?: number;
+      /** Format: double */
+      estimated_cost?: number | null;
+    };
+    VideoMetadata: {
+      /** Format: int32 */
+      width?: number;
+      /** Format: int32 */
+      height?: number;
+      /** Format: double */
+      duration?: number;
+      /** Format: double */
+      fps?: number;
+      codec?: string | null;
+      audio_codec?: string | null;
+      /** Format: int64 */
+      file_size_bytes?: number;
+      /** Format: int64 */
+      bitrate?: number | null;
+      mime_type?: string | null;
+      format?: string | null;
+    };
+    /** @description Individual virtual key update */
+    VirtualKeyUpdateDto: {
+      /**
+       * Format: int32
+       * @description Virtual key ID to update
+       */
+      virtualKeyId: number;
+      /**
+       * Format: double
+       * @description New budget limit (optional)
+       */
+      maxBudget?: number | null;
+      /** @description New allowed models list (optional) */
+      allowedModels?: string[] | null;
+      /** @description New rate limits (optional) */
+      rateLimits?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description Enable/disable key (optional) */
+      isEnabled?: boolean | null;
+      /**
+       * Format: date-time
+       * @description New expiry date (optional)
+       */
+      expiresAt?: string | null;
+      /** @description Notes about the update */
+      notes?: string | null;
+    };
+    /** @description Individual webhook to send */
+    WebhookSendDto: {
+      /**
+       * Format: uri
+       * @description Webhook URL
+       */
+      url: string;
+      /** @description Event type */
+      eventType: string;
+      /** @description Payload to send */
+      payload: unknown;
+      /** @description Custom headers */
+      headers?: {
+        [key: string]: string;
+      } | null;
+      /** @description Webhook secret for signature */
+      secret?: string | null;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
-export interface operations {
-    createChatCompletion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChatCompletionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChatCompletionResponse"];
-                    /** @description Server-sent events stream when stream=true */
-                    "text/event-stream": components["schemas"]["ChatCompletionChunk"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            429: components["responses"]["RateLimitExceeded"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    listModels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        object: "list";
-                        data: components["schemas"]["Model"][];
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    createEmbedding: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EmbeddingRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EmbeddingResponse"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalServerError"];
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    createImage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ImageGenerationRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ImageGenerationResponse"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    createCompletion: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Not implemented */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-}
+export type operations = Record<string, never>;
