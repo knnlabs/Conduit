@@ -2,30 +2,18 @@
 
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
-import { IconPlus, IconRefresh, IconWand, IconFileImport } from '@tabler/icons-react';
+import { IconPlus, IconRefresh, IconFileImport } from '@tabler/icons-react';
 import { ModelMappingsTable } from '@/components/modelmappings/ModelMappingsTableWithHooks';
 import { CreateModelMappingModal } from '@/components/modelmappings/CreateModelMappingModal';
 import { BulkMappingModal } from '@/components/modelmappings/BulkMappingModal';
-import { useDiscoverModels } from '@/hooks/useModelMappingsApi';
 
 export default function ModelMappingsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const { discoverModels, isDiscovering } = useDiscoverModels();
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
-  };
-
-  const handleDiscoverModels = async () => {
-    try {
-      await discoverModels(false, false);
-      // Refresh the table to show any new mappings
-      handleRefresh();
-    } catch {
-      // Error notifications are handled by the hook
-    }
   };
 
   return (
@@ -39,14 +27,6 @@ export default function ModelMappingsPage() {
             </Text>
           </div>
           <Group>
-            <Button
-              leftSection={<IconWand size={16} />}
-              variant="light"
-              onClick={() => void handleDiscoverModels()}
-              loading={isDiscovering}
-            >
-              Discover Models
-            </Button>
             <Button
               leftSection={<IconFileImport size={16} />}
               variant="light"

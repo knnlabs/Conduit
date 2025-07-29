@@ -96,7 +96,6 @@ export const ENDPOINTS = {
     BULK: '/api/ModelProviderMapping/bulk',
     DISCOVER_PROVIDER: (providerType: ProviderType) => `/api/ModelProviderMapping/discover/provider/${providerType}`,
     DISCOVER_MODEL: (providerType: ProviderType, modelId: string) => `/api/ModelProviderMapping/discover/model/${providerType}/${modelId}`,
-    DISCOVER_ALL: '/api/ModelProviderMapping/discover/all',
     TEST_CAPABILITY: (modelAlias: string, capability: string) => `/api/ModelProviderMapping/discover/capability/${modelAlias}/${capability}`,
     IMPORT: '/api/ModelProviderMapping/import',
     EXPORT: '/api/ModelProviderMapping/export',

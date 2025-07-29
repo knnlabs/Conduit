@@ -4,8 +4,7 @@ import { notifications } from '@mantine/notifications';
 import type { 
   ModelProviderMappingDto, 
   CreateModelProviderMappingDto,
-  UpdateModelProviderMappingDto,
-  DiscoveredModel
+  UpdateModelProviderMappingDto
 } from '@knn_labs/conduit-admin-client';
 import type { ErrorResponse } from '@knn_labs/conduit-common';
 
@@ -173,71 +172,6 @@ export function useDeleteModelMapping() {
 }
 
 
-interface DiscoveredModelWithStatus extends DiscoveredModel {
-  created?: boolean;
-}
-
-export function useDiscoverModels() {
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const queryClient = useQueryClient();
-
-  const discoverModels = async (autoCreate: boolean = false, enableNewMappings: boolean = false) => {
-    setIsDiscovering(true);
-    try {
-      const response = await fetch('/api/model-mappings/discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          autoCreate,
-          enableNewMappings,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to discover models');
-      }
-
-      const result = await response.json() as DiscoveredModelWithStatus[];
-      
-      if (autoCreate) {
-        // Invalidate cache to show new mappings
-        void await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-        
-        const created = result.filter(m => m.created === true).length;
-        notifications.show({
-          title: 'Discovery Complete',
-          message: `Created ${created} new model mappings`,
-          color: 'green',
-        });
-      } else {
-        notifications.show({
-          title: 'Discovery Complete',
-          message: `Found ${result.length} models across all providers`,
-          color: 'green',
-        });
-      }
-
-      return result;
-    } catch (error) {
-      notifications.show({
-        title: 'Discovery Failed',
-        message: error instanceof Error ? error.message : 'Failed to discover models',
-        color: 'red',
-      });
-      throw error;
-    } finally {
-      setIsDiscovering(false);
-    }
-  };
-
-  return {
-    discoverModels,
-    isDiscovering,
-  };
-}
 
 interface BulkDiscoverResult {
   providerId: string;

@@ -310,18 +310,6 @@ export class ModelMappingService extends FetchBaseApiClient {
     );
   }
 
-  /**
-   * Discover all available models across all configured providers
-   * @returns Array of discovered models with their capabilities
-   */
-  async discoverModels(): Promise<DiscoveredModel[]> {
-    const cacheKey = 'discover-all-models';
-    return this.withCache(
-      cacheKey,
-      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_ALL),
-      CACHE_TTL.SHORT
-    );
-  }
 
   private async invalidateCache(): Promise<void> {
     if (!this.cache) return;

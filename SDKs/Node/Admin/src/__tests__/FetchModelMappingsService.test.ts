@@ -154,36 +154,6 @@ describe('FetchModelMappingsService', () => {
     });
   });
 
-  describe('discoverModels', () => {
-    it('should discover all available models', async () => {
-      const mockModels = [
-        {
-          provider: 'openai',
-          model: 'gpt-4',
-          displayName: 'GPT-4',
-          capabilities: {
-            chat: true,
-            chatStream: true,
-            vision: true,
-            functionCalling: true,
-          },
-        },
-      ];
-      mockClient.get.mockResolvedValue(mockModels);
-
-      const result = await service.discoverModels();
-
-      expect(mockClient.get).toHaveBeenCalledWith(
-        ENDPOINTS.MODEL_MAPPINGS.DISCOVER_ALL,
-        {
-          signal: undefined,
-          timeout: undefined,
-          headers: undefined,
-        }
-      );
-      expect(result).toEqual(mockModels);
-    });
-  });
 
   describe('testCapability', () => {
     it('should test model capability', async () => {

@@ -107,19 +107,6 @@ export class FetchModelMappingsService {
     );
   }
 
-  /**
-   * Discover all available models from all providers
-   */
-  async discoverModels(config?: RequestConfig): Promise<DiscoveredModel[]> {
-    return this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_ALL,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Discover models from a specific provider
