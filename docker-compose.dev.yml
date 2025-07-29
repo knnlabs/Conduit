@@ -68,8 +68,8 @@ services:
         
         # Check and fix ownership for SDK directories individually
         for dir in /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules; do
-          if [ -z \"$(ls -A \$dir 2>/dev/null)\" ] || [ \"$(stat -c %u \$dir 2>/dev/null)\" = \"0\" ]; then
-            chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} \$dir
+          if [ -z \"\$$(ls -A \$$dir 2>/dev/null)\" ] || [ \"\$$(stat -c %u \$$dir 2>/dev/null)\" = \"0\" ]; then
+            chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} \$$dir
           fi
         done
         

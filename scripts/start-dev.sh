@@ -385,8 +385,9 @@ clean_environment() {
     
     # Stop and remove containers (both production and development)
     log_info "Stopping containers..."
-    $compose_cmd -f docker-compose.yml down --remove-orphans 2>/dev/null || true
-    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml down --volumes --remove-orphans 2>/dev/null || true
+    # Force immediate shutdown with --clean flag - no need to wait for graceful termination
+    $compose_cmd -f docker-compose.yml down --remove-orphans --timeout 0 2>/dev/null || true
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml down --volumes --remove-orphans --timeout 0 2>/dev/null || true
     
     # Remove specific development volumes with better error handling
     local dev_volumes=(
