@@ -4444,12 +4444,12 @@
         }
       }
     },
-    "/api/metrics/database/pool": {
+    "/metrics/database/pool": {
       "get": {
         "tags": [
           "Metrics"
         ],
-        "summary": "Gets database connection pool metrics for the Admin API.",
+        "summary": "Gets database connection pool metrics.",
         "responses": {
           "200": {
             "description": "OK"
@@ -4457,12 +4457,12 @@
         }
       }
     },
-    "/api/metrics": {
+    "/metrics": {
       "get": {
         "tags": [
           "Metrics"
         ],
-        "summary": "Gets all Admin API metrics including database and system metrics.",
+        "summary": "Gets all application metrics including database, cache, and performance metrics.",
         "responses": {
           "200": {
             "description": "OK"
@@ -9613,6 +9613,32 @@
           },
           "500": {
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/admin/tasks/cleanup": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Cleans up old completed tasks system-wide.",
+        "description": "This is an administrative operation that affects all users' tasks.\nIt archives completed tasks older than the specified threshold and\npermanently deletes archived tasks older than 30 days.",
+        "parameters": [
+          {
+            "name": "olderThanHours",
+            "in": "query",
+            "description": "Remove tasks older than this many hours (default: 24, min: 1).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }

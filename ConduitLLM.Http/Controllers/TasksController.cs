@@ -115,27 +115,5 @@ namespace ConduitLLM.Http.Controllers
             }
         }
 
-        /// <summary>
-        /// Cleans up old completed tasks.
-        /// </summary>
-        /// <param name="olderThanHours">Remove tasks older than this many hours (default: 24, min: 1).</param>
-        /// <returns>The number of tasks cleaned up.</returns>
-        [HttpPost("cleanup")]
-        [Authorize(Policy = "MasterKey")] // Require admin access
-        public async Task<IActionResult> CleanupOldTasks([FromQuery] int olderThanHours = 24)
-        {
-            try
-            {
-                olderThanHours = Math.Max(olderThanHours, 1); // Min 1 hour
-                var count = await _taskService.CleanupOldTasksAsync(TimeSpan.FromHours(olderThanHours));
-                
-                return Ok(new { cleaned_up = count });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error cleaning up old tasks");
-                return StatusCode(500, new { error = new { message = "An error occurred while cleaning up tasks", type = "server_error" } });
-            }
-        }
     }
 }

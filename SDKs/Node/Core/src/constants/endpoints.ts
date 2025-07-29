@@ -37,7 +37,7 @@ export const API_ENDPOINTS = {
       BASE: '/v1/tasks',
       BY_ID: (taskId: string) => `/v1/tasks/${encodeURIComponent(taskId)}`,
       CANCEL: (taskId: string) => `/v1/tasks/${encodeURIComponent(taskId)}/cancel`,
-      CLEANUP: '/v1/tasks/cleanup',
+      POLL: (taskId: string) => `/v1/tasks/${encodeURIComponent(taskId)}/poll`,
     },
     BATCH: {
       // Note: No generic /v1/batch endpoint exists. Use specific batch endpoints:

@@ -1086,7 +1086,9 @@ builder.Services.AddCors(options =>
 // Add Authentication and Authorization
 builder.Services.AddAuthentication("VirtualKey")
     .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, VirtualKeyAuthenticationHandler>(
-        "VirtualKey", options => { });
+        "VirtualKey", options => { })
+    .AddScheme<BackendAuthenticationSchemeOptions, BackendAuthenticationHandler>(
+        "Backend", options => { });
 
 builder.Services.AddAuthorization(options =>
 {
@@ -1114,12 +1116,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("IsAdmin", "true");
     });
     
-    // Add policy for admin-only access (e.g., metrics dashboard)
+    // Add policy for admin-only access using backend authentication
     options.AddPolicy("AdminOnly", policy =>
     {
-        policy.AuthenticationSchemes.Add("VirtualKey");
+        policy.AuthenticationSchemes.Add("Backend");
         policy.RequireAuthenticatedUser();
-        policy.RequireClaim("IsAdmin", "true");
     });
 });
 

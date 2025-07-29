@@ -1868,32 +1868,6 @@
         }
       }
     },
-    "/metrics/database/pool": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "summary": "Gets database connection pool metrics.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/metrics": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "summary": "Gets all application metrics including database, cache, and performance metrics.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/provider-models/{providerName}": {
       "get": {
         "tags": [
@@ -2545,31 +2519,6 @@
               "type": "integer",
               "format": "int32",
               "default": 2
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/v1/tasks/cleanup": {
-      "post": {
-        "tags": [
-          "Tasks"
-        ],
-        "summary": "Cleans up old completed tasks.",
-        "parameters": [
-          {
-            "name": "olderThanHours",
-            "in": "query",
-            "description": "Remove tasks older than this many hours (default: 24, min: 1).",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 24
             }
           }
         ],

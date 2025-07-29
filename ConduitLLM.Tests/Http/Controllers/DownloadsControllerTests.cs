@@ -4,6 +4,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -22,16 +24,19 @@ namespace ConduitLLM.Tests.Http.Controllers
     {
         private readonly Mock<IFileRetrievalService> _mockFileRetrievalService;
         private readonly Mock<ILogger<DownloadsController>> _mockLogger;
+        private readonly Mock<IMediaRecordRepository> _mockMediaRecordRepository;
         private readonly DownloadsController _controller;
 
         public DownloadsControllerTests(ITestOutputHelper output) : base(output)
         {
             _mockFileRetrievalService = new Mock<IFileRetrievalService>();
             _mockLogger = CreateLogger<DownloadsController>();
+            _mockMediaRecordRepository = new Mock<IMediaRecordRepository>();
 
             _controller = new DownloadsController(
                 _mockFileRetrievalService.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockMediaRecordRepository.Object);
 
             _controller.ControllerContext = CreateControllerContext();
         }
@@ -43,8 +48,27 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
             var contentBytes = Encoding.UTF8.GetBytes("Test file content");
             var contentStream = new MemoryStream(contentBytes);
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
             
             var fileResult = new FileRetrievalResult
             {
@@ -77,7 +101,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
             var contentStream = new MemoryStream(new byte[] { 1, 2, 3 });
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
             
             var fileResult = new FileRetrievalResult
             {
@@ -106,8 +149,27 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
             var contentStream = new MemoryStream();
             var etag = "\"12345\"";
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
             
             var fileResult = new FileRetrievalResult
             {
@@ -135,9 +197,21 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "non-existent";
-            _mockFileRetrievalService.Setup(x => x.RetrieveFileAsync(fileId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((FileRetrievalResult)null);
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
 
+            // Set up media record as not found
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync((MediaRecord)null);
+            
             // Act
             var result = await _controller.DownloadFile(fileId);
 
@@ -153,6 +227,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
             _mockFileRetrievalService.Setup(x => x.RetrieveFileAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Service error"));
 
@@ -176,6 +270,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
             var metadata = new FileMetadata
             {
                 FileName = "document.pdf",
@@ -214,8 +328,20 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "non-existent";
-            _mockFileRetrievalService.Setup(x => x.GetFileMetadataAsync(fileId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((FileMetadata)null);
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record as not found
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync((MediaRecord)null);
 
             // Act
             var result = await _controller.GetFileMetadata(fileId);
@@ -224,6 +350,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             dynamic error = notFoundResult.Value;
             Assert.Equal("File not found", error.error.message.ToString());
+            Assert.Equal("not_found", error.error.type.ToString());
         }
 
         [Fact]
@@ -231,6 +358,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
             _mockFileRetrievalService.Setup(x => x.GetFileMetadataAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Metadata service error"));
 
@@ -257,6 +404,25 @@ namespace ConduitLLM.Tests.Http.Controllers
                 FileId = "test-file-id",
                 ExpirationMinutes = 30
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = request.FileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(request.FileId))
+                .ReturnsAsync(mediaRecord);
 
             var expectedUrl = "https://example.com/download/test-file-id?token=abc123";
             _mockFileRetrievalService.Setup(x => x.GetDownloadUrlAsync(
@@ -289,6 +455,25 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 FileId = "test-file-id"
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = request.FileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(request.FileId))
+                .ReturnsAsync(mediaRecord);
 
             _mockFileRetrievalService.Setup(x => x.GetDownloadUrlAsync(
                     request.FileId, 
@@ -313,6 +498,16 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 FileId = ""
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
 
             // Act
             var result = await _controller.GenerateDownloadUrl(request);
@@ -336,6 +531,25 @@ namespace ConduitLLM.Tests.Http.Controllers
                 FileId = "test-file-id",
                 ExpirationMinutes = expirationMinutes
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+            
+            // Set up media record for ownership validation  
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = request.FileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(request.FileId))
+                .ReturnsAsync(mediaRecord);
 
             // Act
             var result = await _controller.GenerateDownloadUrl(request);
@@ -354,12 +568,20 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 FileId = "non-existent"
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
 
-            _mockFileRetrievalService.Setup(x => x.GetDownloadUrlAsync(
-                    request.FileId, 
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string)null);
+            // Set up media record as not found
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(request.FileId))
+                .ReturnsAsync((MediaRecord)null);
 
             // Act
             var result = await _controller.GenerateDownloadUrl(request);
@@ -367,7 +589,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found or URL generation failed", error.error.message.ToString());
+            Assert.Equal("File not found", error.error.message.ToString());
+            Assert.Equal("not_found", error.error.type.ToString());
         }
 
         [Fact]
@@ -378,6 +601,25 @@ namespace ConduitLLM.Tests.Http.Controllers
             {
                 FileId = "test-file-id"
             };
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = request.FileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(request.FileId))
+                .ReturnsAsync(mediaRecord);
 
             _mockFileRetrievalService.Setup(x => x.GetDownloadUrlAsync(
                     It.IsAny<string>(), 
@@ -404,6 +646,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
             var metadata = new FileMetadata
             {
                 ContentType = "image/png",
@@ -431,8 +693,20 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "non-existent";
-            _mockFileRetrievalService.Setup(x => x.FileExistsAsync(fileId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record as not found
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync((MediaRecord)null);
 
             // Act
             var result = await _controller.CheckFileExists(fileId);
@@ -446,6 +720,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
             _mockFileRetrievalService.Setup(x => x.FileExistsAsync(fileId, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Existence check error"));
 
@@ -459,6 +753,94 @@ namespace ConduitLLM.Tests.Http.Controllers
 
         #endregion
 
+        #region Ownership Validation Tests
+
+        [Fact]
+        public async Task DownloadFile_WithDifferentVirtualKeyId_ShouldReturnNotFound()
+        {
+            // Arrange
+            var fileId = "test-file-id";
+            var requestingKeyId = 123;
+            var ownerKeyId = 456;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", requestingKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record with different owner
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = ownerKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
+            
+            // Act
+            var result = await _controller.DownloadFile(fileId);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic error = notFoundResult.Value;
+            Assert.Equal("File not found", error.error.message.ToString());
+            Assert.Equal("not_found", error.error.type.ToString());
+        }
+
+        [Fact]
+        public async Task DownloadFile_WithUrlBasedFileId_ShouldReturnNotFound()
+        {
+            // Arrange
+            var fileId = "https://example.com/file.pdf";
+            var virtualKeyId = 123;
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+            
+            // Act
+            var result = await _controller.DownloadFile(fileId);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic error = notFoundResult.Value;
+            Assert.Equal("File not found", error.error.message.ToString());
+            Assert.Equal("not_found", error.error.type.ToString());
+        }
+
+        [Fact]
+        public async Task DownloadFile_WithNoVirtualKeyId_ShouldReturnNotFound()
+        {
+            // Arrange
+            var fileId = "test-file-id";
+            
+            // Set up controller context without Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>();
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+            
+            // Act
+            var result = await _controller.DownloadFile(fileId);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic error = notFoundResult.Value;
+            Assert.Equal("File not found", error.error.message.ToString());
+            Assert.Equal("not_found", error.error.type.ToString());
+        }
+
+        #endregion
+
         #region Constructor Tests
 
         [Fact]
@@ -467,7 +849,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange & Act & Assert
             var ex = Assert.Throws<ArgumentNullException>(() => new DownloadsController(
                 null,
-                _mockLogger.Object));
+                _mockLogger.Object,
+                _mockMediaRecordRepository.Object));
             Assert.Equal("fileRetrievalService", ex.ParamName);
         }
 
@@ -477,8 +860,20 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Arrange & Act & Assert
             var ex = Assert.Throws<ArgumentNullException>(() => new DownloadsController(
                 _mockFileRetrievalService.Object,
-                null));
+                null,
+                _mockMediaRecordRepository.Object));
             Assert.Equal("logger", ex.ParamName);
+        }
+
+        [Fact]
+        public void Constructor_WithNullMediaRecordRepository_ShouldThrowArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            var ex = Assert.Throws<ArgumentNullException>(() => new DownloadsController(
+                _mockFileRetrievalService.Object,
+                _mockLogger.Object,
+                null));
+            Assert.Equal("mediaRecordRepository", ex.ParamName);
         }
 
         #endregion
@@ -505,7 +900,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "path/to/file with spaces.txt";
+            var virtualKeyId = 123;
             var contentStream = new MemoryStream();
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
             
             var fileResult = new FileRetrievalResult
             {
@@ -532,7 +946,26 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             // Arrange
             var fileId = "test-file-id";
+            var virtualKeyId = 123;
             var contentStream = new MemoryStream();
+            
+            // Set up controller context with Virtual Key claims
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("VirtualKeyId", virtualKeyId.ToString())
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Test");
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+            _controller.ControllerContext.HttpContext.User = principal;
+
+            // Set up media record for ownership validation
+            var mediaRecord = new MediaRecord
+            {
+                StorageKey = fileId,
+                VirtualKeyId = virtualKeyId
+            };
+            _mockMediaRecordRepository.Setup(x => x.GetByStorageKeyAsync(fileId))
+                .ReturnsAsync(mediaRecord);
             
             var fileResult = new FileRetrievalResult
             {
