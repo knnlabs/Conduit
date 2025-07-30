@@ -18,10 +18,9 @@ export async function GET(
     const provider = await adminClient.providers.getById(parseInt(providerId, 10));
     console.error('[Provider Models] Provider details:', provider);
     
-    // Get the provider type - handle null providerName
+    // Get the provider type from the provider
     const providerType = getProviderTypeFromDto({
-      providerType: provider.providerType,
-      providerName: provider.providerName ?? undefined
+      providerType: provider.providerType
     });
     
     // Get models for this provider using the provider type

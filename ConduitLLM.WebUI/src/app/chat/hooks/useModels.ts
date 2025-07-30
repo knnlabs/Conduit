@@ -2,35 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ModelWithCapabilities } from '../types';
 import { ProviderType } from '@knn_labs/conduit-admin-client';
 
-// Helper function to convert ProviderType enum to string
-function getProviderName(providerType: ProviderType): string {
-  const providerNames: Record<ProviderType, string> = {
-    [ProviderType.OpenAI]: 'OpenAI',
-    [ProviderType.Anthropic]: 'Anthropic',
-    [ProviderType.AzureOpenAI]: 'Azure OpenAI',
-    [ProviderType.Gemini]: 'Gemini',
-    [ProviderType.VertexAI]: 'Vertex AI',
-    [ProviderType.Cohere]: 'Cohere',
-    [ProviderType.Mistral]: 'Mistral',
-    [ProviderType.Groq]: 'Groq',
-    [ProviderType.Ollama]: 'Ollama',
-    [ProviderType.Replicate]: 'Replicate',
-    [ProviderType.Fireworks]: 'Fireworks',
-    [ProviderType.Bedrock]: 'Bedrock',
-    [ProviderType.HuggingFace]: 'HuggingFace',
-    [ProviderType.SageMaker]: 'SageMaker',
-    [ProviderType.OpenRouter]: 'OpenRouter',
-    [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
-    [ProviderType.MiniMax]: 'MiniMax',
-    [ProviderType.Ultravox]: 'Ultravox',
-    [ProviderType.ElevenLabs]: 'ElevenLabs',
-    [ProviderType.GoogleCloud]: 'Google Cloud',
-    [ProviderType.Cerebras]: 'Cerebras',
-    [ProviderType.Unknown]: 'Unknown',
-  };
-  return providerNames[providerType] || `Provider ${providerType}`;
-}
-
 export function useModels() {
   return useQuery({
     queryKey: ['chat-models'],
@@ -45,6 +16,7 @@ export function useModels() {
         modelId: string;
         providerId: string;
         providerType?: ProviderType;
+        providerName?: string;
         maxContextLength?: number;
         supportsVision?: boolean;
         supportsChat?: boolean;
@@ -56,15 +28,11 @@ export function useModels() {
       const chatModels = mappings.filter((mapping: ModelMapping) => mapping.supportsChat === true);
       
       const models: ModelWithCapabilities[] = chatModels.map((mapping: ModelMapping) => {
-        console.warn('[useModels] Chat model mapping:', mapping);
-        console.warn('[useModels] providerType:', mapping.providerType, 'type:', typeof mapping.providerType);
-        const providerName = mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown';
-        console.warn('[useModels] Provider name result:', providerName);
         return {
           id: mapping.modelId,
           providerId: mapping.providerType?.toString() ?? 'unknown',
-          providerName: providerName,
-          displayName: `${mapping.modelId} (${providerName})`,
+          providerName: mapping.providerName ?? 'unknown',
+          displayName: `${mapping.modelId} (${mapping.providerName ?? 'unknown'})`,
           maxContextTokens: mapping.maxContextLength,
           supportsVision: mapping.supportsVision ?? false,
           // Function calling support will need to be detected at runtime

@@ -33,6 +33,11 @@ export interface ChatMessage {
     tokensPerSecond?: number;
     latency?: number;
     finishReason?: string;
+    provider?: string;
+    model?: string;
+    promptTokens?: number;
+    completionTokens?: number;
+    timeToFirstToken?: number;
   };
   error?: {
     type: ChatErrorType;

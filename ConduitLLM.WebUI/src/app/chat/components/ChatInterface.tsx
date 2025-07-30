@@ -53,7 +53,7 @@ export function ChatInterface() {
   const models = useMemo(() => 
     modelData?.map(m => ({
       value: m.id,
-      label: m.displayName || `${m.id} (${m.providerName})`,
+      label: m.displayName,
       supportsVision: m.supportsVision
     })) ?? []
   , [modelData]);
@@ -182,6 +182,11 @@ export function ChatInterface() {
                 tokensUsed: totalTokens,
                 tokensPerSecond: tokensPerSec,
                 latency: latencyMs,
+                provider: finalMetrics.provider,
+                model: finalMetrics.model ?? selectedModel,
+                promptTokens: finalMetrics.prompt_tokens,
+                completionTokens: finalMetrics.completion_tokens,
+                timeToFirstToken: (finalMetrics as StreamingPerformanceMetrics).time_to_first_token_ms,
               }
             : undefined;
           
@@ -286,6 +291,9 @@ export function ChatInterface() {
               tokensUsed: totalTokens,
               tokensPerSecond: totalTokens > 0 && requestDuration > 0 ? totalTokens / requestDuration : 0,
               latency: requestDuration * 1000,
+              model: data.model ?? selectedModel,
+              promptTokens: usage?.prompt_tokens,
+              completionTokens: usage?.completion_tokens,
             }
           : undefined;
         
@@ -413,7 +421,7 @@ export function ChatInterface() {
           </Stack>
         </Paper>
 
-        <Paper p="md" withBorder style={{ flex: 1, overflow: 'hidden' }}>
+        <Paper p="md" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <ChatMessages 
             messages={messages}
             streamingContent={isLoading ? streamingContent : undefined}

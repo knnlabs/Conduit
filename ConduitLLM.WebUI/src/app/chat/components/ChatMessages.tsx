@@ -1,5 +1,5 @@
-import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert } from '@mantine/core';
-import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert, HoverCard, CopyButton, Tooltip } from '@mantine/core';
+import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck } from '@tabler/icons-react';
 import { ChatMessage, ChatErrorType } from '../types';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -59,17 +59,35 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
     const [isOpen, setIsOpen] = useState(false);
     
     return (
-      <Paper p="sm" radius="md" withBorder style={{ backgroundColor: 'var(--mantine-color-gray-light)' }}>
+      <Paper 
+        p="sm" 
+        radius="md" 
+        withBorder 
+        style={{ 
+          backgroundColor: 'var(--mantine-color-gray-light)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          userSelect: 'none'
+        }}
+        className="thinking-block"
+        onClick={() => setIsOpen(!isOpen)}
+      >
         <Group 
           gap="xs" 
-          style={{ cursor: 'pointer' }}
-          onClick={() => setIsOpen(!isOpen)}
+          wrap="nowrap"
         >
-          <ActionIcon variant="subtle" size="sm">
+          <ActionIcon 
+            variant="subtle" 
+            size="sm"
+            style={{ pointerEvents: 'none' }}
+          >
             {isOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
           </ActionIcon>
-          <Text size="sm" fw={500}>
+          <Text size="sm" fw={500} style={{ flex: 1 }}>
             {icon} {title}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {isOpen ? 'Click to collapse' : 'Click to expand'}
           </Text>
         </Group>
         <Collapse in={isOpen}>
@@ -228,6 +246,45 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
                     </Group>
                   </Badge>
                 )}
+                {/* Metadata hover card */}
+                {(message.metadata?.provider ?? message.metadata?.model ?? message.metadata?.promptTokens ?? message.metadata?.completionTokens) && (
+                  <HoverCard width={280} shadow="md" withArrow>
+                    <HoverCard.Target>
+                      <ActionIcon variant="subtle" size="sm" color="gray">
+                        <IconInfoCircle size={16} />
+                      </ActionIcon>
+                    </HoverCard.Target>
+                    <HoverCard.Dropdown>
+                      <Stack gap="xs">
+                        <Text size="sm" fw={600}>Response Details</Text>
+                        {message.metadata.provider && (
+                          <Group gap="xs">
+                            <Text size="xs" c="dimmed">Provider:</Text>
+                            <Text size="xs">{message.metadata.provider}</Text>
+                          </Group>
+                        )}
+                        {message.metadata.model && (
+                          <Group gap="xs">
+                            <Text size="xs" c="dimmed">Model:</Text>
+                            <Text size="xs">{message.metadata.model}</Text>
+                          </Group>
+                        )}
+                        {message.metadata.promptTokens !== undefined && (
+                          <Group gap="xs">
+                            <Text size="xs" c="dimmed">Prompt Tokens:</Text>
+                            <Text size="xs">{message.metadata.promptTokens}</Text>
+                          </Group>
+                        )}
+                        {message.metadata.completionTokens !== undefined && (
+                          <Group gap="xs">
+                            <Text size="xs" c="dimmed">Completion Tokens:</Text>
+                            <Text size="xs">{message.metadata.completionTokens}</Text>
+                          </Group>
+                        )}
+                      </Stack>
+                    </HoverCard.Dropdown>
+                  </HoverCard>
+                )}
               </Group>
             )}
           </Group>
@@ -370,6 +427,26 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
               {processStructuredContent(content ?? '')}
             </ReactMarkdown>
           </div>
+          
+          {/* Copy button */}
+          {content && (
+            <Group justify="flex-end" mt="xs">
+              <CopyButton value={content} timeout={2000}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? 'Copied!' : 'Copy message'} withArrow position="left">
+                    <ActionIcon 
+                      color={copied ? 'teal' : 'gray'} 
+                      onClick={copy}
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            </Group>
+          )}
         </Stack>
       </Paper>
     );
@@ -377,9 +454,11 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
 
   return (
     <ScrollArea 
-      style={{ flex: 1 }} 
+      style={{ height: '100%', flex: 1 }} 
       viewportRef={scrollAreaRef}
       type="auto"
+      scrollbarSize={8}
+      scrollHideDelay={800}
     >
       <Stack gap="md" p="xs">
         {messages.map((message) => renderMessage(message))}

@@ -30,7 +30,6 @@ import { PatternPreview } from './PatternPreview';
 import { ModelPatternCombobox } from './ModelPatternCombobox';
 import { formatters } from '@/lib/utils/formatters';
 import { useProviders } from '@/hooks/useProviderApi';
-import { getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateModelCostModalProps {
   isOpen: boolean;
@@ -191,10 +190,11 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
 
   // Create provider options from actual providers
   const providerOptions = providers
-    .filter(provider => provider.providerType !== undefined)
+    .filter(provider => provider.providerName !== undefined)
+    .filter((provider): provider is typeof provider & { providerName: string } => typeof provider.providerName === 'string')
     .map(provider => ({
-      value: providerTypeToName(provider.providerType ?? 0),
-      label: provider.providerName ?? getProviderDisplayName(provider.providerType ?? 0),
+      value: provider.providerName,
+      label: provider.providerName,
       disabled: !provider.isEnabled
     }));
 

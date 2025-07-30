@@ -19,7 +19,7 @@ export async function GET() {
         const response = await adminClient.providers.list();
         
         // Handle paginated response or array
-        let providers;
+        let providers: unknown[];
         if (Array.isArray(response)) {
           providers = response;
         } else if ('items' in response && Array.isArray(response.items)) {
