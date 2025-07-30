@@ -58,13 +58,23 @@ const nextConfig = {
       })
     );
     
-    // Disable optimization for better debugging
+    // Disable optimization for better debugging but enable code splitting
     if (dev) {
       config.optimization = {
         ...config.optimization,
         minimize: false,
         minimizer: [],
-        splitChunks: false,
+        // Enable code splitting for better performance
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
         runtimeChunk: false,
       };
     } else {
