@@ -5399,7 +5399,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/discover/provider/{providerType}": {
+  "/api/ModelProviderMapping/discover/provider/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5412,8 +5412,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The type of the provider to discover models for */
-          providerType: number;
+          /** @description The ID of the provider to discover models for */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -5441,6 +5441,17 @@ export interface paths {
             "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
           };
         };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
         /** @description Internal Server Error */
         500: {
           headers: {
@@ -5458,7 +5469,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/discover/model/{providerType}/{modelId}": {
+  "/api/ModelProviderMapping/discover/model/{providerId}/{modelId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -5471,8 +5482,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The type of the provider */
-          providerType: number;
+          /** @description The ID of the provider */
+          providerId: number;
           /** @description The model ID to check capabilities for */
           modelId: string;
         };
@@ -10580,6 +10591,7 @@ export interface components {
     };
     "ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto": {
       providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      providerName: string;
       baseUrl?: string | null;
       isEnabled?: boolean;
       organization?: string | null;
@@ -10821,6 +10833,7 @@ export interface components {
       /** Format: int32 */
       providerId: number;
       providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      providerName?: string | null;
       /** Format: int32 */
       priority?: number;
       isEnabled?: boolean;
@@ -10914,6 +10927,7 @@ export interface components {
       /** Format: int32 */
       id?: number;
       providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      providerName?: string | null;
       baseUrl?: string | null;
       isEnabled?: boolean;
       organization?: string | null;
@@ -11080,6 +11094,7 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto": {
       /** Format: int32 */
       id: number;
+      providerName?: string | null;
       baseUrl?: string | null;
       isEnabled?: boolean;
       organization?: string | null;

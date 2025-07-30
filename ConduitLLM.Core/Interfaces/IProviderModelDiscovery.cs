@@ -3,6 +3,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -12,24 +14,24 @@ namespace ConduitLLM.Core.Interfaces
     public interface IProviderModelDiscovery
     {
         /// <summary>
-        /// Discovers models for a specific provider.
+        /// Discovers models for a specific provider instance.
         /// </summary>
-        /// <param name="providerName">The provider name.</param>
+        /// <param name="providerCredential">The provider credential containing configuration.</param>
         /// <param name="httpClient">HTTP client for API calls.</param>
-        /// <param name="apiKey">API key for the provider.</param>
+        /// <param name="apiKey">API key for the provider (optional, can be retrieved from credential).</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of discovered models.</returns>
         Task<List<DiscoveredModel>> DiscoverModelsAsync(
-            string providerName, 
+            ProviderCredential providerCredential, 
             HttpClient httpClient,
-            string? apiKey, 
+            string? apiKey = null, 
             CancellationToken cancellationToken = default);
         
         /// <summary>
-        /// Checks if discovery is supported for the given provider.
+        /// Checks if discovery is supported for the given provider type.
         /// </summary>
-        /// <param name="providerName">The provider name.</param>
+        /// <param name="providerType">The provider type.</param>
         /// <returns>True if discovery is supported.</returns>
-        bool SupportsDiscovery(string providerName);
+        bool SupportsDiscovery(ProviderType providerType);
     }
 }

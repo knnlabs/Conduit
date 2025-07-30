@@ -247,24 +247,24 @@ export class ModelMappingService extends FetchBaseApiClient {
   }
 
   // Discovery Operations
-  async discoverProviderModels(providerType: ProviderType): Promise<DiscoveredModel[]> {
-    const cacheKey = this.getCacheKey('discover-provider', providerType.toString());
+  async discoverProviderModels(providerId: number): Promise<DiscoveredModel[]> {
+    const cacheKey = this.getCacheKey('discover-provider', providerId.toString());
     return this.withCache(
       cacheKey,
-      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType)),
+      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerId)),
       CACHE_TTL.SHORT
     );
   }
 
-  async discoverModelCapabilities(providerType: ProviderType, modelId: string): Promise<DiscoveredModel> {
+  async discoverModelCapabilities(providerId: number, modelId: string): Promise<DiscoveredModel> {
     if (!modelId?.trim()) {
       throw new ValidationError('Model ID is required');
     }
 
-    const cacheKey = this.getCacheKey('discover-model', providerType.toString(), modelId);
+    const cacheKey = this.getCacheKey('discover-model', providerId.toString(), modelId);
     return this.withCache(
       cacheKey,
-      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerType, modelId)),
+      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerId, modelId)),
       CACHE_TTL.MEDIUM
     );
   }

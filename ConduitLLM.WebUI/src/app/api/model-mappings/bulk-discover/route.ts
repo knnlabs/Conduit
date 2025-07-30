@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 // POST /api/model-mappings/bulk-discover - Discover models from a specific provider with capabilities
 export async function POST(req: NextRequest) {
@@ -18,13 +17,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    console.warn('[Bulk Discover] Starting discovery for provider:', body.providerName);
+    console.warn('[Bulk Discover] Starting discovery for provider:', body.providerName, 'ID:', body.providerId);
     
-    // Convert provider name to ProviderType
-    const providerType = providerNameToType(body.providerName);
-    
-    // Discover all models from the provider
-    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(providerType);
+    // Discover all models from the provider using provider ID
+    const discoveredModels = await adminClient.modelMappings.discoverProviderModels(parseInt(body.providerId, 10));
     
     // Get existing mappings to check for conflicts
     const existingMappingsResponse = await adminClient.modelMappings.list();
@@ -46,7 +42,7 @@ if (Array.isArray(existingMappingsResponse)) {
     // Enhance discovered models with conflict information
     const enhancedModels = discoveredModels.map(model => ({
       ...model,
-      providerId: body.providerId, // Use the numeric provider ID passed from frontend
+      providerId: parseInt(body.providerId, 10), // Convert to numeric provider ID
       hasConflict: existingModelIds.has(model.modelId),
       existingMapping: existingMappings.find((m: ModelProviderMappingDto) => m.modelId === model.modelId) ?? null,
       // Map capabilities to frontend expected format
@@ -69,7 +65,7 @@ if (Array.isArray(existingMappingsResponse)) {
     console.warn(`[Bulk Discover] Found ${enhancedModels.length} models, ${enhancedModels.filter(m => m.hasConflict).length} have conflicts`);
     
     return NextResponse.json({
-      providerId: body.providerId,
+      providerId: parseInt(body.providerId, 10),
       providerName: body.providerName,
       models: enhancedModels,
       totalModels: enhancedModels.length,

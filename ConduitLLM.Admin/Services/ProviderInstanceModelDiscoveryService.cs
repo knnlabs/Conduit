@@ -53,9 +53,17 @@ namespace ConduitLLM.Admin.Services
             
             try
             {
-                // Use the legacy discovery service for now, but with provider type
+                // Use the provider-specific discovery with full credential
+                var providerCredential = providerInstance ?? new Configuration.Entities.ProviderCredential
+                {
+                    Id = providerId,
+                    ProviderType = providerType,
+                    ProviderName = providerType.ToString(),
+                    IsEnabled = true
+                };
+                
                 var models = await _providerModelDiscovery.DiscoverModelsAsync(
-                    providerType.ToString(), 
+                    providerCredential, 
                     httpClient, 
                     apiKey, 
                     cancellationToken);
@@ -85,8 +93,8 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public bool SupportsDiscovery(ProviderType providerType)
         {
-            // Use the legacy service to check support
-            return _providerModelDiscovery.SupportsDiscovery(providerType.ToString());
+            // Check if provider type supports discovery
+            return _providerModelDiscovery.SupportsDiscovery(providerType);
         }
     }
 }

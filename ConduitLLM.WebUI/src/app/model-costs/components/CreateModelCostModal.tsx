@@ -3,7 +3,6 @@
 import React from 'react';
 import {
   Modal,
-  TextInput,
   NumberInput,
   Select,
   Switch,
@@ -28,7 +27,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { CreateModelCostDto } from '../types/modelCost';
 import { PatternPreview } from './PatternPreview';
+import { ModelPatternCombobox } from './ModelPatternCombobox';
 import { formatters } from '@/lib/utils/formatters';
+import { useProviders } from '@/hooks/useProviderApi';
+import { getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateModelCostModalProps {
   isOpen: boolean;
@@ -71,6 +73,7 @@ interface FormValues {
 export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModelCostModalProps) {
   const queryClient = useQueryClient();
   const { createModelCost } = useModelCostsApi();
+  const { providers, isLoading: isLoadingProviders } = useProviders();
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -186,6 +189,15 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
 
   const modelType = form.values.modelType;
 
+  // Create provider options from actual providers
+  const providerOptions = providers
+    .filter(provider => provider.providerType !== undefined)
+    .map(provider => ({
+      value: providerTypeToName(provider.providerType ?? 0),
+      label: provider.providerName ?? getProviderDisplayName(provider.providerType ?? 0),
+      disabled: !provider.isEnabled
+    }));
+
   return (
     <Modal
       opened={isOpen}
@@ -200,20 +212,24 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
             Token costs are entered per 1,000 tokens for convenience.
           </Alert>
 
-          <TextInput
-            label="Model Pattern"
-            placeholder="e.g., openai/gpt-4, anthropic/claude-3*, minimax/abab6.5g"
+          <ModelPatternCombobox
+            value={form.values.modelIdPattern}
+            onChange={(value) => form.setFieldValue('modelIdPattern', value)}
+            selectedProvider={form.values.providerName}
+            error={form.errors.modelIdPattern as string}
             required
-            {...form.getInputProps('modelIdPattern')}
-            description="Exact model ID or pattern with * wildcard"
           />
 
-          <TextInput
+          <Select
             label="Provider Name"
-            placeholder="e.g., OpenAI, Anthropic, MiniMax"
+            placeholder={isLoadingProviders ? "Loading providers..." : "Select a provider"}
             required
             {...form.getInputProps('providerName')}
             description="Name of the LLM provider"
+            data={providerOptions}
+            searchable
+            disabled={isLoadingProviders || providerOptions.length === 0}
+            nothingFoundMessage="No providers configured"
           />
 
           <PatternPreview pattern={form.values.modelIdPattern} />

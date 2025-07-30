@@ -23,7 +23,7 @@ export function processStructuredContent(content: string): string {
   // Process thinking/reasoning tags - convert to collapsible sections
   processedContent = processedContent.replace(
     /<(thinking|think|reasoning|antThinking)>([\s\S]*?)<\/\1>/gi,
-    (_match, _tag, innerContent: string) => {
+    (match, tag, innerContent: string) => {
       const innerContentStr = String(innerContent);
       return `> 💭 **Thinking...**\n> __collapse__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
@@ -32,7 +32,7 @@ export function processStructuredContent(content: string): string {
   // Process warning/alert tags
   processedContent = processedContent.replace(
     /<(warning|caution|alert)>([\s\S]*?)<\/\1>/gi,
-    (_match, _tag, innerContent: string) => {
+    (match, tag, innerContent: string) => {
       const innerContentStr = String(innerContent);
       return `> ⚠️ **Warning**\n> __warning__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
@@ -41,7 +41,7 @@ export function processStructuredContent(content: string): string {
   // Process summary/answer tags
   processedContent = processedContent.replace(
     /<(summary|answer)>([\s\S]*?)<\/\1>/gi,
-    (_match, _tag, innerContent: string) => {
+    (match, tag, innerContent: string) => {
       const innerContentStr = String(innerContent);
       return `> 📋 **Summary**\n> __summary__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
@@ -50,7 +50,7 @@ export function processStructuredContent(content: string): string {
   // Process emoji-based warnings
   processedContent = processedContent.replace(
     /^(⚠️\s*Warning:|🚨\s*Important:)\s*(.*)$/gm,
-    (_match, _prefix, text: string) => {
+    (match, prefix, text: string) => {
       return `> ⚠️ **Warning**\n> __warning__\n> ${text}`;
     }
   );

@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
 using Microsoft.Extensions.Caching.Memory;
 using MassTransit;
@@ -283,8 +284,7 @@ namespace ConduitLLM.Core.Services
                         }
                         
                         var providerModels = await DiscoverProviderModelsAsync(
-                            providerName, 
-                            primaryKey.ApiKey, 
+                            credentials, 
                             cancellationToken);
 
                         foreach (var model in providerModels)
@@ -323,59 +323,35 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc/>
         public async Task<Dictionary<string, DiscoveredModel>> DiscoverProviderModelsAsync(
-            string providerName, 
-            string? apiKey = null, 
+            ProviderCredential providerCredential, 
             CancellationToken cancellationToken = default)
         {
-            var cacheKey = $"{CacheKeyPrefix}{providerName}";
+            var cacheKey = $"{CacheKeyPrefix}{providerCredential.Id}_{providerCredential.ProviderType}";
             
             // Check cache first
             if (_cache.TryGetValue<Dictionary<string, DiscoveredModel>>(cacheKey, out var cachedModels))
             {
-                _logger.LogDebug("Using cached capabilities for provider {Provider}", providerName);
+                _logger.LogDebug("Using cached capabilities for provider '{ProviderName}' (ID: {ProviderId})", 
+                    providerCredential.ProviderName, providerCredential.Id);
                 return cachedModels!;
             }
 
             var models = new Dictionary<string, DiscoveredModel>();
 
-            _logger.LogInformation("Starting discovery for provider '{Provider}'. Provider discovery service available: {Available}", 
-                providerName, _providerModelDiscovery != null);
+            _logger.LogInformation("Starting discovery for provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType}). Provider discovery service available: {Available}", 
+                providerCredential.ProviderName, providerCredential.Id, providerCredential.ProviderType, _providerModelDiscovery != null);
 
             // Try provider-specific discovery if available
-            if (_providerModelDiscovery != null && _providerModelDiscovery.SupportsDiscovery(providerName))
+            if (_providerModelDiscovery != null && _providerModelDiscovery.SupportsDiscovery(providerCredential.ProviderType))
             {
                 try
                 {
-                    // If no API key provided, try to get it from credentials
-                    if (string.IsNullOrEmpty(apiKey))
-                    {
-                        // Parse provider name to ProviderType enum
-                        if (Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                        {
-                            var credential = await _credentialService.GetCredentialByProviderTypeAsync(providerType);
-                            if (credential != null && credential.IsEnabled)
-                            {
-                                // Get the primary key or first enabled key
-                                var keyCredential = credential.ProviderKeyCredentials?
-                                    .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
-                                    credential.ProviderKeyCredentials?
-                                    .FirstOrDefault(k => k.IsEnabled);
-                                
-                                if (keyCredential != null)
-                                {
-                                    apiKey = keyCredential.ApiKey;
-                                    _logger.LogDebug("Retrieved API key for provider {Provider} from credentials", providerName);
-                                }
-                            }
-                        }
-                    }
-                    
-                    _logger.LogDebug("Using provider-specific discovery for {Provider} with API key: {HasKey}", 
-                        providerName, !string.IsNullOrEmpty(apiKey));
+                    _logger.LogDebug("Using provider-specific discovery for '{ProviderName}' (Type: {ProviderType})", 
+                        providerCredential.ProviderName, providerCredential.ProviderType);
                     var discoveredModels = await _providerModelDiscovery.DiscoverModelsAsync(
-                        providerName,
+                        providerCredential,
                         _httpClientFactory.CreateClient("DiscoveryProviders"),
-                        apiKey,
+                        null, // API key will be retrieved from credential
                         cancellationToken);
                     
                     _logger.LogDebug("Provider-specific discovery returned {Count} models", discoveredModels.Count);
@@ -387,58 +363,20 @@ namespace ConduitLLM.Core.Services
                     
                     if (models.Count > 0)
                     {
-                        _logger.LogInformation("Provider-specific discovery found {Count} models for {Provider}", 
-                            models.Count, providerName);
+                        _logger.LogInformation("Provider-specific discovery found {Count} models for provider '{ProviderName}'", 
+                            models.Count, providerCredential.ProviderName);
                         // Continue to cache and event publishing logic below
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Provider-specific discovery failed for {Provider}", providerName);
+                    _logger.LogWarning(ex, "Provider-specific discovery failed for provider '{ProviderName}' (Type: {ProviderType})", 
+                        providerCredential.ProviderName, providerCredential.ProviderType);
                     // Continue to other discovery methods
                 }
             }
 
-            // If provider-specific discovery didn't work or found no models, try legacy client discovery
-            if (models.Count == 0 && _providerModelDiscovery == null)
-            {
-                // Only use legacy discovery if provider-specific discovery is not available
-                try
-                {
-                    // Get client for provider using provider ID
-                    var providerId = await GetProviderIdAsync(providerName);
-                    if (providerId <= 0)
-                    {
-                        throw new InvalidOperationException($"Unable to find provider ID for provider name: {providerName}");
-                    }
-                    var client = _clientFactory.GetClientByProviderId(providerId);
-
-                    // Try to list models from the provider
-                    try
-                    {
-                        var modelList = await client.ListModelsAsync(apiKey, cancellationToken);
-                        
-                        foreach (var modelId in modelList)
-                        {
-                            var discoveredModel = InferModelCapabilities(modelId, providerName, modelId);
-                            models[modelId] = discoveredModel;
-                        }
-
-                        _logger.LogInformation("Legacy discovery found {Count} models from provider {Provider}", 
-                            models.Count, providerName);
-                    }
-                    catch (NotSupportedException)
-                    {
-                        _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
-                        // No fallback - provider-specific discovery should handle this
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
-                    // No fallback - provider-specific discovery should handle this
-                }
-            }
+            // Legacy discovery removed - rely only on provider-specific discovery
 
             // Cache the results
             _cache.Set(cacheKey, models, _cacheExpiration);
@@ -469,31 +407,21 @@ namespace ConduitLLM.Core.Services
                         }
                     });
 
-                // Get provider ID from credentials
-                var providerId = await GetProviderIdAsync(providerName);
-
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Could not parse provider name '{ProviderName}' to ProviderType", providerName);
-                    providerType = ProviderType.OpenAI; // Default fallback
-                }
-                
                 await PublishEventAsync(
                     new ModelCapabilitiesDiscovered
                     {
-                        ProviderId = providerId,
-                        ProviderType = providerType,
+                        ProviderId = providerCredential.Id,
+                        ProviderType = providerCredential.ProviderType,
                         ModelCapabilities = modelCapabilities,
                         DiscoveredAt = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid().ToString()
                     },
-                    $"model discovery for provider {providerName}",
-                    new { ProviderName = providerName, ModelCount = models.Count });
+                    $"model discovery for provider {providerCredential.ProviderName}",
+                    new { ProviderName = providerCredential.ProviderName, ProviderId = providerCredential.Id, ModelCount = models.Count });
             }
             else
             {
-                _logger.LogDebug("No models discovered for provider {ProviderName} - skipping ModelCapabilitiesDiscovered event", providerName);
+                _logger.LogDebug("No models discovered for provider '{ProviderName}' - skipping ModelCapabilitiesDiscovered event", providerCredential.ProviderName);
             }
 
             return models;
@@ -558,14 +486,29 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogInformation("Refreshing capabilities cache for provider: {ProviderName}", providerName);
             
-            // Clear cached entries for the specific provider
-            var cacheKey = $"{CacheKeyPrefix}{providerName.ToLowerInvariant()}";
-            _cache.Remove(cacheKey);
-            
             try
             {
+                // Parse provider name to ProviderType enum
+                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                {
+                    _logger.LogWarning("Could not parse provider name '{ProviderName}' to ProviderType", providerName);
+                    return;
+                }
+                
+                // Get the provider credential
+                var credential = await _credentialService.GetCredentialByProviderTypeAsync(providerType);
+                if (credential == null)
+                {
+                    _logger.LogWarning("No credential found for provider type {ProviderType}", providerType);
+                    return;
+                }
+                
+                // Clear cached entries for this specific provider instance
+                var cacheKey = $"{CacheKeyPrefix}{credential.Id}_{credential.ProviderType}";
+                _cache.Remove(cacheKey);
+                
                 // Re-discover models for this specific provider
-                var discoveredModels = await DiscoverProviderModelsAsync(providerName, null, cancellationToken);
+                var discoveredModels = await DiscoverProviderModelsAsync(credential, cancellationToken);
                 
                 _logger.LogInformation("Successfully refreshed capabilities for provider {ProviderName}: {ModelCount} models discovered", 
                     providerName, discoveredModels.Count);

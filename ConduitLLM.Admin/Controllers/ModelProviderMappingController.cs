@@ -26,6 +26,7 @@ public class ModelProviderMappingController : ControllerBase
 {
     private readonly IAdminModelProviderMappingService _mappingService;
     private readonly IProviderDiscoveryService _discoveryService;
+    private readonly IProviderCredentialService _credentialService;
     private readonly ILogger<ModelProviderMappingController> _logger;
 
     /// <summary>
@@ -33,14 +34,17 @@ public class ModelProviderMappingController : ControllerBase
     /// </summary>
     /// <param name="mappingService">The model provider mapping service</param>
     /// <param name="discoveryService">The provider discovery service</param>
+    /// <param name="credentialService">The provider credential service</param>
     /// <param name="logger">The logger</param>
     public ModelProviderMappingController(
         IAdminModelProviderMappingService mappingService,
         IProviderDiscoveryService discoveryService,
+        IProviderCredentialService credentialService,
         ILogger<ModelProviderMappingController> logger)
     {
         _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
         _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+        _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -315,37 +319,35 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// <summary>
     /// Discovers available models for a specific provider
     /// </summary>
-    /// <param name="providerType">The type of the provider to discover models for</param>
+    /// <param name="providerId">The ID of the provider to discover models for</param>
     /// <returns>A list of discovered models with their capabilities</returns>
-    [HttpGet("discover/provider/{providerType}")]
+    [HttpGet("discover/provider/{providerId}")]
     [ProducesResponseType(typeof(IEnumerable<DiscoveredModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverProviderModels(int providerType)
+    public async Task<IActionResult> DiscoverProviderModels(int providerId)
     {
-        // Validate and convert the provider type
-        if (!Enum.IsDefined(typeof(ProviderType), providerType))
-        {
-            return BadRequest($"Invalid provider type: {providerType}");
-        }
-        
-        var providerTypeEnum = (ProviderType)providerType;
-        
         try
         {
+            // Look up the actual provider by ID
+            var provider = await _credentialService.GetCredentialByIdAsync(providerId);
+            if (provider == null)
+            {
+                return NotFound($"Provider with ID {providerId} not found");
+            }
             
-            // Convert ProviderType enum to provider name string
-            string providerName = providerTypeEnum.ToString().ToLowerInvariant();
+            _logger.LogInformation("Discovering models for provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType})", 
+                provider.ProviderName, providerId, provider.ProviderType);
             
-            _logger.LogInformation("Discovering models for provider: {Provider} (Type: {ProviderType})", providerName, providerTypeEnum);
-            var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
+            var models = await _discoveryService.DiscoverProviderModelsAsync(provider);
             
             // Convert dictionary values to list
             return Ok(models.Values);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering models for provider {Provider}", providerTypeEnum);
+            _logger.LogError(ex, "Error discovering models for provider ID {ProviderId}", providerId);
             return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering models: {ex.Message}");
         }
     }
@@ -353,39 +355,35 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// <summary>
     /// Discovers capabilities for a specific model
     /// </summary>
-    /// <param name="providerType">The type of the provider</param>
+    /// <param name="providerId">The ID of the provider</param>
     /// <param name="modelId">The model ID to check capabilities for</param>
     /// <returns>Model information with detailed capabilities</returns>
-    [HttpGet("discover/model/{providerType}/{modelId}")]
+    [HttpGet("discover/model/{providerId}/{modelId}")]
     [ProducesResponseType(typeof(DiscoveredModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverModelCapabilities(int providerType, string modelId)
+    public async Task<IActionResult> DiscoverModelCapabilities(int providerId, string modelId)
     {
         if (string.IsNullOrWhiteSpace(modelId))
         {
             return BadRequest("Model ID cannot be empty");
         }
-
-        // Validate and convert the provider type
-        if (!Enum.IsDefined(typeof(ProviderType), providerType))
-        {
-            return BadRequest($"Invalid provider type: {providerType}");
-        }
-        
-        var providerTypeEnum = (ProviderType)providerType;
         
         try
         {
+            // Look up the actual provider by ID
+            var provider = await _credentialService.GetCredentialByIdAsync(providerId);
+            if (provider == null)
+            {
+                return NotFound($"Provider with ID {providerId} not found");
+            }
             
-            // Convert ProviderType enum to provider name string
-            string providerName = providerTypeEnum.ToString().ToLowerInvariant();
-            
-            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider {Provider} (Type: {ProviderType})", modelId, providerName, providerTypeEnum);
+            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType})", 
+                modelId, provider.ProviderName, providerId, provider.ProviderType);
             
             // Discover all models for the provider
-            var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
+            var models = await _discoveryService.DiscoverProviderModelsAsync(provider);
             
             // Find the specific model by key or value
             DiscoveredModel? model = null;
@@ -403,14 +401,14 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
             
             if (model == null)
             {
-                return NotFound(new { error = $"Model {modelId} not found for provider {providerTypeEnum}" });
+                return NotFound(new { error = $"Model {modelId} not found for provider '{provider.ProviderName}'" });
             }
             
             return Ok(model);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerTypeEnum);
+            _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider ID {ProviderId}", modelId, providerId);
             return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering model capabilities: {ex.Message}");
         }
     }

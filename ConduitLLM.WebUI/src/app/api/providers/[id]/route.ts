@@ -32,13 +32,26 @@ export async function PUT(
     // Get the current provider data to merge with updates
     const currentProvider = await adminClient.providers.getById(parseInt(id, 10));
     
+    // Define a type that matches the actual API response
+    type ApiProviderResponse = {
+      id?: number;
+      providerType?: number;
+      providerName?: string;
+      baseUrl?: string;
+      apiBase?: string;
+      isEnabled?: boolean;
+      organization?: string;
+    };
+    
+    const typedProvider = currentProvider as ApiProviderResponse;
+    
     // Build update data ensuring type safety - SDK expects the generated type format
     const updateData: Record<string, unknown> = {
       id: parseInt(id, 10),
       // Handle different field names from frontend
-      baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl) as string,
-      isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
-      organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? currentProvider.organization),
+      baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? typedProvider.baseUrl ?? typedProvider.apiBase) as string,
+      isEnabled: (body.isEnabled as boolean | undefined) ?? typedProvider.isEnabled,
+      organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? typedProvider.organization),
     };
     
     // Handle providerName if the backend supports it

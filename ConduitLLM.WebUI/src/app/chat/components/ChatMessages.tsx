@@ -1,7 +1,7 @@
 import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert } from '@mantine/core';
 import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { ChatMessage, ChatErrorType } from '../types';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
@@ -296,8 +296,14 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
                     if (typeof node === 'string') return node;
                     if (typeof node === 'number') return node.toString();
                     if (Array.isArray(node)) return node.map(getChildrenText).join('');
-                    if (node && typeof node === 'object' && 'props' in node && node.props && 'children' in node.props) {
-                      return getChildrenText(node.props.children);
+                    if (!node || typeof node !== 'object') return '';
+                    
+                    // Type guard for React element
+                    if (React.isValidElement(node)) {
+                      const element = node as React.ReactElement<{children?: React.ReactNode}>;
+                      if (element.props && element.props.children !== undefined) {
+                        return getChildrenText(element.props.children);
+                      }
                     }
                     return '';
                   };

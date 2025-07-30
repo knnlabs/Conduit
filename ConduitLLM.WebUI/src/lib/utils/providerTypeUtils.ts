@@ -32,6 +32,7 @@ export const PROVIDER_TYPE_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.GoogleCloud]: 'Google Cloud',
   [ProviderType.Cerebras]: 'Cerebras',
+  // [ProviderType.AWSTranscribe]: 'AWS Transcribe', // Not in current enum
   [ProviderType.Unknown]: 'Unknown',
 };
 
@@ -104,6 +105,8 @@ const PROVIDER_NAME_TO_TYPE_MAP: Record<string, ProviderType> = {
   googlecloud: ProviderType.GoogleCloud,
   googleCloud: ProviderType.GoogleCloud, // Alternative casing
   cerebras: ProviderType.Cerebras,
+  // awstranscribe: ProviderType.AWSTranscribe, // Not in current enum
+  // awsTranscribe: ProviderType.AWSTranscribe, // Alternative casing
 };
 
 // Convert provider name string to ProviderType enum
@@ -141,6 +144,7 @@ const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'elevenlabs',
   [ProviderType.GoogleCloud]: 'googlecloud',
   [ProviderType.Cerebras]: 'cerebras',
+  // [ProviderType.AWSTranscribe]: 'awstranscribe', // Not in current enum
   [ProviderType.Unknown]: 'unknown',
 };
 
@@ -154,7 +158,7 @@ export const providerTypeToName = (providerType: ProviderType): string => {
 };
 
 // Helper to get ProviderType from a DTO that may have providerType or providerName
-export const getProviderTypeFromDto = (dto: { providerType?: number; providerName?: string }): ProviderType => {
+export const getProviderTypeFromDto = (dto: { providerType?: number; providerName?: string | null }): ProviderType => {
   // Prefer providerType if available
   if (dto.providerType !== undefined) {
     return dto.providerType as ProviderType;

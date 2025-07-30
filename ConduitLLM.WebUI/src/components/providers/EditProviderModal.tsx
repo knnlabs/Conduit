@@ -16,7 +16,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { 
@@ -26,12 +26,6 @@ import {
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use SDK types directly with health extensions
-interface Provider extends ProviderCredentialDto {
-  healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
-  lastHealthCheck?: string;
-  models?: string[];
-}
 
 interface EditProviderModalProps {
   opened: boolean;
@@ -53,11 +47,6 @@ interface EditProviderForm {
 export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const getHealthStatusColor = (status: string) => {
-    if (status === 'healthy') return 'green';
-    if (status === 'unhealthy') return 'red';
-    return 'gray';
-  };
 
   const form = useForm<EditProviderForm>({
     initialValues: {
@@ -86,10 +75,19 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   // Update form when provider changes
   useEffect(() => {
     if (provider && opened) {
+      // Define a type that matches the actual API response
+      type ApiProviderResponse = ProviderCredentialDto & {
+        providerName?: string;
+        baseUrl?: string;
+        apiBase?: string;
+      };
+      
+      const apiProvider = provider as ApiProviderResponse;
+      
       form.setValues({
-        providerName: typeof provider.providerName === 'string' ? provider.providerName : '',
+        providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: typeof provider.baseUrl === 'string' ? provider.baseUrl : '',
+        apiEndpoint: apiProvider.baseUrl ?? apiProvider.apiBase ?? '',
         organizationId: typeof provider.organization === 'string' ? provider.organization : '',
         isEnabled: provider.isEnabled === true,
       });
@@ -161,18 +159,13 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     providerDisplayName = getProviderDisplayName(providerType);
   } catch {
     // Fallback to provider name if available
-    providerDisplayName = typeof provider.providerName === 'string' ? provider.providerName : 'Unknown Provider';
+    // Define a type that matches the actual API response
+    type ApiProviderResponse = ProviderCredentialDto & {
+      providerName?: string;
+    };
+    const apiProvider = provider as ApiProviderResponse;
+    providerDisplayName = typeof apiProvider.providerName === 'string' ? apiProvider.providerName : 'Unknown Provider';
   }
-  const getHealthIcon = (status?: string) => {
-    switch (status) {
-      case 'healthy':
-        return <IconCircleCheck size={16} color="var(--mantine-color-green-6)" />;
-      case 'unhealthy':
-        return <IconCircleX size={16} color="var(--mantine-color-red-6)" />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <Modal opened={opened} onClose={handleClose} title="Edit Provider" size="lg">
@@ -185,29 +178,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 <Text size="sm" c="dimmed">Provider Type</Text>
                 <Badge>{providerDisplayName}</Badge>
               </Group>
-              {provider.healthStatus && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Health Status</Text>
-                  <Group gap="xs">
-                    {getHealthIcon(provider.healthStatus)}
-                    <Text size="sm" fw={500} c={getHealthStatusColor(provider.healthStatus)}>
-                      {provider.healthStatus}
-                    </Text>
-                  </Group>
-                </Group>
-              )}
-              {provider.models && provider.models.length > 0 && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Models Available</Text>
-                  <Text size="sm">{provider.models.length}</Text>
-                </Group>
-              )}
-              {provider.lastHealthCheck && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Last Health Check</Text>
-                  <Text size="sm">{new Date(provider.lastHealthCheck).toLocaleString()}</Text>
-                </Group>
-              )}
+              {/* Health status, models, and lastHealthCheck are not available in ProviderCredentialDto */}
             </Stack>
           </Card>
 

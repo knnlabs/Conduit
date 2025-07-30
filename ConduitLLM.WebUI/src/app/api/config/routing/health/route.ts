@@ -16,18 +16,40 @@ export async function GET() {
       
       // Fallback to provider health check
       try {
-        const response = await adminClient.providers.list(1, 100);
-        const providers = response.items || response || [];
+        const response = await adminClient.providers.list();
+        
+        // Handle paginated response or array
+        let providers;
+        if (Array.isArray(response)) {
+          providers = response;
+        } else if ('items' in response && Array.isArray(response.items)) {
+          providers = response.items;
+        } else {
+          providers = [];
+        }
+        
+        // Define a type that matches the actual API response
+        type ApiProviderResponse = {
+          id?: number;
+          providerType?: number;
+          providerName?: string;
+          baseUrl?: string;
+          apiBase?: string;
+          isEnabled?: boolean;
+          organization?: string;
+        };
+        
+        const typedProviders = providers as ApiProviderResponse[];
         
         // Create health response from provider data
         const health = {
-          status: providers.some((p) => p.isEnabled === true) ? 'healthy' : 'unhealthy',
+          status: typedProviders.some((p) => p.isEnabled === true) ? 'healthy' : 'unhealthy',
           lastCheck: new Date().toISOString(),
-          nodes: providers
+          nodes: typedProviders
             .filter((p) => p.isEnabled === true && p.id !== undefined)
             .map((provider) => ({
               id: (provider.id ?? 0).toString(),
-              endpoint: typeof provider.baseUrl === 'string' ? provider.baseUrl : 'unknown',
+              endpoint: provider.baseUrl ?? provider.apiBase ?? 'unknown',
               status: provider.isEnabled ? 'healthy' : 'disabled',
               weight: 100,
               totalRequests: 0,

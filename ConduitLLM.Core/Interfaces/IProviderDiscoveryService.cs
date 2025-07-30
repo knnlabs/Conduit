@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -17,15 +19,13 @@ namespace ConduitLLM.Core.Interfaces
         Task<Dictionary<string, DiscoveredModel>> DiscoverModelsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Discovers capabilities for a specific provider.
+        /// Discovers capabilities for a specific provider instance.
         /// </summary>
-        /// <param name="providerName">The name of the provider.</param>
-        /// <param name="apiKey">Optional API key for the provider.</param>
+        /// <param name="providerCredential">The provider credential containing configuration.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A dictionary mapping model names to their capabilities for the specified provider.</returns>
         Task<Dictionary<string, DiscoveredModel>> DiscoverProviderModelsAsync(
-            string providerName, 
-            string? apiKey = null, 
+            ProviderCredential providerCredential, 
             CancellationToken cancellationToken = default);
 
         /// <summary>

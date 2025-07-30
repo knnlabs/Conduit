@@ -5953,7 +5953,7 @@
         }
       }
     },
-    "/api/ModelProviderMapping/discover/provider/{providerType}": {
+    "/api/ModelProviderMapping/discover/provider/{providerId}": {
       "get": {
         "tags": [
           "ModelProviderMapping"
@@ -5961,9 +5961,9 @@
         "summary": "Discovers available models for a specific provider",
         "parameters": [
           {
-            "name": "providerType",
+            "name": "providerId",
             "in": "path",
-            "description": "The type of the provider to discover models for",
+            "description": "The ID of the provider to discover models for",
             "required": true,
             "schema": {
               "type": "integer",
@@ -6021,13 +6021,33 @@
               }
             }
           },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal Server Error"
           }
         }
       }
     },
-    "/api/ModelProviderMapping/discover/model/{providerType}/{modelId}": {
+    "/api/ModelProviderMapping/discover/model/{providerId}/{modelId}": {
       "get": {
         "tags": [
           "ModelProviderMapping"
@@ -6035,9 +6055,9 @@
         "summary": "Discovers capabilities for a specific model",
         "parameters": [
           {
-            "name": "providerType",
+            "name": "providerId",
             "in": "path",
-            "description": "The type of the provider",
+            "description": "The ID of the provider",
             "required": true,
             "schema": {
               "type": "integer",
@@ -13138,12 +13158,18 @@
       },
       "ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto": {
         "required": [
+          "providerName",
           "providerType"
         ],
         "type": "object",
         "properties": {
           "providerType": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          },
+          "providerName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
           },
           "baseUrl": {
             "type": "string",
@@ -13851,6 +13877,10 @@
           "providerType": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
           },
+          "providerName": {
+            "type": "string",
+            "nullable": true
+          },
           "priority": {
             "type": "integer",
             "format": "int32"
@@ -14099,6 +14129,10 @@
           },
           "providerType": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          },
+          "providerName": {
+            "type": "string",
+            "nullable": true
           },
           "baseUrl": {
             "type": "string",
@@ -14572,6 +14606,11 @@
           "id": {
             "type": "integer",
             "format": "int32"
+          },
+          "providerName": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
           },
           "baseUrl": {
             "type": "string",

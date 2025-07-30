@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
@@ -28,206 +30,229 @@ namespace ConduitLLM.Http.Services
         
         /// <inheritdoc/>
         public async Task<List<DiscoveredModel>> DiscoverModelsAsync(
-            string providerName, 
+            ProviderCredential providerCredential, 
             HttpClient httpClient,
-            string? apiKey, 
+            string? apiKey = null, 
             CancellationToken cancellationToken = default)
         {
-            var normalizedProviderName = providerName.ToLowerInvariant();
-            
             try
             {
-                switch (normalizedProviderName)
+                _logger.LogDebug("Starting model discovery for provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType})", 
+                    providerCredential.ProviderName, providerCredential.Id, providerCredential.ProviderType);
+                
+                // If no API key provided, try to get it from the credential's keys
+                if (string.IsNullOrEmpty(apiKey) && providerCredential.ProviderKeyCredentials?.Any() == true)
                 {
-                    case "openai":
+                    var primaryKey = providerCredential.ProviderKeyCredentials
+                        .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ?? 
+                        providerCredential.ProviderKeyCredentials
+                        .FirstOrDefault(k => k.IsEnabled);
+                    
+                    if (primaryKey != null)
+                    {
+                        apiKey = primaryKey.ApiKey;
+                        _logger.LogDebug("Using API key from provider credential");
+                    }
+                }
+                
+                // If provider has a custom base URL, configure the HTTP client
+                if (!string.IsNullOrEmpty(providerCredential.BaseUrl))
+                {
+                    _logger.LogDebug("Provider has custom base URL: {BaseUrl}", providerCredential.BaseUrl);
+                    // Note: The individual discovery methods should handle custom base URLs
+                }
+                
+                switch (providerCredential.ProviderType)
+                {
+                    case ProviderType.OpenAI:
                         var openAIModels = await ConduitLLM.Providers.OpenAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         // Ensure provider field is set correctly
                         foreach (var model in openAIModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return openAIModels;
                         
-                    case "groq":
+                    case ProviderType.Groq:
                         var groqModels = await ConduitLLM.Providers.GroqModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         // Ensure provider field is set correctly
                         foreach (var model in groqModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return groqModels;
                         
-                    case "anthropic":
+                    case ProviderType.Anthropic:
                         var anthropicModels = await ConduitLLM.Providers.AnthropicModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in anthropicModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return anthropicModels;
                         
-                    case "openrouter":
+                    case ProviderType.OpenRouter:
                         var openRouterModels = await ConduitLLM.Providers.OpenRouterModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in openRouterModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return openRouterModels;
                     
-                    case "cerebras":
+                    case ProviderType.Cerebras:
                         var cerebrasModels = await ConduitLLM.Providers.CerebrasModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in cerebrasModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return cerebrasModels;
                     
-                    case "google":
-                    case "gemini":
+                    case ProviderType.Gemini:
                         var googleModels = await ConduitLLM.Providers.GoogleModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in googleModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return googleModels;
                     
-                    case "minimax":
+                    case ProviderType.MiniMax:
                         var miniMaxModels = await ConduitLLM.Providers.MiniMaxModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in miniMaxModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return miniMaxModels;
                     
-                    case "replicate":
+                    case ProviderType.Replicate:
                         var replicateModels = await ConduitLLM.Providers.ReplicateModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in replicateModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return replicateModels;
                     
-                    case "mistral":
+                    case ProviderType.Mistral:
                         var mistralModels = await ConduitLLM.Providers.MistralModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in mistralModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return mistralModels;
                     
-                    case "cohere":
+                    case ProviderType.Cohere:
                         var cohereModels = await ConduitLLM.Providers.CohereModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in cohereModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return cohereModels;
                     
-                    case "azureopenai":
+                    case ProviderType.AzureOpenAI:
                         var azureModels = await ConduitLLM.Providers.AzureOpenAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in azureModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return azureModels;
                     
-                    case "bedrock":
+                    case ProviderType.Bedrock:
                         var bedrockModels = await ConduitLLM.Providers.BedrockModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in bedrockModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return bedrockModels;
                     
-                    case "vertexai":
+                    case ProviderType.VertexAI:
                         var vertexModels = await ConduitLLM.Providers.VertexAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in vertexModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return vertexModels;
                     
-                    case "ollama":
+                    case ProviderType.Ollama:
                         var ollamaModels = await ConduitLLM.Providers.OllamaModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in ollamaModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return ollamaModels;
                     
-                    case "fireworks":
+                    case ProviderType.Fireworks:
                         var fireworksModels = await ConduitLLM.Providers.FireworksModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in fireworksModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return fireworksModels;
                     
-                    case "huggingface":
+                    case ProviderType.HuggingFace:
                         var huggingFaceModels = await ConduitLLM.Providers.HuggingFaceModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in huggingFaceModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return huggingFaceModels;
                     
-                    case "sagemaker":
+                    case ProviderType.SageMaker:
                         var sageMakerModels = await ConduitLLM.Providers.SageMakerModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in sageMakerModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return sageMakerModels;
                     
-                    case "openaicompatible":
+                    case ProviderType.OpenAICompatible:
                         var openAICompatibleModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in openAICompatibleModels)
                         {
-                            model.Provider = providerName;
+                            model.Provider = providerCredential.ProviderName;
                         }
                         return openAICompatibleModels;
                     
                     default:
-                        _logger.LogDebug("No provider-specific discovery available for {Provider}", providerName);
+                        _logger.LogDebug("No provider-specific discovery available for {ProviderType}", providerCredential.ProviderType);
                         return new List<DiscoveredModel>();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error discovering models for provider {Provider}", providerName);
+                _logger.LogError(ex, "Error discovering models for provider '{ProviderName}' (Type: {ProviderType})", 
+                    providerCredential.ProviderName, providerCredential.ProviderType);
                 return new List<DiscoveredModel>();
             }
         }
         
         /// <inheritdoc/>
-        public bool SupportsDiscovery(string providerName)
+        public bool SupportsDiscovery(ProviderType providerType)
         {
-            var normalizedProviderName = providerName.ToLowerInvariant();
-            
-            // List of providers that have been migrated to sister classes
-            var supportedProviders = new[]
+            // Check if this provider type has discovery support
+            var supportedTypes = new[]
             {
-                "openai",
-                "groq",
-                "anthropic",
-                "openrouter",
-                "cerebras",
-                "google",
-                "gemini",
-                "minimax",
-                "replicate",
-                "mistral",
-                "cohere",
-                "azureopenai",
-                "bedrock",
-                "vertexai",
-                "ollama",
-                "fireworks",
-                "huggingface",
-                "sagemaker",
-                "openaicompatible"
+                ProviderType.OpenAI,
+                ProviderType.Groq,
+                ProviderType.Anthropic,
+                ProviderType.OpenRouter,
+                ProviderType.Cerebras,
+                ProviderType.Gemini,
+                ProviderType.MiniMax,
+                ProviderType.Replicate,
+                ProviderType.Mistral,
+                ProviderType.Cohere,
+                ProviderType.AzureOpenAI,
+                ProviderType.Bedrock,
+                ProviderType.VertexAI,
+                ProviderType.Ollama,
+                ProviderType.Fireworks,
+                ProviderType.HuggingFace,
+                ProviderType.SageMaker,
+                ProviderType.OpenAICompatible
             };
             
-            return supportedProviders.Contains(normalizedProviderName);
+            var supported = supportedTypes.Contains(providerType);
+            _logger.LogInformation("SupportsDiscovery called for provider type {ProviderType}: {Supported}", 
+                providerType, supported);
+            return supported;
         }
     }
 }
