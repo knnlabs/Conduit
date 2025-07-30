@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
+import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '../utils/structured-content';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -51,6 +52,33 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
       }
       return next;
     });
+  };
+
+  // Component for collapsible thinking blocks
+  const CollapsibleThinking = ({ content, icon, title }: { content: string; icon: string; title: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    return (
+      <Paper p="sm" radius="md" withBorder style={{ backgroundColor: 'var(--mantine-color-gray-light)' }}>
+        <Group 
+          gap="xs" 
+          style={{ cursor: 'pointer' }}
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <ActionIcon variant="subtle" size="sm">
+            {isOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+          </ActionIcon>
+          <Text size="sm" fw={500}>
+            {icon} {title}
+          </Text>
+        </Group>
+        <Collapse in={isOpen}>
+          <div style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        </Collapse>
+      </Paper>
+    );
   };
 
   const renderMessage = (message: ChatMessage, isStreaming = false) => {
@@ -263,9 +291,77 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
                     </code>
                   );
                 },
+                blockquote({ children, ...props }) {
+                  const getChildrenText = (node: React.ReactNode): string => {
+                    if (typeof node === 'string') return node;
+                    if (typeof node === 'number') return node.toString();
+                    if (Array.isArray(node)) return node.map(getChildrenText).join('');
+                    if (node && typeof node === 'object' && 'props' in node && node.props && 'children' in node.props) {
+                      return getChildrenText(node.props.children);
+                    }
+                    return '';
+                  };
+                  
+                  const text = getChildrenText(children);
+                  const metadata = getBlockQuoteMetadata(text);
+                  
+                  // Handle thinking blocks with collapsible UI
+                  if (metadata.type === 'thinking') {
+                    const cleanedContent = cleanBlockQuoteContent(text);
+                    
+                    return (
+                      <CollapsibleThinking 
+                        content={cleanedContent}
+                        icon={metadata.icon}
+                        title={metadata.title}
+                      />
+                    );
+                  }
+                  
+                  // Handle warning blocks
+                  if (metadata.type === 'warning') {
+                    const cleanedContent = cleanBlockQuoteContent(text);
+                    
+                    return (
+                      <Alert 
+                        icon={<IconAlertTriangle size={16} />} 
+                        color="orange" 
+                        variant="light"
+                        radius="md"
+                      >
+                        <ReactMarkdown>{cleanedContent}</ReactMarkdown>
+                      </Alert>
+                    );
+                  }
+                  
+                  // Handle summary blocks
+                  if (metadata.type === 'summary') {
+                    const cleanedContent = cleanBlockQuoteContent(text);
+                    
+                    return (
+                      <Paper 
+                        p="md" 
+                        radius="md" 
+                        withBorder 
+                        style={{ 
+                          backgroundColor: 'var(--mantine-color-blue-light)',
+                          borderColor: 'var(--mantine-color-blue-6)'
+                        }}
+                      >
+                        <Text size="sm" fw={600} mb="xs">
+                          {metadata.icon} {metadata.title}
+                        </Text>
+                        <ReactMarkdown>{cleanedContent}</ReactMarkdown>
+                      </Paper>
+                    );
+                  }
+                  
+                  // Default blockquote
+                  return <blockquote {...props}>{children}</blockquote>;
+                },
               }}
             >
-              {content ?? ''}
+              {processStructuredContent(content ?? '')}
             </ReactMarkdown>
           </div>
         </Stack>
