@@ -592,44 +592,56 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task Dispose_WithRunningTimer_StopsCleanupOperations()
         {
             // Arrange
-            var shortGracePeriod = TimeSpan.FromMilliseconds(200);
-            var registry = new CancellableTaskRegistry(_loggerMock.Object, shortGracePeriod);
-            var taskId = "timer-test";
-            using var cts = new CancellationTokenSource();
+            var shortGracePeriod = TimeSpan.FromMilliseconds(100); // Reduced from 200ms
+            CancellableTaskRegistry? registry = null;
             
-            registry.RegisterTask(taskId, cts);
-            cts.Cancel();
-            
-            // Act - Dispose the registry while timer is running
-            registry.Dispose();
-            
-            // Wait longer than grace period
-            await Task.Delay(400);
-            
-            // Assert - No exceptions should occur and dispose should log
-            _loggerMock.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Disposing CancellableTaskRegistry")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.AtLeastOnce);
-            
-            // Verify timer doesn't continue after disposal by checking that
-            // no cleanup logs occur after disposal
-            var cleanupLogCount = _loggerMock.Invocations
-                .Count(inv => inv.Arguments.Any(arg => 
-                    arg != null && arg.ToString()!.Contains("Removed cancelled task")));
-            
-            // Wait a bit more to ensure timer is really stopped
-            await Task.Delay(200);
-            
-            var newCleanupLogCount = _loggerMock.Invocations
-                .Count(inv => inv.Arguments.Any(arg => 
-                    arg != null && arg.ToString()!.Contains("Removed cancelled task")));
-            
-            newCleanupLogCount.Should().Be(cleanupLogCount, "timer should not run after disposal");
+            try
+            {
+                registry = new CancellableTaskRegistry(_loggerMock.Object, shortGracePeriod);
+                var taskId = "timer-test";
+                using var cts = new CancellationTokenSource();
+                
+                registry.RegisterTask(taskId, cts);
+                cts.Cancel();
+                
+                // Act - Dispose the registry while timer is running
+                registry.Dispose();
+                
+                // Wait a short time to allow disposal to complete
+                await Task.Delay(50);
+                
+                // Assert - No exceptions should occur and dispose should log
+                _loggerMock.Verify(
+                    x => x.Log(
+                        LogLevel.Debug,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Disposing CancellableTaskRegistry")),
+                        It.IsAny<Exception>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.AtLeastOnce);
+                
+                // Capture cleanup log count immediately after disposal
+                var cleanupLogCount = _loggerMock.Invocations
+                    .Count(inv => inv.Arguments.Any(arg => 
+                        arg != null && arg.ToString()!.Contains("Removed cancelled task")));
+                
+                // Wait a bit more (but not too long to avoid test slowness)
+                await Task.Delay(150);
+                
+                var newCleanupLogCount = _loggerMock.Invocations
+                    .Count(inv => inv.Arguments.Any(arg => 
+                        arg != null && arg.ToString()!.Contains("Removed cancelled task")));
+                
+                newCleanupLogCount.Should().Be(cleanupLogCount, "timer should not run after disposal");
+                
+                // Set registry to null to prevent double disposal
+                registry = null;
+            }
+            finally
+            {
+                // Ensure registry is disposed even if test fails
+                registry?.Dispose();
+            }
         }
 
         [Fact]

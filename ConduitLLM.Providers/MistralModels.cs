@@ -46,8 +46,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint fails, return known models
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -59,7 +59,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
                 {
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Data
@@ -69,50 +69,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on current Mistral models
-            var knownModels = new List<(string id, string displayName, string description, int contextLength)>
-            {
-                // Open models
-                ("open-mistral-7b", "Mistral 7B", "Efficient 7B parameter model", 32768),
-                ("open-mixtral-8x7b", "Mixtral 8x7B", "Mixture of experts model", 32768),
-                ("open-mixtral-8x22b", "Mixtral 8x22B", "Large mixture of experts model", 65536),
-                
-                // Commercial models
-                ("mistral-small-latest", "Mistral Small", "Cost-efficient reasoning model", 32768),
-                ("mistral-medium-latest", "Mistral Medium", "Balanced performance model", 32768),
-                ("mistral-large-latest", "Mistral Large", "Top-tier reasoning model", 128000),
-                
-                // Specialized models
-                ("codestral-latest", "Codestral", "Code generation specialist", 32768),
-                ("mistral-embed", "Mistral Embed", "Text embedding model", 8192),
-                
-                // Legacy models (may be deprecated)
-                ("mistral-tiny", "Mistral Tiny", "Lightweight model", 8192),
-                ("mistral-small-2312", "Mistral Small 2312", "Previous small model version", 32768),
-                ("mistral-medium-2312", "Mistral Medium 2312", "Previous medium model version", 32768),
-                ("mistral-large-2402", "Mistral Large 2402", "Previous large model version", 32768)
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "mistral",
-                Capabilities = InferCapabilitiesFromModel(model.id, model.contextLength),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description,
-                    ["context_length"] = model.contextLength
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(MistralModel model)
         {

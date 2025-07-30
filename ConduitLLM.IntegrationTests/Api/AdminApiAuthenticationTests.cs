@@ -68,15 +68,11 @@ namespace ConduitLLM.IntegrationTests.Api
         [Fact]
         public async Task IpFilterCheck_ShouldAllowAnonymousAccess()
         {
-            // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
-
             // Act
-            var response = await client.GetAsync("/api/ipfilter/check/127.0.0.1");
+            var response = await Client.GetAsync("/api/ipfilter/check/127.0.0.1");
 
             // Assert
-            _output.WriteLine($"IP Filter Check Status: {response.StatusCode}");
+            Output.WriteLine($"IP Filter Check Status: {response.StatusCode}");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
@@ -98,15 +94,13 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task ProtectedEndpoints_WithoutAuth_ShouldReturn401(string endpoint, string method)
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
             var request = new HttpRequestMessage(new HttpMethod(method), endpoint);
 
             // Act - Call without authentication header
-            var response = await client.SendAsync(request);
+            var response = await Client.SendAsync(request);
 
             // Assert
-            _output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
+            Output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
@@ -124,16 +118,14 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task ProtectedEndpoints_WithInvalidAuth_ShouldReturn401(string endpoint, string method)
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
             var request = new HttpRequestMessage(new HttpMethod(method), endpoint);
             request.Headers.Add("X-API-Key", "invalid-key");
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await Client.SendAsync(request);
 
             // Assert
-            _output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
+            Output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
@@ -150,16 +142,14 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task ProtectedEndpoints_WithValidAuth_ShouldSucceed(string endpoint, string method)
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
             var request = new HttpRequestMessage(new HttpMethod(method), endpoint);
             request.Headers.Add("X-API-Key", _validMasterKey);
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await Client.SendAsync(request);
 
             // Assert
-            _output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
+            Output.WriteLine($"Endpoint: {endpoint}, Method: {method}, Status: {response.StatusCode}");
             // We expect 200 OK or 204 No Content for successful authentication
             // Some endpoints might return 404 if resources don't exist, which is fine
             Assert.True(
@@ -176,15 +166,11 @@ namespace ConduitLLM.IntegrationTests.Api
         [Fact]
         public async Task Authentication_WithHeaderInQueryString_ShouldSucceed()
         {
-            // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
-
             // Act - Pass API key in query string
-            var response = await client.GetAsync($"/api/admin/configuration?apiKey={_validMasterKey}");
+            var response = await Client.GetAsync($"/api/admin/configuration?apiKey={_validMasterKey}");
 
             // Assert
-            _output.WriteLine($"Query String Auth Status: {response.StatusCode}");
+            Output.WriteLine($"Query String Auth Status: {response.StatusCode}");
             Assert.True(
                 response.StatusCode == HttpStatusCode.OK || 
                 response.StatusCode == HttpStatusCode.NoContent,
@@ -195,15 +181,14 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task Authentication_WithAuthorizationBearer_ShouldFail()
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
+            var client = Factory.CreateClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _validMasterKey);
 
             // Act
             var response = await client.GetAsync("/api/admin/configuration");
 
             // Assert
-            _output.WriteLine($"Bearer Auth Status: {response.StatusCode}");
+            Output.WriteLine($"Bearer Auth Status: {response.StatusCode}");
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
@@ -214,17 +199,13 @@ namespace ConduitLLM.IntegrationTests.Api
         [Fact]
         public async Task TasksController_CleanupEndpoint_RequiresAuthentication()
         {
-            // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
-
             // Act - Without auth
-            var responseWithoutAuth = await client.PostAsync("/v1/admin/tasks/cleanup", null);
+            var responseWithoutAuth = await Client.PostAsync("/v1/admin/tasks/cleanup", null);
             
             // Act - With auth
             var requestWithAuth = new HttpRequestMessage(HttpMethod.Post, "/v1/admin/tasks/cleanup");
             requestWithAuth.Headers.Add("X-API-Key", _validMasterKey);
-            var responseWithAuth = await client.SendAsync(requestWithAuth);
+            var responseWithAuth = await Client.SendAsync(requestWithAuth);
 
             // Assert
             Assert.Equal(HttpStatusCode.Unauthorized, responseWithoutAuth.StatusCode);
@@ -238,22 +219,20 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task MetricsController_AllEndpoints_RequireAuthentication()
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
             var endpoints = new[] { "/metrics", "/metrics/database/pool" };
 
             foreach (var endpoint in endpoints)
             {
                 // Act - Without auth
-                var responseWithoutAuth = await client.GetAsync(endpoint);
+                var responseWithoutAuth = await Client.GetAsync(endpoint);
                 
                 // Act - With auth
                 var requestWithAuth = new HttpRequestMessage(HttpMethod.Get, endpoint);
                 requestWithAuth.Headers.Add("X-API-Key", _validMasterKey);
-                var responseWithAuth = await client.SendAsync(requestWithAuth);
+                var responseWithAuth = await Client.SendAsync(requestWithAuth);
 
                 // Assert
-                _output.WriteLine($"Testing {endpoint}");
+                Output.WriteLine($"Testing {endpoint}");
                 Assert.Equal(HttpStatusCode.Unauthorized, responseWithoutAuth.StatusCode);
                 Assert.True(
                     responseWithAuth.StatusCode == HttpStatusCode.OK || 
@@ -266,8 +245,6 @@ namespace ConduitLLM.IntegrationTests.Api
         public async Task ProviderTypesController_AllEndpoints_RequireAuthentication()
         {
             // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
             var endpoints = new[] 
             { 
                 "/api/admin/providertypes",
@@ -281,15 +258,15 @@ namespace ConduitLLM.IntegrationTests.Api
             foreach (var endpoint in endpoints)
             {
                 // Act - Without auth
-                var responseWithoutAuth = await client.GetAsync(endpoint);
+                var responseWithoutAuth = await Client.GetAsync(endpoint);
                 
                 // Act - With auth
                 var requestWithAuth = new HttpRequestMessage(HttpMethod.Get, endpoint);
                 requestWithAuth.Headers.Add("X-API-Key", _validMasterKey);
-                var responseWithAuth = await client.SendAsync(requestWithAuth);
+                var responseWithAuth = await Client.SendAsync(requestWithAuth);
 
                 // Assert
-                _output.WriteLine($"Testing {endpoint}");
+                Output.WriteLine($"Testing {endpoint}");
                 Assert.Equal(HttpStatusCode.Unauthorized, responseWithoutAuth.StatusCode);
                 // Some endpoints might return 404 for non-existent resources, which is fine
                 Assert.True(

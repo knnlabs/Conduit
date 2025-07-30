@@ -162,6 +162,30 @@ namespace ConduitLLM.Http.Services
                         }
                         return fireworksModels;
                     
+                    case "huggingface":
+                        var huggingFaceModels = await ConduitLLM.Providers.HuggingFaceModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        foreach (var model in huggingFaceModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return huggingFaceModels;
+                    
+                    case "sagemaker":
+                        var sageMakerModels = await ConduitLLM.Providers.SageMakerModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        foreach (var model in sageMakerModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return sageMakerModels;
+                    
+                    case "openaicompatible":
+                        var openAICompatibleModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        foreach (var model in openAICompatibleModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return openAICompatibleModels;
+                    
                     default:
                         _logger.LogDebug("No provider-specific discovery available for {Provider}", providerName);
                         return new List<DiscoveredModel>();
@@ -197,8 +221,10 @@ namespace ConduitLLM.Http.Services
                 "bedrock",
                 "vertexai",
                 "ollama",
-                "fireworks"
-                // TODO: Add other providers as they are migrated
+                "fireworks",
+                "huggingface",
+                "sagemaker",
+                "openaicompatible"
             };
             
             return supportedProviders.Contains(normalizedProviderName);

@@ -47,8 +47,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint fails, return known models
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -60,7 +60,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Models == null || apiResponse.Models.Count == 0)
                 {
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Models
@@ -70,47 +70,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on current Google Gemini models
-            var knownModels = new List<(string id, string displayName, string description)>
-            {
-                // Gemini 1.5 models
-                ("gemini-1.5-pro", "Gemini 1.5 Pro", "Most capable model for complex tasks"),
-                ("gemini-1.5-pro-002", "Gemini 1.5 Pro 002", "Latest version of Gemini 1.5 Pro"),
-                ("gemini-1.5-flash", "Gemini 1.5 Flash", "Fast and efficient for high-volume tasks"),
-                ("gemini-1.5-flash-002", "Gemini 1.5 Flash 002", "Latest version of Gemini 1.5 Flash"),
-                ("gemini-1.5-flash-8b", "Gemini 1.5 Flash 8B", "Smaller, faster variant of Flash"),
-                
-                // Gemini 1.0 Pro (legacy)
-                ("gemini-1.0-pro", "Gemini 1.0 Pro", "Legacy model"),
-                
-                // Embedding models
-                ("text-embedding-004", "Text Embedding 004", "Latest text embedding model"),
-                ("embedding-001", "Embedding 001", "Legacy embedding model"),
-                
-                // Experimental models
-                ("gemini-exp-1206", "Gemini Experimental 1206", "Experimental model with enhanced capabilities"),
-                ("learnlm-1.5-pro-experimental", "LearnLM 1.5 Pro", "Education-focused experimental model")
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "google",
-                Capabilities = InferCapabilitiesFromModelId(model.id),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(GoogleModel model)
         {

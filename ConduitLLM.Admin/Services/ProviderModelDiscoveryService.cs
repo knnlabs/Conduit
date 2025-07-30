@@ -191,6 +191,36 @@ namespace ConduitLLM.Admin.Services
                         }
                         return fireworksModels;
                     
+                    case "huggingface":
+                        _logger.LogDebug("Calling HuggingFaceModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
+                        var huggingFaceModels = await ConduitLLM.Providers.HuggingFaceModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        _logger.LogDebug("HuggingFaceModelDiscovery.DiscoverAsync returned {Count} models", huggingFaceModels.Count);
+                        foreach (var model in huggingFaceModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return huggingFaceModels;
+                    
+                    case "sagemaker":
+                        _logger.LogDebug("Calling SageMakerModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
+                        var sageMakerModels = await ConduitLLM.Providers.SageMakerModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        _logger.LogDebug("SageMakerModelDiscovery.DiscoverAsync returned {Count} models", sageMakerModels.Count);
+                        foreach (var model in sageMakerModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return sageMakerModels;
+                    
+                    case "openaicompatible":
+                        _logger.LogDebug("Calling OpenAICompatibleModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
+                        var openAICompatibleModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        _logger.LogDebug("OpenAICompatibleModelDiscovery.DiscoverAsync returned {Count} models", openAICompatibleModels.Count);
+                        foreach (var model in openAICompatibleModels)
+                        {
+                            model.Provider = providerName;
+                        }
+                        return openAICompatibleModels;
+                    
                     default:
                         _logger.LogDebug("No provider-specific discovery available for {Provider}", providerName);
                         return new List<DiscoveredModel>();
@@ -226,8 +256,10 @@ namespace ConduitLLM.Admin.Services
                 "bedrock",
                 "vertexai",
                 "ollama",
-                "fireworks"
-                // TODO: Add other providers as they are migrated
+                "fireworks",
+                "huggingface",
+                "sagemaker",
+                "openaicompatible"
             };
             
             var supported = supportedProviders.Contains(normalizedProviderName);

@@ -46,8 +46,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint fails, return known models
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -59,7 +59,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
                 {
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Data
@@ -69,49 +69,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on current MiniMax models
-            var knownModels = new List<(string id, string displayName, string description, ModelType type)>
-            {
-                // ABAB Chat models
-                ("abab6.5-chat", "ABAB 6.5 Chat", "High-performance chat model with 245K context", ModelType.Chat),
-                ("abab6.5s-chat", "ABAB 6.5s Chat", "Faster variant of ABAB 6.5 Chat", ModelType.Chat),
-                ("abab6-chat", "ABAB 6 Chat", "Previous generation chat model", ModelType.Chat),
-                ("abab5.5-chat", "ABAB 5.5 Chat", "Legacy chat model", ModelType.Chat),
-                
-                // Image generation model
-                ("image-01", "Image-01", "High-quality text-to-image generation", ModelType.Image),
-                
-                // Video generation model
-                ("video-01", "Video-01", "Text-to-video generation up to 6 seconds", ModelType.Video),
-                
-                // Audio models
-                ("speech-01", "Speech-01", "Text-to-speech synthesis", ModelType.Audio),
-                ("speech-02", "Speech-02", "Enhanced text-to-speech", ModelType.Audio),
-                
-                // Embedding models
-                ("embo-01", "Embo-01", "Text embedding model", ModelType.Embedding)
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "minimax",
-                Capabilities = InferCapabilitiesFromModel(model.id, model.type),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description,
-                    ["type"] = model.type.ToString()
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(MiniMaxModel model)
         {

@@ -46,8 +46,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint fails, return known models
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -59,7 +59,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
                 {
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Data
@@ -69,70 +69,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on Fireworks AI's popular models
-            var knownModels = new List<(string id, string displayName, string description, ModelType type)>
-            {
-                // Llama models
-                ("accounts/fireworks/models/llama-v3p2-3b-instruct", "Llama 3.2 3B", "Fast, efficient Llama model", ModelType.Chat),
-                ("accounts/fireworks/models/llama-v3p2-11b-vision-instruct", "Llama 3.2 11B Vision", "Multimodal Llama model", ModelType.Chat),
-                ("accounts/fireworks/models/llama-v3p1-405b-instruct", "Llama 3.1 405B", "Most capable Llama model", ModelType.Chat),
-                ("accounts/fireworks/models/llama-v3p1-70b-instruct", "Llama 3.1 70B", "Large Llama model", ModelType.Chat),
-                ("accounts/fireworks/models/llama-v3p1-8b-instruct", "Llama 3.1 8B", "Efficient Llama model", ModelType.Chat),
-                
-                // Mixtral models
-                ("accounts/fireworks/models/mixtral-8x7b-instruct", "Mixtral 8x7B", "MoE model for efficiency", ModelType.Chat),
-                ("accounts/fireworks/models/mixtral-8x22b-instruct", "Mixtral 8x22B", "Large MoE model", ModelType.Chat),
-                
-                // Qwen models
-                ("accounts/fireworks/models/qwen2-72b-instruct", "Qwen2 72B", "Alibaba's large model", ModelType.Chat),
-                ("accounts/fireworks/models/qwen2p5-72b-instruct", "Qwen2.5 72B", "Latest Qwen model", ModelType.Chat),
-                
-                // Other language models
-                ("accounts/fireworks/models/deepseek-coder-v2-instruct", "DeepSeek Coder v2", "Code generation specialist", ModelType.Chat),
-                ("accounts/fireworks/models/yi-large", "Yi Large", "01.AI's large model", ModelType.Chat),
-                ("accounts/fireworks/models/gemma2-9b-it", "Gemma 2 9B", "Google's open model", ModelType.Chat),
-                ("accounts/fireworks/models/phi-3-vision-128k-instruct", "Phi-3 Vision", "Microsoft's vision model", ModelType.Chat),
-                
-                // Function calling models
-                ("accounts/fireworks/models/firefunction-v2", "FireFunction v2", "Optimized for function calling", ModelType.Chat),
-                ("accounts/fireworks/models/firefunction-v1", "FireFunction v1", "Function calling model", ModelType.Chat),
-                
-                // Embedding models
-                ("accounts/fireworks/models/nomic-embed-text-v1.5", "Nomic Embed v1.5", "Text embedding model", ModelType.Embedding),
-                ("accounts/fireworks/models/e5-mistral-7b-instruct", "E5 Mistral 7B", "Instruction-tuned embeddings", ModelType.Embedding),
-                ("accounts/fireworks/models/bge-base-en-v1-5", "BGE Base EN", "English embeddings", ModelType.Embedding),
-                
-                // Image generation models
-                ("accounts/fireworks/models/stable-diffusion-xl-1024-v1-0", "SDXL 1.0", "High-res image generation", ModelType.ImageGeneration),
-                ("accounts/fireworks/models/stable-diffusion-xl-lightning", "SDXL Lightning", "Fast image generation", ModelType.ImageGeneration),
-                ("accounts/fireworks/models/playground-v2-1024px-aesthetic", "Playground v2", "Aesthetic image generation", ModelType.ImageGeneration),
-                
-                // Japanese models
-                ("accounts/fireworks/models/japanese-llava-v1.6-mistral-7b", "Japanese LLaVA", "Japanese vision-language model", ModelType.Chat),
-                ("accounts/fireworks/models/llama-v3-70b-instruct-hf-japanese", "Llama 3 70B Japanese", "Japanese language model", ModelType.Chat)
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "fireworks",
-                Capabilities = InferCapabilitiesFromModel(model.id, model.type),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description,
-                    ["type"] = model.type.ToString(),
-                    ["deployment_note"] = "Optimized for fast inference"
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(FireworksModel model)
         {

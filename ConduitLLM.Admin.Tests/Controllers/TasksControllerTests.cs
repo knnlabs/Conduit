@@ -135,7 +135,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
 
             // Assert
             Assert.NotNull(authorizeAttribute);
-            Assert.Equal("MasterKey", authorizeAttribute.Policy);
+            Assert.Equal("MasterKeyPolicy", authorizeAttribute.Policy);
         }
     }
 }

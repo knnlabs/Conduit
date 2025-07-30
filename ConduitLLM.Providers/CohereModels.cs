@@ -47,8 +47,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint fails, return known models
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -60,7 +60,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Models == null || apiResponse.Models.Count == 0)
                 {
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Models
@@ -70,52 +70,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on current Cohere models
-            var knownModels = new List<(string id, string displayName, string description, ModelType type, int contextLength)>
-            {
-                // Command models (chat/generation)
-                ("command-r-plus", "Command R+", "Most capable model for complex RAG workflows", ModelType.Chat, 128000),
-                ("command-r", "Command R", "Efficient model for RAG and tool use", ModelType.Chat, 128000),
-                ("command", "Command", "Text generation model", ModelType.Chat, 4096),
-                ("command-light", "Command Light", "Lightweight text generation", ModelType.Chat, 4096),
-                ("command-nightly", "Command Nightly", "Experimental features", ModelType.Chat, 8192),
-                
-                // Embedding models
-                ("embed-english-v3.0", "Embed English v3.0", "Latest English embedding model", ModelType.Embedding, 512),
-                ("embed-multilingual-v3.0", "Embed Multilingual v3.0", "Multilingual embedding model", ModelType.Embedding, 512),
-                ("embed-english-light-v3.0", "Embed English Light v3.0", "Lightweight English embeddings", ModelType.Embedding, 512),
-                ("embed-multilingual-light-v3.0", "Embed Multilingual Light v3.0", "Lightweight multilingual embeddings", ModelType.Embedding, 512),
-                ("embed-english-v2.0", "Embed English v2.0", "Previous gen English embeddings", ModelType.Embedding, 512),
-                ("embed-multilingual-v2.0", "Embed Multilingual v2.0", "Previous gen multilingual embeddings", ModelType.Embedding, 512),
-                
-                // Rerank models
-                ("rerank-english-v3.0", "Rerank English v3.0", "Document reranking model", ModelType.Rerank, 4096),
-                ("rerank-multilingual-v3.0", "Rerank Multilingual v3.0", "Multilingual reranking", ModelType.Rerank, 4096),
-                ("rerank-english-v2.0", "Rerank English v2.0", "Previous reranking model", ModelType.Rerank, 4096),
-                ("rerank-multilingual-v2.0", "Rerank Multilingual v2.0", "Previous multilingual reranking", ModelType.Rerank, 4096)
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "cohere",
-                Capabilities = InferCapabilitiesFromModel(model.id, model.type, model.contextLength),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description,
-                    ["type"] = model.type.ToString(),
-                    ["context_length"] = model.contextLength
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(CohereModel model)
         {

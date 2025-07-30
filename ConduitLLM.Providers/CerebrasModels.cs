@@ -45,9 +45,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the models endpoint is not available or returns an error,
-                    // fall back to our known models list
-                    return GetKnownModels();
+                    // API call failed, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -59,8 +58,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
                 {
-                    // If API returns empty, use known models
-                    return GetKnownModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Data
@@ -70,42 +68,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any error during discovery returns known models list
-                return GetKnownModels();
+                // Any error during discovery returns empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetKnownModels()
-        {
-            // Based on the models listed in CerebrasClient
-            var knownModels = new List<(string id, string displayName)>
-            {
-                // Llama 3.1 models
-                ("llama3.1-8b", "Llama 3.1 8B"),
-                ("llama3.1-70b", "Llama 3.1 70B"),
-                
-                // Llama 3.3 models
-                ("llama-3.3-70b", "Llama 3.3 70B"),
-                
-                // Llama 4 Scout models
-                ("llama-4-scout-17b-16e-instruct", "Llama 4 Scout 17B Instruct"),
-                
-                // Qwen 3 models
-                ("qwen-3-32b", "Qwen 3 32B"),
-                ("qwen-3-235b-a22b", "Qwen 3 235B"),
-                
-                // DeepSeek models (private preview)
-                ("deepseek-r1-distill-llama-70b", "DeepSeek R1 Distill Llama 70B")
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "cerebras",
-                Capabilities = InferCapabilitiesFromModelId(model.id)
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(CerebrasModel model)
         {

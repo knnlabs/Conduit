@@ -41,8 +41,8 @@ namespace ConduitLLM.Providers
                 
                 if (!response.IsSuccessStatusCode)
                 {
-                    // If the local Ollama service is not running, return popular models
-                    return GetPopularModels();
+                    // If the local Ollama service is not running, return empty list
+                    return new List<DiscoveredModel>();
                 }
 
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -54,7 +54,7 @@ namespace ConduitLLM.Providers
 
                 if (apiResponse?.Models == null || apiResponse.Models.Count == 0)
                 {
-                    return GetPopularModels();
+                    return new List<DiscoveredModel>();
                 }
 
                 return apiResponse.Models
@@ -64,79 +64,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // If Ollama is not running or accessible, return popular models
-                return GetPopularModels();
+                // If Ollama is not running or accessible, return empty list
+                return new List<DiscoveredModel>();
             }
         }
 
-        private static List<DiscoveredModel> GetPopularModels()
-        {
-            // Popular Ollama models that users commonly download
-            var knownModels = new List<(string id, string displayName, string description, string baseModel)>
-            {
-                // Llama models
-                ("llama3.2", "Llama 3.2", "Latest Llama model with vision capabilities", "meta-llama"),
-                ("llama3.1", "Llama 3.1", "Advanced Llama model", "meta-llama"),
-                ("llama3", "Llama 3", "Meta's Llama 3 model", "meta-llama"),
-                ("llama2", "Llama 2", "Meta's Llama 2 model", "meta-llama"),
-                ("codellama", "Code Llama", "Code-specialized Llama model", "meta-llama"),
-                
-                // Mistral models
-                ("mistral", "Mistral 7B", "Mistral's base model", "mistral"),
-                ("mixtral", "Mixtral 8x7B", "Mistral's MoE model", "mistral"),
-                ("mistral-nemo", "Mistral Nemo", "Efficient Mistral model", "mistral"),
-                
-                // Google models
-                ("gemma2", "Gemma 2", "Google's latest open model", "google"),
-                ("gemma", "Gemma", "Google's open model", "google"),
-                ("codegemma", "CodeGemma", "Code-focused Gemma", "google"),
-                
-                // Microsoft models
-                ("phi3", "Phi-3", "Microsoft's small language model", "microsoft"),
-                ("phi3.5", "Phi-3.5", "Latest Phi model", "microsoft"),
-                ("orca-mini", "Orca Mini", "Compact reasoning model", "microsoft"),
-                
-                // Qwen models
-                ("qwen2.5", "Qwen 2.5", "Alibaba's latest model", "alibaba"),
-                ("qwen2", "Qwen 2", "Alibaba's Qwen model", "alibaba"),
-                ("qwen", "Qwen", "Alibaba's base model", "alibaba"),
-                
-                // Other popular models
-                ("deepseek-coder-v2", "DeepSeek Coder v2", "Advanced code model", "deepseek"),
-                ("neural-chat", "Neural Chat", "Intel's optimized chat model", "intel"),
-                ("starling-lm", "Starling LM", "Berkeley's RLHF model", "berkeley"),
-                ("zephyr", "Zephyr", "Fine-tuned Mistral model", "huggingface"),
-                ("vicuna", "Vicuna", "LMSYS chat model", "lmsys"),
-                ("orca2", "Orca 2", "Microsoft reasoning model", "microsoft"),
-                ("solar", "Solar", "Upstage's LLM", "upstage"),
-                ("tinyllama", "TinyLlama", "Compact 1.1B model", "community"),
-                ("dolphin-mixtral", "Dolphin Mixtral", "Uncensored Mixtral", "cognitivecomputations"),
-                
-                // Embedding models
-                ("nomic-embed-text", "Nomic Embed Text", "Text embedding model", "nomic"),
-                ("all-minilm", "All-MiniLM", "Sentence embeddings", "sentence-transformers"),
-                ("mxbai-embed-large", "MixedBread Embed", "High-quality embeddings", "mixedbread"),
-                
-                // Vision models
-                ("llava", "LLaVA", "Vision-language model", "community"),
-                ("bakllava", "BakLLaVA", "Improved LLaVA model", "community"),
-                ("moondream", "Moondream", "Efficient vision model", "vikhyat")
-            };
-
-            return knownModels.Select(model => new DiscoveredModel
-            {
-                ModelId = model.id,
-                DisplayName = model.displayName,
-                Provider = "ollama",
-                Capabilities = InferCapabilitiesFromModel(model.id, model.baseModel),
-                Metadata = new Dictionary<string, object>
-                {
-                    ["description"] = model.description,
-                    ["base_model"] = model.baseModel,
-                    ["pull_command"] = $"ollama pull {model.id}"
-                }
-            }).ToList();
-        }
 
         private static DiscoveredModel ConvertToDiscoveredModel(OllamaModel model)
         {
