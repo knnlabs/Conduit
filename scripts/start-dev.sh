@@ -43,10 +43,11 @@ Conduit Development Environment Startup
 Usage: $0 [options]
 
 Options:
-  --build      Force rebuild of containers
-  --clean      Clean existing containers and volumes
-  --logs       Show logs after startup
-  --help       Show this help message
+  --build        Force rebuild of containers
+  --clean        Clean existing containers and volumes, then start
+  --clean-only   Clean existing containers and volumes without starting
+  --logs         Show logs after startup
+  --help         Show this help message
 
 This script:
 1. Sets proper user/group IDs for Docker containers
@@ -511,6 +512,7 @@ check_health() {
 main() {
     local force_build=false
     local clean=false
+    local clean_only=false
     local show_logs=false
     
     # Parse arguments
@@ -522,6 +524,10 @@ main() {
                 ;;
             --clean)
                 clean=true
+                shift
+                ;;
+            --clean-only)
+                clean_only=true
                 shift
                 ;;
             --logs)
@@ -545,6 +551,22 @@ main() {
     
     # Export variables for docker-compose
     export FORCE_BUILD=$force_build
+    
+    if [[ "$clean_only" == "true" ]]; then
+        log_info "Cleaning Conduit Development Environment"
+        log_info "========================================"
+        
+        check_prerequisites
+        check_container_conflicts
+        check_filesystem_compatibility
+        validate_user_mapping
+        
+        clean_environment
+        
+        log_info "Environment cleaned successfully!"
+        log_info "Run './scripts/start-dev.sh' to start the development environment"
+        return 0
+    fi
     
     log_info "Starting Conduit Development Environment"
     log_info "========================================"
