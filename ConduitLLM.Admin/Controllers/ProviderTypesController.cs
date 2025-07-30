@@ -16,7 +16,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/[controller]")]
-    [Authorize]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class ProviderTypesController : ControllerBase
     {
         private readonly IProviderMetadataRegistry _providerRegistry;

@@ -21,7 +21,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("metrics")]
-    [Authorize]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class MetricsController : ControllerBase
     {
         private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;

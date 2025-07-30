@@ -12,7 +12,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/admin/tasks")]
-    [Authorize(Policy = "MasterKey")]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class TasksController : ControllerBase
     {
         private readonly IAsyncTaskService _taskService;

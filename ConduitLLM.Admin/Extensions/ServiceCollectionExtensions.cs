@@ -55,8 +55,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
         services.AddAuthorization(options =>
         {
+            // Define the MasterKeyPolicy
             options.AddPolicy("MasterKeyPolicy", policy =>
                 policy.Requirements.Add(new MasterKeyRequirement()));
+            
+            // Set MasterKeyPolicy as the default policy for all controllers
+            // This ensures any controller with [Authorize] will use MasterKeyPolicy by default
+            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                .AddRequirements(new MasterKeyRequirement())
+                .Build();
         });
 
         // Register AdminVirtualKeyService with optional cache and event publishing dependencies
@@ -227,12 +234,44 @@ public static class ServiceCollectionExtensions
             }
         });
 
+        // Register Groq discovery provider  
+        services.AddScoped<ConduitLLM.Core.Services.GroqDiscoveryProvider>(serviceProvider =>
+        {
+            var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DiscoveryProviders");
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.GroqDiscoveryProvider>>();
+            var credentialService = serviceProvider.GetService<IProviderCredentialService>();
+            
+            try
+            {
+                // Try to get Groq credentials
+                var credentials = credentialService?.GetAllCredentials().Result;
+                var groqCredential = credentials?.FirstOrDefault(c => 
+                    c.ProviderType == ProviderType.Groq && 
+                    c.Configuration?.TryGetValue("ApiKey", out var apiKey) == true && 
+                    !string.IsNullOrEmpty(apiKey?.ToString()));
+                
+                if (groqCredential != null && groqCredential.Configuration!.TryGetValue("ApiKey", out var groqApiKey))
+                {
+                    return new ConduitLLM.Core.Services.GroqDiscoveryProvider(httpClient, logger, groqApiKey?.ToString());
+                }
+            }
+            catch
+            {
+                // If we can't get credentials, still register the provider (it will fall back to patterns)
+            }
+            
+            return new ConduitLLM.Core.Services.GroqDiscoveryProvider(httpClient, logger, null);
+        });
+
         // Register the providers as IModelDiscoveryProvider interfaces
         services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
             serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
 
         services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
             serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
+            
+        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
+            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.GroqDiscoveryProvider>());
 
         // Register discovery service
         services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
