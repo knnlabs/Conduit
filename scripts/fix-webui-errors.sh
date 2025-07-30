@@ -185,7 +185,8 @@ check_permissions() {
         if ! test_write_access "./ConduitLLM.WebUI/.next"; then
             log_error "Cannot write to .next folder"
             log_error "This will cause build failures"
-            log_error "Fix with: ./scripts/start-dev.sh --clean"
+            log_error "Fix with: ./scripts/start-dev.sh --fix-perms"
+            log_error "Or for full cleanup: ./scripts/start-dev.sh --clean"
             issues_found=true
         else
             # Check ownership
@@ -193,7 +194,8 @@ check_permissions() {
             if [[ "$next_owner" != "$current_uid:$current_gid" ]] && [[ "$next_owner" != "unknown" ]]; then
                 log_warn ".next folder ownership mismatch: $next_owner (expected: $current_uid:$current_gid)"
                 log_warn "This may cause permission issues during build"
-                log_warn "Fix with: ./scripts/start-dev.sh --clean"
+                log_warn "Fix with: ./scripts/start-dev.sh --fix-perms"
+                log_warn "Or for full cleanup: ./scripts/start-dev.sh --clean"
                 issues_found=true
             fi
         fi
@@ -204,7 +206,8 @@ check_permissions() {
         if ! test_write_access "./ConduitLLM.WebUI/node_modules"; then
             log_error "Cannot write to node_modules folder"
             log_error "This will cause npm install failures"
-            log_error "Fix with: ./scripts/start-dev.sh --clean"
+            log_error "Fix with: ./scripts/start-dev.sh --fix-perms"
+            log_error "Or for full cleanup: ./scripts/start-dev.sh --clean"
             issues_found=true
         fi
     fi
@@ -214,7 +217,8 @@ check_permissions() {
     for dir in "${build_dirs[@]}"; do
         if [[ -d "$dir" ]] && ! test_write_access "$dir"; then
             log_error "Cannot write to build directory: $dir"
-            log_error "Fix with: ./scripts/start-dev.sh --clean"
+            log_error "Fix with: ./scripts/start-dev.sh --fix-perms"
+            log_error "Or for full cleanup: ./scripts/start-dev.sh --clean"
             issues_found=true
         fi
     done
@@ -224,8 +228,9 @@ check_permissions() {
         log_error "Permission issues detected - builds may fail"
         echo ""
         log_error "RECOMMENDED FIXES:"
-        log_error "1. For Docker permission issues: ./scripts/start-dev.sh --clean"
-        log_error "2. For host permission issues: sudo chown -R \$USER:\$USER ./ConduitLLM.WebUI"
+        log_error "1. Quick permission fix: ./scripts/start-dev.sh --fix-perms"
+        log_error "2. Full environment cleanup: ./scripts/start-dev.sh --clean"
+        log_error "3. Manual fix (if above fail): sudo chown -R \$USER:\$USER ./ConduitLLM.WebUI"
         echo ""
         return 1
     else

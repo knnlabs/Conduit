@@ -46,6 +46,7 @@ Options:
   --build        Force rebuild of containers
   --clean        Clean existing containers and volumes, then start
   --clean-only   Clean existing containers and volumes without starting
+  --fix-perms    Fix host filesystem permissions without cleaning
   --logs         Show logs after startup
   --help         Show this help message
 
@@ -133,6 +134,66 @@ check_container_conflicts() {
     log_info "Container conflict check passed"
 }
 
+# Fix host filesystem permissions without removing directories
+fix_host_permissions() {
+    log_task "Fixing host filesystem permissions..."
+    
+    local current_uid=$(id -u)
+    local current_gid=$(id -g)
+    local dirs_to_fix=(
+        "./ConduitLLM.WebUI/.next"
+        "./ConduitLLM.WebUI/node_modules"
+        "./SDKs/Node/Admin/node_modules"
+        "./SDKs/Node/Core/node_modules"
+        "./SDKs/Node/Common/node_modules"
+    )
+    
+    local permissions_fixed=false
+    local needs_sudo=false
+    
+    # First, check if we need sudo
+    for dir in "${dirs_to_fix[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%u:%g" "$dir" 2>/dev/null || echo "unknown")
+            
+            if [[ "$owner" != "$current_uid:$current_gid" ]]; then
+                needs_sudo=true
+                break
+            fi
+        fi
+    done
+    
+    if [[ "$needs_sudo" == "true" ]]; then
+        log_warn "Some directories require sudo access to fix permissions"
+        log_info "You may be prompted for your sudo password"
+        echo
+    fi
+    
+    for dir in "${dirs_to_fix[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%u:%g" "$dir" 2>/dev/null || echo "unknown")
+            
+            if [[ "$owner" != "$current_uid:$current_gid" ]]; then
+                log_info "Fixing permissions for: $dir (owned by $owner)"
+                
+                if sudo chown -R "$current_uid:$current_gid" "$dir"; then
+                    log_info "Fixed ownership of $dir to $current_uid:$current_gid"
+                    permissions_fixed=true
+                else
+                    log_error "Failed to fix ownership of $dir"
+                    log_error "You may need to run manually: sudo chown -R $USER:$USER $dir"
+                fi
+            fi
+        fi
+    done
+    
+    if [[ "$permissions_fixed" == "true" ]]; then
+        log_info "Host filesystem permissions have been fixed"
+    else
+        log_info "No permission changes were needed"
+    fi
+}
+
 # Check volume permissions and ownership
 check_volume_permissions() {
     log_task "Checking volume permissions..."
@@ -166,9 +227,10 @@ check_volume_permissions() {
         if [[ "$volume_test_failed" == "true" ]]; then
             log_error "Volume permission mismatch detected."
             log_error "These volumes have incompatible permissions from production containers."
-            log_error "To fix this, run:"
-            log_error "  ./scripts/start-dev.sh --clean"
-            log_error "This will remove the problematic volumes and recreate them with correct permissions."
+            log_error "To fix this, run one of:"
+            log_error "  ./scripts/start-dev.sh --fix-perms  # Fix permissions only"
+            log_error "  ./scripts/start-dev.sh --clean      # Full clean and restart"
+            log_error "The --fix-perms option will try to fix permissions without removing data."
             exit 1
         fi
     fi
@@ -357,6 +419,8 @@ clean_environment() {
     log_task "Cleaning development environment..."
     
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
+    local current_uid=$(id -u)
+    local current_gid=$(id -g)
     
     # Show what will be cleaned before proceeding
     log_info "This will clean the following:"
@@ -379,9 +443,30 @@ clean_environment() {
         done
     fi
     
+    # Check for host filesystem directories that need cleaning
+    local dirs_to_clean=(
+        "./ConduitLLM.WebUI/.next"
+        "./ConduitLLM.WebUI/node_modules"
+        "./SDKs/Node/Admin/node_modules"
+        "./SDKs/Node/Core/node_modules"
+        "./SDKs/Node/Common/node_modules"
+    )
+    
+    log_info "Host directories to clean:"
+    for dir in "${dirs_to_clean[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%u:%g" "$dir" 2>/dev/null || echo "unknown")
+            if [[ "$owner" != "$current_uid:$current_gid" ]]; then
+                echo "  - $dir (currently owned by $owner, will fix to $current_uid:$current_gid)"
+            else
+                echo "  - $dir (will be removed)"
+            fi
+        fi
+    done
+    
     echo
-    log_warn "This will stop all Conduit containers and remove development volumes"
-    log_warn "Your source code will NOT be affected, only Docker containers and volumes"
+    log_warn "This will stop all Conduit containers, remove development volumes, and clean host directories"
+    log_warn "Your source code will NOT be affected, only Docker containers, volumes, and build artifacts"
     echo
     
     # Stop and remove containers (both production and development)
@@ -432,17 +517,66 @@ clean_environment() {
         done
     fi
     
+    # Clean host filesystem directories
+    log_info "Cleaning host filesystem directories..."
+    local dirs_cleaned=0
+    local dirs_failed=0
+    
+    for dir in "${dirs_to_clean[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%u:%g" "$dir" 2>/dev/null || echo "unknown")
+            
+            # If owned by root or another user, we need sudo to clean it
+            if [[ "$owner" != "$current_uid:$current_gid" ]]; then
+                log_info "Fixing permissions for: $dir (owned by $owner)"
+                
+                # Try to change ownership first
+                if sudo chown -R "$current_uid:$current_gid" "$dir" 2>/dev/null; then
+                    log_info "Fixed ownership of $dir"
+                    # Now remove it
+                    if rm -rf "$dir" 2>/dev/null; then
+                        ((dirs_cleaned++))
+                    else
+                        log_error "Failed to remove $dir after fixing ownership"
+                        ((dirs_failed++))
+                    fi
+                else
+                    # If we can't change ownership, try to remove with sudo
+                    if sudo rm -rf "$dir" 2>/dev/null; then
+                        log_info "Removed $dir with sudo"
+                        ((dirs_cleaned++))
+                    else
+                        log_error "Failed to remove $dir"
+                        ((dirs_failed++))
+                    fi
+                fi
+            else
+                # If we own it, just remove it
+                if rm -rf "$dir" 2>/dev/null; then
+                    ((dirs_cleaned++))
+                else
+                    log_error "Failed to remove $dir"
+                    ((dirs_failed++))
+                fi
+            fi
+        fi
+    done
+    
     # Report results
-    if [[ $volumes_failed -eq 0 ]]; then
+    if [[ $volumes_failed -eq 0 && $dirs_failed -eq 0 ]]; then
         log_info "Environment cleaned successfully"
-        log_info "Removed $volumes_removed volumes"
+        log_info "Removed $volumes_removed volumes and $dirs_cleaned directories"
     else
         log_warn "Environment partially cleaned"
-        log_warn "Removed: $volumes_removed volumes, Failed: $volumes_failed volumes"
-        log_warn "You may need to manually remove failed volumes with sudo"
+        log_warn "Volumes - Removed: $volumes_removed, Failed: $volumes_failed"
+        log_warn "Directories - Removed: $dirs_cleaned, Failed: $dirs_failed"
+        if [[ $dirs_failed -gt 0 ]]; then
+            log_warn "For permission issues, you may need to run:"
+            log_warn "  sudo chown -R $USER:$USER ./ConduitLLM.WebUI ./SDKs"
+        fi
     fi
     
-    # Give a moment for Docker to clean up
+    # Give a moment for filesystem to sync
     sleep 2
 }
 
@@ -513,6 +647,7 @@ main() {
     local force_build=false
     local clean=false
     local clean_only=false
+    local fix_perms_only=false
     local show_logs=false
     
     # Parse arguments
@@ -528,6 +663,10 @@ main() {
                 ;;
             --clean-only)
                 clean_only=true
+                shift
+                ;;
+            --fix-perms)
+                fix_perms_only=true
                 shift
                 ;;
             --logs)
@@ -551,6 +690,18 @@ main() {
     
     # Export variables for docker-compose
     export FORCE_BUILD=$force_build
+    
+    if [[ "$fix_perms_only" == "true" ]]; then
+        log_info "Fixing Host Filesystem Permissions"
+        log_info "=================================="
+        
+        check_prerequisites
+        fix_host_permissions
+        
+        log_info "Permission fix completed!"
+        log_info "Run './scripts/fix-webui-errors.sh' to verify the fixes"
+        return 0
+    fi
     
     if [[ "$clean_only" == "true" ]]; then
         log_info "Cleaning Conduit Development Environment"
