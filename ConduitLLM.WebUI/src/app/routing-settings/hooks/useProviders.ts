@@ -35,8 +35,8 @@ export function useProviders() {
 
   // Convert providers to select options format
   const providerOptions: { value: string; label: string; }[] = providers.map(provider => ({
-    value: provider.id,
-    label: provider.displayName ?? provider.name ?? provider.id,
+    value: String(provider.id ?? ''),
+    label: provider.displayName ?? provider.name ?? String(provider.id ?? ''),
   }));
 
   return {

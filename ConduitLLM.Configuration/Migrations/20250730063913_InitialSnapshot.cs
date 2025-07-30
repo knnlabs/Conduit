@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSnapshot : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,7 +18,7 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Provider = table.Column<int>(type: "integer", nullable: false),
                     OperationType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     CostUnit = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
@@ -43,7 +43,7 @@ namespace ConduitLLM.Configuration.Migrations
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     VirtualKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Provider = table.Column<int>(type: "integer", nullable: false),
                     OperationType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     RequestId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
@@ -198,6 +198,7 @@ namespace ConduitLLM.Configuration.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ProviderType = table.Column<int>(type: "integer", nullable: false),
+                    ProviderName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     BaseUrl = table.Column<string>(type: "text", nullable: true),
                     IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -350,6 +351,7 @@ namespace ConduitLLM.Configuration.Migrations
                     SupportsImageGeneration = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsVideoGeneration = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsEmbeddings = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsChat = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsFunctionCalling = table.Column<bool>(type: "boolean", nullable: false),
                     SupportsStreaming = table.Column<bool>(type: "boolean", nullable: false),
                     TokenizerType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
@@ -983,8 +985,7 @@ namespace ConduitLLM.Configuration.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ProviderCredentials_ProviderType",
                 table: "ProviderCredentials",
-                column: "ProviderType",
-                unique: true);
+                column: "ProviderType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProviderHealthConfigurations_ProviderType",
@@ -1013,6 +1014,13 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "IX_ProviderKeyCredential_ProviderCredentialId",
                 table: "ProviderKeyCredentials",
                 column: "ProviderCredentialId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProviderKeyCredential_UniqueApiKeyPerProvider",
+                table: "ProviderKeyCredentials",
+                columns: new[] { "ProviderCredentialId", "ApiKey" },
+                unique: true,
+                filter: "\"ApiKey\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RequestLogs_VirtualKeyId",

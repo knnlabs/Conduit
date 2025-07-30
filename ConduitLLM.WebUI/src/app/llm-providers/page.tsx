@@ -45,6 +45,7 @@ interface ProviderWithHealth extends ProviderCredentialDto {
   lastHealthCheck?: string;
   models?: string[];
   endpoint?: string;
+  providerName?: string;
 }
 
 export default function ProvidersPage() {
@@ -157,6 +158,7 @@ export default function ProvidersPage() {
       
       return (
         displayName.toLowerCase().includes(query) ||
+        (provider.providerName?.toLowerCase().includes(query) ?? false) ||
         (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
         (provider.endpoint?.toLowerCase().includes(query) ?? false)
       );
@@ -208,7 +210,7 @@ export default function ProvidersPage() {
         const displayName = getProviderDisplayName(providerType);
         
         return {
-          name: displayName,
+          name: provider.providerName ?? displayName,
           type: displayName,
           status: provider.isEnabled ? 'Enabled' : 'Disabled',
           health: provider.healthStatus,

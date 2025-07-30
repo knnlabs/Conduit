@@ -34,6 +34,7 @@ interface Provider extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
+  providerName?: string;
 }
 
 interface ProvidersTableProps {
@@ -53,7 +54,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {(() => {
+          Are you sure you want to delete {provider.providerName ?? (() => {
             try {
               const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
               return getProviderDisplayName(providerType);
@@ -95,7 +96,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{(() => {
+          <Text fw={500}>{provider.providerName ?? (() => {
             try {
               const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
               return getProviderDisplayName(providerType);

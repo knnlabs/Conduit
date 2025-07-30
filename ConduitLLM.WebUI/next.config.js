@@ -40,14 +40,19 @@ const nextConfig = {
   },
   // Enhanced webpack configuration for hot reload
   webpack: (config, { dev, isServer }) => {
-    config.externals.push({
-      'utf-8-validate': 'commonjs utf-8-validate',
-      'bufferutil': 'commonjs bufferutil',
-    });
+    // Fix for CommonJS modules
+    if (!isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'utf-8-validate': 'commonjs utf-8-validate',
+        'bufferutil': 'commonjs bufferutil',
+      });
+    }
     
     // Better source maps for debugging
     if (dev && !isServer) {
-      config.devtool = 'eval-source-map';
+      // Use default devtool to avoid performance issues
+      // config.devtool = 'eval-source-map';
     }
     
     // Enable React DevTools
@@ -64,17 +69,8 @@ const nextConfig = {
         ...config.optimization,
         minimize: false,
         minimizer: [],
-        // Enable code splitting for better performance
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
-            },
-          },
-        },
+        // Disable custom splitChunks to fix exports error
+        splitChunks: false,
         runtimeChunk: false,
       };
     } else {

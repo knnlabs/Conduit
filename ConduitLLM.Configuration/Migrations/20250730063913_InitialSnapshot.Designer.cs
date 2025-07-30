@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20250729001211_AddSupportsChatToModelMapping")]
-    partial class AddSupportsChatToModelMapping
+    [Migration("20250730063913_InitialSnapshot")]
+    partial class InitialSnapshot
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1171,6 +1171,11 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("ProviderType")
                         .HasColumnType("integer");

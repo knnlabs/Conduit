@@ -33,6 +33,7 @@ function getProviderDisplayName(providerType: ProviderType): string {
 export interface ImageModel {
   id: string;
   providerId: string;
+  providerName?: string;
   displayName: string;
   maxContextTokens?: number;
   supportsImageGeneration: boolean;
@@ -51,6 +52,7 @@ export function useImageModels() {
         modelId: string;
         providerId: number;
         providerType?: ProviderType;
+        providerName?: string;
         supportsImageGeneration?: boolean;
         maxContextLength?: number;
         isEnabled?: boolean;
@@ -64,13 +66,15 @@ export function useImageModels() {
           mapping.supportsImageGeneration === true && mapping.isEnabled !== false
         )
         .map((mapping: ModelMapping) => {
-          const providerName = mapping.providerType !== undefined 
-            ? getProviderDisplayName(mapping.providerType) 
-            : 'Unknown';
+          const providerDisplayName = mapping.providerName ?? 
+            (mapping.providerType !== undefined 
+              ? getProviderDisplayName(mapping.providerType) 
+              : 'Unknown');
           return {
             id: mapping.modelId,
             providerId: mapping.providerType?.toString() ?? 'unknown',
-            displayName: `${mapping.modelId} (${providerName})`,
+            providerName: mapping.providerName,
+            displayName: `${mapping.modelId} (${providerDisplayName})`,
             maxContextTokens: mapping.maxContextLength,
             supportsImageGeneration: true,
           };

@@ -33,15 +33,29 @@ export async function PUT(
     const currentProvider = await adminClient.providers.getById(parseInt(id, 10));
     
     // Build update data ensuring type safety - SDK expects the generated type format
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       id: parseInt(id, 10),
-      baseUrl: ((body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl) as string,
+      // Handle different field names from frontend
+      baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl) as string,
       isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
-      organization: (body.organization as string | undefined) ?? currentProvider.organization
+      organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? currentProvider.organization) as string | undefined,
     };
     
-    const provider = await adminClient.providers.update(parseInt(id, 10), updateData);
-    return NextResponse.json(provider);
+    // Handle providerName if the backend supports it
+    if (body.providerName !== undefined) {
+      updateData.providerName = body.providerName as string;
+    }
+    
+    // Handle apiKey if provided (only update if not empty)
+    if (body.apiKey) {
+      updateData.apiKey = body.apiKey as string;
+    }
+    
+    await adminClient.providers.update(parseInt(id, 10), updateData as Parameters<typeof adminClient.providers.update>[1]);
+    
+    // Fetch the updated provider to return to the client
+    const updatedProvider = await adminClient.providers.getById(parseInt(id, 10));
+    return NextResponse.json(updatedProvider);
   } catch (error) {
     return handleSDKError(error);
   }

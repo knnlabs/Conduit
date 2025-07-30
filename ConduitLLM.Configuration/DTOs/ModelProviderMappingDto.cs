@@ -37,6 +37,11 @@ namespace ConduitLLM.Configuration.DTOs
         public ProviderType ProviderType { get; set; }
 
         /// <summary>
+        /// The provider name (populated from the provider credential)
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
         public int Priority { get; set; }

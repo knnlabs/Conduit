@@ -5,6 +5,7 @@ import { ProviderType } from './providerType';
 export interface ProviderCredentialDto {
   id?: number;
   providerType?: ProviderType;
+  providerName?: string;
   apiKey?: string;
   baseUrl?: string | null;
   organization?: string | null;
@@ -15,6 +16,7 @@ export interface ProviderCredentialDto {
 
 export interface CreateProviderCredentialDto {
   providerType: ProviderType;
+  providerName: string;
   apiKey?: string;
   baseUrl?: string | null;
   organization?: string | null;
@@ -22,6 +24,8 @@ export interface CreateProviderCredentialDto {
 }
 
 export interface UpdateProviderCredentialDto {
+  id: number;
+  providerName?: string;
   apiKey?: string;
   baseUrl?: string | null;
   organization?: string | null;

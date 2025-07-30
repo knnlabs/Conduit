@@ -22,7 +22,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+// Remove unused import
 
 export default function EditModelMappingPage() {
   const params = useParams();
@@ -225,20 +225,10 @@ export default function EditModelMappingPage() {
     router.push('/model-mappings');
   };
 
-  const providerOptions = providers.map(p => {
-    try {
-      const providerType = getProviderTypeFromDto(p);
-      return {
-        value: p.id?.toString() ?? '',
-        label: getProviderDisplayName(providerType),
-      };
-    } catch {
-      return {
-        value: p.id?.toString() ?? '',
-        label: 'Unknown Provider',
-      };
-    }
-  }).filter(opt => opt.value !== '');
+  const providerOptions = providers.map(p => ({
+    value: p.id?.toString() ?? '',
+    label: p.providerName || `Provider ${p.id}`,
+  })).filter(opt => opt.value !== '' && opt.label !== '');
 
   if (error) {
     return (

@@ -36,7 +36,7 @@ import {
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
-import { getProviderTypeFromDto, getProviderDisplayName, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 interface BulkMappingModalProps {
@@ -235,20 +235,10 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         <Select
           label="Select Provider"
           placeholder="Choose a provider to discover models"
-          data={providers?.map((p: ProviderCredentialDto) => {
-            try {
-              const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
-              return {
-                value: p.id?.toString() ?? '',
-                label: getProviderDisplayName(providerType),
-              };
-            } catch {
-              return {
-                value: p.id?.toString() ?? '',
-                label: 'Unknown Provider',
-              };
-            }
-          }).filter(opt => opt.value !== '') || []}
+          data={providers?.map((p: ProviderCredentialDto) => ({
+            value: p.id?.toString() ?? '',
+            label: p.providerName || `Provider ${p.id}`,
+          })).filter(opt => opt.value !== '' && opt.label !== '') || []}
           value={selectedProviderId}
           onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}

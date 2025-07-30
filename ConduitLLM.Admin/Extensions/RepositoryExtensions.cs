@@ -117,6 +117,7 @@ namespace ConduitLLM.Admin.Extensions
                 ProviderModelId = mapping.ProviderModelName,
                 ProviderId = mapping.ProviderCredentialId,
                 ProviderType = mapping.ProviderCredential?.ProviderType ?? ProviderType.OpenAI,
+                ProviderName = mapping.ProviderCredential?.ProviderName ?? string.Empty,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields
@@ -200,6 +201,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 Id = credential.Id,
                 ProviderType = credential.ProviderType,
+                ProviderName = credential.ProviderName,
                 BaseUrl = credential.BaseUrl ?? string.Empty,
                 IsEnabled = credential.IsEnabled,
                 Organization = null, // Organization not available in entity
@@ -242,6 +244,7 @@ namespace ConduitLLM.Admin.Extensions
             return new ProviderCredential
             {
                 ProviderType = dto.ProviderType,
+                ProviderName = dto.ProviderName,
                 BaseUrl = dto.BaseUrl,
                 IsEnabled = dto.IsEnabled,
                 // Organization is not available in entity
@@ -268,6 +271,12 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
+            // Update ProviderName if provided
+            if (!string.IsNullOrEmpty(dto.ProviderName))
+            {
+                entity.ProviderName = dto.ProviderName;
+            }
+            
             entity.BaseUrl = dto.BaseUrl;
 
 

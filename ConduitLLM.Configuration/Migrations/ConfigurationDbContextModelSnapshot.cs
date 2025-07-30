@@ -1169,6 +1169,11 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("ProviderType")
                         .HasColumnType("integer");
 

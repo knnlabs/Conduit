@@ -32,32 +32,27 @@ import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 
 interface SystemInfo {
-  version: {
-    appVersion: string;
-    buildDate: string | null;
+  version: string;
+  buildDate: string;
+  environment: string;
+  uptime: number;
+  systemTime: string;
+  features: {
+    ipFiltering: boolean;
+    providerHealth: boolean;
+    costTracking: boolean;
+    audioSupport: boolean;
   };
-  operatingSystem: {
-    description: string;
+  runtime: {
+    dotnetVersion: string;
+    os: string;
     architecture: string;
   };
   database: {
     provider: string;
-    version: string;
-    connected: boolean;
-    connectionString: string;
-    location: string;
-  };
-  runtime: {
-    runtimeVersion: string;
-    startTime: string;
-    uptime: string;
-  };
-  recordCounts: {
-    virtualKeys: number;
-    requests: number;
-    settings: number;
-    providers: number;
-    modelMappings: number;
+    connectionString?: string;
+    isConnected: boolean;
+    pendingMigrations?: string[];
   };
 }
 
@@ -91,19 +86,12 @@ export default function ConfigurationPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch system info');
       }
-      interface SystemInfoResponse {
-        version?: string;
-        operatingSystem?: string;
-        runtime?: string;
-        database?: string;
-      }
+      const data = await response.json() as unknown;
       
-      const data = await response.json() as SystemInfoResponse;
-      
-      // Validate the data structure
+      // Validate the data structure matches AdminClient SystemInfoDto
       if (data && typeof data === 'object' && 
-          data.version && data.operatingSystem && data.runtime && data.database) {
-        setSystemInfo(data as unknown as SystemInfo);
+          'version' in data && 'runtime' in data && 'database' in data) {
+        setSystemInfo(data as SystemInfo);
       } else {
         console.error('Invalid system info structure:', data);
         setSystemInfo(null);
@@ -262,55 +250,59 @@ export default function ConfigurationPage() {
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>App Version</Text>
-                  <Text size="lg" fw={500}>{systemInfo.version.appVersion}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.version}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Build Date</Text>
+                  <Text size="lg" fw={500}>{systemInfo.buildDate || 'Unknown'}</Text>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+                <Paper p="md" withBorder>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Environment</Text>
+                  <Text size="lg" fw={500}>{systemInfo.environment}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Runtime</Text>
-                  <Text size="lg" fw={500}>{systemInfo.runtime.runtimeVersion}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.runtime.dotnetVersion}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Uptime</Text>
-                  <Text size="lg" fw={500}>{systemInfo.runtime.uptime}</Text>
+                  <Text size="lg" fw={500}>{Math.floor(systemInfo.uptime / 3600)}h {Math.floor((systemInfo.uptime % 3600) / 60)}m</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Operating System</Text>
-                  <Text size="lg" fw={500}>{systemInfo.operatingSystem.description}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.runtime.os}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Architecture</Text>
-                  <Text size="lg" fw={500}>{systemInfo.operatingSystem.architecture}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.runtime.architecture}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Database</Text>
-                  <Text size="lg" fw={500}>{systemInfo.database.provider} v{systemInfo.database.version}</Text>
+                  <Text size="lg" fw={500}>{systemInfo.database.provider}</Text>
                 </Paper>
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <Paper p="md" withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Virtual Keys</Text>
-                  <Text size="lg" fw={500}>{systemInfo.recordCounts.virtualKeys}</Text>
-                </Paper>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                <Paper p="md" withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Providers</Text>
-                  <Text size="lg" fw={500}>{systemInfo.recordCounts.providers}</Text>
-                </Paper>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                <Paper p="md" withBorder>
-                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Model Mappings</Text>
-                  <Text size="lg" fw={500}>{systemInfo.recordCounts.modelMappings}</Text>
+                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>DB Connected</Text>
+                  <Text size="lg" fw={500}>
+                    <Badge color={systemInfo.database.isConnected ? 'green' : 'red'} variant="light">
+                      {systemInfo.database.isConnected ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  </Text>
                 </Paper>
               </Grid.Col>
             </Grid>

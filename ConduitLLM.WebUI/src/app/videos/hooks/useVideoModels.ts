@@ -35,6 +35,7 @@ interface ModelMapping {
   modelId: string;
   providerId: string;
   providerType?: ProviderType;
+  providerName?: string;
   maxContextLength?: number;
   supportsVideoGeneration?: boolean;
   isEnabled?: boolean;
@@ -54,11 +55,12 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
   );
   
   return videoModels.map((mapping: ModelMapping) => {
-    const providerName = mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown';
+    const providerDisplayName = mapping.providerName ?? 
+      (mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown');
     return {
       id: mapping.modelId,
-      provider: providerName,
-      displayName: `${mapping.modelId} (${providerName})`,
+      provider: providerDisplayName,
+      displayName: `${mapping.modelId} (${providerDisplayName})`,
       capabilities: {
         videoGeneration: true,
         // Default values since model mappings don't store detailed video capabilities yet

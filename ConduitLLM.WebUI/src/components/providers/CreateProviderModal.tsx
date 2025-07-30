@@ -29,6 +29,7 @@ interface CreateProviderModalProps {
 
 interface CreateProviderForm {
   providerType: string;
+  providerName: string;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -50,6 +51,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   const form = useForm<CreateProviderForm>({
     initialValues: {
       providerType: '',
+      providerName: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
@@ -57,6 +59,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     },
     validate: {
       providerType: (value) => (!value ? 'Provider type is required' : null),
+      // Provider name is now optional - will use provider type if not provided
       apiKey: (value) => (!value ? 'API key is required' : null),
       apiEndpoint: (value) => {
         if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
@@ -115,8 +118,16 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   const handleSubmit = async (values: CreateProviderForm) => {
     setIsSubmitting(true);
     try {
+      // If no provider name was entered, use the provider type label
+      let providerName = values.providerName.trim();
+      if (!providerName) {
+        const selectedProvider = availableProviders.find(p => p.value === values.providerType);
+        providerName = selectedProvider?.label ?? 'Unknown Provider';
+      }
+
       const payload = {
         providerType: parseInt(values.providerType, 10), // Send numeric provider type
+        providerName: providerName,
         apiKey: values.apiKey,
         apiEndpoint: values.apiEndpoint ?? undefined,
         organizationId: values.organizationId ?? undefined,
@@ -256,10 +267,21 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             {...form.getInputProps('providerType')}
           />
 
+          <TextInput
+            label="Provider Name (Optional)"
+            placeholder="Leave empty to use provider type name"
+            description="A friendly name to identify this provider (e.g., 'Production OpenAI', 'Dev Ollama')"
+            autoComplete="off"
+            data-form-type="other"
+            {...form.getInputProps('providerName')}
+          />
+
           <PasswordInput
             label="API Key"
             placeholder="Enter API key"
             required
+            autoComplete="new-password"
+            data-form-type="other"
             {...form.getInputProps('apiKey')}
           />
 
@@ -275,6 +297,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     label="Organization ID"
                     placeholder="Enter organization ID"
                     required={config.requiresOrganizationId}
+                    autoComplete="off"
+                    data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />
                 )}
@@ -284,6 +308,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
                     placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
                     required={config.requiresEndpoint}
+                    autoComplete="off"
+                    data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />
                 )}

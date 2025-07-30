@@ -19,7 +19,7 @@ import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+// Remove unused import
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -112,20 +112,10 @@ export function CreateModelMappingModal({
     onClose();
   };
 
-  const providerOptions = providers?.map((p) => {
-    try {
-      const providerType = getProviderTypeFromDto(p as { providerType?: number; providerName?: string });
-      return {
-        value: p.id?.toString() ?? '',
-        label: getProviderDisplayName(providerType),
-      };
-    } catch {
-      return {
-        value: p.id?.toString() ?? '',
-        label: 'Unknown Provider',
-      };
-    }
-  }).filter(opt => opt.value !== '') || [];
+  const providerOptions = providers?.map((p) => ({
+    value: p.id?.toString() ?? '',
+    label: p.providerName || `Provider ${p.id}`,
+  })).filter(opt => opt.value !== '' && opt.label !== '') || [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities

@@ -180,6 +180,7 @@ public static class ServiceCollectionExtensions
 
         // Register provider model discovery
         services.AddScoped<IProviderModelDiscovery, ProviderModelDiscoveryService>();
+        services.AddScoped<IProviderInstanceModelDiscovery, ProviderInstanceModelDiscoveryService>();
         
         // Register discovery service with explicit dependency injection
         services.AddScoped<IProviderDiscoveryService>(serviceProvider =>

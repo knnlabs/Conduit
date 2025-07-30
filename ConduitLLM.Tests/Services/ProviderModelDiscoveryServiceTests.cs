@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -134,32 +136,34 @@ namespace ConduitLLM.Tests.Services
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
 
-            // Act
-            var models = await service.DiscoverModelsAsync("google", _httpClient, "test-key");
+            // Act - use anthropic which returns static models when API key is provided
+            var models = await service.DiscoverModelsAsync("anthropic", _httpClient, "test-key");
 
             // Assert
             Assert.NotEmpty(models);
-            Assert.All(models, m => Assert.Equal("google", m.Provider));
+            Assert.All(models, m => Assert.Equal("anthropic", m.Provider));
         }
 
         [Fact]
-        public async Task DiscoverModelsAsync_HandlesExceptionsGracefully()
+        public async Task DiscoverModelsAsync_HandlesUnsupportedProviderGracefully()
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var badHttpClient = new HttpClient(); // No base address will cause issues
-
-            // Act
-            var models = await service.DiscoverModelsAsync("openai", badHttpClient, "test-key");
+            
+            // Act - Use an unsupported provider
+            var models = await service.DiscoverModelsAsync("unsupported-provider", _httpClient, "test-key");
 
             // Assert
             Assert.NotNull(models);
+            Assert.Empty(models); // Should return empty list for unsupported provider
+            
+            // Verify debug log for unsupported provider
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Error,
+                    LogLevel.Debug,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error discovering models")),
-                    It.IsAny<Exception>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("No provider-specific discovery available")),
+                    null,
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }

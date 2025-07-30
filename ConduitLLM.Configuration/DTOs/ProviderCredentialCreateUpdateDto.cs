@@ -15,6 +15,13 @@ namespace ConduitLLM.Configuration.DTOs
         public ProviderType ProviderType { get; set; }
 
         /// <summary>
+        /// User-friendly name for this provider instance
+        /// </summary>
+        [Required]
+        [MaxLength(100)]
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>
         /// Base URL for the provider API
         /// </summary>
         public string? BaseUrl { get; set; }
@@ -48,6 +55,12 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
+        /// User-friendly name for this provider instance
+        /// </summary>
+        [MaxLength(100)]
+        public string? ProviderName { get; set; }
+
+        /// <summary>
         /// Base URL for the provider API
         /// </summary>
         public string? BaseUrl { get; set; }
@@ -78,5 +91,10 @@ namespace ConduitLLM.Configuration.DTOs
         /// Provider type enum value
         /// </summary>
         public ProviderType ProviderType { get; set; }
+
+        /// <summary>
+        /// User-friendly name for this provider instance
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
     }
 }

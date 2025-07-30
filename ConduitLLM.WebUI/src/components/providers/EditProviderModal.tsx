@@ -41,6 +41,7 @@ interface EditProviderModalProps {
 }
 
 interface EditProviderForm {
+  providerName?: string;
   apiKey?: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -60,12 +61,19 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
   const form = useForm<EditProviderForm>({
     initialValues: {
+      providerName: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
       isEnabled: true,
     },
     validate: {
+      providerName: (value) => {
+        if (!value) {
+          return 'Provider name is required';
+        }
+        return null;
+      },
       apiEndpoint: (value) => {
         if (value && !validators.url(value)) {
           return 'Please enter a valid URL';
@@ -77,17 +85,16 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
 
   // Update form when provider changes
   useEffect(() => {
-    if (provider) {
-      // Skip additionalConfig parsing as it's not in ProviderCredentialDto
-
+    if (provider && opened) {
       form.setValues({
+        providerName: provider.providerName ?? '',
         apiKey: '', // Don't show existing key for security
         apiEndpoint: provider.baseUrl ?? '',
         organizationId: provider.organization ?? '',
         isEnabled: provider.isEnabled ?? false,
       });
     }
-  }, [provider, form]);
+  }, [provider, opened]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;
@@ -95,6 +102,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     setIsSubmitting(true);
     try {
       const payload = {
+        providerName: values.providerName ?? undefined,
         apiKey: values.apiKey ?? undefined, // Only send if changed
         apiEndpoint: values.apiEndpoint ?? undefined,
         organizationId: values.organizationId ?? undefined,
@@ -110,7 +118,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update provider');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? `Failed to update provider: ${response.status}`);
       }
 
       notifications.show({
@@ -135,7 +144,10 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   };
 
   const handleClose = () => {
-    form.reset();
+    // Delay reset to prevent flicker during close animation
+    setTimeout(() => {
+      form.reset();
+    }, 200);
     onClose();
   };
 
@@ -149,8 +161,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     providerDisplayName = getProviderDisplayName(providerType);
   } catch {
     // Fallback to provider name if available
-    const providerNameFallback = provider as { providerName?: string };
-    providerDisplayName = providerNameFallback.providerName ?? 'Unknown Provider';
+    providerDisplayName = provider.providerName ?? 'Unknown Provider';
   }
   const getHealthIcon = (status?: string) => {
     switch (status) {
@@ -203,16 +214,22 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
           <Divider />
 
           <TextInput
+            key={`provider-name-${provider.id}`}
             label="Provider Name"
-            value={providerDisplayName}
-            disabled
-            description="Provider name cannot be changed"
+            placeholder="Enter a friendly name for this provider"
+            description="A friendly name to identify this provider instance"
+            autoComplete="off"
+            data-form-type="other"
+            {...form.getInputProps('providerName')}
+            autoFocus
           />
 
           <PasswordInput
             label="API Key"
             placeholder="Leave empty to keep existing key"
             description="Only enter if you want to update the API key"
+            autoComplete="new-password"
+            data-form-type="other"
             {...form.getInputProps('apiKey')}
           />
 
@@ -227,6 +244,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                   <TextInput
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
                     placeholder={config.requiresEndpoint ? "API endpoint URL" : "Custom API endpoint URL (optional)"}
+                    autoComplete="off"
+                    data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />
                 )}
@@ -235,6 +254,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                   <TextInput
                     label="Organization ID"
                     placeholder={getProviderTypeFromDto(provider) === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    autoComplete="off"
+                    data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />
                 )}

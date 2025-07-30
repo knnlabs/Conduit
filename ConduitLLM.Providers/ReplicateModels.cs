@@ -26,26 +26,26 @@ namespace ConduitLLM.Providers
         /// <param name="apiKey">Replicate API key. If null, returns empty list.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of discovered models with their capabilities.</returns>
-        public static async Task<List<DiscoveredModel>> DiscoverAsync(
+        public static Task<List<DiscoveredModel>> DiscoverAsync(
             HttpClient httpClient, 
             string? apiKey,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(apiKey))
             {
-                return new List<DiscoveredModel>();
+                return Task.FromResult(new List<DiscoveredModel>());
             }
 
             try
             {
                 // For Replicate, we'll return a curated list of popular models
                 // The full API requires pagination and returns thousands of models
-                return GetPopularModels();
+                return Task.FromResult(GetPopularModels());
             }
             catch (Exception)
             {
                 // Any error during discovery returns known models list
-                return GetPopularModels();
+                return Task.FromResult(GetPopularModels());
             }
         }
 

@@ -24,6 +24,13 @@ namespace ConduitLLM.Configuration.Entities
         [Required]
         public ProviderType ProviderType { get; set; } = ProviderType.OpenAI;
 
+        /// <summary>
+        /// Gets or sets the user-friendly name for this provider instance.
+        /// For example: "Production OpenAI", "Dev Azure OpenAI", "Nick's Ollama Server"
+        /// </summary>
+        [Required]
+        [MaxLength(100)]
+        public string ProviderName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the base URL for the provider API. Optional - uses provider default if not specified.

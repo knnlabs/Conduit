@@ -18,6 +18,11 @@ namespace ConduitLLM.Configuration.DTOs
         public ProviderType ProviderType { get; set; }
 
         /// <summary>
+        /// User-friendly name for this provider instance
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>
         /// Base URL for the provider API
         /// </summary>
         public string BaseUrl { get; set; } = string.Empty;
