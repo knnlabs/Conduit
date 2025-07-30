@@ -18,39 +18,44 @@ export interface ProcessedBlockQuote {
 export function processStructuredContent(content: string): string {
   if (!content) return content;
 
+  let processedContent = content;
+
   // Process thinking/reasoning tags - convert to collapsible sections
-  content = content.replace(
+  processedContent = processedContent.replace(
     /<(thinking|think|reasoning|antThinking)>([\s\S]*?)<\/\1>/gi,
-    (_, tag, innerContent) => {
-      return `> 💭 **Thinking...**\n> __collapse__\n${innerContent.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
+    (_match, _tag, innerContent: string) => {
+      const innerContentStr = String(innerContent);
+      return `> 💭 **Thinking...**\n> __collapse__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
   );
 
   // Process warning/alert tags
-  content = content.replace(
+  processedContent = processedContent.replace(
     /<(warning|caution|alert)>([\s\S]*?)<\/\1>/gi,
-    (_, tag, innerContent) => {
-      return `> ⚠️ **Warning**\n> __warning__\n${innerContent.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
+    (_match, _tag, innerContent: string) => {
+      const innerContentStr = String(innerContent);
+      return `> ⚠️ **Warning**\n> __warning__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
   );
 
   // Process summary/answer tags
-  content = content.replace(
+  processedContent = processedContent.replace(
     /<(summary|answer)>([\s\S]*?)<\/\1>/gi,
-    (_, tag, innerContent) => {
-      return `> 📋 **Summary**\n> __summary__\n${innerContent.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
+    (_match, _tag, innerContent: string) => {
+      const innerContentStr = String(innerContent);
+      return `> 📋 **Summary**\n> __summary__\n${innerContentStr.trim().split('\n').map((line: string) => `> ${line}`).join('\n')}\n`;
     }
   );
 
   // Process emoji-based warnings
-  content = content.replace(
+  processedContent = processedContent.replace(
     /^(⚠️\s*Warning:|🚨\s*Important:)\s*(.*)$/gm,
-    (_, prefix, text) => {
+    (_match, _prefix, text: string) => {
       return `> ⚠️ **Warning**\n> __warning__\n> ${text}`;
     }
   );
 
-  return content;
+  return processedContent;
 }
 
 /**

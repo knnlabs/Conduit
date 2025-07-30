@@ -237,8 +237,8 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
           placeholder="Choose a provider to discover models"
           data={providers?.map((p: ProviderCredentialDto) => ({
             value: p.id?.toString() ?? '',
-            label: p.providerName || `Provider ${p.id}`,
-          })).filter(opt => opt.value !== '' && opt.label !== '') || []}
+            label: p.providerName ?? `Provider ${p.id}`,
+          })).filter(opt => opt.value !== '' && opt.label !== '') ?? []}
           value={selectedProviderId}
           onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}

@@ -114,8 +114,8 @@ export function CreateModelMappingModal({
 
   const providerOptions = providers?.map((p) => ({
     value: p.id?.toString() ?? '',
-    label: p.providerName || `Provider ${p.id}`,
-  })).filter(opt => opt.value !== '' && opt.label !== '') || [];
+    label: p.providerName ?? `Provider ${p.id}`,
+  })).filter(opt => opt.value !== '' && opt.label !== '') ?? [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities

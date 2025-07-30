@@ -27,7 +27,7 @@ export async function GET() {
             .filter((p) => p.isEnabled === true && p.id !== undefined)
             .map((provider) => ({
               id: (provider.id ?? 0).toString(),
-              endpoint: provider.baseUrl ?? 'unknown',
+              endpoint: typeof provider.baseUrl === 'string' ? provider.baseUrl : 'unknown',
               status: provider.isEnabled ? 'healthy' : 'disabled',
               weight: 100,
               totalRequests: 0,

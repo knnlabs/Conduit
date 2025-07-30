@@ -38,7 +38,7 @@ export async function PUT(
       // Handle different field names from frontend
       baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? currentProvider.baseUrl) as string,
       isEnabled: (body.isEnabled as boolean | undefined) ?? currentProvider.isEnabled,
-      organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? currentProvider.organization) as string | undefined,
+      organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? currentProvider.organization),
     };
     
     // Handle providerName if the backend supports it

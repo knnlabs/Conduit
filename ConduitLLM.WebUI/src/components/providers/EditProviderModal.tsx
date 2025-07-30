@@ -36,7 +36,7 @@ interface Provider extends ProviderCredentialDto {
 interface EditProviderModalProps {
   opened: boolean;
   onClose: () => void;
-  provider: Provider | null;
+  provider: ProviderCredentialDto | null;
   onSuccess?: () => void;
 }
 
@@ -87,14 +87,14 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   useEffect(() => {
     if (provider && opened) {
       form.setValues({
-        providerName: provider.providerName ?? '',
+        providerName: typeof provider.providerName === 'string' ? provider.providerName : '',
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.baseUrl ?? '',
-        organizationId: provider.organization ?? '',
-        isEnabled: provider.isEnabled ?? false,
+        apiEndpoint: typeof provider.baseUrl === 'string' ? provider.baseUrl : '',
+        organizationId: typeof provider.organization === 'string' ? provider.organization : '',
+        isEnabled: provider.isEnabled === true,
       });
     }
-  }, [provider, opened]);
+  }, [provider, opened, form]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;
@@ -161,7 +161,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     providerDisplayName = getProviderDisplayName(providerType);
   } catch {
     // Fallback to provider name if available
-    providerDisplayName = provider.providerName ?? 'Unknown Provider';
+    providerDisplayName = typeof provider.providerName === 'string' ? provider.providerName : 'Unknown Provider';
   }
   const getHealthIcon = (status?: string) => {
     switch (status) {

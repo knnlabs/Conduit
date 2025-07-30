@@ -227,7 +227,7 @@ export default function EditModelMappingPage() {
 
   const providerOptions = providers.map(p => ({
     value: p.id?.toString() ?? '',
-    label: p.providerName || `Provider ${p.id}`,
+    label: p.providerName ?? `Provider ${p.id}`,
   })).filter(opt => opt.value !== '' && opt.label !== '');
 
   if (error) {
