@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -26,7 +27,8 @@ namespace ConduitLLM.Core.Services
         private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
-        private readonly IEnumerable<IModelDiscoveryProvider> _discoveryProviders;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProviderModelDiscovery? _providerModelDiscovery;
         private const string CacheKeyPrefix = "provider_capabilities_";
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
 
@@ -217,15 +219,18 @@ namespace ConduitLLM.Core.Services
         /// <param name="logger">Logger for diagnostic information.</param>
         /// <param name="cache">Memory cache for caching discovery results.</param>
         /// <param name="discoveryProviders">Collection of provider-specific discovery implementations.</param>
+        /// <param name="httpClientFactory">HTTP client factory for making API calls.</param>
         /// <param name="publishEndpoint">Optional endpoint for publishing events.</param>
+        /// <param name="providerModelDiscovery">Optional provider-specific model discovery service.</param>
         public ProviderDiscoveryService(
             ILLMClientFactory clientFactory,
             ConduitLLM.Configuration.IProviderCredentialService credentialService,
             ConduitLLM.Configuration.IModelProviderMappingService mappingService,
             ILogger<ProviderDiscoveryService> logger,
             IMemoryCache cache,
-            IEnumerable<IModelDiscoveryProvider> discoveryProviders,
-            IPublishEndpoint? publishEndpoint = null)
+            IHttpClientFactory httpClientFactory,
+            IPublishEndpoint? publishEndpoint = null,
+            IProviderModelDiscovery? providerModelDiscovery = null)
             : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -233,7 +238,8 @@ namespace ConduitLLM.Core.Services
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _discoveryProviders = discoveryProviders ?? throw new ArgumentNullException(nameof(discoveryProviders));
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _providerModelDiscovery = providerModelDiscovery;
             
             // Log event publishing configuration status
             LogEventPublishingConfiguration(nameof(ProviderDiscoveryService));
@@ -332,36 +338,71 @@ namespace ConduitLLM.Core.Services
 
             var models = new Dictionary<string, DiscoveredModel>();
 
-            // First try enhanced discovery providers
-            var discoveryProvider = _discoveryProviders.FirstOrDefault(p => 
-                string.Equals(p.ProviderName, providerName, StringComparison.OrdinalIgnoreCase));
-            
-            if (discoveryProvider != null && discoveryProvider.SupportsDiscovery)
+            _logger.LogInformation("Starting discovery for provider '{Provider}'. Provider discovery service available: {Available}", 
+                providerName, _providerModelDiscovery != null);
+
+            // Try provider-specific discovery if available
+            if (_providerModelDiscovery != null && _providerModelDiscovery.SupportsDiscovery(providerName))
             {
                 try
                 {
-                    _logger.LogDebug("Using enhanced discovery provider for {Provider}", providerName);
-                    var modelMetadataList = await discoveryProvider.DiscoverModelsAsync(cancellationToken);
-                    
-                    foreach (var metadata in modelMetadataList)
+                    // If no API key provided, try to get it from credentials
+                    if (string.IsNullOrEmpty(apiKey))
                     {
-                        var discoveredModel = ConvertMetadataToDiscoveredModel(metadata);
-                        models[metadata.ModelId] = discoveredModel;
+                        // Parse provider name to ProviderType enum
+                        if (Enum.TryParse<ProviderType>(providerName, true, out var providerType))
+                        {
+                            var credential = await _credentialService.GetCredentialByProviderTypeAsync(providerType);
+                            if (credential != null && credential.IsEnabled)
+                            {
+                                // Get the primary key or first enabled key
+                                var keyCredential = credential.ProviderKeyCredentials?
+                                    .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
+                                    credential.ProviderKeyCredentials?
+                                    .FirstOrDefault(k => k.IsEnabled);
+                                
+                                if (keyCredential != null)
+                                {
+                                    apiKey = keyCredential.ApiKey;
+                                    _logger.LogDebug("Retrieved API key for provider {Provider} from credentials", providerName);
+                                }
+                            }
+                        }
                     }
-
-                    _logger.LogInformation("Enhanced discovery found {Count} models from provider {Provider}", 
-                        models.Count, providerName);
+                    
+                    _logger.LogDebug("Using provider-specific discovery for {Provider} with API key: {HasKey}", 
+                        providerName, !string.IsNullOrEmpty(apiKey));
+                    var discoveredModels = await _providerModelDiscovery.DiscoverModelsAsync(
+                        providerName,
+                        _httpClientFactory.CreateClient("DiscoveryProviders"),
+                        apiKey,
+                        cancellationToken);
+                    
+                    _logger.LogDebug("Provider-specific discovery returned {Count} models", discoveredModels.Count);
+                    
+                    foreach (var model in discoveredModels)
+                    {
+                        models[model.ModelId] = model;
+                    }
+                    
+                    if (models.Count > 0)
+                    {
+                        _logger.LogInformation("Provider-specific discovery found {Count} models for {Provider}", 
+                            models.Count, providerName);
+                        // Continue to cache and event publishing logic below
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Enhanced discovery failed for provider {Provider}, falling back to legacy methods", providerName);
-                    // Continue to fallback methods below
+                    _logger.LogWarning(ex, "Provider-specific discovery failed for {Provider}", providerName);
+                    // Continue to other discovery methods
                 }
             }
-            
-            // If enhanced discovery didn't work or found no models, try legacy client discovery
-            if (models.Count == 0)
+
+            // If provider-specific discovery didn't work or found no models, try legacy client discovery
+            if (models.Count == 0 && _providerModelDiscovery == null)
             {
+                // Only use legacy discovery if provider-specific discovery is not available
                 try
                 {
                     // Get client for provider using provider ID
@@ -389,15 +430,13 @@ namespace ConduitLLM.Core.Services
                     catch (NotSupportedException)
                     {
                         _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
-                        // Fall back to known models for this provider
-                        AddKnownModelsForProvider(providerName, models);
+                        // No fallback - provider-specific discovery should handle this
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
-                    // Fall back to known models for this provider
-                    AddKnownModelsForProvider(providerName, models);
+                    // No fallback - provider-specific discovery should handle this
                 }
             }
 
@@ -627,102 +666,8 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private void AddKnownModelsForProvider(string provider, Dictionary<string, DiscoveredModel> models)
-        {
-            var knownModels = provider.ToLowerInvariant() switch
-            {
-                "openai" => new[] { "gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "dall-e-3", "dall-e-2" },
-                "anthropic" => new[] { "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307" },
-                "google" => new[] { "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro" },
-                "minimax" => new[] { "abab6.5-chat", "abab6.5s-chat", "abab5.5-chat", "image-01", "video-01" },
-                "openrouter" => new[] { 
-                    "anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "anthropic/claude-3-haiku",
-                    "openai/gpt-4-turbo", "openai/gpt-4", "openai/gpt-3.5-turbo",
-                    "google/gemini-pro", "google/gemini-pro-vision",
-                    "meta-llama/llama-3-70b-instruct", "mistralai/mistral-large"
-                },
-                _ => Array.Empty<string>()
-            };
+        // Legacy method no longer needed - all providers use provider-specific discovery
 
-            foreach (var modelId in knownModels)
-            {
-                models[modelId] = InferModelCapabilities(modelId, provider, modelId);
-            }
-        }
-
-        /// <summary>
-        /// Converts enhanced ModelMetadata from discovery providers to DiscoveredModel format.
-        /// This preserves all the rich metadata while maintaining compatibility with existing interfaces.
-        /// </summary>
-        /// <param name="metadata">Enhanced model metadata from discovery provider.</param>
-        /// <returns>DiscoveredModel compatible with existing code.</returns>
-        private DiscoveredModel ConvertMetadataToDiscoveredModel(ModelMetadata metadata)
-        {
-            var discoveredModel = new DiscoveredModel
-            {
-                ModelId = metadata.ModelId,
-                Provider = metadata.Provider,
-                DisplayName = metadata.DisplayName,
-                Capabilities = metadata.Capabilities,
-                LastVerified = metadata.LastUpdated,
-                Metadata = new Dictionary<string, object>(metadata.AdditionalMetadata)
-            };
-
-            // Add enhanced metadata to the metadata dictionary
-            if (metadata.MaxContextTokens.HasValue)
-            {
-                discoveredModel.Metadata["max_context_tokens"] = metadata.MaxContextTokens.Value;
-            }
-            
-            if (metadata.MaxOutputTokens.HasValue)
-            {
-                discoveredModel.Metadata["max_output_tokens"] = metadata.MaxOutputTokens.Value;
-            }
-            
-            if (metadata.InputTokenCost.HasValue)
-            {
-                discoveredModel.Metadata["input_token_cost"] = metadata.InputTokenCost.Value;
-            }
-            
-            if (metadata.OutputTokenCost.HasValue)
-            {
-                discoveredModel.Metadata["output_token_cost"] = metadata.OutputTokenCost.Value;
-            }
-            
-            if (metadata.ImageCostPerImage.HasValue)
-            {
-                discoveredModel.Metadata["image_cost_per_image"] = metadata.ImageCostPerImage.Value;
-            }
-            
-            if (metadata.SupportedImageSizes.Count > 0)
-            {
-                discoveredModel.Metadata["supported_image_sizes"] = metadata.SupportedImageSizes;
-            }
-            
-            if (metadata.SupportedVideoResolutions.Count > 0)
-            {
-                discoveredModel.Metadata["supported_video_resolutions"] = metadata.SupportedVideoResolutions;
-            }
-            
-            if (metadata.MaxVideoDurationSeconds.HasValue)
-            {
-                discoveredModel.Metadata["max_video_duration_seconds"] = metadata.MaxVideoDurationSeconds.Value;
-            }
-            
-            // Add discovery source information
-            discoveredModel.Metadata["discovery_source"] = metadata.Source.ToString();
-            
-            if (metadata.Warnings.Count > 0)
-            {
-                discoveredModel.Metadata["warnings"] = metadata.Warnings;
-            }
-            
-            // Mark as enhanced discovery
-            discoveredModel.Metadata["enhanced_discovery"] = true;
-            discoveredModel.Metadata["last_updated"] = metadata.LastUpdated;
-
-            return discoveredModel;
-        }
 
         private bool TestCapability(ConduitLLM.Core.Interfaces.ModelCapabilities capabilities, ModelCapability capability)
         {

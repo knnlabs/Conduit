@@ -28,6 +28,7 @@ using ConduitLLM.Configuration.DTOs.SignalR; // Added for NotificationBatchingOp
 using MassTransit; // Added for event bus infrastructure
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -868,80 +869,40 @@ builder.Services.AddMassTransit(x =>
 // Register provider model list service
 builder.Services.AddScoped<IModelListService, ModelListService>();
 
-// Register provider discovery service and providers
-// Configure HttpClients for discovery providers
-builder.Services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
+// Model discovery providers have been migrated to sister classes
+
+// Configure HttpClient for discovery providers
+builder.Services.AddHttpClient("DiscoveryProviders", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
     client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
 });
 
-builder.Services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(30);
-    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-});
+// Register provider model discovery
+builder.Services.AddScoped<IProviderModelDiscovery, ConduitLLM.Http.Services.ProviderModelDiscoveryService>();
 
-// Register discovery providers as concrete implementations
-builder.Services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
+// Register discovery service with explicit dependency injection
+builder.Services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
 {
+    var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
+    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+    var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
+    var cache = serviceProvider.GetRequiredService<IMemoryCache>();
     var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
-    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
-    var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
+    var publishEndpoint = serviceProvider.GetService<MassTransit.IPublishEndpoint>(); // Optional
+    var providerModelDiscovery = serviceProvider.GetRequiredService<IProviderModelDiscovery>(); // Required
     
-    // Get API key from the first enabled OpenRouter provider
-    try
-    {
-        var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
-        var openRouterCredential = allCredentials
-            .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter && c.IsEnabled);
-            
-        var apiKey = openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                    openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
-        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
-    }
-    catch
-    {
-        // If we can't get credentials, still register the provider (it will fall back to patterns)
-        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
-    }
+    return new ConduitLLM.Core.Services.ProviderDiscoveryService(
+        clientFactory,
+        credentialService,
+        mappingService,
+        logger,
+        cache,
+        httpClientFactory,
+        publishEndpoint,
+        providerModelDiscovery);
 });
-
-builder.Services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
-{
-    var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
-    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
-    var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
-    
-    // Get API key from the first enabled Anthropic provider
-    try
-    {
-        var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
-        var anthropicCredential = allCredentials
-            .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.Anthropic && c.IsEnabled);
-            
-        var apiKey = anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                    anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
-        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
-    }
-    catch
-    {
-        // If we can't get credentials, still register the provider (it will fall back to patterns)
-        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
-    }
-});
-
-// Register the providers as IModelDiscoveryProvider interfaces
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
-
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
-
-// Register discovery service
-builder.Services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
 // Register async task service
 // Register cancellable task registry

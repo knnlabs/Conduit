@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.IntegrationTests.Infrastructure;
+using Microsoft.AspNetCore.Hosting;
 
 namespace ConduitLLM.IntegrationTests.Api
 {
@@ -17,35 +19,29 @@ namespace ConduitLLM.IntegrationTests.Api
     [Trait("Category", "Integration")]
     [Trait("Component", "AdminApi")]
     [Trait("Focus", "Authentication")]
-    public class AdminApiAuthenticationTests : IClassFixture<WebApplicationFactory<ConduitLLM.Admin.Program>>
+    public class AdminApiAuthenticationTests : IntegrationTestBase
     {
-        private readonly WebApplicationFactory<ConduitLLM.Admin.Program> _factory;
-        private readonly ITestOutputHelper _output;
         private readonly string _validMasterKey = "test-master-key-12345";
 
-        public AdminApiAuthenticationTests(WebApplicationFactory<ConduitLLM.Admin.Program> factory, ITestOutputHelper output)
+        public AdminApiAuthenticationTests(ITestOutputHelper output) : base(output)
         {
-            _factory = factory;
-            _output = output;
         }
 
-        private WebApplicationFactory<ConduitLLM.Admin.Program> CreateFactory(bool includeMasterKey = false)
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            return _factory.WithWebHostBuilder(builder =>
+            // Configure the Admin API with master key
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services =>
-                {
-                    // Override configuration
-                    var configuration = new ConfigurationBuilder()
-                        .AddInMemoryCollection(new Dictionary<string, string>
-                        {
-                            ["CONDUIT_API_TO_API_BACKEND_AUTH_KEY"] = includeMasterKey ? _validMasterKey : null,
-                            ["AdminApi:MasterKey"] = includeMasterKey ? _validMasterKey : null
-                        })
-                        .Build();
+                // Override configuration with master key
+                var configuration = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        ["CONDUIT_API_TO_API_BACKEND_AUTH_KEY"] = _validMasterKey,
+                        ["AdminApi:MasterKey"] = _validMasterKey
+                    })
+                    .Build();
 
-                    services.AddSingleton<IConfiguration>(configuration);
-                });
+                services.AddSingleton<IConfiguration>(configuration);
             });
         }
 
@@ -57,15 +53,11 @@ namespace ConduitLLM.IntegrationTests.Api
         [InlineData("/health/ready")]
         public async Task HealthEndpoints_ShouldAllowAnonymousAccess(string endpoint)
         {
-            // Arrange
-            var factory = CreateFactory(includeMasterKey: true);
-            var client = factory.CreateClient();
-
             // Act - Call without authentication header
-            var response = await client.GetAsync(endpoint);
+            var response = await Client.GetAsync(endpoint);
 
             // Assert
-            _output.WriteLine($"Endpoint: {endpoint}, Status: {response.StatusCode}");
+            Output.WriteLine($"Endpoint: {endpoint}, Status: {response.StatusCode}");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 

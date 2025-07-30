@@ -169,112 +169,40 @@ public static class ServiceCollectionExtensions
         // Register database-aware LLM client factory (must be registered before discovery service)
         services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 
-        // Register enhanced model discovery providers
-        // Configure HttpClients for each discovery provider
-        services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
+        // Configure HttpClient for discovery providers
+        services.AddHttpClient("DiscoveryProviders", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
         });
 
-        services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
-        });
+        // Model discovery providers have been migrated to sister classes
 
-        // Register discovery providers as concrete implementations first
-        services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
+        // Register provider model discovery
+        services.AddScoped<IProviderModelDiscovery, ProviderModelDiscoveryService>();
+        
+        // Register discovery service with explicit dependency injection
+        services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
         {
+            var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
+            var cache = serviceProvider.GetRequiredService<IMemoryCache>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
-            var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+            var providerModelDiscovery = serviceProvider.GetRequiredService<IProviderModelDiscovery>(); // Required
             
-            // Get API key from the first enabled OpenRouter provider
-            try
-            {
-                var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
-                var openRouterCredential = allCredentials
-                    .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter && c.IsEnabled);
-                    
-                var apiKey = openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                            openRouterCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
-                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
-            }
-            catch
-            {
-                // If we can't get credentials, still register the provider (it will fall back to patterns)
-                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
-            }
+            return new ConduitLLM.Core.Services.ProviderDiscoveryService(
+                clientFactory,
+                credentialService,
+                mappingService,
+                logger,
+                cache,
+                httpClientFactory,
+                publishEndpoint,
+                providerModelDiscovery);
         });
-
-        services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
-            var credentialRepository = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository>();
-            
-            // Get API key from the first enabled Anthropic provider
-            try
-            {
-                var allCredentials = credentialRepository.GetAllAsync().GetAwaiter().GetResult();
-                var anthropicCredential = allCredentials
-                    .FirstOrDefault(c => c.ProviderType == ConduitLLM.Configuration.ProviderType.Anthropic && c.IsEnabled);
-                    
-                var apiKey = anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                            anthropicCredential?.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey;
-                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
-            }
-            catch
-            {
-                // If we can't get credentials, still register the provider (it will fall back to patterns)
-                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
-            }
-        });
-
-        // Register Groq discovery provider  
-        services.AddScoped<ConduitLLM.Core.Services.GroqDiscoveryProvider>(serviceProvider =>
-        {
-            var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DiscoveryProviders");
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.GroqDiscoveryProvider>>();
-            var credentialService = serviceProvider.GetService<IProviderCredentialService>();
-            
-            try
-            {
-                // Try to get Groq credentials
-                var credentials = credentialService?.GetAllCredentials().Result;
-                var groqCredential = credentials?.FirstOrDefault(c => 
-                    c.ProviderType == ProviderType.Groq && 
-                    c.Configuration?.TryGetValue("ApiKey", out var apiKey) == true && 
-                    !string.IsNullOrEmpty(apiKey?.ToString()));
-                
-                if (groqCredential != null && groqCredential.Configuration!.TryGetValue("ApiKey", out var groqApiKey))
-                {
-                    return new ConduitLLM.Core.Services.GroqDiscoveryProvider(httpClient, logger, groqApiKey?.ToString());
-                }
-            }
-            catch
-            {
-                // If we can't get credentials, still register the provider (it will fall back to patterns)
-            }
-            
-            return new ConduitLLM.Core.Services.GroqDiscoveryProvider(httpClient, logger, null);
-        });
-
-        // Register the providers as IModelDiscoveryProvider interfaces
-        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
-
-        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
-            
-        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.GroqDiscoveryProvider>());
-
-        // Register discovery service
-        services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
         // Register Media Lifecycle Service (optional - for virtual key cleanup)
         // Only register if we have a media storage service configured
