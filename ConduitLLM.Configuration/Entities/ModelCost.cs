@@ -92,16 +92,57 @@ public class ModelCost
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Optional description for this model cost entry (for backward compatibility)
+    /// Gets or sets the model type for categorization.
     /// </summary>
-    [NotMapped]
+    /// <remarks>
+    /// Indicates the type of operations this model cost applies to.
+    /// Used for filtering and organizing costs in the UI.
+    /// </remarks>
+    [Required]
+    [MaxLength(50)]
+    public string ModelType { get; set; } = "chat";
+
+    /// <summary>
+    /// Gets or sets whether this cost configuration is active.
+    /// </summary>
+    /// <remarks>
+    /// When false, this cost configuration is ignored during cost calculations.
+    /// Allows disabling costs without deleting the configuration.
+    /// </remarks>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the effective date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// The date from which this pricing becomes active.
+    /// Used for historical cost tracking and future price changes.
+    /// </remarks>
+    public DateTime EffectiveDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Gets or sets the expiry date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// Optional date when this pricing expires.
+    /// Null means the pricing has no expiration date.
+    /// </remarks>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>
+    /// Optional description for this model cost entry
+    /// </summary>
+    [MaxLength(500)]
     public string? Description { get; set; }
 
     /// <summary>
-    /// Optional priority value for this model cost entry (for backward compatibility)
+    /// Priority value for this model cost entry
     /// </summary>
-    [NotMapped]
-    public int Priority { get; set; }
+    /// <remarks>
+    /// Higher priority patterns are evaluated first when matching model names.
+    /// Default is 0. Use higher values for more specific patterns.
+    /// </remarks>
+    public int Priority { get; set; } = 0;
 
     /// <summary>
     /// Gets or sets the cost per minute for audio transcription (speech-to-text), if applicable.

@@ -18,12 +18,6 @@ public class ModelProviderMapping
     public int ProviderId { get; set; }
     
     /// <summary>
-    /// Gets or sets the provider type enum value.
-    /// This links the mapping to the correct set of credentials and connection details.
-    /// </summary>
-    public required ProviderType ProviderType { get; set; }
-
-    /// <summary>
     /// Gets or sets the actual model ID that the target provider expects
     /// (e.g., "gpt-4-turbo-preview", "claude-3-opus-20240229").
     /// </summary>

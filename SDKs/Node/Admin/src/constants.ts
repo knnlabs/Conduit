@@ -188,9 +188,6 @@ export const ENDPOINTS = {
     // Real Admin API metrics endpoints
     ADMIN_BASIC: '/api/metrics',
     ADMIN_DATABASE_POOL: '/metrics/database/pool',
-    
-    // Real-time metrics
-    REALTIME: '/api/dashboard/metrics/realtime',
   },
 
   // Settings

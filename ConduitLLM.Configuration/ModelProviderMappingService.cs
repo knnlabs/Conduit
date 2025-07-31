@@ -51,13 +51,9 @@ _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replac
                 }
                 else
                 {
-                    // Fall back to provider type
-                    credential = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
-                    if (credential == null)
-                    {
-                        _logger.LogWarning("Provider credentials not found for provider {ProviderType}", mapping.ProviderType);
-                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                    }
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    throw new InvalidOperationException("ProviderId is required for model provider mapping");
                 }
 
                 // Convert to entity and set the provider credential ID
@@ -178,13 +174,9 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 }
                 else
                 {
-                    // Fall back to provider type
-                    credential = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
-                    if (credential == null)
-                    {
-                        _logger.LogWarning("Provider credentials not found for provider {ProviderType}", mapping.ProviderType);
-                        throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                    }
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    throw new InvalidOperationException("ProviderId is required for model provider mapping");
                 }
 
                 // Update the entity
@@ -231,13 +223,9 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 }
                 else
                 {
-                    // Fall back to provider type
-                    provider = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
-                    if (provider == null)
-                    {
-                        _logger.LogWarning("Provider does not exist {ProviderType}", mapping.ProviderType);
-                        return (false, $"Provider does not exist: {mapping.ProviderType}", null);
-                    }
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    return (false, "ProviderId is required for model provider mapping", null);
                 }
 
                 // Check if a mapping with the same alias already exists
@@ -280,11 +268,19 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 }
 
                 // Validate that the provider exists
-                var provider = await _credentialRepository.GetByProviderTypeAsync(mapping.ProviderType);
-                if (provider == null)
+                if (mapping.ProviderId > 0)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderType}", mapping.ProviderType);
-                    return (false, $"Provider does not exist: {mapping.ProviderType}");
+                    var provider = await _credentialRepository.GetByIdAsync(mapping.ProviderId);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist {ProviderId}", mapping.ProviderId);
+                        return (false, $"Provider does not exist: {mapping.ProviderId}");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    return (false, "ProviderId is required for model provider mapping");
                 }
 
                 // Update the mapping
