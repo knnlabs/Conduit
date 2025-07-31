@@ -27,6 +27,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
     {
         private readonly Mock<IAdminModelProviderMappingService> _mockService;
         private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
+        private readonly Mock<IProviderCredentialService> _mockCredentialService;
         private readonly Mock<ILogger<ModelProviderMappingController>> _mockLogger;
         private readonly ModelProviderMappingController _controller;
         private readonly ITestOutputHelper _output;
@@ -36,8 +37,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             _output = output;
             _mockService = new Mock<IAdminModelProviderMappingService>();
             _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
+            _mockCredentialService = new Mock<IProviderCredentialService>();
             _mockLogger = new Mock<ILogger<ModelProviderMappingController>>();
-            _controller = new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockLogger.Object);
+            _controller = new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object);
         }
 
         #region Constructor Tests
@@ -47,7 +49,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(null!, _mockDiscoveryService.Object, _mockLogger.Object));
+                new ModelProviderMappingController(null!, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -55,7 +57,15 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, null!, _mockLogger.Object));
+                new ModelProviderMappingController(_mockService.Object, null!, _mockCredentialService.Object, _mockLogger.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullCredentialService_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
@@ -63,7 +73,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, null!));
+                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, null!));
         }
 
         #endregion
