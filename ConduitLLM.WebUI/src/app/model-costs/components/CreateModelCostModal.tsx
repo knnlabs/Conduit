@@ -198,6 +198,9 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
       disabled: !provider.isEnabled
     }));
 
+  // Get the selected provider object to pass ID and type
+  const selectedProvider = providers.find(p => p.providerName === form.values.providerName);
+
   return (
     <Modal
       opened={isOpen}
@@ -216,6 +219,8 @@ export function CreateModelCostModal({ isOpen, onClose, onSuccess }: CreateModel
             value={form.values.modelIdPattern}
             onChange={(value) => form.setFieldValue('modelIdPattern', value)}
             selectedProvider={form.values.providerName}
+            selectedProviderId={selectedProvider?.id}
+            selectedProviderType={selectedProvider?.providerType}
             error={form.errors.modelIdPattern as string}
             required
           />

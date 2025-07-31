@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, Text, Stack, Badge, Group, LoadingOverlay, ScrollArea } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { isPatternMatch } from '../utils/patternValidation';
 
 interface PatternPreviewProps {
   pattern: string;
@@ -107,13 +108,7 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
     const trimmedPattern = debouncedPattern.trim();
     if (!trimmedPattern) return [];
     
-    return allModels.filter(model => {
-      if (trimmedPattern.endsWith('*')) {
-        const prefix = trimmedPattern.slice(0, -1);
-        return model.modelId.startsWith(prefix);
-      }
-      return model.modelId === trimmedPattern;
-    });
+    return allModels.filter(model => isPatternMatch(trimmedPattern, model.modelId));
   }, [debouncedPattern, allModels]);
 
   // Group by provider
@@ -172,9 +167,9 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
           </>
         )}
         
-        {pattern.endsWith('*') && (
+        {pattern.includes('*') && (
           <Text size="xs" c="dimmed" fs="italic">
-            This pattern will also match any future models starting with &quot;{pattern.slice(0, -1)}&quot;
+            This pattern will also match any future models matching &quot;{pattern}&quot;
           </Text>
         )}
       </Stack>

@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh, IconFileImport, IconFileExport } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 import { ModelCostsTable } from './components/ModelCostsTable';
-import { CreateModelCostModal } from './components/CreateModelCostModal';
 import { ImportModelCostsModal } from './components/ImportModelCostsModal';
 import { useModelCostsApi } from './hooks/useModelCostsApi';
 
 export default function ModelCostsPage() {
+  const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const { exportModelCosts, isExporting } = useModelCostsApi();
 
@@ -61,7 +61,7 @@ export default function ModelCostsPage() {
             </Button>
             <Button
               leftSection={<IconPlus size={16} />}
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => router.push('/model-costs/add')}
             >
               Add Pricing
             </Button>
@@ -73,15 +73,6 @@ export default function ModelCostsPage() {
           onRefresh={handleRefresh}
         />
       </Stack>
-
-      <CreateModelCostModal
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSuccess={() => {
-          setCreateModalOpen(false);
-          handleRefresh();
-        }}
-      />
       
       <ImportModelCostsModal
         isOpen={importModalOpen}

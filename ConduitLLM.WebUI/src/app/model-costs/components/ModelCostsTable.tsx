@@ -75,7 +75,11 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   const deleteMutation = useMutation({
     mutationFn: deleteModelCost,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['model-costs'] });
+      // Invalidate all model-costs queries regardless of their parameters
+      void queryClient.invalidateQueries({ 
+        queryKey: ['model-costs'],
+        exact: false 
+      });
       onRefresh?.();
     },
   });
