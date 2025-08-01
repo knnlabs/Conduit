@@ -503,39 +503,16 @@ namespace ConduitLLM.Tests.Providers
         #region Model Discovery Tests
 
         [Fact]
-        public async Task GetModelsAsync_ReturnsStaticModelList()
+        public async Task GetModelsAsync_ThrowsNotSupportedException()
         {
             // Arrange
             var client = CreateAnthropicClient();
 
-            // Act
-            var models = await client.GetModelsAsync();
-
-            // Assert
-            Assert.NotNull(models);
-            Assert.NotEmpty(models);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(
+                () => client.GetModelsAsync());
             
-            // Check for expected Claude models
-            Assert.Contains(models, m => m.Id == "claude-3-opus-20240229");
-            Assert.Contains(models, m => m.Id == "claude-3-sonnet-20240229");
-            Assert.Contains(models, m => m.Id == "claude-3-haiku-20240307");
-            Assert.Contains(models, m => m.Id == "claude-2.1");
-            Assert.Contains(models, m => m.Id == "claude-2.0");
-            Assert.Contains(models, m => m.Id == "claude-instant-1.2");
-
-            // Check vision capabilities for Claude 3 models
-            var opus = models.First(m => m.Id == "claude-3-opus-20240229");
-            Assert.True(opus.Capabilities?.Vision);
-
-            var sonnet = models.First(m => m.Id == "claude-3-sonnet-20240229");
-            Assert.True(sonnet.Capabilities?.Vision);
-
-            var haiku = models.First(m => m.Id == "claude-3-haiku-20240307");
-            Assert.True(haiku.Capabilities?.Vision);
-
-            // Check non-vision models
-            var claude2 = models.First(m => m.Id == "claude-2.1");
-            Assert.False(claude2.Capabilities?.Vision ?? false);
+            Assert.Contains("Anthropic does not provide a models listing endpoint", exception.Message);
         }
 
         #endregion
