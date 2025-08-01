@@ -488,7 +488,7 @@ namespace ConduitLLM.Http.Services
                                         var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, _jsonOptions);
                                         if (cost?.Id == id)
                                         {
-                                            keysToDelete.Add(key);
+                                            keysToDelete.Add(key.ToString()!);
                                         }
                                     }
                                 }
