@@ -200,7 +200,7 @@ export { ConfigurationService } from './services/ConfigurationService';
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
-export { AdminNotificationHubClient } from './signalr/AdminNotificationHubClient';
+// AdminNotificationHubClient removed - AdminNotificationHub has been removed from the backend
 
 // Utilities
 export * from './utils/errors';

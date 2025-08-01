@@ -46,40 +46,33 @@ namespace ConduitLLM.Http.Controllers
         /// <summary>
         /// Gets available models for a specified provider
         /// </summary>
-        /// <param name="providerName">Name of the provider</param>
+        /// <param name="providerId">ID of the provider</param>
         /// <param name="forceRefresh">Whether to bypass cache and force refresh</param>
         /// <returns>List of available model IDs</returns>
-        [HttpGet("{providerName}")]
+        [HttpGet("{providerId:int}")]
         [ProducesResponseType(typeof(List<string>), 200)]
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
         public async Task<IActionResult> GetProviderModels(
-            string providerName,
+            int providerId,
             [FromQuery] bool forceRefresh = false)
         {
             try
             {
-                _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})",
-                    providerName.Replace(Environment.NewLine, ""), forceRefresh);
+                _logger.LogInformation("Getting models for provider {ProviderId} (forceRefresh: {ForceRefresh})",
+                    providerId, forceRefresh);
 
                 // Get the provider credentials from the database
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 
-                // Try to parse provider name as ProviderType enum
-                if (!Enum.TryParse<ConduitLLM.Configuration.ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Invalid provider name '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
-                    return NotFound(new { error = $"Provider '{providerName}' not found" });
-                }
-                
-                var provider = await dbContext.ProviderCredentials
+                var provider = await dbContext.Providers
                     .Include(p => p.ProviderKeyCredentials)
-                    .FirstOrDefaultAsync(p => p.ProviderType == providerType);
+                    .FirstOrDefaultAsync(p => p.Id == providerId);
 
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider '{ProviderName}' not found", providerName.Replace(Environment.NewLine, ""));
-                    return NotFound(new { error = $"Provider '{providerName}' not found" });
+                    _logger.LogWarning("Provider with ID {ProviderId} not found", providerId);
+                    return NotFound(new { error = $"Provider with ID {providerId} not found" });
                 }
 
                 // Get the primary key or first enabled key from ProviderKeyCredentials
@@ -89,34 +82,26 @@ namespace ConduitLLM.Http.Controllers
 
                 if (primaryKey == null || string.IsNullOrEmpty(primaryKey.ApiKey))
                 {
-                    _logger.LogWarning("API key missing for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("API key missing for provider {ProviderId}", providerId);
                     return BadRequest(new { error = "API key is required to retrieve models" });
                 }
 
-                // Convert DB entity to ProviderCredentials
-                var providerCredentials = new Configuration.ProviderCredentials
-                {
-                    ProviderType = provider.ProviderType,
-                    ApiKey = primaryKey.ApiKey,
-                    BaseUrl = provider.BaseUrl
-                };
-
                 // Use the model list service to get models
-                var models = await _modelListService.GetModelsForProviderAsync(providerCredentials, forceRefresh);
+                var models = await _modelListService.GetModelsForProviderAsync(provider, primaryKey, forceRefresh);
 
                 // Sort the models alphabetically for better UX
                 var sortedModels = models
                     .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}",
-                    sortedModels.Count, providerName.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderId}",
+                    sortedModels.Count, providerId);
 
                 return Ok(sortedModels);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error retrieving models for provider {ProviderId}", providerId);
                 return StatusCode(500, new { error = $"Failed to retrieve models: {ex.Message}" });
             }
         }

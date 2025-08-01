@@ -78,6 +78,11 @@ namespace ConduitLLM.Http.Authentication
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
+                // Store virtual key info in HttpContext for usage tracking
+                Context.Items["VirtualKeyId"] = keyEntity.Id;
+                Context.Items["VirtualKey"] = virtualKey;
+                Context.Items["RequestStartTime"] = DateTime.UtcNow;
+
                 Logger.LogDebug("Successfully authenticated Virtual Key {KeyName} for {Path}", 
                     keyEntity.KeyName, Context.Request.Path);
 

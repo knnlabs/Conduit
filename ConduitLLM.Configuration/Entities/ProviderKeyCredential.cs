@@ -18,17 +18,17 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Gets or sets the ID of the parent provider credential.
+        /// Gets or sets the ID of the parent provider.
         /// </summary>
-        // This is associated with a ProviderCredential. 
-        // It needs to map to the ProviderCredentialId in the ProviderCredential table
+        // This is associated with a Provider. 
+        // It needs to map to the ProviderId in the Provider table
         [Required]
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
         
         /// <summary>
-        /// Gets or sets the parent provider credential that owns this key.
+        /// Gets or sets the parent provider that owns this key.
         /// </summary>
-        public ProviderCredential ProviderCredential { get; set; } = null!;
+        public Provider Provider { get; set; } = null!;
 
 
         /// <summary>

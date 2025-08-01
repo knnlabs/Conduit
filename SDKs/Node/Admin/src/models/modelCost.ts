@@ -2,10 +2,11 @@ import { FilterOptions } from './common';
 import type { ModelConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
 
+/** @deprecated Use ModelCostDto instead - pattern matching has been removed */
 export interface ModelCost {
   id: number;
-  modelIdPattern: string;
-  providerType: ProviderType;
+  modelIdPattern: string; // @deprecated - no longer used
+  providerType: ProviderType; // @deprecated - costs are now mapped to specific models
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
@@ -33,21 +34,30 @@ export interface ModelCost {
 
 export interface ModelCostDto {
   id: number;
-  modelId: string;
-  inputTokenCost: number;
-  outputTokenCost: number;
-  currency: string;
+  costName: string; // User-friendly name like "GPT-4 Standard Pricing"
+  associatedModelAliases: string[]; // Model aliases using this cost
+  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  inputTokenCost: number; // Cost per token in USD
+  outputTokenCost: number; // Cost per token in USD
+  embeddingTokenCost?: number;
+  imageCostPerImage?: number;
+  audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
+  videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string; // JSON string
+  isActive: boolean;
+  priority: number;
   effectiveDate: string;
   expiryDate?: string;
-  providerId?: string;
   description?: string;
-  isActive: boolean;
   createdAt: string;
   updatedAt: string;
   // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
-  imageQualityMultipliers?: string;
+  imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
   cachedInputTokenCost?: number;
   cachedInputWriteCost?: number;
@@ -57,19 +67,25 @@ export interface ModelCostDto {
 }
 
 export interface CreateModelCostDto {
-  modelId: string;
+  costName: string; // Required: User-friendly name
+  modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
+  modelType?: string; // Default: "chat"
+  priority?: number; // Default: 0
+  description?: string;
   inputTokenCost: number;
   outputTokenCost: number;
-  currency?: string;
-  effectiveDate?: string;
-  expiryDate?: string;
-  providerId?: string;
-  description?: string;
-  isActive?: boolean;
+  embeddingTokenCost?: number;
+  imageCostPerImage?: number;
+  audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
+  videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string; // JSON string
   // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
-  imageQualityMultipliers?: string;
+  imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
   cachedInputTokenCost?: number;
   cachedInputWriteCost?: number;
@@ -79,18 +95,27 @@ export interface CreateModelCostDto {
 }
 
 export interface UpdateModelCostDto {
-  inputTokenCost?: number;
-  outputTokenCost?: number;
-  currency?: string;
-  effectiveDate?: string;
-  expiryDate?: string;
-  providerId?: string;
+  id: number; // Required for update
+  costName: string; // Required: User-friendly name
+  modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
+  modelType?: string;
+  priority?: number;
   description?: string;
   isActive?: boolean;
+  inputTokenCost?: number;
+  outputTokenCost?: number;
+  embeddingTokenCost?: number;
+  imageCostPerImage?: number;
+  audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
+  videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string; // JSON string
   // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
-  imageQualityMultipliers?: string;
+  imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
   cachedInputTokenCost?: number;
   cachedInputWriteCost?: number;
@@ -145,6 +170,29 @@ export interface ModelCostHistory {
     expiryDate?: string;
     changeReason?: string;
   }[];
+}
+
+// Model Cost Mapping - Links costs to specific models
+export interface ModelCostMappingDto {
+  id: number;
+  modelCostId: number;
+  modelProviderMappingId: number;
+  isActive: boolean;
+  createdAt: string;
+  modelAlias?: string; // From ModelProviderMapping
+  providerModelId?: string; // From ModelProviderMapping
+  costName?: string; // From ModelCost
+}
+
+export interface CreateModelCostMappingDto {
+  modelCostId: number;
+  modelProviderMappingIds: number[]; // Can map multiple models at once
+  isActive?: boolean; // Default: true
+}
+
+export interface UpdateModelCostMappingDto {
+  modelCostId: number;
+  modelProviderMappingIds: number[]; // Replaces all existing mappings
 }
 
 export interface CostEstimate {

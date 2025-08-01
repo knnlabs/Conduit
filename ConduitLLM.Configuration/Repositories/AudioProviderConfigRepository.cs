@@ -30,8 +30,8 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 return await _context.AudioProviderConfigs
-                    .Include(c => c.ProviderCredential)
-                    .OrderBy(c => c.ProviderCredential != null ? c.ProviderCredential.ProviderType : ProviderType.OpenAI)
+                    .Include(c => c.Provider)
+                    .OrderBy(c => c.Provider != null ? c.Provider.ProviderType : ProviderType.OpenAI)
                     .ThenByDescending(c => c.RoutingPriority)
                     .ToListAsync();
             }
@@ -46,24 +46,24 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<AudioProviderConfig?> GetByIdAsync(int id)
         {
             return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
+                .Include(c => c.Provider)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         /// <inheritdoc/>
-        public async Task<AudioProviderConfig?> GetByProviderCredentialIdAsync(int providerCredentialId)
+        public async Task<AudioProviderConfig?> GetByProviderIdAsync(int ProviderId)
         {
             return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .FirstOrDefaultAsync(c => c.ProviderCredentialId == providerCredentialId);
+                .Include(c => c.Provider)
+                .FirstOrDefaultAsync(c => c.ProviderId == ProviderId);
         }
 
         /// <inheritdoc/>
         public async Task<List<AudioProviderConfig>> GetByProviderTypeAsync(ProviderType providerType)
         {
             return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .Where(c => c.ProviderCredential.ProviderType == providerType)
+                .Include(c => c.Provider)
+                .Where(c => c.Provider.ProviderType == providerType)
                 .OrderByDescending(c => c.RoutingPriority)
                 .ToListAsync();
         }
@@ -72,8 +72,8 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<List<AudioProviderConfig>> GetEnabledForOperationAsync(string operationType)
         {
             var query = _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .Where(c => c.ProviderCredential.IsEnabled);
+                .Include(c => c.Provider)
+                .Where(c => c.Provider.IsEnabled);
 
             query = operationType.ToLower() switch
             {
@@ -125,10 +125,10 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<bool> ExistsForProviderCredentialAsync(int providerCredentialId)
+        public async Task<bool> ExistsForProviderAsync(int ProviderId)
         {
             return await _context.AudioProviderConfigs
-                .AnyAsync(c => c.ProviderCredentialId == providerCredentialId);
+                .AnyAsync(c => c.ProviderId == ProviderId);
         }
     }
 }

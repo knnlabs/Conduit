@@ -135,62 +135,78 @@ namespace ConduitLLM.Admin.Hubs
         }
 
         /// <summary>
-        /// Subscribes to notifications for a specific provider.
+        /// Subscribes to notifications for a specific provider by name (legacy).
         /// </summary>
         /// <param name="providerName">The provider name to subscribe to.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task SubscribeToProvider(string providerName)
+        [Obsolete("Use SubscribeToProvider(int providerId) instead")]
+        public async Task SubscribeToProviderByName(string providerName)
+        {
+            _logger.LogWarning("Legacy SubscribeToProviderByName called with {ProviderName}. Clients should use SubscribeToProvider(int) instead.", providerName);
+            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use SubscribeToProvider with provider ID." });
+        }
+
+        /// <summary>
+        /// Subscribes to notifications for a specific provider.
+        /// </summary>
+        /// <param name="providerId">The provider ID to subscribe to.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task SubscribeToProvider(int providerId)
         {
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
-                    await Clients.Caller.SendAsync("SubscriptionError", $"Unknown provider: {providerName}");
-                    return;
-                }
-                
-                var groupName = $"admin-provider-{providerName}";
+                var groupName = $"admin-provider-{providerId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to provider {ProviderName} notifications", providerName);
+                _logger.LogInformation("Admin subscribed to provider {ProviderId} notifications", providerId);
                 
                 // Send current provider health status
-                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerType);
+                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerId);
                 if (healthStatus != null)
                 {
                     await Clients.Caller.SendAsync("ProviderHealthStatus", healthStatus);
                 }
                 
-                await Clients.Caller.SendAsync("SubscribedToProvider", providerName);
+                await Clients.Caller.SendAsync("SubscribedToProvider", providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error subscribing to provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error subscribing to provider {ProviderId}", providerId);
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to subscribe to provider notifications" });
             }
         }
 
         /// <summary>
-        /// Unsubscribes from notifications for a specific provider.
+        /// Unsubscribes from notifications for a specific provider by name (legacy).
         /// </summary>
         /// <param name="providerName">The provider name to unsubscribe from.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task UnsubscribeFromProvider(string providerName)
+        [Obsolete("Use UnsubscribeFromProvider(int providerId) instead")]
+        public async Task UnsubscribeFromProviderByName(string providerName)
+        {
+            _logger.LogWarning("Legacy UnsubscribeFromProviderByName called with {ProviderName}. Clients should use UnsubscribeFromProvider(int) instead.", providerName);
+            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use UnsubscribeFromProvider with provider ID." });
+        }
+
+        /// <summary>
+        /// Unsubscribes from notifications for a specific provider.
+        /// </summary>
+        /// <param name="providerId">The provider ID to unsubscribe from.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task UnsubscribeFromProvider(int providerId)
         {
             try
             {
-                var groupName = $"admin-provider-{providerName}";
+                var groupName = $"admin-provider-{providerId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from provider {ProviderName} notifications", providerName);
+                _logger.LogInformation("Admin unsubscribed from provider {ProviderId} notifications", providerId);
                 
-                await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerName);
+                await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error unsubscribing from provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error unsubscribing from provider {ProviderId}", providerId);
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to unsubscribe from provider notifications" });
             }
         }
@@ -252,12 +268,12 @@ namespace ConduitLLM.Admin.Hubs
         /// <summary>
         /// Subscribes to notifications for a specific provider.
         /// </summary>
-        Task SubscribeToProvider(string providerName);
+        Task SubscribeToProvider(int providerId);
 
         /// <summary>
         /// Unsubscribes from notifications for a specific provider.
         /// </summary>
-        Task UnsubscribeFromProvider(string providerName);
+        Task UnsubscribeFromProvider(int providerId);
 
         /// <summary>
         /// Requests a refresh of provider health status.

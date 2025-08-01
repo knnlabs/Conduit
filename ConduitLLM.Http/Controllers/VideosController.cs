@@ -27,6 +27,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<VideosController> _logger;
+        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="VideosController"/> class.
@@ -36,13 +37,15 @@ namespace ConduitLLM.Http.Controllers
             IAsyncTaskService taskService,
             IOperationTimeoutProvider timeoutProvider,
             ICancellableTaskRegistry taskRegistry,
-            ILogger<VideosController> logger)
+            ILogger<VideosController> logger,
+            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
         {
             _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
         /// <summary>
@@ -85,6 +88,21 @@ namespace ConduitLLM.Http.Controllers
                         Title = "Unauthorized",
                         Detail = "Virtual key not found in request context"
                     });
+                }
+
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
                 }
 
                 // Create a linked cancellation token that can be controlled independently

@@ -2,34 +2,49 @@ import { FilterOptions } from './common';
 import { ProviderConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
 
-export interface ProviderCredentialDto {
-  id?: number;
-  providerType?: ProviderType;
-  providerName?: string;
-  apiKey?: string;
+// Provider DTOs - Provider ID is the canonical identifier
+export interface ProviderDto {
+  id: number;
+  providerType: ProviderType;
+  providerName: string; // User-friendly display name, can be changed
   baseUrl?: string | null;
-  organization?: string | null;
-  isEnabled?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Note: apiKey and organization moved to ProviderKeyCredential
 }
 
-export interface CreateProviderCredentialDto {
+export interface CreateProviderDto {
   providerType: ProviderType;
   providerName: string;
-  apiKey?: string;
   baseUrl?: string | null;
-  organization?: string | null;
   isEnabled?: boolean;
 }
 
-export interface UpdateProviderCredentialDto {
-  id: number;
+export interface UpdateProviderDto {
   providerName?: string;
-  apiKey?: string;
   baseUrl?: string | null;
-  organization?: string | null;
   isEnabled?: boolean;
+}
+
+// Deprecated - kept for reference during migration
+/** @deprecated Use ProviderDto instead */
+export interface ProviderCredentialDto extends ProviderDto {
+  apiKey?: string;
+  organization?: string | null;
+}
+
+/** @deprecated Use CreateProviderDto instead */
+export interface CreateProviderCredentialDto extends CreateProviderDto {
+  apiKey?: string;
+  organization?: string | null;
+}
+
+/** @deprecated Use UpdateProviderDto instead */
+export interface UpdateProviderCredentialDto extends UpdateProviderDto {
+  id: number;
+  apiKey?: string;
+  organization?: string | null;
 }
 
 export interface ProviderConnectionTestRequest {

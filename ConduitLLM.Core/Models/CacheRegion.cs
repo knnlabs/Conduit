@@ -70,7 +70,7 @@ namespace ConduitLLM.Core.Models
         /// Provider credentials for external service authentication.
         /// Security-sensitive with encryption requirements.
         /// </summary>
-        ProviderCredentials,
+        Providers,
 
         /// <summary>
         /// Model cost information for billing calculations.

@@ -11,9 +11,14 @@ namespace ConduitLLM.Configuration.Repositories
     public interface IProviderKeyCredentialRepository
     {
         /// <summary>
+        /// Get all key credentials across all providers
+        /// </summary>
+        Task<List<ProviderKeyCredential>> GetAllAsync();
+
+        /// <summary>
         /// Get all key credentials for a provider
         /// </summary>
-        Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int providerCredentialId);
+        Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int ProviderId);
 
         /// <summary>
         /// Get a specific key credential by ID
@@ -23,12 +28,12 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Get the primary key credential for a provider
         /// </summary>
-        Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int providerCredentialId);
+        Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int ProviderId);
 
         /// <summary>
         /// Get all enabled key credentials for a provider
         /// </summary>
-        Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int providerCredentialId);
+        Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int ProviderId);
 
         /// <summary>
         /// Create a new key credential
@@ -48,16 +53,16 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Set a key as primary (and unset others)
         /// </summary>
-        Task<bool> SetPrimaryKeyAsync(int providerCredentialId, int keyId);
+        Task<bool> SetPrimaryKeyAsync(int ProviderId, int keyId);
 
         /// <summary>
         /// Check if a provider has any key credentials
         /// </summary>
-        Task<bool> HasKeyCredentialsAsync(int providerCredentialId);
+        Task<bool> HasKeyCredentialsAsync(int ProviderId);
 
         /// <summary>
         /// Count key credentials for a provider
         /// </summary>
-        Task<int> CountByProviderIdAsync(int providerCredentialId);
+        Task<int> CountByProviderIdAsync(int ProviderId);
     }
 }

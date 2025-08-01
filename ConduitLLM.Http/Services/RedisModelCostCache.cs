@@ -403,12 +403,12 @@ namespace ConduitLLM.Http.Services
 
         private async Task SetModelCostAsync(ModelCost cost)
         {
-            var patternKey = PatternKeyPrefix + cost.ModelIdPattern.ToLowerInvariant();
+            var patternKey = PatternKeyPrefix + cost.CostName.ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(cost, _jsonOptions);
             
             await _database.StringSetAsync(patternKey, serialized, _defaultExpiry);
             
-            _logger.LogDebug("Model cost cached for pattern: {Pattern}", cost.ModelIdPattern);
+            _logger.LogDebug("Model cost cached for cost name: {CostName}", cost.CostName);
         }
 
         /*

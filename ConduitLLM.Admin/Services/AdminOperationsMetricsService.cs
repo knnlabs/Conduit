@@ -218,31 +218,16 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var providerCredentialService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-                var providers = await providerCredentialService.GetAllCredentialsAsync();
+                var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
+                var providers = await providerRepository.GetAllAsync();
 
-                // Reset gauges to handle removed providers
-                ConfiguredProviders.WithLabels("openai", "true").Set(0);
-                ConfiguredProviders.WithLabels("openai", "false").Set(0);
-                ConfiguredProviders.WithLabels("anthropic", "true").Set(0);
-                ConfiguredProviders.WithLabels("anthropic", "false").Set(0);
-                ConfiguredProviders.WithLabels("google", "true").Set(0);
-                ConfiguredProviders.WithLabels("google", "false").Set(0);
-                ConfiguredProviders.WithLabels("minimax", "true").Set(0);
-                ConfiguredProviders.WithLabels("minimax", "false").Set(0);
-                ConfiguredProviders.WithLabels("replicate", "true").Set(0);
-                ConfiguredProviders.WithLabels("replicate", "false").Set(0);
+                // Count total enabled and disabled providers
+                var enabledCount = providers.Count(p => p.IsEnabled);
+                var disabledCount = providers.Count(p => !p.IsEnabled);
 
-                foreach (var provider in providers.GroupBy(p => p.ProviderType))
-                {
-                    var enabledCount = provider.Count(p => p.IsEnabled);
-                    var disabledCount = provider.Count(p => !p.IsEnabled);
-
-                    if (enabledCount > 0)
-                        ConfiguredProviders.WithLabels(provider.Key.ToString().ToLower(), "true").Set(enabledCount);
-                    if (disabledCount > 0)
-                        ConfiguredProviders.WithLabels(provider.Key.ToString().ToLower(), "false").Set(disabledCount);
-                }
+                // Use simple enabled/disabled labels instead of provider types
+                ConfiguredProviders.WithLabels("all", "true").Set(enabledCount);
+                ConfiguredProviders.WithLabels("all", "false").Set(disabledCount);
             }
             catch (Exception ex)
             {
@@ -257,15 +242,11 @@ namespace ConduitLLM.Admin.Services
                 var modelMappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
                 var mappings = await modelMappingService.GetAllMappingsAsync();
 
-                // Group by provider and count
-                var mappingsByProvider = mappings
-                    .GroupBy(m => m.ProviderType)
-                    .Select(g => new { Provider = g.Key.ToString().ToLower(), Count = g.Count() });
-
-                foreach (var group in mappingsByProvider)
-                {
-                    ActiveModelMappings.WithLabels(group.Provider).Set(group.Count);
-                }
+                // Count total active mappings (no grouping by provider type)
+                var totalMappings = mappings.Count(m => m.Provider != null && m.IsEnabled);
+                
+                // Use a simple "total" label instead of provider-specific labels
+                ActiveModelMappings.WithLabels("total").Set(totalMappings);
             }
             catch (Exception ex)
             {

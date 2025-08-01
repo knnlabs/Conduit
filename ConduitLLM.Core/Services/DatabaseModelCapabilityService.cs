@@ -303,7 +303,7 @@ namespace ConduitLLM.Core.Services
                 var allMappings = await _repository.GetAllAsync(default);
                 var defaultMapping = allMappings.FirstOrDefault(m =>
                     m.IsDefault &&
-                    m.ProviderCredential?.ProviderType.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
+                    m.Provider?.ProviderType.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
                     m.DefaultCapabilityType?.Equals(capabilityType, StringComparison.OrdinalIgnoreCase) == true);
 
                 var result = defaultMapping?.ModelAlias;
@@ -342,7 +342,7 @@ namespace ConduitLLM.Core.Services
                 // Try to find by provider model name
                 var allMappings = await _repository.GetAllAsync(cancellationToken);
                 mapping = allMappings.FirstOrDefault(m =>
-                    m.ProviderModelName.Equals(model, StringComparison.OrdinalIgnoreCase));
+                    m.ProviderModelId.Equals(model, StringComparison.OrdinalIgnoreCase));
             }
             return mapping;
         }

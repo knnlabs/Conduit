@@ -24,7 +24,7 @@ namespace ConduitLLM.Providers.Extensions
             }
 
             // Register LLM client factory
-            services.AddScoped<ILLMClientFactory, LLMClientFactory>();
+            services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 
             // Register model list service
             services.AddScoped<ModelListService>();

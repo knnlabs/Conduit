@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { IpFilterDto } from '@knn_labs/conduit-admin-client';
 
 // POST /api/admin/security/ip-rules/bulk - Bulk operations
 export async function POST(req: NextRequest) {
@@ -19,10 +20,10 @@ export async function POST(req: NextRequest) {
       const updatedFilters = await client.ipFilters.bulkUpdate(body.operation, body.ruleIds);
       
       // Transform the response to match UI expectations
-      const transformedFilters = updatedFilters.map(filter => ({
+      const transformedFilters = updatedFilters.map((filter: IpFilterDto) => ({
         id: filter.id.toString(),
         ipAddress: filter.ipAddressOrCidr,
-        action: filter.filterType === 'whitelist' ? 'allow' : 'block',
+        action: filter.filterType === 'whitelist' ? 'allow' : 'block' as 'allow' | 'block',
         description: filter.description,
         createdAt: filter.createdAt,
         isEnabled: filter.isEnabled,

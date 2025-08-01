@@ -105,12 +105,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a simple mapping with no image generation support
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))
@@ -187,12 +187,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a mapping that doesn't support image generation
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))

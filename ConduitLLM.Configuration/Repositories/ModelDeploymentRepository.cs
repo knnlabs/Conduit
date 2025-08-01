@@ -82,7 +82,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .Where(d => d.ProviderType == providerType)
+                    .Where(d => d.Provider.ProviderType == providerType)
                     .OrderBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }
@@ -107,7 +107,7 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
                     .Where(d => d.ModelName == modelName)
-                    .OrderBy(d => d.ProviderType)
+                    .OrderBy(d => d.Provider.ProviderType)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -125,7 +125,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .OrderBy(d => d.ProviderType)
+                    .OrderBy(d => d.Provider.ProviderType)
                     .ThenBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }

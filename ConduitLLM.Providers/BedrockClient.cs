@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 // Removed AWS SDK dependencies - using direct HTTP calls with AWS Signature V4
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -47,42 +48,26 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public BedrockClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<BedrockClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  EnsureBedrockCredentials(credentials),
+                  provider,
+                  keyCredential,
                   providerModelId,
                   logger,
                   httpClientFactory,
                   "bedrock",
                   defaultModels)
         {
-            // Extract region from credentials.BaseUrl or use default
+            // Extract region from provider.BaseUrl or use default
             // BaseUrl in this case is treated as the AWS region
-            _region = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? "us-east-1" : credentials.BaseUrl;
+            _region = string.IsNullOrWhiteSpace(provider.BaseUrl) ? "us-east-1" : provider.BaseUrl;
         }
 
-        private static ProviderCredentials EnsureBedrockCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("AWS Access Key is required for Bedrock API");
-            }
-
-            // Note: AWS Secret Key should be provided in Credentials.ApiSecret
-            // For streaming operations, both ApiKey (AWS Access Key) and ApiSecret (AWS Secret Key) are required
-            // These can also come from environment variables or AWS credential chain
-
-            return credentials;
-        }
 
         /// <inheritdoc />
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
@@ -184,7 +169,7 @@ namespace ConduitLLM.Providers
             }
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -248,7 +233,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -314,7 +299,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -389,7 +374,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -468,7 +453,7 @@ namespace ConduitLLM.Providers
             }
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -546,7 +531,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -679,7 +664,7 @@ namespace ConduitLLM.Providers
                     });
                 }
 
-                using var httpClient = CreateHttpClient(Credentials.ApiKey);
+                using var httpClient = CreateHttpClient(PrimaryKeyCredential.ApiKey);
                 string apiUrl = $"model/{modelId}/invoke-with-response-stream";
 
                 // Create HTTP request with streaming enabled
@@ -691,7 +676,7 @@ namespace ConduitLLM.Providers
                 httpRequest.Headers.Add("User-Agent", "ConduitLLM");
                 
                 // Sign the request with AWS Signature V4
-                AwsSignatureV4.SignRequest(httpRequest, Credentials.ApiKey!, Credentials.ApiSecret ?? "dummy-secret-key", _region, _service);
+                AwsSignatureV4.SignRequest(httpRequest, PrimaryKeyCredential.ApiKey!, Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key", _region, _service);
                 
                 // Send with response streaming
                 var response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -786,28 +771,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to retrieve models from Bedrock API. Returning known models.");
-                return GetFallbackModels();
+                Logger.LogError(ex, "Failed to retrieve models from Bedrock API.");
+                throw;
             }
         }
 
-        /// <summary>
-        /// Gets a fallback list of models for Bedrock.
-        /// </summary>
-        /// <returns>A list of commonly available Bedrock models.</returns>
-        protected virtual List<ExtendedModelInfo> GetFallbackModels()
-        {
-            return new List<ExtendedModelInfo>
-            {
-                ExtendedModelInfo.Create("anthropic.claude-3-opus-20240229-v1:0", ProviderName, "anthropic.claude-3-opus-20240229-v1:0"),
-                ExtendedModelInfo.Create("anthropic.claude-3-sonnet-20240229-v1:0", ProviderName, "anthropic.claude-3-sonnet-20240229-v1:0"),
-                ExtendedModelInfo.Create("anthropic.claude-3-haiku-20240307-v1:0", ProviderName, "anthropic.claude-3-haiku-20240307-v1:0"),
-                ExtendedModelInfo.Create("meta.llama3-8b-instruct-v1:0", ProviderName, "meta.llama3-8b-instruct-v1:0"),
-                ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0"),
-                ExtendedModelInfo.Create("mistral.mistral-7b-instruct-v0:2", ProviderName, "mistral.mistral-7b-instruct-v0:2"),
-                ExtendedModelInfo.Create("mistral.mixtral-8x7b-instruct-v0:1", ProviderName, "mistral.mixtral-8x7b-instruct-v0:1")
-            };
-        }
 
         /// <inheritdoc />
         public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
@@ -888,8 +856,8 @@ namespace ConduitLLM.Providers
             object? requestBody,
             CancellationToken cancellationToken)
         {
-            string effectiveApiKey = Credentials.ApiKey!;
-            string effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
+            string effectiveApiKey = PrimaryKeyCredential.ApiKey!;
+            string effectiveSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key"; // Fallback for backward compatibility
 
             // Create absolute URI by combining with client base address
             var absoluteUri = new Uri(client.BaseAddress!, path);
@@ -1142,7 +1110,7 @@ namespace ConduitLLM.Providers
                 Truncate = "END"
             };
 
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -1205,7 +1173,7 @@ namespace ConduitLLM.Providers
                 Normalize = true // Recommended for most use cases
             };
 
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -1303,7 +1271,7 @@ namespace ConduitLLM.Providers
                 StylePreset = request.Style // Use style if provided
             };
 
-            using var client = CreateHttpClient(Credentials.ApiKey);
+            using var client = CreateHttpClient(PrimaryKeyCredential.ApiKey);
             string apiUrl = $"/model/{modelId}/invoke";
 
             // Send request with AWS Signature V4 authentication
@@ -1942,8 +1910,8 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
-                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
+                var effectiveSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key"; // Fallback for backward compatibility
                 var effectiveRegion = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl : _region;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))

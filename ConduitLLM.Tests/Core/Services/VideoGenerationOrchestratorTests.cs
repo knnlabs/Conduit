@@ -215,12 +215,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("test-model"))
@@ -316,7 +316,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Setup model mapping to return null
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("invalid-model"))
-                .Returns(Task.FromResult((ConduitLLM.Configuration.ModelProviderMapping?)null));
+                .Returns(Task.FromResult((ModelProviderMapping?)null));
 
             // Setup discovery service to return empty models
             _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
@@ -378,12 +378,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("test-model"))
@@ -449,12 +449,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "text-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("text-model"))
@@ -547,12 +547,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("test-model"))
@@ -790,12 +790,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("test-model"))
@@ -926,12 +926,12 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(taskStatus);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Model,
                 ProviderId = 1,
-                ProviderType = ProviderType.Replicate,
-                ProviderModelId = "test-provider-model"
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Model))

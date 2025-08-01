@@ -92,7 +92,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential = new ProviderCredential
+            var Provider = new Provider
             {
                 Id = 1,
                 ProviderType = providerType,
@@ -100,7 +100,7 @@ namespace ConduitLLM.Tests.Services
             };
 
             // Act
-            var models = await service.DiscoverModelsAsync(providerCredential, _httpClient, null);
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, null);
 
             // Assert
             Assert.NotNull(models);
@@ -118,7 +118,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential = new ProviderCredential
+            var Provider = new Provider
             {
                 Id = 1,
                 ProviderType = (ProviderType)999, // Invalid provider type
@@ -126,7 +126,7 @@ namespace ConduitLLM.Tests.Services
             };
 
             // Act
-            var models = await service.DiscoverModelsAsync(providerCredential, _httpClient, "api-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "api-key");
 
             // Assert
             Assert.Empty(models);
@@ -145,7 +145,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential = new ProviderCredential
+            var Provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.Anthropic,
@@ -153,7 +153,7 @@ namespace ConduitLLM.Tests.Services
             };
 
             // Act - use anthropic which returns static models when API key is provided
-            var models = await service.DiscoverModelsAsync(providerCredential, _httpClient, "test-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             Assert.NotEmpty(models);
@@ -165,7 +165,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential = new ProviderCredential
+            var Provider = new Provider
             {
                 Id = 1,
                 ProviderType = (ProviderType)999, // Invalid provider type
@@ -173,7 +173,7 @@ namespace ConduitLLM.Tests.Services
             };
             
             // Act - Use an unsupported provider
-            var models = await service.DiscoverModelsAsync(providerCredential, _httpClient, "test-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             Assert.NotNull(models);
@@ -200,13 +200,13 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential1 = new ProviderCredential
+            var Provider1 = new Provider
             {
                 Id = 1,
                 ProviderType = provider1,
                 ProviderName = provider1.ToString().ToLower()
             };
-            var providerCredential2 = new ProviderCredential
+            var Provider2 = new Provider
             {
                 Id = 2,
                 ProviderType = provider2,
@@ -214,8 +214,8 @@ namespace ConduitLLM.Tests.Services
             };
 
             // Act
-            var models1 = await service.DiscoverModelsAsync(providerCredential1, _httpClient, "key");
-            var models2 = await service.DiscoverModelsAsync(providerCredential2, _httpClient, "key");
+            var models1 = await service.DiscoverModelsAsync(Provider1, _httpClient, "key");
+            var models2 = await service.DiscoverModelsAsync(Provider2, _httpClient, "key");
 
             // Assert
             // Note: Google and Gemini are now distinct provider types, so they may return different models
@@ -233,7 +233,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
-            var providerCredential = new ProviderCredential
+            var Provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.OpenAI,
@@ -241,7 +241,7 @@ namespace ConduitLLM.Tests.Services
             };
 
             // Act
-            await service.DiscoverModelsAsync(providerCredential, _httpClient, "test-key");
+            await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             // Should log the start of discovery

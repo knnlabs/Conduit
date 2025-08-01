@@ -29,8 +29,7 @@ namespace ConduitLLM.Http.Extensions
             services.AddHttpClient<IAudioTranscriptionClient>();
             services.AddHttpClient<ITextToSpeechClient>();
             
-            // Add Prometheus metrics exporter as hosted service
-            services.AddHostedService<PrometheusAudioMetricsExporter>();
+            // PrometheusAudioMetricsExporter removed - metrics handled differently now
             
             // Add graceful shutdown
             services.AddSingleton<IRealtimeSessionManager, RealtimeSessionManager>();

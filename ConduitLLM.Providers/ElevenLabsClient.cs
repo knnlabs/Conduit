@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -39,12 +40,13 @@ namespace ConduitLLM.Providers
         /// Initializes a new instance of the <see cref="ElevenLabsClient"/> class.
         /// </summary>
         public ElevenLabsClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<ElevenLabsClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, "ElevenLabs", defaultModels)
+            : base(provider, keyCredential, providerModelId, logger, httpClientFactory, "ElevenLabs", defaultModels)
         {
             var translatorLogger = logger as ILogger<ElevenLabsRealtimeTranslator>
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<ElevenLabsRealtimeTranslator>();
@@ -85,7 +87,7 @@ namespace ConduitLLM.Providers
         {
             ValidateRequest(request, "CreateSpeech");
 
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey;
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
             if (string.IsNullOrEmpty(effectiveApiKey))
             {
                 throw new InvalidOperationException("API key is required for ElevenLabs");
@@ -97,7 +99,7 @@ namespace ConduitLLM.Providers
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM"; // Default voice ID
             var model = request.Model ?? GetDefaultTextToSpeechModel();
 
-            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var baseUrl = Provider.BaseUrl ?? DEFAULT_BASE_URL;
             var requestUrl = $"{baseUrl}/text-to-speech/{voiceId}";
 
             var requestBody = new Dictionary<string, object>
@@ -144,7 +146,7 @@ namespace ConduitLLM.Providers
         {
             ValidateRequest(request, "StreamSpeech");
 
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey;
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
             if (string.IsNullOrEmpty(effectiveApiKey))
             {
                 throw new InvalidOperationException("API key is required for ElevenLabs");
@@ -155,7 +157,7 @@ namespace ConduitLLM.Providers
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM";
             var model = request.Model ?? GetDefaultTextToSpeechModel();
 
-            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var baseUrl = Provider.BaseUrl ?? DEFAULT_BASE_URL;
             var requestUrl = $"{baseUrl}/text-to-speech/{voiceId}/stream";
 
             var requestBody = new Dictionary<string, object>
@@ -211,7 +213,7 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey;
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
             if (string.IsNullOrEmpty(effectiveApiKey))
             {
                 throw new InvalidOperationException("API key is required for ElevenLabs");
@@ -219,7 +221,7 @@ namespace ConduitLLM.Providers
 
             using var httpClient = CreateHttpClient(effectiveApiKey);
 
-            var baseUrl = Credentials.BaseUrl ?? DEFAULT_BASE_URL;
+            var baseUrl = Provider.BaseUrl ?? DEFAULT_BASE_URL;
             var response = await httpClient.GetAsync($"{baseUrl}/voices", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -368,7 +370,7 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey;
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
             if (string.IsNullOrEmpty(effectiveApiKey))
             {
                 throw new InvalidOperationException("API key is required for ElevenLabs");
@@ -435,7 +437,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -503,7 +505,7 @@ namespace ConduitLLM.Providers
                 {
                     Id = "eleven_monolingual_v1",
                     OwnedBy = "elevenlabs",
-                    Provider = "ElevenLabs",
+                    ProviderName = "ElevenLabs",
                     Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,
@@ -516,7 +518,7 @@ namespace ConduitLLM.Providers
                 {
                     Id = "eleven_multilingual_v2",
                     OwnedBy = "elevenlabs",
-                    Provider = "ElevenLabs",
+                    ProviderName = "ElevenLabs",
                     Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,
@@ -529,7 +531,7 @@ namespace ConduitLLM.Providers
                 {
                     Id = "eleven_conversational_v1",
                     OwnedBy = "elevenlabs",
-                    Provider = "ElevenLabs",
+                    ProviderName = "ElevenLabs",
                     Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,

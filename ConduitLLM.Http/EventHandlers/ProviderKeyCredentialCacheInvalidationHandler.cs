@@ -17,11 +17,11 @@ namespace ConduitLLM.Http.EventHandlers
         IConsumer<ProviderKeyCredentialDeleted>,
         IConsumer<ProviderKeyCredentialPrimaryChanged>
     {
-        private readonly IProviderCredentialCache _cache;
+        private readonly IProviderCache _cache;
         private readonly ILogger<ProviderKeyCredentialCacheInvalidationHandler> _logger;
 
         public ProviderKeyCredentialCacheInvalidationHandler(
-            IProviderCredentialCache cache,
+            IProviderCache cache,
             ILogger<ProviderKeyCredentialCacheInvalidationHandler> logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));

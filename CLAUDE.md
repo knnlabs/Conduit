@@ -324,15 +324,29 @@ The WebUI uses very strict ESLint rules that will cause build failures:
   - One assertion per test is preferred
   - Use Moq for mocking dependencies
 
-## Provider Type Migration - CRITICAL
-**⚠️ IMPORTANT**: As of Phase 3f (#628), the codebase uses strongly-typed `ProviderType` enum instead of string-based provider names.
+## Provider Architecture - CRITICAL
+**⚠️ IMPORTANT**: The codebase supports multiple providers of the same type (e.g., multiple OpenAI configurations). Provider ID is the canonical identifier, not ProviderType.
 
-### Key Changes:
-- **Use `ProviderType` enum**: Always use `ProviderType.OpenAI`, `ProviderType.Anthropic`, etc. instead of string "openai", "anthropic"
-- **Database stores integers**: Provider types are stored as integers in the database (e.g., OpenAI=1, Anthropic=2)
+### Key Concepts:
+- **Provider ID**: The canonical identifier for Provider records. Use this for lookups, relationships, and identification.
+- **ProviderType**: Categorizes providers by their API type (OpenAI, Anthropic, etc.). Multiple providers can share the same ProviderType.
+- **Provider Name**: User-facing display name. Can be changed and should not be used for identification.
+- **ProviderKeyCredential**: Individual API keys for a provider. Supports multiple keys per provider for load balancing and failover.
+
+### Architecture:
+- **Provider Entity**: Represents a provider instance (e.g., "Production OpenAI", "Dev Azure OpenAI")
+- **ProviderKeyCredential Entity**: Individual API keys with ProviderAccountGroup for external account separation
+- **ModelProviderMapping**: Links model aliases to Provider.Id (NOT ProviderType!)
+- **ModelCost**: Flexible cost configurations that can apply to multiple models via ModelCostMapping
+
+### Migration Notes:
+- **ProviderType enum**: Used for categorization, stored as integers in database (OpenAI=1, Anthropic=2, etc.)
 - **Backward compatibility**: Read-only `ProviderName` properties exist for compatibility but are marked `[Obsolete]`
-- **Breaking change**: This is a major breaking change in the API - existing installations must drop and recreate their databases
-- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum instead of string providers
+- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum for categorization
+
+### Documentation:
+- See `/docs/architecture/provider-multi-instance.md` for detailed provider architecture
+- See `/docs/architecture/model-cost-mapping.md` for cost configuration details
 
 ### Available Provider Types:
 ```csharp

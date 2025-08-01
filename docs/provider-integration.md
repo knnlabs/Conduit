@@ -4,6 +4,8 @@
 
 ConduitLLM supports integration with multiple LLM providers through a unified interface. This document explains how to configure and use different providers, set up model mappings, and leverage the abstraction layer to build provider-agnostic applications.
 
+**Important Architecture Note**: ConduitLLM supports multiple instances of the same provider type (e.g., multiple OpenAI configurations with different API keys or endpoints). Each provider instance is identified by a unique Provider ID, not by its ProviderType.
+
 ## Supported Providers
 
 ConduitLLM currently supports the following LLM providers:
@@ -28,35 +30,65 @@ For provider-specific options, message formats, and endpoint details, see the [A
 
 ## Provider Configuration
 
+### Provider Architecture
+
+ConduitLLM uses a two-tier provider architecture:
+
+1. **Provider Entity**: Represents a provider instance (e.g., "Production OpenAI", "Dev Azure OpenAI")
+   - Has a unique Provider ID
+   - Contains provider type (OpenAI, Anthropic, etc.)
+   - Can have multiple API keys for load balancing and failover
+
+2. **ProviderKeyCredential Entity**: Individual API keys for a provider
+   - Multiple keys can be associated with one provider
+   - Supports key rotation and failover
+   - Can group keys by external account (ProviderAccountGroup)
+
 ### Adding a Provider
 
-Providers can be added through the WebUI or API:
+Providers are managed through the Admin API. Each provider can have multiple API keys:
 
-#### Via WebUI
+#### Creating a Provider
 
-1. Navigate to the **Configuration** page
-2. Select the **Providers** tab
-3. Click **Add Provider**
-4. Select the provider type
-5. Enter the required information:
-   - Name (for identification)
-   - API Key
-   - Endpoint URL (optional, uses default if blank)
-6. Click **Save**
-
-#### Via API
+First, create the provider instance:
 
 ```
-POST /api/providers
+POST /api/admin/providers
 ```
 
 ```json
 {
-  "name": "OpenAI",
-  "apiKey": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "endpoint": "https://api.openai.com/v1"
+  "providerType": "OpenAI",
+  "providerName": "Production OpenAI",
+  "baseUrl": "https://api.openai.com/v1",
+  "isEnabled": true
 }
 ```
+
+#### Adding API Keys to a Provider
+
+After creating a provider, add one or more API keys:
+
+```
+POST /api/admin/providers/{providerId}/keys
+```
+
+```json
+{
+  "apiKey": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "keyName": "Primary Key",
+  "isPrimary": true,
+  "providerAccountGroup": 0,
+  "isEnabled": true
+}
+```
+
+### Multi-Key Support
+
+Providers can have multiple API keys for:
+- **Load Balancing**: Distribute requests across multiple keys
+- **Failover**: Automatically switch to backup keys on failure
+- **Account Separation**: Keys with different ProviderAccountGroup values represent different external accounts with separate rate limits
 
 ### Provider-Specific Configuration
 
@@ -99,39 +131,38 @@ Each provider may have unique configuration requirements:
 
 ### Concept
 
-Model mappings create an abstraction layer between generic model names and provider-specific implementations. This allows:
+Model mappings create an abstraction layer between generic model names and provider-specific implementations. Each mapping associates:
 
-1. **Provider Agnosticism**: Applications can request capabilities rather than specific models
-2. **Seamless Switching**: Change providers without modifying client applications
-3. **Fallback Support**: Configure alternative models when primary choices are unavailable
+- A **model alias** (what clients request)
+- A **provider ID** (which provider instance to use)
+- A **provider model ID** (the actual model name at the provider)
+- Model capabilities and configuration
 
 ### Creating Model Mappings
 
-#### Via WebUI
+Model mappings link a model alias to a specific provider instance:
 
-1. Navigate to the **Configuration** page
-2. Select the **Model Mappings** tab
-3. Click **Add Mapping**
-4. Configure the mapping:
-   - Generic Model Name (e.g., "gpt-4-equivalent")
-   - Provider (select from configured providers)
-   - Provider-Specific Model (e.g., "gpt-4" for OpenAI)
-5. Click **Save**
-
-#### Via API
+#### Via Admin API
 
 ```
-POST /api/model-mappings
+POST /api/admin/model-provider-mappings
 ```
 
 ```json
 {
-  "genericModel": "gpt-4-equivalent",
-  "provider": "openai-provider-id",
-  "providerModel": "gpt-4",
-  "isActive": true
+  "modelAlias": "gpt-4-turbo",
+  "providerId": 1,
+  "providerModelId": "gpt-4-turbo-preview",
+  "isEnabled": true,
+  "maxContextTokens": 128000,
+  "supportsVision": true,
+  "supportsChat": true,
+  "supportsFunctionCalling": true,
+  "supportsStreaming": true
 }
 ```
+
+Note: The `providerId` refers to the Provider entity's ID, not the ProviderType enum.
 
 ### Example Mappings
 
@@ -188,28 +219,45 @@ Some capabilities are only available with certain providers:
 
 Provider integrations work seamlessly with the router:
 
-1. Configure multiple providers
+1. Configure multiple provider instances
 2. Create model mappings for each provider
 3. Set up model deployments in the router
 4. Configure fallback paths
 
-Example router configuration using multiple providers:
+Example scenario with multiple providers of the same type:
 
 ```json
 {
-  "strategy": "round-robin",
-  "deployments": [
+  "providers": [
     {
-      "model": "chat-large",
-      "provider": "openai-provider-id",
-      "weight": 1.0,
-      "isActive": true
+      "id": 1,
+      "providerType": "OpenAI",
+      "providerName": "Production OpenAI",
+      "baseUrl": "https://api.openai.com/v1"
     },
     {
-      "model": "chat-large",
-      "provider": "anthropic-provider-id",
-      "weight": 1.0,
-      "isActive": true
+      "id": 2,
+      "providerType": "OpenAI",
+      "providerName": "Development OpenAI",
+      "baseUrl": "https://api.openai.com/v1"
+    },
+    {
+      "id": 3,
+      "providerType": "AzureOpenAI",
+      "providerName": "Azure OpenAI East",
+      "baseUrl": "https://east.openai.azure.com"
+    }
+  ],
+  "modelMappings": [
+    {
+      "modelAlias": "gpt-4",
+      "providerId": 1,
+      "providerModelId": "gpt-4"
+    },
+    {
+      "modelAlias": "gpt-4",
+      "providerId": 3,
+      "providerModelId": "gpt-4-deployment"
     }
   ]
 }

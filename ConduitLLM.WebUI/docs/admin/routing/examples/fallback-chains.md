@@ -584,7 +584,7 @@ fallback_health_metrics:
 - Solutions: Implement rate limiting, scale fallback capacity
 
 **Recovery Problems:**
-- Symptoms: Providers not returning to service after recovery
+- Symptoms: Provider not returning to service after recovery
 - Solutions: Implement gradual recovery, monitor health metrics
 
 ### Debugging Fallback Behavior

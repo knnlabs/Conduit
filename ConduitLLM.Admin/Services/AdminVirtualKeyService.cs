@@ -704,7 +704,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="requestedModel">The model being requested</param>
         /// <param name="allowedModels">Comma-separated string of allowed models</param>
         /// <returns>True if the model is allowed, false otherwise</returns>
-        private bool IsModelAllowed(string requestedModel, string allowedModels)
+        private static bool IsModelAllowed(string requestedModel, string allowedModels)
         {
             if (string.IsNullOrEmpty(allowedModels))
                 return true; // No restrictions
@@ -820,8 +820,8 @@ namespace ConduitLLM.Admin.Services
             var allMappings = await _modelProviderMappingRepository.GetAllAsync();
             var enabledMappings = allMappings.Where(m => 
                 m.IsEnabled && 
-                m.ProviderCredential != null && 
-                m.ProviderCredential.IsEnabled).ToList();
+                m.Provider != null && 
+                m.Provider.IsEnabled).ToList();
 
             var models = new List<DiscoveredModelDto>();
 
@@ -861,7 +861,6 @@ namespace ConduitLLM.Admin.Services
                 var model = new DiscoveredModelDto
                 {
                     Id = mapping.ModelAlias,
-                    ProviderType = mapping.ProviderCredential?.ProviderType,
                     DisplayName = mapping.ModelAlias,
                     Capabilities = capabilities
                 };

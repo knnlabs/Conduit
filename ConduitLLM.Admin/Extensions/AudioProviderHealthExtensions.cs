@@ -69,7 +69,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 var configs = await _repository.GetAllAsync();
                 var enabledConfigs = configs.Where(c =>
-                    c.ProviderCredential?.IsEnabled == true &&
+                    c.Provider?.IsEnabled == true &&
                     (c.TranscriptionEnabled || c.TextToSpeechEnabled || c.RealtimeEnabled))
                     .ToList();
 
@@ -84,12 +84,13 @@ namespace ConduitLLM.Admin.Extensions
 
                 foreach (var config in enabledConfigs)
                 {
-                    var providerType = config.ProviderCredential.ProviderType;
+                    var providerId = config.Provider.Id;
+                    var providerName = config.Provider.ProviderName;
                     var providerHealth = new Dictionary<string, string>();
 
                     try
                     {
-                        var client = _clientFactory.GetClientByProviderId(config.ProviderCredential.Id);
+                        var client = _clientFactory.GetClientByProviderId(providerId);
 
                         // Check each enabled capability
                         if (config.TranscriptionEnabled && client is IAudioTranscriptionClient transcriptionClient)
@@ -115,12 +116,20 @@ namespace ConduitLLM.Admin.Extensions
                             healthyProviders++;
                         }
 
-                        results[$"provider_{providerType}"] = providerHealth;
+                        results[$"provider_{providerId}"] = new
+                        {
+                            name = providerName,
+                            health = providerHealth
+                        };
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to check health for provider {Provider}", providerType);
-                        results[$"provider_{providerType}"] = new { error = ex.Message };
+                        _logger.LogWarning(ex, "Failed to check health for provider {ProviderId} ({ProviderName})", providerId, providerName);
+                        results[$"provider_{providerId}"] = new 
+                        { 
+                            name = providerName,
+                            error = ex.Message 
+                        };
                     }
                 }
 

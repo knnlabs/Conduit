@@ -15,7 +15,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// The provider credential ID this key belongs to
         /// </summary>
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// The provider account group (0-32)
@@ -31,11 +31,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional, overrides provider default)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// API version (optional, overrides provider default)
-        /// </summary>
-        public string? ApiVersion { get; set; }
 
         /// <summary>
         /// Organization or project ID (optional, overrides provider default)
@@ -65,7 +60,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Date when the key was last updated
         /// </summary>
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 
     /// <summary>
@@ -87,11 +82,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// API version (optional)
-        /// </summary>
-        public string? ApiVersion { get; set; }
 
         /// <summary>
         /// Organization or project ID (optional)
@@ -133,11 +123,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// API version (optional)
-        /// </summary>
-        public string? ApiVersion { get; set; }
 
         /// <summary>
         /// Organization or project ID (optional)

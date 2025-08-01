@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
 
@@ -40,19 +41,21 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public FireworksClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Fireworks",
-                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultFireworksBaseUrl : credentials.BaseUrl,
-                defaultModels)
+                baseUrl: null,
+                defaultModels: defaultModels)
         {
         }
 
@@ -73,96 +76,6 @@ namespace ConduitLLM.Providers
             // client.DefaultRequestHeaders.Add("Fireworks-Version", "2023-12-01");
         }
 
-        /// <summary>
-        /// Gets a fallback list of models for Fireworks.
-        /// </summary>
-        /// <returns>A list of common models available on Fireworks.</returns>
-        protected override List<ExtendedModelInfo> GetFallbackModels()
-        {
-            return new List<ExtendedModelInfo>
-            {
-                ExtendedModelInfo.Create("accounts/fireworks/models/llama-v3-8b-instruct", ProviderName, "accounts/fireworks/models/llama-v3-8b-instruct")
-                    .WithName("Llama 3 8B Instruct")
-                    .WithCapabilities(new ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        FunctionCalling = true
-                    })
-                    .WithTokenLimits(new ModelTokenLimits
-                    {
-                        MaxInputTokens = 16384,
-                        MaxOutputTokens = 4096,
-                        MaxTotalTokens = 16384
-                    }),
-                ExtendedModelInfo.Create("accounts/fireworks/models/llama-v3-70b-instruct", ProviderName, "accounts/fireworks/models/llama-v3-70b-instruct")
-                    .WithName("Llama 3 70B Instruct")
-                    .WithCapabilities(new ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        FunctionCalling = true
-                    })
-                    .WithTokenLimits(new ModelTokenLimits
-                    {
-                        MaxInputTokens = 16384,
-                        MaxOutputTokens = 4096,
-                        MaxTotalTokens = 16384
-                    }),
-                ExtendedModelInfo.Create("accounts/fireworks/models/mixtral-8x7b-instruct", ProviderName, "accounts/fireworks/models/mixtral-8x7b-instruct")
-                    .WithName("Mixtral 8x7B Instruct")
-                    .WithCapabilities(new ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        FunctionCalling = true
-                    })
-                    .WithTokenLimits(new ModelTokenLimits
-                    {
-                        MaxInputTokens = 32768,
-                        MaxOutputTokens = 8192,
-                        MaxTotalTokens = 32768
-                    }),
-                ExtendedModelInfo.Create("accounts/fireworks/models/llama-v2-13b-chat", ProviderName, "accounts/fireworks/models/llama-v2-13b-chat")
-                    .WithName("Llama 2 13B Chat")
-                    .WithCapabilities(new ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        FunctionCalling = true
-                    })
-                    .WithTokenLimits(new ModelTokenLimits
-                    {
-                        MaxInputTokens = 4096,
-                        MaxOutputTokens = 4096,
-                        MaxTotalTokens = 4096
-                    }),
-                ExtendedModelInfo.Create("accounts/fireworks/models/firefunction-v1", ProviderName, "accounts/fireworks/models/firefunction-v1")
-                    .WithName("FireFunction v1")
-                    .WithCapabilities(new ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        FunctionCalling = true
-                    })
-                    .WithTokenLimits(new ModelTokenLimits
-                    {
-                        MaxInputTokens = 16384,
-                        MaxOutputTokens = 4096,
-                        MaxTotalTokens = 16384
-                    })
-            };
-        }
 
         /// <summary>
         /// Validates credentials for Fireworks.
@@ -172,7 +85,7 @@ namespace ConduitLLM.Providers
             base.ValidateCredentials();
 
             // Fireworks requires an API key
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new Core.Exceptions.ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
@@ -233,7 +146,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -288,7 +201,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? DefaultFireworksBaseUrl).TrimEnd('/');
+                : (Provider.BaseUrl ?? DefaultFireworksBaseUrl).TrimEnd('/');
             
             return effectiveBaseUrl;
         }

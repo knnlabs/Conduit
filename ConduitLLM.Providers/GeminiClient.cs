@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -45,20 +46,21 @@ namespace ConduitLLM.Providers
         /// <param name="apiVersion">The API version to use. Defaults to v1beta.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GeminiClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<GeminiClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             string? apiVersion = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Gemini",
-                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultBaseUrl : credentials.BaseUrl,
-                defaultModels)
+                defaultModels: defaultModels)
         {
             // API version is now constant, ignoring apiVersion parameter
         }
@@ -68,7 +70,7 @@ namespace ConduitLLM.Providers
         {
             base.ValidateCredentials();
 
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
@@ -137,7 +139,7 @@ namespace ConduitLLM.Providers
         {
             ValidateRequest(request, "CreateChatCompletionAsync");
 
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             Logger.LogInformation("Mapping Core request to Gemini request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'",
                 request.Model, ProviderModelId);
 
@@ -225,7 +227,7 @@ namespace ConduitLLM.Providers
         {
             ValidateRequest(request, "StreamChatCompletionAsync");
 
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
 
             Logger.LogInformation("Preparing streaming request to Gemini for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'",
                 request.Model, ProviderModelId);
@@ -273,7 +275,7 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
 
             try
             {
@@ -908,7 +910,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -996,7 +998,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? DefaultBaseUrl).TrimEnd('/');
+                : (Provider.BaseUrl ?? DefaultBaseUrl).TrimEnd('/');
             
             // Ensure the API version is in the URL
             effectiveBaseUrl = UrlBuilder.EnsureSegment(effectiveBaseUrl, DefaultApiVersion);

@@ -30,7 +30,7 @@ namespace ConduitLLM.Http.Services
         
         /// <inheritdoc/>
         public async Task<List<DiscoveredModel>> DiscoverModelsAsync(
-            ProviderCredential providerCredential, 
+            Provider Provider, 
             HttpClient httpClient,
             string? apiKey = null, 
             CancellationToken cancellationToken = default)
@@ -38,14 +38,14 @@ namespace ConduitLLM.Http.Services
             try
             {
                 _logger.LogDebug("Starting model discovery for provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType})", 
-                    providerCredential.ProviderName, providerCredential.Id, providerCredential.ProviderType);
+                    Provider.ProviderName, Provider.Id, Provider.ProviderType);
                 
                 // If no API key provided, try to get it from the credential's keys
-                if (string.IsNullOrEmpty(apiKey) && providerCredential.ProviderKeyCredentials?.Any() == true)
+                if (string.IsNullOrEmpty(apiKey) && Provider.ProviderKeyCredentials?.Any() == true)
                 {
-                    var primaryKey = providerCredential.ProviderKeyCredentials
+                    var primaryKey = Provider.ProviderKeyCredentials
                         .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ?? 
-                        providerCredential.ProviderKeyCredentials
+                        Provider.ProviderKeyCredentials
                         .FirstOrDefault(k => k.IsEnabled);
                     
                     if (primaryKey != null)
@@ -56,20 +56,20 @@ namespace ConduitLLM.Http.Services
                 }
                 
                 // If provider has a custom base URL, configure the HTTP client
-                if (!string.IsNullOrEmpty(providerCredential.BaseUrl))
+                if (!string.IsNullOrEmpty(Provider.BaseUrl))
                 {
-                    _logger.LogDebug("Provider has custom base URL: {BaseUrl}", providerCredential.BaseUrl);
+                    _logger.LogDebug("Provider has custom base URL: {BaseUrl}", Provider.BaseUrl);
                     // Note: The individual discovery methods should handle custom base URLs
                 }
                 
-                switch (providerCredential.ProviderType)
+                switch (Provider.ProviderType)
                 {
                     case ProviderType.OpenAI:
                         var openAIModels = await ConduitLLM.Providers.OpenAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         // Ensure provider field is set correctly
                         foreach (var model in openAIModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return openAIModels;
                         
@@ -78,7 +78,7 @@ namespace ConduitLLM.Http.Services
                         // Ensure provider field is set correctly
                         foreach (var model in groqModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return groqModels;
                         
@@ -86,7 +86,7 @@ namespace ConduitLLM.Http.Services
                         var anthropicModels = await ConduitLLM.Providers.AnthropicModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in anthropicModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return anthropicModels;
                         
@@ -94,7 +94,7 @@ namespace ConduitLLM.Http.Services
                         var openRouterModels = await ConduitLLM.Providers.OpenRouterModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in openRouterModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return openRouterModels;
                     
@@ -102,7 +102,7 @@ namespace ConduitLLM.Http.Services
                         var cerebrasModels = await ConduitLLM.Providers.CerebrasModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in cerebrasModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return cerebrasModels;
                     
@@ -110,7 +110,7 @@ namespace ConduitLLM.Http.Services
                         var googleModels = await ConduitLLM.Providers.GoogleModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in googleModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return googleModels;
                     
@@ -118,7 +118,7 @@ namespace ConduitLLM.Http.Services
                         var miniMaxModels = await ConduitLLM.Providers.MiniMaxModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in miniMaxModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return miniMaxModels;
                     
@@ -126,7 +126,7 @@ namespace ConduitLLM.Http.Services
                         var replicateModels = await ConduitLLM.Providers.ReplicateModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in replicateModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return replicateModels;
                     
@@ -134,7 +134,7 @@ namespace ConduitLLM.Http.Services
                         var mistralModels = await ConduitLLM.Providers.MistralModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in mistralModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return mistralModels;
                     
@@ -142,7 +142,7 @@ namespace ConduitLLM.Http.Services
                         var cohereModels = await ConduitLLM.Providers.CohereModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in cohereModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return cohereModels;
                     
@@ -150,7 +150,7 @@ namespace ConduitLLM.Http.Services
                         var azureModels = await ConduitLLM.Providers.AzureOpenAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in azureModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return azureModels;
                     
@@ -158,7 +158,7 @@ namespace ConduitLLM.Http.Services
                         var bedrockModels = await ConduitLLM.Providers.BedrockModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in bedrockModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return bedrockModels;
                     
@@ -166,7 +166,7 @@ namespace ConduitLLM.Http.Services
                         var vertexModels = await ConduitLLM.Providers.VertexAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in vertexModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return vertexModels;
                     
@@ -174,7 +174,7 @@ namespace ConduitLLM.Http.Services
                         var ollamaModels = await ConduitLLM.Providers.OllamaModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in ollamaModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return ollamaModels;
                     
@@ -182,7 +182,7 @@ namespace ConduitLLM.Http.Services
                         var fireworksModels = await ConduitLLM.Providers.FireworksModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in fireworksModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return fireworksModels;
                     
@@ -190,7 +190,7 @@ namespace ConduitLLM.Http.Services
                         var huggingFaceModels = await ConduitLLM.Providers.HuggingFaceModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in huggingFaceModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return huggingFaceModels;
                     
@@ -198,7 +198,7 @@ namespace ConduitLLM.Http.Services
                         var sageMakerModels = await ConduitLLM.Providers.SageMakerModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in sageMakerModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return sageMakerModels;
                     
@@ -206,19 +206,19 @@ namespace ConduitLLM.Http.Services
                         var openAICompatibleModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
                         foreach (var model in openAICompatibleModels)
                         {
-                            model.Provider = providerCredential.ProviderName;
+                            model.Provider = Provider.ProviderName;
                         }
                         return openAICompatibleModels;
                     
                     default:
-                        _logger.LogDebug("No provider-specific discovery available for {ProviderType}", providerCredential.ProviderType);
+                        _logger.LogDebug("No provider-specific discovery available for {ProviderType}", Provider.ProviderType);
                         return new List<DiscoveredModel>();
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error discovering models for provider '{ProviderName}' (Type: {ProviderType})", 
-                    providerCredential.ProviderName, providerCredential.ProviderType);
+                    Provider.ProviderName, Provider.ProviderType);
                 return new List<DiscoveredModel>();
             }
         }

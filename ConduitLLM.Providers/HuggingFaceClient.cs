@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -40,34 +41,21 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public HuggingFaceClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<HuggingFaceClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                EnsureHuggingFaceCredentials(credentials),
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "huggingface",
                 defaultModels)
         {
-        }
-
-        private static ProviderCredentials EnsureHuggingFaceCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("API key is missing for HuggingFace Inference API provider.");
-            }
-
-            return credentials;
         }
 
         /// <inheritdoc />
@@ -79,9 +67,9 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             // Configure base address
-            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl)
+            string baseUrl = string.IsNullOrWhiteSpace(Provider.BaseUrl)
                 ? DefaultBaseUrl
-                : Credentials.BaseUrl.TrimEnd('/');
+                : Provider.BaseUrl.TrimEnd('/');
 
             client.BaseAddress = new Uri(baseUrl);
         }
@@ -280,7 +268,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -595,7 +583,7 @@ namespace ConduitLLM.Providers
                 
                 // Configure HTTP client for image generation
                 using var httpClient = HttpClientFactory?.CreateClient() ?? new HttpClient();
-                ConfigureHttpClient(httpClient, apiKey ?? Credentials.ApiKey ?? string.Empty);
+                ConfigureHttpClient(httpClient, apiKey ?? PrimaryKeyCredential.ApiKey ?? string.Empty);
                 
                 // Add specific headers for image generation
                 httpClient.DefaultRequestHeaders.Add("Accept", "image/png, image/jpeg, application/json");
@@ -700,7 +688,7 @@ namespace ConduitLLM.Providers
         private string GetHuggingFaceEndpoint(string modelId)
         {
             // If the base URL already contains the model endpoint, don't add it again
-            if (Credentials.BaseUrl != null && Credentials.BaseUrl.Contains("/models/"))
+            if (Provider.BaseUrl != null && Provider.BaseUrl.Contains("/models/"))
             {
                 return string.Empty; // Use the base address as is
             }

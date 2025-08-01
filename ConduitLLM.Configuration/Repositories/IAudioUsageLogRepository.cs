@@ -26,7 +26,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets usage summary statistics.
         /// </summary>
-        Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, ProviderType? providerType = null);
+        Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, int? providerId = null);
 
         /// <summary>
         /// Gets usage by virtual key.
@@ -36,7 +36,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets usage by provider.
         /// </summary>
-        Task<List<AudioUsageLog>> GetByProviderAsync(ProviderType providerType, DateTime? startDate = null, DateTime? endDate = null);
+        Task<List<AudioUsageLog>> GetByProviderAsync(int providerId, DateTime? startDate = null, DateTime? endDate = null);
 
         /// <summary>
         /// Gets usage by session ID.
@@ -61,7 +61,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets virtual key breakdown for analytics.
         /// </summary>
-        Task<List<VirtualKeyBreakdown>> GetVirtualKeyBreakdownAsync(DateTime startDate, DateTime endDate, ProviderType? providerType = null);
+        Task<List<VirtualKeyBreakdown>> GetVirtualKeyBreakdownAsync(DateTime startDate, DateTime endDate, int? providerId = null);
 
         /// <summary>
         /// Deletes old usage logs based on retention policy.

@@ -84,7 +84,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
         {
             var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
-            var credentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
             
@@ -125,20 +125,6 @@ public static class ServiceCollectionExtensions
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
             
             return new AdminModelCostService(modelCostRepository, requestLogRepository, publishEndpoint, logger);
-        });
-        // Register AdminProviderCredentialService with optional event publishing dependency
-        services.AddScoped<IAdminProviderCredentialService>(serviceProvider =>
-        {
-            var providerCredentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
-            var providerKeyCredentialRepository = serviceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var configProviderCredentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-            var llmClientFactory = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.ILLMClientFactory>();
-            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminProviderCredentialService>>();
-            
-            return new AdminProviderCredentialService(providerCredentialRepository, providerKeyCredentialRepository, httpClientFactory, configProviderCredentialService, llmClientFactory, loggerFactory, publishEndpoint, logger);
         });
 
         // Register Error Queue monitoring services
@@ -186,7 +172,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
         {
             var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
             var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
             var cache = serviceProvider.GetRequiredService<IMemoryCache>();

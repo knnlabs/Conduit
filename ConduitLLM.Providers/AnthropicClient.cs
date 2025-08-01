@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -106,7 +107,7 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the AnthropicClient class.
         /// </summary>
-        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="credentials">LLMProvider credentials containing API key and endpoint configuration.</param>
         /// <param name="providerModelId">The specific Anthropic model ID to use (e.g., claude-3-opus-20240229).</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances.</param>
@@ -114,13 +115,15 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when credentials, providerModelId, or logger is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing in the credentials.</exception>
         public AnthropicClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<AnthropicClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  credentials,
+                  provider,
+                  keyCredential,
                   providerModelId,
                   logger,
                   httpClientFactory,
@@ -138,13 +141,13 @@ namespace ConduitLLM.Providers
         /// the API key is present in the credentials before allowing any API calls.
         /// </para>
         /// <para>
-        /// The API key should be provided in the ApiKey property of the ProviderCredentials object.
+        /// The API key should be provided in the ApiKey property of the Providers object.
         /// </para>
         /// </remarks>
         /// <exception cref="ConfigurationException">Thrown when the API key is missing or empty.</exception>
         protected override void ValidateCredentials()
         {
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException(Constants.ErrorMessages.MissingApiKey);
             }
@@ -191,7 +194,7 @@ namespace ConduitLLM.Providers
         /// </para>
         /// <para>
         /// This method also sets the base URL for API requests based on the BaseUrl property
-        /// of the ProviderCredentials, or falls back to the default Anthropic API URL.
+        /// of the Providers, or falls back to the default Anthropic API URL.
         /// </para>
         /// </remarks>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
@@ -201,9 +204,9 @@ namespace ConduitLLM.Providers
             base.ConfigureHttpClient(client, apiKey);
 
             // Set the base address
-            string baseUrl = string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
+            string baseUrl = string.IsNullOrWhiteSpace(Provider.BaseUrl) 
                 ? Constants.Urls.DefaultBaseUrl 
-                : Credentials.BaseUrl.TrimEnd('/');
+                : Provider.BaseUrl.TrimEnd('/');
             client.BaseAddress = new Uri(baseUrl);
         }
 
@@ -1205,7 +1208,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -1299,8 +1302,8 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
-                    ? Credentials.BaseUrl.TrimEnd('/') 
+                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl) 
+                    ? Provider.BaseUrl.TrimEnd('/') 
                     : Constants.Urls.DefaultBaseUrl.TrimEnd('/'));
             
             // Ensure /v1 is in the URL

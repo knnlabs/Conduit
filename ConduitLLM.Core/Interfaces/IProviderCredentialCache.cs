@@ -8,7 +8,7 @@ namespace ConduitLLM.Core.Interfaces
     /// <summary>
     /// Cache interface for Provider Credential operations with event-driven invalidation
     /// </summary>
-    public interface IProviderCredentialCache
+    public interface IProviderCache
     {
         /// <summary>
         /// Get Provider Credential from cache with database fallback
@@ -16,7 +16,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="providerId">The provider ID to look up</param>
         /// <param name="databaseFallback">Function to fetch from database on cache miss</param>
         /// <returns>Cached provider credential with all keys or null if not found</returns>
-        Task<CachedProviderCredential?> GetProviderCredentialAsync(int providerId, Func<int, Task<CachedProviderCredential?>> databaseFallback);
+        Task<CachedProvider?> GetProviderAsync(int providerId, Func<int, Task<CachedProvider?>> databaseFallback);
 
         /// <summary>
         /// Get Provider Credential by name from cache with database fallback
@@ -24,7 +24,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="providerName">The provider name to look up</param>
         /// <param name="databaseFallback">Function to fetch from database on cache miss</param>
         /// <returns>Cached provider credential with all keys or null if not found</returns>
-        Task<CachedProviderCredential?> GetProviderCredentialByNameAsync(string providerName, Func<string, Task<CachedProviderCredential?>> databaseFallback);
+        Task<CachedProvider?> GetProviderByNameAsync(string providerName, Func<string, Task<CachedProvider?>> databaseFallback);
 
         /// <summary>
         /// Invalidate a Provider Credential in cache
@@ -47,13 +47,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        Task<ProviderCredentialCacheStats> GetStatsAsync();
+        Task<ProviderCacheStats> GetStatsAsync();
     }
 
     /// <summary>
     /// Cache performance statistics for Provider Credentials
     /// </summary>
-    public class ProviderCredentialCacheStats
+    public class ProviderCacheStats
     {
         public long HitCount { get; set; }
         public long MissCount { get; set; }

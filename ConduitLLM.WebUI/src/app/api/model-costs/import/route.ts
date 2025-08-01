@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
       (item: unknown): item is CreateModelCostDto => 
         item !== null &&
         typeof item === 'object' && 
-        typeof (item as CreateModelCostDto).modelIdPattern === 'string'
+        'costName' in item &&
+        typeof (item as CreateModelCostDto).costName === 'string' &&
+        'modelProviderMappingIds' in item &&
+        Array.isArray((item as CreateModelCostDto).modelProviderMappingIds)
     );
 
     if (modelCosts.length !== body.length) {

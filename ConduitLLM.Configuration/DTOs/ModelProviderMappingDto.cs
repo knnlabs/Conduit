@@ -26,20 +26,15 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The ID of the provider credential
+        /// The ID of the provider
         /// </summary>
         [Required(ErrorMessage = "Provider ID is required")]
         public int ProviderId { get; set; }
 
         /// <summary>
-        /// The provider type (populated from the provider credential)
+        /// Provider reference information (populated when retrieving mappings)
         /// </summary>
-        public ProviderType ProviderType { get; set; }
-
-        /// <summary>
-        /// The provider name (populated from the provider credential)
-        /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderReferenceDto? Provider { get; set; }
 
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)

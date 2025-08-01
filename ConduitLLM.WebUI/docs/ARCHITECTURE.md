@@ -130,7 +130,7 @@ Located in `/lib/providers/ConduitProviders.tsx`
 
 ### 3. SDK Hooks
 - Core SDK: Chat, Images, Video, Audio operations
-- Admin SDK: Providers, Virtual Keys, Model Mappings
+- Admin SDK: Provider, Virtual Keys, Model Mappings
 
 ### 4. Real-time Updates
 - SignalR integration for live updates

@@ -24,17 +24,17 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets audio costs by provider.
         /// </summary>
-        Task<List<AudioCostDto>> GetByProviderAsync(string provider);
+        Task<List<AudioCostDto>> GetByProviderAsync(int providerId);
 
         /// <summary>
         /// Gets the current cost for a specific provider and operation.
         /// </summary>
-        Task<AudioCostDto?> GetCurrentCostAsync(string provider, string operationType, string? model = null);
+        Task<AudioCostDto?> GetCurrentCostAsync(int providerId, string operationType, string? model = null);
 
         /// <summary>
         /// Gets cost history for a provider and operation.
         /// </summary>
-        Task<List<AudioCostDto>> GetCostHistoryAsync(string provider, string operationType, string? model = null);
+        Task<List<AudioCostDto>> GetCostHistoryAsync(int providerId, string operationType, string? model = null);
 
         /// <summary>
         /// Creates a new audio cost configuration.
@@ -59,7 +59,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Exports audio costs to CSV or JSON format.
         /// </summary>
-        Task<string> ExportCostsAsync(string format, string? provider = null);
+        Task<string> ExportCostsAsync(string format, int? providerId = null);
     }
 
     /// <summary>

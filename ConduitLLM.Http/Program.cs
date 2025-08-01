@@ -82,8 +82,7 @@ builder.Services.AddOptions<ConduitSettings>()
     .Bind(builder.Configuration.GetSection("Conduit"))
     .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
 
-// Add database-sourced settings provider to populate settings from DB
-builder.Services.AddTransient<IStartupFilter, DatabaseSettingsStartupFilter>();
+// Database settings loading removed - provider configuration is now entirely database-driven
 
 // Rate Limiter registration
 builder.Services.AddRateLimiter(options =>
@@ -127,7 +126,6 @@ builder.Services.AddOpenTelemetry()
 
 // Register monitoring services
 builder.Services.AddSingleton<ConduitLLM.Http.Services.SignalRMetricsService>();
-// TODO: Debug startup hang (issue #562)
 builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMetricsService>(provider => 
     provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
 
@@ -152,8 +150,6 @@ builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessag
 builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Metrics.SignalRMetrics>();
 builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalROpenTelemetryService>();
 
-// TODO: Fix blocking Redis connection during startup (issue #562)
-// builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.TaskProcessingMetricsService>();
 builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
@@ -214,7 +210,6 @@ builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutPro
 // Add dependencies needed for the Conduit service
 // Use DatabaseAwareLLMClientFactory to get provider credentials from database
 builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
-builder.Services.AddScoped<ConduitRegistry>();
 
 // Add Provider Registry - single source of truth for provider metadata
 builder.Services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
@@ -224,7 +219,7 @@ Console.WriteLine("[ConduitLLM.Http] Provider Registry registered - centralized 
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
 
 // Add image generation metrics service
-builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IImageGenerationMetricsService, ConduitLLM.Core.Services.ImageGenerationMetricsService>();
+// ImageGenerationMetricsService removed - metrics handled differently now
 
 // Add required services for the router components
 builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
@@ -239,7 +234,7 @@ builder.Services.AddRepositories();
 
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
-builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
+builder.Services.AddScoped<ConduitLLM.Configuration.IProviderService, ConduitLLM.Configuration.ProviderService>();
 
 // Register System Notification Service
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
@@ -284,6 +279,7 @@ builder.Services.AddScoped<IVideoGenerationService>(sp =>
     var mediaStorage = sp.GetRequiredService<IMediaStorageService>();
     var taskService = sp.GetRequiredService<IAsyncTaskService>();
     var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
+    var modelMappingService = sp.GetRequiredService<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
     var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
     var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
     
@@ -295,6 +291,7 @@ builder.Services.AddScoped<IVideoGenerationService>(sp =>
         mediaStorage,
         taskService,
         logger,
+        modelMappingService,
         publishEndpoint,
         taskRegistry);
 });
@@ -536,7 +533,7 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
     
     // Register additional Redis cache services
-    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCredentialCache, RedisProviderCredentialCache>();
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCache, RedisProviderCache>();
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IGlobalSettingCache, RedisGlobalSettingCache>();
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
@@ -557,7 +554,7 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     });
     
     Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with distributed locking");
-    Console.WriteLine("[Conduit] Enabled caches: VirtualKey, ProviderCredential, GlobalSetting, ModelCost, IpFilter");
+    Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter");
 }
 else
 {
@@ -616,7 +613,7 @@ builder.Services.AddMassTransit(x =>
     // Add event consumers for Core API
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VirtualKeyCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
-    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderEventHandler>();
     
     // Add spend notification consumer
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdatedHandler>();
@@ -652,7 +649,7 @@ builder.Services.AddMassTransit(x =>
     
     // Add settings refresh consumers for runtime configuration updates
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelMappingCacheInvalidationHandler>();
-    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCacheInvalidationHandler>();
     
     // Add media lifecycle handler for tracking generated media
     x.AddConsumer<ConduitLLM.Http.EventHandlers.MediaLifecycleHandler>();
@@ -885,7 +882,7 @@ builder.Services.AddScoped<IProviderModelDiscovery, ConduitLLM.Http.Services.Pro
 builder.Services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
 {
     var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
     var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
     var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
     var cache = serviceProvider.GetRequiredService<IMemoryCache>();
@@ -964,7 +961,7 @@ if (builder.Environment.EnvironmentName != "Test")
     // builder.Services.AddHostedService<VideoGenerationBackgroundService>();
 
     // Add background service for image generation metrics cleanup
-    builder.Services.AddHostedService<ImageGenerationMetricsCleanupService>();
+    // ImageGenerationMetricsCleanupService removed - metrics handled differently now
 }
 
 Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
@@ -1162,9 +1159,7 @@ builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService, C
 builder.Services.AddHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(sp => 
     (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>());
 
-// Register Infrastructure and Business Metrics Background Services
-// TODO: Fix blocking Redis connection during startup (issue #562)
-// builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
+// Register Business Metrics Background Service
 builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
 // Add SignalR for real-time navigation state updates
@@ -1259,6 +1254,8 @@ builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdate
     
     return batchService;
 });
+builder.Services.AddSingleton<ConduitLLM.Configuration.Services.IBatchSpendUpdateService>(serviceProvider =>
+    serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
 builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
     serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
 
@@ -1313,7 +1310,6 @@ builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>
 });
 
 // Add cache statistics registration service
-// TODO: Fix blocking Redis connection during startup (issue #562)
 builder.Services.AddHostedService<ConduitLLM.Http.Services.CacheStatisticsRegistrationService>();
 
 var app = builder.Build();
@@ -1361,6 +1357,10 @@ app.UseAuthorization();
 
 // Note: VirtualKeyAuthenticationHandler is now used instead of middleware
 // The authentication handler is registered with the "VirtualKey" scheme above
+
+// Add usage tracking middleware to capture LLM usage from responses
+app.UseUsageTracking();
+Console.WriteLine("[Conduit] Usage tracking middleware configured");
 
 // Add HTTP metrics middleware for comprehensive request tracking
 app.UseMiddleware<ConduitLLM.Http.Middleware.HttpMetricsMiddleware>();
@@ -1474,6 +1474,8 @@ app.MapPost("/v1/embeddings", async (
     [FromBody] EmbeddingRequest? request,
     [FromServices] ILLMRouter router,
     [FromServices] ILogger<Program> logger,
+    [FromServices] ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService,
+    HttpRequest httpRequest,
     CancellationToken cancellationToken) =>
 {
     if (request == null)
@@ -1484,6 +1486,22 @@ app.MapPost("/v1/embeddings", async (
     try
     {
         logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
+        
+        // Get provider info for usage tracking
+        try
+        {
+            var modelMapping = await modelMappingService.GetMappingByModelAliasAsync(request.Model);
+            if (modelMapping != null)
+            {
+                httpRequest.HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                httpRequest.HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+        }
+        
         var response = await router.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
         return Results.Json(response, options: jsonSerializerOptions);
     }
@@ -1548,9 +1566,28 @@ app.MapPost("/v1/chat/completions", async (
     [FromBody] ChatCompletionRequest request,
     [FromServices] Conduit conduit,
     [FromServices] ILogger<Program> logger,
+    [FromServices] ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService,
     HttpRequest httpRequest) =>
 {
     logger.LogInformation("Received /v1/chat/completions request for model: {Model}", request.Model);
+
+    // Store streaming flag for middleware
+    httpRequest.HttpContext.Items["IsStreamingRequest"] = request.Stream == true;
+    
+    // Get provider info for usage tracking
+    try
+    {
+        var modelMapping = await modelMappingService.GetMappingByModelAliasAsync(request.Model);
+        if (modelMapping != null)
+        {
+            httpRequest.HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+            httpRequest.HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+    }
 
     try
     {
@@ -1579,16 +1616,17 @@ app.MapPost("/v1/chat/completions", async (
                 var requestId = Guid.NewGuid().ToString();
                 response.Headers["X-Request-ID"] = requestId;
                 
-                // Get provider info for metrics from settings
-                var modelMapping = settings.ModelMappings?.FirstOrDefault(m => 
-                    string.Equals(m.ModelAlias, request.Model, StringComparison.OrdinalIgnoreCase));
-                var providerName = modelMapping?.ProviderType.ToString() ?? "unknown";
+                // Get provider info for metrics from model mapping service
+                var mappingService = httpRequest.HttpContext.RequestServices.GetRequiredService<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
+                var modelMapping = await mappingService.GetMappingByModelAliasAsync(request.Model);
+                // Use provider ID for metrics since it's the stable identifier
+                var providerId = modelMapping?.ProviderId.ToString() ?? "unknown";
                 
-                logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerName);
+                logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerId);
                 metricsCollector = new StreamingMetricsCollector(
                     requestId,
                     request.Model,
-                    providerName);
+                    providerId);
             }
             else
             {
@@ -1599,8 +1637,19 @@ app.MapPost("/v1/chat/completions", async (
 
             try
             {
+                ConduitLLM.Core.Models.Usage? streamingUsage = null;
+                string? streamingModel = null;
+                
                 await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted))
                 {
+                    // Check for usage data in chunk (comes in final chunk for OpenAI-compatible APIs)
+                    if (chunk.Usage != null)
+                    {
+                        streamingUsage = chunk.Usage;
+                        streamingModel = chunk.Model ?? request.Model;
+                        logger.LogDebug("Captured streaming usage data: {Usage}", JsonSerializer.Serialize(streamingUsage));
+                    }
+                    
                     // Write content event
                     await sseWriter.WriteContentEventAsync(chunk);
                     
@@ -1627,6 +1676,13 @@ app.MapPost("/v1/chat/completions", async (
                             await sseWriter.WriteMetricsEventAsync(metricsCollector.GetMetrics());
                         }
                     }
+                }
+                
+                // Store usage data for middleware to process
+                if (streamingUsage != null)
+                {
+                    httpRequest.HttpContext.Items["StreamingUsage"] = streamingUsage;
+                    httpRequest.HttpContext.Items["StreamingModel"] = streamingModel;
                 }
 
                 // Write final metrics if tracking is enabled
@@ -1685,162 +1741,6 @@ public class OpenAIError
     public string? Code { get; set; }
 }
 
-// Helper for triggering database settings load on startup
-public class DatabaseSettingsStartupFilter : IStartupFilter
-{
-    // Inject both factories
-    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configDbContextFactory;
-    private readonly IOptions<ConduitSettings> _settingsOptions;
-    private readonly ILogger<DatabaseSettingsStartupFilter> _logger;
-
-    public DatabaseSettingsStartupFilter(
-        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject correct factory
-        IOptions<ConduitSettings> settingsOptions,
-        ILogger<DatabaseSettingsStartupFilter> logger)
-    {
-        _configDbContextFactory = configDbContextFactory; // Assign correct factory
-        _settingsOptions = settingsOptions;
-        _logger = logger;
-    }
-
-    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
-    {
-        // Don't block startup - load settings in background
-        Task.Run(async () =>
-        {
-            try
-            {
-                await LoadSettingsFromDatabaseAsync();
-                _logger.LogInformation("Settings loaded from database successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load settings from database");
-            }
-        });
-        
-        return next;
-    }
-
-    private async Task LoadSettingsFromDatabaseAsync()
-    {
-        _logger.LogInformation("Attempting to load settings from database on startup...");
-        var settings = _settingsOptions.Value;
-        try
-        {
-            // Load provider credentials from Config context
-            await using var configDbContext = await _configDbContextFactory.CreateDbContextAsync();
-            var providerCredsList = await configDbContext.ProviderCredentials
-                .Include(p => p.ProviderKeyCredentials)
-                .ToListAsync();
-            if (providerCredsList.Any())
-            {
-                _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
-
-                // Convert database provider credentials to Core provider credentials
-                var providersList = providerCredsList.Select(p => 
-                {
-                    // Get the primary key or first enabled key
-                    string? effectiveApiKey = null;
-                    string? effectiveBaseUrl = p.BaseUrl;
-                    
-                    if (p.ProviderKeyCredentials?.Any() == true)
-                    {
-                        var primaryKey = p.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
-                                        p.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
-                        if (primaryKey != null)
-                        {
-                            effectiveApiKey = primaryKey.ApiKey;
-                            effectiveBaseUrl = primaryKey.BaseUrl ?? p.BaseUrl;
-                        }
-                    }
-                    
-                    return new ProviderCredentials
-                    {
-                        ProviderType = p.ProviderType,
-                        ApiKey = effectiveApiKey,
-                        BaseUrl = effectiveBaseUrl // Map BaseUrl from DB entity
-                    };
-                }).ToList();
-
-                // Now integrate these with existing settings
-                // Two approaches: 
-                // 1. Replace in-memory with DB values
-                // 2. Merge DB with in-memory (with DB taking precedence)
-                // Using approach #2 here
-
-                if (settings.ProviderCredentials == null)
-                {
-                    settings.ProviderCredentials = new List<ProviderCredentials>();
-                }
-
-                // Remove any in-memory providers that exist in DB to avoid duplicates
-                settings.ProviderCredentials.RemoveAll(p =>
-                    providersList.Any(dbp =>
-                        dbp.ProviderType == p.ProviderType));
-
-                // Then add all the database credentials
-                settings.ProviderCredentials.AddRange(providersList);
-
-                foreach (var cred in providersList)
-                {
-                    _logger.LogInformation("Loaded credentials for provider: {ProviderType}", cred.ProviderType);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("No provider credentials found in database");
-            }
-
-            // Load model mappings using ModelProviderMappingRepository directly
-            var modelMappingsEntities = await configDbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
-                .ToListAsync();
-
-            if (modelMappingsEntities.Any())
-            {
-                _logger.LogInformation("Found {Count} model mappings in database", modelMappingsEntities.Count);
-
-                // Convert database model mappings to Core model mappings
-                var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
-                {
-                    ModelAlias = m.ModelAlias,
-                    ProviderType = m.ProviderCredential.ProviderType,
-                    ProviderId = m.ProviderCredential.Id,
-                    ProviderModelId = m.ProviderModelName
-                }).ToList();
-
-                // Configure the model mappings in settings
-                if (settings.ModelMappings == null)
-                {
-                    settings.ModelMappings = new List<ModelProviderMapping>();
-                }
-
-                // Remove existing mappings that exist in DB to avoid duplicates
-                settings.ModelMappings.RemoveAll(m =>
-                    modelMappingsList.Any(dbm =>
-                        string.Equals(dbm.ModelAlias, m.ModelAlias, StringComparison.OrdinalIgnoreCase)));
-
-                // Add all the database model mappings
-                settings.ModelMappings.AddRange(modelMappingsList);
-
-                foreach (var mapping in modelMappingsList)
-                {
-                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderType}/{ProviderModelId}",
-                        mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("No model mappings found in database");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading settings from database");
-        }
-    }
-}
 
 // Make Program class accessible for testing
 public partial class Program { }

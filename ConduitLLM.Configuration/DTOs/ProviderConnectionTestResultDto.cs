@@ -28,6 +28,16 @@ namespace ConduitLLM.Configuration.DTOs
         public ProviderType ProviderType { get; set; }
 
         /// <summary>
+        /// Gets or sets the provider ID that was tested.
+        /// </summary>
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider name that was tested.
+        /// </summary>
+        public string? ProviderName { get; set; }
+
+        /// <summary>
         /// Gets or sets the timestamp when the test was performed.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;

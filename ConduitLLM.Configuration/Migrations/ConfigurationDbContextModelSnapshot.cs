@@ -162,7 +162,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int>("Provider")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -172,7 +172,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("EffectiveFrom", "EffectiveTo");
 
-                    b.HasIndex("Provider", "OperationType", "Model", "IsActive");
+                    b.HasIndex("ProviderId", "OperationType", "Model", "IsActive");
 
                     b.ToTable("AudioCosts");
                 });
@@ -207,7 +207,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int>("ProviderCredentialId")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("RealtimeEnabled")
@@ -231,7 +231,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderCredentialId")
+                    b.HasIndex("ProviderId")
                         .IsUnique();
 
                     b.ToTable("AudioProviderConfigs");
@@ -284,7 +284,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int?>("OutputTokens")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Provider")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<string>("RequestId")
@@ -322,7 +322,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKey");
 
-                    b.HasIndex("Provider", "OperationType");
+                    b.HasIndex("ProviderId", "OperationType");
 
                     b.ToTable("AudioUsageLogs");
                 });
@@ -898,6 +898,11 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal?>("CachedInputWriteCost")
                         .HasColumnType("decimal(18, 10)");
 
+                    b.Property<string>("CostName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<decimal?>("CostPerInferenceStep")
                         .HasColumnType("decimal(18, 8)");
 
@@ -910,8 +915,18 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int?>("DefaultInferenceSteps")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("EffectiveDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal?>("EmbeddingTokenCost")
                         .HasColumnType("decimal(18, 10)");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("ImageCostPerImage")
                         .HasColumnType("decimal(18, 4)");
@@ -922,13 +937,19 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal>("InputTokenCost")
                         .HasColumnType("decimal(18, 10)");
 
-                    b.Property<string>("ModelIdPattern")
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ModelType")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<decimal>("OutputTokenCost")
                         .HasColumnType("decimal(18, 10)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("SupportsBatchProcessing")
                         .HasColumnType("boolean");
@@ -944,9 +965,39 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModelIdPattern");
+                    b.HasIndex("CostName");
 
                     b.ToTable("ModelCosts");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCostMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ModelCostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ModelProviderMappingId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModelProviderMappingId");
+
+                    b.HasIndex("ModelCostId", "ModelProviderMappingId")
+                        .IsUnique();
+
+                    b.ToTable("ModelCostMappings");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
@@ -988,7 +1039,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProviderType")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("RPM")
@@ -1017,7 +1068,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ModelName");
 
-                    b.HasIndex("ProviderType");
+                    b.HasIndex("ProviderId");
 
                     b.HasIndex("RouterConfigId");
 
@@ -1053,10 +1104,10 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int>("ProviderCredentialId")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("ProviderModelName")
+                    b.Property<string>("ProviderModelId")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1109,9 +1160,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderCredentialId");
+                    b.HasIndex("ProviderId");
 
-                    b.HasIndex("ModelAlias", "ProviderCredentialId")
+                    b.HasIndex("ModelAlias", "ProviderId")
                         .IsUnique();
 
                     b.ToTable("ModelProviderMappings");
@@ -1152,7 +1203,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderCredential", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Provider", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1184,7 +1235,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderType");
 
-                    b.ToTable("ProviderCredentials");
+                    b.ToTable("Providers");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
@@ -1214,7 +1265,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("ProviderType")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<int>("TimeoutSeconds")
@@ -1222,7 +1273,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderType")
+                    b.HasIndex("ProviderId")
                         .IsUnique();
 
                     b.ToTable("ProviderHealthConfigurations");
@@ -1251,7 +1302,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("IsOnline")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("ProviderType")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<double>("ResponseTimeMs")
@@ -1272,7 +1323,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("IsOnline");
 
-                    b.HasIndex("ProviderType", "TimestampUtc");
+                    b.HasIndex("ProviderId", "TimestampUtc");
 
                     b.ToTable("ProviderHealthRecords");
                 });
@@ -1309,7 +1360,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<short>("ProviderAccountGroup")
                         .HasColumnType("smallint");
 
-                    b.Property<int>("ProviderCredentialId")
+                    b.Property<int>("ProviderId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -1317,15 +1368,15 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderCredentialId")
-                        .HasDatabaseName("IX_ProviderKeyCredential_ProviderCredentialId");
+                    b.HasIndex("ProviderId")
+                        .HasDatabaseName("IX_ProviderKeyCredential_ProviderId");
 
-                    b.HasIndex("ProviderCredentialId", "ApiKey")
+                    b.HasIndex("ProviderId", "ApiKey")
                         .IsUnique()
                         .HasDatabaseName("IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
                         .HasFilter("\"ApiKey\" IS NOT NULL");
 
-                    b.HasIndex("ProviderCredentialId", "IsPrimary")
+                    b.HasIndex("ProviderId", "IsPrimary")
                         .IsUnique()
                         .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider")
                         .HasFilter("\"IsPrimary\" = true");
@@ -1554,15 +1605,37 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
                 {
-                    b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
-                        .WithOne()
-                        .HasForeignKey("ConduitLLM.Configuration.Entities.AudioProviderConfig", "ProviderCredentialId")
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProviderCredential");
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithOne()
+                        .HasForeignKey("ConduitLLM.Configuration.Entities.AudioProviderConfig", "ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BatchOperationHistory", b =>
@@ -1620,26 +1693,53 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCostMapping", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.ModelCost", "ModelCost")
+                        .WithMany("ModelCostMappings")
+                        .HasForeignKey("ModelCostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConduitLLM.Configuration.Entities.ModelProviderMapping", "ModelProviderMapping")
+                        .WithMany("ModelCostMappings")
+                        .HasForeignKey("ModelProviderMappingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ModelCost");
+
+                    b.Navigation("ModelProviderMapping");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
                 {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
                         .WithMany("ModelDeployments")
                         .HasForeignKey("RouterConfigId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Provider");
+
                     b.Navigation("RouterConfig");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
-                    b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
                         .WithMany()
-                        .HasForeignKey("ProviderCredentialId")
+                        .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProviderCredential");
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
@@ -1652,15 +1752,37 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderKeyCredential", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
                 {
-                    b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
-                        .WithMany("ProviderKeyCredentials")
-                        .HasForeignKey("ProviderCredentialId")
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ProviderCredential");
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthRecord", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderKeyCredential", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany("ProviderKeyCredentials")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>
@@ -1690,7 +1812,17 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("FallbackMappings");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderCredential", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
+                {
+                    b.Navigation("ModelCostMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
+                {
+                    b.Navigation("ModelCostMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Provider", b =>
                 {
                     b.Navigation("ProviderKeyCredentials");
                 });

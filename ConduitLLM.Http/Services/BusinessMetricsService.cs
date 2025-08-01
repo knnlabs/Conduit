@@ -344,20 +344,20 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var providerCredentialService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-                var providers = await providerCredentialService.GetAllCredentialsAsync();
+                var ProviderService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
+                var providers = await ProviderService.GetAllProvidersAsync();
 
                 foreach (var provider in providers.Where(p => p.IsEnabled))
                 {
                     // Set provider health based on enabled status
                     // In a real implementation, this would check actual provider health
-                    ProviderHealth.WithLabels(provider.ProviderType.ToString()).Set(1);
+                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(1);
                 }
 
                 // Disabled providers
                 foreach (var provider in providers.Where(p => !p.IsEnabled))
                 {
-                    ProviderHealth.WithLabels(provider.ProviderType.ToString()).Set(0);
+                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(0);
                 }
             }
             catch (Exception ex)
@@ -384,7 +384,7 @@ namespace ConduitLLM.Http.Services
                 // TODO: Fix IsEnabled check once we verify the return type
                 var mappingsByProvider = mappings
                     // .Where(m => m.IsEnabled)
-                    .GroupBy(m => m.ProviderType.ToString())
+                    .GroupBy(m => m.ProviderId.ToString())
                     .Select(g => new { Provider = g.Key, Count = g.Count() });
 
                 foreach (var group in mappingsByProvider)

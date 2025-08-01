@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -57,15 +58,23 @@ namespace ConduitLLM.Tests.Providers
             // Setup default token counting
             _mockTokenCounter.SetupDefaultTokenCounting(10, 20);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
                 ProviderType = ProviderType.VertexAI,
-                ApiKey = "test-api-key",
                 BaseUrl = "us-central1"
             };
             
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+            };
+            
             _client = new VertexAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gemini-1.5-pro",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -88,11 +97,16 @@ namespace ConduitLLM.Tests.Providers
                 ""token_uri"": ""https://oauth2.googleapis.com/token""
             }";
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
                 ProviderType = ProviderType.VertexAI,
-                ApiKey = serviceAccountJson,
                 BaseUrl = "us-central1"
+            };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = serviceAccountJson,
+                ProviderId = 1
             };
 
             _mockGoogleCredential.Setup(x => x.GetAccessTokenAsync(It.IsAny<CancellationToken>()))
@@ -100,7 +114,8 @@ namespace ConduitLLM.Tests.Providers
 
             // Act
             var client = new VertexAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gemini-1.5-pro",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -115,16 +130,22 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithApplicationDefaultCredentials_ShouldAuthenticate()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
                 ProviderType = ProviderType.VertexAI,
-                ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
                 BaseUrl = "europe-west4"
+            };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
+                ProviderId = 1
             };
 
             // Act
             var client = new VertexAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gemini-1.5-pro",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -139,17 +160,23 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithMissingApiVersion_ShouldThrowArgumentException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
                 ProviderType = ProviderType.VertexAI,
-                ApiKey = "some-key",
                 BaseUrl = "us-central1"
+            };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "some-key",
+                ProviderId = 1
             };
 
             // Act & Assert
             // The VertexAIClient might not throw for empty project ID, it may use a default
             var client = new VertexAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gemini-1.5-pro",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -729,16 +756,22 @@ namespace ConduitLLM.Tests.Providers
             foreach (var region in regions)
             {
                 // Arrange
-                var credentials = new ProviderCredentials
+                var provider = new Provider
                 {
                     ProviderType = ProviderType.VertexAI,
-                    ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
                     BaseUrl = region
+                };
+
+                var keyCredential = new ProviderKeyCredential
+                {
+                    ApiKey = "APPLICATION_DEFAULT_CREDENTIALS",
+                    ProviderId = 1
                 };
 
                 // Act
                 var client = new VertexAIClient(
-                    credentials,
+                    provider,
+                    keyCredential,
                     "gemini-1.5-pro",
                     _mockLogger.Object,
                     _mockHttpClientFactory.Object);

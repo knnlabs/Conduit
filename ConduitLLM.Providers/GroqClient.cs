@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -55,69 +56,31 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the <see cref="GroqClient"/> class.
         /// </summary>
-        /// <param name="credentials">The credentials for the Groq API.</param>
+        /// <param name="provider">The provider entity.</param>
+        /// <param name="keyCredential">The key credential to use.</param>
         /// <param name="providerModelId">The model ID to use.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GroqClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<GroqClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                EnsureGroqCredentials(credentials),
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "groq",
-                DetermineBaseUrl(credentials),
-                defaultModels)
+                baseUrl: null,
+                defaultModels: defaultModels)
         {
         }
 
-        /// <summary>
-        /// Determines the base URL to use for the Groq API.
-        /// </summary>
-        /// <param name="credentials">The provider credentials.</param>
-        /// <returns>The API base URL with any trailing slashes removed.</returns>
-        private static string DetermineBaseUrl(ProviderCredentials credentials)
-        {
-            return string.IsNullOrWhiteSpace(credentials.BaseUrl)
-                ? Constants.Urls.DefaultBaseUrl
-                : credentials.BaseUrl.TrimEnd('/');
-        }
-
-        /// <summary>
-        /// Ensures the credentials are valid for Groq and sets defaults if needed.
-        /// </summary>
-        /// <param name="credentials">The provider credentials to validate and normalize.</param>
-        /// <returns>A normalized copy of the credentials with Groq-specific defaults.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when credentials are null.</exception>
-        /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
-        private static ProviderCredentials EnsureGroqCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("API key is missing for Groq provider.");
-            }
-
-            // Create a copy of the credentials to avoid modifying the original
-            var groqCredentials = new ProviderCredentials
-            {
-                ApiKey = credentials.ApiKey,
-                BaseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? Constants.Urls.DefaultBaseUrl : credentials.BaseUrl,
-                ProviderType = ProviderType.Groq
-            };
-
-            return groqCredentials;
-        }
 
         /// <summary>
         /// Creates a chat completion with enhanced error handling specific to Groq.
@@ -209,33 +172,11 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to retrieve models from Groq API. Returning known models.");
-                return GetFallbackModels();
+                Logger.LogError(ex, "Failed to retrieve models from Groq API.");
+                throw;
             }
         }
 
-        /// <summary>
-        /// Gets a fallback list of models for Groq when the API is unavailable.
-        /// </summary>
-        /// <returns>A list of known Groq models.</returns>
-        protected override List<InternalModels.ExtendedModelInfo> GetFallbackModels()
-        {
-            // Use the default fallback models from the base class
-            if (ProviderFallbackModels.TryGetValue("groq", out var models))
-            {
-                return models;
-            }
-
-            // If for some reason the base class doesn't have Groq models, provide them here
-            return new List<InternalModels.ExtendedModelInfo>
-            {
-                InternalModels.ExtendedModelInfo.Create("llama3-8b-8192", "groq", "llama3-8b-8192"),
-                InternalModels.ExtendedModelInfo.Create("llama3-70b-8192", "groq", "llama3-70b-8192"),
-                InternalModels.ExtendedModelInfo.Create("llama2-70b-4096", "groq", "llama2-70b-4096"),
-                InternalModels.ExtendedModelInfo.Create("mixtral-8x7b-32768", "groq", "mixtral-8x7b-32768"),
-                InternalModels.ExtendedModelInfo.Create("gemma-7b-it", "groq", "gemma-7b-it")
-            };
-        }
 
         /// <summary>
         /// Extracts a more helpful error message from exception details for Groq errors.
@@ -305,7 +246,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -360,8 +301,8 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
-                    ? Credentials.BaseUrl.TrimEnd('/') 
+                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl) 
+                    ? Provider.BaseUrl.TrimEnd('/') 
                     : Constants.Urls.DefaultBaseUrl.TrimEnd('/'));
             
             return effectiveBaseUrl;

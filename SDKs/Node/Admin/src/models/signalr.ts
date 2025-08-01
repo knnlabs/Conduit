@@ -41,7 +41,7 @@ export interface SignalRConnectionOptions {
  */
 export const SignalREndpoints = {
   NavigationState: '/hubs/navigation-state',
-  AdminNotifications: '/hubs/admin-notifications',
+  // AdminNotifications endpoint removed - AdminNotificationHub has been removed from the backend
 } as const;
 
 /**
@@ -158,6 +158,9 @@ export interface INavigationStateHubServer {
   UnsubscribeFromUpdates(groupName?: string): Promise<void>;
 }
 
+/**
+ * @deprecated AdminNotificationHub has been removed from the backend
+ */
 export interface IAdminNotificationHubServer {
   SubscribeToVirtualKey(virtualKeyId: number): Promise<void>;
   UnsubscribeFromVirtualKey(virtualKeyId: number): Promise<void>;
@@ -176,6 +179,9 @@ export interface INavigationStateHubClient {
   onProviderHealthChange(callback: (event: ProviderHealthChangeEvent) => void): void;
 }
 
+/**
+ * @deprecated AdminNotificationHub has been removed from the backend
+ */
 export interface IAdminNotificationHubClient {
   onVirtualKeyEvent(callback: (event: VirtualKeyEvent) => void): void;
   onConfigurationChange(callback: (event: ConfigurationChangeEvent) => void): void;

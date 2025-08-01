@@ -18,6 +18,7 @@ namespace ConduitLLM.Configuration.Services;
 public class ModelCostService : IModelCostService
 {
     private readonly IModelCostRepository _modelCostRepository;
+    private readonly IModelProviderMappingRepository _modelProviderMappingRepository;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ModelCostService> _logger;
     private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(1);
@@ -28,14 +29,17 @@ public class ModelCostService : IModelCostService
     /// Creates a new instance of the ModelCostService
     /// </summary>
     /// <param name="modelCostRepository">The model cost repository</param>
+    /// <param name="modelProviderMappingRepository">The model provider mapping repository</param>
     /// <param name="cache">The memory cache</param>
     /// <param name="logger">The logger</param>
     public ModelCostService(
         IModelCostRepository modelCostRepository,
+        IModelProviderMappingRepository modelProviderMappingRepository,
         IMemoryCache cache,
         ILogger<ModelCostService> logger)
     {
         _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
+        _modelProviderMappingRepository = modelProviderMappingRepository ?? throw new ArgumentNullException(nameof(modelProviderMappingRepository));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -61,45 +65,47 @@ public class ModelCostService : IModelCostService
 
             _logger.LogDebug("Cache miss for model cost: {ModelId}, querying database", modelId);
 
-            // First, try to find an exact match
-            var exactMatch = await _modelCostRepository.GetByModelIdPatternAsync(modelId, cancellationToken);
+            // Find the ModelProviderMapping by alias
+            var modelMapping = await _modelProviderMappingRepository.GetByModelNameAsync(modelId, cancellationToken);
 
-            if (exactMatch != null)
+            if (modelMapping == null)
             {
-                _cache.Set(cacheKey, exactMatch, _cacheDuration);
-                return exactMatch;
-            }
-
-            // If no exact match, look for wildcard patterns
-            var allCosts = await _modelCostRepository.GetAllAsync(cancellationToken);
-            var wildcardPatterns = allCosts
-                .Where(c => c.ModelIdPattern.EndsWith("*"))
-                .ToList();
-
-            if (!wildcardPatterns.Any())
-            {
+                _logger.LogDebug("No model provider mapping found for alias: {ModelId}", modelId);
                 _cache.Set<ModelCost?>(cacheKey, null, _cacheDuration);
                 return null;
             }
 
-            // Find the best matching pattern (longest prefix match)
-            ModelCost? bestMatch = null;
-            int longestMatchLength = 0;
+            // Get the associated cost through the junction table
+            // First, get all model costs to include the navigation properties
+            var allCosts = await _modelCostRepository.GetAllAsync(cancellationToken);
+            
+            // Find the cost associated with this model mapping
+            var modelCost = allCosts.FirstOrDefault(cost => 
+                cost.ModelCostMappings.Any(mapping => 
+                    mapping.ModelProviderMappingId == modelMapping.Id && 
+                    mapping.IsActive));
 
-            foreach (var pattern in wildcardPatterns)
+            // If we found multiple costs, prioritize by:
+            // 1. Active status
+            // 2. Effective date (most recent that's not in the future)
+            // 3. Priority
+            if (modelCost == null)
             {
-                // Remove the trailing asterisk for comparison
-                string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
+                var now = DateTime.UtcNow;
+                var candidateCosts = allCosts
+                    .Where(cost => cost.ModelCostMappings.Any(mapping => 
+                        mapping.ModelProviderMappingId == modelMapping.Id &&
+                        mapping.IsActive))
+                    .Where(cost => cost.IsActive && cost.EffectiveDate <= now)
+                    .Where(cost => !cost.ExpiryDate.HasValue || cost.ExpiryDate.Value > now)
+                    .OrderByDescending(cost => cost.Priority)
+                    .ThenByDescending(cost => cost.EffectiveDate);
 
-                if (modelId.StartsWith(patternPrefix) && patternPrefix.Length > longestMatchLength)
-                {
-                    bestMatch = pattern;
-                    longestMatchLength = patternPrefix.Length;
-                }
+                modelCost = candidateCosts.FirstOrDefault();
             }
 
-            _cache.Set<ModelCost?>(cacheKey, bestMatch, _cacheDuration);
-            return bestMatch;
+            _cache.Set<ModelCost?>(cacheKey, modelCost, _cacheDuration);
+            return modelCost;
         }
         catch (Exception ex)
         {
@@ -151,7 +157,7 @@ public class ModelCostService : IModelCostService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding model cost for pattern {ModelIdPattern}", modelCost.ModelIdPattern);
+            _logger.LogError(ex, "Error adding model cost {CostName}", modelCost.CostName);
             throw;
         }
     }
@@ -174,7 +180,7 @@ public class ModelCostService : IModelCostService
             }
 
             // Update properties
-            existingCost.ModelIdPattern = modelCost.ModelIdPattern;
+            existingCost.CostName = modelCost.CostName;
             existingCost.InputTokenCost = modelCost.InputTokenCost;
             existingCost.OutputTokenCost = modelCost.OutputTokenCost;
             existingCost.EmbeddingTokenCost = modelCost.EmbeddingTokenCost;

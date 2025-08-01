@@ -8,7 +8,8 @@ import type {
   ProviderCredentialDto, 
   CreateProviderCredentialDto, 
   UpdateProviderCredentialDto,
-  ProviderHealthStatusDto
+  ProviderHealthStatusDto,
+  ProviderKeyCredentialDto
 } from '@knn_labs/conduit-admin-client';
 import type { ErrorResponse } from '@knn_labs/conduit-common';
 // Error utilities are handled inline with proper typing
@@ -62,7 +63,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProvider = useCallback(async (id: string): Promise<ProviderCredentialDto> => {
+  const getProvider = useCallback(async (id: number): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -128,7 +129,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const updateProvider = useCallback(async (id: string, updates: UpdateProviderCredentialDto): Promise<ProviderCredentialDto> => {
+  const updateProvider = useCallback(async (id: number, updates: UpdateProviderCredentialDto): Promise<ProviderCredentialDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -169,7 +170,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const deleteProvider = useCallback(async (id: string): Promise<void> => {
+  const deleteProvider = useCallback(async (id: number): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
@@ -242,7 +243,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProviderHealth = useCallback(async (id: string): Promise<ProviderHealthStatusDto> => {
+  const getProviderHealth = useCallback(async (id: number): Promise<ProviderHealthStatusDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -268,7 +269,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProviderModels = useCallback(async (id: string): Promise<ProviderModel[]> => {
+  const getProviderModels = useCallback(async (id: number): Promise<ProviderModel[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -294,6 +295,139 @@ export function useProviderApi() {
     }
   }, []);
 
+  // API Key management functions
+  const getProviderKeys = useCallback(async (providerId: number): Promise<ProviderKeyCredentialDto[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${providerId}/keys`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to fetch provider keys');
+      }
+
+      const result = await response.json() as ProviderKeyCredentialDto[];
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch provider keys';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const createProviderKey = useCallback(async (providerId: number, keyData: { keyName: string; apiKey: string; organization?: string }): Promise<ProviderKeyCredentialDto> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${providerId}/keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(keyData),
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create provider key');
+      }
+
+      const result = await response.json() as ProviderKeyCredentialDto;
+
+      notifications.show({
+        title: 'Success',
+        message: 'API key created successfully',
+        color: 'green',
+      });
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create provider key';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const setPrimaryKey = useCallback(async (providerId: number, keyId: number): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${providerId}/keys/${keyId}/set-primary`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to set primary key');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'Primary key updated successfully',
+        color: 'green',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to set primary key';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const deleteProviderKey = useCallback(async (providerId: number, keyId: number): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/providers/${providerId}/keys/${keyId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json() as ErrorResponse;
+        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to delete provider key');
+      }
+
+      notifications.show({
+        title: 'Success',
+        message: 'API key deleted successfully',
+        color: 'green',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete provider key';
+      setError(message);
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      });
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     getProviders,
     getProvider,
@@ -303,6 +437,11 @@ export function useProviderApi() {
     testProvider,
     getProviderHealth,
     getProviderModels,
+    // API Key management
+    getProviderKeys,
+    createProviderKey,
+    setPrimaryKey,
+    deleteProviderKey,
     isLoading,
     error,
   };

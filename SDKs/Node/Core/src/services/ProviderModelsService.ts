@@ -4,6 +4,7 @@ import type { RequestOptions } from '../client/types';
 
 /**
  * Service for retrieving provider model information.
+ * NOTE: Provider ID is now the canonical identifier, not provider name
  */
 export class ProviderModelsService {
   private readonly baseEndpoint = '/api/provider-models';
@@ -15,23 +16,23 @@ export class ProviderModelsService {
 
   /**
    * Gets available models for a specified provider.
-   * @param providerName - Name of the provider
+   * @param providerId - ID of the provider (numeric)
    * @param forceRefresh - Whether to bypass cache and force refresh
    * @returns List of available model IDs
    */
   async getProviderModels(
-    providerName: string, 
+    providerId: number, 
     forceRefresh = false,
     options?: RequestOptions
   ): Promise<string[]> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name is required');
+    if (!providerId || providerId <= 0) {
+      throw new Error('Valid provider ID is required');
     }
 
     const queryParams = forceRefresh ? '?forceRefresh=true' : '';
     
     const response = await this.clientAdapter.get<string[]>(
-      `${this.baseEndpoint}/${encodeURIComponent(providerName)}${queryParams}`,
+      `${this.baseEndpoint}/${providerId}${queryParams}`,
       options
     );
 
@@ -39,11 +40,30 @@ export class ProviderModelsService {
   }
 
   /**
+   * @deprecated Use getProviderModels with provider ID instead
+   * Gets available models for a specified provider by name.
+   * @param providerName - Name of the provider
+   * @param forceRefresh - Whether to bypass cache and force refresh
+   * @returns List of available model IDs
+   */
+  async getProviderModelsByName(): Promise<string[]> {
+    throw new Error('Provider names are no longer unique identifiers. Use getProviderModels with provider ID instead.');
+  }
+
+  /**
+   * Static validation helper to validate provider ID.
+   */
+  static validateProviderId(providerId: number): void {
+    if (!providerId || providerId <= 0) {
+      throw new Error('Valid provider ID is required');
+    }
+  }
+
+  /**
+   * @deprecated Use validateProviderId instead
    * Static validation helper to validate provider name.
    */
-  static validateProviderName(providerName: string): void {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name is required');
-    }
+  static validateProviderName(): void {
+    throw new Error('Provider names are no longer unique identifiers. Use validateProviderId instead.');
   }
 }

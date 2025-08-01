@@ -198,8 +198,8 @@ public partial class Program
                 Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
                 Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Core API)");
                 Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Core API)");
-                Console.WriteLine("  - ProviderCredentialUpdated events (triggers capability refresh)");
-                Console.WriteLine("  - ProviderCredentialDeleted events (triggers cache cleanup)");
+                Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
+                Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
                 Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }

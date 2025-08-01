@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Services;
+using MassTransit;
+using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Http.Authentication
 {
@@ -14,6 +16,7 @@ namespace ConduitLLM.Http.Authentication
     {
         private readonly VirtualKeyRateLimitCache _rateLimitCache;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
+        private readonly IPublishEndpoint? _publishEndpoint;
         
         // Track connection counts and request times per virtual key
         private readonly ConcurrentDictionary<string, ConnectionRateLimitInfo> _connectionInfo;
@@ -33,10 +36,12 @@ namespace ConduitLLM.Http.Authentication
         /// </summary>
         public VirtualKeySignalRRateLimitFilter(
             VirtualKeyRateLimitCache rateLimitCache,
-            ILogger<VirtualKeySignalRRateLimitFilter> logger)
+            ILogger<VirtualKeySignalRRateLimitFilter> logger,
+            IPublishEndpoint? publishEndpoint = null)
         {
             _rateLimitCache = rateLimitCache;
             _logger = logger;
+            _publishEndpoint = publishEndpoint;
             _connectionInfo = new ConcurrentDictionary<string, ConnectionRateLimitInfo>();
         }
 
@@ -93,6 +98,11 @@ namespace ConduitLLM.Http.Authentication
                 {
                     _logger.LogWarning("Virtual Key {KeyHash} exceeded RPM limit of {Limit} for SignalR method {Method}",
                         virtualKeyHash, rateLimits.RateLimitRpm.Value, invocationContext.HubMethodName);
+                    
+                    // Publish rate limit exceeded event
+                    PublishRateLimitExceeded(virtualKeyHash, "RPM", rateLimits.RateLimitRpm.Value, info.RequestsThisMinute, "minute", 
+                        info.LastMinuteStart.AddMinutes(1), invocationContext);
+                    
                     throw new HubException("Rate limit exceeded. Please try again later.");
                 }
                 
@@ -101,6 +111,11 @@ namespace ConduitLLM.Http.Authentication
                 {
                     _logger.LogWarning("Virtual Key {KeyHash} exceeded RPD limit of {Limit} for SignalR method {Method}",
                         virtualKeyHash, rateLimits.RateLimitRpd.Value, invocationContext.HubMethodName);
+                    
+                    // Publish rate limit exceeded event
+                    PublishRateLimitExceeded(virtualKeyHash, "RPD", rateLimits.RateLimitRpd.Value, info.RequestsToday, "day", 
+                        info.LastDayStart.AddDays(1), invocationContext);
+                    
                     throw new HubException("Daily rate limit exceeded. Please try again tomorrow.");
                 }
                 
@@ -187,6 +202,51 @@ namespace ConduitLLM.Http.Authentication
             // Try from User claims (set by authentication handler)
             var claim = context.User?.FindFirst("VirtualKeyHash");
             return claim?.Value;
+        }
+        
+        /// <summary>
+        /// Publishes a rate limit exceeded event
+        /// </summary>
+        private void PublishRateLimitExceeded(string virtualKeyHash, string limitType, int limitValue, 
+            int currentUsage, string timeWindow, DateTime resetsAt, HubInvocationContext context)
+        {
+            if (_publishEndpoint == null)
+                return;
+                
+            // Try to get virtual key ID from context
+            var virtualKeyId = 0;
+            if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
+            {
+                virtualKeyId = keyId;
+            }
+            
+            // Get IP address if available
+            var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
+            
+            // Fire and forget - don't block the request
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _publishEndpoint.Publish(new RateLimitExceeded
+                    {
+                        VirtualKeyId = virtualKeyId,
+                        VirtualKeyHash = virtualKeyHash,
+                        LimitType = limitType,
+                        LimitValue = limitValue,
+                        CurrentUsage = currentUsage,
+                        TimeWindow = timeWindow,
+                        ResetsAt = resetsAt,
+                        IpAddress = ipAddress,
+                        RequestedModel = null, // Not applicable for SignalR
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to publish RateLimitExceeded event for key {KeyHash}", virtualKeyHash);
+                }
+            });
         }
     }
 }

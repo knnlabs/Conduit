@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.Services
     /// Background service that batches Virtual Key spend updates to reduce database writes
     /// Provides events for cache invalidation integration
     /// </summary>
-    public class BatchSpendUpdateService : BackgroundService
+    public class BatchSpendUpdateService : BackgroundService, IBatchSpendUpdateService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
@@ -45,6 +45,13 @@ namespace ConduitLLM.Configuration.Services
             // Create timer for periodic flushing (in addition to background service)
             _flushTimer = new Timer(FlushPendingUpdatesCallback, null, _flushInterval, _flushInterval);
         }
+
+        /// <summary>
+        /// Gets whether the service is healthy and able to accept updates
+        /// </summary>
+        public bool IsHealthy => !_cancellationTokenSource?.Token.IsCancellationRequested ?? false;
+
+        private CancellationTokenSource? _cancellationTokenSource;
 
         /// <summary>
         /// Add a spend update to the batch queue
@@ -186,6 +193,7 @@ namespace ConduitLLM.Configuration.Services
         /// <returns>Async task</returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             _logger.LogInformation("BatchSpendUpdateService started");
 
             while (!stoppingToken.IsCancellationRequested)

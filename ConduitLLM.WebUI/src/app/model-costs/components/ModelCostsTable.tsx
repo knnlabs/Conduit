@@ -35,13 +35,16 @@ import { ModelCost } from '../types/modelCost';
 import { EditModelCostModal } from './EditModelCostModal';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
-import { getProviderDisplayName, getProviderTypeFromDto, ProviderType } from '@/lib/utils/providerTypeUtils';
+import { CallToActionEmpty } from './CallToActionEmpty';
+import { useEnrichedModelCosts } from '../hooks/useEnrichedModelCosts';
 
 interface ModelCostsTableProps {
   onRefresh?: () => void;
+  hasProviders?: boolean;
+  hasModelMappings?: boolean;
 }
 
-export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
+export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: ModelCostsTableProps) {
   const queryClient = useQueryClient();
   const { fetchModelCosts, deleteModelCost } = useModelCostsApi();
   
@@ -51,7 +54,6 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [providerFilter, setProviderFilter] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>('true');
   
   // Modal state
@@ -60,9 +62,8 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
 
   // Fetch data
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['model-costs', page, pageSize, providerFilter, activeFilter],
+    queryKey: ['model-costs', page, pageSize, activeFilter],
     queryFn: () => fetchModelCosts(page, pageSize, {
-      provider: providerFilter ?? undefined,
       isActive: (() => {
         if (activeFilter === 'true') return true;
         if (activeFilter === 'false') return false;
@@ -84,42 +85,31 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
     },
   });
 
+  // Enrich model costs with provider information
+  const { enrichedCosts, isLoading: enrichmentLoading } = useEnrichedModelCosts(data?.items);
+
   // Filter data client-side for search
-  const filteredData = data?.items?.filter(cost => {
+  const filteredData = enrichedCosts.filter((cost) => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      cost.modelIdPattern.toLowerCase().includes(search) ||
-      (cost.providerName ?? '').toLowerCase().includes(search) ||
-      cost.modelType.toLowerCase().includes(search)
+      cost.costName.toLowerCase().includes(search) ||
+      cost.associatedModelAliases.some((alias: string) => alias.toLowerCase().includes(search)) ||
+      cost.modelType.toLowerCase().includes(search) ||
+      cost.providers.some(p => 
+        p.providerName.toLowerCase().includes(search) || 
+        p.providerType.toLowerCase().includes(search)
+      )
     );
-  }) ?? [];
-
-  // Get unique providers for filter
-  const uniqueProviders = Array.from(new Set(
-    data?.items?.map(c => {
-      try {
-        const providerType = getProviderTypeFromDto(c);
-        return providerType.toString();
-      } catch {
-        return null;
-      }
-    }).filter(Boolean) ?? []
-  )) as string[];
-  
-  // Create provider options with display names
-  const providerOptions = uniqueProviders.map(providerTypeStr => ({
-    value: parseInt(providerTypeStr).toString(), // Keep as string for Select component
-    label: getProviderDisplayName(parseInt(providerTypeStr) as ProviderType)
-  }));
+  });
 
   const handleDelete = (cost: ModelCost) => {
     modals.openConfirmModal({
       title: 'Delete Model Pricing',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the pricing configuration for{' '}
-          <Text span fw={600}>{cost.modelIdPattern}</Text>?
+          Are you sure you want to delete the pricing configuration{' '}
+          <Text span fw={600}>{cost.costName}</Text>?
           This action cannot be undone.
         </Text>
       ),
@@ -140,18 +130,18 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
     return labels[type] || type;
   };
 
-  const getCostDisplay = (cost: ModelCost) => {
-    if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
-      const hasCachedRates = cost.cachedInputCostPerMillionTokens !== undefined || 
-                            cost.cachedInputWriteCostPerMillionTokens !== undefined;
+  const getCostDisplay = (cost: ModelCost): React.ReactNode => {
+    if (cost.inputTokenCost !== undefined && cost.outputTokenCost !== undefined) {
+      const hasCachedRates = cost.cachedInputTokenCost !== undefined || 
+                            cost.cachedInputWriteCost !== undefined;
       
       return (
         <Stack gap={2}>
           <Text size="xs">
-            Input: {formatters.currency(((cost.inputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
+            Input: {formatters.currency((cost.inputTokenCost * 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
           <Text size="xs">
-            Output: {formatters.currency(((cost.outputCostPerMillionTokens ?? 0) / 1000), { currency: 'USD', precision: 4 })}/1K
+            Output: {formatters.currency((cost.outputTokenCost * 1000), { currency: 'USD', precision: 4 })}/1K
           </Text>
           {hasCachedRates && (
             <Group gap="xs">
@@ -176,11 +166,11 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
         </Group>
       );
     }
-    if (cost.costPerImage !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.costPerImage, { currency: 'USD' })}/image</Text>;
+    if (cost.imageCostPerImage !== undefined) {
+      return <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>;
     }
-    if (cost.costPerSecond !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.costPerSecond, { currency: 'USD' })}/second</Text>;
+    if (cost.videoCostPerSecond !== undefined) {
+      return <Text size="xs">{formatters.currency(cost.videoCostPerSecond, { currency: 'USD' })}/second</Text>;
     }
     if (cost.costPerSearchUnit !== undefined) {
       return (
@@ -222,19 +212,11 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
         <Card.Section p="md">
           <Group>
             <TextInput
-              placeholder="Search models..."
+              placeholder="Search by cost name, model aliases, or provider..."
               leftSection={<IconSearch size={16} />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.currentTarget.value)}
               style={{ flex: 1 }}
-            />
-            <Select
-              placeholder="All providers"
-              value={providerFilter?.toString() ?? null}
-              onChange={(value) => setProviderFilter(value ? parseInt(value) : null)}
-              data={providerOptions}
-              clearable
-              w={200}
             />
             <Select
               placeholder="Status"
@@ -251,7 +233,7 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
         </Card.Section>
 
         <Card.Section p="md" pt={0}>
-          <LoadingOverlay visible={isLoading} />
+          <LoadingOverlay visible={isLoading || enrichmentLoading} />
           
           {error && (
             <Center py="xl">
@@ -260,9 +242,15 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
           )}
 
           {!error && filteredData.length === 0 && !isLoading && (
-            <Center py="xl">
-              <Text c="dimmed">No model pricing configurations found</Text>
-            </Center>
+            <>
+              {hasProviders !== undefined && hasModelMappings !== undefined && (!hasProviders || !hasModelMappings) ? (
+                <CallToActionEmpty hasProviders={hasProviders} hasModelMappings={hasModelMappings} />
+              ) : (
+                <Center py="xl">
+                  <Text c="dimmed">No model pricing configurations found</Text>
+                </Center>
+              )}
+            </>
           )}
 
           {!error && filteredData.length > 0 && (
@@ -270,8 +258,9 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Model Pattern</Table.Th>
-                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Cost Name</Table.Th>
+                    <Table.Th>Model Aliases</Table.Th>
+                    <Table.Th>Providers</Table.Th>
                     <Table.Th>Type</Table.Th>
                     <Table.Th>Pricing</Table.Th>
                     <Table.Th>Batch</Table.Th>
@@ -286,27 +275,48 @@ export function ModelCostsTable({ onRefresh }: ModelCostsTableProps) {
                     <Table.Tr key={cost.id}>
                       <Table.Td>
                         <Text size="sm" fw={500}>
-                          {cost.modelIdPattern}
+                          {cost.costName}
                         </Text>
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="light" size="sm">
-                          {(() => {
-                            try {
-                              const providerType = getProviderTypeFromDto(cost);
-                              return getProviderDisplayName(providerType);
-                            } catch {
-                              return cost.providerName ?? 'Unknown';
-                            }
-                          })()}
-                        </Badge>
+                        <Text size="xs" style={{ maxWidth: 200 }} truncate title={cost.associatedModelAliases.join(', ')}>
+                          {cost.associatedModelAliases.length > 0 
+                            ? cost.associatedModelAliases.join(', ')
+                            : <Text span c="dimmed">No models assigned</Text>
+                          }
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          {cost.providers.length > 0 ? (
+                            cost.providers.slice(0, 2).map((provider, idx) => (
+                              <Badge 
+                                key={provider.providerId} 
+                                size="xs" 
+                                variant="light"
+                                color={idx === 0 ? 'blue' : 'gray'}
+                              >
+                                {provider.providerName}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Text size="xs" c="dimmed">No providers</Text>
+                          )}
+                          {cost.providers.length > 2 && (
+                            <Tooltip label={cost.providers.map(p => p.providerName).join(', ')}>
+                              <Badge size="xs" variant="light" color="gray">
+                                +{cost.providers.length - 2}
+                              </Badge>
+                            </Tooltip>
+                          )}
+                        </Group>
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs">
                           <Badge variant="outline" size="sm">
                             {getCostTypeLabel(cost.modelType)}
                           </Badge>
-                          {(cost.cachedInputCostPerMillionTokens ?? cost.cachedInputWriteCostPerMillionTokens) && (
+                          {(cost.cachedInputTokenCost ?? cost.cachedInputWriteCost) && (
                             <Tooltip label="Supports prompt caching">
                               <IconDatabase size={14} style={{ opacity: 0.7 }} />
                             </Tooltip>

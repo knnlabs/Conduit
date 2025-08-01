@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -42,19 +43,21 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public ReplicateClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Replicate",
-                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultReplicateBaseUrl : credentials.BaseUrl,
-                defaultModels)
+                baseUrl: null,
+                defaultModels: defaultModels)
         {
         }
 
@@ -63,7 +66,7 @@ namespace ConduitLLM.Providers
         {
             base.ValidateCredentials();
 
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
@@ -798,7 +801,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -853,7 +856,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? DefaultReplicateBaseUrl).TrimEnd('/');
+                : (Provider.BaseUrl ?? DefaultReplicateBaseUrl).TrimEnd('/');
             
             // Ensure v1 is in the URL
             if (!effectiveBaseUrl.EndsWith("/v1"))

@@ -25,10 +25,20 @@ namespace ConduitLLM.Configuration.Repositories
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int providerCredentialId)
+        public async Task<List<ProviderKeyCredential>> GetAllAsync()
         {
             return await _context.ProviderKeyCredentials
-                .Where(k => k.ProviderCredentialId == providerCredentialId)
+                .Include(k => k.Provider)
+                .OrderBy(k => k.ProviderId)
+                .ThenByDescending(k => k.IsPrimary)
+                .ThenBy(k => k.ProviderAccountGroup)
+                .ToListAsync();
+        }
+
+        public async Task<List<ProviderKeyCredential>> GetByProviderIdAsync(int ProviderId)
+        {
+            return await _context.ProviderKeyCredentials
+                .Where(k => k.ProviderId == ProviderId)
                 .OrderByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)
                 .ToListAsync();
@@ -37,22 +47,22 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<ProviderKeyCredential?> GetByIdAsync(int id)
         {
             return await _context.ProviderKeyCredentials
-                .Include(k => k.ProviderCredential)
+                .Include(k => k.Provider)
                 .FirstOrDefaultAsync(k => k.Id == id);
         }
 
-        public async Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int providerCredentialId)
+        public async Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
-                .FirstOrDefaultAsync(k => k.ProviderCredentialId == providerCredentialId 
+                .FirstOrDefaultAsync(k => k.ProviderId == ProviderId 
                     && k.IsPrimary 
                     && k.IsEnabled);
         }
 
-        public async Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int providerCredentialId)
+        public async Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
-                .Where(k => k.ProviderCredentialId == providerCredentialId && k.IsEnabled)
+                .Where(k => k.ProviderId == ProviderId && k.IsEnabled)
                 .OrderByDescending(k => k.IsPrimary)
                 .ThenBy(k => k.ProviderAccountGroup)
                 .ToListAsync();
@@ -70,7 +80,7 @@ namespace ConduitLLM.Configuration.Repositories
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Created key credential {KeyId} for provider {ProviderId}", 
-                keyCredential.Id, keyCredential.ProviderCredentialId);
+                keyCredential.Id, keyCredential.ProviderId);
 
             return keyCredential;
         }
@@ -97,7 +107,7 @@ namespace ConduitLLM.Configuration.Repositories
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Updated key credential {KeyId} for provider {ProviderId}", 
-                keyCredential.Id, keyCredential.ProviderCredentialId);
+                keyCredential.Id, keyCredential.ProviderId);
 
             return true;
         }
@@ -114,19 +124,19 @@ namespace ConduitLLM.Configuration.Repositories
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Deleted key credential {KeyId} for provider {ProviderId}", 
-                id, keyCredential.ProviderCredentialId);
+                id, keyCredential.ProviderId);
 
             return true;
         }
 
-        public async Task<bool> SetPrimaryKeyAsync(int providerCredentialId, int keyId)
+        public async Task<bool> SetPrimaryKeyAsync(int ProviderId, int keyId)
         {
             using var transaction = await (_context as DbContext)!.Database.BeginTransactionAsync();
             try
             {
                 // First, unset any existing primary keys
                 var existingPrimaryKeys = await _context.ProviderKeyCredentials
-                    .Where(k => k.ProviderCredentialId == providerCredentialId && k.IsPrimary)
+                    .Where(k => k.ProviderId == ProviderId && k.IsPrimary)
                     .ToListAsync();
 
                 foreach (var key in existingPrimaryKeys)
@@ -143,7 +153,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 // Set the new primary key
                 var newPrimaryKey = await _context.ProviderKeyCredentials
-                    .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderCredentialId == providerCredentialId);
+                    .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderId == ProviderId);
 
                 if (newPrimaryKey == null)
                     return false;
@@ -155,7 +165,7 @@ namespace ConduitLLM.Configuration.Repositories
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("Set key {KeyId} as primary for provider {ProviderId}", 
-                    keyId, providerCredentialId);
+                    keyId, ProviderId);
 
                 return true;
             }
@@ -163,21 +173,21 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Failed to set primary key {KeyId} for provider {ProviderId}", 
-                    keyId, providerCredentialId);
+                    keyId, ProviderId);
                 throw;
             }
         }
 
-        public async Task<bool> HasKeyCredentialsAsync(int providerCredentialId)
+        public async Task<bool> HasKeyCredentialsAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
-                .AnyAsync(k => k.ProviderCredentialId == providerCredentialId);
+                .AnyAsync(k => k.ProviderId == ProviderId);
         }
 
-        public async Task<int> CountByProviderIdAsync(int providerCredentialId)
+        public async Task<int> CountByProviderIdAsync(int ProviderId)
         {
             return await _context.ProviderKeyCredentials
-                .CountAsync(k => k.ProviderCredentialId == providerCredentialId);
+                .CountAsync(k => k.ProviderId == ProviderId);
         }
     }
 }

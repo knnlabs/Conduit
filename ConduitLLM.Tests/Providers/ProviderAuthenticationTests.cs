@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers;
 using Microsoft.Extensions.Logging;
@@ -45,10 +46,17 @@ namespace ConduitLLM.Tests.Providers
             var httpClient = new HttpClient(mockHandler.Object);
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "sk-test-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "sk-test-key"
             };
 
             var modelsResponse = new
@@ -73,7 +81,8 @@ namespace ConduitLLM.Tests.Providers
                 });
 
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
                 _httpClientFactoryMock.Object,
@@ -95,10 +104,17 @@ namespace ConduitLLM.Tests.Providers
             var httpClient = new HttpClient(mockHandler.Object);
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "invalid-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "invalid-key"
             };
 
             mockHandler.Protected()
@@ -113,7 +129,8 @@ namespace ConduitLLM.Tests.Providers
                 });
 
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
                 _httpClientFactoryMock.Object,
@@ -135,11 +152,18 @@ namespace ConduitLLM.Tests.Providers
             var httpClient = new HttpClient(mockHandler.Object);
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "sk-test-key",
-                ProviderType = ProviderType.OpenAI,
-                BaseUrl = null // Explicitly null
+                Id = 1,
+                ProviderType = ProviderType.OpenAI
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "sk-test-key"
+                // BaseUrl is null by default
             };
 
             var expectedUrl = "https://api.openai.com/v1/models";
@@ -158,7 +182,8 @@ namespace ConduitLLM.Tests.Providers
                 });
 
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
                 _httpClientFactoryMock.Object,
@@ -181,10 +206,17 @@ namespace ConduitLLM.Tests.Providers
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
             var customBaseUrl = "https://custom.openai.proxy.com/v1";
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
+                ProviderType = ProviderType.OpenAI
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
                 ApiKey = "sk-test-key",
-                ProviderType = ProviderType.OpenAI,
                 BaseUrl = customBaseUrl
             };
 
@@ -203,7 +235,8 @@ namespace ConduitLLM.Tests.Providers
                 });
 
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
                 _httpClientFactoryMock.Object,
@@ -236,16 +269,24 @@ namespace ConduitLLM.Tests.Providers
             
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
+                ProviderType = ProviderType.OpenAI
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
                 ApiKey = "test-key",
-                ProviderType = ProviderType.OpenAI,
                 BaseUrl = "https://api.openai.com/v1"
             };
 
             // Act - Create the client
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
                 _httpClientFactoryMock.Object,
@@ -264,65 +305,8 @@ namespace ConduitLLM.Tests.Providers
 
         #region Factory Test Client Creation Tests
 
-        [Fact]
-        public void LLMClientFactory_CreateTestClient_InitializesRequiredProperties()
-        {
-            // Arrange
-            var settingsOptions = Options.Create(new ConduitSettings());
-            var loggerFactory = new Mock<ILoggerFactory>();
-            loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
-                .Returns(CreateLogger<LLMClientFactory>().Object);
-
-            var factory = new LLMClientFactory(
-                settingsOptions,
-                loggerFactory.Object,
-                _httpClientFactoryMock.Object);
-
-            var credentials = new ProviderCredentials
-            {
-                ApiKey = "test-key",
-                ProviderType = ProviderType.OpenAI,
-                BaseUrl = "https://api.openai.com/v1"
-            };
-
-            // Act
-            var testClient = factory.CreateTestClient(credentials);
-
-            // Assert
-            Assert.NotNull(testClient);
-            // The client might be wrapped in decorators, so check if it's an ILLMClient
-            Assert.IsAssignableFrom<ILLMClient>(testClient);
-        }
-
-        [Fact]
-        public void LLMClientFactory_CreateTestClient_WithMinimalCredentials_CreatesValidClient()
-        {
-            // Arrange
-            var settingsOptions = Options.Create(new ConduitSettings());
-            var loggerFactory = new Mock<ILoggerFactory>();
-            loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
-                .Returns(CreateLogger<LLMClientFactory>().Object);
-
-            var factory = new LLMClientFactory(
-                settingsOptions,
-                loggerFactory.Object,
-                _httpClientFactoryMock.Object);
-
-            var credentials = new ProviderCredentials
-            {
-                ApiKey = "test-key",
-                ProviderType = ProviderType.OpenAI
-                // No BaseUrl provided
-            };
-
-            // Act
-            var testClient = factory.CreateTestClient(credentials);
-
-            // Assert
-            Assert.NotNull(testClient);
-            // The client might be wrapped in decorators, so check if it's an ILLMClient
-            Assert.IsAssignableFrom<ILLMClient>(testClient);
-        }
+        // TODO: These tests were removed when LLMClientFactory was deleted in favor of DatabaseAwareLLMClientFactory
+        // Consider adding similar tests for DatabaseAwareLLMClientFactory if needed
 
         #endregion
     }

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.InternalModels
@@ -16,9 +17,14 @@ namespace ConduitLLM.Providers.InternalModels
         public string? Name { get; set; }
 
         /// <summary>
+        /// Gets or sets the provider entity for this model.
+        /// </summary>
+        public Provider? Provider { get; set; }
+        
+        /// <summary>
         /// Gets or sets the provider name for this model.
         /// </summary>
-        public string? Provider { get; set; }
+        public string? ProviderName { get; set; }
 
         /// <summary>
         /// Gets or sets the capabilities of this model.
@@ -67,7 +73,7 @@ namespace ConduitLLM.Providers.InternalModels
             {
                 Id = id,
                 OwnedBy = provider,
-                Provider = provider,
+                ProviderName = provider,
                 ProviderModelId = providerModelId
             };
         }

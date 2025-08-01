@@ -55,23 +55,27 @@ export const ENDPOINTS = {
     DISCOVERY_PREVIEW: (id: number) => `/api/VirtualKeys/${id}/discovery-preview`,
   },
 
-  // Provider Credentials
+  // Providers - Provider ID is the canonical identifier
   PROVIDERS: {
-    BASE: '/api/ProviderCredentials',
-    BY_ID: (id: number) => `/api/ProviderCredentials/${id}`,
-    BY_NAME: (name: string) => `/api/ProviderCredentials/name/${name}`,
-    NAMES: '/api/ProviderCredentials/names',
-    TEST_BY_ID: (id: number) => `/api/ProviderCredentials/test/${id}`,
-    TEST: '/api/ProviderCredentials/test',
+    BASE: '/api/Providers',
+    BY_ID: (id: number) => `/api/Providers/${id}`,
+    TEST_BY_ID: (id: number) => `/api/Providers/${id}/test`,
+    TEST: '/api/Providers/test',
+    // Deprecated endpoints
+    /** @deprecated Provider names are no longer unique identifiers */
+    BY_NAME: (name: string) => `/api/Providers/name/${name}`,
+    /** @deprecated Use GET /api/Providers and extract names from response */
+    NAMES: '/api/Providers/names',
   },
 
-  // Provider Key Credentials
+  // Provider Key Credentials - Manage multiple API keys per provider
   PROVIDER_KEYS: {
-    BASE: (providerId: number) => `/api/ProviderCredentials/${providerId}/keys`,
-    BY_ID: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}`,
-    SET_PRIMARY: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/set-primary`,
-    ROTATE: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/rotate`,
-    TEST: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/test`,
+    BASE: (providerId: number) => `/api/Providers/${providerId}/keys`,
+    BY_ID: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}`,
+    SET_PRIMARY: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/set-primary`,
+    ROTATE: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/rotate`,
+    TEST: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/test`,
+    GET_PRIMARY: (providerId: number) => `/api/Providers/${providerId}/keys/primary`,
   },
 
   // Provider Models (Note: These endpoints don't exist in Admin API, use MODEL_MAPPINGS.DISCOVER_* instead)
@@ -88,6 +92,7 @@ export const ENDPOINTS = {
   },
 
   // Model Provider Mappings
+  // WARNING: Model routing is currently broken and being redesigned
   MODEL_MAPPINGS: {
     BASE: '/api/ModelProviderMapping',
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
@@ -100,6 +105,7 @@ export const ENDPOINTS = {
     IMPORT: '/api/ModelProviderMapping/import',
     EXPORT: '/api/ModelProviderMapping/export',
     SUGGEST: '/api/ModelProviderMapping/suggest',
+    /** @deprecated Model routing is broken - this endpoint should not be used */
     ROUTING: (modelId: string) => `/api/ModelProviderMapping/routing/${modelId}`,
   },
 

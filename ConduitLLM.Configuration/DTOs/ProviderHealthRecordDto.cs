@@ -15,9 +15,9 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// The provider type that was checked
+        /// The ID of the provider that was checked
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// The status of the provider
@@ -66,9 +66,9 @@ namespace ConduitLLM.Configuration.DTOs
     public class ProviderHealthSummaryDto
     {
         /// <summary>
-        /// The provider type
+        /// The provider ID
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// The current status of the provider

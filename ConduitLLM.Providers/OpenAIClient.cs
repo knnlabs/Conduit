@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -70,17 +71,19 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the OpenAIClient class.
         /// </summary>
-        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="provider">The provider entity containing configuration.</param>
+        /// <param name="primaryKeyCredential">The primary key credential to use for requests.</param>
         /// <param name="providerModelId">The specific model ID to use with this provider. For Azure, this is the deployment name.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
         /// <param name="capabilityService">Optional service for model capability detection and validation.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
-        /// <param name="providerName">Optional provider name override. If not specified, uses credentials.ProviderName or defaults to "openai".</param>
+        /// <param name="providerName">Optional provider name override. If not specified, uses provider.ProviderName or defaults to "openai".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
         public OpenAIClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential primaryKeyCredential,
             string providerModelId,
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory,
@@ -88,19 +91,20 @@ namespace ConduitLLM.Providers
             ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
-                credentials,
+                provider,
+                primaryKeyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
-                providerName ?? credentials.ProviderType.ToString() ?? "openai",
-                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderType.ToString() ?? "openai"),
+                providerName ?? provider.ProviderType.ToString() ?? "openai",
+                DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"),
                 defaultModels)
         {
-            _isAzure = (providerName ?? credentials.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase) || credentials.ProviderType == ProviderType.AzureOpenAI;
+            _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase) || provider.ProviderType == ProviderType.AzureOpenAI;
             _capabilityService = capabilityService;
 
             // Specific validation for Azure credentials
-            if (_isAzure && string.IsNullOrWhiteSpace(credentials.BaseUrl))
+            if (_isAzure && string.IsNullOrWhiteSpace(provider.BaseUrl) && string.IsNullOrWhiteSpace(primaryKeyCredential.BaseUrl))
             {
                 throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for the 'azure' provider.");
             }
@@ -109,18 +113,21 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Determines the appropriate base URL based on the provider and credentials.
         /// </summary>
-        private static string DetermineBaseUrl(ProviderCredentials credentials, string providerName)
+        private static string DetermineBaseUrl(Provider provider, ProviderKeyCredential keyCredential, string providerName)
         {
+            // Use key credential base URL if specified, otherwise fall back to provider base URL
+            var baseUrl = keyCredential.BaseUrl ?? provider.BaseUrl;
+            
             // For Azure, we'll handle this specially in the endpoint methods
             if (providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
             {
-                return credentials.BaseUrl ?? "";
+                return baseUrl ?? "";
             }
 
             // For standard OpenAI or compatible providers
-            var baseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl)
+            baseUrl = string.IsNullOrWhiteSpace(baseUrl)
                 ? Constants.Urls.DefaultOpenAIBaseUrl
-                : credentials.BaseUrl;
+                : baseUrl;
             
             // Ensure consistent formatting
             return baseUrl.TrimEnd('/');
@@ -655,7 +662,7 @@ namespace ConduitLLM.Providers
             wsUrl = UrlBuilder.Combine(wsUrl, "realtime");
             wsUrl = UrlBuilder.AppendQueryString(wsUrl, ("model", config.Model ?? defaultRealtimeModel));
 
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey ?? throw new InvalidOperationException("API key is required");
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey ?? throw new InvalidOperationException("API key is required");
             var session = new OpenAIRealtimeSession(wsUrl, effectiveApiKey, config, Logger);
             await session.ConnectAsync(cancellationToken);
 
@@ -1076,7 +1083,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -1183,8 +1190,8 @@ namespace ConduitLLM.Providers
             // First, determine the effective base URL, handling empty strings properly
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
-                    ? Credentials.BaseUrl.TrimEnd('/') 
+                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl) 
+                    ? Provider.BaseUrl.TrimEnd('/') 
                     : Constants.Urls.DefaultOpenAIBaseUrl.TrimEnd('/'));
             
             // Ensure /v1 is in the URL

@@ -14,10 +14,10 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// The provider type that this configuration applies to
+        /// The ID of the provider that this configuration applies to
         /// </summary>
         [Required]
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Indicates whether health monitoring is enabled for this provider
@@ -66,10 +66,10 @@ namespace ConduitLLM.Configuration.DTOs
     public class CreateProviderHealthConfigurationDto
     {
         /// <summary>
-        /// The provider type that this configuration applies to
+        /// The ID of the provider that this configuration applies to
         /// </summary>
         [Required]
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Indicates whether health monitoring is enabled for this provider

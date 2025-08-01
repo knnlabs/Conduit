@@ -5,6 +5,7 @@ import {
   Container,
   Title,
   Text,
+  TextInput,
   NumberInput,
   Select,
   Switch,
@@ -32,14 +33,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { CreateModelCostDto } from '../types/modelCost';
-import { PatternPreview } from '../components/PatternPreview';
-import { ModelPatternCombobox } from '../components/ModelPatternCombobox';
 import { formatters } from '@/lib/utils/formatters';
-import { useProviders } from '@/hooks/useProviderApi';
+import { ModelMappingSelector } from '../components/ModelMappingSelector';
 
 interface FormValues {
-  modelIdPattern: string;
-  providerName: string;
+  costName: string;
+  modelProviderMappingIds: number[];
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   // Token-based costs (per 1K tokens for display)
   inputCostPer1K: number;
@@ -73,12 +72,10 @@ export default function AddModelCostPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { createModelCost } = useModelCostsApi();
-  const { providers, isLoading: isLoadingProviders } = useProviders();
-
   const form = useForm<FormValues>({
     initialValues: {
-      modelIdPattern: '',
-      providerName: '',
+      costName: '',
+      modelProviderMappingIds: [],
       modelType: 'chat',
       inputCostPer1K: 0,
       outputCostPer1K: 0,
@@ -103,8 +100,8 @@ export default function AddModelCostPage() {
       isActive: true,
     },
     validate: {
-      modelIdPattern: (value) => !value?.trim() ? 'Model pattern is required' : null,
-      providerName: (value) => !value?.trim() ? 'Provider name is required' : null,
+      costName: (value) => !value?.trim() ? 'Cost name is required' : null,
+      modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
       inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -160,15 +157,15 @@ export default function AddModelCostPage() {
 
   const handleSubmit = (values: FormValues) => {
     const data: CreateModelCostDto = {
-      modelIdPattern: values.modelIdPattern,
-      providerName: values.providerName,
+      costName: values.costName,
+      modelProviderMappingIds: values.modelProviderMappingIds,
       modelType: values.modelType,
-      // Convert from per 1K to per 1M tokens for backend
-      inputTokenCost: values.inputCostPer1K * 1000000,
-      outputTokenCost: values.outputCostPer1K * 1000000,
-      cachedInputTokenCost: values.cachedInputCostPer1K > 0 ? values.cachedInputCostPer1K * 1000000 : undefined,
-      cachedInputWriteTokenCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K * 1000000 : undefined,
-      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K * 1000000 : undefined,
+      // Convert from per 1K to per token
+      inputTokenCost: values.inputCostPer1K / 1000,
+      outputTokenCost: values.outputCostPer1K / 1000,
+      cachedInputTokenCost: values.cachedInputCostPer1K > 0 ? values.cachedInputCostPer1K / 1000 : undefined,
+      cachedInputWriteCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K / 1000 : undefined,
+      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K / 1000 : undefined,
       costPerSearchUnit: values.searchUnitCostPer1K > 0 ? values.searchUnitCostPer1K : undefined,
       costPerInferenceStep: values.inferenceStepCost > 0 ? values.inferenceStepCost : undefined,
       defaultInferenceSteps: values.defaultInferenceSteps > 0 ? values.defaultInferenceSteps : undefined,
@@ -194,19 +191,6 @@ export default function AddModelCostPage() {
   };
 
   const modelType = form.values.modelType;
-
-  // Create provider options from actual providers
-  const providerOptions = providers
-    .filter(provider => provider.providerName !== undefined)
-    .filter((provider): provider is typeof provider & { providerName: string } => typeof provider.providerName === 'string')
-    .map(provider => ({
-      value: provider.providerName,
-      label: provider.providerName,
-      disabled: !provider.isEnabled
-    }));
-
-  // Get the selected provider object to pass ID and type
-  const selectedProvider = providers.find(p => p.providerName === form.values.providerName);
 
   return (
     <Container size="xl">
@@ -234,33 +218,24 @@ export default function AddModelCostPage() {
               <Paper p="md" shadow="xs">
                 <Stack gap="md">
                   <Alert icon={<IconInfoCircle size={16} />} color="blue">
-                    Configure pricing for AI models. Use patterns like &quot;openai/gpt-4*&quot; to match multiple models.
+                    Configure pricing for AI models by assigning costs to specific model mappings.
                     Token costs are entered per 1,000 tokens for convenience.
                   </Alert>
 
-                  <ModelPatternCombobox
-                    value={form.values.modelIdPattern}
-                    onChange={(value) => form.setFieldValue('modelIdPattern', value)}
-                    selectedProvider={form.values.providerName}
-                    selectedProviderId={selectedProvider?.id}
-                    selectedProviderType={selectedProvider?.providerType}
-                    error={form.errors.modelIdPattern as string}
+                  <TextInput
+                    label="Cost Name"
+                    placeholder="e.g., GPT-4 Standard Pricing, Claude 3 Opus Batch"
                     required
+                    {...form.getInputProps('costName')}
+                    description="A descriptive name for this pricing configuration"
                   />
 
-                  <Select
-                    label="Provider Name"
-                    placeholder={isLoadingProviders ? "Loading providers..." : "Select a provider"}
+                  <ModelMappingSelector
+                    value={form.values.modelProviderMappingIds}
+                    onChange={(value) => form.setFieldValue('modelProviderMappingIds', value)}
+                    error={form.errors.modelProviderMappingIds as string}
                     required
-                    {...form.getInputProps('providerName')}
-                    description="Name of the LLM provider"
-                    data={providerOptions}
-                    searchable
-                    disabled={isLoadingProviders || providerOptions.length === 0}
-                    nothingFoundMessage="No providers configured"
                   />
-
-                  <PatternPreview pattern={form.values.modelIdPattern} />
 
                   <Select
                     label="Model Type"

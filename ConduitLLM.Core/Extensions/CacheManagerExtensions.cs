@@ -286,17 +286,6 @@ namespace ConduitLLM.Core.Extensions
 
                 // Register distributed statistics collector
                 services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
-                
-                // Register statistics health check
-                // IMPORTANT: Disabled to prevent startup hang (issue #562)
-                // Even with non-blocking Redis connection, this service causes hangs
-                // TODO: Implement proper async initialization pattern
-                // services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
-                // services.AddHostedService(sp => 
-                // {
-                //     var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
-                //     return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
-                // });
             }
 
             // Register statistics collector (hybrid if Redis is available, local otherwise)

@@ -65,17 +65,19 @@ namespace ConduitLLM.Admin.Controllers
 
                 // Get model-to-provider mappings
                 var modelMappings = await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .Select(m => new
                     {
                         Id = m.Id,
                         ModelAlias = m.ModelAlias,
-                        ProviderModelName = m.ProviderModelName,
+                        ProviderModelId = m.ProviderModelId,
                         IsEnabled = m.IsEnabled,
                         Provider = new
                         {
-                            Name = m.ProviderCredential.ProviderType.ToString(),
-                            IsEnabled = m.ProviderCredential.IsEnabled
+                            Id = m.Provider.Id,
+                            Name = m.Provider.ProviderName,
+                            Type = m.Provider.ProviderType,
+                            IsEnabled = m.Provider.IsEnabled
                         }
                     })
                     .ToListAsync(cancellationToken);
@@ -373,14 +375,16 @@ namespace ConduitLLM.Admin.Controllers
 
         private async Task<List<object>> GetProviderEndpoints(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
         {
-            var providers = await dbContext.ProviderCredentials
+            var providers = await dbContext.Providers
                 .Where(p => p.IsEnabled)
                 .Select(p => new
                 {
+                    p.Id,
+                    p.ProviderName,
                     p.ProviderType,
                     p.BaseUrl,
                     LastHealth = dbContext.ProviderHealthRecords
-                        .Where(h => h.ProviderType == p.ProviderType)
+                        .Where(h => h.ProviderId == p.Id)
                         .OrderByDescending(h => h.TimestampUtc)
                         .Select(h => new { IsHealthy = h.IsOnline, ResponseTime = h.ResponseTimeMs })
                         .FirstOrDefault()
@@ -389,7 +393,9 @@ namespace ConduitLLM.Admin.Controllers
 
             return providers.Select(p => (object)new
             {
-                Name = p.ProviderType.ToString(),
+                Id = p.Id,
+                Name = p.ProviderName,
+                Type = p.ProviderType.ToString(),
                 Url = p.BaseUrl ?? $"https://api.{p.ProviderType.ToString().ToLower()}.com",
                 Weight = 1,
                 HealthStatus = p.LastHealth?.IsHealthy ?? false ? "healthy" : "unhealthy",

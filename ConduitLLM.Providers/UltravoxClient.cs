@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -39,12 +40,13 @@ namespace ConduitLLM.Providers
         /// Initializes a new instance of the <see cref="UltravoxClient"/> class.
         /// </summary>
         public UltravoxClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<UltravoxClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, "Ultravox", defaultModels)
+            : base(provider, keyCredential, providerModelId, logger, httpClientFactory, "Ultravox", defaultModels)
         {
             var translatorLogger = logger as ILogger<UltravoxRealtimeTranslator>
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<UltravoxRealtimeTranslator>();
@@ -118,7 +120,7 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            var effectiveApiKey = apiKey ?? Credentials.ApiKey;
+            var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
             if (string.IsNullOrEmpty(effectiveApiKey))
             {
                 throw new InvalidOperationException("API key is required for Ultravox");
@@ -127,7 +129,7 @@ namespace ConduitLLM.Providers
             try
             {
                 // Create WebSocket connection
-                var wsBaseUrl = Credentials.BaseUrl?.Replace("https://", "wss://").Replace("http://", "ws://") ?? DEFAULT_WS_BASE_URL;
+                var wsBaseUrl = Provider.BaseUrl?.Replace("https://", "wss://").Replace("http://", "ws://") ?? DEFAULT_WS_BASE_URL;
                 var wsUri = new Uri($"{wsBaseUrl}/realtime?model={Uri.EscapeDataString(config.Model ?? ProviderModelId)}");
                 var clientWebSocket = new ClientWebSocket();
                 clientWebSocket.Options.SetRequestHeader("Authorization", $"Bearer {effectiveApiKey}");
@@ -180,7 +182,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -255,7 +257,7 @@ namespace ConduitLLM.Providers
                 {
                     Id = "ultravox-v1",
                     OwnedBy = "ultravox",
-                    Provider = "Ultravox",
+                    ProviderName = "Ultravox",
                     Capabilities = new InternalModels.ModelCapabilities
                     {
                         RealtimeAudio = true,
@@ -266,7 +268,7 @@ namespace ConduitLLM.Providers
                 {
                     Id = "ultravox-telephony",
                     OwnedBy = "ultravox",
-                    Provider = "Ultravox",
+                    ProviderName = "Ultravox",
                     Capabilities = new InternalModels.ModelCapabilities
                     {
                         RealtimeAudio = true,

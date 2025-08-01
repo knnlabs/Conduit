@@ -49,10 +49,10 @@ namespace ConduitLLM.Configuration.HealthChecks
                 // Create a scope to resolve scoped services
                 using var scope = _scopeFactory.CreateScope();
                 var providerHealthRepository = scope.ServiceProvider.GetRequiredService<IProviderHealthRepository>();
-                var providerCredentialRepository = scope.ServiceProvider.GetRequiredService<IProviderCredentialRepository>();
+                var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
 
                 // Get all enabled providers
-                var providers = await providerCredentialRepository.GetAllAsync();
+                var providers = await providerRepository.GetAllAsync();
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
 
                 if (!enabledProviders.Any())
@@ -63,40 +63,43 @@ namespace ConduitLLM.Configuration.HealthChecks
 
                 // Get recent health records for each provider
                 var healthData = new Dictionary<string, object>();
-                var unhealthyProviders = new List<string>();
-                var degradedProviders = new List<string>();
+                var unhealthyProviders = new List<(int id, string name)>();
+                var degradedProviders = new List<(int id, string name)>();
 
                 // Use bulk query instead of N individual queries
                 var allHealthStatuses = await providerHealthRepository.GetAllLatestStatusesAsync();
-                var healthStatusLookup = allHealthStatuses; // Already a dictionary of provider type -> health record
+                var healthStatusLookup = allHealthStatuses; // Already a dictionary of provider ID -> health record
 
                 foreach (var provider in enabledProviders)
                 {
-                    if (!healthStatusLookup.TryGetValue(provider.ProviderType, out var recentHealth))
+                    if (!healthStatusLookup.TryGetValue(provider.Id, out var recentHealth))
                     {
-                        healthData[$"{provider.ProviderType}_status"] = "Unknown";
-                        degradedProviders.Add(provider.ProviderType.ToString());
+                        healthData[$"provider_{provider.Id}_status"] = "Unknown";
+                        healthData[$"provider_{provider.Id}_name"] = provider.ProviderName;
+                        degradedProviders.Add((provider.Id, provider.ProviderName));
                         continue;
                     }
 
-                    healthData[$"{provider.ProviderType}_status"] = recentHealth.Status.ToString();
-                    healthData[$"{provider.ProviderType}_lastCheck"] = recentHealth.TimestampUtc;
-                    healthData[$"{provider.ProviderType}_responseTime"] = recentHealth.ResponseTimeMs;
+                    healthData[$"provider_{provider.Id}_status"] = recentHealth.Status.ToString();
+                    healthData[$"provider_{provider.Id}_name"] = provider.ProviderName;
+                    healthData[$"provider_{provider.Id}_lastCheck"] = recentHealth.TimestampUtc;
+                    healthData[$"provider_{provider.Id}_responseTime"] = recentHealth.ResponseTimeMs;
 
                     if (recentHealth.Status == ProviderHealthRecord.StatusType.Offline)
                     {
-                        unhealthyProviders.Add(provider.ProviderType.ToString());
+                        unhealthyProviders.Add((provider.Id, provider.ProviderName));
                     }
                     else if (recentHealth.ResponseTimeMs > 5000)
                     {
-                        degradedProviders.Add(provider.ProviderType.ToString());
+                        degradedProviders.Add((provider.Id, provider.ProviderName));
                     }
                 }
 
                 // Determine overall health status
                 if (unhealthyProviders.Any())
                 {
-                    var message = $"Unhealthy providers: {string.Join(", ", unhealthyProviders)}";
+                    var providerList = string.Join(", ", unhealthyProviders.Select(p => $"{p.id}:{p.name}"));
+                    var message = $"Unhealthy providers: {providerList}";
                     if (unhealthyProviders.Count == enabledProviders.Count)
                     {
                         return HealthCheckResult.Unhealthy(message, data: healthData);
@@ -106,8 +109,9 @@ namespace ConduitLLM.Configuration.HealthChecks
 
                 if (degradedProviders.Any())
                 {
+                    var providerList = string.Join(", ", degradedProviders.Select(p => $"{p.id}:{p.name}"));
                     return HealthCheckResult.Degraded(
-                        $"Degraded providers: {string.Join(", ", degradedProviders)}",
+                        $"Degraded providers: {providerList}",
                         data: healthData);
                 }
 

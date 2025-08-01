@@ -4,11 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Providers;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Providers
 {
@@ -17,41 +18,42 @@ namespace ConduitLLM.Providers
     /// </summary>
     /// <remarks>
     /// This factory creates LLM client instances using credentials dynamically loaded from the database.
-    /// It delegates the actual client creation to LLMClientFactory after constructing temporary settings.
+    /// It supports all configured providers and applies decorators like performance tracking when enabled.
     /// 
     /// Use this factory when:
-    /// - Credentials are managed through the admin interface and stored in the database
-    /// - Running in production environments where credentials can be updated at runtime
-    /// - You need to support multi-tenant scenarios with different credentials per tenant
-    /// 
-    /// For static configuration scenarios, use LLMClientFactory directly.
+    /// - Credentials are stored in the database
+    /// - Multiple providers of the same type are configured
+    /// - Dynamic credential management is required
     /// </remarks>
     public class DatabaseAwareLLMClientFactory : ILLMClientFactory
     {
-        private readonly IProviderCredentialService _credentialService;
+        private readonly IProviderService _credentialService;
         private readonly IModelProviderMappingService _mappingService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
-        private readonly IOptionsMonitor<ConduitSettings> _settingsMonitor;
+        private readonly IPerformanceMetricsService? _performanceMetricsService;
+        private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabaseAwareLLMClientFactory"/> class.
         /// </summary>
         public DatabaseAwareLLMClientFactory(
-            IProviderCredentialService credentialService,
+            IProviderService credentialService,
             IModelProviderMappingService mappingService,
-            IOptionsMonitor<ConduitSettings> settingsMonitor,
             ILoggerFactory loggerFactory,
             IHttpClientFactory httpClientFactory,
-            ILogger<DatabaseAwareLLMClientFactory> logger)
+            ILogger<DatabaseAwareLLMClientFactory> logger,
+            IPerformanceMetricsService? performanceMetricsService = null,
+            IModelCapabilityService? capabilityService = null)
         {
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _settingsMonitor = settingsMonitor ?? throw new ArgumentNullException(nameof(settingsMonitor));
+            _performanceMetricsService = performanceMetricsService;
+            _capabilityService = capabilityService;
         }
 
         /// <inheritdoc />
@@ -69,60 +71,35 @@ namespace ConduitLLM.Providers
                 throw new ConfigurationException($"No model mapping found for alias '{modelName}'. Please check your Conduit configuration.");
             }
             
-            _logger.LogDebug("Found mapping in database: {ModelAlias} -> {ProviderType}/{ProviderModelId}", 
-                mapping.ModelAlias, mapping.ProviderType, mapping.ProviderModelId);
+            _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}", 
+                mapping.ModelAlias, mapping.ProviderId, mapping.ProviderModelId);
             
-            // Get all mappings from database to build settings
-            var allMappings = Task.Run(async () => 
-                await _mappingService.GetAllMappingsAsync()).Result;
+            // Get the provider from database
+            var provider = Task.Run(async () => 
+                await _credentialService.GetProviderByIdAsync(mapping.ProviderId)).Result;
             
-            // Get all credentials from database
-            var allCredentials = Task.Run(async () => 
-                await _credentialService.GetAllCredentialsAsync()).Result;
-            
-            // Build ConduitSettings with database data
-            var currentSettings = _settingsMonitor.CurrentValue;
-            var providerCredentialsList = new List<ProviderCredentials>();
-            
-            // For each provider credential, get the primary key
-            foreach (var cred in allCredentials)
+            if (provider == null || !provider.IsEnabled)
             {
-                // Get key credentials for this provider
-                var keyCredentials = Task.Run(async () => 
-                    await _credentialService.GetKeyCredentialsByProviderIdAsync(cred.Id)).Result;
-                
-                // Find the primary key or use the first one
-                var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary) ?? keyCredentials.FirstOrDefault();
-                
-                if (primaryKey != null)
-                {
-                    providerCredentialsList.Add(new ProviderCredentials
-                    {
-                        ProviderType = cred.ProviderType,
-                        BaseUrl = cred.BaseUrl,
-                        ApiKey = primaryKey.ApiKey,
-                        ApiSecret = null // Not used in current implementation
-                    });
-                }
+                _logger.LogWarning("Provider {ProviderId} not found or disabled", mapping.ProviderId);
+                throw new ConfigurationException($"Provider for model '{modelName}' is not available.");
             }
             
-            var databaseSettings = new ConduitSettings
+            // Get key credentials for this provider
+            var keyCredentials = Task.Run(async () => 
+                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
+            
+            // Find the primary key or use the first enabled one
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
+            
+            if (primaryKey == null)
             {
-                ModelMappings = allMappings.ToList(),
-                ProviderCredentials = providerCredentialsList,
-                DefaultTimeoutSeconds = currentSettings.DefaultTimeoutSeconds,
-                DefaultRetries = currentSettings.DefaultRetries,
-                DefaultModels = currentSettings.DefaultModels,
-                PerformanceTracking = currentSettings.PerformanceTracking
-            };
+                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
+            }
             
-            // Use the base factory with database-loaded settings
-            var baseFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(databaseSettings),
-                _loggerFactory,
-                _httpClientFactory);
-            
-            return baseFactory.GetClient(modelName);
+            // Create the appropriate client based on provider type
+            return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
         }
 
         
@@ -131,48 +108,36 @@ namespace ConduitLLM.Providers
         {
             _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
 
-            // Get credentials from database synchronously (not ideal but matches interface)
-            var credentials = Task.Run(async () => 
-                await _credentialService.GetCredentialByIdAsync(providerId)).Result;
+            // Get provider from database
+            var provider = Task.Run(async () => 
+                await _credentialService.GetProviderByIdAsync(providerId)).Result;
 
-            if (credentials == null || !credentials.IsEnabled)
+            if (provider == null || !provider.IsEnabled)
             {
-                _logger.LogWarning("No enabled credentials found for provider ID {ProviderId} in database", providerId);
-                throw new ConfigurationException($"No provider credentials found for provider ID '{providerId}'. Please check your Conduit configuration.");
+                _logger.LogWarning("No enabled provider found for provider ID {ProviderId} in database", providerId);
+                throw new ConfigurationException($"No provider found for provider ID '{providerId}'.");
+            }
+            
+            // Get key credentials for this provider
+            var keyCredentials = Task.Run(async () => 
+                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
+            
+            // Find the primary key or use the first enabled one
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
+            
+            if (primaryKey == null)
+            {
+                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
             }
 
-            // Get current settings and create a temporary ConduitSettings with the database credentials
-            var currentSettings = _settingsMonitor.CurrentValue;
-            var tempSettings = new ConduitSettings
-            {
-                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
-                {
-                    new ProviderCredentials
-                    {
-                        ProviderType = credentials.ProviderType,
-                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
-                        BaseUrl = credentials.BaseUrl
-                    }
-                },
-                // Copy other relevant settings from current settings
-                ModelMappings = currentSettings.ModelMappings,
-                DefaultModels = currentSettings.DefaultModels,
-                // Disable performance tracking for connection testing
-                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
-            };
-
-            // Create a new factory with the database credentials
-            var tempFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(tempSettings),
-                _loggerFactory,
-                _httpClientFactory);
-
-            return tempFactory.GetClientByProviderId(providerId);
+            // Use a default model ID for operations that don't require a specific model
+            return CreateClientForProvider(provider, primaryKey, "default-model-id");
         }
 
         /// <inheritdoc />
-        public IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType)
+        public IProviderMetadata? GetProviderMetadata(ProviderType providerType)
         {
             // This factory doesn't have access to provider metadata
             // Return null to indicate metadata is not available through this factory
@@ -180,85 +145,223 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType)
+        public ILLMClient GetClientByProviderType(ProviderType providerType)
         {
             _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);
 
-            // Get credentials from database by provider type
-            var credentials = Task.Run(async () => 
-                await _credentialService.GetCredentialByProviderTypeAsync(providerType)).Result;
-
-            if (credentials == null || !credentials.IsEnabled)
+            // Get first enabled provider of this type from database
+            var provider = Task.Run(async () => 
             {
-                _logger.LogWarning("No enabled credentials found for provider type {ProviderType} in database", providerType);
-                throw new ConfigurationException($"No provider credentials found for provider type '{providerType}'. Please check your Conduit configuration.");
+                var allProviders = await _credentialService.GetAllProvidersAsync();
+                return allProviders.FirstOrDefault(p => p.ProviderType == providerType);
+            }).Result;
+
+            if (provider == null || !provider.IsEnabled)
+            {
+                _logger.LogWarning("No enabled provider found for provider type {ProviderType} in database", providerType);
+                throw new ConfigurationException($"No provider found for provider type '{providerType}'.");
+            }
+            
+            // Get key credentials for this provider
+            var keyCredentials = Task.Run(async () => 
+                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
+            
+            // Find the primary key or use the first enabled one
+            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
+                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
+            
+            if (primaryKey == null)
+            {
+                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
             }
 
-            // Get current settings and create a temporary ConduitSettings with the database credentials
-            var currentSettings = _settingsMonitor.CurrentValue;
-            var tempSettings = new ConduitSettings
-            {
-                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials>
-                {
-                    new ProviderCredentials
-                    {
-                        ProviderType = credentials.ProviderType,
-                        ApiKey = credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)?.ApiKey ??
-                                credentials.ProviderKeyCredentials?.FirstOrDefault(k => k.IsEnabled)?.ApiKey,
-                        BaseUrl = credentials.BaseUrl
-                    }
-                },
-                // Copy other relevant settings from current settings
-                ModelMappings = currentSettings.ModelMappings,
-                DefaultModels = currentSettings.DefaultModels,
-                // Disable performance tracking for connection testing
-                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
-            };
-
-            // Create a new factory with the database credentials
-            var tempFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(tempSettings),
-                _loggerFactory,
-                _httpClientFactory);
-
-            // Use the GetClientByProviderType method of the temp factory
-            return tempFactory.GetClientByProviderType(providerType);
+            // Use a default model ID for operations that don't require a specific model
+            return CreateClientForProvider(provider, primaryKey, "default-model-id");
         }
 
         /// <inheritdoc />
-        public ILLMClient CreateTestClient(ProviderCredentials credentials)
+        public ILLMClient CreateTestClient(Provider provider, ProviderKeyCredential keyCredential)
         {
-            if (credentials == null)
+            if (provider == null)
             {
-                throw new ArgumentNullException(nameof(credentials));
+                throw new ArgumentNullException(nameof(provider));
             }
 
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+            if (keyCredential == null)
             {
-                throw new ArgumentException("API key is required for testing credentials", nameof(credentials));
+                throw new ArgumentNullException(nameof(keyCredential));
             }
 
-            _logger.LogDebug("Creating test client for provider type: {ProviderType}", credentials.ProviderType);
+            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
+            {
+                throw new ArgumentException("API key is required for testing credentials", nameof(keyCredential));
+            }
 
-            // Get current settings for defaults
-            var currentSettings = _settingsMonitor.CurrentValue;
+            _logger.LogDebug("Creating test client for provider type: {ProviderType}", provider.ProviderType);
+
+            // Use a minimal model ID for testing - providers should accept this for auth verification
+            const string testModelId = "test-model";
+
+            return CreateClientForProvider(provider, keyCredential, testModelId);
+        }
+
+        private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId)
+        {
+            var providerName = provider.ProviderType.ToString().ToLowerInvariant();
             
-            // Create temporary settings with just the test credentials
-            var tempSettings = new ConduitSettings
+            _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}", 
+                provider.ProviderType, modelId);
+
+            // TODO: Get default models configuration from somewhere (database?)
+            ProviderDefaultModels? defaultModels = null;
+
+            // Create the base client
+            ILLMClient client;
+            
+            // Create clients using the provider type
+            switch (provider.ProviderType)
             {
-                ProviderCredentials = new System.Collections.Generic.List<ProviderCredentials> { credentials },
-                DefaultModels = currentSettings.DefaultModels,
-                // Disable performance tracking for testing
-                PerformanceTracking = new PerformanceTrackingSettings { Enabled = false }
-            };
+                case ProviderType.OpenAI:
+                    var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
+                    client = new OpenAIClient(provider, keyCredential, modelId, openAiLogger, 
+                        _httpClientFactory, _capabilityService, defaultModels);
+                    break;
 
-            // Create a temporary factory and delegate to it
-            var tempFactory = new LLMClientFactory(
-                Microsoft.Extensions.Options.Options.Create(tempSettings),
-                _loggerFactory,
-                _httpClientFactory);
+                case ProviderType.AzureOpenAI:
+                    var azureLogger = _loggerFactory.CreateLogger<AzureOpenAIClient>();
+                    client = new AzureOpenAIClient(provider, keyCredential, modelId, azureLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
 
-            return tempFactory.CreateTestClient(credentials);
+                case ProviderType.Anthropic:
+                    var anthropicLogger = _loggerFactory.CreateLogger<AnthropicClient>();
+                    client = new AnthropicClient(provider, keyCredential, modelId, anthropicLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Mistral:
+                    var mistralLogger = _loggerFactory.CreateLogger<MistralClient>();
+                    client = new MistralClient(provider, keyCredential, modelId, mistralLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Groq:
+                    var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
+                    client = new GroqClient(provider, keyCredential, modelId, groqLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Cohere:
+                    var cohereLogger = _loggerFactory.CreateLogger<CohereClient>();
+                    client = new CohereClient(provider, keyCredential, modelId, cohereLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Gemini:
+                    var geminiLogger = _loggerFactory.CreateLogger<GeminiClient>();
+                    client = new GeminiClient(provider, keyCredential, modelId, geminiLogger, 
+                        _httpClientFactory, null, defaultModels);
+                    break;
+
+                case ProviderType.VertexAI:
+                    var vertexLogger = _loggerFactory.CreateLogger<VertexAIClient>();
+                    client = new VertexAIClient(provider, keyCredential, modelId, vertexLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Ollama:
+                    var ollamaLogger = _loggerFactory.CreateLogger<OllamaClient>();
+                    client = new OllamaClient(provider, keyCredential, modelId, ollamaLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Bedrock:
+                    var bedrockLogger = _loggerFactory.CreateLogger<BedrockClient>();
+                    client = new BedrockClient(provider, keyCredential, modelId, bedrockLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.HuggingFace:
+                    var hfLogger = _loggerFactory.CreateLogger<HuggingFaceClient>();
+                    client = new HuggingFaceClient(provider, keyCredential, modelId, hfLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Replicate:
+                    var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
+                    client = new ReplicateClient(provider, keyCredential, modelId, replicateLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Fireworks:
+                    var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
+                    client = new FireworksClient(provider, keyCredential, modelId, fireworksLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.SageMaker:
+                    var sageMakerLogger = _loggerFactory.CreateLogger<SageMakerClient>();
+                    // SageMaker needs endpoint name - use model ID as endpoint name
+                    client = new SageMakerClient(provider, keyCredential, modelId, sageMakerLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.OpenRouter:
+                    var openRouterLogger = _loggerFactory.CreateLogger<OpenRouterClient>();
+                    client = new OpenRouterClient(provider, keyCredential, modelId, openRouterLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.OpenAICompatible:
+                    var compatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
+                    client = new OpenAICompatibleGenericClient(provider, keyCredential, modelId, compatibleLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.MiniMax:
+                    var miniMaxLogger = _loggerFactory.CreateLogger<MiniMaxClient>();
+                    client = new MiniMaxClient(provider, keyCredential, modelId, miniMaxLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Ultravox:
+                    var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
+                    client = new UltravoxClient(provider, keyCredential, modelId, ultravoxLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.ElevenLabs:
+                    var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
+                    client = new ElevenLabsClient(provider, keyCredential, modelId, elevenLabsLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.GoogleCloud:
+                    var gcpLogger = _loggerFactory.CreateLogger<GoogleCloudAudioClient>();
+                    client = new GoogleCloudAudioClient(provider, keyCredential, modelId, gcpLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.Cerebras:
+                    var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();
+                    client = new CerebrasClient(provider, keyCredential, modelId, cerebrasLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                default:
+                    throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}");
+            }
+
+            // Apply decorators if configured
+            if (_performanceMetricsService != null)
+            {
+                _logger.LogDebug("Applying performance tracking decorator to client");
+                var perfLogger = _loggerFactory.CreateLogger<PerformanceTrackingLLMClient>();
+                client = new PerformanceTrackingLLMClient(client, _performanceMetricsService, perfLogger, providerName, true);
+            }
+
+            return client;
         }
     }
 }

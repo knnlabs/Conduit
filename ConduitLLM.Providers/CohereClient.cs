@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -51,7 +52,7 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the <see cref="CohereClient"/> class.
         /// </summary>
-        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="credentials">LLMProvider credentials containing API key and endpoint configuration.</param>
         /// <param name="providerModelId">The specific Cohere model ID to use (e.g., command-r-plus).</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances.</param>
@@ -59,19 +60,21 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when credentials, providerModelId, or logger is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing in the credentials.</exception>
         public CohereClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<CohereClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  credentials,
+                  provider,
+                  keyCredential,
                   providerModelId,
                   logger,
                   httpClientFactory,
                   "cohere",
-                  credentials.BaseUrl ?? DefaultBaseUrl,
-                  defaultModels)
+                  baseUrl: null,
+                  defaultModels: defaultModels)
         {
         }
 
@@ -625,7 +628,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -680,8 +683,8 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (!string.IsNullOrWhiteSpace(Credentials.BaseUrl) 
-                    ? Credentials.BaseUrl.TrimEnd('/') 
+                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl) 
+                    ? Provider.BaseUrl.TrimEnd('/') 
                     : DefaultBaseUrl.TrimEnd('/'));
             
             return effectiveBaseUrl;

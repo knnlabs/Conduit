@@ -13,6 +13,7 @@ using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Controllers;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -22,14 +23,13 @@ namespace ConduitLLM.Http.Controllers
     [ApiController]
     [Route("v1/images")]
     [Authorize]
-    public class ImagesController : ControllerBase
+    public class ImagesController : EventPublishingControllerBase
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;
         private readonly ILogger<ImagesController> _logger;
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IAsyncTaskService _taskService;
-        private readonly IPublishEndpoint _publishEndpoint;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IImageGenerationMetricsService _metricsService;
@@ -46,13 +46,13 @@ namespace ConduitLLM.Http.Controllers
             IMediaLifecycleService mediaLifecycleService,
             IImageGenerationMetricsService metricsService,
             IHttpClientFactory httpClientFactory)
+            : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
             _logger = logger;
             _modelMappingService = modelMappingService;
             _taskService = taskService;
-            _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
             _metricsService = metricsService;
@@ -88,7 +88,7 @@ namespace ConduitLLM.Http.Controllers
                     if (imageProviders.Any())
                     {
                         var availableProviders = imageProviders
-                            .Select(m => (m.ProviderType.ToString(), m.ProviderModelId))
+                            .Select(m => (m.ProviderId.ToString(), m.ProviderModelId))
                             .ToList();
                         
                         // Select optimal provider based on current metrics
@@ -100,7 +100,7 @@ namespace ConduitLLM.Http.Controllers
                         if (optimal.HasValue)
                         {
                             var selectedMapping = imageProviders.FirstOrDefault(m => 
-                                m.ProviderType.ToString() == optimal.Value.Provider && 
+                                m.ProviderId.ToString() == optimal.Value.Provider && 
                                 m.ProviderModelId == optimal.Value.Model);
                             
                             if (selectedMapping != null)
@@ -131,6 +131,10 @@ namespace ConduitLLM.Http.Controllers
                     
                     _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
                         modelName, supportsImageGen);
+                    
+                    // Store provider info for usage tracking
+                    HttpContext.Items["ProviderId"] = mapping.ProviderId;
+                    HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
                 }
                 else
                 {
@@ -263,7 +267,7 @@ namespace ConduitLLM.Http.Controllers
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderType.ToString() ?? "unknown",
+                                    ["provider"] = mapping?.ProviderId.ToString() ?? "unknown",
                                     ["originalUrl"] = imageData.Url ?? ""
                                 }
                             };
@@ -292,7 +296,7 @@ namespace ConduitLLM.Http.Controllers
                                     {
                                         ContentType = contentType,
                                         SizeBytes = storageResult.SizeBytes,
-                                        Provider = mapping?.ProviderType.ToString() ?? "unknown",
+                                        Provider = mapping?.ProviderId.ToString() ?? "unknown",
                                         Model = request.Model ?? "unknown",
                                         Prompt = request.Prompt,
                                         StorageUrl = storageResult.Url,
@@ -457,7 +461,7 @@ namespace ConduitLLM.Http.Controllers
                 generationRequest = generationRequest with { TaskId = taskId };
 
                 // Publish the event directly to MassTransit for immediate processing
-                await _publishEndpoint.Publish(generationRequest);
+                PublishEventFireAndForget(generationRequest, "create async image generation", new { TaskId = taskId, Model = modelName });
                 
                 _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event", 
                     taskId, modelName);
@@ -670,14 +674,14 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Publish cancellation event
-                await _publishEndpoint.Publish(new ImageGenerationCancelled
+                PublishEventFireAndForget(new ImageGenerationCancelled
                 {
                     TaskId = taskId,
                     VirtualKeyId = taskVirtualKeyId,
                     Reason = "Cancelled by user request",
                     CancelledAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()
-                });
+                }, "cancel image generation", new { TaskId = taskId });
 
                 _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
 

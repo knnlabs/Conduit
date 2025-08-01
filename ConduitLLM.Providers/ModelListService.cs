@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -42,45 +42,49 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Gets a list of available model IDs from a provider.
         /// </summary>
-        /// <param name="providerCredential">The provider credentials to use.</param>
+        /// <param name="provider">The provider entity.</param>
+        /// <param name="keyCredential">The key credential to use for authentication.</param>
         /// <param name="forceRefresh">Whether to bypass cache and force a refresh.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A list of available model IDs.</returns>
         public async Task<List<string>> GetModelsForProviderAsync(
-            ProviderCredentials providerCredential,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             bool forceRefresh = false,
             CancellationToken cancellationToken = default)
         {
-            if (providerCredential == null)
+            if (provider == null)
             {
-                throw new ArgumentNullException(nameof(providerCredential));
+                throw new ArgumentNullException(nameof(provider));
             }
 
-            // Create a cache key based on provider name
-            string cacheKey = $"provider_models:{providerCredential.ProviderType}";
+            if (keyCredential == null)
+            {
+                throw new ArgumentNullException(nameof(keyCredential));
+            }
+
+            // Create a cache key based on provider ID
+            string cacheKey = $"provider_models:{provider.Id}";
 
             // Try to get from cache if not forcing a refresh
             if (!forceRefresh && _cache.TryGetValue(cacheKey, out List<string>? cachedModels) && cachedModels != null)
             {
-                _logger.LogDebug("Returning cached models for provider {ProviderName}",
-                    providerCredential.ProviderType);
+                _logger.LogDebug("Returning cached models for provider {ProviderName} (ID: {ProviderId})",
+                    provider.ProviderName, provider.Id);
                 return cachedModels;
             }
 
             try
             {
-                _logger.LogInformation("Fetching models from provider {ProviderName}",
-                    providerCredential.ProviderType);
+                _logger.LogInformation("Fetching models from provider {ProviderName} (ID: {ProviderId})",
+                    provider.ProviderName, provider.Id);
 
-                // Convert ProviderType enum to provider ID
-                var providerId = (int)providerCredential.ProviderType;
-                
                 // Create a client using the provider ID
-                var client = _clientFactory.GetClientByProviderId(providerId);
+                var client = _clientFactory.GetClientByProviderId(provider.Id);
 
                 // Get models from the provider API
                 var models = await client.ListModelsAsync(
-                    providerCredential.ApiKey,
+                    keyCredential.ApiKey,
                     cancellationToken);
 
                 // Cache the results
@@ -90,8 +94,8 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}",
-                    providerCredential.ProviderType);
+                _logger.LogError(ex, "Error retrieving models for provider {ProviderName} (ID: {ProviderId})",
+                    provider.ProviderName, provider.Id);
                 throw;
             }
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -22,9 +23,11 @@ namespace ConduitLLM.Configuration.Tests.Migrations
         {
             var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.TransactionIgnoredWarning))
                 .Options;
 
             _context = new ConfigurationDbContext(options);
+            _context.IsTestEnvironment = true;
             _costRepository = new AudioCostRepository(_context);
             _usageRepository = new AudioUsageLogRepository(_context);
         }
@@ -33,9 +36,13 @@ namespace ConduitLLM.Configuration.Tests.Migrations
         public async Task AudioCost_Should_Store_And_Retrieve_ProviderType()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var cost = new AudioCost
             {
-                Provider = ProviderType.OpenAI,
+                ProviderId = provider.Id,
                 OperationType = "transcription",
                 Model = "whisper-1",
                 CostUnit = "minute",
@@ -50,7 +57,7 @@ namespace ConduitLLM.Configuration.Tests.Migrations
 
             // Assert
             Assert.NotNull(retrieved);
-            Assert.Equal(ProviderType.OpenAI, retrieved.Provider);
+            Assert.Equal(provider.Id, retrieved.ProviderId);
             Assert.Equal("transcription", retrieved.OperationType);
         }
 
@@ -58,10 +65,14 @@ namespace ConduitLLM.Configuration.Tests.Migrations
         public async Task AudioUsageLog_Should_Store_And_Retrieve_ProviderType()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.ElevenLabs, ProviderName = "ElevenLabs" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var usageLog = new AudioUsageLog
             {
                 VirtualKey = "test-key-123",
-                Provider = ProviderType.ElevenLabs,
+                ProviderId = provider.Id,
                 OperationType = "tts",
                 Model = "eleven_monolingual_v1",
                 CharacterCount = 1000,
@@ -79,7 +90,7 @@ namespace ConduitLLM.Configuration.Tests.Migrations
 
             // Assert
             Assert.NotNull(retrieved);
-            Assert.Equal(ProviderType.ElevenLabs, retrieved.Provider);
+            Assert.Equal(provider.Id, retrieved.ProviderId);
             Assert.Equal("tts", retrieved.OperationType);
             Assert.Equal(0.18m, retrieved.Cost);
         }
@@ -88,11 +99,16 @@ namespace ConduitLLM.Configuration.Tests.Migrations
         public async Task Repository_Should_Query_By_ProviderType()
         {
             // Arrange
+            var openAiProvider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            var googleProvider = new Provider { ProviderType = ProviderType.GoogleCloud, ProviderName = "Google Cloud" };
+            _context.Providers.AddRange(openAiProvider, googleProvider);
+            await _context.SaveChangesAsync();
+
             var costs = new[]
             {
                 new AudioCost
                 {
-                    Provider = ProviderType.OpenAI,
+                    ProviderId = openAiProvider.Id,
                     OperationType = "transcription",
                     Model = "whisper-1",
                     CostUnit = "minute",
@@ -102,7 +118,7 @@ namespace ConduitLLM.Configuration.Tests.Migrations
                 },
                 new AudioCost
                 {
-                    Provider = ProviderType.GoogleCloud,
+                    ProviderId = googleProvider.Id,
                     OperationType = "transcription",
                     Model = "default",
                     CostUnit = "minute",
@@ -112,7 +128,7 @@ namespace ConduitLLM.Configuration.Tests.Migrations
                 },
                 new AudioCost
                 {
-                    Provider = ProviderType.OpenAI,
+                    ProviderId = openAiProvider.Id,
                     OperationType = "tts",
                     Model = "tts-1",
                     CostUnit = "character",
@@ -128,23 +144,27 @@ namespace ConduitLLM.Configuration.Tests.Migrations
             }
 
             // Act
-            var openAiCosts = await _costRepository.GetByProviderAsync(ProviderType.OpenAI);
-            var googleCosts = await _costRepository.GetByProviderAsync(ProviderType.GoogleCloud);
+            var openAiCosts = await _costRepository.GetByProviderAsync(openAiProvider.Id);
+            var googleCosts = await _costRepository.GetByProviderAsync(googleProvider.Id);
 
             // Assert
             Assert.Equal(2, openAiCosts.Count);
             Assert.Single(googleCosts);
-            Assert.All(openAiCosts, c => Assert.Equal(ProviderType.OpenAI, c.Provider));
-            Assert.All(googleCosts, c => Assert.Equal(ProviderType.GoogleCloud, c.Provider));
+            Assert.All(openAiCosts, c => Assert.Equal(openAiProvider.Id, c.ProviderId));
+            Assert.All(googleCosts, c => Assert.Equal(googleProvider.Id, c.ProviderId));
         }
 
         [Fact]
         public async Task GetCurrentCost_Should_Work_With_ProviderType()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.AWSTranscribe, ProviderName = "AWS Transcribe" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var cost = new AudioCost
             {
-                Provider = ProviderType.AWSTranscribe,
+                ProviderId = provider.Id,
                 OperationType = "transcription",
                 Model = "standard",
                 CostUnit = "second",
@@ -158,14 +178,14 @@ namespace ConduitLLM.Configuration.Tests.Migrations
 
             // Act
             var currentCost = await _costRepository.GetCurrentCostAsync(
-                ProviderType.AWSTranscribe, 
+                provider.Id, 
                 "transcription", 
                 "standard"
             );
 
             // Assert
             Assert.NotNull(currentCost);
-            Assert.Equal(ProviderType.AWSTranscribe, currentCost.Provider);
+            Assert.Equal(provider.Id, currentCost.ProviderId);
             Assert.Equal(0.00040m, currentCost.CostPerUnit);
         }
 
@@ -177,9 +197,13 @@ namespace ConduitLLM.Configuration.Tests.Migrations
         public async Task All_Audio_Providers_Should_Be_Supported(ProviderType providerType)
         {
             // Arrange
+            var provider = new Provider { ProviderType = providerType, ProviderName = providerType.ToString() };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var cost = new AudioCost
             {
-                Provider = providerType,
+                ProviderId = provider.Id,
                 OperationType = "test",
                 Model = "test-model",
                 CostUnit = "unit",
@@ -194,7 +218,7 @@ namespace ConduitLLM.Configuration.Tests.Migrations
 
             // Assert
             Assert.NotNull(retrieved);
-            Assert.Equal(providerType, retrieved.Provider);
+            Assert.Equal(provider.Id, retrieved.ProviderId);
         }
 
         public void Dispose()

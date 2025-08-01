@@ -1,5 +1,4 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
@@ -10,13 +9,10 @@ import type {
   DiscoveredModel,
   CapabilityTestResult,
   ModelMappingSuggestion,
-  ModelRoutingInfo,
   BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';
 
-// Type aliases for better readability - using generated types where available
-type BulkModelMappingRequest = components['schemas']['ConduitLLM.Configuration.DTOs.BulkModelMappingRequest'];
 
 /**
  * Type-safe Model Mappings service using native fetch
@@ -147,19 +143,6 @@ export class FetchModelMappingsService {
     );
   }
 
-  /**
-   * Get routing information for a model
-   */
-  async getRouting(modelId: string, config?: RequestConfig): Promise<ModelRoutingInfo> {
-    return this.client['get']<ModelRoutingInfo>(
-      ENDPOINTS.MODEL_MAPPINGS.ROUTING(modelId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Get model mapping suggestions
@@ -182,13 +165,13 @@ export class FetchModelMappingsService {
     request: BulkMappingRequest,
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
-    const apiRequest: BulkModelMappingRequest = {
-      mappings: request.mappings as unknown as BulkModelMappingRequest['mappings'], // Type compatibility
+    const apiRequest = {
+      mappings: request.mappings,
       replaceExisting: request.replaceExisting ?? false,
       validateProviderModels: true,
     };
 
-    return this.client['post']<BulkMappingResponse, BulkModelMappingRequest>(
+    return this.client['post']<BulkMappingResponse, typeof apiRequest>(
       ENDPOINTS.MODEL_MAPPINGS.BULK,
       apiRequest,
       {

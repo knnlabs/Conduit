@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Configuration.DTOs
@@ -14,14 +15,23 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// List of model aliases that use this cost configuration
+        /// </summary>
+        /// <remarks>
+        /// This is populated from the ModelCostMappings relationship.
+        /// Shows which models are associated with this cost configuration.
+        /// </remarks>
+        public List<string> AssociatedModelAliases { get; set; } = new List<string>();
 
         /// <summary>
         /// Cost per input token for chat/completion requests in USD
@@ -213,14 +223,22 @@ namespace ConduitLLM.Configuration.DTOs
     public class CreateModelCostDto
     {
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// List of model mapping IDs to associate with this cost
+        /// </summary>
+        /// <remarks>
+        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
+        /// </remarks>
+        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
 
         /// <summary>
         /// Model type for categorization
@@ -386,14 +404,22 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// List of model mapping IDs to associate with this cost
+        /// </summary>
+        /// <remarks>
+        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
+        /// </remarks>
+        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
 
         /// <summary>
         /// Model type for categorization

@@ -36,13 +36,15 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTimeoutProvider = new Mock<IOperationTimeoutProvider>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
             _mockLogger = CreateLogger<VideosController>();
+            var mockModelMappingService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
 
             _controller = new VideosController(
                 _mockVideoService.Object,
                 _mockTaskService.Object,
                 _mockTimeoutProvider.Object,
                 _mockTaskRegistry.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                mockModelMappingService.Object);
 
             // Setup default controller context
             _controller.ControllerContext = CreateControllerContext();

@@ -12,11 +12,12 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients about provider health status changes.
         /// </summary>
-        /// <param name="provider">The provider name.</param>
+        /// <param name="providerId">The provider ID.</param>
+        /// <param name="providerName">The provider name.</param>
         /// <param name="status">The health status.</param>
         /// <param name="responseTime">The response time if available.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        Task ProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime);
+        Task ProviderHealthChanged(int providerId, string providerName, HealthStatus status, TimeSpan? responseTime);
 
         /// <summary>
         /// Sends rate limit warnings to connected clients.
@@ -62,6 +63,7 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients of model capabilities discovery.
         /// </summary>
+        /// <param name="providerId">The provider ID.</param>
         /// <param name="providerName">The provider name.</param>
         /// <param name="modelCount">Total number of models.</param>
         /// <param name="embeddingCount">Number of embedding models.</param>
@@ -69,7 +71,7 @@ namespace ConduitLLM.Http.Hubs
         /// <param name="imageGenCount">Number of image generation models.</param>
         /// <param name="videoGenCount">Number of video generation models.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
+        Task ModelCapabilitiesDiscovered(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
 
         /// <summary>
         /// Notifies clients of model availability change.

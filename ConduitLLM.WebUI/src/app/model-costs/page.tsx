@@ -7,12 +7,19 @@ import { useRouter } from 'next/navigation';
 import { ModelCostsTable } from './components/ModelCostsTable';
 import { ImportModelCostsModal } from './components/ImportModelCostsModal';
 import { useModelCostsApi } from './hooks/useModelCostsApi';
+import { useProviders } from '@/hooks/useProviderApi';
+import { useModelMappings } from '@/hooks/useModelMappingsApi';
 
 export default function ModelCostsPage() {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const { exportModelCosts, isExporting } = useModelCostsApi();
+  const { providers } = useProviders();
+  const { mappings } = useModelMappings();
+
+  const hasProviders = providers.length > 0;
+  const hasModelMappings = mappings.length > 0;
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -71,6 +78,8 @@ export default function ModelCostsPage() {
         <ModelCostsTable 
           key={refreshKey} 
           onRefresh={handleRefresh}
+          hasProviders={hasProviders}
+          hasModelMappings={hasModelMappings}
         />
       </Stack>
       

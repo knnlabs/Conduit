@@ -1,8 +1,8 @@
 import { CreateModelCostDto } from '../types/modelCost';
 
 export interface ParsedModelCost {
-  modelPattern: string;
-  provider: string;
+  costName: string;
+  modelAliases: string[];
   modelType: string;
   inputCostPer1K: number;
   outputCostPer1K: number;
@@ -11,7 +11,11 @@ export interface ParsedModelCost {
   embeddingCostPer1K?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
+  audioCostPerKCharacters?: number;
+  audioInputCostPerMinute?: number;
+  audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
+  videoResolutionMultipliers?: string;
   batchProcessingMultiplier?: number;
   supportsBatchProcessing: boolean;
   imageQualityMultipliers?: string;
@@ -65,7 +69,7 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
 
   // Parse headers
   const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
-  const requiredHeaders = ['model pattern', 'provider', 'model type'];
+  const requiredHeaders = ['cost name', 'associated model aliases', 'model type'];
   
   for (const required of requiredHeaders) {
     if (!headers.some(h => h.includes(required))) {
@@ -83,8 +87,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     // Handle malformed rows
     if (values.length !== headers.length) {
       parsed.push({
-        modelPattern: '',
-        provider: '',
+        costName: '',
+        modelAliases: [],
         modelType: '',
         inputCostPer1K: 0,
         outputCostPer1K: 0,
@@ -114,8 +118,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     };
 
     const cost: ParsedModelCost = {
-      modelPattern: row['model pattern']?.trim() ?? '',
-      provider: row['provider']?.trim() ?? '',
+      costName: row['cost name']?.trim() ?? '',
+      modelAliases: row['associated model aliases']?.split(',').map(a => a.trim()).filter(a => a) ?? [],
       modelType: row['model type']?.trim().toLowerCase() ?? 'chat',
       inputCostPer1K: parseNumericValue(row['input cost (per 1k tokens)'], 0) ?? 0,
       outputCostPer1K: parseNumericValue(row['output cost (per 1k tokens)'], 0) ?? 0,
@@ -124,7 +128,11 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       embeddingCostPer1K: parseNumericValue(row['embedding cost (per 1k tokens)']),
       imageCostPerImage: parseNumericValue(row['image cost (per image)']),
       audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
+      audioCostPerKCharacters: parseNumericValue(row['audio cost (per 1k characters)']),
+      audioInputCostPerMinute: parseNumericValue(row['audio input cost (per minute)']),
+      audioOutputCostPerMinute: parseNumericValue(row['audio output cost (per minute)']),
       videoCostPerSecond: parseNumericValue(row['video cost (per second)']),
+      videoResolutionMultipliers: row['video resolution multipliers']?.trim(),
       batchProcessingMultiplier: parseNumericValue(row['batch processing multiplier']),
       supportsBatchProcessing: row['supports batch processing']?.toLowerCase() === 'yes' || row['supports batch processing']?.toLowerCase() === 'true',
       imageQualityMultipliers: row['image quality multipliers']?.trim(),
@@ -141,8 +149,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
 
     // Validate row
     const errors: string[] = [];
-    if (!cost.modelPattern) errors.push('Model pattern is required');
-    if (!cost.provider) errors.push('Provider is required');
+    if (!cost.costName) errors.push('Cost name is required');
+    if (cost.modelAliases.length === 0) errors.push('At least one model alias is required');
     if (!['chat', 'embedding', 'image', 'audio', 'video'].includes(cost.modelType)) {
       errors.push(`Invalid model type: ${cost.modelType}. Must be one of: chat, embedding, image, audio, video`);
     }
@@ -155,7 +163,10 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.cachedInputWriteCostPer1K !== undefined && cost.cachedInputWriteCostPer1K < 0) errors.push('Cache write cost cannot be negative');
     if (cost.embeddingCostPer1K !== undefined && cost.embeddingCostPer1K < 0) errors.push('Embedding cost cannot be negative');
     if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
-    if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost cannot be negative');
+    if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost per minute cannot be negative');
+    if (cost.audioCostPerKCharacters !== undefined && cost.audioCostPerKCharacters < 0) errors.push('Audio cost per 1k characters cannot be negative');
+    if (cost.audioInputCostPerMinute !== undefined && cost.audioInputCostPerMinute < 0) errors.push('Audio input cost per minute cannot be negative');
+    if (cost.audioOutputCostPerMinute !== undefined && cost.audioOutputCostPerMinute < 0) errors.push('Audio output cost per minute cannot be negative');
     if (cost.videoCostPerSecond !== undefined && cost.videoCostPerSecond < 0) errors.push('Video cost cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
@@ -184,6 +195,28 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
         errors.push('Image quality multipliers must be valid JSON');
       }
     }
+
+    // Validate video resolution multipliers JSON
+    if (cost.videoResolutionMultipliers) {
+      try {
+        const multipliers = JSON.parse(cost.videoResolutionMultipliers) as unknown;
+        if (typeof multipliers !== 'object' || Array.isArray(multipliers)) {
+          errors.push('Video resolution multipliers must be a JSON object');
+        } else {
+          // Validate each multiplier value
+          const multipliersObj = multipliers as Record<string, unknown>;
+          for (const [key, value] of Object.entries(multipliersObj)) {
+            if (typeof value !== 'number' || value < 0) {
+              errors.push(`Video resolution multiplier for "${key}" must be a positive number`);
+            } else if (value > 10) {
+              errors.push(`Video resolution multiplier for "${key}" seems unreasonably high (>10x)`);
+            }
+          }
+        }
+      } catch {
+        errors.push('Video resolution multipliers must be valid JSON');
+      }
+    }
     
     // Reasonable upper bounds validation
     if (cost.inputCostPer1K > 1000) errors.push('Input cost seems unreasonably high (>$1000 per 1K tokens)');
@@ -196,13 +229,13 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
   }
 
   // Check for duplicates
-  const seenPatterns = new Set<string>();
+  const seenCostNames = new Set<string>();
   parsed.forEach(cost => {
-    if (cost.isValid && seenPatterns.has(cost.modelPattern)) {
+    if (cost.isValid && seenCostNames.has(cost.costName)) {
       cost.isValid = false;
-      cost.errors.push(`Duplicate model pattern: ${cost.modelPattern}`);
+      cost.errors.push(`Duplicate cost name: ${cost.costName}`);
     } else if (cost.isValid) {
-      seenPatterns.add(cost.modelPattern);
+      seenCostNames.add(cost.costName);
     }
   });
 
@@ -213,14 +246,14 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
   return parsedData
     .filter(d => d.isValid)
     .map(cost => ({
-      modelIdPattern: cost.modelPattern,
-      providerName: cost.provider,
+      costName: cost.costName,
+      modelProviderMappingIds: [], // Will be resolved during import
       modelType: cost.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
-      inputTokenCost: cost.inputCostPer1K * 1000000, // Convert to per million tokens
-      outputTokenCost: cost.outputCostPer1K * 1000000,
-      cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K * 1000000 : undefined,
-      cachedInputWriteTokenCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K * 1000000 : undefined,
-      embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K * 1000000 : undefined,
+      inputTokenCost: cost.inputCostPer1K / 1000, // Convert to per token
+      outputTokenCost: cost.outputCostPer1K / 1000,
+      cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K / 1000 : undefined,
+      cachedInputWriteCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K / 1000 : undefined,
+      embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K / 1000 : undefined,
       imageCostPerImage: cost.imageCostPerImage,
       audioCostPerMinute: cost.audioCostPerMinute,
       videoCostPerSecond: cost.videoCostPerSecond,
@@ -232,7 +265,7 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       defaultInferenceSteps: cost.defaultInferenceSteps,
       priority: cost.priority,
       description: cost.description,
-    }));
+    } as CreateModelCostDto));
 };
 
 export const downloadFile = (blob: Blob, filename: string) => {

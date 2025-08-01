@@ -39,9 +39,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public decimal? BudgetPercentage { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider type.
+        /// Gets or sets the provider name.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public string Provider { get; set; } = string.Empty;
 
 
         /// <summary>

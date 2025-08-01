@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 
 using Microsoft.Extensions.Logging;
@@ -52,92 +53,27 @@ namespace ConduitLLM.Providers
         /// </summary>
         protected readonly string BaseUrl;
 
-        /// <summary>
-        /// Gets the static list of fallback models for providers where the models endpoint may not be available.
-        /// </summary>
-        /// <remarks>
-        /// This is used when the provider doesn't support the standard /models endpoint or when it fails.
-        /// Derived classes can override <see cref="GetFallbackModels"/> to provide provider-specific lists.
-        /// </remarks>
-        protected static readonly Dictionary<string, List<InternalModels.ExtendedModelInfo>> ProviderFallbackModels = new()
-        {
-            ["openai"] = new List<InternalModels.ExtendedModelInfo>
-            {
-                // GPT-4 Vision models
-                CreateVisionCapableModel("gpt-4o", "openai", "gpt-4o"),
-                CreateVisionCapableModel("gpt-4-vision", "openai", "gpt-4-vision"),
-                CreateVisionCapableModel("gpt-4-vision-preview", "openai", "gpt-4-vision-preview"),
-                CreateVisionCapableModel("gpt-4-turbo", "openai", "gpt-4-turbo"),
-                
-                // Standard GPT models
-                InternalModels.ExtendedModelInfo.Create("gpt-4", "openai", "gpt-4"),
-                InternalModels.ExtendedModelInfo.Create("gpt-3.5-turbo", "openai", "gpt-3.5-turbo"),
-                
-                // Embeddings
-                InternalModels.ExtendedModelInfo.Create("text-embedding-3-large", "openai", "text-embedding-3-large"),
-                InternalModels.ExtendedModelInfo.Create("text-embedding-3-small", "openai", "text-embedding-3-small"),
-                
-                // Image generation
-                InternalModels.ExtendedModelInfo.Create("dall-e-3", "openai", "dall-e-3")
-            },
-            ["mistral"] = new List<InternalModels.ExtendedModelInfo>
-            {
-                InternalModels.ExtendedModelInfo.Create("mistral-tiny", "mistral", "mistral-tiny"),
-                InternalModels.ExtendedModelInfo.Create("mistral-small", "mistral", "mistral-small"),
-                InternalModels.ExtendedModelInfo.Create("mistral-medium", "mistral", "mistral-medium"),
-                InternalModels.ExtendedModelInfo.Create("mistral-large-latest", "mistral", "mistral-large-latest"),
-                InternalModels.ExtendedModelInfo.Create("mistral-embed", "mistral", "mistral-embed")
-            },
-            ["groq"] = new List<InternalModels.ExtendedModelInfo>
-            {
-                InternalModels.ExtendedModelInfo.Create("llama3-8b-8192", "groq", "llama3-8b-8192"),
-                InternalModels.ExtendedModelInfo.Create("llama3-70b-8192", "groq", "llama3-70b-8192"),
-                InternalModels.ExtendedModelInfo.Create("llama2-70b-4096", "groq", "llama2-70b-4096"),
-                InternalModels.ExtendedModelInfo.Create("mixtral-8x7b-32768", "groq", "mixtral-8x7b-32768"),
-                InternalModels.ExtendedModelInfo.Create("gemma-7b-it", "groq", "gemma-7b-it")
-            }
-        };
-
-        /// <summary>
-        /// Creates an ExtendedModelInfo with vision capability set to true.
-        /// </summary>
-        /// <param name="id">The model ID</param>
-        /// <param name="provider">The provider name</param>
-        /// <param name="displayName">The display name (optional)</param>
-        /// <returns>An ExtendedModelInfo with vision capability</returns>
-        private static InternalModels.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
-        {
-            var modelInfo = InternalModels.ExtendedModelInfo.Create(id, provider, displayName ?? id);
-
-            // Set the vision capability
-            if (modelInfo.Capabilities == null)
-            {
-                modelInfo.Capabilities = new InternalModels.ModelCapabilities();
-            }
-
-            modelInfo.Capabilities.Vision = true;
-
-            return modelInfo;
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenAICompatibleClient"/> class.
         /// </summary>
-        /// <param name="credentials">The provider credentials.</param>
+        /// <param name="provider">The provider entity containing configuration.</param>
+        /// <param name="primaryKeyCredential">The primary key credential to use for requests.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="providerName">The name of this LLM provider.</param>
         /// <param name="baseUrl">The base URL for API requests.</param>
         protected OpenAICompatibleClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential primaryKeyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             string? baseUrl = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
+            : base(provider, primaryKeyCredential, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
             BaseUrl = baseUrl ?? "https://api.openai.com/v1";
         }
@@ -418,8 +354,8 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to retrieve models from {Provider} API. Returning known models.", ProviderName);
-                return GetFallbackModels();
+                Logger.LogError(ex, "Failed to retrieve models from {Provider} API.", ProviderName);
+                throw;
             }
         }
 
@@ -628,27 +564,6 @@ namespace ConduitLLM.Providers
             return $"{BaseUrl}/images/generations";
         }
 
-        /// <summary>
-        /// Gets a fallback list of models for the provider.
-        /// </summary>
-        /// <returns>A list of known models for the provider.</returns>
-        /// <remarks>
-        /// This method is called when the models endpoint fails or is not available.
-        /// Derived classes can override this method to provide a more specific list.
-        /// </remarks>
-        protected virtual List<InternalModels.ExtendedModelInfo> GetFallbackModels()
-        {
-            if (ProviderFallbackModels.TryGetValue(ProviderName.ToLowerInvariant(), out var models))
-            {
-                return models;
-            }
-
-            // Generic fallback for unknown providers
-            return new List<InternalModels.ExtendedModelInfo>
-            {
-                InternalModels.ExtendedModelInfo.Create(ProviderModelId, ProviderName, ProviderModelId)
-            };
-        }
 
         /// <summary>
         /// Maps the provider-agnostic request to OpenAI format.
@@ -1076,7 +991,9 @@ namespace ConduitLLM.Providers
                 Model = originalModelAlias ?? chunk.Model, // Use original alias if provided
                 SystemFingerprint = chunk.SystemFingerprint,
                 Choices = MapDynamicStreamingChoices(chunk.Choices),
-                OriginalModelAlias = originalModelAlias
+                OriginalModelAlias = originalModelAlias,
+                // Map usage data if present (typically in the final chunk)
+                Usage = HasProperty(chunk, "usage") && chunk.usage != null ? MapUsage(chunk.usage) : null
             };
         }
 

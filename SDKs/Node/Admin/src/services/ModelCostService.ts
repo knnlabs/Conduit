@@ -144,7 +144,7 @@ export class ModelCostService extends FetchBaseApiClient {
   ): Promise<ModelCostCalculation> {
     try {
       calculateCostSchema.parse({ modelId, inputTokens, outputTokens });
-    } catch (error) {
+    } catch (error: unknown) {
       throw new ValidationError('Invalid cost calculation request', { validationError: error });
     }
 
@@ -166,9 +166,9 @@ export class ModelCostService extends FetchBaseApiClient {
       inputCost,
       outputCost,
       totalCost: inputCost + outputCost,
-      currency: activeCost.currency,
-      costPerThousandInputTokens: activeCost.inputTokenCost,
-      costPerThousandOutputTokens: activeCost.outputTokenCost,
+      currency: 'USD', // Default currency as costs are stored in USD per token
+      costPerThousandInputTokens: activeCost.inputTokenCost * 1000,
+      costPerThousandOutputTokens: activeCost.outputTokenCost * 1000,
     };
   }
 
@@ -178,27 +178,9 @@ export class ModelCostService extends FetchBaseApiClient {
   }
 
   async updateCosts(models: string[], inputCost: number, outputCost: number): Promise<void> {
-    const updates = await Promise.all(
-      models.map(async (modelId) => {
-        const costs = await this.getByModel(modelId);
-        const activeCost = costs.find(c => c.isActive);
-        if (activeCost) {
-          return this.update(activeCost.id, {
-            inputTokenCost: inputCost,
-            outputTokenCost: outputCost,
-          });
-        } else {
-          return this.create({
-            modelId,
-            inputTokenCost: inputCost,
-            outputTokenCost: outputCost,
-            isActive: true,
-          });
-        }
-      })
-    );
-
-    await Promise.all(updates);
+    // This method is deprecated and needs refactoring
+    // The new model cost system requires costName and modelProviderMappingIds
+    throw new Error('updateCosts method is deprecated. Use create/update methods with proper DTOs instead.');
   }
 
   async import(modelCosts: CreateModelCostDto[]): Promise<ImportResult> {

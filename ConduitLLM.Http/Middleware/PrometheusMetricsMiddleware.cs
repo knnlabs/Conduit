@@ -54,28 +54,12 @@ namespace ConduitLLM.Http.Middleware
         {
             try
             {
-                // Check if the metrics exporter is registered
-                var exporter = context.RequestServices.GetService<PrometheusAudioMetricsExporter>();
-                if (exporter == null)
-                {
-                    _logger.LogWarning("Prometheus metrics exporter not registered");
-                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                    await context.Response.WriteAsync("Metrics exporter not available");
-                    return;
-                }
-
-                // Get metrics
-                var metrics = await exporter.GetMetricsAsync();
-
-                // Set response headers
+                // PrometheusAudioMetricsExporter removed - metrics are now exposed differently
+                // For now, return a placeholder response
                 context.Response.StatusCode = StatusCodes.Status200OK;
                 context.Response.ContentType = "text/plain; version=0.0.4; charset=utf-8";
                 context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-
-                // Write metrics
-                await context.Response.WriteAsync(metrics);
-
-                _logger.LogDebug("Served Prometheus metrics, {ByteCount} bytes", metrics.Length);
+                await context.Response.WriteAsync("# Metrics endpoint temporarily disabled during refactoring\n");
             }
             catch (Exception ex)
             {

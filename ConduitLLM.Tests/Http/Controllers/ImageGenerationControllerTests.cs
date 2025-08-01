@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
@@ -45,22 +46,22 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WithAvailableProviders_ShouldReturnOptimalChoice()
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping 
+                new ModelProviderMapping 
                 { 
                     ModelAlias = "dalle-3",
                     ProviderModelId = "dall-e-3",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 },
-                new ConduitLLM.Configuration.ModelProviderMapping 
+                new ModelProviderMapping 
                 { 
                     ModelAlias = "sd-xl",
                     ProviderModelId = "sdxl",
+                    Provider = new Provider { ProviderType = ProviderType.Replicate },
                     ProviderId = 2,
-                    ProviderType = ProviderType.Replicate,
                     SupportsImageGeneration = true
                 }
             };
@@ -115,13 +116,13 @@ namespace ConduitLLM.Tests.Http.Controllers
             var imageCount = 5;
             var maxWaitTime = 30.0;
 
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping { 
+                new ModelProviderMapping { 
                     ModelAlias = "test-model",
                     ProviderModelId = "model",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 }
             };
@@ -159,20 +160,20 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WithNoImageGenerationProviders_ShouldReturnNotFound()
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping { 
+                new ModelProviderMapping { 
                     ModelAlias = "non-image-model",
                     ProviderModelId = "model",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = false
                 },
-                new ConduitLLM.Configuration.ModelProviderMapping { 
+                new ModelProviderMapping { 
                     ModelAlias = "non-image-model",
                     ProviderModelId = "model",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 2,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = false
                 }
             };
@@ -193,13 +194,13 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WhenServiceReturnsNull_ShouldReturnServiceUnavailable()
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping { 
+                new ModelProviderMapping { 
                     ModelAlias = "test-model",
                     ProviderModelId = "model",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 }
             };
@@ -227,13 +228,13 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WhenServiceThrows_ShouldReturnInternalServerError()
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping { 
+                new ModelProviderMapping { 
                     ModelAlias = "test-model",
                     ProviderModelId = "model",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 }
             };
@@ -438,19 +439,19 @@ namespace ConduitLLM.Tests.Http.Controllers
 
         #region Private Helper Methods
 
-        private ConduitLLM.Configuration.ModelProviderMapping CreateMapping(string provider, string model) =>
-            new ConduitLLM.Configuration.ModelProviderMapping
+        private ConduitLLM.Configuration.Entities.ModelProviderMapping CreateMapping(string provider, string model) =>
+            new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 ModelAlias = model,
                 ProviderModelId = model,
-                ProviderId = 1,
-                ProviderType = provider switch
+                Provider = new Provider { ProviderType = provider switch
                 {
                     "openai" => ProviderType.OpenAI,
                     "replicate" => ProviderType.Replicate,
                     "stability" => ProviderType.Replicate, // StabilityAI models run through Replicate
                     _ => ProviderType.OpenAI
-                },
+                } },
+                ProviderId = 1,
                 SupportsImageGeneration = true
             };
 
@@ -465,14 +466,14 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WithInvalidImageCount_ShouldReturnBadRequest(int imageCount)
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping 
+                new ModelProviderMapping 
                 { 
                     ModelAlias = "dalle-3",
                     ProviderModelId = "dall-e-3",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 }
             };
@@ -505,14 +506,14 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WithInvalidMaxWaitTime_ShouldReturnBadRequest(double maxWaitTime)
         {
             // Arrange
-            var mappings = new List<ConduitLLM.Configuration.ModelProviderMapping>
+            var mappings = new List<ModelProviderMapping>
             {
-                new ConduitLLM.Configuration.ModelProviderMapping 
+                new ModelProviderMapping 
                 { 
                     ModelAlias = "dalle-3",
                     ProviderModelId = "dall-e-3",
+                    Provider = new Provider { ProviderType = ProviderType.OpenAI },
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     SupportsImageGeneration = true
                 }
             };
@@ -543,12 +544,12 @@ namespace ConduitLLM.Tests.Http.Controllers
         public async Task GetOptimalProvider_WithLargeImageCount_ShouldHandleCorrectly()
         {
             // Arrange
-            var mappings = Enumerable.Range(0, 10).Select(i => new ConduitLLM.Configuration.ModelProviderMapping
+            var mappings = Enumerable.Range(0, 10).Select(i => new ModelProviderMapping
             {
                 ModelAlias = $"model-{i}",
                 ProviderModelId = $"model-{i}",
+                Provider = new Provider { ProviderType = ProviderType.OpenAI },
                 ProviderId = i,
-                ProviderType = ProviderType.OpenAI,
                 SupportsImageGeneration = true
             }).ToList();
 

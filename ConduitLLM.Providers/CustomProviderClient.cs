@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -68,20 +69,21 @@ namespace ConduitLLM.Providers
         /// <param name="baseUrl">The base URL for API requests.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         protected CustomProviderClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             string? baseUrl = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
+            : base(provider, keyCredential, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
             BaseUrl = !string.IsNullOrEmpty(baseUrl)
                 ? baseUrl
-                : !string.IsNullOrEmpty(credentials.BaseUrl)
-                    ? credentials.BaseUrl
-                    : throw new ConfigurationException($"Base URL must be provided either directly or via BaseUrl in credentials for {ProviderName}");
+                : !string.IsNullOrEmpty(provider.BaseUrl)
+                    ? provider.BaseUrl
+                    : throw new ConfigurationException($"Base URL must be provided either directly or via BaseUrl in provider for {ProviderName}");
         }
 
         /// <summary>

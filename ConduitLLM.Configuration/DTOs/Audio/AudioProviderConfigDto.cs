@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// <summary>
         /// Associated provider credential ID.
         /// </summary>
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Provider type from the credential.
@@ -99,7 +99,7 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// Associated provider credential ID.
         /// </summary>
         [Required]
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Whether transcription is enabled for this provider.

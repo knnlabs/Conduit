@@ -20,9 +20,9 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets all model costs for a specific provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <returns>List of model costs for the specified provider</returns>
-        Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(string providerName);
+        Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(int providerId);
 
         /// <summary>
         /// Gets a model cost by ID
@@ -32,11 +32,11 @@ namespace ConduitLLM.Admin.Interfaces
         Task<ModelCostDto?> GetModelCostByIdAsync(int id);
 
         /// <summary>
-        /// Gets a model cost by model ID pattern
+        /// Gets a model cost by cost name
         /// </summary>
-        /// <param name="modelIdPattern">The model ID pattern</param>
+        /// <param name="costName">The cost name</param>
         /// <returns>The model cost, or null if not found</returns>
-        Task<ModelCostDto?> GetModelCostByPatternAsync(string modelIdPattern);
+        Task<ModelCostDto?> GetModelCostByCostNameAsync(string costName);
 
         /// <summary>
         /// Creates a new model cost
@@ -78,9 +78,9 @@ namespace ConduitLLM.Admin.Interfaces
         /// Exports model costs in the specified format
         /// </summary>
         /// <param name="format">The export format (json or csv)</param>
-        /// <param name="providerName">Optional provider name to filter by</param>
+        /// <param name="providerId">Optional provider ID to filter by</param>
         /// <returns>The exported data as a string</returns>
-        Task<string> ExportModelCostsAsync(string format, string? providerName = null);
+        Task<string> ExportModelCostsAsync(string format, int? providerId = null);
 
         /// <summary>
         /// Imports model costs from data in the specified format

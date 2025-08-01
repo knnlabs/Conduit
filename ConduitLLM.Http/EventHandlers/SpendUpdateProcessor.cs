@@ -113,6 +113,44 @@ namespace ConduitLLM.Http.EventHandlers
                     _logger.LogInformation(
                         "Spend updated for virtual key {KeyId}: {PreviousSpend} + {Amount} = {NewSpend} (requestId: {RequestId})",
                         request.KeyId, previousSpend, request.Amount, newSpend, request.RequestId);
+                    
+                    // Check spend thresholds if budget is configured
+                    if (virtualKey.MaxBudget.HasValue && virtualKey.MaxBudget.Value > 0)
+                    {
+                        var budgetLimit = virtualKey.MaxBudget.Value;
+                        var percentageUsed = (newSpend / budgetLimit) * 100;
+                        
+                        // Check if exceeded
+                        if (newSpend > budgetLimit)
+                        {
+                            await _publishEndpoint.Publish(new SpendThresholdExceeded
+                            {
+                                VirtualKeyId = virtualKey.Id,
+                                VirtualKeyHash = virtualKey.KeyHash,
+                                KeyName = virtualKey.KeyName,
+                                CurrentSpend = newSpend,
+                                MaxBudget = budgetLimit,
+                                AmountOver = newSpend - budgetLimit,
+                                BudgetDuration = virtualKey.BudgetDuration,
+                                ExceededAt = DateTime.UtcNow,
+                                KeyDisabled = false, // We don't auto-disable in this handler
+                                CorrelationId = request.CorrelationId
+                            });
+                            
+                            _logger.LogWarning(
+                                "Virtual key {KeyId} ({KeyName}) has exceeded budget: {CurrentSpend:C} > {MaxBudget:C}",
+                                virtualKey.Id, virtualKey.KeyName, newSpend, budgetLimit);
+                        }
+                        // Check if approaching (80% and 90% thresholds)
+                        else if (percentageUsed >= 80 && previousSpend / budgetLimit * 100 < 80)
+                        {
+                            await PublishThresholdApproaching(virtualKey, newSpend, budgetLimit, 80, request.CorrelationId);
+                        }
+                        else if (percentageUsed >= 90 && previousSpend / budgetLimit * 100 < 90)
+                        {
+                            await PublishThresholdApproaching(virtualKey, newSpend, budgetLimit, 90, request.CorrelationId);
+                        }
+                    }
                 }
                 else
                 {
@@ -127,6 +165,44 @@ namespace ConduitLLM.Http.EventHandlers
                     request.KeyId, request.Amount, request.RequestId);
                 throw; // Re-throw to trigger MassTransit retry logic
             }
+        }
+        
+        /// <summary>
+        /// Publishes a spend threshold approaching event
+        /// </summary>
+        private async Task PublishThresholdApproaching(ConduitLLM.Configuration.Entities.VirtualKey virtualKey, decimal currentSpend, decimal maxBudget, 
+            int thresholdPercentage, string correlationId)
+        {
+            DateTime? budgetResetDate = null;
+            if (virtualKey.BudgetStartDate.HasValue && !string.IsNullOrEmpty(virtualKey.BudgetDuration))
+            {
+                budgetResetDate = virtualKey.BudgetDuration?.ToLower() switch
+                {
+                    "daily" => virtualKey.BudgetStartDate.Value.AddDays(1),
+                    "weekly" => virtualKey.BudgetStartDate.Value.AddDays(7),
+                    "monthly" => virtualKey.BudgetStartDate.Value.AddMonths(1),
+                    _ => null
+                };
+            }
+            
+            await _publishEndpoint.Publish(new SpendThresholdApproaching
+            {
+                VirtualKeyId = virtualKey.Id,
+                VirtualKeyHash = virtualKey.KeyHash,
+                KeyName = virtualKey.KeyName,
+                CurrentSpend = currentSpend,
+                MaxBudget = maxBudget,
+                PercentageUsed = (currentSpend / maxBudget) * 100,
+                ThresholdPercentage = thresholdPercentage,
+                BudgetDuration = virtualKey.BudgetDuration,
+                BudgetStartDate = virtualKey.BudgetStartDate,
+                BudgetResetDate = budgetResetDate,
+                CorrelationId = correlationId
+            });
+            
+            _logger.LogWarning(
+                "Virtual key {KeyId} ({KeyName}) is approaching budget threshold: {PercentageUsed:F1}% of {MaxBudget:C} used",
+                virtualKey.Id, virtualKey.KeyName, (currentSpend / maxBudget) * 100, maxBudget);
         }
     }
 }

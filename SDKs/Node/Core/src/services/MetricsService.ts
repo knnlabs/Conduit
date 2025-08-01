@@ -156,18 +156,31 @@ export class MetricsService {
   }
 
   /**
-   * Gets health status for a specific provider
+   * Gets health status for a specific provider by ID
+   * 
+   * @param providerId - The ID of the provider
+   * @returns Promise<ProviderHealthStatus | null> Provider health status, or null if not found
+   */
+  async getProviderHealthById(providerId: number): Promise<ProviderHealthStatus | null> {
+    if (!providerId || providerId <= 0) {
+      throw new Error('Valid provider ID is required');
+    }
+
+    await this.getProviderHealth();
+    // Note: This requires the backend to include provider ID in health status
+    // For now, this is a stub implementation
+    throw new Error('Provider health by ID is not yet implemented. Backend needs to include provider ID in health status.');
+  }
+
+  /**
+   * @deprecated Provider names are no longer unique identifiers. Use getProviderHealthById instead.
+   * Gets health status for a specific provider by name
    * 
    * @param providerName - The name of the provider
    * @returns Promise<ProviderHealthStatus | null> Provider health status, or null if not found
    */
-  async getProviderHealthByName(providerName: string): Promise<ProviderHealthStatus | null> {
-    if (!providerName?.trim()) {
-      throw new Error('Provider name cannot be null or empty');
-    }
-
-    const allProviders = await this.getProviderHealth();
-    return allProviders.find(p => p.providerType.toString() === providerName.toLowerCase()) ?? null;
+  async getProviderHealthByName(): Promise<ProviderHealthStatus | null> {
+    throw new Error('Provider names are no longer unique identifiers. Use getProviderHealthById with provider ID instead.');
   }
 
   /**

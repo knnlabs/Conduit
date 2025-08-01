@@ -37,7 +37,7 @@ import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/expo
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
 interface ProviderWithHealth extends ProviderCredentialDto {
@@ -45,7 +45,6 @@ interface ProviderWithHealth extends ProviderCredentialDto {
   lastHealthCheck?: string;
   models?: string[];
   endpoint?: string;
-  providerName?: string;
 }
 
 export default function ProvidersPage() {
@@ -56,7 +55,7 @@ export default function ProvidersPage() {
   const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [testingProviders, setTestingProviders] = useState<Set<string>>(new Set());
+  const [testingProviders, setTestingProviders] = useState<Set<number>>(new Set());
 
   // Fetch providers on mount
   useEffect(() => {
@@ -90,7 +89,7 @@ export default function ProvidersPage() {
     }
   };
 
-  const handleTestProvider = async (providerId: string) => {
+  const handleTestProvider = async (providerId: number) => {
     setTestingProviders(prev => new Set(prev).add(providerId));
     try {
       const response = await fetch(`/api/providers/${providerId}/test-connection`, {
@@ -124,7 +123,7 @@ export default function ProvidersPage() {
     }
   };
 
-  const handleDelete = async (providerId: string) => {
+  const handleDelete = async (providerId: number) => {
     try {
       const response = await fetch(`/api/providers/${providerId}`, {
         method: 'DELETE',
@@ -152,23 +151,14 @@ export default function ProvidersPage() {
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
-    try {
-      const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
-      const displayName = getProviderDisplayName(providerType);
-      
-      return (
-        displayName.toLowerCase().includes(query) ||
-        (provider.providerName?.toLowerCase().includes(query) ?? false) ||
-        (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
-        (provider.endpoint?.toLowerCase().includes(query) ?? false)
-      );
-    } catch {
-      // If we can't get provider type, just check ID and endpoint
-      return (
-        (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
-        (provider.endpoint?.toLowerCase().includes(query) ?? false)
-      );
-    }
+    const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
+    
+    return (
+      displayName.toLowerCase().includes(query) ||
+      (provider.providerName?.toLowerCase().includes(query) ?? false) ||
+      (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
+      (provider.baseUrl?.toLowerCase().includes(query) ?? false)
+    );
   });
 
   // Use pagination hook
@@ -205,33 +195,18 @@ export default function ProvidersPage() {
     }
 
     const exportData = filteredProviders.map((provider) => {
-      try {
-        const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
-        const displayName = getProviderDisplayName(providerType);
-        
-        return {
-          name: provider.providerName ?? displayName,
-          type: displayName,
-          status: provider.isEnabled ? 'Enabled' : 'Disabled',
-          health: provider.healthStatus,
-          endpoint: provider.endpoint ?? '',
-          models: provider.models?.join('; ') ?? '',
-          lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-          createdAt: formatDateForExport(provider.createdAt),
-        };
-      } catch {
-        // Fallback if we can't get provider type
-        return {
-          name: 'Unknown Provider',
-          type: 'Unknown',
-          status: provider.isEnabled ? 'Enabled' : 'Disabled',
-          health: provider.healthStatus,
-          endpoint: provider.endpoint ?? '',
-          models: provider.models?.join('; ') ?? '',
-          lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-          createdAt: formatDateForExport(provider.createdAt),
-        };
-      }
+      const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
+      
+      return {
+        name: provider.providerName ?? displayName,
+        type: displayName,
+        status: provider.isEnabled ? 'Enabled' : 'Disabled',
+        health: provider.healthStatus,
+        endpoint: provider.baseUrl ?? '',
+        models: provider.models?.join('; ') ?? '',
+        lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
+        createdAt: formatDateForExport(provider.createdAt),
+      };
     });
 
     exportToCSV(
@@ -422,8 +397,8 @@ export default function ProvidersPage() {
           <ProvidersTable 
             data={paginatedData}
             onEdit={handleEdit}
-            onTest={(providerId: string) => void handleTestProvider(providerId)}
-            onDelete={(providerId: string) => void handleDelete(providerId)}
+            onTest={(providerId: number) => void handleTestProvider(providerId)}
+            onDelete={(providerId: number) => void handleDelete(providerId)}
             testingProviders={testingProviders}
           />
           {filteredProviders.length > 0 && (

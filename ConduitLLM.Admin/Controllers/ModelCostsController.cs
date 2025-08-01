@@ -92,41 +92,41 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets model costs by provider name
+        /// Gets model costs by provider ID
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <returns>List of model costs for the specified provider</returns>
-        [HttpGet("provider/{providerName}")]
+        [HttpGet("provider/{providerId}")]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelCostsByProvider(string providerName)
+        public async Task<IActionResult> GetModelCostsByProvider(int providerId)
         {
             try
             {
-                var modelCosts = await _modelCostService.GetModelCostsByProviderAsync(providerName);
+                var modelCosts = await _modelCostService.GetModelCostsByProviderAsync(providerId);
                 return Ok(modelCosts);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
 
         /// <summary>
-        /// Gets a model cost by pattern
+        /// Gets a model cost by cost name
         /// </summary>
-        /// <param name="pattern">The model ID pattern</param>
+        /// <param name="costName">The cost name</param>
         /// <returns>The model cost</returns>
-        [HttpGet("pattern/{pattern}")]
+        [HttpGet("name/{costName}")]
         [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelCostByPattern(string pattern)
+        public async Task<IActionResult> GetModelCostByCostName(string costName)
         {
             try
             {
-                var modelCost = await _modelCostService.GetModelCostByPatternAsync(pattern);
+                var modelCost = await _modelCostService.GetModelCostByCostNameAsync(costName);
 
                 if (modelCost == null)
                 {
@@ -137,7 +137,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", pattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -314,16 +314,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Exports model costs in CSV format
         /// </summary>
-        /// <param name="provider">Optional provider name to filter by</param>
+        /// <param name="providerId">Optional provider ID to filter by</param>
         /// <returns>CSV file containing model costs</returns>
         [HttpGet("export/csv")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ExportCsv([FromQuery] string? provider = null)
+        public async Task<IActionResult> ExportCsv([FromQuery] int? providerId = null)
         {
             try
             {
-                var csvData = await _modelCostService.ExportModelCostsAsync("csv", provider);
+                var csvData = await _modelCostService.ExportModelCostsAsync("csv", providerId);
                 var bytes = Encoding.UTF8.GetBytes(csvData);
                 var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.csv";
                 
@@ -339,16 +339,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Exports model costs in JSON format
         /// </summary>
-        /// <param name="provider">Optional provider name to filter by</param>
+        /// <param name="providerId">Optional provider ID to filter by</param>
         /// <returns>JSON file containing model costs</returns>
         [HttpGet("export/json")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ExportJson([FromQuery] string? provider = null)
+        public async Task<IActionResult> ExportJson([FromQuery] int? providerId = null)
         {
             try
             {
-                var jsonData = await _modelCostService.ExportModelCostsAsync("json", provider);
+                var jsonData = await _modelCostService.ExportModelCostsAsync("json", providerId);
                 var bytes = Encoding.UTF8.GetBytes(jsonData);
                 var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
                 

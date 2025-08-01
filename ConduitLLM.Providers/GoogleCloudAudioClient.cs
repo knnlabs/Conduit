@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -39,34 +40,21 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GoogleCloudAudioClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<GoogleCloudAudioClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                EnsureGoogleCloudCredentials(credentials),
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "googlecloud",
                 defaultModels)
         {
-        }
-
-        private static ProviderCredentials EnsureGoogleCloudCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("API key is missing for Google Cloud provider.");
-            }
-
-            return credentials;
         }
 
         /// <inheritdoc />
@@ -121,10 +109,10 @@ namespace ConduitLLM.Providers
                 };
 
                 using var client = CreateHttpClient(apiKey);
-                var baseUrl = Credentials.BaseUrl ?? SpeechToTextBaseUrl;
+                var baseUrl = Provider.BaseUrl ?? SpeechToTextBaseUrl;
                 client.BaseAddress = new Uri(baseUrl);
 
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 var requestUrl = $"speech:recognize?key={effectiveApiKey}";
 
                 var response = await HttpClientHelper.SendJsonRequestAsync<GoogleCloudSpeechRequest, GoogleCloudSpeechResponse>(
@@ -236,10 +224,10 @@ namespace ConduitLLM.Providers
                 };
 
                 using var client = CreateHttpClient(apiKey);
-                var baseUrl = Credentials.BaseUrl ?? TextToSpeechBaseUrl;
+                var baseUrl = Provider.BaseUrl ?? TextToSpeechBaseUrl;
                 client.BaseAddress = new Uri(baseUrl);
 
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 var requestUrl = $"text:synthesize?key={effectiveApiKey}";
 
                 var response = await HttpClientHelper.SendJsonRequestAsync<GoogleCloudTTSRequest, GoogleCloudTTSResponse>(
@@ -300,10 +288,10 @@ namespace ConduitLLM.Providers
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient();
-                var baseUrl = Credentials.BaseUrl ?? TextToSpeechBaseUrl;
+                var baseUrl = Provider.BaseUrl ?? TextToSpeechBaseUrl;
                 client.BaseAddress = new Uri(baseUrl);
 
-                var effectiveApiKey = Credentials.ApiKey;
+                var effectiveApiKey = PrimaryKeyCredential.ApiKey;
                 var requestUrl = $"voices?key={effectiveApiKey}";
                 
                 if (!string.IsNullOrWhiteSpace(language))
@@ -388,7 +376,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {

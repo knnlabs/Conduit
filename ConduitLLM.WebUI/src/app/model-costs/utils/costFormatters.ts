@@ -67,15 +67,25 @@ export const formatModelPattern = (pattern: string): string => {
 export const getCostDisplayForModelType = (cost: ModelCost): string => {
   switch (cost.modelType) {
     case 'chat':
-      return `${formatCostPerMillionTokens(cost.inputCostPerMillionTokens)} / ${formatCostPerMillionTokens(cost.outputCostPerMillionTokens)}`;
+      if (cost.inputTokenCost !== undefined && cost.outputTokenCost !== undefined) {
+        // Convert from per token to per million for display
+        const inputPerMillion = cost.inputTokenCost * 1000000;
+        const outputPerMillion = cost.outputTokenCost * 1000000;
+        return `${formatCostPerMillionTokens(inputPerMillion)} / ${formatCostPerMillionTokens(outputPerMillion)}`;
+      }
+      return '-';
     case 'embedding':
-      return formatCostPerMillionTokens(cost.inputCostPerMillionTokens);
+      if (cost.embeddingTokenCost !== undefined) {
+        const perMillion = cost.embeddingTokenCost * 1000000;
+        return formatCostPerMillionTokens(perMillion);
+      }
+      return '-';
     case 'image':
-      return formatCostPerImage(cost.costPerImage);
+      return formatCostPerImage(cost.imageCostPerImage);
     case 'audio':
-      return formatCostPerSecond(cost.costPerSecond);
+      return formatCostPerSecond(cost.audioCostPerMinute ? cost.audioCostPerMinute / 60 : undefined);
     case 'video':
-      return formatCostPerSecond(cost.costPerSecond);
+      return formatCostPerSecond(cost.videoCostPerSecond);
     default:
       return '-';
   }

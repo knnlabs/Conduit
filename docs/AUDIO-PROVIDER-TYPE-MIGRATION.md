@@ -4,6 +4,8 @@
 
 This document describes the migration of AudioCost and AudioUsageLog entities from string-based provider names to the strongly-typed ProviderType enum. This migration was completed as part of issue #654 to align the audio subsystem with the rest of the codebase.
 
+**Important Note**: ProviderType is used for categorization only. Provider.Id remains the canonical identifier for Provider records, supporting multiple providers of the same type.
+
 ## Migration Details
 
 ### Affected Entities

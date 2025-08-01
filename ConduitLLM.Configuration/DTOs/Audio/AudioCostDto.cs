@@ -14,10 +14,15 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public int Id { get; set; }
 
         /// <summary>
-        /// Provider type.
+        /// Provider ID.
         /// </summary>
         [Required]
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider name (from navigation property).
+        /// </summary>
+        public string? ProviderName { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).
@@ -86,10 +91,10 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class CreateAudioCostDto
     {
         /// <summary>
-        /// Provider type.
+        /// Provider ID.
         /// </summary>
         [Required]
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).

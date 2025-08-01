@@ -121,26 +121,20 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients about provider health status changes.
         /// </summary>
-        public async Task ProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime)
+        public async Task ProviderHealthChanged(int providerId, string providerName, HealthStatus status, TimeSpan? responseTime)
         {
-            // Parse provider string to ProviderType enum
-            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
-            {
-                _logger.LogWarning("Unknown provider type: {Provider}", provider);
-                return;
-            }
-            
             var notification = new ProviderHealthNotification
             {
-                ProviderType = providerType,
+                ProviderId = providerId,
+                ProviderName = providerName,
                 Status = status.ToString(),
                 ResponseTimeMs = responseTime?.TotalMilliseconds,
                 Priority = status == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium,
                 Details = status switch
                 {
-                    HealthStatus.Healthy => $"{provider} is operating normally",
-                    HealthStatus.Degraded => $"{provider} is experiencing performance issues",
-                    HealthStatus.Unhealthy => $"{provider} is currently unavailable",
+                    HealthStatus.Healthy => $"{providerName} is operating normally",
+                    HealthStatus.Degraded => $"{providerName} is experiencing performance issues",
+                    HealthStatus.Unhealthy => $"{providerName} is currently unavailable",
                     _ => null
                 }
             };
@@ -239,18 +233,12 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients of model capabilities discovery.
         /// </summary>
-        public async Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
+        public async Task ModelCapabilitiesDiscovered(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
-            // Parse provider string to ProviderType enum
-            if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-            {
-                _logger.LogWarning("Unknown provider type for model capabilities: {Provider}", providerName);
-                return;
-            }
-            
             var notification = new ModelCapabilitiesNotification
             {
-                ProviderType = providerType,
+                ProviderId = providerId,
+                ProviderName = providerName,
                 ModelCount = modelCount,
                 EmbeddingCount = embeddingCount,
                 VisionCount = visionCount,

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 // Import the model provider mapping from the root namespace
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -47,7 +48,7 @@ namespace ConduitLLM.Configuration.Data
         /// <summary>
         /// Database set for model provider mappings
         /// </summary>
-        DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; }
+        DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; }
 
         /// <summary>
         /// Database set for media records
@@ -55,9 +56,9 @@ namespace ConduitLLM.Configuration.Data
         DbSet<MediaRecord> MediaRecords { get; }
 
         /// <summary>
-        /// Database set for provider credentials
+        /// Database set for providers
         /// </summary>
-        DbSet<ProviderCredential> ProviderCredentials { get; }
+        DbSet<Provider> Providers { get; }
 
         /// <summary>
         /// Database set for provider key credentials

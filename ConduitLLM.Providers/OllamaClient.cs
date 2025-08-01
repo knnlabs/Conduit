@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -41,21 +42,23 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public OllamaClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Ollama",
-                string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultOllamaBaseUrl : credentials.BaseUrl,
-                defaultModels)
+                baseUrl: null,
+                defaultModels: defaultModels)
         {
-            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
+            if (string.IsNullOrWhiteSpace(provider.BaseUrl))
             {
                 Logger.LogInformation("Ollama API base not provided, defaulting to {DefaultBase}", DefaultOllamaBaseUrl);
             }
@@ -68,7 +71,7 @@ namespace ConduitLLM.Providers
             // to skip the API key check but ensure other validations are performed
 
             // We still need valid credentials, but API key is optional
-            if (Credentials == null)
+            if (Provider == null)
             {
                 throw new ConfigurationException($"Credentials cannot be null for provider '{ProviderName}'");
             }
@@ -820,7 +823,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? DefaultOllamaBaseUrl).TrimEnd('/');
+                : (Provider.BaseUrl ?? DefaultOllamaBaseUrl).TrimEnd('/');
             
             return effectiveBaseUrl;
         }

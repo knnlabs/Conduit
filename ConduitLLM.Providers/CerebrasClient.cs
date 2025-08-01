@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
@@ -97,7 +98,7 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the CerebrasClient class.
         /// </summary>
-        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="credentials">LLMProvider credentials containing API key and endpoint configuration.</param>
         /// <param name="providerModelId">The specific model ID to use with this provider.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
@@ -106,22 +107,24 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
         public CerebrasClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<CerebrasClient> logger,
             IHttpClientFactory httpClientFactory,
             ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 providerName ?? "cerebras",
-                Constants.Urls.DefaultBaseUrl,
-                defaultModels)
+                baseUrl: null,
+                defaultModels: defaultModels)
         {
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
                 throw new ConfigurationException(Constants.ErrorMessages.MissingApiKey);
             }
@@ -140,14 +143,6 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM-CerebrasClient/1.0");
         }
 
-        /// <summary>
-        /// Gets the fallback models for Cerebras when the models endpoint is not available.
-        /// </summary>
-        /// <returns>A list of Cerebras models.</returns>
-        protected override List<ExtendedModelInfo> GetFallbackModels()
-        {
-            return new List<ExtendedModelInfo>(CerebrasModels);
-        }
 
         /// <summary>
         /// Processes HTTP errors and converts them to appropriate exceptions.

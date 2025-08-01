@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Web;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -49,14 +50,16 @@ namespace ConduitLLM.Providers
         /// <param name="defaultModels">Optional default model configuration.</param>
         /// <param name="apiVersion">The API version to use. Defaults to v1.</param>
         public VertexAIClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string modelAlias,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null,
             string? apiVersion = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 modelAlias,
                 logger,
                 httpClientFactory,
@@ -66,12 +69,12 @@ namespace ConduitLLM.Providers
         {
             _apiVersion = apiVersion ?? DefaultApiVersion;
 
-            _region = !string.IsNullOrWhiteSpace(credentials.BaseUrl)
-                ? credentials.BaseUrl
+            _region = !string.IsNullOrWhiteSpace(provider.BaseUrl)
+                ? provider.BaseUrl
                 : DefaultRegion;
 
             // Extract project ID from ApiKey if possible, otherwise use default
-            _projectId = ExtractProjectIdFromCredentials(credentials);
+            _projectId = ExtractProjectIdFromCredentials(provider, keyCredential);
         }
 
         /// <inheritdoc/>
@@ -79,7 +82,7 @@ namespace ConduitLLM.Providers
         {
             base.ValidateCredentials();
 
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
@@ -135,7 +138,7 @@ namespace ConduitLLM.Providers
             ValidateRequest(request, "CreateChatCompletionAsync");
             ValidateProjectId();
 
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             Logger.LogInformation("Creating chat completion with Google Vertex AI for model {Model}", request.Model);
 
             try
@@ -226,7 +229,7 @@ namespace ConduitLLM.Providers
             try
             {
                 // Determine the API key to use
-                string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+                string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
 
                 // Get the model information
                 var (modelId, modelType) = GetVertexAIModelInfo(request.Model);
@@ -495,7 +498,7 @@ namespace ConduitLLM.Providers
 
         #region Helper Methods
 
-        private string ExtractProjectIdFromCredentials(ProviderCredentials credentials)
+        private string ExtractProjectIdFromCredentials(Provider provider, ProviderKeyCredential keyCredential)
         {
             // In a real scenario, project ID would be part of the credentials
             // For now, extract from ApiBase or use a default
@@ -925,7 +928,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {

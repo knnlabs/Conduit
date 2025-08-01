@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -37,14 +38,15 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">The HTTP client factory.</param>
         /// <param name="defaultModels">The default models configuration.</param>
         public MiniMaxClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string modelId,
             ILogger<MiniMaxClient> logger,
             IHttpClientFactory httpClientFactory,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials, modelId, logger, httpClientFactory, "minimax", defaultModels)
+            : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax", defaultModels)
         {
-            _baseUrl = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? DefaultBaseUrl : credentials.BaseUrl.TrimEnd('/');
+            _baseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? DefaultBaseUrl : provider.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>
@@ -850,7 +852,7 @@ namespace ConduitLLM.Providers
                 client = new HttpClient();
             }
             
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
@@ -1565,7 +1567,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl.TrimEnd('/') : _baseUrl;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))

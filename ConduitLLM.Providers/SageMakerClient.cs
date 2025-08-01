@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
@@ -38,13 +39,15 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public SageMakerClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string endpointName,
             ILogger<SageMakerClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  EnsureSageMakerCredentials(credentials),
+                  provider,
+                  keyCredential,
                   endpointName,
                   logger,
                   httpClientFactory,
@@ -54,25 +57,6 @@ namespace ConduitLLM.Providers
             _endpointName = endpointName ?? throw new ArgumentNullException(nameof(endpointName));
         }
 
-        private static ProviderCredentials EnsureSageMakerCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("AWS Access Key ID (ApiKey) is missing for AWS SageMaker provider.");
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.BaseUrl))
-            {
-                throw new ConfigurationException("AWS Region (BaseUrl) is missing for AWS SageMaker provider.");
-            }
-
-            return credentials;
-        }
 
         /// <inheritdoc />
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
@@ -86,7 +70,7 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Authorization = null;
 
             // Set the base address to the SageMaker runtime endpoint
-            string region = Credentials.BaseUrl ?? "us-east-1";
+            string region = Provider.BaseUrl ?? "us-east-1";
             client.BaseAddress = new Uri(GetSageMakerRuntimeEndpoint(region));
         }
 
@@ -113,9 +97,9 @@ namespace ConduitLLM.Providers
                 });
 
                 // Sign the request with AWS Signature V4
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key";
-                var region = Credentials.BaseUrl ?? "us-east-1";
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
+                var effectiveSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key";
+                var region = Provider.BaseUrl ?? "us-east-1";
                 AwsSignatureV4.SignRequest(requestMessage, effectiveApiKey, effectiveSecretKey, region, "sagemaker");
 
                 using var response = await client.SendAsync(requestMessage, cancellationToken);
@@ -332,9 +316,9 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
-                var effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
-                var effectiveRegion = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl : (Credentials.BaseUrl ?? "us-east-1");
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
+                var effectiveSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key"; // Fallback for backward compatibility
+                var effectiveRegion = !string.IsNullOrWhiteSpace(baseUrl) ? baseUrl : (Provider.BaseUrl ?? "us-east-1");
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {

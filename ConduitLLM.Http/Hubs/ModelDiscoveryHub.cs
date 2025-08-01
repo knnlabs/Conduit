@@ -57,7 +57,7 @@ namespace ConduitLLM.Http.Hubs
             }
             
             Logger.LogInformation(
-                "Virtual Key {KeyId} subscribed with filters: Providers={Providers}, Capabilities={Capabilities}, MinSeverity={MinSeverity}",
+                "Virtual Key {KeyId} subscribed with filters: Provider={Providers}, Capabilities={Capabilities}, MinSeverity={MinSeverity}",
                 virtualKeyId, 
                 filter.ProviderTypes?.Count ?? 0,
                 filter.Capabilities?.Count ?? 0,

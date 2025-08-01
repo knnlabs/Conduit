@@ -30,8 +30,8 @@ namespace ConduitLLM.Core.Services
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICancellableTaskRegistry _taskRegistry;
-        private readonly IImageGenerationMetricsService _metricsService;
         private readonly ICostCalculationService _costCalculationService;
+        private readonly ConduitLLM.Configuration.IProviderService _providerService;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
@@ -45,8 +45,8 @@ namespace ConduitLLM.Core.Services
             IVirtualKeyService virtualKeyService,
             IHttpClientFactory httpClientFactory,
             ICancellableTaskRegistry taskRegistry,
-            IImageGenerationMetricsService metricsService,
             ICostCalculationService costCalculationService,
+            ConduitLLM.Configuration.IProviderService providerService,
             IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
             ILogger<ImageGenerationOrchestrator> logger)
         {
@@ -59,8 +59,8 @@ namespace ConduitLLM.Core.Services
             _virtualKeyService = virtualKeyService;
             _httpClientFactory = httpClientFactory;
             _taskRegistry = taskRegistry;
-            _metricsService = metricsService;
             _costCalculationService = costCalculationService;
+            _providerService = providerService;
             _performanceConfig = performanceOptions.Value;
             _logger = logger;
         }
@@ -131,7 +131,7 @@ namespace ConduitLLM.Core.Services
                 var totalImages = response.Data?.Count ?? 0;
                 
                 // Determine optimal concurrency for image processing
-                var concurrency = GetOptimalConcurrency(modelInfo.Provider, totalImages);
+                var concurrency = GetOptimalConcurrency(modelInfo.ProviderType.ToString(), totalImages);
                 var semaphore = new SemaphoreSlim(concurrency);
                 _logger.LogInformation("Processing {Count} images in parallel with concurrency limit of {Concurrency}", 
                     totalImages, concurrency);
@@ -181,28 +181,6 @@ namespace ConduitLLM.Core.Services
                 
                 stopwatch.Stop();
                 
-                // Record performance metrics
-                var metric = new ImageGenerationMetrics
-                {
-                    Provider = modelInfo.Provider,
-                    Model = modelInfo.ModelId,
-                    TotalGenerationTimeMs = stopwatch.ElapsedMilliseconds,
-                    AvgGenerationTimePerImageMs = stopwatch.ElapsedMilliseconds / (double)totalImages,
-                    DownloadTimeMs = downloadTime,
-                    StorageTimeMs = storageTime,
-                    ImageCount = totalImages,
-                    ImageSize = request.Request.Size ?? "1024x1024",
-                    Quality = request.Request.Quality,
-                    Success = true,
-                    IsRetry = false, // TODO: Track retry attempts
-                    ConcurrencyLevel = concurrency,
-                    VirtualKeyId = request.VirtualKeyId,
-                    StartedAt = DateTime.UtcNow.AddMilliseconds(-stopwatch.ElapsedMilliseconds),
-                    CompletedAt = DateTime.UtcNow
-                };
-                
-                await _metricsService.RecordMetricAsync(metric, taskCts.Token);
-                
                 // Calculate cost using the centralized cost calculation service
                 var cost = await CalculateImageGenerationCostAsync(modelInfo.ProviderType, modelInfo.ModelId, totalImages, taskCts.Token);
                 
@@ -216,7 +194,7 @@ namespace ConduitLLM.Core.Services
                         images = processedImages,
                         duration = stopwatch.Elapsed.TotalSeconds,
                         cost = cost,
-                        provider = modelInfo.Provider,
+                        provider = modelInfo.ProviderName,
                         model = modelInfo.ModelId
                     });
                 
@@ -228,7 +206,7 @@ namespace ConduitLLM.Core.Services
                     Images = processedImages,
                     Duration = stopwatch.Elapsed,
                     Cost = cost,
-                    Provider = modelInfo.Provider,
+                    Provider = modelInfo.ProviderName,
                     Model = modelInfo.ModelId,
                     CorrelationId = request.CorrelationId
                 });
@@ -337,28 +315,6 @@ namespace ConduitLLM.Core.Services
                 
                 stopwatch.Stop();
                 
-                // Record failure metric
-                if (modelInfo != null)
-                {
-                    var failureMetric = new ImageGenerationMetrics
-                    {
-                        Provider = modelInfo.Provider,
-                        Model = modelInfo.ModelId,
-                        TotalGenerationTimeMs = stopwatch.ElapsedMilliseconds,
-                        ImageCount = request.Request.N,
-                        ImageSize = request.Request.Size ?? "1024x1024",
-                        Quality = request.Request.Quality,
-                        Success = false,
-                        ErrorCode = ex.GetType().Name,
-                        IsRetry = false, // TODO: Track retry attempts
-                        VirtualKeyId = request.VirtualKeyId,
-                        StartedAt = DateTime.UtcNow.AddMilliseconds(-stopwatch.ElapsedMilliseconds),
-                        CompletedAt = DateTime.UtcNow
-                    };
-                    
-                    await _metricsService.RecordMetricAsync(failureMetric);
-                }
-                
                 // Update task status
                 await _taskService.UpdateTaskStatusAsync(
                     request.TaskId,
@@ -450,12 +406,19 @@ namespace ConduitLLM.Core.Services
                 return null;
             }
             
+            // Get the provider entity
+            var provider = await _providerService.GetProviderByIdAsync(mapping.ProviderId);
+            if (provider == null)
+            {
+                _logger.LogWarning("Provider not found for ProviderId {ProviderId}", mapping.ProviderId);
+                return null;
+            }
+            
             return new ModelInfo
             {
-                Provider = mapping.ProviderType.ToString(),
-                ProviderType = mapping.ProviderType,
+                Provider = provider,
                 ModelId = mapping.ProviderModelId,
-                ProviderCredentialId = mapping.ProviderId
+                ProviderId = mapping.ProviderId
             };
         }
 
@@ -546,7 +509,7 @@ namespace ConduitLLM.Core.Services
                     {
                         ["prompt"] = request.Request.Prompt,
                         ["model"] = modelInfo.ModelId,
-                        ["provider"] = modelInfo.Provider
+                        ["provider"] = modelInfo.ProviderName
                     };
                     
                     var mediaMetadata = new MediaMetadata
@@ -581,7 +544,7 @@ namespace ConduitLLM.Core.Services
                         GeneratedAt = DateTime.UtcNow,
                         Metadata = new Dictionary<string, object>
                         {
-                            ["provider"] = modelInfo.Provider,
+                            ["provider"] = modelInfo.ProviderName,
                             ["model"] = modelInfo.ModelId,
                             ["index"] = index,
                             ["format"] = "b64_json"
@@ -613,7 +576,7 @@ namespace ConduitLLM.Core.Services
                     RevisedPrompt = null,
                     Metadata = new Dictionary<string, object>
                     {
-                        ["provider"] = modelInfo.Provider,
+                        ["provider"] = modelInfo.ProviderName,
                         ["model"] = modelInfo.ModelId,
                         ["index"] = index
                     }
@@ -672,7 +635,7 @@ namespace ConduitLLM.Core.Services
                 {
                     ["prompt"] = request.Request.Prompt,
                     ["model"] = modelInfo.ModelId,
-                    ["provider"] = modelInfo.Provider,
+                    ["provider"] = modelInfo.ProviderName,
                     ["originalUrl"] = imageUrl
                 };
                 
@@ -716,7 +679,7 @@ namespace ConduitLLM.Core.Services
                     GeneratedAt = DateTime.UtcNow,
                     Metadata = new Dictionary<string, object>
                     {
-                        ["provider"] = modelInfo.Provider,
+                        ["provider"] = modelInfo.ProviderName,
                         ["model"] = modelInfo.ModelId,
                         ["index"] = index
                     },
@@ -819,10 +782,15 @@ namespace ConduitLLM.Core.Services
 
         private class ModelInfo
         {
-            public string Provider { get; set; } = string.Empty;
-            public ProviderType ProviderType { get; set; }
+            public ConduitLLM.Configuration.Entities.Provider? Provider { get; set; }
             public string ModelId { get; set; } = string.Empty;
-            public int ProviderCredentialId { get; set; }
+            public int ProviderId { get; set; }
+            
+            // Convenience property to get ProviderType from Provider
+            public ProviderType ProviderType => Provider?.ProviderType ?? ProviderType.OpenAI;
+            
+            // Convenience property to get provider name for responses
+            public string ProviderName => Provider?.ProviderName ?? Provider?.ProviderType.ToString() ?? "unknown";
         }
     }
 }

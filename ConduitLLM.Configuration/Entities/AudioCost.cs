@@ -14,10 +14,15 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Provider type.
+        /// Provider ID (foreign key).
         /// </summary>
         [Required]
-        public ProviderType Provider { get; set; }
+        public int ProviderId { get; set; }
+        
+        /// <summary>
+        /// Navigation property to Provider.
+        /// </summary>
+        public Provider? Provider { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).

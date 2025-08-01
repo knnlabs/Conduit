@@ -33,7 +33,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
-            services.AddScoped<IProviderCredentialRepository, ProviderCredentialRepository>();
+            services.AddScoped<IProviderRepository, ProviderRepository>();
             services.AddScoped<IProviderKeyCredentialRepository, ProviderKeyCredentialRepository>();
             services.AddScoped<IGlobalSettingRepository, GlobalSettingRepository>();
             services.AddScoped<IModelProviderMappingRepository, ModelProviderMappingRepository>();

@@ -1,17 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
+import { getServerAdminClient, type ConduitAdminClient } from '@/lib/server/adminClient';
 import type { ModelCost } from '@/app/model-costs/types/modelCost';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
-function convertToCSV(modelCosts: ModelCost[]): string {
+interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
+  modelAlias?: string;
+  providerName?: string;
+  providerTypeName?: string;
+}
+
+interface EnrichedModelCost extends ModelCost {
+  providers: Array<{
+    providerId: number;
+    providerName: string;
+    providerType: string;
+  }>;
+}
+
+async function enrichModelCostsWithProviders(
+  modelCosts: ModelCost[],
+  adminClient: ConduitAdminClient
+): Promise<EnrichedModelCost[]> {
+  try {
+    // Fetch all model mappings (returns array directly, not paginated)
+    const mappings = await adminClient.modelMappings.list() as ExtendedModelProviderMappingDto[];
+    
+    return modelCosts.map(cost => {
+      // Find all unique providers for this cost's model aliases
+      const providersMap = new Map<number, { providerId: number; providerName: string; providerType: string }>();
+      
+      cost.associatedModelAliases.forEach(alias => {
+        const mapping = mappings.find(m => 
+          m.modelAlias === alias || m.providerModelId === alias
+        );
+        
+        if (mapping) {
+          const providerId = mapping.providerId;
+          if (!providersMap.has(providerId)) {
+            providersMap.set(providerId, {
+              providerId,
+              providerName: mapping.providerName ?? `Provider ${providerId}`,
+              providerType: mapping.providerTypeName ?? 'Unknown'
+            });
+          }
+        }
+      });
+
+      return {
+        ...cost,
+        providers: Array.from(providersMap.values())
+      };
+    });
+  } catch (error) {
+    console.warn('[ModelCosts] Failed to enrich with provider data:', error);
+    // Return costs without enrichment if fetching mappings fails
+    return modelCosts.map(cost => ({
+      ...cost,
+      providers: []
+    }));
+  }
+}
+
+function convertToCSV(modelCosts: EnrichedModelCost[]): string {
   if (!modelCosts || modelCosts.length === 0) {
     return '';
   }
 
   // Define CSV headers matching the model cost structure
   const headers = [
-    'Model Pattern',
-    'Provider',
+    'Cost Name',
+    'Associated Model Aliases',
+    'Provider Names',
+    'Provider Types',
     'Model Type',
     'Input Cost (per 1K tokens)',
     'Output Cost (per 1K tokens)',
@@ -50,29 +111,35 @@ function convertToCSV(modelCosts: ModelCost[]): string {
 
   // Build CSV rows
   const rows = modelCosts.map(cost => {
-    // Convert costs from per million to per thousand tokens for user-friendly display
-    const inputCostPer1K = cost.inputCostPerMillionTokens 
-      ? (cost.inputCostPerMillionTokens / 1000).toFixed(4) 
+    // Note: SDK costs are already in USD per token, not per million
+    const inputCostPer1K = cost.inputTokenCost 
+      ? (cost.inputTokenCost * 1000).toFixed(4) 
       : '';
-    const outputCostPer1K = cost.outputCostPerMillionTokens 
-      ? (cost.outputCostPerMillionTokens / 1000).toFixed(4) 
+    const outputCostPer1K = cost.outputTokenCost 
+      ? (cost.outputTokenCost * 1000).toFixed(4) 
       : '';
-    const cachedInputCostPer1K = cost.cachedInputCostPerMillionTokens 
-      ? (cost.cachedInputCostPerMillionTokens / 1000).toFixed(4) 
+    const cachedInputCostPer1K = cost.cachedInputTokenCost 
+      ? (cost.cachedInputTokenCost * 1000).toFixed(4) 
       : '';
-    const cachedInputWriteCostPer1K = cost.cachedInputWriteCostPerMillionTokens 
-      ? (cost.cachedInputWriteCostPerMillionTokens / 1000).toFixed(4) 
+    const cachedInputWriteCostPer1K = cost.cachedInputWriteCost 
+      ? (cost.cachedInputWriteCost * 1000).toFixed(4) 
       : '';
     const embeddingCostPer1K = cost.embeddingTokenCost 
-      ? cost.embeddingTokenCost.toFixed(4) 
+      ? (cost.embeddingTokenCost * 1000).toFixed(4) 
       : '';
     const searchUnitCostPer1K = cost.costPerSearchUnit 
       ? cost.costPerSearchUnit.toFixed(4) 
       : '';
 
+    // Extract provider information
+    const providerNames = cost.providers.map(p => p.providerName).join('; ');
+    const providerTypes = cost.providers.map(p => p.providerType).join('; ');
+
     return [
-      escapeCSV(cost.modelIdPattern),
-      escapeCSV(cost.providerName),
+      escapeCSV(cost.costName),
+      escapeCSV(cost.associatedModelAliases?.join(', ') || ''),
+      escapeCSV(providerNames),
+      escapeCSV(providerTypes),
       escapeCSV(cost.modelType),
       escapeCSV(inputCostPer1K),
       escapeCSV(outputCostPer1K),
@@ -121,12 +188,18 @@ export async function GET(req: NextRequest) {
       isActive,
     });
 
+    // Enrich model costs with provider information
+    const enrichedCosts = await enrichModelCostsWithProviders(
+      response.items ?? [],
+      adminClient
+    );
+
     if (format === 'json') {
-      // Return JSON format
-      return NextResponse.json(response.items ?? []);
+      // Return JSON format with enriched data
+      return NextResponse.json(enrichedCosts);
     } else {
-      // Convert to CSV
-      const csv = convertToCSV(response.items ?? []);
+      // Convert to CSV with enriched data
+      const csv = convertToCSV(enrichedCosts);
       const filename = `model-costs-${new Date().toISOString().split('T')[0]}.csv`;
 
       const headers = new Headers();

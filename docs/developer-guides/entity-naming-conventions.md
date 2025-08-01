@@ -40,13 +40,17 @@ public string? OrgId { get; set; }
 
 **Rationale**: Different providers use different terms (OpenAI uses "organization", Google uses "project"). The generic `Organization` field can accommodate both.
 
-### 3. Provider Identification
+### 3. Provider Categorization
 
-**Preferred**: `ProviderType` enum
+**For Identification**: Use `Provider.Id` (int) - the canonical identifier
+**For Categorization**: Use `ProviderType` enum
 **Deprecated**: `ProviderName` string
 
 ```csharp
-// ✅ Preferred - Type-safe and prevents typos
+// ✅ Primary identifier - Use for lookups and relationships
+public int Id { get; set; }
+
+// ✅ Categorization - Type-safe provider category
 public ProviderType ProviderType { get; set; }
 
 // ⚠️ Deprecated - String-based, error-prone
@@ -54,7 +58,10 @@ public ProviderType ProviderType { get; set; }
 public string ProviderName { get; set; }
 ```
 
-**Rationale**: Enums provide type safety, prevent typos, enable IntelliSense, and make refactoring easier.
+**Rationale**: 
+- **Provider ID**: Unique identifier supporting multiple providers of same type
+- **ProviderType**: Type-safe categorization, prevents typos, enables IntelliSense
+- **Multiple providers**: System supports multiple OpenAI configs, Anthropic configs, etc.
 
 ## Migration Path
 

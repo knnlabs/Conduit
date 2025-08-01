@@ -1,5 +1,4 @@
 import { NavigationStateHubClient } from '../signalr/NavigationStateHubClient';
-import { AdminNotificationHubClient } from '../signalr/AdminNotificationHubClient';
 import { SignalRConnectionOptions, HubConnectionState } from '../models/signalr';
 
 /**
@@ -10,7 +9,6 @@ export class SignalRService {
   private readonly masterKey: string;
   
   private navigationStateHub?: NavigationStateHubClient;
-  private adminNotificationHub?: AdminNotificationHubClient;
   
   private disposed = false;
 
@@ -47,47 +45,14 @@ export class SignalRService {
     return this.navigationStateHub;
   }
 
-  /**
-   * Gets or creates the admin notification hub connection
-   */
-  getOrCreateAdminNotificationHub(): AdminNotificationHubClient {
-    if (!this.adminNotificationHub) {
-      this.adminNotificationHub = new AdminNotificationHubClient(this.baseUrl, this.masterKey);
-      
-      // Set up connection event handlers
-      this.adminNotificationHub.onConnected = async () => {
-        console.warn('Admin notification hub connected');
-        // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
-        // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
-      };
-      
-      this.adminNotificationHub.onDisconnected = async (error) => {
-        console.warn('Admin notification hub disconnected:', error?.message);
-      };
-      
-      this.adminNotificationHub.onReconnecting = async (error) => {
-        console.warn('Admin notification hub reconnecting:', error?.message);
-      };
-      
-      this.adminNotificationHub.onReconnected = async () => {
-        console.warn('Admin notification hub reconnected');
-        // NOTE: Removed auto-subscribe as the hub doesn't have a generic Subscribe method
-        // Clients should call specific methods like SubscribeToVirtualKey, SubscribeToProvider, etc.
-      };
-    }
-    
-    return this.adminNotificationHub;
-  }
 
   /**
    * Gets a connection by type
    */
-  getOrCreateConnection(type: 'navigation' | 'notifications'): NavigationStateHubClient | AdminNotificationHubClient {
+  getOrCreateConnection(type: 'navigation'): NavigationStateHubClient {
     switch (type) {
       case 'navigation':
         return this.getOrCreateNavigationStateHub();
-      case 'notifications':
-        return this.getOrCreateAdminNotificationHub();
       default:
         throw new Error(`Unknown connection type: ${type as string}`);
     }
@@ -105,12 +70,6 @@ export class SignalRService {
       promises.push(navigationHub.start());
     }
     
-    // Create and start admin notification hub
-    const notificationHub = this.getOrCreateAdminNotificationHub();
-    if (!notificationHub.isConnected) {
-      promises.push(notificationHub.start());
-    }
-    
     await Promise.all(promises);
   }
 
@@ -124,10 +83,6 @@ export class SignalRService {
       promises.push(this.navigationStateHub.stop());
     }
     
-    if (this.adminNotificationHub) {
-      promises.push(this.adminNotificationHub.stop());
-    }
-    
     await Promise.all(promises);
   }
 
@@ -135,8 +90,7 @@ export class SignalRService {
    * Checks if any hub is connected
    */
   isAnyConnected(): boolean {
-    return (this.navigationStateHub?.isConnected ?? false) ||
-           (this.adminNotificationHub?.isConnected ?? false);
+    return (this.navigationStateHub?.isConnected ?? false);
   }
 
   /**
@@ -145,7 +99,6 @@ export class SignalRService {
   getConnectionStates(): Record<string, HubConnectionState> {
     return {
       navigationState: this.navigationStateHub?.state ?? HubConnectionState.Disconnected,
-      adminNotifications: this.adminNotificationHub?.state ?? HubConnectionState.Disconnected,
     };
   }
 
@@ -160,14 +113,9 @@ export class SignalRService {
         promises.push(this.navigationStateHub.dispose());
       }
       
-      if (this.adminNotificationHub) {
-        promises.push(this.adminNotificationHub.dispose());
-      }
-      
       await Promise.all(promises);
       
       this.navigationStateHub = undefined;
-      this.adminNotificationHub = undefined;
       this.disposed = true;
     }
   }

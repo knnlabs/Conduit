@@ -67,23 +67,9 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
+        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, int? providerId = null)
         {
-            ProviderType? providerType = null;
-            if (provider != null)
-            {
-                // Parse provider name to ProviderType
-                if (Enum.TryParse<ProviderType>(provider, true, out var parsed))
-                {
-                    providerType = parsed;
-                }
-                else
-                {
-                    _logger.LogWarning("Unknown provider type: {Provider}", provider);
-                }
-            }
-            
-            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, providerType);
+            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, providerId);
         }
 
         /// <inheritdoc/>
@@ -111,26 +97,9 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(int providerId, DateTime? startDate = null, DateTime? endDate = null)
         {
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(provider, true, out var providerType))
-            {
-                _logger.LogWarning("Unknown provider type: {Provider}", provider);
-                return new AudioProviderUsageDto
-                {
-                    ProviderType = ProviderType.OpenAI, // Default to a valid provider type
-                    TotalOperations = 0,
-                    TranscriptionCount = 0,
-                    TextToSpeechCount = 0,
-                    TotalCost = 0,
-                    AverageResponseTime = 0,
-                    SuccessRate = 0,
-                    RealtimeSessionCount = 0
-                };
-            }
-            
-            var logs = await _repository.GetByProviderAsync(providerType, startDate, endDate);
+            var logs = await _repository.GetByProviderAsync(providerId, startDate, endDate);
 
             var successCount = logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300));
             var totalDuration = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value);
@@ -148,9 +117,13 @@ namespace ConduitLLM.Admin.Services
                 .OrderByDescending(g => g.Count())
                 .FirstOrDefault()?.Key;
 
+            // Get provider name from first log or use provider ID
+            var providerName = logs.FirstOrDefault()?.Provider?.ProviderName ?? $"Provider {providerId}";
+
             return new AudioProviderUsageDto
             {
-                ProviderType = providerType,
+                ProviderId = providerId,
+                ProviderName = providerName,
                 TotalOperations = logs.Count,
                 TranscriptionCount = transcriptionCount,
                 TextToSpeechCount = ttsCount,
@@ -336,7 +309,7 @@ namespace ConduitLLM.Admin.Services
             {
                 Id = log.Id,
                 VirtualKey = log.VirtualKey,
-                ProviderType = log.Provider,
+                ProviderId = log.ProviderId,
                 OperationType = log.OperationType,
                 Model = log.Model,
                 RequestId = log.RequestId,
@@ -358,17 +331,19 @@ namespace ConduitLLM.Admin.Services
 
         private static RealtimeSessionDto MapSessionToDto(RealtimeSession session)
         {
-            // Parse provider name to ProviderType
-            if (!Enum.TryParse<ProviderType>(session.Provider, true, out var providerType))
+            // Try to get ProviderId from metadata
+            var providerId = 0;
+            if (session.Metadata?.TryGetValue("ProviderId", out var idValue) == true && idValue != null)
             {
-                providerType = ProviderType.OpenAI; // Default fallback
+                int.TryParse(idValue.ToString(), out providerId);
             }
             
             return new RealtimeSessionDto
             {
                 SessionId = session.Id,
                 VirtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "unknown",
-                ProviderType = providerType,
+                ProviderId = providerId,
+                ProviderName = session.Provider,
                 State = session.State.ToString(),
                 CreatedAt = session.CreatedAt,
                 DurationSeconds = session.Statistics.Duration.TotalSeconds,
@@ -406,7 +381,7 @@ namespace ConduitLLM.Admin.Services
             // Write header
             csv.WriteField("Timestamp");
             csv.WriteField("VirtualKey");
-            csv.WriteField("Provider");
+            csv.WriteField("ProviderId");
             csv.WriteField("Operation");
             csv.WriteField("Model");
             csv.WriteField("Duration");
@@ -421,7 +396,7 @@ namespace ConduitLLM.Admin.Services
             {
                 csv.WriteField(log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
                 csv.WriteField(log.VirtualKey);
-                csv.WriteField(log.Provider);
+                csv.WriteField(log.ProviderId);
                 csv.WriteField(log.OperationType);
                 csv.WriteField(log.Model);
                 csv.WriteField(log.DurationSeconds);
@@ -442,7 +417,8 @@ namespace ConduitLLM.Admin.Services
             {
                 timestamp = l.Timestamp,
                 virtualKey = l.VirtualKey,
-                provider = l.Provider,
+                providerId = l.ProviderId,
+                providerName = l.Provider?.ProviderName,
                 operation = l.OperationType,
                 model = l.Model,
                 duration = l.DurationSeconds,

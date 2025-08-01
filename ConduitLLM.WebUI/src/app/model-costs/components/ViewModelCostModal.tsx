@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { ModelCost } from '../types/modelCost';
 import { formatters } from '@/lib/utils/formatters';
+import { useEnrichedModelCosts } from '../hooks/useEnrichedModelCosts';
 
 interface ViewModelCostModalProps {
   isOpen: boolean;
@@ -20,6 +21,10 @@ interface ViewModelCostModalProps {
 }
 
 export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCostModalProps) {
+  // Enrich the single model cost with provider information
+  const { enrichedCosts } = useEnrichedModelCosts([modelCost]);
+  const enrichedCost = enrichedCosts[0] || modelCost;
+
   const getCostTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       chat: 'Chat / Completion',
@@ -31,11 +36,11 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
     return labels[type] || type;
   };
 
-  const hasTokenCosts = modelCost.inputCostPerMillionTokens !== undefined || 
-                       modelCost.outputCostPerMillionTokens !== undefined;
+  const hasTokenCosts = modelCost.inputTokenCost !== undefined || 
+                       modelCost.outputTokenCost !== undefined;
   
-  const hasImageCosts = modelCost.costPerImage !== undefined || modelCost.imageCostPerImage !== undefined;
-  const hasVideoCosts = modelCost.costPerSecond !== undefined || modelCost.videoCostPerSecond !== undefined;
+  const hasImageCosts = modelCost.imageCostPerImage !== undefined;
+  const hasVideoCosts = modelCost.videoCostPerSecond !== undefined;
   const hasSearchCosts = modelCost.costPerSearchUnit !== undefined;
   const hasInferenceStepCosts = modelCost.costPerInferenceStep !== undefined;
   // Audio costs would be here but backend doesn't support them yet
@@ -51,14 +56,33 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
         <Card withBorder>
           <Stack gap="sm">
             <Group justify="space-between">
-              <Text fw={600}>Model Pattern</Text>
-              <Code>{modelCost.modelIdPattern}</Code>
+              <Text fw={600}>Cost Name</Text>
+              <Text fw={500}>{modelCost.costName}</Text>
             </Group>
             
-            <Group justify="space-between">
-              <Text fw={600}>Provider</Text>
-              <Badge variant="light" size="lg">{modelCost.providerName}</Badge>
-            </Group>
+            {modelCost.associatedModelAliases && modelCost.associatedModelAliases.length > 0 && (
+              <Group justify="space-between" align="flex-start">
+                <Text fw={600}>Associated Models</Text>
+                <Stack gap={4} align="flex-end">
+                  {modelCost.associatedModelAliases.map((alias, index) => (
+                    <Code key={index}>{alias}</Code>
+                  ))}
+                </Stack>
+              </Group>
+            )}
+            
+            {'providers' in enrichedCost && enrichedCost.providers.length > 0 && (
+              <Group justify="space-between" align="flex-start">
+                <Text fw={600}>Providers</Text>
+                <Group gap={8}>
+                  {enrichedCost.providers.map((provider) => (
+                    <Badge key={provider.providerId} variant="light">
+                      {provider.providerName}
+                    </Badge>
+                  ))}
+                </Group>
+              </Group>
+            )}
             
             <Group justify="space-between">
               <Text fw={600}>Model Type</Text>
@@ -88,38 +112,38 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
             <Divider label="Token Pricing" labelPosition="center" />
             <Card withBorder>
               <Stack gap="sm">
-                {modelCost.inputCostPerMillionTokens !== undefined && (
+                {modelCost.inputTokenCost !== undefined && (
                   <Group justify="space-between">
                     <Text>Input Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency(modelCost.inputCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency((modelCost.inputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
                       </Text>
                       <Text size="sm" c="dimmed">per 1K tokens</Text>
                     </Group>
                   </Group>
                 )}
                 
-                {modelCost.outputCostPerMillionTokens !== undefined && (
+                {modelCost.outputTokenCost !== undefined && (
                   <Group justify="space-between">
                     <Text>Output Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency(modelCost.outputCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency((modelCost.outputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
                       </Text>
                       <Text size="sm" c="dimmed">per 1K tokens</Text>
                     </Group>
                   </Group>
                 )}
                 
-                {modelCost.cachedInputCostPerMillionTokens !== undefined && (
+                {modelCost.cachedInputTokenCost !== undefined && (
                   <>
                     <Divider variant="dashed" />
                     <Group justify="space-between">
                       <Text>Cached Input Cost</Text>
                       <Group gap="xs">
                         <Text fw={500}>
-                          {formatters.currency(modelCost.cachedInputCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                          {formatters.currency((modelCost.cachedInputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
                         </Text>
                         <Text size="sm" c="dimmed">per 1K tokens</Text>
                       </Group>
@@ -127,12 +151,12 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
                   </>
                 )}
                 
-                {modelCost.cachedInputWriteCostPerMillionTokens !== undefined && (
+                {modelCost.cachedInputWriteCost !== undefined && (
                   <Group justify="space-between">
                     <Text>Cache Write Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency(modelCost.cachedInputWriteCostPerMillionTokens / 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency((modelCost.cachedInputWriteCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
                       </Text>
                       <Text size="sm" c="dimmed">per 1K tokens</Text>
                     </Group>
@@ -150,7 +174,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Image</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerImage ?? 0, { currency: 'USD' })}
+                  {formatters.currency(modelCost.imageCostPerImage ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
             </Card>
@@ -164,7 +188,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
               <Group justify="space-between">
                 <Text>Cost per Second</Text>
                 <Text fw={500}>
-                  {formatters.currency(modelCost.costPerSecond ?? 0, { currency: 'USD' })}
+                  {formatters.currency(modelCost.videoCostPerSecond ?? 0, { currency: 'USD' })}
                 </Text>
               </Group>
             </Card>
@@ -264,24 +288,14 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
           </Stack>
         </Card>
 
-        <Card withBorder bg="gray.0">
-          <Stack gap="xs">
-            <Text size="sm" fw={600}>Pattern Matching Example</Text>
-            <Text size="sm" c="dimmed">
-              This pattern <Code>{modelCost.modelIdPattern}</Code> will match:
-            </Text>
-            {modelCost.modelIdPattern.endsWith('*') ? (
-              <Stack gap={4}>
-                <Text size="xs">• {modelCost.modelIdPattern.slice(0, -1)}base</Text>
-                <Text size="xs">• {modelCost.modelIdPattern.slice(0, -1)}turbo</Text>
-                <Text size="xs">• {modelCost.modelIdPattern.slice(0, -1)}-0125</Text>
-                <Text size="xs">• Any model starting with &quot;{modelCost.modelIdPattern.slice(0, -1)}&quot;</Text>
-              </Stack>
-            ) : (
-              <Text size="xs">• Only exact match: {modelCost.modelIdPattern}</Text>
-            )}
-          </Stack>
-        </Card>
+        {modelCost.description && (
+          <Card withBorder bg="gray.0">
+            <Stack gap="xs">
+              <Text size="sm" fw={600}>Description</Text>
+              <Text size="sm">{modelCost.description}</Text>
+            </Stack>
+          </Card>
+        )}
       </Stack>
     </Modal>
   );

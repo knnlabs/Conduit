@@ -13,28 +13,18 @@
  * - Can be configured in docker-compose.yml or .env files
  */
 
+'use client';
+
 import { Container, Title, Text, Button, Group, Paper } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { SignOutButton } from '@clerk/nextjs';
-import { redirect } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function AccessDeniedPage() {
-  // Check for redirect URL in environment variable
-  const redirectUrl = process.env.ACCESS_DENIED_REDIRECT;
+  const { isAuthDisabled } = useAuth();
+  const router = useRouter();
   
-  // If a redirect URL is configured, use it
-  if (redirectUrl) {
-    // You can add URL validation here if needed
-    // For example, to only allow specific domains
-    try {
-      // Basic URL validation
-      new URL(redirectUrl);
-      redirect(redirectUrl);
-    } catch {
-      console.error('Invalid redirect URL:', redirectUrl);
-      // Continue to the access denied page if URL is invalid
-    }
-  }
   return (
     <Container size="sm" style={{ paddingTop: 100 }}>
       <Paper shadow="md" p="xl" withBorder>
@@ -56,9 +46,15 @@ export default function AccessDeniedPage() {
         </Text>
         
         <Group justify="center">
-          <SignOutButton>
-            <Button variant="light">Sign Out</Button>
-          </SignOutButton>
+          {isAuthDisabled ? (
+            <Button variant="light" onClick={() => router.push('/')}>
+              Go to Home
+            </Button>
+          ) : (
+            <SignOutButton>
+              <Button variant="light">Sign Out</Button>
+            </SignOutButton>
+          )}
         </Group>
       </Paper>
     </Container>

@@ -21,7 +21,7 @@ namespace ConduitLLM.Admin.Services
     public class AdminAudioProviderService : IAdminAudioProviderService
     {
         private readonly IAudioProviderConfigRepository _repository;
-        private readonly IProviderCredentialRepository _credentialRepository;
+        private readonly IProviderRepository _credentialRepository;
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<AdminAudioProviderService> _logger;
 
@@ -30,7 +30,7 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         public AdminAudioProviderService(
             IAudioProviderConfigRepository repository,
-            IProviderCredentialRepository credentialRepository,
+            IProviderRepository credentialRepository,
             ILLMClientFactory clientFactory,
             ILogger<AdminAudioProviderService> logger)
         {
@@ -55,10 +55,10 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioProviderConfigDto>> GetByProviderAsync(ProviderType providerType)
+        public async Task<List<AudioProviderConfigDto>> GetByProviderAsync(int providerId)
         {
-            var configs = await _repository.GetByProviderTypeAsync(providerType);
-            return configs.Select(MapToDto).ToList();
+            var config = await _repository.GetByProviderIdAsync(providerId);
+            return config != null ? new List<AudioProviderConfigDto> { MapToDto(config) } : new List<AudioProviderConfigDto>();
         }
 
         /// <inheritdoc/>
@@ -72,21 +72,21 @@ namespace ConduitLLM.Admin.Services
         public async Task<AudioProviderConfigDto> CreateAsync(CreateAudioProviderConfigDto dto)
         {
             // Validate that the provider credential exists
-            var credential = await _credentialRepository.GetByIdAsync(dto.ProviderCredentialId);
+            var credential = await _credentialRepository.GetByIdAsync(dto.ProviderId);
             if (credential == null)
             {
-                throw new ArgumentException($"Provider credential with ID {dto.ProviderCredentialId} not found");
+                throw new ArgumentException($"Provider credential with ID {dto.ProviderId} not found");
             }
 
             // Check if configuration already exists for this credential
-            if (await _repository.ExistsForProviderCredentialAsync(dto.ProviderCredentialId))
+            if (await _repository.ExistsForProviderAsync(dto.ProviderId))
             {
-                throw new ArgumentException($"Audio configuration already exists for provider credential {dto.ProviderCredentialId}");
+                throw new ArgumentException($"Audio configuration already exists for provider credential {dto.ProviderId}");
             }
 
             var config = new AudioProviderConfig
             {
-                ProviderCredentialId = dto.ProviderCredentialId,
+                ProviderId = dto.ProviderId,
                 TranscriptionEnabled = dto.TranscriptionEnabled,
                 DefaultTranscriptionModel = dto.DefaultTranscriptionModel,
                 TextToSpeechEnabled = dto.TextToSpeechEnabled,
@@ -100,9 +100,8 @@ namespace ConduitLLM.Admin.Services
             };
 
             var created = await _repository.CreateAsync(config);
-            _logger.LogInformation("Created audio provider configuration {Id} for provider {Provider}",
-                created.Id.ToString().Replace(Environment.NewLine, ""),
-                credential.ProviderType.ToString().Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Created audio provider configuration {Id} for provider ID {ProviderId}",
+                created.Id, dto.ProviderId);
 
             return MapToDto(created);
         }
@@ -165,8 +164,8 @@ namespace ConduitLLM.Admin.Services
             {
                 var stopwatch = Stopwatch.StartNew();
 
-                // Convert ProviderType enum to provider ID
-                var providerId = (int)config.ProviderCredential.ProviderType;
+                // Use the actual provider ID from the config
+                var providerId = config.ProviderId;
                 
                 // Create a client for the provider
                 var client = _clientFactory.GetClientByProviderId(providerId);
@@ -282,8 +281,8 @@ namespace ConduitLLM.Admin.Services
             return new AudioProviderConfigDto
             {
                 Id = config.Id,
-                ProviderCredentialId = config.ProviderCredentialId,
-                ProviderType = config.ProviderCredential?.ProviderType,
+                ProviderId = config.ProviderId,
+                ProviderType = config.Provider?.ProviderType,
                 TranscriptionEnabled = config.TranscriptionEnabled,
                 DefaultTranscriptionModel = config.DefaultTranscriptionModel,
                 TextToSpeechEnabled = config.TextToSpeechEnabled,

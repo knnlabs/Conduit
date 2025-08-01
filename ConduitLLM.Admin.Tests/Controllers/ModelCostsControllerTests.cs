@@ -66,8 +66,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var costs = new List<ModelCostDto>
             {
-                new() { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 0.03m, OutputTokenCost = 0.06m },
-                new() { Id = 2, ModelIdPattern = "claude-3*", InputTokenCost = 0.02m, OutputTokenCost = 0.04m }
+                new() { Id = 1, CostName = "GPT-4 Pricing", InputTokenCost = 0.03m, OutputTokenCost = 0.06m },
+                new() { Id = 2, CostName = "Claude-3 Pricing", InputTokenCost = 0.02m, OutputTokenCost = 0.04m }
             };
 
             _mockService.Setup(x => x.GetAllModelCostsAsync())
@@ -80,7 +80,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
             returnedCosts.Should().HaveCount(2);
-            returnedCosts.First().ModelIdPattern.Should().Be("gpt-4*");
+            returnedCosts.First().CostName.Should().Be("GPT-4 Pricing");
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var cost = new ModelCostDto
             {
                 Id = 1,
-                ModelIdPattern = "gpt-4*",
+                CostName = "GPT-4 Pricing",
                 InputTokenCost = 0.03m,
                 OutputTokenCost = 0.06m
             };
@@ -154,15 +154,15 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var costs = new List<ModelCostDto>
             {
-                new() { Id = 1, ModelIdPattern = "gpt-3.5*", InputTokenCost = 0.001m },
-                new() { Id = 2, ModelIdPattern = "gpt-4*", InputTokenCost = 0.03m }
+                new() { Id = 1, CostName = "GPT-3.5 Pricing", InputTokenCost = 0.001m },
+                new() { Id = 2, CostName = "GPT-4 Pricing", InputTokenCost = 0.03m }
             };
 
-            _mockService.Setup(x => x.GetModelCostsByProviderAsync("openai"))
+            _mockService.Setup(x => x.GetModelCostsByProviderAsync(1))
                 .ReturnsAsync(costs);
 
             // Act
-            var result = await _controller.GetModelCostsByProvider("openai");
+            var result = await _controller.GetModelCostsByProvider(1);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -174,11 +174,11 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetModelCostsByProvider_WithEmptyProvider_ShouldReturnEmptyList()
         {
             // Arrange
-            _mockService.Setup(x => x.GetModelCostsByProviderAsync("unknown"))
+            _mockService.Setup(x => x.GetModelCostsByProviderAsync(999))
                 .ReturnsAsync(new List<ModelCostDto>());
 
             // Act
-            var result = await _controller.GetModelCostsByProvider("unknown");
+            var result = await _controller.GetModelCostsByProvider(999);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -188,40 +188,40 @@ namespace ConduitLLM.Admin.Tests.Controllers
 
         #endregion
 
-        #region GetModelCostByPattern Tests
+        #region GetModelCostByCostName Tests
 
         [Fact]
-        public async Task GetModelCostByPattern_WithMatchingPattern_ShouldReturnCost()
+        public async Task GetModelCostByCostName_WithMatchingCostName_ShouldReturnCost()
         {
             // Arrange
             var cost = new ModelCostDto
             {
                 Id = 1,
-                ModelIdPattern = "gpt-4-turbo",
+                CostName = "GPT-4 Turbo Pricing",
                 InputTokenCost = 0.01m
             };
 
-            _mockService.Setup(x => x.GetModelCostByPatternAsync("gpt-4-turbo"))
+            _mockService.Setup(x => x.GetModelCostByCostNameAsync("GPT-4 Turbo Pricing"))
                 .ReturnsAsync(cost);
 
             // Act
-            var result = await _controller.GetModelCostByPattern("gpt-4-turbo");
+            var result = await _controller.GetModelCostByCostName("GPT-4 Turbo Pricing");
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedCost = Assert.IsType<ModelCostDto>(okResult.Value);
-            returnedCost.ModelIdPattern.Should().Be("gpt-4-turbo");
+            returnedCost.CostName.Should().Be("GPT-4 Turbo Pricing");
         }
 
         [DynamicObjectIssue("Test expects string response but controller may return object")]
-        public async Task GetModelCostByPattern_WithNoMatch_ShouldReturnNotFound()
+        public async Task GetModelCostByCostName_WithNoMatch_ShouldReturnNotFound()
         {
             // Arrange
-            _mockService.Setup(x => x.GetModelCostByPatternAsync("unknown-model"))
+            _mockService.Setup(x => x.GetModelCostByCostNameAsync("Unknown Cost"))
                 .ReturnsAsync((ModelCostDto?)null);
 
             // Act
-            var result = await _controller.GetModelCostByPattern("unknown-model");
+            var result = await _controller.GetModelCostByCostName("Unknown Cost");
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -238,7 +238,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var createDto = new CreateModelCostDto
             {
-                ModelIdPattern = "new-model*",
+                CostName = "New Model Pricing",
                 InputTokenCost = 0.01m,
                 OutputTokenCost = 0.02m
             };
@@ -246,7 +246,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createdDto = new ModelCostDto
             {
                 Id = 10,
-                ModelIdPattern = createDto.ModelIdPattern,
+                CostName = createDto.CostName,
                 InputTokenCost = createDto.InputTokenCost,
                 OutputTokenCost = createDto.OutputTokenCost
             };
@@ -263,28 +263,28 @@ namespace ConduitLLM.Admin.Tests.Controllers
             createdResult.RouteValues!["id"].Should().Be(10);
             
             var returnedCost = Assert.IsType<ModelCostDto>(createdResult.Value);
-            returnedCost.ModelIdPattern.Should().Be("new-model*");
+            returnedCost.CostName.Should().Be("New Model Pricing");
         }
 
         [Fact]
-        public async Task CreateModelCost_WithDuplicatePattern_ShouldReturnBadRequest()
+        public async Task CreateModelCost_WithDuplicateCostName_ShouldReturnBadRequest()
         {
             // Arrange
             var createDto = new CreateModelCostDto
             {
-                ModelIdPattern = "existing*",
+                CostName = "Existing Cost",
                 InputTokenCost = 0.01m
             };
 
             _mockService.Setup(x => x.CreateModelCostAsync(It.IsAny<CreateModelCostDto>()))
-                .ThrowsAsync(new InvalidOperationException("Model cost with pattern already exists"));
+                .ThrowsAsync(new InvalidOperationException("Model cost with this name already exists"));
 
             // Act
             var result = await _controller.CreateModelCost(createDto);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("Model cost with pattern already exists");
+            badRequestResult.Value.Should().Be("Model cost with this name already exists");
         }
 
         #endregion
@@ -298,7 +298,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var updateDto = new UpdateModelCostDto
             {
                 Id = 1,
-                ModelIdPattern = "gpt-4*",
+                CostName = "GPT-4 Updated Pricing",
                 InputTokenCost = 0.02m,
                 OutputTokenCost = 0.04m
             };
@@ -320,7 +320,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var updateDto = new UpdateModelCostDto
             {
                 Id = 2,
-                ModelIdPattern = "model",
+                CostName = "Model Pricing",
                 InputTokenCost = 0.02m
             };
 
@@ -339,7 +339,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var updateDto = new UpdateModelCostDto
             {
                 Id = 999,
-                ModelIdPattern = "model",
+                CostName = "Non-existent Model",
                 InputTokenCost = 0.02m
             };
 
@@ -442,8 +442,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var modelCosts = new List<CreateModelCostDto>
             {
-                new() { ModelIdPattern = "model1", InputTokenCost = 0.01m },
-                new() { ModelIdPattern = "model2", InputTokenCost = 0.02m }
+                new() { CostName = "Model 1 Pricing", InputTokenCost = 0.01m },
+                new() { CostName = "Model 2 Pricing", InputTokenCost = 0.02m }
             };
 
             _mockService.Setup(x => x.ImportModelCostsAsync(It.IsAny<IEnumerable<CreateModelCostDto>>()))
@@ -476,7 +476,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task ExportCsv_ShouldReturnCsvFile()
         {
             // Arrange
-            var csvData = "ModelIdPattern,InputTokenCost,OutputTokenCost\ngpt-4*,0.03,0.06";
+            var csvData = "CostName,InputTokenCost,OutputTokenCost\nGPT-4 Pricing,0.03,0.06";
             _mockService.Setup(x => x.ExportModelCostsAsync("csv", null))
                 .ReturnsAsync(csvData);
 
@@ -490,19 +490,19 @@ namespace ConduitLLM.Admin.Tests.Controllers
             fileResult.FileDownloadName.Should().EndWith(".csv");
             
             var content = Encoding.UTF8.GetString(fileResult.FileContents);
-            content.Should().Contain("gpt-4*");
+            content.Should().Contain("GPT-4 Pricing");
         }
 
         [Fact]
         public async Task ExportJson_WithProvider_ShouldReturnFilteredJsonFile()
         {
             // Arrange
-            var jsonData = "[{\"modelIdPattern\":\"gpt-4*\",\"inputTokenCost\":0.03}]";
-            _mockService.Setup(x => x.ExportModelCostsAsync("json", "openai"))
+            var jsonData = "[{\"costName\":\"GPT-4 Pricing\",\"inputTokenCost\":0.03}]";
+            _mockService.Setup(x => x.ExportModelCostsAsync("json", 1))
                 .ReturnsAsync(jsonData);
 
             // Act
-            var result = await _controller.ExportJson("openai");
+            var result = await _controller.ExportJson(1);
 
             // Assert
             var fileResult = Assert.IsType<FileContentResult>(result);
@@ -519,7 +519,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task ImportCsv_WithValidFile_ShouldReturnImportResult()
         {
             // Arrange
-            var csvContent = "ModelIdPattern,InputTokenCost,OutputTokenCost\ngpt-4*,0.03,0.06";
+            var csvContent = "CostName,InputTokenCost,OutputTokenCost\nGPT-4 Pricing,0.03,0.06";
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(csvContent));
             var formFile = new FormFile(stream, 0, stream.Length, "file", "costs.csv")
             {
@@ -570,7 +570,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task ImportJson_WithFailedImport_ShouldReturnBadRequest()
         {
             // Arrange
-            var jsonContent = "[{\"invalid\":\"data\"}]";
+            var jsonContent = "[{\"invalidField\":\"data\"}]";
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonContent));
             var formFile = new FormFile(stream, 0, stream.Length, "file", "costs.json")
             {
