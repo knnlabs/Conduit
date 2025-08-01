@@ -35,11 +35,8 @@ namespace ConduitLLM.Tests.Http.Middleware
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockLogger = new Mock<ILogger<UsageTrackingMiddleware>>();
             
-            _next = (HttpContext ctx) => 
-            {
-                // Simulate the actual endpoint processing that sets the response
-                return Task.CompletedTask;
-            };
+            // Default _next delegate - will be replaced by SetupMockResponse
+            _next = (HttpContext ctx) => Task.CompletedTask;
             _middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
         }
 
@@ -85,8 +82,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -146,8 +146,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -201,8 +204,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -252,8 +258,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -334,8 +343,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             // Batch service is unhealthy
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(false);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -446,8 +458,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             _mockBatchSpendService.SetupGet(x => x.IsHealthy).Returns(true);
 
+            // Create a new middleware instance that uses our updated _next delegate
+            var middleware = new UsageTrackingMiddleware(_next, _mockLogger.Object);
+
             // Act
-            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+            await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
                 _mockRequestLogService.Object, _mockVirtualKeyService.Object);
 
             // Assert
@@ -469,19 +484,17 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             var json = JsonSerializer.Serialize(responseData);
             var bytes = Encoding.UTF8.GetBytes(json);
-            var stream = new MemoryStream(bytes);
-            
-            // Important: position the stream at the beginning so it can be read
-            stream.Position = 0;
             
             // Replace the _next delegate to write the response
             _next = async (HttpContext ctx) => 
             {
-                // Simulate the API response by writing to response body
-                await stream.CopyToAsync(ctx.Response.Body);
-                ctx.Response.ContentLength = bytes.Length;
+                // Set response properties first
                 ctx.Response.ContentType = "application/json";
                 ctx.Response.StatusCode = 200;
+                ctx.Response.ContentLength = bytes.Length;
+                
+                // Write the response data to the response body
+                await ctx.Response.Body.WriteAsync(bytes, 0, bytes.Length);
             };
         }
     }

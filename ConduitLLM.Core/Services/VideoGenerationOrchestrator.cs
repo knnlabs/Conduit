@@ -419,18 +419,11 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException("Invalid task metadata format", ex);
                 }
 
-                // Get model mapping to resolve alias to provider model
-                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                if (modelMapping == null)
-                {
-                    throw new NotSupportedException($"Model {request.Model} is not configured. Please add it to model mappings.");
-                }
-
                 // Update the original model alias to the video request model
                 originalModelAlias = videoRequest.Model;
                 
-                // Update request to use the provider's model ID
-                videoRequest.Model = modelMapping.ProviderModelId;
+                // Update request to use the provider's model ID (already retrieved in modelInfo)
+                videoRequest.Model = modelInfo.ModelId;
 
                 // Get the appropriate client for the model using the alias
                 var client = _clientFactory.GetClient(originalModelAlias);

@@ -4,6 +4,9 @@ import type {
   NavigationStateUpdateCallback,
   ModelDiscoveredCallback,
   ProviderHealthChangeCallback,
+  VirtualKeyEventCallback,
+  ConfigurationChangeCallback,
+  AdminNotificationCallback,
   NotificationSubscription,
   AdminNotificationOptions,
   IRealtimeNotificationService
@@ -195,7 +198,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to virtual key events (not implemented)
    */
   async onVirtualKeyEvent(
-    _callback: (event: unknown) => void,
+    _callback: VirtualKeyEventCallback,
     _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onVirtualKeyEvent not implemented');
@@ -205,7 +208,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to configuration changes (not implemented)
    */
   async onConfigurationChange(
-    _callback: (event: unknown) => void,
+    _callback: ConfigurationChangeCallback,
     _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onConfigurationChange not implemented');
@@ -215,7 +218,7 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to admin notifications (not implemented)
    */
   async onAdminNotification(
-    _callback: (event: unknown) => void,
+    _callback: AdminNotificationCallback,
     _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onAdminNotification not implemented');
